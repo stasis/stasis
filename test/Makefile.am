@@ -1,4 +1,4 @@
-SUBDIRS = lladd monotree messages dfa 2pc cht
+SUBDIRS = lladd monotree messages dfa 2pc cht pobj
 INCLUDES = @CHECK_CFLAGS@
 if HAVE_CHECK
 TESTS = check_check
