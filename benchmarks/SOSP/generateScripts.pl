@@ -92,7 +92,10 @@ for(my $i = 0; $i <= 10; $i++) {
     print BDB_RAW            "../berkeleyDB/bdbRawThreaded   1 $insert_count 0 0\n";
 
     print BULK_LOAD_RAW          "../arrayListSet                1 $insert_count\n";
-    print BULK_LOAD_RAW          "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
+    if($i <= 1000000) {
+        print BULK_LOAD_RAW          "../pageOrientedListNTA         1 $insert_count\n"; 
+    }
+    print BULK_LOAD_RAW          "../linkedListNTA               1 $insert_count\n";  
     print BULK_LOAD_RAW          "../rawSet                      1 $insert_count\n"; 
     print BULK_LOAD_RAW          "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 0\n";
 }
@@ -117,8 +120,8 @@ open(BDB_RECNO_TPS,           ">BDB_RECNO_TPS.script");
 
 open(TPS,   ">TPS.script");
 
-for(my $i = 0; $i <= 50; $i ++ ) {
-    my $insert_threads = $i * 10;
+for(my $i = 0; $i <= 80; $i +=5 ) {
+    my $insert_threads = $i ;
     if($insert_threads == 0) {
 	$insert_threads = 1;
     }
