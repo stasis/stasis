@@ -7,6 +7,7 @@
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 #include <lladd/lockManager.h>
+#include <lladd/compensations.h>
 
 #include "page.h"
 #include <lladd/logger/logger2.h>
@@ -92,9 +93,11 @@ int Tinit() {
 	pageOperationsInit();
 	initNestedTopActions();
 	ThashInit();
+	
+	compensations_init();
 
-	//setupLockManagerCallbacksNil();
-	setupLockManagerCallbacksPage();
+	setupLockManagerCallbacksNil();
+	//setupLockManagerCallbacksPage();
 
 	InitiateRecovery();
 

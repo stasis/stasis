@@ -85,7 +85,7 @@ terms specified in this license.
 #include "blobManager.h"
 #include <lladd/lockManager.h>
 #include "pageFile.h"
-
+#include <lladd/compensations.h>
 #include "page/slotted.h"
 #include "page/fixed.h"
 
@@ -106,13 +106,19 @@ Page pool[MAX_BUFFER_SIZE+1];
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
   /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
-  if(globalLockManager.writeLockPage) { globalLockManager.writeLockPage(xid, page->id); }
+  
+  begin_action(NULL,NULL) {
+    if(globalLockManager.writeLockPage) { 
+      globalLockManager.writeLockPage(xid, page->id); 
+    }
+  } end_action;
 
   if(page->LSN < lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
   } 
   page->dirty = 1;
+  return;
 }
 
 lsn_t pageReadLSN(const Page * page) {
@@ -253,6 +259,20 @@ Page *pageMalloc() {
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+
+  
+  /*  writelock(p->rwlatch, 225);  // Need a writelock so that we can update the lsn. 
+  int lock_ret = pageWriteLSN(xid, p, lsn);
+  unlock(p->rwlatch);    
+  if(lock_ret) {
+    return lock_ret;
+    } */
+
+  begin_action((void(*)(void*))unlock, p->rwlatch) {
+    writelock(p->rwlatch, 225);
+    pageWriteLSN(xid, p, lsn);
+  } compensate;
+
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid, p, lsn, rid, dat);
@@ -265,13 +285,9 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   }
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
-  writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
-  pageWriteLSN(xid, p, lsn);
-  unlock(p->rwlatch);    
-
 }
 
-void readRecord(int xid, Page * p, recordid rid, void *buf) {
+int readRecord(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
   
   int page_type = *page_type_ptr(p);
@@ -288,10 +304,12 @@ void readRecord(int xid, Page * p, recordid rid, void *buf) {
     abort();
   }
   assert(rid.page == p->id); 
+
+  return 0;
 }
 
 
-void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
+int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
   
   int page_type = *page_type_ptr(p);
@@ -309,15 +327,10 @@ void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
     abort();
   }
   assert(rid.page == p->id); 
+
+  return 0;
 }
-/** @todo getRecordType is a hack.  Instead, each record type should
-    implement code that decides whether a record exists, and returns its size
-    or -1.  Then, getRecordType coudl call that function directly depending on 
-	  page type, etc.
 
-	  A complementary function getRecordSize could return the size value.
-
-*/
 int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
   assert(rid.page == p->id);
   
@@ -349,7 +362,7 @@ int getRecordType(int xid, Page * p, recordid rid) {
 	unlock(p->rwlatch);
 	return ret;
 }
-/** @todo implemenet getRecordLength for blobs and fixed length pages. */
+/** @todo implement getRecordLength for blobs and fixed length pages. */
 int getRecordSize(int xid, Page * p, recordid rid) {
   readlock(p->rwlatch, 353);
   int ret = getRecordTypeUnlocked(xid, p, rid);
@@ -367,7 +380,22 @@ int getRecordSize(int xid, Page * p, recordid rid) {
 void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-  
+
+  /*  writelock(p->rwlatch, 225);  // Need a writelock so that we can update the lsn. 
+  int lock_error = pageWriteLSN(xid, p, lsn);
+  if(lock_error) {
+    unlock(p->rwlatch);
+    return lock_error;
+  }
+  unlock(p->rwlatch);    */
+
+
+  // Need a writelock so that we can update the lsn. 
+  begin_action(unlock, p->rwlatch) {
+    writelock(p->rwlatch, 225);
+    pageWriteLSN(xid, p, lsn);
+  } compensate;
+
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     abort();
     writeBlob(xid, p, lsn, rid, dat);
@@ -380,8 +408,5 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
   }
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
-  writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
-  pageWriteLSN(xid, p, lsn);
-  unlock(p->rwlatch);    
 
 }

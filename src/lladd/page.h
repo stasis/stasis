@@ -261,6 +261,8 @@ lsn_t pageReadLSN(const Page * page);
  *
  * @param dat the new value of the record.
  *
+ * @return 0 on success, lladd error code on failure
+ *
  */
 void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
@@ -271,12 +273,13 @@ void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const vo
  * @param xid transaction ID
  * @param rid the record to be written
  * @param dat buffer for data
+ * @return 0 on success, lladd error code on failure
  */
-void readRecord(int xid, Page * page, recordid rid, void *dat);
+int readRecord(int xid, Page * page, recordid rid, void *dat);
 /**
  *  The same as readRecord, but does not obtain a latch.
  */
-void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
+int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
 /**
    Should be called when transaction xid commits.
 */
@@ -299,7 +302,7 @@ void  pageRealloc(Page * p, int id);
 /**
    obtains the type of the record pointed to by rid.  
 
-   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, or FIXED_RECORD.
+   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, FIXED_RECORD or an error code.
 */
 
 

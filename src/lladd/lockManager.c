@@ -1,5 +1,6 @@
 #include <pbl/pbl.h>
 #include <lladd/lockManager.h>
+#include <lladd/compensations.h>
 #include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
@@ -127,9 +128,7 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
       if(wait_ret == ETIMEDOUT) {
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
-
-	printf("Deadlock!\n"); fflush(stdout);
-	abort();
+	compensation_set_error(LLADD_DEADLOCK);
 	return LLADD_DEADLOCK;
       }
     } while(ridLock->writers);
@@ -187,6 +186,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     ts.tv_nsec = tv.tv_usec * 1000;
     if(tod_ret != 0) {
       perror("Could not get time of day");
+      compensation_set_error(LLADD_DEADLOCK);
       return LLADD_INTERNAL_ERROR;
     }
     while(ridLock->writers || (ridLock->readers - me)) { 
@@ -195,8 +195,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
 	ridLock->waiting--;
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
-	printf("Deadlock!\n"); fflush(stdout);
-	abort();
+	compensation_set_error(LLADD_DEADLOCK);
 	return LLADD_DEADLOCK;
       }
     }

@@ -487,3 +487,4 @@ Suite * check_suite(void) {
 }
 
 #include "../check_setup.h"
+
