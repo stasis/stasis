@@ -10,20 +10,21 @@ my $CI98 = 4;
 my $CI99 = 5;
 my $CI99_8 = 6;
 my $CI99_9 = 7;
+my $tdist = "/home/sears/bin/t-distribution.tbl";
 
 ### How tight should the CI be?
 my $myCI = $CI95;
 
 my $maxRuns = 10;
 my $plusMinus = 0.05;
-
+my $use_gettimeofday = 1;
 
 my @ttbl;
 
 sub parse_t_distribution {
     ## Takes the t-distribution.tbl file, and parses it into a nice, fat array.
 
-    open (T, "/home/sears/bin/t-distribution.tbl") || die "No T dist! $!";
+    open (T, $tdist) || die "No T dist! $!";
     my $i =0;
     while(my $line = <T>) {
 	my @tok = split /\s+/, $line;
@@ -38,10 +39,10 @@ sub parse_t_distribution {
 
 }
 
-sub runit {
+sub runit_gettimeofday {
     my $cmd = shift;
 
-    `rm -rf storefile.txt logfile.txt blob0_file.txt blob1_file.txt TXNAPP; sync; sleep 1`;
+    `rm -rf storefile.txt logfile.txt blob0_file.txt blob1_file.txt TXNAPP bdb; sync; sleep 1`;
 
     my $start_sec = `getTimeOfDay`;
 
@@ -58,10 +59,19 @@ sub runit {
     
 }
 
-parse_t_distribution;
+sub runit_returntime {
+    my $cmd = shift;
 
+    `rm -rf storefile.txt logfile.txt blob0_file.txt blob1_file.txt TXNAPP bdb; sync; sleep 1`;
 
-while (my $cmd = <>) {
+    my $time = `$cmd`;
+    
+    return $time;
+    
+}
+
+sub runbatch {
+    my $cmd = shift;
 
     my $sum_x = 0;
     my $sum_x_squared = 0;
@@ -77,7 +87,7 @@ while (my $cmd = <>) {
     my $max_range = 0;
     my $cur_range = 1;
     while( 1 ) {
-	if ($n > 2) {
+	if ($n > 5) {
 	    if($maxRuns < $n) {
 		last;
 	    }
@@ -85,7 +95,12 @@ while (my $cmd = <>) {
 		last;
 	    }
 	}
-	$x = runit($cmd);
+
+	if ($use_gettimeofday) {
+	    $x = runit_gettimeofday($cmd);
+	} else {
+	    $x = runit_returntime($cmd);
+	}
 	
 	$n++;
 	$sum_x += $x;
@@ -112,3 +127,27 @@ while (my $cmd = <>) {
 }
 
 
+while (@ARGV) {
+    if ($ARGV[0] eq "-return") {
+	$use_gettimeofday = 0;
+	shift @ARGV;
+    }
+
+    elsif ($ARGV[0] eq "-tdist") {
+	$tdist = $ARGV[1];
+	print "tdist: $tdist\n";
+	shift @ARGV;
+	shift @ARGV;
+    }
+
+    else {
+	die "unknown argument";
+    }
+}
+
+parse_t_distribution;
+
+
+while (my $cmd = <>) {
+    runbatch($cmd);
+}
