@@ -98,7 +98,7 @@ int pobj_set_ref (void *, void *, void *);
 int pobj_update_range (void *, void *, size_t);
 #define POBJ_UPDATE_FLD(obj,fld)  \
   pobj_update_range((obj), &((obj)->fld), sizeof((obj)->fld))
-#define pobj_UPDATE(obj)               pobj_update_range ((obj), NULL, 0)
+#define POBJ_UPDATE(obj)               pobj_update_range ((obj), NULL, 0)
 int pobj_update_recursive (void *);
 
 int pobj_static_set_ref (void *, void *);

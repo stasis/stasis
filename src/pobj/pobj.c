@@ -211,7 +211,7 @@ pobj_persistify (void *obj)
     size_t pobj_size;
 
     if (! g_is_init)
-	return;
+	return -1;
 
     if (p->rep_index >= 0)
 	return 0;  /* already persistent. */
@@ -669,15 +669,9 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
     int bit;
     unsigned long *flags_ptr;
     unsigned long flags, mask;
-    int xid;
+    int xid = -1;
     int ret;
 
-    if (p->rep_index < 0) {
-	debug ("error: object is non-persistent");
-	return -1;
-    }
-    pobj_slot = POBJ2REPSLOT (p);
-    
     /* Bound check. */
     /* TODO: is this worthwhile? */
     if ((char *) obj > (char *) fld
@@ -691,11 +685,12 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
 	return -1;
     }
 
-    if ((xid = pobj_start ()) < 0) {
+    /* Open transaction context (persistent objects only). */
+    if (p->rep_index >= 0 && (xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
 	return -1;
     }
-    
+	
     /* Update reference flags to allow reference adjustment during recovery. */
     /* TODO: do we want to protect manipulation of object meta-data? Basically,
      * it should be protected, although changes are monotonic, but that will
@@ -720,11 +715,15 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
 	*flags_ptr = flags & ~mask;
     }
 
-    /* Update corresponding record. */
-    /* TODO: switch to set_range update. */
-    Tset (xid, pobj_slot->rid, p);
+    /* Update corresponding record (persistent objects only). */
+    if (p->rep_index >= 0) {
+	pobj_slot = POBJ2REPSLOT (p);
+    
+	/* TODO: switch to set_range update. */
+	Tset (xid, pobj_slot->rid, p);
 
-    pobj_end ();
+	pobj_end ();
+    }
 
     return ret;
 }
@@ -751,21 +750,16 @@ pobj_ref_typify (void *obj, int *reflist)
     int flags_offset;
     int bit;
     unsigned long *flags_ptr;
-    int xid;
+    int xid = -1;
     int count;
-
-    if (p->rep_index < 0) {
-	debug ("error: object is non-persistent");
-	return -1;
-    }
-    pobj_slot = POBJ2REPSLOT (p);
 
     if (! reflist) {
 	debug ("error: null reference list provided, aborted");
 	return -1;
     }
     
-    if ((xid = pobj_start ()) < 0) {
+    /* Open transaction context (persistent objects only). */
+    if (p->rep_index >= 0 && (xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
 	return -1;
     }
@@ -803,11 +797,15 @@ pobj_ref_typify (void *obj, int *reflist)
 
     debug ("...done (%d total)", count);
 
-    /* Update corresponding record. */
-    /* TODO: switch to set_range update. */
-    Tset (xid, pobj_slot->rid, p);
+    /* Update corresponding record (persistent objects only). */
+    if (p->rep_index >= 0) {
+	pobj_slot = POBJ2REPSLOT (p);
 
-    pobj_end ();
+	/* TODO: switch to set_range update. */
+	Tset (xid, pobj_slot->rid, p);
+	
+	pobj_end ();
+    }
 
     return 0;
 }
@@ -822,13 +820,7 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 #ifdef HAVE_IMPLICIT_TYPES
     int is_changed = 0;
 #endif /* HAVE_IMPLICIT_TYPES */
-    int xid;
-
-    if (p->rep_index < 0) {
-	debug ("error: object is non-persistent");
-	return -1;
-    }
-    pobj_slot = POBJ2REPSLOT (p);
+    int xid = -1;
 
     /* Safety check. */
     /* TODO: is this worthwhile? */
@@ -839,6 +831,12 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 	return -1;
     }
 
+    /* Open transaction context (persistent objects only). */
+    if (p->rep_index >= 0 && (xid = pobj_start ()) < 0) {
+	debug ("error: begin transaction failed, aborted");
+    	return -1;
+    }
+    
 #ifdef HAVE_IMPLICIT_TYPES
     if (is_typed) {
 	switch (pobj_ref_type_enforce (obj, fld, len, is_ref)) {
@@ -857,22 +855,21 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
     }
 #endif /* HAVE_IMPLICIT_TYPES */
 
-    if ((xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
-    	return -1;
-    }
-    
     /* Update memory object field. */
     if (is_copy)
 	memcpy (fld, data, len);
     else
 	memset (fld, c, len);
 
-    /* Update corresponding record. */
-    /* TODO: switch to set_range update; not the is_changed field! */
-    Tset (xid, pobj_slot->rid, p);
+    /* Update corresponding record (persistent objects only). */
+    if (p->rep_index >= 0) {
+	pobj_slot = POBJ2REPSLOT (p);
 
-    pobj_end ();
+	/* TODO: switch to set_range update; note the is_changed field! */
+	Tset (xid, pobj_slot->rid, p);
+	
+	pobj_end ();
+    }
 
     return 0;
 }
@@ -932,10 +929,9 @@ pobj_update_range (void *obj, void *fld, size_t len)
     struct pobj_rep_list_item *pobj_slot;
     int xid;
 
-    if (p->rep_index < 0) {
-	debug ("error: object is non-persistent");
-	return -1;
-    }
+    if (p->rep_index < 0)
+	return 0;  /* transient mode. */
+
     pobj_slot = POBJ2REPSLOT (p);
 
     /* Safety check (only if len is non-zero). */
