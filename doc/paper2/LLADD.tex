@@ -2110,11 +2110,11 @@ implementation (Section~\ref{sub:Linear-Hash-Table}) provides access to an
 array of such records with performance that is competitive with native
 recordid accesses, so we use an ArrayList to store the records.  We
 could have opted for a slightly more efficient representation by
-implementing a fixed length array structure, but doing so seems to be
+implementing a fixed-length array structure, but doing so seems to be
 overkill for our purposes.  The nodes themselves are stored as an
 array of integers of length one greater than their out-degree. The
-extra int is used to hold information about the node.  (In our case,
-it is simply a set to a constant during traversal.)
+extra {\tt int} is used to hold information about the node; in our case,
+it is set to a constant during traversal.
 
 We implement a ``naive'' graph traversal algorithm that uses depth-first search to find all nodes that are reachable from node zero.
 This algorithm (predictably) consumes a large amount of memory, as
@@ -2228,13 +2228,16 @@ LRVM~\cite{lrvm}.
 \begin{figure}[t]
 \includegraphics[width=3.3in]{oo7.pdf}
 \vspace{-15pt}
-\caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non local nodes.}
+\caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
 \end{figure}
 
 \begin{figure}[t]
 \includegraphics[width=3.3in]{trans-closure-hotset.pdf}
 \vspace{-12pt}
-\caption{\sf\label{fig:hotGraph} Hot Set based graph traversal.  Here we see that the multiplexer helps when the graph has poor locality.  However, in the cases where depth first search performs well, the traversal is relatively inexpensive.}
+\caption{\sf\label{fig:hotGraph} Hot set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
+we see that the multiplexer helps when the graph has poor locality.
+However, in the cases where depth first search performs well, the
+reordering is inexpensive.}
 \end{figure}
 
 We loosely base the graphs for this test on the graphs used by the oo7
