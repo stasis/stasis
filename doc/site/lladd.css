@@ -7,16 +7,18 @@
 .menusection {
 	list-style-type:    none;
 	font-weight:        bold;
-	padding-left: 0em;
-	padding-right: 0.5em;
+	margin-left: .25em;
+	margin-right: 0.5em;
+	padding-left:      0em;
 	line-height:       1.8;
 }
 .menuitem {
 	padding-top:		  .2em;
 	list-style-type:    none;
 	font-weight:		  normal;
-	padding-right:      .5em;
-	padding-left:       1em;
+	margin-right:      .5em;
+	margin-left:       1em;
+	padding-left:      0em;
 	line-height:       1.25;
 }
 a {
