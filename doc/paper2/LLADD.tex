@@ -5,6 +5,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[latin1]{inputenc}
 \usepackage{graphicx}
+\usepackage{xspace}
 
 \usepackage{geometry}
 \geometry{verbose,letterpaper,tmargin=1in,bmargin=1in,lmargin=0.75in,rmargin=0.75in}
@@ -13,9 +14,12 @@
 
 \usepackage{babel}
 
+\newcommand{\yad}{Lemon\xspace}
+\newcommand{\eab}[1]{{\bf EAB: #1}}
+
 \begin{document}
 
-\title{LLADD Outline }
+\title{\yad Outline }
 
 
 \author{Russell Sears \and ... \and Eric Brewer}
@@ -24,11 +28,15 @@
 
 
 
-\subsection*{Abstract}
+%\subsection*{Abstract}
 
-{\em The sections marked @todo or bolded still need to be written, and graphs need to be produced.  Also, I would like to add a ``cheat-sheet'' style reference of an idealized version of LLADD's API.}
+{\em The sections marked @todo or bolded still need to be written, and
+graphs need to be produced.  Also, I would like to add a
+``cheat-sheet'' style reference of an idealized version of LLADD's
+API.}
+\vspace*{6pt}
 
-Existing transactional systems are designed to handle specific
+{\em Existing transactional systems are designed to handle specific
 workloads well.  Unfortunately, these implementations are generally
 monolithic, and do not generalize to other applications or classes of
 problems.  As a result, many systems are forced to ``work around'' the
@@ -44,7 +52,7 @@ implementation is competitive with existing systems on conventional
 workloads and outperforms existing systems on specialized
 workloads.  Finally, we discuss characteristics of this new
 architecture which provide opportunities for novel classes of
-optimizations and enhanced usability for application developers.
+optimizations and enhanced usability for application developers.}
 
 % todo/rcs Need to talk about collection api stuff / generalization of ARIES / new approach to application development
 
@@ -70,6 +78,87 @@ optimizations and enhanced usability for application developers.
 %}
 
 \section{Introduction}
+
+Transactions are at the core of databases and thus form the basis of many
+important systems. However, the mechanisms for transactions are
+typically hidden within monolithic database implementations (DBMS) that make
+it hard to benefit from transactions without inheriting the rest of
+the database machinery and design decisions, including a the use of a
+query interface.  Although this is clearly not a problem for
+databases, it impedes the use of transactions in a wider range of
+systems.
+
+Other systems that could benefit from transactions include file
+systems, version control systems, bioinformatics, workflow
+applications, search engines, and programming languages with
+persistent objects (or structures).
+
+In essence, there is an {\em impedance mismatch} between the data
+model provided by a DBMS and that required by these applications. This is
+not an accident: the purpose of the relational model is exactly to
+move to a higher-level set-based data model that avoids the kind of
+``navigational'' interactions required by these lower-level systems.
+Thus in some sense, we are arguing for the return of navigational
+transaction systems to compliment not replace relational systems.
+
+The most obvious example of this mismatch is in the support for
+persistent objects in Java, called {\em Entreprise Java Beans}
+(EJB). In a typical usage, an array of objects is made persistent by
+mapping each object to a row in a table and then issuing queries to
+keep the objects and rows consistent.  A typical update must confirm
+it has the current version, modify the object, write out a serialized
+version using the SQL {\tt update} command, and commit.  This is an
+awkward and slow mechanism, but it does provide transactional
+consistency. \eab{how slow?}
+
+The DBMS actually has a navigational transaction system within it,
+which would be of great use to EJB, but it is not accessible except
+via the query language.  In general, this occurs because the internal
+transaction system is complex and highly optimized for
+high-performance update-in-place transactions (mostly financial).
+
+In this paper, we introduce a flexible framework for ACID
+transactions, \yad, that is intended to support this broader range of
+applications.  Although we believe it could also be the basis of a
+DBMS, there are clearly excellent existing solutions, and we thus
+focus on the rest of the applications.  The primary goal of \yad is to
+provide flexible and complete transactions.
+
+By {\em flexible} we mean that \yad can implement a wide range of
+transactional data structures, that it can support a variety of
+policies for locking, commit, clusters, and buffer management, and
+that it is extensible for both new core operations and new data
+structures.  It is this flexibility that allows the support of wide
+range of systems. \eab{somewhere we need to list the axes of flexibility}
+
+By {\em complete} we mean full redo/undo logging that supports both
+{\em no force}, which provides durability with only log writes, and
+{\em steal}, which allows dirty pages to be written out prematurely to
+reduce memory pressure.\footnote{A note on terminology: by ``dirty''
+we mean pages that contain uncommitted updates; this is the DB use of
+the word. Similarly, ``no force'' does not mean ``no flush'', which is
+the practice of delaying the log write for better performance at the
+risk of losing committed data. We support both versions.} By complete,
+we also mean support for media recovery, which is the ability to roll
+forward from an archived copy, and support for error-handling,
+clusters, and multithreading.  These requirements are difficult to
+meet and form the {\em raison d'\^{e}tre} for \yad: the framework delivers
+these properties in a way that is reusable, thus providing and easy
+way for systems to provide complete transactions.
+
+\eab{list of contributions}
+\begin{itemize}
+\item extensible logging
+\item extensible 2pc, locking via APIs (others?)
+\item flexible transactional data structures
+\item high-concurrency reusable open-source implementation with good
+      performance
+\item efficient persistent object layer
+\item others?
+\end{itemize}
+
+\eab{We also need to list the APIs that are easy to change and maybe explain the interaction between locking and commit/abort.}
+
 
 \begin{enumerate}
 
