@@ -52,7 +52,7 @@ terms specified in this license.
 
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
-static int operate(int xid, recordid rid, const void *dat) {
+static int operate(int xid, lsn_t lsn, recordid rid, const void *dat) {
   syncLog();
   return 0;
 }

@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include <lladd/logger/logWriter.h>
-
+#include <lladd/logger/logHandle.h>
 #include <assert.h>
 #include <config.h>
 
@@ -54,6 +54,26 @@ terms specified in this license.
 */
 static FILE * log;
 
+/**
+   @see flushedLSN()
+*/
+static lsn_t flushedLSN_val;
+
+/**
+   
+   Before writeLogEntry is called, this value is the value of the
+   highest LSN encountered so far.  Once writeLogEntry is called, it
+   is the next available LSN.
+
+   @see writeLogEntry
+*/
+static lsn_t nextAvailableLSN = 0;
+static int writeLogEntryIsReady = 0;
+static lsn_t maxLSNEncountered = sizeof(lsn_t);
+
+
+
+
 
 int openLogWriter() {
   log = fopen(LOG_FILE, "a+");
@@ -63,12 +83,16 @@ int openLogWriter() {
     return FILE_WRITE_OPEN_ERROR;
   }
 
+  nextAvailableLSN = 0;
+  maxLSNEncountered = sizeof(lsn_t);
+  writeLogEntryIsReady = 0;
+
   /* Note that the position of the file between calls to this library
      does not matter, since none of the functions in logWriter.h
      assume anything about the position of the stream before they are
      called.
 
-     However, we need to do this seek to check the length of the file.
+     However, we need to do this seek to check if the file is empty.
 
   */
   fseek(log, 0, SEEK_END); 
@@ -91,9 +115,45 @@ int openLogWriter() {
   return 0;
 }
 
+
+/** 
+    @internal 
+
+    Unfortunately, this function can't just seek to the end of the
+    log.  If it did, and a prior instance of LLADD crashed (and wrote
+    a partial entry), then the log would be corrupted.  Therefore, we
+    need to be a little bit smarter, and track the next LSN value
+    manually.  Calculating it the first time would require a scan over
+    the entire log, so we use the following optimization:
+
+    Every time readLSN is called, we check to see if it is called with
+    the highest LSN that we've seen so far.  (If writeLogEntry has not
+    been called yet.)
+
+    The first time writeLogEntry is called, we seek from the highest
+    LSN encountered so far to the end of the log.
+    
+*/
 int writeLogEntry(LogEntry * e) {
   int nmemb;
   const size_t size = sizeofLogEntry(e);
+
+  if(e->xid == -1) { /* Don't write log entries for recovery xacts. */
+    e->LSN = -1;
+    return 0;
+  }
+
+  if(!writeLogEntryIsReady) {
+    LogHandle lh = getLSNHandle(maxLSNEncountered);
+    LogEntry * le;
+
+    while((le = nextInLog(&lh))) {
+      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);
+    }
+    writeLogEntryIsReady = 1;
+  }
+
+
 
   /* Set the log entry's LSN. */
   fseek(log, 0, SEEK_END);
@@ -121,6 +181,13 @@ int writeLogEntry(LogEntry * e) {
 }
 
 void syncLog() {
+  lsn_t newFlushedLSN;
+  
+  fseek(log, 0, SEEK_END);
+  /* Wait to set the static variable until after the flush returns.
+     (In anticipation of multithreading) */
+  newFlushedLSN = ftell(log);  
+  
   fflush(log);
 #ifdef HAVE_FDATASYNC
   /* Should be available in linux >= 2.4 */
@@ -129,7 +196,15 @@ void syncLog() {
   /* Slow - forces fs implementation to sync the file metadata to disk */
   fsync(fileno(log));  
 #endif
+
+  flushedLSN_val = newFlushedLSN;
+  
 }
+
+lsn_t flushedLSN() {
+  return flushedLSN_val;
+}
+
 void closeLogWriter() {
   /* Get the whole thing to the disk before closing it. */
   syncLog();  
@@ -142,7 +217,7 @@ void deleteLogWriter() {
 
 static LogEntry * readLogEntry() {
   LogEntry * ret = NULL;
-  size_t size;
+  size_t size, entrySize;
   int nmemb;
   
   if(feof(log)) return NULL;
@@ -174,14 +249,28 @@ static LogEntry * readLogEntry() {
     return 0;
   }
 
+  entrySize = sizeofLogEntry(ret);
+
+
   /** Sanity check -- Did we get the whole entry? */
-  assert(size == sizeofLogEntry(ret));
+  if(size < entrySize) {
+    return 0;
+  }
+
+
+  assert(size == entrySize);
 
   return ret;
 }
 
 LogEntry * readLSNEntry(lsn_t LSN) {
   LogEntry * ret;
+
+  if(!writeLogEntryIsReady) {
+    if(LSN > maxLSNEncountered) {
+      maxLSNEncountered = LSN;
+    }
+  }
 
   fseek(log, LSN, SEEK_SET);
   ret = readLogEntry();

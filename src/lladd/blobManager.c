@@ -31,7 +31,7 @@ static void readRawRecord(int xid, recordid rid, void * buf, int size) {
   readRecord(xid, blob_rec_rid, buf);
 }
 
-static void writeRawRecord(int xid, lsn_t lsn, recordid rid, const void * buf, int size) {
+static void writeRawRecord(int xid, recordid rid, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
   Tset(xid, blob_rec_rid, buf);
@@ -42,7 +42,7 @@ static void writeRawRecord(int xid, lsn_t lsn, recordid rid, const void * buf, i
 /* moved verbatim from bufferManger.c, then hacked up to use FILE * instead of ints. */
 void openBlobStore() {
   int blobfd0, blobfd1;
-  if( ! (blobf0 = fopen(BLOB0_FILE, "w+"))) { /* file may not exist */
+  if( ! (blobf0 = fopen(BLOB0_FILE, "r+"))) { /* file may not exist */
     if( (blobfd0 = creat(BLOB0_FILE, 0666)) == -1 ) { /* cannot even create it */
       printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
       perror("Creating blob 0 file"); abort();
@@ -51,7 +51,7 @@ void openBlobStore() {
       printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
       perror(NULL); abort();
     }
-   if(!(blobf0 = fopen(BLOB0_FILE, "w+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
+   if(!(blobf0 = fopen(BLOB0_FILE, "r+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
   }
 
   DEBUG("blobf0 opened.\n");
@@ -93,43 +93,34 @@ void closeBlobStore() {
   pblHtDelete(dirtyBlobs);
 }
 
-static long myFseek(FILE * f, long offset, int whence) {
+long myFseek(FILE * f, long offset, int whence) {
   long ret;
   if(0 != fseek(f, offset, whence)) { perror ("fseek"); fflush(NULL); abort(); }
   if(-1 == (ret = ftell(f))) { perror("ftell"); fflush(NULL); abort(); }
   return ret;
 }
 
-recordid allocBlob(int xid, lsn_t lsn, size_t blobSize) {  
-  
+recordid preAllocBlob(int xid, size_t blobSize) {
   long fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_record_t blob_rec;
   Page p;
-  char zero = 0;
+  /*  char zero = 0; */
   /* Allocate space for the blob entry. */
-  
+ 
+  DEBUG("Allocing blob (size %d)\n", blobSize);
+
   assert(blobSize > 0); /* Don't support zero length blobs right now... */
 
   /* First in buffer manager. */
 
+  /** Needs to be in alloc.c */
+
   recordid rid = Talloc(xid, sizeof(blob_record_t));
 
-  readRecord(xid, rid, &blob_rec);
 
-  /** Then in the blob file. @todo: BUG How can we get around doing a
-      force here?  If the user allocates space and we crash, could we
-      double allocate space, since the file won't have grown.  Could
-      we write a log entry with the new size?  Alternatively, is
-      forcing the files before writing a commit to log enough?*/
-
-  /** @todo Should this be -1, not -2?  Aren't we writing one byte after the end of the blob? */
-  myFseek(blobf0, fileSize + blobSize - 1, SEEK_SET);
-  myFseek(blobf1, fileSize + blobSize - 1, SEEK_SET);
-
-  if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
-  if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
-
-  /** Finally, fix up the fields in the record that points to the blob. */
+  /** Finally, fix up the fields in the record that points to the blob. 
+      The rest of this also should go into alloc.c 
+  */
 
   blob_rec.fd = 0;
   blob_rec.size = blobSize;
@@ -143,11 +134,47 @@ recordid allocBlob(int xid, lsn_t lsn, size_t blobSize) {
   /* Tset() needs to know to 'do the right thing' here, since we've
      changed the size it has recorded for this record, and
      writeRawRecord makes sure that that is the case. */
-  writeRawRecord  (xid, lsn, rid, &blob_rec, sizeof(blob_record_t));
+  writeRawRecord  (xid, rid, &blob_rec, sizeof(blob_record_t));
 
   rid.size = blob_rec.size;
 
   return rid;
+
+}
+
+void allocBlob(int xid, lsn_t lsn, recordid rid) {  
+  
+  long fileSize = myFseek(blobf1, 0, SEEK_END);
+  blob_record_t blob_rec;
+  Page p;
+  char zero = 0;
+  /*  recordid rid = preAllocBlob(xid, blobSize); */
+  /* Allocate space for the blob entry. */
+ 
+  DEBUG("post Allocing blob (size %d)\n", rid.size);
+
+  assert(rid.size > 0); /* Don't support zero length blobs right now... */
+
+  /* First in buffer manager. */
+
+  p = loadPage(rid.page);
+
+  /* Read in record to get the correct offset, size for the blob*/
+  readRawRecord(xid, rid, &blob_rec, sizeof(blob_record_t));
+
+  /** Then in the blob file. @todo: BUG How can we get around doing a
+      force here?  If the user allocates space and we crash, could we
+      double allocate space, since the file won't have grown.  Could
+      we write a log entry with the new size?  Alternatively, is
+      forcing the files before writing a commit to log enough?*/
+
+  /** @todo Should this be -1, not -2?  Aren't we writing one byte after the end of the blob? */
+  myFseek(blobf0, fileSize + rid.size - 1, SEEK_SET);
+  myFseek(blobf1, fileSize + rid.size - 1, SEEK_SET);
+
+  if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
+  if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
+
 }
 
  static lsn_t * tripleHashLookup(int xid, recordid rid) {
@@ -258,8 +285,19 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
   FILE * fd;
   int readcount;
 
+  /** @todo  Dang.  Blob allocation needs to go in three phases:
+       1) Alloc record  (normal Talloc() before blob alloc)
+       2) Grab offset / size from blobManager, Tset() record from 1 with it.
+       3) Log it.
+       4) Upon recieving log entry, update static file length variable in blobManager.  (Will fix double allocation race bug as well, but introduced record leaking on crash... Oh well.)
+  */
+  DEBUG("Writing blob (size %d)\n", rid.size);
+
+
   /* Tread() raw record */
   readRawRecord(xid, rid, &rec, sizeof(blob_record_t));
+
+  assert(rec.size == rid.size);
 
   if(dirty) { 
     assert(lsn > *dirty);
@@ -275,7 +313,7 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
     rec.fd = rec.fd ? 0 : 1;
 
     /* Tset() raw record */
-    writeRawRecord(xid, lsn, rid, &rec, sizeof(blob_record_t));
+    writeRawRecord(xid, rid, &rec, sizeof(blob_record_t));
   }
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
@@ -290,8 +328,13 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
   /* No need to update the raw blob record. */
 
 }
-
+/** @todo check to see if commitBlobs actually needs to flush blob
+    files when it's called (are there any dirty blobs associated with
+    this transaction? */
 void commitBlobs(int xid) {
+
+  fdatasync(fileno(blobf0));
+  fdatasync(fileno(blobf1));
   abortBlobs(xid);
 }
 

@@ -58,6 +58,7 @@ terms specified in this license.
  * never hurts to have more flushes to disk, as long as it doesn't hurt
  * performance.
  *
+ * @todo CORRECTNESS: We currently assume that there are no partial entries in the log!
  * @todo Everything in this file cores on failure (no error handling yet)
  * @todo All of the logWriter calls should be reentrant.
  *
@@ -83,74 +84,51 @@ int openLogWriter();
 
 /**
    
-  @param e Pointer to a log entry.  After the call, e->LSN will be set appropriately.
+  @param e Pointer to a log entry.  After the call, e->LSN will be set appropriately.  If e's xid is set to -1, then this call has no effect (and e's LSN will be set to -1.)
 
   returns 0 on success, or an error code defined above
 */
 int writeLogEntry(LogEntry * e);
 
-/*
+/**
   flush the entire log (tail) that is currently in memory to disk
 */
 void syncLog();
 
-/*
+/** 
+   Return the highest LSN that is known to be on disk.  (Currently, we
+   only know if an LSN is on disk if we've written that LSN before a
+   call to syncLog().
+
+   Note: This function might not return an LSN corresponding to a real
+   log entry, but it will definitely return one that is greater than
+   or equal to the LSN of a log entry that has been forced to disk,
+   and is less than the LSN of all log entries that might not have
+   been forced to disk.
+*/
+lsn_t flushedLSN();
+
+/**
   Close the log stream
 */
 void closeLogWriter();
 
-/*
-  Get the current position of the stream (in terms of bytes)
-*/
-/*long getFilePos();*/
-
-/*
+/**
   Actually deletes the log file that may have been written to disk! Danger!!
   Only use after calling closeLogStream AND you are sure there are no active (or
   future active) transactions!
+
+  @todo This is in here now for completeness, but once we implement
+  log truncation, it should leave.
 */
 void deleteLogWriter();
 
-/*
- * Returns the current position of the stream no matter where it is
- */
-/*long streamPos();*/
+/**
+   Read a log entry at a particular LSN.
 
-/*
- * Returns the position of the stream if it were to read.
- */
-/*long writeStreamPos();*/
-
-/*
- *   readLog reads a line from the log puts it in a string
- *
- *   This was made static because it exports state that the interface
- *   should be hiding.  (To use this function, the user must make
- *   assumptions regarding the value of the FILE's current offset.)
- *
- *     returns the number of bytes read and put into buffer
- *     */
-/*int readLog(byte **buffer);*/
-/* LogEntry * readLogEntry(); */
-
-/*
- *   seek to a position in the log file and read it into the buffer
- *
- *     returns the number of bytes read and put into buffer
- *     */
-
-/*int seekAndReadLog(long pos, byte **buffer);*/
-
+   @param the LSN of the entry that will be read.
+*/
 LogEntry * readLSNEntry(lsn_t LSN);
-
-/*  lsn_t nextLSN();  */
-
-/*
- *   tell the current position in the log file
- *   */
-/*long readPos ();
-
-void seekInLog(long pos);*/
 
 END_C_DECLS
 

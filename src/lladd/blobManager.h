@@ -68,13 +68,17 @@ typedef struct {
   unsigned fd : 1;
 } blob_record_t;
 
+
+recordid preAllocBlob(int xid, size_t blobsize);
+
 /**
    Allocate a blob of size blobSize. 
 
    @todo This function does not atomically allocate space in the blob
    file.
 */
-recordid allocBlob(int xid, lsn_t lsn, size_t blobSize);
+
+void allocBlob(int xid, lsn_t lsn, recordid rid);
 void openBlobStore();
 void closeBlobStore();
 

@@ -449,6 +449,8 @@ START_TEST(recoverBlob__crash) {
 
   Tread(xid, rid, &j);
 
+  assert(!memcmp(j,k,ARRAY_SIZE * sizeof(int)));
+
   fail_unless(!memcmp(j,k,ARRAY_SIZE), "Recovery failed on second re-open.");
 
   Tdeinit();

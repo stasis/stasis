@@ -333,9 +333,13 @@ recordid pageRalloc(Page page, size_t size) {
 
 /** Only used for recovery, to make sure that consistent RID's are created 
  * on log playback. */
-recordid pageSlotRalloc(Page page, recordid rid) {
+recordid pageSlotRalloc(Page page, lsn_t lsn, recordid rid) {
 	int freeSpace = readFreeSpace(page.memAddr);
 	int numSlots = readNumSlots(page.memAddr);
+
+/*	if(rid.size > BLOB_THRESHOLD_SIZE) {
+	  return blobSlotAlloc(page, lsn_t lsn, recordid rid);
+	  }*/
 
 	/*	assert(rid.slot >= numSlots); */
 	if(rid.slot >= numSlots) {

@@ -76,6 +76,7 @@ AC_CONFIG_FILES([Makefile
                  src/lladd/Makefile
                  src/pbl/Makefile
                  src/timing/Makefile
+                 utilities/Makefile
                  test/2pc/Makefile
                  test/Makefile
                  test/cht/Makefile

@@ -94,21 +94,6 @@ terms specified in this license.
 
      @todo need alloc + free...
 
-//     Calls for LLADD managed memory (returns pointers to LLADD's cache.)
-
-//     Read only access to record (requires an un-pinning)
-
-//     Cost with cache hit:  pointer arithmetic.      
-
-//     - map_t readMapRecord(rid, &((const void *));
-      
-//     Map a page read / write.  Pins the page, sets its lsn, and provides a pointer to the record: 
-//      Cost with cache hit:  pointer arithmetic, eventual disk flush.
-
-//      - map_t readWriteMapRecord(rid, &(void *));
- 
-//     Unmap a mapped page so that it can be kicked.
-
 //    @param lsn can be 0 if this is a read-only mapping.  Otherwise,
 //     it should be the LSN of the operation that calls unmapRecord.
 //     @todo What connection between the lock manager and this function
@@ -220,12 +205,25 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat);
 void readRecord(int xid, recordid rid, void *dat);
 
 /**
- * @param page write page to disk, including correct LSN
+ * Write page to disk, including correct LSN.  Doing so may require a
+ * call to logSync().  There is not much that can be done to avoid
+ * this call right now.  In the future, it might make sense to check
+ * to see if some other page can be kicked, in order to avoid the log
+ * flush.  
+ *
+ * @param page  The page to be flushed to disk.
  * @return 0 on success
  * @return error code on failure 
  */
 int flushPage(Page page);
 
+/**
+   Read a page from disk.  
+
+   @param A page struct, with id set correctly.  The rest of this
+   struct is filled out by pageMap.
+*/
+void pageMap(Page * page);
 /*
  * this function does NOT write to disk, just drops the page from the active
  * pages

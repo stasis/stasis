@@ -63,17 +63,122 @@ terms specified in this license.
 
 #include "blobManager.h"
 
-static pblHashTable_t *activePages; /* page lookup */
-static unsigned int bufferSize = 1; /* < MAX_BUFFER_SIZE */
-static Page *repHead, *repMiddle, *repTail; /* replacement policy */
+#include <lladd/pageCache.h>
 
-static int stable = -1;
+#include <lladd/logger/logWriter.h>
 
-static void pageMap(Page *ret) {
+static FILE * stable = NULL;
+static unsigned int lastFreepage = 0;
+
+/* ** File I/O functions ** */
+/* Defined in blobManager.c, but don't want to export this in any public .h files... */
+long myFseek(FILE * f, long offset, int whence);
+
+void pageRead(Page *ret) {
+  long fileSize = myFseek(stable, 0, SEEK_END);
+  long pageoffset = ret->id * PAGE_SIZE;
+  long offset;
+
+  DEBUG("Reading page %d\n", ret->id);
+
+  if(!ret->memAddr) {
+    ret->memAddr = malloc(PAGE_SIZE);
+  }
+  assert(ret->memAddr);
+  
+  if ((ret->id)*PAGE_SIZE >= fileSize) {
+    myFseek(stable, (1+ ret->id) * PAGE_SIZE -1, SEEK_SET);
+    if(1 != fwrite("", 1, 1, stable)) {
+      if(feof(stable)) { printf("Unexpected eof extending storefile!\n"); fflush(NULL); abort(); }
+      if(ferror(stable)) { printf("Error extending storefile! %d", ferror(stable)); fflush(NULL); abort(); }
+    }
+
+  }
+  offset = myFseek(stable, pageoffset, SEEK_SET);
+  assert(offset == pageoffset);
+
+  if(1 != fread(ret->memAddr, PAGE_SIZE, 1, stable)) {
+                                                                                                                 
+    if(feof(stable)) { printf("Unexpected eof reading!\n"); fflush(NULL); abort(); }
+    if(ferror(stable)) { printf("Error reading stream! %d", ferror(stable)); fflush(NULL); abort(); }
+                                                                                                                 
+  }
+
+}
+
+void pageWrite(const Page * ret) {
+
+  long pageoffset = ret->id * PAGE_SIZE;
+  long offset = myFseek(stable, pageoffset, SEEK_SET);
+  assert(offset == pageoffset);
+  assert(ret->memAddr);
+
+  DEBUG("Writing page %d\n", ret->id);
+
+  if(flushedLSN() < pageReadLSN(*ret)) {
+    DEBUG("pageWrite is calling syncLog()!\n");
+    syncLog();
+  }
+
+  if(1 != fwrite(ret->memAddr, PAGE_SIZE, 1, stable)) {
+                                                                                                                 
+    if(feof(stable)) { printf("Unexpected eof writing!\n"); fflush(NULL); abort(); }
+    if(ferror(stable)) { printf("Error writing stream! %d", ferror(stable)); fflush(NULL); abort(); }
+                                                                                                                 
+  }
+
+
+}
+
+static void openPageFile() {
+  int stable_fd;
+
+  DEBUG("Opening storefile.\n");
+  if( ! (stable = fopen(STORE_FILE, "r+"))) { /* file may not exist */
+    byte* zero = calloc(1, PAGE_SIZE);
+
+    DEBUG("Creating new page storefile.\n");
+
+    if( (stable_fd = creat(STORE_FILE, 0666)) == -1 ) { /* cannot even create it */
+      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
+      perror("Creating store file"); abort();
+    }
+    if( close(stable_fd)) {
+      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
+      perror(NULL); abort();
+    }
+    if(!(stable = fopen(STORE_FILE, "r+"))) { perror("Couldn't open or create store file"); abort(); }
+
+    /* Write out one page worth of zeros to get started. */
+    
+    if(1 != fwrite(zero, PAGE_SIZE, 1, stable)) { assert (0); }
+  }
+  
+  lastFreepage = 0;
+  DEBUG("storefile opened.\n");
+
+}
+static void closePageFile() {
+
+  int ret = fclose(stable);
+  assert(!ret);
+  stable = NULL;
+}
+
+void pageMap(Page *ret) {
+  pageRead(ret);
+}
+int flushPage(Page ret) {
+  pageWrite(&ret);
+  return 0;
+}
+
+/*
+void pageMap(Page *ret) {
 
 	int fileSize;
-	/* this was lseek(stable, SEEK_SET, pageid*PAGE_SIZE), but changed to
-	            lseek(stable, pageid*PAGE_SIZE, SEEK_SET) by jkit (Wed Mar 24 12:59:18 PST 2004)*/
+	/ * this was lseek(stable, SEEK_SET, pageid*PAGE_SIZE), but changed to
+	            lseek(stable, pageid*PAGE_SIZE, SEEK_SET) by jkit (Wed Mar 24 12:59:18 PST 2004)* /
 	fileSize = lseek(stable, 0, SEEK_END);
 
 	if ((ret->id)*PAGE_SIZE >= fileSize) {
@@ -87,12 +192,19 @@ static void pageMap(Page *ret) {
 	}
 }
 
+int flushPage(Page page) {
+
+	if( munmap(page.memAddr, PAGE_SIZE) )
+		return MEM_WRITE_ERROR;
+
+	return 0;
+}
+
+*/
+
 int bufInit() {
 
-	Page *first;
-
-	bufferSize = 1;
-	stable = -1;
+	stable = NULL;
 
 	/* Create STORE_FILE, if necessary, then open it read/write 
 
@@ -104,204 +216,55 @@ int bufInit() {
 	   Now, zero means uninitialized, so this could probably be replaced 
 	   with a call to open(... O_CREAT|O_RW) or something like that...
 	*/
-	if( (stable = open(STORE_FILE, O_RDWR, 0)) == -1 ) { /* file may not exist */
-		void *zero = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0); /* zero = /dev/zero */
-		if( (stable = creat(STORE_FILE, 0666)) == -1 ) { /* cannot even create it */
+	/*	if( (stable = open(STORE_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
+		void *zero = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0); / * zero = /dev/zero * /
+		if( (stable = creat(STORE_FILE, 0666)) == -1 ) { / * cannot even create it * /
 			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
 			exit(errno);
 		}
-		/* kick off a fresh page */
-		if( write(stable, zero, PAGE_SIZE) != PAGE_SIZE ) { /* write zeros out */
+		/ * kick off a fresh page * /
+		if( write(stable, zero, PAGE_SIZE) != PAGE_SIZE ) { / * write zeros out * /
 			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
 			exit(errno);
 		}
-		if( close(stable) || ((stable = open(STORE_FILE, O_RDWR, 0)) == -1) ) { /* need to reopen with read perms */
+		if( close(stable) || ((stable = open(STORE_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
 			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
 			exit(errno);
 		}
-	}
+	} */
 
-	activePages = pblHtCreate();
-	assert(activePages);
-
-	first = pageAlloc(0);
-	pblHtInsert(activePages, &first->id, sizeof(int), first);
-
-	first->prev = first->next = NULL;
-	pageMap(first);
-
-	repHead = repTail = first;
-	repMiddle = NULL;
-
+	openPageFile();
+	pageCacheInit();
 	openBlobStore();
-
+	
 	return 0;
 }
 
-static void headInsert(Page *ret) {
+void bufDeinit() {
 
-	assert(ret != repMiddle);
-	assert(ret != repTail);
-	assert(ret != repHead);
+	closeBlobStore();
+	pageCacheDeinit();
+	closePageFile();
+	/*	if( close(stable) ) {
+		printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
+		exit(errno);
+		}*/
 
-	repHead->prev = ret;
-	ret->next = repHead;
-	ret->prev = NULL;
-	repHead = ret;
+	return;
 }
-
-static void middleInsert(Page *ret) {
-
-	assert( bufferSize == MAX_BUFFER_SIZE );
-
-	assert(ret != repMiddle);
-	assert(ret != repTail);
-	assert(ret != repHead);
-
-	ret->prev  = repMiddle->prev;
-	ret->next = repMiddle;
-	repMiddle->prev = ret;
-	ret->prev->next = ret;
-	ret->queue = 2;
-
-	repMiddle = ret;
-	assert(ret->next != ret && ret->prev != ret);
-}
-
-static void qRemove(Page *ret) {
-
-	assert( bufferSize == MAX_BUFFER_SIZE );
-	assert(ret->next != ret && ret->prev != ret);
-
-	if( ret->prev )
-		ret->prev->next = ret->next;
-	else /* is head */
-		repHead = ret->next; /* won't have head == tail because of test in loadPage */
-	if( ret->next ) {
-		ret->next->prev = ret->prev;
-		/* TODO: these if can be better organizeed for speed */
-		if( ret == repMiddle ) 
-			/* select new middle */
-			repMiddle = ret->next;
-	}
-	else /* is tail */
-		repTail = ret->prev;
-
-	assert(ret != repMiddle);
-	assert(ret != repTail);
-	assert(ret != repHead);
-}
-
-/** 
-    LRU-2S from Markatos "On Caching Searching Engine Results" 
-
-    @todo Should this be its own file?
-
+/**
+    Just close file descriptors, don't do any other clean up. (For
+    testing.)
 */
-static Page *kickPage(int pageid) {
+void simulateBufferManagerCrash() {
+  closeBlobStore();
+  closePageFile();
+  /*  close(stable);
+      stable = -1;*/
 
-	Page *ret = repTail;
-
-	assert( bufferSize == MAX_BUFFER_SIZE );
-
-	qRemove(ret);
-	pblHtRemove(activePages, &ret->id, sizeof(int));
-	if( munmap(ret->memAddr, PAGE_SIZE) )
-		assert( 0 ); 
-
-	pageRealloc(ret, pageid);
-
-	middleInsert(ret);
-	pblHtInsert(activePages, &pageid, sizeof(int), ret);
-
-	return ret;
 }
 
-
-int lastPageId = -1;
-Page * lastPage = 0;
-
-static Page *loadPagePtr(int pageid) {
-	/* lock activePages, bufferSize */
-	Page *ret;
-
-	if(lastPage && lastPageId == pageid) {
-	  return lastPage;
-	} else {
-	  ret = pblHtLookup(activePages, &pageid, sizeof(int));
-	}
-
-	if( ret ) {
-		if( bufferSize == MAX_BUFFER_SIZE ) { /* we need to worry about page sorting */
-			/* move to head */
-			if( ret != repHead ) {
-				qRemove(ret);
-				headInsert(ret);
-		assert(ret->next != ret && ret->prev != ret);
-
-				if( ret->queue == 2 ) {
-					/* keep first queue same size */
-					repMiddle = repMiddle->prev;
-					repMiddle->queue = 2;
-
-					ret->queue = 1;
-				}
-			}
-		}
-
-		lastPage = ret;
-		lastPageId = pageid;
-
-		return ret;
-	} else if( bufferSize == MAX_BUFFER_SIZE ) { /* we need to kick */
-		ret = kickPage(pageid);
-	} else if( bufferSize == MAX_BUFFER_SIZE-1 ) { /* we need to setup kickPage mechanism */
-		int i;
-		Page *iter;
-
-		ret = pageAlloc(pageid);
-		headInsert(ret);
-		assert(ret->next != ret && ret->prev != ret);
-
-		pblHtInsert( activePages, &pageid, sizeof(int), ret );
-
-		bufferSize++;
-
-		/* split up queue:
-		 * "in all cases studied ... fixing the primary region to 30% ...
-		 * resulted in the best performance"
-		 */
-		repMiddle = repHead;
-		for( i = 0; i < MAX_BUFFER_SIZE / 3; i++ ) {
-			repMiddle->queue = 1;
-			repMiddle = repMiddle->next;
-		}
-
-		for( iter = repMiddle; iter; iter = iter->next ) {
-			iter->queue = 2;
-		}
-
-	} else { /* we are adding to an nonfull queue */
-
-		bufferSize++;
-
-		ret = pageAlloc(pageid);
-		headInsert(ret);
-		assert(ret->next != ret && ret->prev != ret);
-		assert(ret->next != ret && ret->prev != ret);
-		pblHtInsert( activePages, &pageid, sizeof(int), ret );
-	}
-
-	/* we now have a page we can dump info into */
-	assert( ret->id == pageid );
-
-	pageMap(ret);
-
-	lastPage = ret;
-	lastPageId = pageid;
-
-	return ret;
-}
+/* ** No file I/O below this line. ** */
 
 Page loadPage (int pageid) {
 	return *loadPagePtr(pageid);
@@ -309,21 +272,26 @@ Page loadPage (int pageid) {
 
 Page * lastRallocPage = 0;
 
+
 recordid ralloc(int xid, lsn_t lsn, size_t size) {
-  static unsigned int lastFreepage = 0;
+
   recordid ret;
   Page p;
 
-  if (size >= BLOB_THRESHOLD_SIZE) { /* TODO combine this with if below */
+  DEBUG("Rallocing blob of size %ld\n", (long int)size);
+
+  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
+
+  /*  if (size >= BLOB_THRESHOLD_SIZE) { 
     
     ret = allocBlob(xid, lsn, size);
 
-  } else {
+    } else { */
   
     while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
     ret = pageRalloc(p, size);
     
-  }
+    /*  }  */
   DEBUG("alloced rid = {%d, %d, %d}\n", ret.page, ret.slot, ret.size);
   return ret;
 }
@@ -331,12 +299,12 @@ long readLSN(int pageid) {
 
 	return pageReadLSN(loadPage(pageid));
 }
-
+/*
 static void writeLSN(lsn_t LSN, int pageid) {
 	Page *p = loadPagePtr(pageid);
 	p->LSN = LSN;
 	pageWriteLSN(*p);
-}
+	}*/
 void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 
 	Page *p;
@@ -351,7 +319,9 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 	  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
 	  
 	  pageWriteRecord(xid, *p, rid, dat);
-	  writeLSN(lsn, rid.page);
+	  /*	  writeLSN(lsn, rid.page); */
+	  p->LSN = lsn;
+	  pageWriteLSN(*p);
 	}
 }
 void readRecord(int xid, recordid rid, void *buf) {
@@ -364,66 +334,19 @@ void readRecord(int xid, recordid rid, void *buf) {
   }
 }
 
-int flushPage(Page page) {
-
-	if( munmap(page.memAddr, PAGE_SIZE) )
-		return MEM_WRITE_ERROR;
-
-	return 0;
-}
-
 int bufTransCommit(int xid, lsn_t lsn) {
 
   commitBlobs(xid);
-  
-  /** @todo Figure out where the blob files are fsynced() and delete this and the next few lines... */
-
-  /*
-  fdatasync(blobfd0);
-  fdatasync(blobfd1);
-  */
-  
   pageCommit(xid);
 
   return 0;
 }
 
 int bufTransAbort(int xid, lsn_t lsn) {
+
   abortBlobs(xid);  /* abortBlobs doesn't write any log entries, so it doesn't need the lsn. */
   pageAbort(xid);
 
   return 0;
 }
 
-void bufDeinit() {
-	int ret;
-	Page *p;
-
-	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtRemove( activePages, 0, 0 )) {
-		if( p->dirty && (ret = flushPage(*p))) {
-			printf("ERROR: flushPage on %s line %d", __FILE__, __LINE__);
-			exit(ret);
-		}
-	}
-	pblHtDelete(activePages);
-
-	if( close(stable) ) {
-		printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-		exit(errno);
-	}
-
-	closeBlobStore();
-
-	return;
-}
-/**
-    Just close file descriptors, don't do any other clean up. (For
-    testing.)
-*/
-void simulateBufferManagerCrash() {
-  closeBlobStore();
-
-  close(stable);
-  stable = -1;
-
-}

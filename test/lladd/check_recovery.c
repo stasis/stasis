@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 #include <config.h>
 #include <check.h>
-/*#include <assert.h> */
+#include <assert.h> 
 
 #include <lladd/transactional.h>
 #include <lladd/logger/logWriter.h>
@@ -141,6 +141,9 @@ START_TEST (recovery_exactlyOnce) {
 
   Tread(xid, rid, &k);
 
+  printf("j = %d, k = %d\n", j, k);
+
+  assert(j == k);
   fail_unless(j == k, "Recovery messed something up!");
 
   Tcommit(xid);

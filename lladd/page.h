@@ -129,7 +129,7 @@ void pageRealloc(Page *p, int id);
 
 Page* pageAlloc(int id);
 
-recordid pageSlotRalloc(Page page, recordid rid);
+recordid pageSlotRalloc(Page page, lsn_t lsn, recordid rid);
 
 int pageTest();
 

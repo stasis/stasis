@@ -11,8 +11,9 @@ int numActiveXactions = 0;
 int xidCount = 0;
 #define INVALID_XTABLE_XID -1
 
-int Tinit() {
+/** Needed for debugging -- sometimes we don't want to run all of Tinit() */
 
+void setupOperationsTable() {
 	memset(XactionTable, INVALID_XTABLE_XID, sizeof(TransactionLog)*MAX_TRANSACTIONS);
 	operationsTable[OPERATION_SET]       = getSet();
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
@@ -22,6 +23,12 @@ int Tinit() {
 	operationsTable[OPERATION_LHREMOVE]  = getLHRemove();
 	operationsTable[OPERATION_ALLOC]     = getAlloc();
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
+
+}
+
+int Tinit() {
+         
+        setupOperationsTable();
 	
 	pageInit();
 	bufInit();
