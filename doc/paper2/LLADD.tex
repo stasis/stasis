@@ -110,15 +110,12 @@ and that naturally support current system designs and development methodolgies.
 The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
-mapping each object to a row in a table\footnote{If the object is
-stored in normalized relational format it may span many rows and
-tables~\cite{hibernate}.}  and then issuing queries to keep the
+mapping each object to a row in a table\footnote{Normalized objects may actually span many tables~\cite{hibernate}.}  and then issuing queries to keep the
 objects and rows consistent. A typical update must confirm it has the
 current version, modify the object, write out a serialized version
 using the SQL {\tt update} command, and commit.  This is an awkward
 and slow mechanism; we show up to a 5x speedup over a MySQL implementation 
-that is optimized for single-threaded access.
-(Section~\ref{OASYS}).
+that is optimized for single-threaded access (Section~\ref{OASYS}).
 
 The DBMS actually has a navigational transaction system within it,
 which would be of great use to EJB, but it is not accessible except
@@ -173,7 +170,6 @@ concurrency, 4) the precise semantics of atomicity, isolation and
 durability, 5) request scheduling policies, and 6) deadlock detection and avoidance schemes.  Developers
 can also exploit application-specific or workload-specific assumptions
 to improve performance.
-
 These features are enabled by the several mechanisms:
 \begin{description}
 \item[Flexible page layouts] provide low level control over 
@@ -445,10 +441,9 @@ and system independent logical log suggest an alternative
 approach to fault tolerant storage design.  We plan to
 investigate such approaches in future work.
 
-We believe that \yad can support all of these systems. We will
+We believe that \yad can actually support all of these systems. We will
 demonstrate several of them, but leave implementation of a real DBMS,
-LRVM and Boxwood to future work.  However, it is
-relatively easy to see how each system would map onto \yad.
+LRVM and Boxwood to future work.
 
 
 %\eab{DB Toolkit from Wisconsin?}
@@ -2116,7 +2111,7 @@ implementing a fixed length array structure, but doing so seems to be
 overkill for our purposes.  The nodes themselves are stored as an
 array of integers of length one greater than their out-degree. The
 extra int is used to hold information about the node.  (In our case,
-it is simply a set to a constant value by a graph traversal.)
+it is simply a set to a constant during traversal.)
 
 We implement a ``naive'' graph traversal algorithm that uses depth-first search to find all nodes that are reachable from node zero.
 This algorithm (predictably) consumes a large amount of memory, as
@@ -2149,16 +2144,15 @@ physiological log entries generally include a logical UNDO
 (Section~\ref{nested-top-actions}) that invokes the logical
 inverse of the application request.  Since the logical inverse of most
 application requests is another application request, we can {\em reuse} our
-logging format and wrapper functions to implement a purely logical log.
+operations and wrappers to implement a purely logical log.
 
 \begin{figure}
 \includegraphics[width=1\columnwidth]{graph-traversal.pdf}
 \vspace{-24pt}
 \caption{\sf\label{fig:multiplexor} Because pages are independent, we
 can reorder requests among different pages. Using a log demultiplexer,
-we can partition requests into indepedent queues that can then be
-handled in any order, which can improve locality and simplify log
-merging.}
+we partition requests into independent queues, which can be 
+handled in any order, improving locality and merging opportunities.}
 \end{figure}
 
 For our graph traversal algorithm we use a {\em log demultiplexer},
