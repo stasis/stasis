@@ -59,7 +59,10 @@ terms specified in this license.
  * performance.
  *
  * @todo Everything in this file cores on failure (no error handling yet)
- * @todo All of the logWriter calls should be reentrant.
+ * @todo All of the logWriter calls should be reentrant. (aren't they?)
+ * @todo logWriter currently calls fwrite once per log entry.  This may be a
+ *       significant bottleneck.  What is the most efficient way to write out 
+ *       log entries will still correctly supporing readLSN?
  *
  * $Id$
  * 

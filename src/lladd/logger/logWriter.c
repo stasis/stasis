@@ -51,6 +51,8 @@ terms specified in this license.
 #include <stdio.h>
 
 #include <lladd/bufferManager.h>
+
+byte * logBuffer = 0;
 /** 
     @todo Should the log file be global? 
 */
@@ -77,7 +79,8 @@ static rwl * flushedLSN_lock;
    @see writeLogEntry
 */
 static lsn_t nextAvailableLSN = 0;
-
+static lsn_t writtenLSN_val  = 0;
+static int bufferedSize = 0;
 /**
    Invariant: writeLogEntry() must be able to atomicly read
    nextAvailableLSN, and then update it.  (This lock does not have to
@@ -141,6 +144,9 @@ int openLogWriter() {
 
 
   nextAvailableLSN = 0;
+  bufferedSize = 0;
+  writtenLSN_val= 0;
+
   /*  maxLSNEncountered = sizeof(lsn_t); 
       writeLogEntryIsReady = 0; */
 
@@ -196,8 +202,11 @@ int openLogWriter() {
     LSN encountered so far to the end of the log.
     
 */
+
+int flushLog();
+
 int writeLogEntry(LogEntry * e) {
-  int nmemb;
+
   const long size = sizeofLogEntry(e);
 
   if(e->type == UPDATELOG) {
@@ -248,39 +257,52 @@ int writeLogEntry(LogEntry * e) {
   /* We have the write lock, so no one else can call fseek behind our back. */
   /*  flockfile(log); */ /* Prevent other threads from calling fseek... */
 
-  fseek(log, nextAvailableLSN - global_offset, SEEK_SET); 
-      
   nextAvailableLSN += (size + sizeof(long));
+  int oldBufferedSize = bufferedSize;
+  bufferedSize     += (size + sizeof(long));
+  fseek(log, writtenLSN_val /*nextAvailableLSN*/ - global_offset, SEEK_SET); 
+      
 
-  /* Print out the size of this log entry.  (not including this item.) */
-  nmemb = fwrite(&size, sizeof(long), 1, log);
-
-  if(nmemb != 1) {
-    perror("writeLog couldn't write next log entry size!");
-    assert(0);
-    return FILE_WRITE_ERROR;
+  logBuffer = realloc(logBuffer, size + sizeof(long));
+  if(! logBuffer) {
+    abort();
   }
-  
-  nmemb = fwrite(e, size, 1, log);
+  memcpy(logBuffer + oldBufferedSize, &size, sizeof(long));
+  memcpy(logBuffer + oldBufferedSize + sizeof(long), e, size);
 
-  if(nmemb != 1) {
-    perror("writeLog couldn't write next log entry!");
-    assert(0);
-    return FILE_WRITE_ERROR;
-  }
+  flushLog();
   
-  /*  funlockfile(log); */
-
   pthread_mutex_unlock(&log_write_mutex);  
   writeunlock(log_read_lock);
 
   /* We're done. */
   return 0;
 }
+/** 
+    Preliminary version of a function that will write multiple log
+    entries at once.  It turns out that there are some nasty
+    interactions between write() calls and readLSN, and locking, so
+    this currently only writes one entry at a time. (If this function
+    weren't designed to bundle log entries together, it would not make
+    such heavy use of global variables...) */
+static int flushLog() {
+  if (!logBuffer) { return 0;}
+  int nmemb = fwrite(logBuffer, bufferedSize, 1, log);
+  writtenLSN_val += bufferedSize;
+  bufferedSize = 0;
+  
+  if(nmemb != 1) {
+    perror("writeLog couldn't write next log entry!");
+    assert(0);
+    return FILE_WRITE_ERROR;
+  }
+  return 0;
+  
+}
 
 void syncLog() {
   lsn_t newFlushedLSN;
-  
+
   newFlushedLSN = myFseek(log, 0, SEEK_END);
 
   /* Wait to set the static variable until after the flush returns. */
@@ -458,6 +480,7 @@ int truncateLog(lsn_t LSN) {
      lock, and then finish the truncate.
   */
   pthread_mutex_lock(&log_write_mutex);
+
 
   lh = getLSNHandle(LSN);
 
