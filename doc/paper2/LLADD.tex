@@ -1,7 +1,7 @@
 
 %\documentclass[letterpaper,english]{article}
 
-\documentclass[letterpaper,twocolumn,english]{article}
+\documentclass[10pt,letterpaper,twocolumn,english]{article}
 
 % This fixes the PDF font, whether or not pdflatex is used to compile the document...
 \usepackage{pslatex} 
@@ -60,9 +60,6 @@ workloads.  Finally, we discuss characteristics of this new
 architecture which provide opportunities for novel classes of
 optimizations and enhanced usability for application developers.}
 
-\rcs{Need to talk about collection api stuff / generalization of ARIES
-/ new approach to application development}
-
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
 %to a higher-level DBMS, limiting the scope of their usefulness to a
@@ -90,7 +87,7 @@ Transactions are at the core of databases and thus form the basis of many
 important systems. However, the mechanisms for transactions are
 typically hidden within monolithic database implementations (DBMSs) that make
 it hard to benefit from transactions without inheriting the rest of
-the database machinery and design decisions, including a the use of a
+the database machinery and design decisions, including the use of a
 query interface.  Although this is clearly not a problem for
 databases, it impedes the use of transactions in a wider range of
 systems.
@@ -189,9 +186,8 @@ These features are enabled by the several mechanisms:
       developed (Section~\ref{graph-traversal}).
 \item[Extensible locking API] provides registration of custom lock managers
       and a generic lock manager implementation (Section~\ref{lock-manager}).
-\item[Custom durability operations] such as two phase commits
+\item[Custom durability operations] such as two phase commit's
       prepare call, and savepoints (Section~\ref{OASYS}).
-\item[\eab{2PC?}]
 \end{description}
 
 We have produced a high-concurrency, high performance and reusable
@@ -312,11 +308,9 @@ set of monolithic storage engines.\eab{need to discuss other flaws! clusters? wh
 %% provide a more uniform interface to the DBMS implementation's users.
 
 The Postgres storage system~\cite{postgres} provides conventional
-database functionality, but can be extended with new index and object
-types.  A brief outline of the interfaces necessary to implement
-data-type extensions was presented by Stonebraker et
-al.~\cite{newTypes}.  Although some of the proposed methods are
-similar to ones presented here, \yad also implements a lower-level
+database functionality, but provides APIs that allow applications to 
+add new index and object types.~\cite{newTypes}  Although some of the methods are
+similar to ours, \yad also implements a lower-level
 interface that can coexist with these methods.  Without these
 low-level APIs, Postgres suffers from many of the limitations inherent
 to the database systems mentioned above.  This is because Postgres was
@@ -446,7 +440,7 @@ ARIES algorithm.
 Finally, some applications require incredibly simple but extremely
 scalable storage mechanisms.  Cluster hash tables are a good example
 of the type of system that serves these applications well, due to
-their relative simplicity, and extremely good scalability.  Depending
+their relative simplicity and good scalability.  Depending
 on the fault model on which a cluster hash table is based, it is
 quite plausible that key portions of the transactional mechanism, such
 as forcing log entries to disk, will be replaced with other durability
