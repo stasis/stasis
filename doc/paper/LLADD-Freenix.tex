@@ -397,8 +397,8 @@ values), and releases any latches that it acquired. %
   width=0.70\columnwidth]{TSetCall.pdf}
 \end{center}
 
-\caption{\label{cap:Tset}Runtime behavior of a simple operation. Tset() and do\_set() are
-implemented as extensions, while Tupdate() is built in. New operations
+\caption{\label{cap:Tset}Runtime behavior of a simple operation. Tset() and redoSet() are
+extensions that implement a new operation, while Tupdate() is built in. New operations
 need not be aware of the complexities of LLADD.}
 \end{figure}
 
@@ -577,9 +577,8 @@ data primitives to application developers.
 
 %
 \begin{figure}
-\includegraphics[%
-  width=1.0\columnwidth]{LLADD-Arch2.pdf}
-
+~~\includegraphics[%
+  width=1.0\columnwidth]{LLADD-Arch3.pdf}
 
 \caption{\label{cap:LLADD-Architecture}Simplified LLADD Architecture: The
 core of the library places as few restrictions on the application's
@@ -615,7 +614,7 @@ refined the boundaries among these modules. Figure~\ref{cap:LLADD-Architecture} 
 core of the LLADD library is quite small at 2218 lines of code, 2155
 lines of implementations of operations and other extensions, and 408
 lines of installable header files.\footnote{These counts were generated using David
-A. Wheeler's {\tt SLOCCount}. \cite{sloccount}} The code has been documented extensively,
+A. Wheeler's {\tt SLOCCount}.} The code has been documented extensively,
 and we hope that we have exposed most of the subtle interactions
 among internal modules in the online documentation.
 
@@ -658,7 +657,7 @@ adding a ``simulate crash'' operation to a few of the key components,
 we can simulate application level crashes by clearing LLADD's internal
 state, re-initializing the library and verifying that recovery was
 successful. These tests currently cover approximately 
-90\%\footnote{generated using ``gcov'', which is part of gcc, and ``lcov,'' which interprets gcov's output.~\cite{lcov}}
+90\%\footnote{generated using ``gcov'', which is part of gcc, and ``lcov,'' which interprets gcov's output.}
 of the code. We have not yet developed a mechanism that will allow us to
 accurately model hardware failures, which is an area where futher
 work is needed.  However, the basis for this work will be the development
@@ -1144,7 +1143,7 @@ LLADD is free software, available at:
 
 \bibitem[Stonebraker]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
 
-\bibitem[Gray]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (199) San Mateo, CA
+\bibitem[Gray]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
 
 \bibitem[Agrawal]{multipleGenericLocking} Agrawal, et al. {\em Concurrency Control Performance Modeling: Alternatives and Implications}. TODS 12(4): (1987) 609-654
 
@@ -1162,9 +1161,9 @@ LLADD is free software, available at:
 
 \bibitem[BDB]{bdb} Berkeley~DB~4.2.52, {\tt http://www.sleepycat.com/}
 
-\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
+%\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
 %
-\bibitem[lcov]{lcov} The~LTP~gcov~extension, {\tt http://ltp.sourceforge.net/coverage/lcov.php }
+%\bibitem[lcov]{lcov} The~LTP~gcov~extension, {\tt http://ltp.sourceforge.net/coverage/lcov.php }
 %
 \bibitem[Reiser]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/v4/v4.html } (2004)
 %
