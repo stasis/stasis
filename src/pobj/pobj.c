@@ -1411,7 +1411,7 @@ pobj_boot_init (void)
 
 
 int
-pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
+pobj_init (struct pobj_memfunc *ext_memfunc /* , struct pobj_memfunc *int_memfunc */)
 {
     recordid tmp_rid;
     int xid;
@@ -1446,6 +1446,8 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	if (ext_memfunc->free)
 	    g_ext_memfunc.free = ext_memfunc->free;
     }
+#if 0
+    /* Gilad, 2004-12-13: disabled in order to make project compile... */
     if (int_memfunc) {
 
 	/* STOPPED HERE: don't necessarily initiate a whole new structure
@@ -1460,6 +1462,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	if (int_memfunc->free)
 	    g_int_memfunc.free = int_memfunc->free;
     }
+#endif
 
     Tinit ();
 
