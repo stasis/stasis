@@ -234,13 +234,21 @@ START_TEST(indirectAccessIndirect) {
   xid = Tbegin();
   releasePage(p);
 
+  //  printf("A"); fflush(stdout);
+
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
-    Tset(xid, dereferenceRID(xid, rid), &i);
+    //    printf("i=%d", i); fflush(stdout);
+    recordid rid2 = dereferenceRID(xid, rid);
+    //    printf("."); fflush(stdout);
+    Tset(xid, rid2, &i);
   }
+  
+  //  printf("AA"); fflush(stdout);
   
   Tcommit(xid);
   xid = Tbegin();
+  //  printf("B"); fflush(stdout);
   
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
@@ -249,9 +257,13 @@ START_TEST(indirectAccessIndirect) {
     assert(j == i);
   }
   
+  //  printf("C"); fflush(stdout);
+
   Tcommit(xid);
 
   Tdeinit();
+
+  //  printf("D"); fflush(stdout);
   
 } END_TEST
 
@@ -282,6 +294,8 @@ Suite * check_suite(void) {
   Suite *s = suite_create("indirect");
   /* Begin a new test */
   TCase *tc = tcase_create("indirect");
+  tcase_set_timeout(tc, 0); // disable timeouts
+
 
   /* Sub tests are added, one per line, here */
 

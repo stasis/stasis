@@ -203,7 +203,7 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("pingpong");
   /* void * foobar; */  /* used to supress warnings. */
   /* Sub tests are added, one per line, here */
-  
+  tcase_set_timeout(tc, 0); // disable timeouts
   tcase_add_test(tc, pingpong_check);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

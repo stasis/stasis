@@ -39,67 +39,123 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+
 #include <config.h>
 #include <check.h>
+
+#include "../../src/lladd/logger/logMemory.h"
 #include <assert.h>
-#include <unistd.h>
 
-#ifndef NULL
-#define NULL 0
-#endif
-#define LOG_NAME   "check_check.log"
+#include "../check_includes.h"
 
-/** @test A trivial test case for check_check
-*/
-START_TEST(core_succ)
-{
-	fail_unless(1==1, "core test suite");
-}
-END_TEST
+
+#include <sys/time.h>
+#include <time.h>
+
+#define LOG_NAME   "check_ringbuffer.log"
 
 /**
-   @test A second trivial test case for check_check.
+   @test 
+
 */
-START_TEST(core_fail)
-{
-  fail_unless(0==0, "i shouldn't fail anymore");
+
+#define NUM_ENTRIES 10000
+
+
+static int rb_test(double readBlock, double writeBlock) {
+
+  int i;
+  byte ** array = malloc(sizeof(byte*) * NUM_ENTRIES);
+  int * length = malloc(sizeof(int) * NUM_ENTRIES);
+  for(i = 0; i < NUM_ENTRIES; i++) {
+    length[i] =1.0+ 1000.0 * (double)rand() / (double)RAND_MAX;
+    array[i] = malloc(length[i]);
+    int j;
+    for(j = 0; j < length[i]; j++) {
+      array[i][j] = i + j;
+    }
+  }
+  
+  ringBufferLog_t * log = openLogRingBuffer(NUM_ENTRIES, 5);
+
+  int doneReading = 0;
+  int doneWriting = 0;
+  int readPos = 0;
+  int writePos = 0;
+  while(!doneReading) { 
+    if(!doneWriting) {
+      int numToWrite = 1.0 + writeBlock * (rand() / RAND_MAX);
+      //      printf("%d\n", numToWrite);
+      for(i = 0; i < numToWrite; i++) {
+	if(!ringBufferAppend(log, array[writePos], length[writePos])) {
+	  //	  printf("W"); fflush(stdout);
+	  writePos++;
+	  if(writePos ==  NUM_ENTRIES) { break; }
+	} else {
+	  break;
+	} 
+      } 
+    }
+    int numToRead = 1.0 + readBlock * ((double)rand() / (double)RAND_MAX);
+    //    printf("%d\n", numToRead);
+    for(i = 0; i < numToRead; i++) {
+      byte * buf = malloc(length[readPos]);
+      if(!ringBufferTruncateRead(buf, log, length[readPos])) {
+	int j;
+	for(j = 0; j < length[readPos]; j++) {
+	  assert(buf[j] == array[readPos][j]);
+	}
+	free(buf);
+	//	printf("R"); fflush(stdout);
+
+	readPos++;
+	if(readPos == NUM_ENTRIES) { break; }
+      } else { 
+	break;
+      }
+    }
+    if(readPos == NUM_ENTRIES) { 
+      doneReading = 1;
+    } 
+    if(writePos == NUM_ENTRIES) {
+      doneWriting = 1;
+    }
+  }
+  return 0;
 }
-END_TEST
 
-/**
-   @test A second trivial test case for check_check.
-*/
-START_TEST(core_last)
+START_TEST(ringBufferTest)
 {
-  fail_unless(0==0, "i shouldn't fail anymore");
-}
-END_TEST
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
 
-START_TEST(slep) {
-  sleep(1);
-}END_TEST
+  srand(tv.tv_sec + tv.tv_usec);
 
-/** 
-  Add suite declarations here
-*/
+  printf("\nRunning balanced test.\n");
+  rb_test(5.0,5.0);
+  printf("Running read-intensive test.\n");
+  rb_test(10.0, 1.0);
+  printf("Running write-intensive test.\n");
+  rb_test(1.0, 10);
+} END_TEST
+
+
 Suite * check_suite(void) {
-  Suite *s = suite_create("check");
+  Suite *s = suite_create("ringBuffer");
   /* Begin a new test */
-  TCase *tc = tcase_create("core");
+  TCase *tc = tcase_create("ringBuffer");
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, core_succ);
-  tcase_add_test(tc, core_fail);
+
+  tcase_add_test(tc, ringBufferTest);
+
   /* --------------------------------------------- */
-  suite_add_tcase(s, tc);
+  
+  tcase_add_checked_fixture(tc, setup, teardown);
 
-  tc = tcase_create("second");
-
-  tcase_add_test(tc, core_last);
-  tcase_add_test(tc, slep);
 
   suite_add_tcase(s, tc);
   return s;
 }
 
-#include "check_setup.h"
+#include "../check_setup.h"

@@ -57,7 +57,8 @@ terms specified in this license.
 #include <lladd/transactional.h>
 #include <lladd/logger/logEntry.h> 
 #include <lladd/bufferManager.h>
-
+#include <lladd/iterator.h>
+#include <lladd/arrayCollection.h>
 BEGIN_C_DECLS
 
 

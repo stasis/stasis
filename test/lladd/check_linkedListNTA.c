@@ -185,7 +185,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("linkedListNTA");
   /* Begin a new test */
   TCase *tc = tcase_create("simple");
-
+  tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
 

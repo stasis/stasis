@@ -20,6 +20,8 @@
 
 */
 
+#include <lladd/iterator.h>
+
 #ifndef __LINEAR_HASH_NTA_H
 #define __LINEAR_HASH_NTA_H
 /** Currently, only used in the type field of the iterators. */
@@ -60,6 +62,7 @@ compensated_function int ThashLookup(int xid, recordid hash, const byte* key, in
   @param hash the recordid returned by ThashAlloc
   @param keySize the same as the value passed into ThashAlloc.  
   @param valueSize the same as the value passed into ThashAlloc
+  @deprecated  @see interator.h.  Use the linearHash implementation of that interface instead.
 */
 lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int valueSize);
 /**
@@ -81,11 +84,16 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int val
 	 semantics.
   @param value analagous to value.
   @param valueSize analagous to keySize
+
+  @deprecated  @see interator.h.  Use the linearHash implementation of that interface instead.
 */
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize);
 
 
-/** Free the hash iterator and its associated resources. */
+/** Free the hash iterator and its associated resources. 
+  @deprecated  @see interator.h.  Use the linearHash implementation of that interface instead.
+
+*/
 void ThashDone(int xid, lladd_hash_iterator * it);
 
 Operation getLinearHashInsert();
@@ -93,6 +101,17 @@ Operation getLinearHashRemove();
 
 void LinearHashNTAInit();
 
+/** Iterator that complies with the standard LLADD iterator interface. 
+    @todo current generic linearHashIterator implemnetation is just slapped on top of old, slow interface.
+    @todo rename ThashGenericIterator to ThashIterator, and remove deprecated iterator interface...
+*/
+
+//void * linearHashNTAIterator_new  (void * arg);
+lladdIterator_t *     ThashGenericIterator       (int xid, recordid hash);
+void                  linearHashNTAIterator_close(int xid, void * it);
+int                   linearHashNTAIterator_next (int xid, void * it);
+int                   linearHashNTAIterator_key  (int xid, void * it, byte **key);
+int                   linearHashNTAIterator_value(int xid, void * it, byte **value);
 
 //Support 16 entries by default.
 #define HASH_INIT_BITS 4

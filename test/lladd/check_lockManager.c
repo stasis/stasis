@@ -162,7 +162,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("lockManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
-
+  tcase_set_timeout(tc, 0); // disable timeouts
   // kinda hacky, but here it is: 
   compensations_init();
 

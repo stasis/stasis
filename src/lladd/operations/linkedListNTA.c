@@ -5,6 +5,7 @@
 #include <lladd/transactional.h>
 #include <lladd/hash.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 

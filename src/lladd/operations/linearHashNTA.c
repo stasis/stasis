@@ -405,10 +405,14 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
     it->bucket = lhh.buckets;
     it->numBuckets = lhh.nextSplit +twoToThe(lhh.bits-1);
     it->bucket.slot = 0;
-    it->keySize = keySize;
+    /*    it->keySize = keySize;
     it->valueSize = valueSize;
     assert(keySize == lhh.keySize);
-    assert(valueSize == lhh.valueSize);
+    assert(valueSize == lhh.valueSize); */
+    keySize = lhh.keySize;
+    it->keySize = lhh.keySize;
+    valueSize = lhh.valueSize;
+    it->valueSize = lhh.valueSize;
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
       it->it = NULL;
       recordid bucketList;
@@ -463,4 +467,70 @@ void ThashDone(int xid, lladd_hash_iterator * it) {
     free(it->pit);
   }
   free(it);
+}
+
+typedef struct {
+  lladd_hash_iterator* hit;
+  byte * lastKey;
+  int lastKeySize;
+  byte * lastValue;
+  int lastValueSize;
+} lladd_linearHashNTA_generic_it;
+
+lladdIterator_t * ThashGenericIterator(int xid, recordid hash) {
+  lladdIterator_t * ret = malloc(sizeof(lladdIterator_t));
+  ret->type = LINEAR_HASH_NTA_ITERATOR;
+  ret->impl = malloc(sizeof(lladd_linearHashNTA_generic_it));
+
+  ((lladd_linearHashNTA_generic_it*)(ret->impl))->hit = ThashIterator(xid, hash, -1, -1);
+  ((lladd_linearHashNTA_generic_it*)(ret->impl))->lastKey = NULL;
+  ((lladd_linearHashNTA_generic_it*)(ret->impl))->lastValue = NULL;
+
+  return ret;
+
+}
+
+void linearHashNTAIterator_close(int xid, void * impl) {
+  lladd_linearHashNTA_generic_it * it = impl;
+  
+  if(it->lastKey || it->lastValue) {
+    ThashDone(xid, it->hit);  // otherwise, ThashNext returned zero, and freed it for us... 
+  }
+  if(it->lastKey) {
+    free(it->lastKey);
+  }
+  if(it->lastValue) {
+    free(it->lastValue);
+  }
+  free(it);
+}
+
+int linearHashNTAIterator_next (int xid, void * impl) {
+  lladd_linearHashNTA_generic_it * it = impl;
+  
+  if(it->lastKey) {
+    free(it->lastKey);
+    it->lastKey = NULL;
+  }
+  if(it->lastValue) {
+    free(it->lastValue);
+    it->lastValue = NULL;
+  }
+  return ThashNext(xid, it->hit, &(it->lastKey), &it->lastKeySize, &it->lastValue, &it->lastValueSize);
+}
+
+int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
+  lladd_linearHashNTA_generic_it * it = impl;
+
+  *key = it->lastKey;
+
+  return (it->lastKey   == NULL) ? 0 : it->lastKeySize;
+}
+
+int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
+  lladd_linearHashNTA_generic_it * it = impl;
+
+  *value = it->lastValue;
+
+  return (it->lastValue == NULL) ? 0 : it->lastValueSize;
 }

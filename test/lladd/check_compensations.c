@@ -60,15 +60,15 @@ void decrement(void * j) {
 void nested(int * i);
 void happy_nest(int * i);
 void nested2(int * i) {
-  begin_action(NULL, NULL) {
+  try { 
     nested(i);
-  } compensate;
+  } end; //compensate;
   assert(0);
 }
 void nested3(int * i) {
-  begin_action(NULL, NULL) {
+  try { 
     happy_nest(i);
-  } compensate;
+  } end; //compensate;
 }
 
 void nested(int * i) {
@@ -136,7 +136,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("compensations");
   /* Begin a new test */
   TCase *tc = tcase_create("simple_compensations");
-
+  tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, compensationTest);

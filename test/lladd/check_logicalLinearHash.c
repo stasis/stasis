@@ -45,6 +45,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <lladd/transactional.h>
+#include <stdlib.h>
 
 #include <assert.h>
 #include <lladd/hash.h>
@@ -65,6 +66,7 @@ terms specified in this license.
    @test Runs some simple tests on the hash() function.  Not comprehensive enough.
    @todo the checkHashFcn test is broken.
 */
+
 START_TEST(checkHashFcn) {
   int i;
   srandom(12312313);

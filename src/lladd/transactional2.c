@@ -109,7 +109,7 @@ int Tinit() {
 	LinearHashNTAInit();
 	LinkedListNTAInit();
 	compensations_init();
-	
+	iterator_init();
 	setupLockManagerCallbacksNil();
 	//setupLockManagerCallbacksPage();
 	

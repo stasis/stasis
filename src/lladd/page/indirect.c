@@ -19,6 +19,7 @@ compensated_function recordid dereferenceRID(int xid, recordid rid) {
   try_ret(NULLRID) {
     this = loadPage(xid, rid.page);
   } end_ret(NULLRID);
+  //  printf("a"); fflush(stdout);
   int offset = 0;
   int max_slot;
   while(*page_type_ptr(this) == INDIRECT_PAGE) {
@@ -39,12 +40,14 @@ compensated_function recordid dereferenceRID(int xid, recordid rid) {
       this = loadPage(xid, nextPage);
     } end_ret(NULLRID);
   }
+  //  printf("b"); fflush(stdout);
   
   rid.page = this->id;
   rid.slot -= offset;
 
   releasePage(this);
-  
+  //  printf("c"); fflush(stdout);
+
   return rid;
 }
 

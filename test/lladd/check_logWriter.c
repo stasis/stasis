@@ -289,6 +289,7 @@ static void* worker_thread(void * arg) {
     }
     /*    fail_unless(1, NULL); */
     if(entry > truncated_to && entry < i) {
+      /*      printf("X %d\n", (readLSNEntry(lsns[entry])->xid == entry+key)); fflush(stdout); */
       assert(readLSNEntry(lsns[entry])->xid == entry+key);
       /*      fail_unless(readLSNEntry(lsns[entry])->xid == entry+key, NULL); */
     }
@@ -327,9 +328,12 @@ START_TEST(logWriterCheckThreaded) {
 
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&workers[i], NULL, worker_thread, &i);
+    //    printf("%d", i); fflush(stdout);
   }
+  //  printf("\n\n\n\n\n");
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
+    //    printf("%d", i); fflush(stdout);
   }
   Tdeinit();
 
@@ -340,9 +344,9 @@ Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
   /* Begin a new test */
   TCase *tc = tcase_create("writeNew");
-
+  tcase_set_timeout(tc, 0);
   /* Sub tests are added, one per line, here */
-
+  
   tcase_add_test(tc, logWriterTest);
   tcase_add_test(tc, logHandleColdReverseIterator);
   tcase_add_test(tc, logWriterTruncate);

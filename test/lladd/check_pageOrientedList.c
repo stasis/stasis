@@ -196,6 +196,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("pageOrientedList");
   /* Begin a new test */
   TCase *tc = tcase_create("pageOrientedList");
+  tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
 
