@@ -519,7 +519,7 @@ behave correctly even if an arbitrary number of intervening operations
 are performed on the data structure.
 
 Next, the operation writes one or more redo-only log entries that may perform structural
-modifications to the data structure. These redo entries have the constraint that any prefix of them must leave the database in a consistent state, since only a prefix might execute before a crash.  This is not as hard as it sounds, and in fract the
+modifications to the data structure. These redo entries have the constraint that any prefix of them must leave the database in a consistent state, since only a prefix might execute before a crash.  This is not as hard as it sounds, and in fact the
 $B^{LINK}$ tree~\cite{b-link} is an example of a B-Tree implementation
 that behaves in this way, while the linear hash table implementation
 discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable 
@@ -965,12 +965,13 @@ of a ``simple,'' general purpose data structure is not without overhead,
 and for applications where performance is important a special purpose
 structure may be appropriate.
 
-Also, the multithreaded test run shows that the library is capable of
-handling a large number of threads. The performance degradation
-associated with running 200 concurrent threads was negligible.  Figure
-TODO expands upon this point by plotting the time taken for various
-numbers of threads to perform a total of 500,000 (TODO-CHECK) read operations.  The
-logical logging version of LLADD's hashtable outperformed the physical
+%Also, the multithreaded test run shows that the library is capable of
+%handling a large number of threads. The performance degradation
+%associated with running 200 concurrent threads was negligible.  Figure
+%TODO expands upon this point by plotting the time taken for various
+%numbers of threads to perform a total of 500,000 (TODO-CHECK) read operations.  The
+%logical logging version of LLADD's hashtable outperformed the physical
+The logical logging version of LLADD's hashtable outperformed the physical
 logging version for two reasons.  First, since it writes fewer undo
 records, it generates a smaller log file.  Second, in order to
 emphasize the performance benefits of our extension mechanism, we use
@@ -982,13 +983,40 @@ for an implementation on top of a non-extendible system.  Therefore,
 it uses LLADD's default mechanisms, which include the redundant
 acquisition of locks.
 
-As a final note on our performance graph, we would like to address
+As a final note on our first performance graph, we would like to address
 the fact that LLADD's hashtable curve is non-linear. LLADD currently
 uses a fixed-size in-memory hashtable implementation in many areas,
 and it is possible that we exceeded the fixed-size of this hashtable
 on the larger test sets. Also, LLADD's buffer manager is currently
 fixed size. Regardless of the cause of this non-linearity, we do not
 believe that it is fundamental to our implementation.
+
+The multithreaded test run in the first figure shows that the library
+is capable of handling a large number of threads. The performance
+degradation associated with running 200 concurrent threads was
+negligible.  Figure TODO expands upon this point by plotting the time
+taken for various numbers of threads to perform a total of 500,000
+(TODO-CHECK) read operations.  The performance of LLADD in this figure
+is essentially flat, showing only a negligable slowdown up to 250
+threads.  (Our test system prevented us from spawning more than 250
+simultaneous threads, and we suspect that the ``true'' limit of
+LLADD's scalability is must higher than 250 threads.  This test was
+performed on a uni-processor machine, so we did not expect to see a
+significant speedup when we moved from a single thread to multiple
+threads. 
+
+Unfortuantely, when ran this test on a multi-processor machine, we saw
+a further degradation in performance instead of the expected speed up.
+The problem seems to be the additional overhead incurred by
+multi-threaded applications running on SMP machines under Linux 2.6,
+as the single thread test spent a small amount of time in the Linux
+kernel, while even the two thread version of the test spent a
+significant time in kernel code.  We suspect that the large number of
+briefly-held latches that LLADD acquires caused this problem.  We plan
+to investigate this problem further, adopting LLADD to a more advanced
+threading package[..capriccio..], or providing a 'SMP Mode' compile time option that
+decreases the number of latches that LLADD acquires at the expense of
+opportunities for concurrency.
 
 \section{Future Work}
 
