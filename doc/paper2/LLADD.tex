@@ -1435,8 +1435,6 @@ partition the array.  Since we expect relatively few partitions (one
 per enlargement typically), this leads to an efficient map. We use a
 single ``header'' page to store the list of intervals and their sizes.
 
-%We use fixed-sized buckets, which allows us to treat a region of pages
-% as an array of buckets. 
 For space efficiency, the array elements themselves are stored using
 the fixed-size record page layout. Thus, we use the header page to
 find the right interval, and then index into it to get the $(page,
@@ -1478,26 +1476,31 @@ record.
 
 \begin{figure}
 \includegraphics[width=3.25in]{LHT2.pdf}
-\caption{\label{fig:LHT}Structure of locality preserving ({\em Page Oriented}) 
+\caption{\label{fig:LHT}Structure of locality preserving ({\em page-oriented}) 
 linked lists.  Hashtable bucket overflow lists tend to be of some small fixed 
 length.  This data structure allows \yad to aggressively maintain page locality 
 for short lists, providing fast overflow bucket traversal for the hash table.}
 \end{figure}
 
-For simplicity, the entries in the bucket list described above are 
-fixed length.  Therefore, we store recordids in the bucket 
-list and set these recordid pointers to point to lists 
-of variable length $(key, value)$ pairs.
-In order to achieve good locality for overflow entries we represent 
-each list as a list of smaller lists.  The main list links pages together, and the smaller
-lists each reside within a single page (Figure~\ref{fig:LHT}).  
-We reuse \yad's slotted page space allocation routines to deal with 
-the low-level details of space allocation and reuse within each page.
+Given the map, which locates the bucket, we need a transactional
+linked list for the contents of the bucket.  The trivial implemention
+would just link variable-size records together, where each record
+contains a $(key,value)$ pair and the $next$ pointer, which is just a
+$(page,slot)$ address.
 
-All of the entries within a single page may be traversed without
+However, in order to achieve good locality, we instead implement a
+{\em page-oriented} transactional linked list, shown in
+Figure~\ref{fig:LHT}.  The basic idea is to place adjacent elements of
+the list on the same page: thus we use a list of lists. The main list
+links pages together, while the smaller lists reside with that
+page. \yad's slotted pages allows the smaller lists to support
+variable-size values, and allow list reordering and value resizing
+with a single log entry (since everthing is on one page).
+
+In addition, all of the entries within a page may be traversed without
 unpinning and repinning the page in memory, providing very fast
 traversal over lists that have good locality.  This optimization would
-not be possible if it were not for the low level interfaces provided
+not be possible if it were not for the low-level interfaces provided
 by the buffer manager.  In particular, we need to specify which page 
 we would like to allocate space from and we need to be able to
 read and write multiple records with a single call to pin/unpin.  Due to
@@ -1506,26 +1509,27 @@ for short lists, it can also be used on its own.
 
 \subsection{Concurrency}
 
-Given the structures described above, the implementation of a linear hash
-table is straightforward.  A linear hash function is used to map keys
-to buckets, insertions and deletions are handled by the array implementation,
-%linked list implementation, 
-and the table can be extended lazily by transactionally removing items
-from one bucket and adding them to another.
+Given the structures described above, the implementation of a linear
+hash table is straightforward.  A linear hash function is used to map
+keys to buckets, insertions and deletions are handled by the ArrayList
+implementation, and the table can be extended lazily by
+transactionally removing items from one bucket and adding them to
+another.
 
-Given that the underlying data structures are transactional and there
-are never any concurrent transactions, this is actually all that is
-needed to complete the linear hash table implementation.
-Unfortunately, as we mentioned in Section~\ref{nested-top-actions},
-things become a bit more complex if we allow interleaved transactions.
-
-We simply apply Nested Top Actions according to the recipe
-described in that section and lock the entire hashtable for each
-operation.  This prevents the hashtable implementation from fully
-exploiting multiprocessor systems,\footnote{\yad passes regression 
-tests on multiprocessor systems.}  but seems to be adequate on single 
-processor machines (Figure~\ref{fig:TPS}).
-We describe a finer grained concurrency mechanism below.
+Given that the underlying data structures are transactional and a
+single lock around the hashtable, this is actually all that is needed
+to complete the linear hash table implementation.  Unfortunately, as
+we mentioned in Section~\ref{nested-top-actions}, things become a bit
+more complex if we allow interleaved transactions.  The solution for
+the default hashtable is simply to follow the recipe for Nested
+Top Actions, and only lock the whole table during structural changes.
+We explore a version with finer-grain locking below.
+%This prevents the
+%hashtable implementation from fully exploiting multiprocessor
+%systems,\footnote{\yad passes regression tests on multiprocessor
+%systems.}  but seems to be adequate on single processor machines
+%(Figure~\ref{fig:TPS}).
+%we describe a finer-grained concurrency mechanism below.
 
 %We have found a simple recipe for converting a non-concurrent data structure into a concurrent one, which involves three steps:
 %\begin{enumerate}
