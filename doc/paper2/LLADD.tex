@@ -822,6 +822,196 @@ LLADD's linear hash table uses linked lists of overflow buckets.
 
 \section{Validation}
 
+
+\subsection{Conventional workloads}
+
+Existing database servers and transactional libraries are tuned to
+support OLTP (Online Transaction Processing) workloads well.  Roughly
+speaking, the workload of these systems is dominated by short
+transactions and response time is important.  We are confident that a
+sophisticated system based upon our approach to transactional storage
+will compete well in this area, as our algorithm is based upon ARIES,
+which is the foundation of IBM's DB/2 database.  However, our current
+implementation is geared toward simpler, specialized applications, so
+we cannot verify this directly.  Instead, we present a number of
+microbenchmarks that compare our system against Berkeley DB, the most
+popular transactional library.  Berkeley DB is a mature product and is
+actively maintained.  While it currently provides more functionality
+than our current implementation, we believe that our architecture
+could support a broader range of features than provided by BerkeleyDB,
+which is a monolithic system.
+
+The first test measures the throughput of a single long running
+transaction that generates an loads a synthetic data set into the
+library.  For comparison, we provide throughput for many different
+LLADD operations, and BerkeleyDB's DB\_HASH hashtable implementation,
+and lower level DB\_RECNO record number based interface.
+
+@todo fill in numbers here.
+
+The second test measures the two library's ability to exploit
+concurrent transactions to reduce logging overhead.  Both systems
+implement a simple optimization that allows multiple calls to commit()
+to be serviced by a single synchronous disk request.  
+
+@todo analysis
+
+The final test measures the maximum number of sustainable transactions
+per second for the two libraries.  In these cases, we generate a
+uniform number of transactions per second by spawning a fixed nuber of
+threads, and varying the number of requests each thread issues per
+second, and report the cumulative density of the distribution of
+response times for each case.
+
+@todo analysis / come up with a more sane graph format.
+
+\subsection{Object Serialization}
+
+Object serialization performance is extremely important in modern web
+service systems such as EJB.  Object serialization is also a
+convenient way of adding persistant storage to an existing application
+without developing an explicit file format or dealing with low level
+I/O interfaces.
+
+A simple object serialization scheme would bulk-write and bulk-read
+sets of application objects to an operating system file.  These
+schemes suffer from high read and write latency, and do not handle
+small updates well.  More sophisticated schemes store each object in a
+seperate randomly accessible record, such as a database tuple, or
+Berkeley DB hashtable entry.  These schemes allow for fast single
+object reads and writes, and are typically the solutions used by
+application services.
+
+Unfortunately, most of these schemes ``double buffer'' application
+data.  Typically, the application maintains a set of in-memory objects
+which may be accessed with low latency.  The backing data store
+maintains a seperate buffer pool which contains serialized versions of
+the objects in memory, and corresponds to the on-disk representation
+of the data.  Accesses to objects that are only present in the buffer
+pool incur ``medium latency,'' as they must be deserialized before the
+application may access them.  Finally, some objects may only reside on
+disk, and may only be accessed with high latency.
+
+Since these applications are typically data-centric, it is important
+to make efficient use of system memory in order to reduce hardware
+costs.  A straightforward solution to this problem would be to bound
+the amount of memory the application may consume by preventing it from
+caching deserialized objects.  This scheme conserves memory, but it
+incurs the cost of an in-memory deserialization to read the object,
+and an in-memory deserialization/serialization cycle to write to an
+object.
+
+Alternatively, the amount of memory consumed by the buffer pool could
+be bounded to some small value, and the application could maintain a
+large object cache.  This scheme would incur no overhead for a read
+request.  However, it would incur the overhead of a disk-based
+serialization in order to service a write request.\footnote{In
+practice, the transactional backing store would probably fetch the
+page that contains the object from disk, causing two disk I/O's to be
+issued.}
+
+LLADD's architecture allows us to apply two interesting optimizations
+to such object serialization schemes.  First, since LLADD supports
+custom log entries, it is trivial to have it store diffs of objcts to
+the log instead of writing the entire object to log during an update.
+Such an optimization would be difficult to achieve with Berkeley DB,
+but could be performed by a database server if the fields of the
+objects were broken into database table columns.  It is unclear if
+this optimization would outweigh the overheads associated with an SQL
+based interface.
+
+% @todo WRITE SQL OASYS BENCHMARK!!
+
+The second optimization is a bit more sophisticated, but still easy to
+implement in LLADD.  We do not believe that it would be possible to
+achieve using existing relational database systems, or with Berkeley
+DB.  
+
+LLADD services a request to write to a record by pinning (and possibly
+reading in) the applicable page, generating a log entry, writing the
+new value of the record to the in-memory page, and unpinning the page.
+
+If LLADD knows that the client will not ask to read the record, then
+there is no real reason to update the version of the record in the
+page file.  In fact, if diff does not need to be generated,
+there is no need to have the page in memory at all.  We can think of
+two plausible reasons why a diff would be unnecessary.  
+
+First, the application may not be interested in transaction atomicity.
+In this case, by writing no-op undo records instead of real undo
+records, LLADD could guarantee that some prefix of the log will be
+applied to the page file after recovery.  The redo information is
+already available; the object is in the application's cache.
+``Transactions'' could still be durable, as commit() could be used to
+force the log to disk.
+
+Second, the application could provide the undo record for LLADD.  This
+could be implemented in a straightforward manner by adding special
+accessor methods to the object which generate undo information as the
+object is updated in memory.
+
+We have removed the need to use the on-disk version of the object to
+generate log entries, but still need to guarantee that the application
+will not attempt to read a stale record from the page file.  This
+problem also has a simple solution.  In order to service a write
+request made by the application, the cache calls a special
+``update()'' method.  This method only writes a log entry.  If the
+cache must evict an object from cache, it issues a special ``flush()''
+method.  This method writes the object to the buffer pool (and
+probably incurs the cost of disk I/O), using a LSN recorded by the
+most recent update() call that was associated with the object.  Since
+LLADD implements no-force, it does not matter to recovery if the
+version of the object in the page file is stale.
+
+An observant reader may have noticed a subtle problem with this
+scheme.  More than one object may reside on a page, and we do not
+constrain the order in which the cache calls flush() to evict objects.
+Recall that the version of the LSN on the page implies that all
+updates {\em up to} and including the page LSN have been applied.
+Nothing stops our current scheme from breaking this invariant.  
+
+We have two potential solutions to this problem.  One solution is to
+implement a cache eviction policy that respects the ordering of object
+updates on a per-page basis and could be implemented using one or
+more priority queues.  Instead of interfering with the eviction policy
+of the cache (and keeping with the theme of this paper), we sought a
+solution that leverages LLADD's interfaces instead.
+
+We can force LLADD to ignore page LSN values when considering our
+special update() log entries during the REDO phase of recovery.  This
+forces LLADD to re-apply the diffs in the same order the application
+generated them in.  This works as intended because we use an
+idempotent diff format that will produce the correct result even if we
+start with a copy of the object that is newer than the first diff that
+we apply.
+
+The only remaining detail is to implement a custom checkpointing
+algorithm that understands the page cache.  In order to produce a
+fuzzy checkpoint, we simply iterate over the object pool, calculating
+the minimum lsn of the objects in the pool.\footnote{This LSN is distinct from
+the one used by flush(); it is the lsn of the object's {\em first}
+call to update() after the object was added to the cache.}  At this
+point, we can invoke a normal ARIES checkpoint, with the restriction
+that the log is not truncated past the minimum LSN encountered in the
+object pool.\footnote{Because LLADD does not yet implement
+checkpointing, we have not implemented this checkpointing scheme.}
+
+We implemented a LLADD plugin for OASYS, a C++ object serialization
+library.  The plugin makes use of all of the optimizations mentioned
+in this section, and was used to generate Figure~[TODO].  Ignoring the
+checkpointing scheme and a small change needed in the recovery
+algorithm, the operations required for these two optimizations are
+roughly 150 lines of C code, including whitespace, comments and
+boilerplate function registrations.  While the reasoning required to
+ensure the correctness of this code was complex, the simplicity of the
+implementation is encouraging.
+
+@todo analyse OASYS data.
+
+\subsection{Transitive closure}
+
+@todo implement transitive closu....
+
 \begin{enumerate}
 
   \item {\bf Comparison of transactional primatives (best case for each operator)}
