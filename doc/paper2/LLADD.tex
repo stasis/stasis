@@ -1,13 +1,13 @@
 
-\documentclass[letterpaper,english]{article}
+%\documentclass[letterpaper,english]{article}
 
-%\documentclass[letterpaper,twocolumn,english]{article}
+\documentclass[letterpaper,twocolumn,english]{article}
 \usepackage[T1]{fontenc}
 \usepackage[latin1]{inputenc}
 \usepackage{graphicx}
 
 \usepackage{geometry}
-\geometry{verbose,letterpaper,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\geometry{verbose,letterpaper,tmargin=1in,bmargin=1in,lmargin=0.75in,rmargin=0.75in}
 
 \makeatletter
 
@@ -25,6 +25,8 @@
 
 
 \subsection*{Abstract}
+
+{\em The sections marked @todo or bolded still need to be written, and graphs need to be produced.  Also, I would like to add a ``cheat-sheet'' style reference of an idealized version of LLADD's API.}
 
 Existing transactional systems are designed to handle specific
 workloads well.  Unfortunately, these implementations are generally
@@ -210,7 +212,7 @@ the environments in which these applications are deployed.
 
 %\item {\bf 3.Architecture  }
 
-\section{The write ahead logging protocol}
+\section{Write ahead logging overview}
 
 This section describes how existing write ahead logging protocols
 implement the four properties of transactional storage: Atomicity,
@@ -224,7 +226,7 @@ allowing unanticipated optimizations to be implemented and allowing
 low level behavior such as recovery semantics to be customized on a
 per-application basis.
 
-The write ahead logging algoritm we use is based upon ARIES. Because
+The write ahead logging algorithm we use is based upon ARIES. Because
 comprehensive discussions of write ahead logging protocols and ARIES
 are available elsewhere,~\cite{haerder, aries} we focus upon those
 details which are most important to the architecture this paper
@@ -249,27 +251,26 @@ presents.
 
 \subsection{Operations\label{sub:OperationProperties}}
 
-A transaction consists of a group of actions, that can be arbitrarily
-combined to form a transaction that will obey the ACID properties
-mentioned above.  Since transactions may be aborted, the effects of an
-action must be reversible, implying that any information that is
-needed in order to reverse the application must be stored for future
-use.  Typically, the information necessary to redo and undo each
-action is stored in the log.  We refine this concept and explicitly
-discuss {\em operations}, which must be atomically applicable to the
-page file.  For now, we simply assume that operations do not span
-pages, and that pages are atomially written to disk.  This limitation
-will relaxed later in this discussion when we describe how to
-implement page-spanning operations using techniques such as nested top
-actions.
+A transaction consists of an arbitrary combination of actions, that
+will be protected according to the ACID properties mentioned above.
+Since transactions may be aborted, the effects of an action must be
+reversible, implying that any information that is needed in order to
+reverse the action must be stored for future use.  Typically, the
+information necessary to redo and undo each action is stored in the
+log.  We refine this concept and explicitly discuss {\em operations},
+which must be atomically applicable to the page file.  For now, we
+simply assume that operations do not span pages, and that pages are
+atomically written to disk.  This limitation will relaxed when we
+describe how to implement page-spanning operations using techniques
+such as nested top actions.
 
 \subsection{Concurrency}
 
 We allow transactions to be interleaved, allowing concurrent access to
-application data and potentially exploiting opportunities for hardware
+application data and exploiting opportunities for hardware
 parallelism.  Therefore, each action must assume that the
 physical data upon which it relies may contain uncommitted
-information, and that this information may have been produced by a
+information and that this information may have been produced by a
 transaction that will be aborted by a crash or by the application.
 
 % Furthermore, aborting
@@ -357,7 +358,7 @@ always} contains some uncommitted data and thus could never be written
 back to disk.  To handle stolen pages, we log UNDO records that
 we can use to undo the uncommitted changes in case we crash.  LLADD
 ensures that the UNDO record is durable in the log before the
-page is written back to disk and that the page LSN reflects this log entry.
+page is written to disk and that the page LSN reflects this log entry.
 
 Similarly, we do not force pages out to disk every time a transaction
 commits, as this limits performance.  Instead, we log REDO records
@@ -365,20 +366,19 @@ that we can use to redo the operation in case the committed version never
 makes it to disk.  LLADD ensures that the REDO entry is durable in the
 log before the transaction commits.  REDO entries are physical changes
 to a single page (``page-oriented redo''), and thus must be redone in
-the exact order.
+order.
 
-One unique aspect of LLADD, which
-is not true for ARIES, is that {\em normal} operations use the REDO
-function; i.e. there is no way to modify the page except via the REDO
-operation.\footnote{Actually, operation implementations may circumvent
-this restriction, but doing so complicates recovery semantics, and only
-should be done as a last resort.  Currently, this is only done to 
-implement the OASYS flush() and update() described in Section~\ref{OASYS}.}  
-This has the nice property that the REDO code is known to
-work, since even the original update is a ``redo''.
-In general, the LLADD philosophy is that you
-define operations in terms of their REDO/UNDO behavior, and then build
-a user friendly interface around those.
+One unique aspect of LLADD, which is not true for ARIES, is that {\em
+normal} operations use the REDO function; i.e. there is no way to
+modify the page except via the REDO operation.\footnote{Actually,
+operation implementations may circumvent this restriction, but doing
+so complicates recovery semantics, and only should be done as a last
+resort.  Currently, this is only done to implement the OASYS flush()
+and update() operations described in Section~\ref{OASYS}.}  This has
+the nice property that the REDO code is known to work, since even the
+original update is a ``redo''.  In general, the LLADD philosophy is
+that you define operations in terms of their REDO/UNDO behavior, and
+then build a user friendly interface around those.
 
 Eventually, the page makes it to disk, but the REDO entry is still
 useful; we can use it to roll forward a single page from an archived
@@ -451,12 +451,12 @@ operations use a logical offset to locate the data. This allows data within
 a single page to be re-arranged at runtime to produce contiguous
 regions of free space. LLADD generalizes this model; for example, the parameters passed to the function may utilize application specific properties in order to be significantly smaller than the physical change made to the page.~\cite{physiological}
 
-{\em Logical logging } can only be used for undo entries in LLADD,
-and is identical to physiological logging, except that it stores a
-logical address (the key of a hash table, for instance) instead of
-a physical address. This allows the location of data in the page file
-to change, even if outstanding transactions may have to roll back
-changes made to that data. Clearly, for LLADD to be able to apply
+{\em Logical logging } can only be used for undo entries in LLADD, and
+stores a logical address (the key of a hash table, for instance)
+instead of a physical address. As we will see later, these operations
+may affect multiple pages.  This allows the location of data in the
+page file to change, even if outstanding transactions may have to roll
+back changes made to that data. Clearly, for LLADD to be able to apply
 logical log entries, the page file must be physically consistent,
 ruling out use of logical logging for redo operations.
 
@@ -468,7 +468,7 @@ concrete examples.
 
 \subsection{Concurrency and Aborted Transactions}
 
-% @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)
+% @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
 
 Section~\ref{sub:OperationProperties} states that LLADD does not
 allow cascading aborts, implying that operation implementors must
@@ -509,12 +509,12 @@ hash table that meets these constraints.
 
 As long as operation implementations obey the atomicity constraints
 outlined above, and the algorithms they use correctly manipulate
-on-disk data structures, the write ahead logging protocol outlined
-above will provide the application with the ACID transactional
-semantics, and provide high performance, highly concurrent access to
-the application data that is stored in the system.  This suggests a
+on-disk data structures, the write ahead logging protocol will provide
+the application with the ACID transactional semantics, and provide
+high performance, highly concurrent and scalable access to the
+application data that is stored in the system.  This suggests a
 natural partitioning of transactional storage mechanisms into two
-parts.  
+parts.
 
 The first piece implements the write ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
@@ -528,17 +528,20 @@ The second component provides the actual data structure
 implementations, policies regarding page layout (other than the
 location of the LSN field), and the implementation of any operations
 that are appropriate for the application that is using the library.
-As long as each layer provides well defined intrefaces, this means
-that the application, operation implementation, and write ahead
-logging component can be independently extended and improved.
+As long as each layer provides well defined interfaces, the application, 
+operation implementation, and write ahead logging component can be 
+independently extended and improved.
 
-We have implemented a number of extremely simple, high performance,
+We have implemented a number of simple, high performance,
 and general purpose data structures.  These are used by our sample
 applications, and as building blocks for new data structures.  Example
 data structures include two distinct linked list implementations, and
 an extendible array.  Surprisingly, even these simple operations have
 important performance characteristics that are not available from
 existing systems.
+
+The remainder of this section is devoted to a description of the
+various primatives that LLADD provides to application developers.
 
 
 %% @todo where does this text go??
@@ -628,7 +631,7 @@ existing systems.
   % in.  However, it made some points that belong in this section
   % see: ##2##
 
-\begin{enumerate}
+%\begin{enumerate}
   %
   % need block diagram here.  4 blocks:
   %
@@ -645,26 +648,25 @@ existing systems.
   % lock manager, etc can come later...
   %
 
-  \item {\bf {}``Write ahead logging protocol'' vs {}``Data structure implementation''}
+%  \item {\bf {}``Write ahead logging protocol'' vs {}``Data structure implementation''}
+%
+%A LLADD operation consists of some code that manipulates data that has
+%been stored in transactional pages.  These operations implement
+%high-level actions that are composed into transactions.  They are
+%implemented at a relatively low level, and have full access to the
+%ARIES algorithm.  Applications are implemented on top of the
+%interfaces provided by an application-specific set of operations.
+%This allows the the application, the operation, and LLADD itself to be
+%independently improved. 
 
-A LLADD operation consists of some code that manipulates data that has
-been stored in transactional pages.  These operations implement
-high-level actions that are composed into transactions.  They are
-implemented at a relatively low level, and have full access to the
-ARIES algorithm.  Applications are implemented on top of the
-interfaces provided by an application-specific set of operations.
-This allows the the application, the operation, and LLADD itself to be
-independently improved. 
-% We have implemented a number of extremely
-%simple, high performance general purpose data structures for our
-%sample applications, and as building blocks for new data structures.
-%Example data structures include two distinct linked list
-%implementations, and an extendible array.  Surprisingly, even these
-%simple operations have important performance characteristics that are
-%not provided by existing systems.
+\subsection{Operation Implementation}
 
-  \item {\bf  ARIES provides {}``transactional pages'' }
+%  \item {\bf  ARIES provides {}``transactional pages'' }
 
+LLADD is designed to allow application developers to easily add new
+data representations and data structures by defining new operations
+that can be used to provide transactions.  There are a number of
+constraints that these extensions must obey:
 
 \begin{itemize}
 \item Pages should only be updated inside of a redo or undo function.
@@ -675,32 +677,67 @@ the relevant data.
 \item Redo operations should address pages by their physical offset,
 while Undo operations should use a more permanent address (such as
 index key) if the data may move between pages over time.
-\item An undo operation must correctly update a data structure if any
-prefix of its corresponding redo operations are applied to the
-structure, and if any number of intervening operations are applied to
-the structure.
 \end{itemize}
+
+There are multiple ways to ensure the atomicity of operations:
+
+\begin{itemize}
+\item An operation that spans pages can be made atomic by simply
+wrapping it in a nested top action and obtaining appropriate latches
+at runtime.  This approach reduces development of atomic page spanning
+operations to something very similar to conventional multithreaded
+development using mutexes for synchroniztion.  Unfortunately, this
+mode of operation writes redundant undo entry to the log, and has
+performance implications that will be discussed later.  However, for
+most circumstances, the ease of development with nested top actions
+outweighs the difficulty verifying the correctness of implementations
+that use the next method.
+
+\item It nested top actions are not used, an undo operation must
+correctly update a data structure if any prefix of its corresponding
+redo operations are applied to the structure, and if any number of
+intervening operations are applied to the structure.  In the best
+case, this simply means that the operation should fail gracefully if
+the change it should undo is not already reflected in the page file.
+However, if the page file must temporarily lose consistency, then the
+undo operation must be aware of this, and be able to handle all cases
+that could arise at recovery time.  Figure~\ref{linkedList} provides
+an example of the sort of details that can arise in this case.
+\end{itemize}
+
+We believe that it is reasonable to expect application developers to
+develop extensions that follow this set of constraints, but have not
+confirmed this experimentally.  Furthermore, we plan to develop a
+number of tools that will automatically verify or test new operation
+implementations behavior with respect to these constraints, and
+behavior during recovery.
+
 Because undo and redo operations during normal operation and recovery
 are similar, most bugs will be found with conventional testing
-strategies.  It is difficult to verify the final property, although a
-number of tools could be written to simulate various crash scenarios,
-and check the behavior of operations under these scenarios.  Of course, 
-such a tool could easily be applied to existing LLADD operations.
+strategies.  There is some hope of verifying the atomicity property if
+nested top actions are used.  Whether or not nested top actions are
+implemented, randomized testing or more advanced sampling techniques
+could be used to check operation behavior under various recovery
+conditions and thread schedules.~\cite{OSDIFSModelChecker}
+
+However, as we will see in Section~\ref{OASYS}, some applications may
+have valid reasons to ``break'' recovery semantics.  It is unclear how
+useful such testing tools will be in this case.
 
 Note that the ARIES algorithm is extremely complex, and we have left
 out most of the details needed to understand how ARIES works, or to 
 implement it correctly.
 Yet, we believe we have covered everything that a programmer needs
  to know in order to implement new data structures using the 
-functionality that ARIES provides. This was possible due to the encapsulation
+functionality that our library provides. This was possible due to the encapsulation
 of the ARIES algorithm inside of LLADD, which is the feature that
 most strongly differentiates LLADD from other, similar libraries.
-We hope that this will increase the availability of transactional
-data primitives to application developers.
+
+%We hope that this will increase the availability of transactional
+%data primitives to application developers.
 
 
 
-\end{enumerate}
 \begin{enumerate}
 
   \item {\bf Log entries as a programming primitive }
@@ -716,23 +753,25 @@ data primitives to application developers.
   %    We have solutions to #1 and 2.  A general solution to #3 involves 'scrubbing' a logical log of redundant operations.
   %    
   %        - Talk about virtual async log thing...
+  %           - reordering
+  %           - distribution
 
   \item {\bf Error handling with compensations as {}``abort() for C''}
 
   % stylized usage of Weimer -> cheap error handling, no C compiler modifications...
 
   \item {\bf Concurrency models are fundamentally application specific, but
-  record/page level locking and index locks are often a nice trade-off}
+  record/page level locking and index locks are often a nice trade-off}  @todo We sort of cover this above
 
-  \item {\bf {}``latching'' vs {}``locking'' - data structures internal to
-  LLADD are protected by LLADD, allowing applications to reason in
-  terms of logical data addresses, not physical representation. Since
-  the application may define a custom representation, this seems to be
-  a reasonable tradeoff between application complexity and
-  performance.}
-
-  \item {\bf Non-interleaved transactions vs. Nested top actions
-  vs. Well-ordered writes.}
+%  \item {\bf {}``latching'' vs {}``locking'' - data structures internal to
+%  LLADD are protected by LLADD, allowing applications to reason in
+%  terms of logical data addresses, not physical representation. Since
+%  the application may define a custom representation, this seems to be
+%  a reasonable tradeoff between application complexity and
+%  performance.}
+%
+%  \item {\bf Non-interleaved transactions vs. Nested top actions
+%  vs. Well-ordered writes.}
 
     % key point: locking + nested top action = 'normal' multithreaded
     %software development! (modulo 'obvious' mistakes like algorithmic
@@ -746,7 +785,7 @@ data primitives to application developers.
 
 \end{enumerate}
 
-\section{Applications}
+\section{Sample operations}
 
 \begin{enumerate}
 
@@ -794,34 +833,40 @@ to the new hash function.
 
 However, because of the way we chose $h_{n+1}(x),$ we know that the
 contents of each bucket, $m$, will be split between bucket $m$ and
-bucket $m+2^{n}$. Therefore, if we keep track of the last bucket
-that was split, we can split a few buckets at a time, resizing the
-hash table without introducing long pauses while we reorganize the
-hash table~\cite{lht}. We can handle overflow using standard techniques;
-LLADD's linear hash table uses linked lists of overflow buckets.
+bucket $m+2^{n}$. Therefore, if we keep track of the last bucket that
+was split, we can split a few buckets at a time, resizing the hash
+table without introducing long pauses while we reorganize the hash
+table~\cite{lht}. We can handle overflow using standard techniques;
+LLADD's linear hash table simply uses the linked list implementations
+described above.  The bucket list is implemented by reusing the array
+list implementation described above.
 
 % Implementation simple!  Just slap together the stuff from the prior two sections, and add a header + bucket locking.
 
-  \item {\bf Asynchronous log implementation/Fast writes. Prioritization of
-  log writes (one {}``log'' per page) implies worst case performance
-  (write, then immediate read) will behave on par with normal
-  implementation, but writes to portions of the database that are not
-  actively read should only increase system load (and not directly
-  increase latency)}
+  \item {\bf Asynchronous log implementation/Fast
+  writes. Prioritization of log writes (one {}``log'' per page)
+  implies worst case performance (write, then immediate read) will
+  behave on par with normal implementation, but writes to portions of
+  the database that are not actively read should only increase system
+  load (and not directly increase latency)} This probably won't go
+  into the paper.  As long as the buffer pool isn't thrashing, this is
+  not much better than upping the log buffer.
 
-  \item {\bf Custom locking. Hash table can support all of the SQL degrees
-  of transactional consistency, but can also make use of
+  \item {\bf Custom locking. Hash table can support all of the SQL
+  degrees of transactional consistency, but can also make use of
   application-specific invariants and synchronization to accommodate
   deadlock-avoidance, which is the model most naturally supported by C
-  and other programming languages.}
+  and other programming languages.}  This is covered above, but we
+  might want to mention that we have a generic lock manager
+  implemenation that operation implementors can reuse.  The argument
+  would be stronger if it were a generic hierarchical lock manager.
 
 %Many plausible lock managers, can do any one you want.
 %too much implemented part of DB; need more 'flexible' substrate.
 
 \end{enumerate}
 
-\section{Validation}
-
+\section{Benchmarks}
 
 \subsection{Conventional workloads}
 
@@ -865,7 +910,7 @@ response times for each case.
 
 @todo analysis / come up with a more sane graph format.
 
-\subsection{Object Serialization}
+\subsection{Object Serialization}\label{OASYS}
 
 Object serialization performance is extremely important in modern web
 service systems such as EJB.  Object serialization is also a
@@ -928,36 +973,37 @@ achieve using existing relational database systems, or with Berkeley
 DB.  
 
 LLADD services a request to write to a record by pinning (and possibly
-reading in) the applicable page, generating a log entry, writing the
-new value of the record to the in-memory page, and unpinning the page.
+reading in) a page, generating a log entry, writing the
+new record value to the page, and unpinning the page.
 
 If LLADD knows that the client will not ask to read the record, then
 there is no real reason to update the version of the record in the
-page file.  In fact, if diff does not need to be generated,
-there is no need to have the page in memory at all.  We can think of
-two plausible reasons why a diff would be unnecessary.  
+page file.  In fact, if no undo or redo information needs to be
+generated, there is no need to bring the page into memory at all.
+There are two scenarios that allow LLADD to avoid loading the page:
 
 First, the application may not be interested in transaction atomicity.
-In this case, by writing no-op undo records instead of real undo
-records, LLADD could guarantee that some prefix of the log will be
+In this case, by writing no-op undo information instead of real undo
+log entries, LLADD could guarantee that some prefix of the log will be
 applied to the page file after recovery.  The redo information is
 already available; the object is in the application's cache.
 ``Transactions'' could still be durable, as commit() could be used to
 force the log to disk.
 
-Second, the application could provide the undo record for LLADD.  This
-could be implemented in a straightforward manner by adding special
-accessor methods to the object which generate undo information as the
-object is updated in memory.
+Second, the application could provide the undo information to LLADD.
+This could be implemented in a straightforward manner by adding
+special accessor methods to the object which generate undo information
+as the object is updated in memory.  For our benchmarks, we opted for
+the first approach.
 
 We have removed the need to use the on-disk version of the object to
 generate log entries, but still need to guarantee that the application
 will not attempt to read a stale record from the page file.  This
 problem also has a simple solution.  In order to service a write
 request made by the application, the cache calls a special
-``update()'' method.  This method only writes a log entry.  If the
-cache must evict an object from cache, it issues a special ``flush()''
-method.  This method writes the object to the buffer pool (and
+``update()'' operation.  This method only writes a log entry.  If the
+cache must evict an object from cache, it performs a special ``flush()''
+operation.  This method writes the object to the buffer pool (and
 probably incurs the cost of disk I/O), using a LSN recorded by the
 most recent update() call that was associated with the object.  Since
 LLADD implements no-force, it does not matter to recovery if the
@@ -991,20 +1037,35 @@ fuzzy checkpoint, we simply iterate over the object pool, calculating
 the minimum lsn of the objects in the pool.\footnote{This LSN is distinct from
 the one used by flush(); it is the lsn of the object's {\em first}
 call to update() after the object was added to the cache.}  At this
-point, we can invoke a normal ARIES checkpoint, with the restriction
+point, we can invoke a normal ARIES checkpoint with the restriction
 that the log is not truncated past the minimum LSN encountered in the
 object pool.\footnote{Because LLADD does not yet implement
 checkpointing, we have not implemented this checkpointing scheme.}
 
 We implemented a LLADD plugin for OASYS, a C++ object serialization
-library.  The plugin makes use of all of the optimizations mentioned
-in this section, and was used to generate Figure~[TODO].  Ignoring the
-checkpointing scheme and a small change needed in the recovery
-algorithm, the operations required for these two optimizations are
-roughly 150 lines of C code, including whitespace, comments and
-boilerplate function registrations.  While the reasoning required to
-ensure the correctness of this code was complex, the simplicity of the
-implementation is encouraging.
+library includes various object serialization backends, including one
+for Berkeley DB.  The LLADD plugin makes use of the optimizations
+described in this section, and was used to generate Figure~[TODO].
+For comparison, we also implemented a non-optimized LLADD plugin to
+factor out performance and implementation differences between LLADD
+and Berkeley DB.
+
+Initially, OASYS did not support an object cache, so this
+functionality was added.  Berkeley DB and LLADD's variants were run
+using identical cache settings and random seeds for load generation.
+Even though the serialization requests were serviced out of operating
+system cache, we see that the optimized LLADD implemenation has a
+clear advantage under most circumstances, suggesting that the overhead
+incurred by generating diffs and having seperate update() and flush()
+calls is negligible compared to the savings in log bandwidth and
+buffer pool overhead that the optimizations provide.
+
+Ignoring the checkpointing scheme and a small change needed in the
+recovery algorithm, the operations required for these two
+optimizations are roughly 150 lines of C code, including whitespace,
+comments and boilerplate function registrations.  While the reasoning
+required to ensure the correctness of this code was complex, the
+simplicity of the implementation is encouraging.
 
 @todo analyse OASYS data.
 
@@ -1012,35 +1073,35 @@ implementation is encouraging.
 
 @todo implement transitive closu....
 
-\begin{enumerate}
-
-  \item {\bf Comparison of transactional primatives (best case for each operator)}
-
-  \item {\bf Serialization Benchmarks (Abstract log) }
-
-    {\bf Need to define application semantics workload (write heavy w/ periodic checkpoint?) that allows for optimization.}
-    
-    {\bf All of these graphs need X axis dimensions.  Number of (read/write?) threads, maybe?}
- 
-    {\bf Graph 1:  Peak write throughput. Abstract log wins (no disk i/o, basically, measure contention on ringbuffer, and compare to log I/O + hash table insertions.)}
-
-    {\bf Graph 2:  Measure maximum average write throughput: Write throughput vs. rate of log growth.  Spool abstract log to disk.
-              Reads starve, or read stale data. }
-
-    {\bf Graph 3:  Latency @ peak steady state write throughput.  Abstract log size remains constant.  Measure read latency vs.
-               queue length.  This will show the system's 'second-order' ability to absorb spikes. }
-
-  \item {\bf Graph traversal benchmarks:  Bulk load + hot and cold transitive closure queries}
-
-  \item {\bf Hierarchical Locking - Proof of concept}
-
-  \item {\bf TPC-C (Flexibility) - Proof of concept}
-    
-   % Abstract syntax tree implementation?
-
-  \item {\bf Sample Application. (Don't know what yet?) }
-
-\end{enumerate}
+%\begin{enumerate}
+%
+%  \item {\bf Comparison of transactional primatives (best case for each operator)}
+%
+%  \item {\bf Serialization Benchmarks (Abstract log) }
+%
+%    {\bf Need to define application semantics workload (write heavy w/ periodic checkpoint?) that allows for optimization.}
+%    
+%    {\bf All of these graphs need X axis dimensions.  Number of (read/write?) threads, maybe?}
+% 
+%    {\bf Graph 1:  Peak write throughput. Abstract log wins (no disk i/o, basically, measure contention on ringbuffer, and compare to log I/O + hash table insertions.)}
+%
+%    {\bf Graph 2:  Measure maximum average write throughput: Write throughput vs. rate of log growth.  Spool abstract log to disk.
+%              Reads starve, or read stale data. }
+%
+%    {\bf Graph 3:  Latency @ peak steady state write throughput.  Abstract log size remains constant.  Measure read latency vs.
+%               queue length.  This will show the system's 'second-order' ability to absorb spikes. }
+%
+%  \item {\bf Graph traversal benchmarks:  Bulk load + hot and cold transitive closure queries}
+%
+%  \item {\bf Hierarchical Locking - Proof of concept}
+%
+%  \item {\bf TPC-C (Flexibility) - Proof of concept}
+%    
+%   % Abstract syntax tree implementation?
+%
+%  \item {\bf Sample Application. (Don't know what yet?) }
+%
+%\end{enumerate}
 
 \section{Future work}
 \begin{enumerate}
