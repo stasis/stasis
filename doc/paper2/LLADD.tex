@@ -31,10 +31,8 @@
 %% \newcommand{\mjd}[1]{}
 
 \begin{document}
-\title{\vspace*{-36pt}\yad Outline }
-
-
-\author{Russell Sears \and ... \and Eric Brewer}
+\title{\vspace*{-36pt}\yad: Flexible Transactions without Databases\vspace*{-36pt}}
+%\author{}
 
 \maketitle
 
@@ -80,6 +78,9 @@ optimizations and enhanced usability for application developers.}
 %available.%
 %\footnote{http://lladd.sourceforge.net/%
 %}
+
+\vspace*{-18pt}
+
 
 \section{Introduction}
 
@@ -426,7 +427,7 @@ on the fault model on which a cluster hash table is based, it is
 quite plausible that key portions of the transactional mechanism, such
 as forcing log entries to disk, will be replaced with other durability
 schemes, such as in-memory replication across many nodes, or
-multiplexing log entries across multiple systems.  Similarly,
+demultiplexing log entries across multiple systems.  Similarly,
 atomicity semantics may be relaxed under certain circumstances.  \yad is unique in that it can support the full range of semantics, from in-memory replication for commit, to full transactions involving multiple entries, which is not supported by any of the current CHT implementations.
 %Although
 %existing transactional schemes provide many of these features, we
@@ -2345,7 +2346,7 @@ we should be able to demultiplex and replicate log entries to sets of
 nodes easily.  Single node optimizations such as the demand-based log
 reordering primitive should be directly applicable to multi-node
 systems.\footnote{For example, our (local, and non-redundant) log
-multiplexer provides semantics similar to the
+demultiplexer provides semantics similar to the
 Map-Reduce~\cite{mapReduce} distributed programming primitive, but
 exploits hard disk and buffer pool locality instead of the parallelism
 inherent in large networks of computer systems.}.  Also, we believe
@@ -2391,7 +2392,18 @@ and reliable.
 
 \section{Conclusion}
 
-\rcs{Potential conclusion material after this line in the .tex file..}
+We believe that transactions have much to offer system developers, but
+that there is a need to enable transactions for wider range of systems
+than just databases.  We built \yad and showed how its framework
+simplifies the creation of transactional data structures that have
+excellent performance and flexibility, including arrays, hash tables,
+persistent objects, and graphs.  \yad provides a wide range of
+transactional semantics, all the way up to complete ACID transactions with
+high concurrency, archiving and media recovery.  We also demonstrated
+that the low-level APIs enable many optimizations, including
+optimizations for deltas, locality, reordering, and durability.  We
+have released \yad as open source and believe it makes it easy to
+benefit from the power of transactions.
 
 %Section~\ref{sub:Linear-Hash-Table}
 %validates the premise that the primitives provided by \yad are
