@@ -59,8 +59,8 @@ struct pobj {
 #define POBJ_REP_MAX_EXP          14
 #define POBJ_REP_MAX              (1 << POBJ_REP_MAX_EXP)
 
-#define CONVERT_HASH_NBUCKEXP     18
-#define UPDATE_HASH_NBUCKEXP      18
+#define CONVERT_HASH_NBUCKEXP     10
+#define UPDATE_HASH_NBUCKEXP      10
 #define UPDATE_QUEUE_MAX_EXP      10
 #define UPDATE_QUEUE_MAX          (1 << UPDATE_QUEUE_MAX_EXP)
 
@@ -74,7 +74,7 @@ struct pobj_rep_list_item {
     int next_index;
     void *objid;
     size_t size;
-    int type_index;;
+    int type_index;
     recordid rid;
 };
 /* TODO: switch to growable data structure. */
