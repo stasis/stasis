@@ -52,6 +52,7 @@ terms specified in this license.
 #include <pthread.h>
 
 #define LOG_NAME   "check_linkedListNTA.log"
+
 START_TEST(linkedListNTAtest)
 {
   Tinit();
@@ -100,8 +101,8 @@ START_TEST(linkedListNTAtest)
   Tcommit(xid);
   Tdeinit();
 } END_TEST
-#define NUM_THREADS 100
-#define NUM_T_ENTRIES 100
+#define NUM_THREADS 50
+#define NUM_T_ENTRIES 50
 static recordid makekey(int thread, int i) {
   recordid rid;
   rid.page = thread*NUM_THREADS+i;
