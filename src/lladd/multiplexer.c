@@ -54,6 +54,7 @@ void * multiplexer_worker(void * arg) {
     lladdFifo_t * fifo = m->fifoPool->getFifo(m->fifoPool, mkey, mkeySize);
     consumer = fifo->consumer;
     Tconsumer_push(m->xid, consumer, key, keySize, value, valueSize);
+    Titerator_tupleDone(m->xid, m->it);
     lladdFifoPool_markDirty(m->xid, m->fifoPool, fifo);
   }
   

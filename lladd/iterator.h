@@ -10,6 +10,7 @@ BEGIN_C_DECLS
 #define LINEAR_HASH_NTA_ITERATOR 0
 #define ARRAY_ITERATOR           1
 #define LOG_MEMORY_ITERATOR      2
+#define POINTER_ITERATOR         3
 
 typedef struct { 
   //  void * new(void * arg);

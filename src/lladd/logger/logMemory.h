@@ -19,9 +19,8 @@
 
 lladdFifo_t * logMemoryFifo(size_t size, lsn_t initialOffset);
 
-void logMemory_Tconsumer_close(int xid, lladdConsumer_t *it);
-compensated_function int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key, size_t keySize, byte *val, size_t Valsize);
-
+void logMemory_consumer_close(int xid, void *it);
+int logMemory_consumer_push  (int xid, void * it, byte * key, size_t keySize, byte * val, size_t valSize);
 void logMemory_Iterator_close(int xid, void * impl);
 compensated_function int logMemory_Iterator_next(int xid, void * impl);
 compensated_function int logMemory_Iterator_tryNext(int xid, void * impl);

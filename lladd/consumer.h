@@ -3,19 +3,22 @@
 #ifndef __CONSUMER_H
 #define __CONSUMER_H
 
-#define MAX_ITERATOR_TYPES  10
+#define MAX_CONSUMER_TYPES  10
 #define FIFO_CONSUMER        0
 #define ARRAY_CONSUMER       1
 #define LOG_MEMORY_CONSUMER  2
-
-typedef struct {
-  int foo;
-} lladdConsumer_def_t;
+#define POINTER_CONSUMER     3
 
 typedef struct {
   int        type;
   void *     impl;
 } lladdConsumer_t;
+
+
+typedef struct {
+  int (*push)(int xid, void * it, byte * key, size_t keySize, byte * val, size_t valSize);
+  void(*close)(int xid, void *it);
+} lladdConsumer_def_t;
 
 /* call once per Tinit() call */
 void consumer_init();
@@ -38,3 +41,4 @@ int Tconsumer_push(int xid, lladdConsumer_t * it, byte * key, size_t keySize, by
 //int Tconsumer_tryPush(int xid, ....);
 
 #endif // __CONSUMER_H
+

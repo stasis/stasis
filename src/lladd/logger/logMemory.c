@@ -319,9 +319,9 @@ void logMemory_Iterator_releaseTuple(int xid, void *it) {
 
 /* ------------------- consumer implementation ------------------------------*/
 
-void logMemory_Tconsumer_close(int xid, lladdConsumer_t *it){
+void logMemory_consumer_close(int xid, void *it){
   /* This needs to tell the iterator where the end of the ring buffer is. */
-  logMemory_fifo_t * fifo = (logMemory_fifo_t *) (it->impl);
+  logMemory_fifo_t * fifo = (logMemory_fifo_t *) (it);
   pthread_mutex_lock(&(fifo->mutex));
   fifo->eof = ringBufferAppendPosition(fifo->ringBuffer);
   assert(fifo->eof != -1);
@@ -329,17 +329,17 @@ void logMemory_Tconsumer_close(int xid, lladdConsumer_t *it){
   pthread_mutex_unlock(&(fifo->mutex));
 }
 
-compensated_function void Tconsumer_close(int xid, lladdConsumer_t * cons) {
-  logMemory_Tconsumer_close(xid, cons);
-}
+/*compensated_function void Tconsumer_close(int xid, lladdConsumer_t * cons) {
+  logMemory_consumer_close(xid, cons);
+  }*/
 
-compensated_function int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key, size_t keySize, byte *val, size_t Valsize) {
+int logMemory_consumer_push(int xid, /*lladdConsumer_t * cons*/ void * it, byte * key, size_t keySize, byte * val, size_t valSize) {
   int ret;
-  logMemory_fifo_t * fifo = (logMemory_fifo_t *) (it->impl);
+  logMemory_fifo_t * fifo = (logMemory_fifo_t *) (it);
   pthread_mutex_lock(&(fifo->mutex));
 
   while(-2 == (ret = ringBufferAppend(fifo->ringBuffer, 
-				      (byte *)&Valsize, 
+				      (byte *)&valSize, 
 				      sizeof(size_t) ))) {
     pthread_cond_wait(&(fifo->writeReady), &(fifo->mutex));
   }
@@ -347,7 +347,7 @@ compensated_function int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key,
     compensation_set_error(LLADD_INTERNAL_ERROR);
     return LLADD_INTERNAL_ERROR;
   }
-  while(-2 == ringBufferAppend( ((logMemory_fifo_t *) it->impl)->ringBuffer, val, Valsize)) {
+  while(-2 == ringBufferAppend( (fifo)->ringBuffer, val, valSize)) {
     pthread_cond_wait(&(fifo->writeReady), &(fifo->mutex));
   }
 
@@ -360,5 +360,14 @@ compensated_function int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key,
   pthread_mutex_unlock(&(fifo->mutex));
 
   return ret;
-  // always succeeds.
+
 }
+/*  if(it->type == LOG_MEMORY_CONSUMER) {
+    return logMemory_consumer_push(xid, it, key, keySize, val, valSize);
+  }
+  if(it->type == POINTER_CONSUMER) {
+    return pointer_consumer_push(xid, it, key, keySize, val, valSize);
+  }
+
+  // always succeeds.
+  }*/

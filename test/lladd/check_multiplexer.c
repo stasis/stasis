@@ -123,6 +123,7 @@ static void * trygo( void * arg) {
     
     int i = *(int*)(arg+1);
     array[i]++;
+    assert(*(lsn_t*)key == i);
     assert(array[i] == 1);
 
     Titerator_tupleDone(-1, it);
@@ -194,7 +195,8 @@ START_TEST(multiplexTest) {
 
   lladdIterator_t * it = ThashGenericIterator(xid, hash);
   lladdFifo_t * dirtyFifos = logMemoryFifo((int)(((double)NUM_INSERTS) * 0.5), 0);   //  8 bytes of memory used per queued request.
-  lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
+  //  lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
+  lladdFifoPool_t * fifoPool = lladdFifoPool_pointerPoolInit(NUM_THREADS, NUM_BYTES_IN_FIFO/10, NULL, dirtyFifos);
 
   lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, 
 						    &multiplexHashLogByKey, 

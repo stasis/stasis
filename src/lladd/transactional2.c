@@ -6,6 +6,7 @@
 #include <lladd/recovery.h>
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
+#include <lladd/consumer.h>
 #include <lladd/lockManager.h>
 #include <lladd/compensations.h>
 
@@ -110,6 +111,7 @@ int Tinit() {
 	LinkedListNTAInit();
 	compensations_init();
 	iterator_init();
+	consumer_init();
 	setupLockManagerCallbacksNil();
 	//setupLockManagerCallbacksPage();
 	

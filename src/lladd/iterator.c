@@ -43,6 +43,16 @@ void iterator_init() {
     logMemory_Iterator_releaseLock,
   };
   lladdIterator_register(LOG_MEMORY_ITERATOR, logMemory_def);
+  lladdIterator_def_t pointer_def = {
+    lladdFifoPool_iterator_close,
+    lladdFifoPool_iterator_next,
+    lladdFifoPool_iterator_tryNext,
+    lladdFifoPool_iterator_key,
+    lladdFifoPool_iterator_value,
+    lladdFifoPool_iterator_tupleDone,
+    lladdFifoPool_iterator_releaseLock
+  };
+  lladdIterator_register(POINTER_ITERATOR, pointer_def);
 }
 
 
