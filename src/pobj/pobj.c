@@ -1023,7 +1023,7 @@ pobj_update_recursive (void *obj, int persist)
 	hash_insert (pobj_update_hash, OBJ2KEY (obj), 1);
 	
 	/* Persistify / skip object, as necessary. */
-	if (p->rep_index < 1) {
+	if (p->rep_index < 0) {
 	    if (persist) {
 		debug (" persistifying %p (%p)", obj, (void *) p);
 
