@@ -283,11 +283,15 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 	  slottedPageInitialize(page);  
 	}
 
-	if(*slot_length_ptr(page, rid.slot) == 0 /*|| *slot_length_ptr(page, rid.slot) == -1*/) {
+	if((*slot_length_ptr(page, rid.slot) == 0) || (*slot_ptr(page, rid.slot) == INVALID_SLOT)) {
+	  /*	if(*slot_ptr(page, rid.slot) == INVALID_SLOT) { */
 
 	  __really_do_ralloc(page, rid);
 	
        	} else {
+
+	  int ijk = rid.size;
+	  int lmn = *slot_length_ptr(page, rid.slot);
 
 	   assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
 		  (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
@@ -302,14 +306,17 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 }
 
 
-void slottedDeRalloc(Page * page, recordid rid) {
+void slottedDeRalloc(Page * page, lsn_t lsn, recordid rid) {
 
   readlock(page->rwlatch, 443);
 
   *slot_ptr(page, rid.slot) =  INVALID_SLOT;
-  *slot_length_ptr(page, rid.slot) = *freelist_ptr(page);
-  *freelist_ptr(page) = rid.slot; 
-  
+  *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
+  *freelist_ptr(page) = rid.slot;  
+  /*  *slot_length_ptr(page, rid.slot) = 0; */
+
+  pageWriteLSN(page, lsn);
+
   unlock(page->rwlatch);
 }
 

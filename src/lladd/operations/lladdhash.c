@@ -63,6 +63,7 @@ int lHtValid(int xid, lladdHash_t *ht) {
   } else {
     ret = 1;
   }
+  releasePage(p);
   return ret;
 }
 /**

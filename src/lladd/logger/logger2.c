@@ -109,6 +109,10 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   }
   
 
+
+
+
+
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   
   writeLogEntry(e); 

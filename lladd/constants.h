@@ -96,7 +96,8 @@ terms specified in this license.
 #define OPERATION_LHINSERT     5
 #define OPERATION_LHREMOVE     6
 #define OPERATION_DEALLOC      7
-/*#define OPERATION_PAGE_ALLOC   8
+#define OPERATION_REALLOC      8
+/*#define OPERATION_PAGE_ALLOC   ?
   #define OPERATION_PAGE_DEALLOC 9 */
 #define OPERATION_PAGE_SET     10
 #define OPERATION_UPDATE_FREESPACE 11
@@ -106,9 +107,10 @@ terms specified in this license.
 #define OPERATION_FREE_PAGE   15
 #define OPERATION_ALLOC_FREED 16
 #define OPERATION_UNALLOC_FREED 17
-
+#define OPERATION_NOOP        18
+#define OPERATION_INSTANT_SET 19
 /* number above should be less than number below */
-#define MAX_OPERATIONS 20
+#define MAX_OPERATIONS 40
 
 /** This constant is used as a placeholder to mark slot locations that are invalid.
     @see slotted.c, indirect.c

@@ -101,7 +101,7 @@ void bufDeinit() {
 	
 	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) {
 
-	  pblHtRemove( activePages, 0, 0 )
+	  pblHtRemove( activePages, 0, 0 );
 	  DEBUG("+");
 	  /** @todo No one seems to set the dirty flag... */
 	  /*if(p->dirty && (ret = pageWrite(p)/ *flushPage(*p)* /)) {

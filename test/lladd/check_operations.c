@@ -43,6 +43,8 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/transactional.h>
+#include "../../src/lladd/logger/logWriter.h"
+
 #include <lladd/bufferManager.h>
 
 #include "../check_includes.h"
@@ -51,7 +53,11 @@ terms specified in this license.
 #define LOG_NAME   "check_operations.log"
 
 
+void simulateBufferManagerCrash();
+extern int numActiveXactions;
 /**
+   @test
+
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
    operations that use physical logging.
@@ -197,6 +203,179 @@ START_TEST(operation_physical_do_undo) {
 }
 END_TEST
 
+/** 
+    @test check the Tprepare() call by simulating crashes.
+*/
+START_TEST(operation_prepare) {
+
+  /* Check this sequence prepare, action, crash, recover, read, action, abort, read again. */
+
+  Tinit();
+  
+  int loser = Tbegin();
+  int prepared = Tbegin();
+  int winner = Tbegin();
+  
+  recordid a = Talloc(winner, sizeof(int));
+  recordid b = Talloc(winner, sizeof(int));
+  
+  int one =1;
+  int two =2;
+  int three=3;
+
+  Tset(winner, a, &one);
+  Tset(winner, b, &one);
+  
+  Tset(loser, a, &three);
+  Tset(prepared, b, &three);
+
+  Tprepare(prepared, a);
+
+  Tset(prepared, b, &two);
+
+  Tcommit(winner);
+
+  simulateBufferManagerCrash();
+  closeLogWriter();
+  numActiveXactions = 0;
+
+
+  Tinit();
+
+  int in;
+  
+  Tread(prepared, b, &in);
+
+  assert(in == three);
+
+  Tset(prepared, b, &two);
+
+  Tabort(prepared);
+
+  int checker = Tbegin();
+
+  Tread(checker, b, &in);
+
+  assert(in == one);
+
+  Tread(checker, a, &in);
+  
+  assert(in == one);
+
+  Tcommit(checker);
+  
+  Tdeinit();
+  /* Check this sequence prepare, action, crash, recover, read, action, _COMMIT_, read again. */
+
+  Tinit();
+  
+  loser = Tbegin();
+  prepared = Tbegin();
+  winner = Tbegin();
+  
+  a = Talloc(winner, sizeof(int));
+  b = Talloc(winner, sizeof(int));
+  
+  one =1;
+  two =2;
+  three=3;
+
+  Tset(winner, a, &one);
+  Tset(winner, b, &one);
+  
+  Tset(loser, a, &three);
+  Tset(prepared, b, &three);
+
+  Tprepare(prepared, a);
+
+  Tset(prepared, b, &two);
+
+  Tcommit(winner);
+
+  simulateBufferManagerCrash();
+  closeLogWriter();
+  numActiveXactions = 0;
+
+
+  Tinit();
+
+  Tread(prepared, b, &in);
+
+  assert(in == three);
+
+  Tset(prepared, b, &two);
+
+  Tcommit(prepared);
+
+  checker = Tbegin();
+
+  Tread(checker, b, &in);
+
+  assert(in == two);
+
+  Tread(checker, a, &in);
+  
+  assert(in == one);
+
+  Tcommit(checker);
+  
+  Tdeinit();
+
+} END_TEST
+/** 
+    @test make sure the TinstantSet() operation works as expected during normal operation. 
+    @todo need to write test for TinstantSet() for the recovery case...
+*/
+
+START_TEST(operation_instant_set) {
+
+  Tinit();
+
+  int xid = Tbegin();
+  
+  recordid rid = Talloc(xid, sizeof(int));  /** @todo probably need an immediate version of TpageAlloc... */
+  int one = 1;
+  int two = 2;
+  int three = 3;
+  Tset(xid, rid, &one);
+
+  Tcommit(xid);
+
+  xid = Tbegin();
+
+  TinstantSet(xid, rid, &two);
+
+  Tset(xid, rid, &three);
+
+  Tabort(xid);
+  
+  xid = Tbegin();
+
+  Tread(xid, rid, &three);
+
+  assert(two == three);
+
+  Tcommit(xid);
+ 
+  Tdeinit();
+ 
+  Tinit();
+
+  xid = Tbegin();
+
+  Tread(xid, rid, &three);
+
+  assert(two == three);
+
+  Tcommit(xid);
+ 
+  Tdeinit();
+ 
+
+
+} END_TEST
+
+
 
 /** 
   Add suite declarations here
@@ -208,7 +387,8 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, operation_physical_do_undo);
-
+  tcase_add_test(tc, operation_instant_set);
+  tcase_add_test(tc, operation_prepare);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

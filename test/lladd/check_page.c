@@ -83,7 +83,7 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
 	readRecord(1, p, rid[k], (byte*)&j);
 
 	assert((j + 1) ==  i + k);
-	slottedDeRalloc(p, rid[k]);
+	slottedDeRalloc(p, lsn, rid[k]);
 	sched_yield();
       }
     } 
@@ -123,7 +123,7 @@ static void* worker_thread(void * arg_ptr) {
     if(! first ) {
       readRecord(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
-      slottedDeRalloc(p, rid);
+      slottedDeRalloc(p, lsn, rid);
       sched_yield();
     } 
     

@@ -13,6 +13,7 @@
 
 Operation getAlloc();
 Operation getDealloc();
+Operation getRealloc();
 
 /** 
     Allocate a record.  

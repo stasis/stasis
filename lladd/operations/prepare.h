@@ -87,8 +87,10 @@ extern recordid prepare_bogus_rec;
     @todo Tprepare() shouldn't take a record or buffer as arguments... 
 
     @param xid Transaction id.
+    @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
+    @param dat unused.
 */
-#define Tprepare(xid, rec, dat) Tupdate(xid, rec, 0, OPERATION_PREPARE)
+#define Tprepare(xid, rec) Tupdate(xid, rec, 0, OPERATION_PREPARE)
 
 Operation getPrepare();
 
@@ -97,4 +99,6 @@ Operation getPrepare();
 */
 int prepareGuard(LogEntry * e, void * state);
 void * getPrepareGuardState();
+int prepareAction(void * state);
 #endif
+

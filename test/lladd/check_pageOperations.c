@@ -177,7 +177,6 @@ START_TEST(pageOpCheckAllocDealloc) {
 
 } END_TEST
 
-
 Suite * check_suite(void) {
   Suite *s = suite_create("pageOperations");
   /* Begin a new test */

@@ -39,76 +39,22 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
 /**********************************************
  * $Id$
  * 
  * sets the given reference to dat
  **********************************************/
 
-#include <lladd/operations/prepare.h>
-#include "../logger/logWriter.h"
-#include <malloc.h>
-#include <assert.h>
-recordid prepare_bogus_rec  = { 0, 0, 0};
+#include <lladd/operations/instantSet.h>
+#include <lladd/operations/set.h>
+#include "../page.h"
 
-static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-  syncLog();
-  return 0;
-}
-
-Operation getPrepare() { 
-	Operation o = {
-		OPERATION_PREPARE, /* id */
-		0, /* No extra data. */
-		OPERATION_NOOP, 
-		&operate /* Function */
-	};
-	return o;
-}
-
-/** PrepareGuardState is 1 if the iterator should continue on the next
-    (previous) log entry, 0 otherwise. */
-typedef struct{
-  int continueIterating;
-  int prevLSN;
-  int xid;
-} PrepareGuardState;
-
-void * getPrepareGuardState() { 
-  PrepareGuardState * s = malloc (sizeof(PrepareGuardState));
-  s->continueIterating = 1;
-  s->prevLSN = -1;
-  s->xid = -1;
-  return s;
-}
-
-
-int prepareGuard(LogEntry * e, void * state) {
-  PrepareGuardState * pgs = state; 
-  int ret = pgs->continueIterating;
-  if(e->type == UPDATELOG) {
-    if(e->contents.update.funcID == OPERATION_PREPARE) { 
-      pgs->continueIterating = 0;
-      pgs->prevLSN           = e->prevLSN;
-    }
-  }
-  if(pgs->xid == -1) {
-    pgs->xid = e->xid;
-  } else {
-    assert(pgs->xid == e->xid);
-  }
-
-  return ret;
-}
-
-/** @todo When fleshing out the logHandle's prepareAction interface, figure out what the return value should mean... */
-int prepareAction(
-void * state) {
-  PrepareGuardState * pgs = state; 
-  if(!pgs->continueIterating) {
-    assert(pgs->prevLSN != -1);
-    Trevive(pgs->xid, pgs->prevLSN);
-  }
-  return 0;
+/** @todo The spirit of instantSet suggests that it should hold a
+    shorter write lock than set, but instant set was written before
+    the lock manager... */
+Operation getInstantSet() {
+  Operation o = getSet();
+  o.id = OPERATION_INSTANT_SET;
+  o.undo = OPERATION_NOOP;
+  return o;
 }

@@ -111,7 +111,7 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid);
  *
  * @param rid the recordid to be freed.
  */
-void     slottedDeRalloc(Page * page, recordid rid);
+void     slottedDeRalloc(Page * page, lsn_t lsn, recordid rid);
 
 void slottedPageInit();
 void slottedPageDeinit();

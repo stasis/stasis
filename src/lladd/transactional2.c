@@ -41,6 +41,7 @@ void setupOperationsTable() {
 	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
+	operationsTable[OPERATION_REALLOC]     = getRealloc();
 	/*	operationsTable[OPERATION_PAGE_ALLOC] = getPageAlloc();
 		operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc(); */
 	operationsTable[OPERATION_PAGE_SET] = getPageSet();
@@ -53,7 +54,8 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_FREE_PAGE] = getFreePageOperation();
 	operationsTable[OPERATION_ALLOC_FREED] = getAllocFreedPage();
 	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage();
-	
+	operationsTable[OPERATION_NOOP] = getNoop();
+	operationsTable[OPERATION_INSTANT_SET] = getInstantSet();
 
 }
 
@@ -219,6 +221,9 @@ int Tdeinit() {
 void Trevive(int xid, long lsn) {
   int index = xid % MAX_TRANSACTIONS;
   pthread_mutex_lock(&transactional_2_mutex);
+
+  DEBUG("Reviving xid %d at lsn %ld\n", xid, lsn);
+  
   if(XactionTable[index].xid != INVALID_XTABLE_XID) {
     if(xid != XactionTable[index].xid) {
       printf("Clashing Tprepare()'ed XID's encountered on recovery!!\n");

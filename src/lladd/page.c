@@ -169,7 +169,7 @@ void pageCommit(int xid) {
 
 void pageAbort(int xid) {
 }
-
+/*
 static int pageAllocUnlocked() {
   int ret = lastAllocedPage;
   Page * p;
@@ -177,7 +177,7 @@ static int pageAllocUnlocked() {
   lastAllocedPage += 1;
   
   p = loadPage(lastAllocedPage);
-  /** TODO Incorrect, but this kludge tricks the tests (for now) */
+  / ** TODO Incorrect, but this kludge tricks the tests (for now) * /
   while(*page_type_ptr(p) != UNINITIALIZED_PAGE) {
     releasePage(p);
     lastAllocedPage++;
@@ -186,7 +186,7 @@ static int pageAllocUnlocked() {
   releasePage(p);
 
   return ret;
-}
+}*/
 
 /**
    @todo DATA CORRUPTION BUG pageAllocMultiple needs to scan forward in the store file until

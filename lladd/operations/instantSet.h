@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -39,76 +39,24 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-/**********************************************
+/**
+ * @file
+ *
+ * function definitions for set
+ *
+ * @ingroup OPERATIONS
+ *
  * $Id$
  * 
- * sets the given reference to dat
  **********************************************/
 
-#include <lladd/operations/prepare.h>
-#include "../logger/logWriter.h"
-#include <malloc.h>
-#include <assert.h>
-recordid prepare_bogus_rec  = { 0, 0, 0};
+#ifndef __INSTANT_SET_H__
+#define __INSTANT_SET_H__
 
-static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-  syncLog();
-  return 0;
-}
+#include <lladd/operations.h>
 
-Operation getPrepare() { 
-	Operation o = {
-		OPERATION_PREPARE, /* id */
-		0, /* No extra data. */
-		OPERATION_NOOP, 
-		&operate /* Function */
-	};
-	return o;
-}
+#define TinstantSet(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_INSTANT_SET)
 
-/** PrepareGuardState is 1 if the iterator should continue on the next
-    (previous) log entry, 0 otherwise. */
-typedef struct{
-  int continueIterating;
-  int prevLSN;
-  int xid;
-} PrepareGuardState;
+Operation getInstantSet();
 
-void * getPrepareGuardState() { 
-  PrepareGuardState * s = malloc (sizeof(PrepareGuardState));
-  s->continueIterating = 1;
-  s->prevLSN = -1;
-  s->xid = -1;
-  return s;
-}
-
-
-int prepareGuard(LogEntry * e, void * state) {
-  PrepareGuardState * pgs = state; 
-  int ret = pgs->continueIterating;
-  if(e->type == UPDATELOG) {
-    if(e->contents.update.funcID == OPERATION_PREPARE) { 
-      pgs->continueIterating = 0;
-      pgs->prevLSN           = e->prevLSN;
-    }
-  }
-  if(pgs->xid == -1) {
-    pgs->xid = e->xid;
-  } else {
-    assert(pgs->xid == e->xid);
-  }
-
-  return ret;
-}
-
-/** @todo When fleshing out the logHandle's prepareAction interface, figure out what the return value should mean... */
-int prepareAction(
-void * state) {
-  PrepareGuardState * pgs = state; 
-  if(!pgs->continueIterating) {
-    assert(pgs->prevLSN != -1);
-    Trevive(pgs->xid, pgs->prevLSN);
-  }
-  return 0;
-}
+#endif

@@ -137,7 +137,8 @@ typedef struct {
 #include "operations/lladdhash.h"
 #include "operations/alloc.h"
 #include "operations/pageOperations.h"
-
+#include "operations/noop.h"
+#include "operations/instantSet.h"
 
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 

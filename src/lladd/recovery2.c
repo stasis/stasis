@@ -179,11 +179,12 @@ static void Undo(int recovery) {
 
   /*  printf("!"); fflush(NULL); */
 
-  prepare_guard_state = getPrepareGuardState();
   
   while(rollbackLSNs != NULL) {
     LogEntry * e;
     lsn_t rollback = popMaxVal(&rollbackLSNs);
+
+    prepare_guard_state = getPrepareGuardState();
 
     DEBUG("Undoing LSN %ld\n", (long int)rollback);
     if(recovery) {
@@ -250,10 +251,11 @@ static void Undo(int recovery) {
       }
       free(e);
     }
+    prepareAction(prepare_guard_state);
+    free(prepare_guard_state);
 
     /*    printf("$"); fflush(NULL); */
   }
-  free(prepare_guard_state);
 }
 
 void InitiateRecovery() {

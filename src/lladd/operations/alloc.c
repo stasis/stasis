@@ -54,7 +54,26 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   /*  Page * loadedPage = loadPage(rid.page); */
   /** Has no effect during normal operation, other than updating the LSN. */
-  slottedPostRalloc(p, lsn, rid);
+  /*  slottedPostRalloc(p, lsn, rid); */
+  
+  /*  Page * loadedPage = loadPage(rid.page); */
+  assert(rid.page == p->id);
+  slottedDeRalloc(p, lsn, rid);
+  /*  releasePage(loadedPage); */
+
+  return 0;
+}
+
+static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+  /*  operate(xid, p, lsn, rid, dat); */
+
+  if(rid.size >= BLOB_THRESHOLD_SIZE) {
+    rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
+  } 
+
+  slottedPostRalloc(p, lsn, rid); 
+  writeRecord(xid, p, lsn, rid, dat);
+
   return 0;
 }
 
@@ -68,6 +87,27 @@ Operation getAlloc() {
   return o;
 }
 
+
+Operation getDealloc() {
+  Operation o = {
+    OPERATION_DEALLOC,
+    SIZEOF_RECORD,
+    OPERATION_REALLOC,
+    &deoperate
+  };
+  return o;
+}
+
+/*This is only used to undo deallocs... */
+Operation getRealloc() {
+  Operation o = {
+    OPERATION_REALLOC,
+    0,
+    OPERATION_NOOP,
+    &reoperate
+  };
+  return o;
+}
 
 recordid Talloc(int xid, long size) {
   recordid rid;
@@ -84,18 +124,11 @@ recordid Talloc(int xid, long size) {
   
 }
 
-
-
-Operation getDealloc() {
-  Operation o = {
-    OPERATION_DEALLOC,
-    0,
-    OPERATION_ALLOC,
-    &deoperate
-  };
-  return o;
-}
-
 void Tdealloc(int xid, recordid rid) {
-  Tupdate(xid, rid, NULL, OPERATION_DEALLOC);
+  void * preimage = malloc(rid.size);
+  Page * p = loadPage(rid.page);
+  readRecord(xid, p, rid, preimage);
+  releasePage(p);  /** @todo race in Tdealloc; do we care? */
+  Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
+  free(preimage);
 }
