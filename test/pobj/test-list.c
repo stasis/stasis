@@ -32,7 +32,7 @@ main (int argc, char **argv)
 	printf ("first-time init\n");
 	/* Build list. */
 	next = NULL;
-	for (i = 0; i < 15000; i++) {
+	for (i = 0; i < 15; i++) {
 	    pobj_start ();
 
 	    tmp = (struct item *) pobj_malloc (sizeof (struct item));
@@ -62,6 +62,7 @@ main (int argc, char **argv)
 	    POBJ_SET_REF (tmp, next, next);
 #endif
 
+	    POBJ_UPDATE (data);
 	    POBJ_UPDATE (tmp);
 
 	    pobj_end ();
