@@ -867,6 +867,11 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 	pobj_slot = POBJ2REPSLOT (p);
 
 	TsetRange (xid, pobj_slot->rid, (char *) fld - (char *) p, len, fld);
+#ifdef HAVE_IMPLICIT_TYPES
+	if (is_changed)
+	    TsetRange (xid, pobj_slot->rid, POBJ_REFFLAGS_OFFSET (p->size),
+		       POBJ_REFFLAGS_SIZE (p->size), POBJ2REFS (p));
+#endif /* HAVE_IMPLICIT_TYPES */
 	
 	pobj_end ();
     }
