@@ -193,17 +193,17 @@ of the files that it contains, and is able to provide services such as
 rapid search, or file-type specific operations such as thumbnailing,
 automatic content updates, and so on.  Others are simpler, such as
 BerkeleyDB, which provides transactional storage of data in unindexed
-form, in indexed form using a hash table, or a tree.  LRVM, a version
+form, in indexed form using a hash table, or a tree.  LRVM is a version
 of malloc() that provides transacational memory, and is similar to an
-object oriented database, but is much lighter weight, and more
+object-oriented database, but is much lighter weight, and more
 flexible.
 
 Finally, some applications require incredibly simple, but extremely
 scalable storage mechanisms.  Cluster Hash Tables are a good example
 of the type of system that serves these applications well, due to
 their relative simplicity, and extremely good scalability
-characteristics.  Depending on the fault model a cluster hash table is
-implemented on top of, it is also quite plasible that key portions of
+characteristics.  Depending on the fault model on which a cluster hash table is
+implemented, it is also quite plasible that key portions of
 the transactional mechanism, such as forcing log entries to disk, will
 be replaced with other durability schemes, such as in-memory
 replication across many nodes, or multiplexing log entries across
@@ -220,7 +220,7 @@ have a reputation of being complex, with many intricate interactions,
 which prevent them from being implemented in a modular, easily
 understandable, and extensible way.  In addition to describing such an
 implementation of ARIES, a popular and well-tested
-'industrial-strength' algorithm for transactional storage, this paper
+``industrial-strength'' algorithm for transactional storage, this paper
 will outline the most important interactions that we discovered (that
 is, the ones that could not be encapsulated within our
 implementation), and give the reader a sense of how to use the
@@ -245,10 +245,10 @@ be rolled back at runtime.
 
 We first sketch the constraints placed upon operation implementations,
 and then describe the properties of our implementation of ARIES that
-make these constraints necessary. Because comprehensive discussions
-of write ahead logging protocols and ARIES are available elsewhere,
-(Section \ref{sub:Prior-Work}) we only discuss those details relevant
-to the implementation of new operations in LLADD.
+make these constraints necessary. Because comprehensive discussions of
+write ahead logging protocols and ARIES are available elsewhere, we
+only discuss those details relevant to the implementation of new
+operations in LLADD.
 
 
 \subsection{Properties of an Operation\label{sub:OperationProperties}}
@@ -267,9 +267,13 @@ When A was undone, what would become of the data that B inserted?%
 } so in order to implement an operation, we must implement some sort
 of locking, or other concurrency mechanism that protects transactions
 from each other. LLADD only provides physical consistency; we leave
-it to the application to decide what sort of transaction isolation is appropriate.
-Therefore, data dependencies between transactions are allowed, but
-we still must ensure the physical consistency of our data structures.
+it to the application to decide what sort of transaction isolation is
+appropriate.  For example, it is relatively easy to
+build a strict two-phase locking lock manager on top of LLADD, as
+needed by a DBMS, or a simpler lock-per-folder approach that would
+suffice for an IMAP server.  Thus, data dependencies among
+transactions are allowed, but we still must ensure the physical
+consistency of our data structures, such as operations on pages or locks.
 
 Also, all actions performed by a transaction that commited must be
 restored in the case of a crash, and all actions performed by aborting
@@ -277,8 +281,48 @@ transactions must be undone. In order for LLADD to arrange for this
 to happen at recovery, operations must produce log entries that contain
 all information necessary for undo and redo.
 
-Finally, each page contains some metadata needed for recovery. This
-must be updated apropriately.
+An important concept in ARIES is the ``log sequence number'' or LSN.
+An LSN is essentially a virtual timestamp that goes on every page; it
+tells you the last log entry that is reflect on the page, which
+implies that all previous log entries are also reflected. Given the
+LSN, you can tell where to start playing back the log to bring a page
+up to date.  The LSN goes on the page so that it is always written to
+disk atomically with the data of the page.
+
+ARIES (and thus LLADD) allows pages to be {\em stolen}, i.e. written
+back to disk while they still contain uncommitted data.  It is
+tempting to disallow this, but to do has serious consequences such as
+a increased need for buffer memory (to hold all dirty pages). Worse,
+as we allow multiple transactions to run concurrently on the same page
+(but not typically the same item), it may be that a given page {\em
+always} contains some uncommitted data and thus could never be written
+back to disk.  To handle stolen pages, we log UNDO records that
+we can use to undo the uncommitted changes in case we crash.  LLADD
+ensures that the UNDO record is be durable in the log before the
+page is written back to disk, and that the page LSN reflects this log entry.
+
+Similarly, we do not force pages out to disk every time a transaction
+commits, as this limits performance.  Instead, we log REDO records
+that we can use to redo the change in case the committed version never
+makes it to disk.  LLADD ensures that the REDO entry is durable in the
+log before the transaction commits.  REDO entries are physical changes
+to a single page (``page-oriented redo''), and thus must be redone in
+the exact order.
+
+One unique aspect of LLADD, which
+is not true for ARIES, is that {\em normal} operations use the REDO
+function; i.e. there is no way to modify the page except via the REDO
+operation.  This has the great property that the REDO code is known to
+work, since even the original update is a ``redo''.
+
+Eventually, the page makes it to disk, but the REDO entry is still
+useful: we can use it to roll forward a single page from an archived
+copy.  Thus one of the nice properties of LLADD, which has been
+tested, is that we can handle media failures very gracefully: lost
+disk blocks or even whole files can be recovered given an old version
+and the log.
+
+TODO...need to define operations
 
 
 \subsection{Normal Processing}
@@ -287,19 +331,23 @@ must be updated apropriately.
 \subsubsection{The buffer manager}
 
 LLADD manages memory on behalf of the application and prevents pages
-from being stolen prematurely. While LLADD uses the STEAL policy and
+from being stolen prematurely. Although LLADD uses the STEAL policy and
 may write buffer pages to disk before transaction commit, it still
-must make sure that the redo and undo log entries have been forced
+must make sure that the undo log entries have been forced
 to disk before the page is written to disk. Therefore, operations
 must inform the buffer manager when they write to a page, and update
-the log sequence number of the page. This is handled automatically
+the LSN of the page. This is handled automatically
 by many of the write methods provided to operation implementors (such
 as writeRecord()), but the low-level page manipulation calls (which
-allow byte level page manipulation) leave it to their callers to update
+allow byte-level page manipulation) leave it to their callers to update
 the page metadata appropriately.
 
 
 \subsubsection{Log entries and forward operation (the Tupdate() function)\label{sub:Tupdate}}
+
+[TODO...need to make this clearer... I think we need to say that we define a function to do redo, and then we define an update that use
+it. Recovery uses the same function the same way.]
+
 
 In order to handle crashes correctly, and in order to the undo the
 effects of aborted transactions, LLADD provides operation implementors
@@ -336,8 +384,9 @@ reacquired during recovery, the redo phase of the recovery process
 is single threaded. Since latches acquired by the wrapper function
 are held while the log entry and page are updated, the ordering of
 the log entries and page updates associated with a particular latch
-must be consistent. However, some care must be taken to ensure proper
-undo behavior.
+must be consistent. Because undo occurs during normal operation, 
+some care must be taken to ensure that undo operations obatain the 
+proper latches.
 
 
 \subsubsection{Concurrency and Aborted Transactions}
@@ -346,7 +395,7 @@ Section \ref{sub:OperationProperties} states that LLADD does not
 allow cascading aborts, implying that operation implementors must
 protect transactions from any structural changes made to data structures
 by uncomitted transactions, but LLADD does not provide any mechanisms
-designed for long term locking. However, one of LLADD's goals is to
+designed for long-term locking. However, one of LLADD's goals is to
 make it easy to implement custom data structures for use within safe,
 multi-threaded transactions. Clearly, an additional mechanism is needed.
 
@@ -365,6 +414,7 @@ does not contain the results of the current operation. Also, it must
 behave correctly even if an arbitrary number of intervening operations
 are performed on the data structure.
 
+[TODO...this next paragraph doesn't make sense; also maybe move this whole subsection to later, since it is complicated]
 The remaining log entries are redo-only, and may perform structural
 modifications to the data structure. They should not make any assumptions
 about the consistency of the current version of the database. Finally,
@@ -377,6 +427,7 @@ discussed in Section \ref{sub:Linear-Hash-Table}.
 Some of the logging constraints introduced in this section may seem
 strange at this point, but are motivated by the recovery process.
 
+[TODO...need to explain this...]
 
 \subsection{Recovery}
 
@@ -484,8 +535,10 @@ number of tools could be written to simulate various crash scenarios,
 and check the behavior of operations under these scenarios.  
 
 Note that the ARIES algorithm is extremely complex, and we have left
-out most of the details needed to implement it correctly.\footnote{The original ARIES paper was around 70 pages, and the ARIES/IM paper, which covered index implementation is roughly the same length}
-  Yet, we believe we have covered everything that a programmer needs to know in order to implement new data structures using the basic functionality that ARIES provides. This was possible due to the encapsulation
+out most of the details needed to understand how ARIES works, or to 
+implement it correctly.\footnote{The original ARIES paper was around 70 pages, and the ARIES/IM paper, which covered index implementation is roughly the same length.}  Yet, we believe we have covered everything that a programmer needs
+ to know in order to implement new data structures using the basic 
+functionality that ARIES provides. This was possible due to the encapsulation
 of the ARIES algorithm inside of LLADD, which is the feature that
 most strongly differentiates LLADD from other, similar libraries.
 We hope that this will increase the availability of transactional
@@ -783,7 +836,11 @@ simplicity, our hashtable implementations currently only support fixed-length
 keys and values, so this this test puts us at a significant advantage.
 It also provides an example of the type of workload that LLADD handles
 well, since LLADD is specifically designed to support application
-specific transactional data structures. 
+specific transactional data structures.  For comparison, we ran 
+``Record Number'' trials, named after the BerkeleyDB access method.  
+In this case, the two programs essentially stored the data in a large 
+array on disk.  This test provides a measurement of the speed of the 
+lowest level primative supported by BerkeleyDB. 
 
 %
 \begin{figure*}
@@ -797,7 +854,7 @@ LLADD's hash table is significantly faster than Berkeley DB in this
 test, but provides less functionality than the Berkeley DB hash. Finally,
 the logical logging version of LLADD's hash table is faster than the
 physical version, and handles the multi-threaded test well. The threaded
-test split its workload into 200 seperate transactions.}
+test spawned 200 threads and split its workload into 200 seperate transactions.}
 \end{figure*}
 The times included in Figure \ref{cap:INSERTS} include page file
 and log creation, insertion of the tuples as a single transaction,
@@ -805,10 +862,10 @@ and a clean program shutdown. We used the 'transapp.cs' program from
 the Berkeley DB 4.2 tutorial to run the Berkeley DB tests, and hardcoded
 it to use integers instead of strings. We used the Berkeley DB {}``DB\_HASH''
 index type for the hashtable implementation, and {}``DB\_RECNO''
-in order to run the {}``Record Number'' test.
+in order to run the {}``Record Number'' test.  
 
 Since LLADD addresses records as \{Page, Slot, Size\} triples, which
-is a lower level interface than Berkeley DB exports, we used the expandible
+is a lower level interface than Berkeley DB exports, we used the expandable
 array that supports the hashtable implementation to run the {}``LLADD
 Record Number'' test.
 
@@ -821,6 +878,8 @@ we find very encouraging. Second, even a highly tuned implementation
 of a 'simple,' general purpose data structure is not without overhead,
 and for applications where performance is important a special purpose
 structure may be appropriate.
+
+Also, the multithreaded LLADD test shows that the lib
 
 As a final note on our performance graph, we would like to address
 the fact that LLADD's hashtable curve is non-linear. LLADD currently
