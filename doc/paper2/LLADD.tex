@@ -1890,7 +1890,7 @@ benchmark using libmysqld, which bypasses RPC costs by linking MySQL
 into an application binary.  We used an InnoDB table, which seemed 
 to perform better than tables backed by Berkeley DB.  Still, MySQL 
 was significantly slower then native Berkeley DB.  If we do not link 
-MySQL the MySQL server into the application binary then the cost of local 
+the MySQL server into the application binary then the cost of local 
 interprocess communication dominates the test, causing the benchmark to 
 take too long to be reported here.
 
