@@ -1525,10 +1525,10 @@ important.
 \label{OASYS}
 
 Object serialization performance is extremely important in modern web
-application systems such as Enterprise Java Beans.  Object serialization is also a
-convenient way of adding persistant storage to an existing application
-without developing an explicit file format or dealing with low level
-I/O interfaces.
+application systems such as Enterprise Java Beans.  Object
+serialization is also a convenient way of adding persistant storage to
+an existing application without developing an explicit file format or
+dealing with low-level I/O interfaces.
 
 A simple object serialization scheme would bulk-write and bulk-read
 sets of application objects to an operating system file.  These
@@ -1545,13 +1545,15 @@ which may be accessed with low latency.  The backing data store
 maintains a seperate buffer pool which contains serialized versions of
 the objects in memory, and corresponds to the on-disk representation
 of the data.  Accesses to objects that are only present in the buffer
-pool incur medium latency, as they must be deserialized before the
-application may access them.  Finally, some objects may only reside on
-disk, and may only be accessed with high latency.
+pool incur medium latency, as they must be unmarshalled (deserialized)
+before the application may access them.  Finally, some objects may
+only reside on disk, and require a disk read.
 
-Since these applications are typically data-centric, it is important
-to make efficient use of system memory in order to reduce hardware
-costs.  A straightforward solution to this problem would be to bound
+%Since these applications are typically data-centric, it is important
+%to make efficient use of system memory in order to reduce hardware
+%costs. 
+
+A straightforward solution to this problem would be to bound
 the amount of memory the application may consume by preventing it from
 caching deserialized objects.  This scheme conserves memory, but it
 incurs the cost of an in-memory deserialization to read the object,
@@ -1564,12 +1566,11 @@ large object cache.  This scheme would incur no overhead for a read
 request.  However, it would incur the overhead of a disk-based
 serialization in order to service a write request.\footnote{In
 practice, the transactional backing store would probably fetch the
-page that contains the object from disk, causing two disk I/O's to be
-issued.}
+page that contains the object from disk, causing two disk I/O's.}
 
 \yad's architecture allows us to apply two interesting optimizations
-to such object serialization schemes.  First, since \yad supports
-custom log entries, it is trivial to have it store diffs of objcts to
+to object serialization.  First, since \yad supports
+custom log entries, it is trivial to have it store diffs of objects to
 the log instead of writing the entire object to log during an update.
 Such an optimization would be difficult to achieve with Berkeley DB,
 but could be performed by a database server if the fields of the
@@ -1577,16 +1578,17 @@ objects were broken into database table columns.  It is unclear if
 this optimization would outweigh the overheads associated with an SQL
 based interface.  Depending on the database server, it may be
 necessary to issue a SQL update query that only updates a subset of a
-tuple's fields in order to generate a diff based log entry.  Doing so
-would preclude the use of prepared statments, or would require a large
-number of prepared statements to be maintained by the DBMS.  If IPC or 
-the network is being used to comminicate with the DBMS, then it is very
-likely that a seperate prepared statement for each type of diff that the 
-application produces would be necessary for optimal performance.  
-Otherwise, the database client library would have to determine which 
-fields of a tuple changed since the last time the tuple was fetched 
-from the server, and doing this would require a large amount of state 
-to be maintained.
+tuple's fields in order to generate a diff-based log entry.  Doing so
+would preclude the use of prepared statements, or would require a large
+number of prepared statements to be maintained by the DBMS.
+%  If IPC or 
+%the network is being used to comminicate with the DBMS, then it is very
+%likely that a seperate prepared statement for each type of diff that the 
+%application produces would be necessary for optimal performance.  
+%Otherwise, the database client library would have to determine which 
+%fields of a tuple changed since the last time the tuple was fetched 
+%from the server, and doing this would require a large amount of state 
+%to be maintained.
 
 % @todo WRITE SQL OASYS BENCHMARK!!
 
@@ -1603,15 +1605,21 @@ If \yad knows that the client will not ask to read the record, then
 there is no real reason to update the version of the record in the
 page file.  In fact, if no undo or redo information needs to be
 generated, there is no need to bring the page into memory at all.
-There are at least two scenarios that allow \yad to avoid loading the page:
+There are at least two scenarios that allow \yad to avoid loading the page.
 
-First, the application may not be interested in transaction atomicity.
-In this case, by writing no-op undo information instead of real undo
-log entries, \yad could guarantee that some prefix of the log will be
-applied to the page file after recovery.  The redo information is
-already available; the object is in the application's cache.
-``Transactions'' could still be durable, as commit() could be used to
-force the log to disk.
+\eab{are you arguing that the client doesn't need to read the record in the page file, or doesn't need to read the object at all?}
+
+
+\eab{I don't get this section either...}
+
+First, the application may not be interested in transactional
+atomicity.  In this case, by writing no-op undo information instead of
+real undo log entries, \yad could guarantee that some prefix of the
+log will be applied to the page file after recovery.  The redo
+information is already available: the object is in the application's
+cache.  ``Transactions'' could still be durable, as commit() could be
+used to force the log to disk.  The idea that the current version is
+available elsewhere, typically in a cache, seems broadly useful.
 
 Second, the application could provide the undo information to \yad.
 This could be implemented in a straightforward manner by adding
@@ -1647,8 +1655,8 @@ solution that leverages \yad's interfaces instead.
 
 We can force \yad to ignore page LSN values when considering our
 special update() log entries during the REDO phase of recovery.  This
-forces \yad to re-apply the diffs in the same order the application
-generated them in.  This works as intended because we use an
+forces \yad to re-apply the diffs in the same order in which the application
+generated them.  This works as intended because we use an
 idempotent diff format that will produce the correct result even if we
 start with a copy of the object that is newer than the first diff that
 we apply.
@@ -1661,8 +1669,7 @@ the one used by flush(); it is the LSN of the object's {\em first}
 call to update() after the object was added to the cache.}  At this
 point, we can invoke a normal ARIES checkpoint with the restriction
 that the log is not truncated past the minimum LSN encountered in the
-object pool.\footnote{Because \yad does not yet implement
-checkpointing, we have not implemented this checkpointing scheme.}
+object pool.\footnote{We do not yet enfore this checkpoint limitation.}
 
 We implemented a \yad plugin for OASYS, a C++ object serialization
 library includes various object serialization backends, including one
@@ -1679,14 +1686,13 @@ system cache, we see that the optimized \yad implemenation has a
 clear advantage under most circumstances, suggesting that the overhead
 incurred by generating diffs and having seperate update() and flush()
 calls is negligible compared to the savings in log bandwidth and
-buffer pool overhead that the optimizations provide.
+buffer-pool overhead that the optimizations provide.
 
-Ignoring the checkpointing scheme and a small change needed in the
-recovery algorithm, the operations required for these two
-optimizations are roughly 150 lines of C code, including whitespace,
-comments and boilerplate function registrations.  While the reasoning
-required to ensure the correctness of this code was complex, the
-simplicity of the implementation is encouraging.
+Ignoring the checkpointing scheme, the operations required for these
+two optimizations are roughly 150 lines of C code, including
+whitespace, comments and boilerplate function registrations.  Although
+the reasoning required to ensure the correctness of this code was
+complex, the simplicity of the implementation is encouraging.
 
 @todo analyse OASYS data.
 
