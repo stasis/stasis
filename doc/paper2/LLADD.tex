@@ -51,7 +51,7 @@ to hierarchical or semi-structured data types such as XML or
 scientific data.  This work proposes a novel set of abstractions for
 transactional storage systems and generalizes an existing
 transactional storage algorithm to provide an implementation of these
-primatives.  Due to the extensibility of our architecutre, the
+primitives.  Due to the extensibility of our architecutre, the
 implementation is competitive with existing systems on conventional
 workloads and outperforms existing systems on specialized
 workloads.  Finally, we discuss characteristics of this new
@@ -175,20 +175,20 @@ to improve performance.
 
 These features are enabled by the several mechanisms:
 \begin{description}
-\item[Flexible page formats] provide low level control over 
-      transactional data representations.
+\item[Flexible page layout] provide low level control over 
+      transactional data representations (Section~\ref{page-layouts}).
 \item[Extensible log formats] provide high-level control over
-      transaction data structures.
+      transaction data structures (Section~\ref{op-def}).
 \item [High and low level control over the log] such as calls to ``log this
-      operation'' or ``write a compensation record''
+      operation'' or ``write a compensation record'' (Section~\ref{log-manager}).
 \item [In memory logical logging] provides a data store independendent
       record of application requests, allowing ``in flight'' log
-      reordering, manipulation and durability primatives to be
-      developed
-\item[Custom durability operations] such as two phase commit's
-      prepare call, and savepoints.
+      reordering, manipulation and durability primitives to be
+      developed (Section~\ref{graph-traversal}).
 \item[Extensible locking API] provides registration of custom lock managers
-      and a generic lock manager implementation.
+      and a generic lock manager implementation (Section~\ref{lock-manager}).
+\item[Custom durability operations] such as two phase commit's
+      prepare call, and savepoints (Section~\ref{OASYS}).
 \item[\eab{2PC?}]
 \end{description}
 
@@ -207,7 +207,7 @@ application.  \yad also includes a cluster hash table
 built upon two-phase commit which will not be descibed in detail 
 in this paper.  Similarly we did not have space to discuss \yad's 
 blob implementation, which demonstrates how \yad can
-add transactional primatives to data stored in the file system.
+add transactional primitives to data stored in the file system.
 
 %To validate these claims, we developed a number of applications such
 %as an efficient persistant object layer, {\em @todo locality preserving
@@ -254,21 +254,6 @@ add transactional primatives to data stored in the file system.
 %  synchronization, locking, and data structure design under relatively
 %  narrow interfaces, since transactional storage algorithms'
 %  interdependencies and requirements are notoriously complicated.}
-%
-%%Not implementing ARIES any more!
-%
-%
-%  \item {\bf With these trends in mind, we have implemented a modular
-%  version of ARIES that makes as few assumptions as possible about
-%  application data structures or workload. Where such assumptions are
-%  inevitable, we have produced narrow APIs that allow the application
-%  developer to plug in alternative implementations of the modules that
-%  comprise our ARIES implementation. Rather than hiding the underlying
-%  complexity of the library from developers, we have produced narrow,
-%  simple API's and a set of invariants that must be maintained in
-%  order to ensure transactional consistency, allowing application
-%  developers to produce high-performance extensions with only a little
-%  effort.}
 %
 %\end{enumerate}
 
@@ -326,28 +311,24 @@ set of monolithic storage engines.\eab{need to discuss other flaws! clusters? wh
 
 The Postgres storage system~\cite{postgres} provides conventional
 database functionality, but can be extended with new index and object
-types.  A brief outline of the interfaces necessary to implement data-type extensions was presented by Stonebraker et al.~\cite{newTypes}.
-Although some of the proposed methods are similar to ones presented
-here, \yad also implements a lower-level interface that can coexist
-with these methods.  Without these low-level APIs, Postgres
-suffers from many of the limitations inherent to the database systems
-mentioned above.  This is because Postgres was designed to provide 
-these extensions within the context of the relational model.  
-Therefore, these extensions focused upon improving query language 
-and indexing support.  Instead of focusing upon this, \yad is more 
-interested in supporting conventional (imperative) software development
-efforts.  Therefore, while we believe that many of the high level 
-Postgres interfaces could be built using \yad, we have not yet tried 
-to implement them.
-
-\rcs{In the above paragrap, is imperative too strong a word?}
-
+types.  A brief outline of the interfaces necessary to implement
+data-type extensions was presented by Stonebraker et
+al.~\cite{newTypes}.  Although some of the proposed methods are
+similar to ones presented here, \yad also implements a lower-level
+interface that can coexist with these methods.  Without these
+low-level APIs, Postgres suffers from many of the limitations inherent
+to the database systems mentioned above.  This is because Postgres was
+designed to provide these extensions within the context of the
+relational model.  Therefore, these extensions focused upon improving
+query language and indexing support.  Instead of focusing upon this,
+\yad is more interested in lower-level systems. Therefore, although we
+believe that many of the high-level Postgres interfaces could be built
+on top of \yad, we have not yet tried to implement them.
 % seems to provide
 %equivalents to most of the calls proposed in~\cite{newTypes} except
 %for those that deal with write ordering, (\yad automatically orders
 %writes correctly) and those that refer to relations or application
 %data types, since \yad does not have a built-in concept of a relation.
-
 However, \yad does provide an iterator interface which we hope to
 extend to provide support for relational algebra, and common
 programming paradigms.
@@ -451,16 +432,9 @@ However, in each case it is relatively easy to see how they would map
 onto \yad.
 
 
-%  \item {\bf Implementations of ARIES and other transactional storage
-%  mechanisms include many of the useful primitives described below,
-%  but prior implementations either deny application developers access
-%  to these primitives {[}??{]}, or make many high-level assumptions
-%  about data representation and workload {[}DB Toolkit from
-%  Wisconsin??-need to make sure this statement is true!{]}}
-%
-%\end{enumerate}
+\eab{DB Toolkit from Wisconsin?}
 
-%\item {\bf 3.Architecture  }
+
 
 \section{Write-ahead Logging Overview}
 
@@ -480,7 +454,7 @@ The write-ahead logging algorithm we use is based upon ARIES, but
 modified for extensibility and flexibility. Because comprehensive
 discussions of write-ahead logging protocols and ARIES are available
 elsewhere~\cite{haerder, aries}, we focus on those details that are
-most important for flexibility.
+most important for flexibility, which we discuss in Section~\ref{flexibility}.
 
 
 \subsection{Operations}
@@ -520,6 +494,51 @@ concurrency, crashes, media failures, and aborted transactions.  Also
 unlike ARIES, \yad refines the concept of the wrapper interface,
 making it possible to reschedule operations according to an
 application-level policy (Section~\ref{TransClos}).
+
+
+
+\subsection{Isolation}
+\label{Isolation}
+
+We allow transactions to be interleaved, allowing concurrent access to
+application data and exploiting opportunities for hardware
+parallelism.  Therefore, each action must assume that the
+physical data upon which it relies may contain uncommitted
+information and that this information may have been produced by a
+transaction that will be aborted by a crash or by the application.
+%(The latter is actually harder, since there is no ``fate sharing''.)
+
+% Furthermore, aborting
+%and committing transactions may be interleaved, and \yad does not
+%allow cascading aborts,%
+%\footnote{That is, by aborting, one transaction may not cause other transactions
+%to abort. To understand why operation implementors must worry about
+%this, imagine that transaction A split a node in a tree, transaction
+%B added some data to the node that A just created, and then A aborted.
+%When A was undone, what would become of the data that B inserted?%
+%} so 
+
+Therefore, in order to implement an operation we must also implement
+synchronization mechanisms that isolate the effects of transactions
+from each other.  We use the term {\em latching} to refer to
+synchronization mechanisms that protect the physical consistency of
+\yad's internal data structures and the data store.  We say {\em
+locking} when we refer to mechanisms that provide some level of
+isolation among transactions.  
+
+\yad operations that allow concurrent requests must provide a latching
+(but not locking) implementation that is guaranteed not to deadlock.
+These implementations need not ensure consistency of application data.
+Instead, they must maintain the consistency of any underlying data
+structures.  Generally, latches do not persist across calls performed
+by high-level code, as that could lead to deadlock.
+
+For locking, due to the variety of locking protocols available, and
+their interaction with application
+workloads~\cite{multipleGenericLocking}, we leave it to the
+application to decide what degree of isolation is
+appropriate. Section~\ref{lock-manager} presents the Lock Manager API.
+
 
 
 
@@ -571,227 +590,7 @@ Because pages can be recovered independently from each other, there is
 no need to stop transactions to make a snapshot for archiving: any
 fuzzy snapshot is fine.
 
-\subsection{Flexible Logging}
-\label{flex-logging}
 
-The above discussion avoided the use of some common terminology 
-that should be presented here. {\em Physical logging } 
-is the practice of logging physical (byte-level) updates
-and the physical (page-number) addresses to which they are applied.
-
-{\em Physiological logging } is what \yad recommends for its redo
-records~\cite{physiological}. The physical address (page number) is
-stored, but the byte offset and the actual delta are stored implicitly
-in the parameters of the redo or undo function. These parameters allow
-the function to update the page in a way that preserves application
-semantics.  One common use for this is {\em slotted pages}, which use
-an on-page level of indirection to allow records to be rearranged
-within the page; instead of using the page offset, redo operations use
-the index to locate the data within the page. This allows data within a single
-page to be re-arranged at runtime to produce contiguous regions of
-free space. \yad generalizes this model; for example, the parameters
-passed to the function may utilize application-specific properties in
-order to be significantly smaller than the physical change made to the
-page.
-
-{\em Logical logging} uses a higher-level key to specify the
-UNDO/REDO.  Since these higher-level keys may affect multiple pages,
-they are prohibited for REDO functions, since our REDO is specific to
-a single page.  However, logical logging does make sense for UNDO,
-since we can assume that the pages are physically consistent when we
-apply an UNDO.  We thus use logical logging to undo operations that
-span multiple pages, as shown below.
-
-%% can only be used for undo entries in \yad, and
-%% stores a logical address (the key of a hash table, for instance)
-%% instead of a physical address. As we will see later, these operations
-%% may affect multiple pages.  This allows the location of data in the
-%% page file to change, even if outstanding transactions may have to roll
-%% back changes made to that data. Clearly, for \yad to be able to apply
-%% logical log entries, the page file must be physically consistent,
-%% ruling out use of logical logging for redo operations.
-
-\yad supports all three types of logging, and allows developers to
-register new operations, which is the key to its extensibility. After
-discussing \yad's architecture, we will revisit this topic with a number of
-concrete examples.
-
-
-
-\subsection{Isolation}
-\label{Isolation}
-
-We allow transactions to be interleaved, allowing concurrent access to
-application data and exploiting opportunities for hardware
-parallelism.  Therefore, each action must assume that the
-physical data upon which it relies may contain uncommitted
-information and that this information may have been produced by a
-transaction that will be aborted by a crash or by the application.
-%(The latter is actually harder, since there is no ``fate sharing''.)
-
-% Furthermore, aborting
-%and committing transactions may be interleaved, and \yad does not
-%allow cascading aborts,%
-%\footnote{That is, by aborting, one transaction may not cause other transactions
-%to abort. To understand why operation implementors must worry about
-%this, imagine that transaction A split a node in a tree, transaction
-%B added some data to the node that A just created, and then A aborted.
-%When A was undone, what would become of the data that B inserted?%
-%} so 
-
-Therefore, in order to implement an operation we must also implement
-synchronization mechanisms that isolate the effects of transactions
-from each other.  We use the term {\em latching} to refer to
-synchronization mechanisms that protect the physical consistency of
-\yad's internal data structures and the data store.  We say {\em
-locking} when we refer to mechanisms that provide some level of
-isolation among transactions.  
-
-\yad operations that allow concurrent requests must provide a latching
-(but not locking) implementation that is guaranteed not to deadlock.
-These implementations need not ensure consistency of application data.
-Instead, they must maintain the consistency of any underlying data
-structures.  Generally, latches do not persist across calls performed
-by high-level code, as that could lead to deadlock.
-
-For locking, due to the variety of locking protocols available, and
-their interaction with application
-workloads~\cite{multipleGenericLocking}, we leave it to the
-application to decide what degree of isolation is appropriate.  \yad
-provides a default page-level lock manager that performs deadlock
-detection, although we expect many applications to make use of
-deadlock-avoidance schemes, which are already prevalent in
-multithreaded application development.  The Lock Manager is flexible
-enough to also provide index locks for hashtable implementations, and more complex locking protocols.
-
-For example, it would be relatively easy to build a strict two-phase
-locking hierarchical lock
-manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
-top of \yad.  Such a lock manager would provide isolation guarantees
-for all applications that make use of it.  However, applications that
-make use of such a lock manager must handle deadlocked transactions
-that have been aborted by the lock manager.  This is easy if all of
-the state is managed by \yad, but other state such as thread stacks
-must be handled by the application, much like exception handling.
-
-Conversely, many applications do not require such a general scheme.
-For instance, an IMAP server can employ a simple lock-per-folder
-approach and use lock-ordering techniques to avoid deadlock.  This
-avoids the complexity of dealing with transactions that abort due
-to deadlock, and also removes the runtime cost of restarting 
-transactions.
-
-\yad provides a lock manager API that allows all three variations
-(among others). In particular, it provides upcalls on commit/abort so
-that the lock manager can release locks at the right time. We will
-revisit this point in more detail when we describe some of the example
-operations.
-
-
-
-\subsection{Nested Top Actions}
-\label{nested-top-actions}
-
-%explain that with a ``big lock'' it is easy to write transactional data structure. (trivial example?)
-
-There are three levels of concurency that a transactional data
-structure can support.  If we do not implement any sort of consistency
-code, we can use physical undo and redo to update the structure.  This
-works well if the application only runs one transaction at a time and
-is single threaded.  To understand why transactions that such a data
-structure may not overlap, consider what would happen if one
-transaction, $A$, rearranged the layout of a data structure, a second
-transaction, $B$, added a value to the rearranged structure, and then
-the first transaction called abort().  While applying physical undo
-information to the altered data structure, the $A$ would undo the
-writes that it performed without considering the data values and
-structural changes introduced $B$.  For concreteness, imagine that $A$
-split a B-Tree bucket, and that $B$ added a value to the newly
-allocated bucket.  $A$'s physical undo would deallocate the new
-bucket, and remove any references to it within the B-Tree, losing
-$B$'s data.
-
-The reason this is not a problem in the single transaction case is
-that $A$'s changes atomically exposed to the other transactions in the
-system.  ($B$ can only run before $A$ begins, or after $A$ commits, so
-it can never see changes that $A$ made, but did not commit.)
-
-\rcs{I'm not going to mention cascading aborts, unless you think it makes this section more clear.}
-
-\rcs{@todo this list could be part of the broken section called ``Concurrency and Aborted Transactions''}
-
-\begin{itemize}
-\item An operation that spans pages can be made atomic by simply
-wrapping it in a nested top action and obtaining appropriate latches
-at runtime.  This approach reduces development of atomic page spanning
-operations to something very similar to conventional multithreaded
-development using mutexes for synchroniztion.  Unfortunately, this
-mode of operation writes redundant undo entry to the log, and has
-performance implications that will be discussed later.  However, for
-most circumstances, the ease of development with nested top actions
-outweighs the difficulty verifying the correctness of implementations
-that use the next method.
-
-\item It nested top actions are not used, an undo operation must
-correctly update a data structure if any prefix of its corresponding
-redo operations are applied to the structure, and if any number of
-intervening operations are applied to the structure.  In the best
-case, this simply means that the operation should fail gracefully if
-the change it should undo is not already reflected in the page file.
-However, if the page file may temporarily lose consistency, then the
-undo operation must be aware of this, and be able to handle all cases
-that could arise at recovery time.  Figure~\ref{linkedList} provides
-an example of the sort of details that can arise in this case.
-\end{itemize}
-
-
-
-but we want more concurrency, which means 2 problems: 1) finer grain locking and 2) weaker isolation since interleaved transactions seeing the same structure
-
-cascading aborts problem
-
-solution: don't undo structural changes, just commit them even if the causeing xact fails. then logical undo to fix the aborted xact.
-
-% @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
-
-%% \textcolor{red}{OLD TEXT:} Section~\ref{sub:OperationProperties} states that \yad does not allow
-%% cascading aborts, implying that operation implementors must protect
-%% transactions from any structural changes made to data structures by
-%% uncommitted transactions, but \yad does not provide any mechanisms
-%% designed for long-term locking. However, one of \yad's goals is to
-%% make it easy to implement custom data structures for use within safe,
-%% multi-threaded transactions. Clearly, an additional mechanism is
-%% needed.
-
-%% The solution is to allow portions of an operation to ``commit'' before
-%% the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
-%% support. However, we currently use the slightly simpler (and lighter-weight)
-%% mechanism described here. If the need arises, we will add support
-%% for nested top actions.}
-%% An operation's wrapper is just a normal function, and therefore may
-%% generate multiple log entries. First, it writes an undo-only entry
-%% to the log. This entry will cause the \emph{logical} inverse of the
-%% current operation to be performed at recovery or abort, must be idempotent,
-%% and must fail gracefully if applied to a version of the database that
-%% does not contain the results of the current operation. Also, it must
-%% behave correctly even if an arbitrary number of intervening operations
-%% are performed on the data structure.
-
-%% Next, the operation writes one or more redo-only log entries that may
-%% perform structural modifications to the data structure. These redo
-%% entries have the constraint that any prefix of them must leave the
-%% database in a consistent state, since only a prefix might execute
-%% before a crash.  This is not as hard as it sounds, and in fact the
-%% $B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
-%% that behaves in this way, while the linear hash table implementation
-%% discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable hash
-%% table that meets these constraints.
-
-%% %[EAB: I still think there must be a way to log all of the redoes
-%% %before any of the actions take place, thus ensuring that you can redo
-%% %the whole thing if needed. Alternatively, we could pin a page until
-%% %the set completes, in which case we know that that all of the records
-%% %are in the log before any page is stolen.]
 
 
 \subsection{Recovery}
@@ -844,7 +643,8 @@ during normal operation.
 
 
 
-\section{Extendible transaction architecture}
+\section{Flexible, Extensible Transactions}
+\label{flexibility}
 
 As long as operation implementations obey the atomicity constraints
 outlined above, and the algorithms they use correctly manipulate
@@ -855,31 +655,66 @@ application data that is stored in the system.  This suggests a
 natural partitioning of transactional storage mechanisms into two
 parts.
 
-The first piece implements the write-ahead logging component,
+The lower layer implements the write-ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
-The complexity of the write ahead logging component lies in
+The complexity of the write-ahead logging component lies in
 determining exactly when the undo and redo operations should be
 applied, when pages may be flushed to disk, log truncation, logging
 optimizations, and a large number of other data-independent extensions
-and optimizations.
+and optimizations.  This layer is the core of \yad.
 
-The second component provides the actual data structure
-implementations, policies regarding page layout (other than the
-location of the LSN field), and the implementation of any application-specific operations.
-As long as each layer provides well defined interfaces, the application, 
-operation implementation, and write ahead logging component can be 
+The upper layer, which can be authored by the application developer,
+provides the actual data structure implementations, policies regarding
+page layout (other than the location of the LSN field), and the
+implementation of any application-specific operations.  As long as
+each layer provides well defined interfaces, the application,
+operation implementation, and write-ahead logging component can be
 independently extended and improved.
 
 We have implemented a number of simple, high performance
-and general purpose data structures.  These are used by our sample
+and general-purpose data structures.  These are used by our sample
 applications, and as building blocks for new data structures.  Example
-data structures include two distinct linked list implementations, and
-an extendible array.  Surprisingly, even these simple operations have
+data structures include two distinct linked-list implementations, and
+an growable array.  Surprisingly, even these simple operations have
 important performance characteristics that are not available from
 existing systems.
 
 The remainder of this section is devoted to a description of the
-various primatives that \yad provides to application developers.
+various primitives that \yad provides to application developers.
+
+\subsection{Lock Manager}
+\label{lock-manager}
+\eab{present the API?}
+
+ \yad
+provides a default page-level lock manager that performs deadlock
+detection, although we expect many applications to make use of
+deadlock-avoidance schemes, which are already prevalent in
+multithreaded application development.  The Lock Manager is flexible
+enough to also provide index locks for hashtable implementations, and more complex locking protocols.
+
+For example, it would be relatively easy to build a strict two-phase
+locking hierarchical lock
+manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
+top of \yad.  Such a lock manager would provide isolation guarantees
+for all applications that make use of it.  However, applications that
+make use of such a lock manager must handle deadlocked transactions
+that have been aborted by the lock manager.  This is easy if all of
+the state is managed by \yad, but other state such as thread stacks
+must be handled by the application, much like exception handling.
+
+Conversely, many applications do not require such a general scheme.
+For instance, an IMAP server can employ a simple lock-per-folder
+approach and use lock-ordering techniques to avoid deadlock.  This
+avoids the complexity of dealing with transactions that abort due
+to deadlock, and also removes the runtime cost of restarting 
+transactions.
+
+\yad provides a lock manager API that allows all three variations
+(among others). In particular, it provides upcalls on commit/abort so
+that the lock manager can release locks at the right time. We will
+revisit this point in more detail when we describe some of the example
+operations.
 
 
 %% @todo where does this text go??
@@ -997,59 +832,190 @@ various primatives that \yad provides to application developers.
 %This allows the the application, the operation, and \yad itself to be
 %independently improved. 
 
-\subsection{Operation Implementation}
+
+\subsection{Flexible Logging and Page Layouts}
+\label{flex-logging}
+\label{page-layouts}
+
+The overview discussion avoided the use of some common terminology 
+that should be presented here. {\em Physical logging } 
+is the practice of logging physical (byte-level) updates
+and the physical (page-number) addresses to which they are applied.
+
+{\em Physiological logging } is what \yad recommends for its redo
+records~\cite{physiological}. The physical address (page number) is
+stored, but the byte offset and the actual delta are stored implicitly
+in the parameters of the redo or undo function. These parameters allow
+the function to update the page in a way that preserves application
+semantics.  One common use for this is {\em slotted pages}, which use
+an on-page level of indirection to allow records to be rearranged
+within the page; instead of using the page offset, redo operations use
+the index to locate the data within the page. This allows data within a single
+page to be re-arranged at runtime to produce contiguous regions of
+free space. \yad generalizes this model; for example, the parameters
+passed to the function may utilize application-specific properties in
+order to be significantly smaller than the physical change made to the
+page.
+
+This forms the basis of \yad's flexible page layouts.  We current
+support three layouts: a raw page (RawPage), which is just an array of
+bytes, a record-oriented page with fixed-size records (FixedPage), and
+a slotted-page that support variable-sized records (SlottedPage).
+Data structures can pick the layout that is most convenient.
+
+{\em Logical logging} uses a higher-level key to specify the
+UNDO/REDO.  Since these higher-level keys may affect multiple pages,
+they are prohibited for REDO functions, since our REDO is specific to
+a single page.  However, logical logging does make sense for UNDO,
+since we can assume that the pages are physically consistent when we
+apply an UNDO.  We thus use logical logging to undo operations that
+span multiple pages, as shown in the next section.
+
+%% can only be used for undo entries in \yad, and
+%% stores a logical address (the key of a hash table, for instance)
+%% instead of a physical address. As we will see later, these operations
+%% may affect multiple pages.  This allows the location of data in the
+%% page file to change, even if outstanding transactions may have to roll
+%% back changes made to that data. Clearly, for \yad to be able to apply
+%% logical log entries, the page file must be physically consistent,
+%% ruling out use of logical logging for redo operations.
+
+\yad supports all three types of logging, and allows developers to
+register new operations, which we cover below.
+
+
+\subsection{Nested Top Actions}
+\label{nested-top-actions}
+
+The operations presented so far work fine for a single page, since
+each update is atomic.  For updates that span multiple pages there are two basic options: full isolation or nested top actions.
+
+By full isolation, we mean that no other transactions see the
+in-progress updates, which can be trivially acheived with a big lock
+around the whole transaction.  Given isolation, \yad needs nothing else to
+make multi-page updates transactional: although many pages might be
+modified they will commit or abort as a group and recovered
+accordingly.
+
+However, this level of isolation reduces concurrency within a data
+structure.  ARIES introduced the notion of nested top actions to
+address this problem.  For example, consider what would happen if one
+transaction, $A$, rearranged the layout of a data structure, a second
+transaction, $B$, added a value to the rearranged structure, and then
+the first transaction aborted.  (Note that the structure is not
+isolated.)  While applying physical undo information to the altered
+data structure, the $A$ would undo the writes that it performed
+without considering the data values and structural changes introduced
+$B$, which is likely to cause corruption.  At this point, $B$ would
+have to be aborted as well ({\em cascading aborts}).
+
+With nested top actions, ARIES defines the structural changes as their
+own mini-transaction. This means that the structural change
+``commits'' even if the containing transaction ($A$) aborts, which
+ensures that $B$'s update remains valid.
+
+\yad supports nested atomic actions as the preferred way to build
+high-performance data structures. In particular, an operation that
+spans pages can be made atomic by simply wrapping it in a nested top
+action and obtaining appropriate latches at runtime.  This approach
+reduces development of atomic page spanning operations to something
+very similar to conventional multithreaded development that use mutexes
+for synchronization.
+
+In particular, we have found a simple recipe for converting a
+non-concurrent data structure into a concurrent one, which involves
+three steps:
+\begin{enumerate}
+\item Wrap a mutex around each operation, this can be done with the lock
+  manager, or just using pthread mutexes.  This provides fine-grain isolation.
+\item Define a logical UNDO for each operation (rather than just using
+  a lower-level physical undo).  For example, this is easy for a
+  hashtable; e.g. the undo for an {\em insert} is {\em remove}.
+\item For mutating operations (not read-only), add a ``begin nested
+  top action'' right after the mutex acquisition, and a ``commit
+  nested top action'' where we release the mutex.
+\end{enumerate}
+This recipe ensures that any operations that might span multiple pages
+commit any structural changes and thus avoids cascading aborts.  If
+this transaction aborts, the logical undo will {\em compensate} for
+its effects, but leave its structural changes in tact (or augment
+them). Note that by releasing the mutex before we commit, we are
+violating strict two-phase locking in exchange for better performance.
+We have found the recipe to be easy to follow and very effective, and
+we use in everywhere we have structural changes, such as growing a
+hash table or array.
+
+
+%% \textcolor{red}{OLD TEXT:} Section~\ref{sub:OperationProperties} states that \yad does not allow
+%% cascading aborts, implying that operation implementors must protect
+%% transactions from any structural changes made to data structures by
+%% uncommitted transactions, but \yad does not provide any mechanisms
+%% designed for long-term locking. However, one of \yad's goals is to
+%% make it easy to implement custom data structures for use within safe,
+%% multi-threaded transactions. Clearly, an additional mechanism is
+%% needed.
+
+%% The solution is to allow portions of an operation to ``commit'' before
+%% the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
+%% support. However, we currently use the slightly simpler (and lighter-weight)
+%% mechanism described here. If the need arises, we will add support
+%% for nested top actions.}
+%% An operation's wrapper is just a normal function, and therefore may
+%% generate multiple log entries. First, it writes an undo-only entry
+%% to the log. This entry will cause the \emph{logical} inverse of the
+%% current operation to be performed at recovery or abort, must be idempotent,
+%% and must fail gracefully if applied to a version of the database that
+%% does not contain the results of the current operation. Also, it must
+%% behave correctly even if an arbitrary number of intervening operations
+%% are performed on the data structure.
+
+%% Next, the operation writes one or more redo-only log entries that may
+%% perform structural modifications to the data structure. These redo
+%% entries have the constraint that any prefix of them must leave the
+%% database in a consistent state, since only a prefix might execute
+%% before a crash.  This is not as hard as it sounds, and in fact the
+%% $B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
+%% that behaves in this way, while the linear hash table implementation
+%% discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable hash
+%% table that meets these constraints.
+
+%% %[EAB: I still think there must be a way to log all of the redoes
+%% %before any of the actions take place, thus ensuring that you can redo
+%% %the whole thing if needed. Alternatively, we could pin a page until
+%% %the set completes, in which case we know that that all of the records
+%% %are in the log before any page is stolen.]
+
+
+
+\subsection{Adding Log Operations}
+\label{op-def}
 
 %  \item {\bf  ARIES provides {}``transactional pages'' }
 
-\yad is designed to allow application developers to easily add new
-data representations and data structures by defining new operations
-that can be used to provide transactions.  There are a number of
-constraints that these extensions must obey:
+Given this background, we now cover adding new operations. \yad is
+designed to allow application developers to easily add new data
+representations and data structures by defining new operations.
 
-\begin{itemize}
+There are a number of invariants that these operations must obey:
+\begin{enumerate}
 \item Pages should only be updated inside of a redo or undo function.
 \item An update to a page atomically updates the LSN by pinning the page.
 \item If the data read by the wrapper function must match the state of
 the page that the redo function sees, then the wrapper should latch
 the relevant data.
-\item Redo operations address {\em pages} by physical offset,
-while Undo operations address {\em data} with a permanent address (such as an index key)
-\item An operation must never leave the data store in an unrecoverable state.  Usually 
-this means ensuring operation atomicity at some level of granularity, and arranging for re
-covery to perform physical and logical undo as appropriate. (Section~\ref{nested-top-actions})
-\end{itemize}
+\item Redo operations use page numbers and possibly record numbers
+while Undo operations use these or logical names/keys
+\item Acquire latches as needed (typically per page or record)
+\item Use nested top actions or ``big locks'' for multi-page updates
+\end{enumerate}
 
-\rcs{Implementation of Increment here?}
+\subsubsection{Example: Increment/Decrement}
 
-We believe that it is reasonable to expect application developers to
-correctly implement extensions that make use of Nested Top Actions.  
-
-Because undo and redo operations during normal operation and recovery
-are similar, most bugs will be found with conventional testing
-strategies.  There is some hope of verifying atomicity~\cite{StaticAnalysisReference} if
-nested top actions are used.  Furthermore, we plan to develop a
-number of tools that will automatically verify or test new operation
-implementations' behavior with respect to these constraints, and
-behavior during recovery.  For example, whether or not nested top actions are
-used, randomized testing or more advanced sampling techniques~\cite{OSDIFSModelChecker}
-could be used to check operation behavior under various recovery
-conditions and thread schedules.
-
-However, as we will see in Section~\ref{OASYS}, some applications may
-have valid reasons to ``break'' recovery semantics.  It is unclear how
-useful such testing tools will be in this case.
-
-Note that the ARIES algorithm is extremely complex, and we have left
-out most of the details needed to understand how ARIES works, or to 
-implement it correctly.
-Yet, we believe we have covered everything that a programmer needs
- to know in order to implement new transactional data structures. 
-This was possible due to the careful encapsulation
-of portions of the ARIES algorithm, which is the feature that
-most strongly differentiates \yad from other, similar libraries.
-
-
-\subsection{Example: Increment}
+A common optimization for TPC benchmarks is to provide hand-built
+operations that support adding/subtracting from an account.  Such
+operations improve concurrency since they can be reordered and can be
+easily made into nested top actions (since the the logical undo is
+trivial). Here we show how increment/decrement map onto \yad operations.
 
 First, we define the operation-specific part of the log record:
 \begin{small}
@@ -1077,7 +1043,23 @@ int operateIncrement(int xid, Page* p, lsn_t lsn,
   return 0;                      // no error
 }
 \end{verbatim}
-\noindent {\normalsize Here is the wrapper that uses the operation, which is indentified via {\small\tt OP\_INCREMENT}:}
+\noindent{\normalsize Next, we register the operation:}
+\begin{verbatim}
+// first set up the normal case
+ops[OP_INCREMENT].implementation= &operateIncrement;
+ops[OP_INCREMENT].argumentSize  = sizeof(inc_dec_t);
+
+// set the REDO to be the same as normal operation
+//   Sometime is useful to have them differ.
+ops[OP_INCREMENT].redoOperation = OP_INCREMENT;
+
+// set UNDO to be the inverse
+ops[OP_INCREMENT].undoOperation = OP_DECREMENT;
+\end{verbatim}
+\noindent {\normalsize Finally, here is the wrapper that uses the
+operation, which is indentified via {\small\tt OP\_INCREMENT};
+applications use the wrapper rather than the operation, as it tends to
+be cleaner.}
 \begin{verbatim}
 int Tincrement(int xid, recordid rid, int amount) {
    // rec will be serialized to the log.
@@ -1094,20 +1076,42 @@ int Tincrement(int xid, recordid rid, int amount) {
    return new_value;
 }
 \end{verbatim}
-\noindent{\normalsize Given the wrapper and the operation, we register the operation:}
-\begin{verbatim}
-// first set up the normal case
-ops[OP_INCREMENT].implementation= &operateIncrement;
-ops[OP_INCREMENT].argumentSize  = sizeof(inc_dec_t);
-
-// set the REDO to be the same as normal operation
-//   Sometime is useful to have them differ.
-ops[OP_INCREMENT].redoOperation = OP_INCREMENT;
-
-// set UNDO to be the inverse
-ops[OP_INCREMENT].undoOperation = OP_DECREMENT;
-\end{verbatim}
 \end{small}
+
+
+\subsubsection{Correctness}
+
+With some examination it is possible to show that this example meets
+the invariants.  In addition, because the redo code is used for normal
+operation, most bugs are easy to find with conventional testing
+strategies.  As future work, there is some hope of verifying these
+invariants statically; for example, it is easy to verify that pages
+are only modified by operations, and it is also possible to verify
+latching for our two page layouts that support records.
+
+%% Furthermore, we plan to develop a number of tools that will
+%% automatically verify or test new operation implementations' behavior
+%% with respect to these constraints, and behavior during recovery.  For
+%% example, whether or not nested top actions are used, randomized
+%% testing or more advanced sampling techniques~\cite{OSDIFSModelChecker}
+%% could be used to check operation behavior under various recovery
+%% conditions and thread schedules.
+
+However, as we will see in Section~\ref{OASYS}, even these invariants
+can be stretched by sophisticated developers.
+
+\subsection{Summary}
+
+\eab{update}
+Note that the ARIES algorithm is extremely complex, and we have left
+out most of the details needed to understand how ARIES works, or to
+implement it correctly.  Yet, we believe we have covered everything
+that a programmer needs to know in order to implement new
+transactional data structures.  This was possible due to the careful
+encapsulation of portions of the ARIES algorithm, which is the feature
+that most strongly differentiates \yad from other, similar libraries.
+
+
 
 %We hope that this will increase the availability of transactional
 %data primitives to application developers.
@@ -1240,6 +1244,13 @@ ops[OP_INCREMENT].undoOperation = OP_DECREMENT;
 %too much implemented part of DB; need more 'flexible' substrate.
 
 %\end{enumerate}
+
+
+
+
+
+
+
 
 \section{Experimental setup}
 
@@ -1592,7 +1603,7 @@ mentioned above, and used Berkeley DB for comparison.
 %developers that settle for ``slow'' straightforward implementations of 
 %specialized data structures should achieve better performance than would
 %be possible by using existing systems that only provide general purpose 
-%primatives.
+%primitives.
 
 The first test (Figure~\ref{fig:BULK_LOAD}) measures the throughput of
 a single long-running
@@ -1906,11 +1917,11 @@ This section uses:
 \item{Reusability of operation implementations (borrow's the hashtable's bucket list (the Array List) implementation to store objcets}
 \item{Clean seperation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
 \item{Addressibility of data by page offset provides the information that is necessary to produce locality in workloads}
-\item{The idea of the log as an application primative, which can be generalized to other applications such as log entry merging, more advanced reordering primatives, network replication schemes, etc.} 
+\item{The idea of the log as an application primitive, which can be generalized to other applications such as log entry merging, more advanced reordering primitives, network replication schemes, etc.} 
 \end{enumerate}
 %\begin{enumerate}
 %
-%  \item {\bf Comparison of transactional primatives (best case for each operator)}
+%  \item {\bf Comparison of transactional primitives (best case for each operator)}
 %
 %  \item {\bf Serialization Benchmarks (Abstract log) }
 %
@@ -1941,7 +1952,7 @@ This section uses:
 \section{Future work}
 
 We have described a new approach toward developing applications using
-generic transactional storage primatives.  This approach raises a
+generic transactional storage primitives.  This approach raises a
 number of important questions which fall outside the scope of its
 initial design and implementation.
 
@@ -1970,10 +1981,10 @@ of the issues that we will face in distributed domains.  By adding
 networking support to our logical log interface,
 we should be able to multiplex and replicate log entries to sets of
 nodes easily.  Single node optimizations such as the demand based log
-reordering primative should be directly applicable to multi-node
+reordering primitive should be directly applicable to multi-node
 systems.~\footnote{For example, our (local, and non-redundant) log
 multiplexer provides semantics similar to the
-Map-Reduce~\cite{mapReduce} distributed programming primative, but
+Map-Reduce~\cite{mapReduce} distributed programming primitive, but
 exploits hard disk and buffer pool locality instead of the parallelism
 inherent in large networks of computer systems.}  Also, we believe
 that logical, host independent logs may be a good fit for applications
@@ -1990,15 +2001,15 @@ this functionality.  We are unaware of any transactional system that
 provides such a broad range of data structure implementations.  
 
 Also, we have noticed that the intergration between transactional
-storage primatives and in memory data structures is often fairly
+storage primitives and in memory data structures is often fairly
 limited.  (For example, JDBC does not reuse Java's iterator
 interface.)  We have been experimenting with the production of a
 uniform interface to iterators, maps, and other structures which would
 allow code to be simultaneously written for native in-memory storage
 and for our transactional layer.  We believe the fundamental reason
 for the differing API's of past systems is the heavy weight nature of
-the primatives provided by transactional systems, and the highly
-specialized, light weight interfaces provided by typical in memory
+the primitives provided by transactional systems, and the highly
+specialized, light-weight interfaces provided by typical in memory
 structures.  Because \yad makes it easy to implement light weight
 transactional structures, it may be easy to integrate it further with
 programming language constructs.
