@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.5  2004/10/19 04:45:42  sears
+    Speedups, most notably in the logging subsystem.
+
     Revision 1.4  2004/10/18 18:24:51  sears
     Preliminary version of logical logging linear hash.  (No latching yet, and there are some bugs re-opening a closed hash.)
 
@@ -74,8 +77,10 @@ static int   rcsid_fct() { return( rcsid ? 0 : rcsid_fct() ); }
 /*****************************************************************************/
 /* #defines                                                                  */
 /*****************************************************************************/
-/*#define PBL_HASHTABLE_SIZE      1019*/
-#define PBL_HASHTABLE_SIZE      2017
+/*#define PBL_HASHTABLE_SIZE      1019 */
+/*#define PBL_HASHTABLE_SIZE      2017*/
+#define PBL_HASHTABLE_SIZE      2048
+/* #define PBL_HASHTABLE_SIZE 5003  */
 /*#define PBL_HASHTABLE_SIZE   100003 */
 
 /*****************************************************************************/
@@ -140,9 +145,15 @@ typedef struct pbl_hashtable_s pbl_hashtable_t;
     return( ret % PBL_HASHTABLE_SIZE );
 }*/
 #include <lladd/crc32.h>
-static unsigned int hash( const unsigned char * key, size_t keylen ) {
-  return ((unsigned int)(crc32((char*)key, keylen, -1))) % PBL_HASHTABLE_SIZE;
-}
+/*static unsigned int hash( const unsigned char * key, size_t keylen ) {
+  if(keylen == sizeof(int)) {return *key &(PBL_HASHTABLE_SIZE-1);}//% PBL_HASHTABLE_SIZE;}
+  return ((unsigned int)(crc32((char*)key, keylen, -1))) & (PBL_HASHTABLE_SIZE-1); //% PBL_HASHTABLE_SIZE;
+}*/
+
+#define hash(x, y) (((keylen)==sizeof(int) ?  \
+		    (*(unsigned int*)key) & (PBL_HASHTABLE_SIZE-1) :\
+		    ((unsigned int)(crc32((char*)(key), (keylen), -1))) & (PBL_HASHTABLE_SIZE-1)))
+
 
 /**
  * create a new hash table
@@ -272,7 +283,7 @@ size_t                        keylen  /** length of that key               */
 
     for( item = bucket->head; item; item = item->bucketnext )
     {
-        if(( item->keylen == keylen ) && !memcmp( item->key, key, keylen ))
+      if(( item->keylen == keylen ) && !memcmp( item->key, key, keylen ))
         {
             ht->current = item;
             ht->currentdeleted = 0;

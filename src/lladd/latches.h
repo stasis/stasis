@@ -91,4 +91,29 @@ void __profile_deletelock (rwl *lock);
 
 #endif  
 
+#ifdef NO_LATCHES
+
+
+
+/* #define pthread_mutex_init(x, y) */
+/* #define pthread_mutex_destroy(x) */
+#define pthread_mutex_lock(x)  1
+#define pthread_mutex_unlock(x) 1
+#define pthread_mutex_trylock(x) 1
+#define pthread_cond_wait(x, y)  1
+#define pthread_cond_timedwait(x, y, z)  1
+
+/* #define initlock() */
+#define readlock(x, y) 1
+#define writelock(x, y) 1
+#define readunlock(x) 1
+#define writeunlock(x) 1
+#define unlock(x)  1
+#define downgradelock(x) 1
+/* #define deletelock(x) */
+
+
+
+#endif
+
 #endif /* __LATCHES_H */

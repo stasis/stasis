@@ -7,31 +7,40 @@
 
 int main(int argc, char** argv) {
 
-  assert(argc == 2);
+  assert(argc == 3);
 
-  int count = atoi(argv[1]);
+  int xact_count = atoi(argv[1]);
+  int count = atoi(argv[2]);
+  int k;
 
   unlink("storefile.txt");
   unlink("logfile.txt");
   unlink("blob0_file.txt");
   unlink("blob1_file.txt");
-
+  
   Tinit();
-  
-  int xid = Tbegin();
+   int xid = Tbegin();
+   
+   recordid hash = ThashAlloc(xid, sizeof(int), sizeof(int));
 
-  recordid hash = ThashAlloc(xid, sizeof(int), sizeof(int));
+   Tcommit(xid);
 
-  int i;
+    int i;
   
-  for(i = 0; i < count ; i++) {
+  for(k = 0; k < xact_count; k++) {
     
-    TlogicalHashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
+    xid = Tbegin();
     
+    for(i = 0; i < count ; i++) {
+      
+      TlogicalHashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
+      
+    }
+    
+    Tcommit(xid);
+
   }
-  
-  Tcommit(xid);
 
-  Tdeinit();
+  /*  Tdeinit(); */
 
 }

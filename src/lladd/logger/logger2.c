@@ -75,6 +75,7 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 }
 
 lsn_t LogTransCommit(TransactionLog * l) {
+  syncLog();
   return LogTransCommon(l, XCOMMIT);
 }
 

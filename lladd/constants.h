@@ -76,9 +76,9 @@ terms specified in this license.
 #define PAGE_SIZE 4096
 
 /* #define MAX_BUFFER_SIZE 100003 */
-/*#define MAX_BUFFER_SIZE 10007*/
-#define MAX_BUFFER_SIZE 5003
-/*#define MAX_BUFFER_SIZE 2003 */
+/*#define MAX_BUFFER_SIZE 10007 */
+/*#define MAX_BUFFER_SIZE 5003*/
+#define MAX_BUFFER_SIZE 2003 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 /*#define BUFFER_ASOOCIATIVE 2 */

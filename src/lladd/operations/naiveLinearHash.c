@@ -280,8 +280,8 @@ int deleteFromBucket(int xid, recordid hash, int bucket_number, recordid bucket_
 
 recordid ThashAlloc(int xid, int keySize, int valSize) {
   /* Want 16 buckets, doubling on overflow. */
-  recordid rid = TarrayListAlloc(xid, 16, 2, sizeof(recordid)); 
-  TarrayListExtend(xid, rid, 32+2);
+  recordid rid = TarrayListAlloc(xid, 4096, 2, sizeof(recordid)); 
+  TarrayListExtend(xid, rid, 4096+2);
 
   recordid headerRidA;
   recordid  * headerRidB = malloc (sizeof(recordid));
@@ -290,7 +290,7 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   headerValSize = valSize;
   
   headerNextSplit = INT_MAX;
-  headerHashBits  = 4;
+  headerHashBits  = 12;
 
   rid.slot =0;
   Tset(xid, rid, &headerRidA);

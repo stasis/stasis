@@ -188,15 +188,24 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
   return found;
   }*/
 
+int extendCount = 0;
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
-  TarrayListInstantExtend(xid, hash, 1);
-  if(next_split >= twoToThe(i-1)+2) {
-    i++;
-    next_split = 2;
+  extendCount ++;
+  if(extendCount >= 70) {
+    TarrayListInstantExtend(xid, hash, 100);
+    int j;
+    for(j = 0; j < 100; j++) {
+      if(next_split >= twoToThe(i-1)+2) {
+	i++;
+	next_split = 2;
+      }
+      instant_rehash(xid, hash, next_split, i, keySize, valSize);
+      next_split++;
+    }
+    instant_update_hash_header(xid, hash, i, next_split);
+    extendCount = 0;
   }
-  instant_rehash(xid, hash, next_split, i, keySize, valSize);
-  next_split++;
-  instant_update_hash_header(xid, hash, i, next_split);
+
 }
 
 void instant_update_hash_header(int xid, recordid hash, int i, int next_split) {

@@ -61,6 +61,8 @@ terms specified in this license.
 
 
 static pblHashTable_t *activePages; /* page lookup */
+/*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
+
 
 static pthread_mutex_t loadPagePtr_mutex;
 
@@ -74,15 +76,15 @@ int bufInit() {
 
 	pthread_mutex_init(&loadPagePtr_mutex, NULL);
 
-	activePages = pblHtCreate();
+	activePages = pblHtCreate(); 
 
 	dummy_page = pageMalloc();
 	pageRealloc(dummy_page, -1);
 	Page *first;
 	first = pageMalloc();
 	pageRealloc(first, 0);
-	pblHtInsert(activePages, &first->id, sizeof(int), first);
-  
+	pblHtInsert(activePages, &first->id, sizeof(int), first); 
+
 	openBlobStore();
 
 	pageCacheInit(first);
@@ -98,8 +100,8 @@ void bufDeinit() {
 
 	Page *p;
 	DEBUG("pageCacheDeinit()");
-	
-	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) {
+
+	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) { 
 
 	  pblHtRemove( activePages, 0, 0 );
 	  DEBUG("+");
@@ -109,8 +111,8 @@ void bufDeinit() {
 	    abort();
 	    / *      exit(ret); * /
 	    }*/
-	  
 	  pageWrite(p);
+
 	}
 	
 	pthread_mutex_destroy(&loadPagePtr_mutex);
@@ -271,7 +273,7 @@ Page * getPage(int pageid, int locktype) {
 
   }
 
-  assert(ret->id == pageid);
+  /*  assert(ret->id == pageid); */
     
   return ret;
   

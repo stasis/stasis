@@ -124,8 +124,10 @@ pthread_mutex_t log_write_mutex;
 pthread_mutex_t truncateLog_mutex;
 
 
-
+static int sought = 1;
 int openLogWriter() {
+#define BUFSIZE 1024*16
+  char * buffer = malloc(BUFSIZE);
   log = fopen(LOG_FILE, "a+");
 
   if (log==NULL) {
@@ -133,6 +135,9 @@ int openLogWriter() {
     /*there was an error opening this file */
     return FILE_WRITE_OPEN_ERROR;
   }
+  
+  setbuffer(log, buffer, BUFSIZE);
+
 
   /* Initialize locks. */
 
@@ -179,7 +184,7 @@ int openLogWriter() {
     count = fread(&global_offset, sizeof(lsn_t), 1, log);
     assert(count == 1);
   }
-
+  sought =1;
   return 0;
 }
 
@@ -203,7 +208,7 @@ int openLogWriter() {
     
 */
 
-int flushLog();
+static int flushLog();
 
 int writeLogEntry(LogEntry * e) {
 
@@ -246,6 +251,7 @@ int writeLogEntry(LogEntry * e) {
 
 #ifdef DEBUGGING
   e->LSN = myFseek(log, 0, SEEK_END) + global_offset;
+  sought = 1;
   if(nextAvailableLSN != e->LSN) {
     assert(nextAvailableLSN <= e->LSN);
     DEBUG("Detected log truncation:  nextAvailableLSN = %ld, but log length is %ld.\n", (long)nextAvailableLSN, e->LSN);
@@ -260,8 +266,6 @@ int writeLogEntry(LogEntry * e) {
   nextAvailableLSN += (size + sizeof(long));
   int oldBufferedSize = bufferedSize;
   bufferedSize     += (size + sizeof(long));
-  fseek(log, writtenLSN_val /*nextAvailableLSN*/ - global_offset, SEEK_SET); 
-      
 
   logBuffer = realloc(logBuffer, size + sizeof(long));
   if(! logBuffer) {
@@ -287,6 +291,12 @@ int writeLogEntry(LogEntry * e) {
     such heavy use of global variables...) */
 static int flushLog() {
   if (!logBuffer) { return 0;}
+
+  if(sought) {
+    fseek(log, writtenLSN_val /*nextAvailableLSN*/ - global_offset, SEEK_SET); 
+    sought = 0;
+  }  
+
   int nmemb = fwrite(logBuffer, bufferedSize, 1, log);
   writtenLSN_val += bufferedSize;
   bufferedSize = 0;
@@ -302,9 +312,12 @@ static int flushLog() {
 
 void syncLog() {
   lsn_t newFlushedLSN;
-
-  newFlushedLSN = myFseek(log, 0, SEEK_END);
-
+  if(sought) {
+    newFlushedLSN = myFseek(log, 0, SEEK_END);
+    sought = 1;
+  } else {
+    newFlushedLSN = ftell(log);
+  }
   /* Wait to set the static variable until after the flush returns. */
   
   fflush(log);
@@ -425,6 +438,7 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 
   flockfile(log); 
   fseek(log, LSN - global_offset, SEEK_SET);
+  sought = 1;
   ret = readLogEntry();
   funlockfile(log);
 

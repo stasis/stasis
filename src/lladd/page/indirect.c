@@ -194,7 +194,6 @@ unsigned int indirectPageRecordCount(recordid rid) {
     
   } else {
     printf("Unknown page type in indirectPageRecordCount()\n");
-    fflush(NULL);
     abort();
   }
   releasePage(p);

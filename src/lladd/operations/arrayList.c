@@ -152,7 +152,7 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
 	  could handle uninitialized blocks correctly, then we
 	  wouldn't have to iterate over the datapages in
 	  TarrayListExtend() */
-      Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
+      //      Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
     }
     
     tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
@@ -205,15 +205,15 @@ int TarrayListInstantExtend(int xid, recordid rid, int slots) {
     int newFirstPage = TpageAllocMany(xid, blockSize);
     DEBUG("block %d\n", i);
     /* Iterate over the storage blocks that are pointed to by our current indirection block. */
-    for(int j = 0; j < blockSize; j++) {
+    /* for(int j = 0; j < blockSize; j++) {
       DEBUG("page %d (%d)\n", j, j + newFirstPage);
       tmp2.page = j + newFirstPage;
-      /** @todo If we were a little smarter about this, and fixed.c
+      / ** @todo If we were a little smarter about this, and fixed.c
 	  coulds handle uninitialized blocks correctly, then we
 	  wouldn't have to iterate over the datapages in
-	  TarrayListExtend() */
-      Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
-    }
+	  TarrayListExtend()  * /
+      // Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
+    } */
     
     tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
     /** @todo what does this do to recovery?? */
