@@ -54,7 +54,7 @@ terms specified in this license.
     @test
 */
 START_TEST (networksetup_check) {
-  readNetworkConfig("../../libdfa/networksetup.sample", COORDINATOR);
+  assert(readNetworkConfig("../../libdfa/networksetup.sample", COORDINATOR));
 }
 END_TEST
 /** 

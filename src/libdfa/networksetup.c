@@ -40,10 +40,16 @@ int validate_host_port(cfg_t *cfg, cfg_opt_t *opt) {
   return 0;
 }
 
+cfg_opt_t group_opts[] = {
+  CFG_INT_LIST("members", "{1,2,3}", CFGF_NONE),
+  CFG_END()
+};
+
 cfg_opt_t opts[] = {
   CFG_STR("coordinator", "127.0.0.1:10000", CFGF_NONE),
   CFG_STR_LIST("subordinates", 
     "{127.0.0.1:10001,127.0.0.1:10002,127.0.0.1:10003}", CFGF_NONE),
+  CFG_SEC("group", group_opts, CFGF_TITLE | CFGF_MULTI),
   CFG_END()
 };
 NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
@@ -70,7 +76,32 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
   } else {
     printf("I am subordinate # %d\n", hostnumber);
   }
+  NetworkSetup * ret = calloc(1, sizeof(NetworkSetup));
+  
+  ret->localport = hostnumber == COORDINATOR 
+		      ? parse_port(cfg_getstr(cfg, "coordinator"))
+		      : parse_port(cfg_getnstr(cfg, "subordinates", hostnumber));
+  ret->localhost = hostnumber == COORDINATOR
+		      ? parse_addr(cfg_getstr(cfg, "coordinator"))
+		      : parse_addr(cfg_getnstr(cfg, "subordinates", hostnumber));
+  ret->socket    = -1; /// @todo where should the socket field be initialized?
+  ret->broadcast_lists_count = cfg_size(cfg, "group");
+  printf("broadcast list count = %d\n", ret->broadcast_lists_count);
+  ret->broadcast_list_host_count = malloc(sizeof(int *) * ret->broadcast_lists_count);
+  ret->broadcast_lists = malloc(sizeof(int**) * ret->broadcast_lists_count);
+  for(i = 0; i < ret->broadcast_lists_count; i++) {
+    cfg_t * group_cfg = cfg_getnsec(cfg, "group", i);
+    
+    int j;
+    ret->broadcast_list_host_count[i] = cfg_size(group_cfg, "members");
+    ret->broadcast_lists[i] = malloc(sizeof (int *) * ret->broadcast_list_host_count[i]);
+    printf("Group %d size %d\n", atoi(cfg_title(group_cfg)), ret->broadcast_list_host_count[i]);
+    for(j = 0; j < ret->broadcast_list_host_count[i]; j++) {
+       (*ret->broadcast_lists)[i][j] = cfg_getnint(group_cfg, "members", j);
+       printf("\t->%d\n", (*ret->broadcast_lists)[i][j]);
+    }
+  }
   
   cfg_free(cfg);
-  return NULL;
+  return ret;
 }
