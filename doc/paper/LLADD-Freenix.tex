@@ -712,7 +712,7 @@ LLADD.
 Linear hash tables are hash tables that are able to extend their bucket
 list incrementally at runtime. They work as follows. Imagine that
 we want to double the size of a hash table of size $2^{n}$, and that
-the hash table has been constructed with some hash function $h_{n}(x)=h(x)\, mod\,2^{n}$
+the hash table has been constructed with some hash function $h_{n}(x)=h(x)\, mod\,2^{n}$.
 Choose $h_{n+1}(x)=h(x)\, mod\,2^{n+1}$ as the hash function for
 the new table. Conceptually we are simply prepending a random bit
 to the old value of the hash function, so all lower order bits remain
@@ -725,12 +725,12 @@ contents of each bucket, $m$, will be split betwen bucket $m$ and
 bucket $m+2^{n}$. Therefore, if we keep track of the last bucket
 that was split, we can split a few buckets at a time, resizing the
 hash table without introducing long pauses while we reorganize the
-hash table.~\cite{lht} We can handle overflow using standard techniques.
+hash table~\cite{lht}. We can handle overflow using standard techniques;
 LLADD's linear hash table uses linked lists of overflow buckets.
 
 For this scheme to work, we must be able to address a portion of the
 page file as though it were an expandable array. We have implemented
-this functionality as a separate module, but will not discuss it here.
+this functionality as a separate module, but will not discuss it here, although it does define its own operations using the operation API.
 
 For the purposes of comparison, we provide two linear hash implementations.
 The first is straightforward, and is layered on top of LLADD's standard
@@ -740,9 +740,11 @@ version which employs logical undo, and uses an identical on-disk
 layout. As we discussed earlier, logical undo provides more opportunities
 for concurrency, while decreasing the size of log entries. In fact,
 the physical-undo implementation of the linear hash table cannot support
-concurrent transactions, while threads utilizing the physical-undo 
+concurrent transactions, while threads utilizing the logical-undo 
 implementation never hold locks on more than two buckets.%
-\footnote{However, only one thread may expand the hashtable at once.  In order to amortize the overhead of initiating an expansion, and to allow concurrent insertions, the hash table is expanded in increments of a few thousand buckets.}%
+\footnote{However, only one thread may expand the hashtable at once.  In order to amortize the overhead of initiating an expansion, and to allow concurrent insertions, the hash table is expanded in increments of a few thousand buckets.}
+We see some performance improvement due to logical logging in Section~\ref{eval}.
+
 \begin{figure}
 \begin{center}
 \includegraphics[%
@@ -773,11 +775,12 @@ a linked list may span pages.
 The last case, where buckets are split as the bucket list is expanded,
 is a bit more complicated. We must maintain consistency between two
 linked lists, and a page at the begining of the hash table that contains
-the last bucket that we successfully split. Here, we misuse the undo
-entry to ensure proper crash recovery. Our bucket split algorithm
+the last bucket that we successfully split. Here, we the undo
+entry to ensure proper crash recovery, not by undoing the split, but by actually redoing it; this is a perfectly valid ``undo'' strategy for some operations.
+Our bucket split algorithm
 is idempotent, so it may be applied an arbitrary number of times to
-a given bucket with no ill-effects. Also note that (for our purposes),
-there is never a good reason to undo a bucket split, so we can safely
+a given bucket with no ill-effects. Also note that in this case
+there is not a good reason to undo a bucket split, so we can safely
 apply the split whether or not the current transaction commits.
 
 First, we write an ``undo'' record that checks the hash table's metadata and
@@ -799,13 +802,13 @@ We allow pointer aliasing at this step so that a given key can be
 present for a short period of time in both buckets. If we crash before
 the undo entry is written, no harm is done. If we crash after the
 entire update makes it to log, the redo stage will set the hash's
-metadata appropriately, and the 'undo' record becomes a no-op. If
+metadata appropriately, and the undo record becomes a no-op. If
 we crash in the middle of the bucket split, we know that the current
-transaction did not commit, and that recovery will execute the 'undo'
+transaction did not commit, and that recovery will execute the undo
 record. It will see that the bucket split is still pending and finish
 splitting the bucket appropriately. Since the bucket split is idempotent,
 and we've arranged for it to behave correctly regardless of the point
-at which it was interrupted, the hastable is correctly restored. 
+at which it was interrupted, the hash table is correctly restored. 
 
 Note that there is a point during the undo phase where the bucket
 is in an inconsistent physical state, although normally the redo phase
@@ -854,14 +857,13 @@ on top of LLADD.%
 of its recovery code, it took an afternoon to add a prepare operation
 to LLADD, allowing it to support applications that require two-phase commit.  
 A preliminary implementation of a cluster hash table that employs two-phase
-commit is included in LLADD's CVS repository, but is not ready for
-real-world deployment.
+commit is included in LLADD's CVS repository.
 
 \subsection{Other Applications}
 
 Previously, we mentioned a few programs that we think would benefit
 from LLADD.  Here we sketch the process of implementing such
-applictions.  LRVM implements a transactional version of malloc().  It
+applictions.  LRVM implements a transactional version of malloc() \cite{lrvm}.  It
 employs the operating system's virtual memory system to generate page
 faults if the application accesses a portion of memory that have not
 been swapped in.  These page faults are intercepted and processed by a
@@ -900,8 +902,10 @@ implement using LLADD.
 These last two examples highlight some of the potential advantages of
 extending LLADD to manipulate the file system, although it is possible
 that LLADD's page file would provide improved performance over the
-file system, at the expense of some complexity, and the transparency
+file system, at the expense of the transparency
 of file-system based storage mechanisms.
+
+[cite j2ee in next paragraph]
 
 Another area of interest is in transactional serialization mechanisms
 for programming languages.  Existing solutions are often complex, or
@@ -982,7 +986,7 @@ hash table implementation that is tuned for fixed-length data. Instead,
 the conclusions we draw from this test are that, first, LLADD's primitive
 operations are on par, perforance wise, with Berkeley DB's, which
 we find very encouraging. Second, even a highly tuned implementation
-of a ``simple,'' general purpose data structure is not without overhead,
+of a ``simple'' general-purpose data structure is not without overhead,
 and for applications where performance is important a special purpose
 structure may be appropriate.
 
@@ -1010,7 +1014,7 @@ uses a fixed-size in-memory hashtable implementation in many areas,
 and it is possible that we exceeded the fixed-size of this hashtable
 on the larger test sets. Also, LLADD's buffer manager is currently
 fixed size. Regardless of the cause of this non-linearity, we do not
-believe that it is fundamental to our implementation.
+believe that it is fundamental to our design.
 
 The multithreaded test run in the first figure shows that the library
 is capable of handling a large number of threads. The performance
@@ -1021,13 +1025,13 @@ taken for various numbers of threads to perform a total of 500,000
 is essentially flat, showing only a negligable slowdown up to 250
 threads.  (Our test system prevented us from spawning more than 250
 simultaneous threads, and we suspect that the ``true'' limit of
-LLADD's scalability is must higher than 250 threads.  This test was
-performed on a uni-processor machine, so we did not expect to see a
+LLADD's scalability is much higher than 250 threads.  This test was
+performed on a uniprocessor machine, so we did not expect to see a
 significant speedup when we moved from a single thread to multiple
 threads. 
 
-Unfortuantely, when ran this test on a multi-processor machine, we saw
-a further degradation in performance instead of the expected speed up.
+Unfortunately, when ran this test on a multi-processor machine, we saw
+a degradation in performance instead of the expected speed up.
 The problem seems to be the additional overhead incurred by
 multi-threaded applications running on SMP machines under Linux 2.6,
 as the single thread test spent a small amount of time in the Linux
@@ -1035,7 +1039,7 @@ kernel, while even the two thread version of the test spent a
 significant time in kernel code.  We suspect that the large number of
 briefly-held latches that LLADD acquires caused this problem.  We plan
 to investigate this problem further, adopting LLADD to a more advanced
-threading package~\cite{capriccio}, or providing a 'SMP Mode' compile time option that
+threading package with user-level latches~\cite{capriccio}, or providing an ``SMP Mode''  compile-time option that
 decreases the number of latches that LLADD acquires at the expense of
 opportunities for concurrency.
 
@@ -1099,9 +1103,9 @@ storage.  By summarizing and documenting the interactions between
 these customizations and the storage system, we make it easy to
 implement such customizations.  
 
-Current applications generally must choose between high-level, general
-purpose libraries which impose severe performance penalties, and
-ad-hoc ``from-scratch'' atomicity and durability mechanisms.  By
+Current applications generally must choose between high-level, general-purpose libraries
+that impose severe performance penalties, and
+ad-hoc ``from scratch'' atomicity and durability mechanisms.  By
 bridging this gap, we hope to make it easier to implement a class of
 applications and algorithms whose implementations are generally
 complex, or fail to provide reliable storage to their users.
