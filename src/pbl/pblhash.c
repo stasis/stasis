@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.7  2004/10/20 06:54:39  sears
+    parameter tweak..
+
     Revision 1.6  2004/10/20 06:48:27  sears
     Set some constants to values appropriate for my desktop.
 
@@ -82,9 +85,9 @@ static int   rcsid_fct() { return( rcsid ? 0 : rcsid_fct() ); }
 /*****************************************************************************/
 /*#define PBL_HASHTABLE_SIZE      1019 */
 /*#define PBL_HASHTABLE_SIZE      2017*/
-/*#define PBL_HASHTABLE_SIZE      2048*/
+#define PBL_HASHTABLE_SIZE      2048
 /* #define PBL_HASHTABLE_SIZE 5003  */
-#define PBL_HASHTABLE_SIZE 16384
+/*#define PBL_HASHTABLE_SIZE 16384*/
 /*#define PBL_HASHTABLE_SIZE 8192*/
 /*#define PBL_HASHTABLE_SIZE   100003 */
 
