@@ -545,19 +545,19 @@ synchronization mechanisms that protect the physical consistency of
 \yad's internal data structures and the data store.  We say {\em
 locking} when we refer to mechanisms that provide some level of
 isolation among transactions.  
+For locking, due to the variety of locking protocols available and degrees of isolation available, we leave it to the application via the Lock Manager API (Section~\ref{lock-manager}).
+
+%workloads~\cite{multipleGenericLocking}, we leave it to the
+%application to decide what degree of isolation is
+%appropriate. Section~\ref{lock-manager} presents the lock manager.
 
 \yad operations that allow concurrent requests must provide a latching
-(but not locking) implementation that is guaranteed not to deadlock.
+implementation that is guaranteed not to deadlock.
 These implementations need not ensure consistency of application data.
 Instead, they must maintain the consistency of any underlying data
 structures.  Generally, latches do not persist across calls performed
 by high-level code, as that could lead to deadlock.
 
-For locking, due to the variety of locking protocols available, and
-their interaction with application
-workloads~\cite{multipleGenericLocking}, we leave it to the
-application to decide what degree of isolation is
-appropriate. Section~\ref{lock-manager} presents the lock manager.
 
 
 
@@ -1353,19 +1353,20 @@ misuse of the feature.  We believe that this problem would only
 improve Berkeley DB's performance in our benchmarks, so we disabled
 the lock manager for all tests.  Without this optimization, Berkeley
 DB's performance for Figure~\ref{fig:TPS} strictly decreases with increased concurrency due to contention and deadlock recovery.
-
 We increased Berkeley DB's buffer cache and log buffer sizes to match
-\yad's default sizes.  Running with \yad's (larger) default values
-roughly doubled Berkeley DB's performance on the bulk loading tests.
+\yad's default sizes.
+%  Running with \yad's (larger) default values
+%roughly doubled Berkeley DB's performance on the bulk loading tests.
 
 Finally, we would like to point out that we expended a considerable
-effort tuning Berkeley DB, and that our efforts significantly
-improved Berkeley DB's performance on these tests.  Although further
-tuning by Berkeley DB experts might improve Berkeley DB's
-numbers, we think that we have produced a reasonably fair comparison
-between the two systems.  The source code and scripts we used to
-generate this data is publicly available, and we have been able to
-reproduce the trends reported here on multiple systems.
+effort tuning Berkeley DB, and that our efforts significantly improved
+Berkeley DB's performance on these tests.  Although further tuning by
+Berkeley DB experts might improve Berkeley DB's numbers, we think that
+we have produced a reasonably fair comparison, and have reproduced the
+overall results on multiple machines and file systems.
+%.  The source code and scripts we used to
+%generate this data is publicly available, and we have been able to
+%reproduce the trends reported here on multiple systems.
 
 
 \section{Linear Hash Table\label{sub:Linear-Hash-Table}}
@@ -2430,15 +2431,15 @@ benefit from the power of transactions.
 
 \bibitem[7]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
 
-\bibitem[8]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, pages 428--431, September 1975. Reprinted in Readings in Database Systems, 3rd edition.
+\bibitem[8]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, September 1975. Reprinted in Readings in Database Systems, 3rd ed.
 
-\bibitem[9]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) p 287-317 (1983)
+\bibitem[9]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) (1983) % p 287-317
 
 \bibitem[10]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991)
 
 \bibitem[11]{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
 
-\bibitem[12]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) p. 212-223
+\bibitem[12]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) % p. 212-223
 
 \bibitem[13]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
 
