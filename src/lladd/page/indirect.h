@@ -44,6 +44,7 @@ BEGIN_C_DECLS
     physical location of the record.
 */
 recordid dereferenceRID(recordid rid);
+#define dereferenceRIDUnlocked(x) dereferenceRID((x))
 void indirectInitialize(Page * p, int height);
 recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);
 unsigned int indirectPageRecordCount(recordid rid);

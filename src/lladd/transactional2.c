@@ -162,10 +162,32 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
 }
 
+void TreadUnlocked(int xid, recordid rid, void * dat) {
+  Page * p = loadPage(rid.page);
+  int page_type = *page_type_ptr(p);
+  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
+
+  } else if(page_type == INDIRECT_PAGE) {
+    releasePage(p);
+    rid = dereferenceRIDUnlocked(rid);
+    p = loadPage(rid.page);
+
+  } else if(page_type == ARRAY_LIST_PAGE) {
+    rid = dereferenceArrayListRidUnlocked(p, rid.slot);
+    releasePage(p);
+    p = loadPage(rid.page);
+
+  } else {
+    abort();
+  }
+  readRecordUnlocked(xid, p, rid, dat);
+  releasePage(p);
+}
+
 void Tread(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
   int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE ) {
+  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);

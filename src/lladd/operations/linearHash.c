@@ -13,8 +13,8 @@
 
 #define BUCKETS_OFFSET (2)
 
-#define headerKeySize (headerRidA.page)
-#define headerValSize (headerRidA.slot)
+#define headerKeySize (headerRidA->page)
+#define headerValSize (headerRidA->slot)
 
 #define headerHashBits (headerRidB->page)
 #define headerNextSplit (headerRidB->slot)
@@ -36,15 +36,18 @@ extern pblHashTable_t * openHashes ;
 /*pblHashTable_t * openHashes = NULL; */
 
 static int operateUndoInsert(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-
+  
   int keySize = rid.size;
+  int valSize = rid.slot;
+  rid.slot = 0;
   rid.size = sizeof(recordid);
 
   if(!pblHtLookup(openHashes, &rid.page, sizeof(int))) {
-    ThashOpen(xid, rid);
+    abort();
+    /*    ThashOpen(xid, rid); */
   }
 
-  ThashInstantDelete(xid, rid, dat, keySize);
+  ThashInstantDelete(xid, rid, dat, keySize, valSize);
   return 0;
 }
 
@@ -62,8 +65,8 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
 
 
   rid.slot = 0;
-  /*  Tread(xid, dereferenceArrayListRid(p, rid.slot), &headerRidA); */
-  /*  Tread(xid, rid, &headerRidA); */
+  /*  TreadUnlocked(xid, dereferenceArrayListRid(p, rid.slot), &headerRidA); */
+  /*  TreadUnlocked(xid, rid, &headerRidA); */
 
   assert(keySize == sizeof(int));
   assert(valSize == sizeof(recordid));
@@ -122,11 +125,12 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
   
   assert(headerRidB);
 
+  hashRid.slot = valSize;
   hashRid.size = keySize;
   Tupdate(xid, hashRid, key, OPERATION_LINEAR_INSERT);
   
   /* Perform redo-only insert. */
-  hashRid.size = sizeof(recordid);
+  hashRid.size = sizeof(hashEntry) + keySize + valSize;
   ThashInstantInsert(xid, hashRid, key, keySize, val, valSize);
   instant_expand(xid, hashRid, headerNextSplit, headerHashBits, keySize, valSize); 
 
@@ -144,7 +148,7 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
     Tupdate(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
     free(arg);
     hashRid.size = sizeof(recordid);
-    ThashInstantDelete(xid, hashRid, key, keySize);
+    ThashInstantDelete(xid, hashRid, key, keySize, valSize);
     return 1;
   } else {
     return 0;
@@ -155,8 +159,10 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
 
 void instant_rehash(int xid, recordid hash, int next_split, int i, int keySize, int valSize);
 void instant_update_hash_header(int xid, recordid hash, int i, int next_split);
-int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, recordid bucket_rid, const void * key, int keySize, recordid * deletedEntry);
-void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, recordid bucket_rid, hashEntry * e, int keySize, int valSize, recordid deletedEntry, int skipDelete);
+int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents, 
+			     const void * key, int keySize, int valSize, recordid * deletedEntry);
+void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
+		      hashEntry * e, int keySize, int valSize, int skipDelete);
 int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize);
 
 
@@ -167,7 +173,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
   recordid nextEntry;
 
   bucket.slot = bucket_number;
-  Tread(xid, bucket, &nextEntry);
+  TreadUnlocked(xid, bucket, &nextEntry);
 
   if(nextEntry.size) {
     assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
@@ -176,7 +182,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
   int found = 0;
 
   while(nextEntry.size > 0) {
-    Tread(xid, nextEntry, e);
+    TreadUnlocked(xid, nextEntry, e);
     if(!memcmp(key, e+1, keySize)) {
       memcpy(val, ((byte*)(e+1))+keySize, valSize);
       found = 1;
@@ -188,7 +194,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
   return found;
   }*/
 
-int extendCount = 0;
+/*int extendCount = 0;
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
   extendCount ++;
   if(extendCount >= 70) {
@@ -206,18 +212,43 @@ void instant_expand (int xid, recordid hash, int next_split, int i, int keySize,
     extendCount = 0;
   }
 
+  }*/
+void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
+  /* Total hack; need to do this better, by storing stuff in the hash table headers.*/
+  static int count = 4096 * .25;
+  count --;
+#define AMORTIZE 1000
+#define FF_AM    750
+  if(count <= 0 && !(count * -1) % FF_AM) {
+    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+    int j;
+    TarrayListInstantExtend(xid, hash, AMORTIZE);
+    for(j = 0; j < AMORTIZE; j++) {
+
+      if(next_split >= twoToThe(i-1)+2) {
+	i++;
+	next_split = 2;
+      } 
+      instant_rehash(xid, hash, next_split, i, keySize, valSize); 
+      next_split++;
+      headerNextSplit = next_split;
+      headerHashBits = i; 
+    }
+    instant_update_hash_header(xid, hash, i, next_split);  
+  }
 }
+
 
 void instant_update_hash_header(int xid, recordid hash, int i, int next_split) {
   recordid  * headerRidB = pblHtLookup(openHashes, &hash.page, sizeof(int));
 
   headerHashBits = i;
   headerNextSplit = next_split;
-  
+  hash.slot = 1;
   TinstantSet(xid, hash, headerRidB);
 }
 
-void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
+//void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
 
   /* Picture of what's going on:
      
@@ -272,8 +303,8 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 
   /** @todo Actually implement recovery for linearHash. */
   
-  int firstA = 1;  /* Is 'A' the recordid of a bucket? */
-  int firstD = 1;  /* What about 'D'? */
+/*  int firstA = 1;  // Is 'A' the recordid of a bucket? 
+  int firstD = 1;  // What about 'D'? 
 
   assert(hashRid.size == sizeof(recordid));
 
@@ -281,12 +312,12 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
   recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = 0;
   
-  recordid ba_contents; Tread(xid, ba, &ba_contents);
+  recordid ba_contents; TreadUnlocked(xid, ba, &ba_contents);
   recordid bb_contents = NULLRID; 
-  TinstantSet(xid, bb, &bb_contents);/*Tread(xid, bb, &bb_contents);*/
+  TinstantSet(xid, bb, &bb_contents);//TreadUnlocked(xid, bb, &bb_contents);
 
-  recordid A = ba; /*ba_contents; */
-  recordid D = bb; /*bb_contents; */
+  recordid A = ba; //ba_contents; 
+  recordid D = bb; //bb_contents; 
   recordid B = ba_contents;
   recordid C; 
   
@@ -297,7 +328,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 
   while(B.size) {
     assert(B.size == sizeof(hashEntry) + keySize + valSize);
-    Tread(xid, B, B_contents);
+    TreadUnlocked(xid, B, B_contents);
     C = B_contents->next;
 
     int old_hash = hash(B_contents+1, keySize, i-1, ULONG_MAX) + 2;
@@ -313,15 +344,15 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
       firstA = 0;
     } else {
       if(firstD) {
-	/* D is a bucket entry */ 
+	// D is a bucket entry 
 	assert(B.size == sizeof(hashEntry) + keySize + valSize);
 	assert(D.size == sizeof(recordid));
 	TinstantSet(xid, D, &B);
       } else {
-	/* D is the tail of our list. */
+	// D is the tail of our list. 
 	assert(D.size == sizeof(hashEntry) + keySize + valSize);
 	assert(B.size == 0 || B.size == sizeof(hashEntry) + keySize + valSize);
-	Tread(xid, D, D_contents);
+	TreadUnlocked(xid, D, D_contents);
 	D_contents->next = B;
 	TinstantSet(xid, D, D_contents);
       }
@@ -331,23 +362,191 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 	assert(A.size == sizeof(recordid));
 	TinstantSet(xid, A, &C);
       } else {
-	/* A is somewhere in the first list. */
+	// A is somewhere in the first list. 
 	assert(A.size == sizeof(hashEntry) + keySize + valSize);
 	assert(C.size == 0 || C.size == sizeof(hashEntry) + keySize + valSize);
-	Tread(xid, A, A_contents);
+	TreadUnlocked(xid, A, A_contents);
 	A_contents->next = C;
 	TinstantSet(xid, A, A_contents);
       }
 
-      /* B _can't_ be a bucket.*/
+      // B _can't_ be a bucket.
 
 
       assert(B.size == sizeof(hashEntry) + keySize + valSize);
-      Tread(xid, B, B_contents);
+      TreadUnlocked(xid, B, B_contents);
       B_contents->next = NULLRID;
       TinstantSet(xid, B, B_contents);
 
-      /* Update Loop State */
+      // Update Loop State 
+      D = B;
+      B = C;
+      C.size = -1;
+      firstD = 0;
+    }
+  }
+  free(D_contents);
+  free(A_contents);
+  free(B_contents);
+
+} */ 
+
+void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
+  int firstA = 1;  // Is 'A' the recordid of a bucket? 
+  int firstD = 1;  // What about 'D'? 
+
+  /*  assert(hashRid.size == sizeof(recordid)); */
+  assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
+  recordid ba = hashRid; ba.slot = next_split;
+  recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
+  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = -1;
+  
+  //  recordid ba_contents; TreadUnlocked(xid, ba, &ba_contents);
+  //  recordid bb_contents = NULLRID; 
+  /*  Tset(xid, bb, &bb_contents); */ //TreadUnlocked(xid, bb, &bb_contents);
+
+  hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+
+  TreadUnlocked(xid, ba, A_contents);
+  TreadUnlocked(xid, bb, D_contents);
+  recordid A = ba; //ba_contents; 
+  recordid D = bb; //bb_contents; 
+  recordid B = A_contents->next;
+  recordid C; 
+  
+  if(!A_contents->next.size) { 
+    /* Bucket A is empty, so we're done. */
+    free(D_contents);
+    free(A_contents);
+    free(B_contents);
+    /*    printf("Expand was a noop.\n");
+	  fflush(NULL); */
+    return; 
+  }
+
+  int old_hash;
+  int new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
+
+  while(new_hash != next_split) {
+    // Need a record in A that belongs in the first bucket... 
+    
+    recordid oldANext = A_contents->next;
+
+    A_contents->next = NULLRID;
+
+    if(firstD) {
+      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+      TinstantSet(xid, D, A_contents);
+      firstD = 0;
+    } else {
+      /* D at end of list => can overwrite next. */
+      D_contents->next = Talloc(xid, sizeof(hashEntry) + keySize + valSize); /* @todo
+										unfortunate
+										to
+										dealloc
+										A's
+										successor,
+										then
+										alloc.. */
+      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+      TinstantSet(xid, D_contents->next, A_contents);
+      //      assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
+      TinstantSet(xid, D, D_contents);
+      D = A;
+    }
+    hashEntry * swap = D_contents;
+    D_contents = A_contents;
+    A_contents = swap;
+
+    /* A_contents is now garbage. */
+
+    assert(A.size == sizeof(hashEntry) + keySize + valSize);
+    if(oldANext.size == -1) {
+      memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
+      //      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+      TinstantSet(xid, A, A_contents);
+      free(D_contents);
+      free(A_contents);
+      free(B_contents);
+      /*      printf("Loop 1 returning.\n");
+	      fflush(NULL); */
+      return;
+    } 
+    assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
+    TreadUnlocked(xid, oldANext, A_contents);
+    //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+    TinstantSet(xid, A, A_contents);
+    Tdealloc(xid, oldANext);
+    
+    new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
+  }
+  /*  printf("Got past loop 1\n");
+      fflush(NULL); */
+
+  B = A_contents->next;
+
+  while(B.size != -1) {
+    assert(B.size == sizeof(hashEntry) + keySize + valSize);
+    TreadUnlocked(xid, B, B_contents);
+    C = B_contents->next;
+
+    old_hash = hash(B_contents+1, keySize, i-1, ULONG_MAX) + 2;
+    new_hash = hash(B_contents+1, keySize, i,   ULONG_MAX) + 2;
+
+    assert(next_split == old_hash); 
+    assert(new_hash   == old_hash || new_hash == old_hash + twoToThe(i-1));
+ 
+    if(new_hash == old_hash) {
+      A = B;
+      B = C;
+      C.size = -1;
+      firstA = 0;
+    } else {
+      /*      if(firstD) {
+	// D is a bucket entry 
+	assert(B.size == sizeof(hashEntry) + keySize + valSize);
+	assert(D.size == sizeof(recordid));
+	Tset(xid, D, &B);
+	} else { */
+	// D is the tail of our list. 
+	assert(D.size == sizeof(hashEntry) + keySize + valSize);
+	assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
+	TreadUnlocked(xid, D, D_contents); 
+	D_contents->next = B;
+	assert(B.size != 0);
+	//	assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
+	TinstantSet(xid, D, D_contents);
+	/*      } */
+
+	/*      if(firstA) {
+	assert(C.size == 0 || C.size == sizeof(hashEntry) + keySize + valSize);
+	assert(A.size == sizeof(recordid));
+	Tset(xid, A, &C);
+	} else { */
+	// A is somewhere in the first list. 
+	assert(A.size == sizeof(hashEntry) + keySize + valSize);
+	assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
+	TreadUnlocked(xid, A, A_contents);
+	A_contents->next = C;
+	assert(C.size != 0);
+	
+
+	//	assert(memcmp(&A, &A_contents->next, sizeof(recordid)));
+
+	TinstantSet(xid, A, A_contents);
+	/*   } */
+
+      // B _can't_ be a bucket.
+
+
+      assert(B.size == sizeof(hashEntry) + keySize + valSize);
+      TreadUnlocked(xid, B, B_contents);
+      B_contents->next = NULLRID;
+      TinstantSet(xid, B, B_contents);
+
+      // Update Loop State 
       D = B;
       B = C;
       C.size = -1;
@@ -359,20 +558,122 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
   free(B_contents);
 
 }
-/** @todo fine grained locking for insertIntoBucket and the other operations in this file. */
-void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, recordid bucket_contents, hashEntry * e, int keySize, int valSize, recordid newEntry, int skipDelete) {
-  assert(newEntry.size == (sizeof(hashEntry) + keySize + valSize));
+
+void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
+		      hashEntry * e, int keySize, int valSize, int skipDelete) {
   recordid deleteMe; 
   if(!skipDelete) {
-    if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, &deleteMe)) {
-      /*      Tdealloc(xid, deleteMe); */
-      hashRid.slot = bucket_number;
-      Tread(xid, hashRid, &bucket_contents);
-      hashRid.slot = 0;
+    if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, valSize, &deleteMe)) {
+      if(deleteMe.size) {
+	Tdealloc(xid, deleteMe);
+	hashRid.slot = bucket_number;
+	assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
+	TreadUnlocked(xid, hashRid, bucket_contents);
+	hashRid.slot = 0;
+      }
     }
   }
 
   /*@todo consider recovery for insertIntoBucket. */
+
+  hashRid.slot = bucket_number;
+  assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
+  TreadUnlocked(xid, hashRid, bucket_contents);
+
+  assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
+  if(!bucket_contents->next.size) {  // Size = 0 -> nothing in bucket.  Size != 0 -> bucket occupied.
+    e->next.page = 0;
+    e->next.slot = 0;
+    e->next.size = -1;
+    TinstantSet(xid, hashRid, e);
+  } else {
+    recordid newEntry =  Talloc(xid, sizeof(hashEntry) + keySize + valSize);
+    e->next = bucket_contents->next;
+    bucket_contents->next = newEntry;
+    assert(newEntry.size == sizeof(hashEntry) + keySize + valSize);
+    TinstantSet(xid, newEntry, e);
+    assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
+    TinstantSet(xid, hashRid,  bucket_contents);
+  }
+
+}
+
+int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
+		     const void * key, int keySize, int valSize, recordid * deletedEntry) {
+  if(bucket_contents->next.size == 0) { return 0; }
+  
+  recordid this = hash;
+  this.slot = bucket_number;
+
+  int found = 0;
+  if(!memcmp(bucket_contents+1, key, keySize)) {
+    if(deletedEntry)
+      deletedEntry->size = 0;  /* size = 0 -> don't delete (this is a bucket!) */
+    if(bucket_contents->next.size == -1) {
+      memset(bucket_contents, 0, sizeof(hashEntry) + keySize + valSize);
+      TinstantSet(xid, this, bucket_contents);
+    } else {
+      assert(bucket_contents->next.size ==  sizeof(hashEntry) + keySize + valSize);
+      recordid oldNext = bucket_contents->next;
+      TreadUnlocked(xid, bucket_contents->next, bucket_contents);
+      TinstantSet(xid, this, bucket_contents);
+      *deletedEntry = oldNext; /* @todo delete from bucket really should do its own deallocation.. */
+    }
+    return 1;
+  }
+
+  if(bucket_contents->next.size == -1) { return 0; }
+
+  hashEntry * A = malloc(sizeof(hashEntry) + keySize + valSize);
+  hashEntry * B = malloc(sizeof(hashEntry) + keySize + valSize);
+
+  recordid Aaddr, Baddr;
+
+  memcpy(B, bucket_contents, sizeof(hashEntry) + keySize + valSize);
+  Baddr = this;
+  while(B->next.size != -1) {
+    hashEntry * tmp = A;
+    A = B;
+    Aaddr = Baddr;
+    B = tmp;
+    assert(A->next.size == sizeof(hashEntry) + keySize + valSize);
+    Baddr = A->next;
+    TreadUnlocked(xid, Baddr, B);
+
+    if(!memcmp(B+1, key, keySize)) {
+      A->next = B->next;
+      assert(Aaddr.size == sizeof(hashEntry) + keySize + valSize);
+      TinstantSet(xid, Aaddr, A);
+      if(deletedEntry) { 
+	*deletedEntry = Baddr;
+      }
+      found = 1; 
+      break;
+    }
+
+  }
+
+  free(A);
+  free(B);
+
+  return found;
+}
+
+
+/** @todo fine grained locking for insertIntoBucket and the other operations in this file. */
+/*void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, recordid bucket_contents, hashEntry * e, int keySize, int valSize, recordid newEntry, int skipDelete) {
+  assert(newEntry.size == (sizeof(hashEntry) + keySize + valSize));
+  recordid deleteMe; 
+  if(!skipDelete) {
+    if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, &deleteMe)) {
+    //Tdealloc(xid, deleteMe); 
+      hashRid.slot = bucket_number;
+      TreadUnlocked(xid, hashRid, &bucket_contents);
+      hashRid.slot = 0;
+    }
+  }
+
+  //@todo consider recovery for insertIntoBucket. 
 
   recordid bucket   = hashRid;
   bucket.slot = bucket_number;
@@ -400,14 +701,14 @@ int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, recordid
   int found = 0;
   recordid lastEntry;
   while(nextEntry.size > 0) {
-    Tread(xid, nextEntry, e);
+    TreadUnlocked(xid, nextEntry, e);
     if(!memcmp(key, e+1, keySize)) {
       if(first) {
 	assert(e->next.size < 40);
 	TinstantSet(xid, bucket, &(e->next));
       } else {
 	recordid next = e->next;
-	Tread(xid, lastEntry, e);
+	TreadUnlocked(xid, lastEntry, e);
 	assert(next.size < 40);
 	e->next = next;
 	TinstantSet(xid, lastEntry, e);
@@ -423,7 +724,7 @@ int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, recordid
   free(e);
   return found;
 }
-
+*/
 /* Same as normal implementation, so commented it out. 
    / *
 recordid ThashAlloc(int xid, int keySize, int valSize) {
@@ -475,13 +776,13 @@ void ThashInstantInsert(int xid, recordid hashRid,
   memcpy(((byte*)(e+1)) + keySize, val, valSize);
 
   /** @todo instantAlloc / instantDealloc */
-  recordid newEntry =  Talloc(xid, sizeof(hashEntry) + keySize + valSize);
-  recordid bucket_contents;
+  /*   recordid newEntry =  Talloc(xid, sizeof(hashEntry) + keySize + valSize); */
+  hashEntry *  bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
 
   hashRid.slot = bucket;
-  Tread(xid, hashRid, &bucket_contents);
+  TreadUnlocked(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
-  instant_insertIntoBucket(xid, hashRid, bucket, bucket_contents, e, keySize, valSize, newEntry, 0);
+  instant_insertIntoBucket(xid, hashRid, bucket, bucket_contents, e, keySize, valSize, 0);
 
   free(e);
 
@@ -489,7 +790,7 @@ void ThashInstantInsert(int xid, recordid hashRid,
 /** @todo hash hable probably should track the number of items in it,
     so that expand can be selectively called. */
 void ThashInstantDelete(int xid, recordid hashRid, 
-	    const void * key, int keySize) {
+	    const void * key, int keySize, int valSize) {
   recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   recordid tmp = hashRid;
   tmp.slot = 1;
@@ -497,10 +798,10 @@ void ThashInstantDelete(int xid, recordid hashRid,
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid deleteMe;
   hashRid.slot = bucket_number;
-  recordid bucket_contents;
-  Tread(xid, hashRid, &bucket_contents);
+  hashEntry * bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
+  TreadUnlocked(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
-  if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, key, keySize, &deleteMe)) {
+  if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, key, keySize, valSize, &deleteMe)) {
     /*    Tdealloc(xid, deleteMe);  */
   }
 }
@@ -508,7 +809,7 @@ void ThashInstantDelete(int xid, recordid hashRid,
 /*int ThashOpen(int xid, recordid hashRid) {
   recordid * headerRidB = malloc(sizeof(recordid));
   hashRid.slot = 1;
-  Tread(xid, hashRid, headerRidB);
+  TreadUnlocked(xid, hashRid, headerRidB);
   
   pblHtInsert(openHashes, &hashRid.page, sizeof(int), headerRidB);
 

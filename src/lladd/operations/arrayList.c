@@ -228,7 +228,7 @@ int TarrayListInstantExtend(int xid, recordid rid, int slots) {
   tmp.slot = MAX_OFFSET_POSITION;
 
   int newMaxOffset = tlp.maxOffset+slots;
-  /** @todo CORRECTNESS BUG: From recovery's point of view, this is totally wrong! The
+  /** @todo CORRECTNESS BUG: From recovery's point of view, arrayList is totally wrong! The
       only reason we mess with p is beacuse TinstantSet doesn't handle
       ARRAY_LIST_PAGES the way we need it to, so this won't be hard to
       fix... */
@@ -277,7 +277,7 @@ Operation getUnInitPage() {
 
 /*----------------------------------------------------------------------------*/
 
-
+/** @todo locking for arrayLists */
 recordid dereferenceArrayListRid(Page * p, int offset) {
 
   TarrayListParameters tlp = pageToTLP(p);

@@ -48,13 +48,31 @@ terms specified in this license.
 #include <lladd/operations/instantSet.h>
 #include <lladd/operations/set.h>
 #include "../page.h"
+#include "../page/fixed.h"
+
+static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+  //        writeRecord(xid, p, lsn, rid, dat); 
+  writeRecordUnlocked(xid, p, lsn, rid, dat);
+  return 0;
+}
+
+Operation getInstantSet() { 
+	Operation o = {
+		OPERATION_INSTANT_SET, /* id */
+		SIZEOF_RECORD, /* use the size of the record as size of arg */
+		OPERATION_NOOP, 
+		&operate /* Function */
+	};
+	return o;
+}
+
 
 /** @todo The spirit of instantSet suggests that it should hold a
     shorter write lock than set, but instant set was written before
     the lock manager... */
-Operation getInstantSet() {
+/*Operation getInstantSet() {
   Operation o = getSet();
   o.id = OPERATION_INSTANT_SET;
   o.undo = OPERATION_NOOP;
   return o;
-}
+  }*/

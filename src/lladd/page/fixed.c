@@ -58,9 +58,9 @@ static void checkRid(Page * page, recordid rid) {
     assert(*page_type_ptr(page) == FIXED_PAGE || *page_type_ptr(page) == ARRAY_LIST_PAGE);
     assert(page->id == rid.page);
     assert(*recordsize_ptr(page) == rid.size);
-    /*  assert(recordsPerPage(rid.size) > rid.slot); */
+    //  assert(recordsPerPage(rid.size) > rid.slot); 
     int recCount = *recordcount_ptr(page);
-    assert(recCount  > rid.slot);
+    assert(recCount  > rid.slot);          
   } else {
     fixedPageInitialize(page, rid.size, recordsPerPage(rid.size));
   }
@@ -74,7 +74,11 @@ void fixedReadUnlocked(Page * page, recordid rid, byte * buf) {
 }
 void fixedRead(Page * page, recordid rid, byte * buf) {
   readlock(page->rwlatch, 57);
+
+  //  printf("R { %d %d %d }\n", rid.page, rid.slot, rid.size);
   checkRid(page, rid);
+
+
 
   fixedReadUnlocked(page, rid, buf);
 
@@ -83,6 +87,7 @@ void fixedRead(Page * page, recordid rid, byte * buf) {
 }
 
 void fixedWriteUnlocked(Page * page, recordid rid, const byte *dat) {
+  checkRid(page,rid);
   if(!memcpy(fixed_record_ptr(page, rid.slot), dat, rid.size)) {
     perror("memcpy");
     abort();
@@ -92,7 +97,8 @@ void fixedWriteUnlocked(Page * page, recordid rid, const byte *dat) {
 void fixedWrite(Page * page, recordid rid, const byte* dat) {
   readlock(page->rwlatch, 73);
   
-  checkRid(page, rid);
+  //  printf("W { %d %d %d }\n", rid.page, rid.slot, rid.size);
+  //  checkRid(page, rid);
 
   fixedWriteUnlocked(page, rid, dat);
 

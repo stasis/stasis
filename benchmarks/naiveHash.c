@@ -32,6 +32,6 @@ int main(int argc, char** argv) {
   
   Tcommit(xid);
 
-  Tdeinit();
+  /*  Tdeinit(); */
 
 }

@@ -25,6 +25,7 @@ Operation getUnInitPage();
 #define TunInitPage(xid, rid) Tupdate(xid, rid, NULL, OPERATION_UNINITIALIZE_PAGE)
 
 recordid dereferenceArrayListRid(Page * p, int offset);
+#define dereferenceArrayListRidUnlocked(x, y) dereferenceArrayListRid((x),(y))
 int TarrayListExtend(int xid, recordid rid, int slots);
 int TarrayListInstantExtend(int xid, recordid rid, int slots);
 #endif

@@ -61,6 +61,8 @@ Slotted page layout:
 
 void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
 void slottedRead(int xid, Page * page, recordid rid, byte *buff);
+void slottedWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
+void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff);
 
 void slottedPageInitialize(Page * p);
 

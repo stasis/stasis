@@ -243,6 +243,7 @@ Page *pageMalloc() {
   }
   }*/
 
+
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
@@ -283,3 +284,45 @@ void readRecord(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
 }
 
+
+void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
+  assert(rid.page == p->id); 
+  
+  int page_type = *page_type_ptr(p);
+
+  if(rid.size > BLOB_THRESHOLD_SIZE) {
+    abort(); /* Unsupported for now. */
+    readBlob(xid, p, rid, buf);
+  } else if(page_type == SLOTTED_PAGE) {
+    slottedReadUnlocked(xid, p, rid, buf);
+    /* FIXED_PAGES can function correctly even if they have not been
+       initialized. */
+  } else if(page_type == FIXED_PAGE || !page_type) { 
+    fixedReadUnlocked(p, rid, buf);
+  } else {
+    abort();
+  }
+  assert(rid.page == p->id); 
+}
+
+void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
+
+  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+  
+  if(rid.size > BLOB_THRESHOLD_SIZE) {
+    abort();
+    writeBlob(xid, p, lsn, rid, dat);
+  } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
+    slottedWriteUnlocked(xid, p, lsn, rid, dat);
+  } else if(*page_type_ptr(p) == FIXED_PAGE || !*page_type_ptr(p) )  {
+    fixedWriteUnlocked(p, rid, dat);
+  } else {
+    abort();
+  }
+  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+  
+  writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
+  pageWriteLSN(p, lsn);
+  unlock(p->rwlatch);    
+
+}

@@ -138,7 +138,7 @@ void slottedPageInitialize(Page * page) {
 
 }
 
-static int unlocked_freespace(Page * page) {
+int slottedFreespaceUnlocked(Page * page) {
   return (int)slot_length_ptr(page, *numslots_ptr(page)) - (int)(page->memAddr + *freespace_ptr(page));
 }
 
@@ -146,7 +146,7 @@ static int unlocked_freespace(Page * page) {
 int slottedFreespace(Page * page) {
   int ret;
   readlock(page->rwlatch, 292);
-  ret = unlocked_freespace(page);
+  ret = slottedFreespaceUnlocked(page);
   readunlock(page->rwlatch);
   return ret;
 }
@@ -228,11 +228,11 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
   assert(rid.size > 0);
   
-  if(unlocked_freespace(page) < rid.size) {
+  if(slottedFreespaceUnlocked(page) < rid.size) {
     slottedCompact(page);
     
     /* Make sure there's enough free space... */
-    assert (unlocked_freespace(page) >= rid.size);
+    assert (slottedFreespaceUnlocked(page) >= rid.size);
   }
   
   freeSpace = *freespace_ptr(page);
@@ -320,6 +320,20 @@ void slottedDeRalloc(Page * page, lsn_t lsn, recordid rid) {
   unlock(page->rwlatch);
 }
 
+void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff) {
+  int slot_length;
+
+  assert(page->id == rid.page);
+  slot_length = *slot_length_ptr(page, rid.slot); 
+  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+
+  if(!memcpy(buff, record_ptr(page, rid.slot),  rid.size)) {
+    perror("memcpy");
+    abort();
+  }
+
+}
+
 /*
   This should trust the rid (since the caller needs to
   override the size in special circumstances)
@@ -367,6 +381,20 @@ void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat
   pageWriteLSN(page); */
   unlock(page->rwlatch); 
 
+}
+void slottedWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data) {
+  int slot_length;
+
+  assert(rid.size < PAGE_SIZE); 
+  assert(page->id == rid.page);
+  
+  slot_length = *slot_length_ptr(page, rid.slot); 
+  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+
+  if(!memcpy(record_ptr(page, rid.slot), data, rid.size)) {
+    perror("memcpy");
+    abort();
+  }
 }
 
 /*void slottedSetType(Page * p, int slot, int type) {

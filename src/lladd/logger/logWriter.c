@@ -39,6 +39,9 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+#define _XOPEN_SOURCE 600
+
+
 #include <config.h>
 #include <lladd/common.h>
 
@@ -49,6 +52,7 @@ terms specified in this license.
 #include "io.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <lladd/bufferManager.h>
 
@@ -127,7 +131,9 @@ pthread_mutex_t truncateLog_mutex;
 static int sought = 1;
 int openLogWriter() {
 #define BUFSIZE 1024*16
-  char * buffer = malloc(BUFSIZE);
+  char * buffer ;/*= malloc(BUFSIZE);*/
+  assert(!posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE));
+
   log = fopen(LOG_FILE, "a+");
 
   if (log==NULL) {

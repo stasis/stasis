@@ -251,12 +251,13 @@ lsn_t pageReadLSN(const Page * page);
  * wish to write
  */
 void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
-
+void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
  * @param xid transaction ID
  * @param dat buffer for data
  */
 void readRecord(int xid, Page * page, recordid rid, void *dat);
+void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
 
 void pageCommit(int xid);
 void pageAbort(int xid);

@@ -13,7 +13,7 @@ void indirectInitialize(Page * p, int height) {
   *page_type_ptr(p) = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((int)level_ptr(p)) - ((int)p->memAddr));
 }
-
+/** @todo locking for dereferenceRID? */
 recordid dereferenceRID(recordid rid) {
   Page * this = loadPage(rid.page);
   int offset = 0;

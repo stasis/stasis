@@ -24,23 +24,23 @@ int main(int argc, char** argv) {
    recordid hash = ThashAlloc(xid, sizeof(int), sizeof(int));
 
    Tcommit(xid);
+   
+   int i = 0;
+   
+   for(k = 0; k < xact_count; k++) {
+     
+     xid = Tbegin();
+     
+     for(;i < count *(k+1) ; i++) {
+       
+       TlogicalHashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
+       
+     }
+     
+     Tcommit(xid);
+     
+   }
 
-    int i;
-  
-  for(k = 0; k < xact_count; k++) {
-    
-    xid = Tbegin();
-    
-    for(i = 0; i < count ; i++) {
-      
-      TlogicalHashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
-      
-    }
-    
-    Tcommit(xid);
-
-  }
-
-  /*  Tdeinit(); */
+   /*  Tdeinit(); */
 
 }

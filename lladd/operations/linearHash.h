@@ -19,7 +19,7 @@ void ThashInstantInsert(int xid, recordid hashRid,
 		 const void * key, int keySize, 
 		 const void * val, int valSize);
 void ThashInstantDelete(int xid, recordid hashRid, 
-		 const void * key, int keySize);
+		 const void * key, int keySize, int valSize);
 void ThashInstantUpdate(int xid, recordid hashRid, const void * key, int keySize, const void * val, int valSize);
 void TlogicalHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);

@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   xid = Tbegin();
 
 
-  ThashOpen(xid, hash);
+  ThashOpen(xid, hash, sizeof(int), sizeof(int));
   int k;
   for(k = 0; k < 10; k++) {
 

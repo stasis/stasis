@@ -163,6 +163,7 @@ void Tupdate(int xid, recordid rid, const void *dat, int op);
  * @param dat buffer into which data goes
  */
 void Tread(int xid, recordid rid, void *dat);
+void TreadUnlocked(int xid, recordid rid, void *dat);
 
 /**
  * @param xid transaction ID

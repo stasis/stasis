@@ -126,7 +126,9 @@ START_TEST(simpleLinearHashTest)
     assert(rid.page == (i+1));
     assert(rid.slot == (i+2));
     assert(rid.size == (i+3));
-    ThashDelete(xid, hashRoot, &i, sizeof(int));
+    assert(ThashDelete(xid, hashRoot, &i, sizeof(int), sizeof(recordid)));
+    assert(!ThashDelete(xid, hashRoot, &i, sizeof(int), sizeof(recordid)));
+    assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
 
   }
 
@@ -155,13 +157,13 @@ START_TEST(simpleLinearHashTest)
 
     if(i % 10) {
       assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
-      ThashDelete(xid, hashRoot, &i, sizeof(int));
+      ThashDelete(xid, hashRoot, &i, sizeof(int), sizeof(recordid));
       assert(rid.page == (i+1));
       assert(rid.slot == (i+2));
       assert(rid.size == (i+3));
     } else {
       assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
-      ThashDelete(xid, hashRoot, &i, sizeof(int));
+      ThashDelete(xid, hashRoot, &i, sizeof(int), sizeof(recordid));
     }
   }
 
