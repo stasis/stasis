@@ -89,5 +89,6 @@ AC_CONFIG_FILES([Makefile
                  test/monotree/Makefile
                  utilities/Makefile
                  benchmarks/Makefile
+                 benchmarks/berkeleyDB/Makefile
 ])
 AC_OUTPUT

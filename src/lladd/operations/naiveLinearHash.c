@@ -28,6 +28,7 @@ typedef struct {
 } hashEntry;
 
 pblHashTable_t * openHashes = NULL;
+pblHashTable_t * lockedBuckets = NULL;
 
 
 
@@ -489,10 +490,12 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
 
 void ThashInit() {
   openHashes = pblHtCreate();
+  lockedBuckets = pblHtCreate();
 }
 
 void ThashDeinit() {
   pblHtDelete(openHashes);
+  pblHtDelete(lockedBuckets);
 }
 
 void ThashInsert(int xid, recordid hashRid, 

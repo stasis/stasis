@@ -24,6 +24,7 @@ void ThashInstantUpdate(int xid, recordid hashRid, const void * key, int keySize
 void TlogicalHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 int  TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
+int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize);
 Operation getLinearInsert();
 Operation getLinearDelete();
 Operation getUndoLinearInsert();

@@ -20,22 +20,25 @@ int main(int argc, char** argv) {
   
   int xid = Tbegin();
 
-  recordid hash = ThashAlloc(xid, sizeof(int), sizeof(int));
-
   Tcommit(xid);
 
+  recordid arrayList = TarrayListAlloc(xid, 512, 2, sizeof(int));
+  recordid rid = arrayList;
+  rid.slot = 0;
   int i = 0;
   int k;
   for(k = 0; k < xact_count; k++) {
     xid = Tbegin();
     for(; i < (count*(k+1)) ; i++) {
-      ThashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
+      TarrayListExtend(xid, arrayList, 1);
+      Tset(xid, rid, &i);
+      rid.slot++;
     }
     Tcommit(xid);
 
   }
   
 
-  Tdeinit();
-
+  Tdeinit(); 
+  
 }

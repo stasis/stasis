@@ -32,10 +32,12 @@ typedef struct {
 
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize);
 
+pthread_mutex_t linearHashMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t bucketUnlocked = PTHREAD_COND_INITIALIZER;
 
 extern pblHashTable_t * openHashes ;
 /*pblHashTable_t * openHashes = NULL; */
-
+extern pblHashTable_t * lockedBuckets;
 static int operateUndoInsert(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   
   int keySize = rid.size;
@@ -124,9 +126,6 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
 
   /* Write undo-only log entry. */
 
-  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
-  
-  assert(headerRidB);
 
   hashRid.slot = valSize;
   hashRid.size = keySize;
@@ -134,8 +133,17 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
   
   /* Perform redo-only insert. */
   hashRid.size = sizeof(hashEntry) + keySize + valSize;
+
   ThashInstantInsert(xid, hashRid, key, keySize, val, valSize);
+
+  pthread_mutex_lock(&linearHashMutex); /* @todo Finer grained locking for linear hash's expand? */
+  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
+  
+  assert(headerRidB);
   instant_expand(xid, hashRid, headerNextSplit, headerHashBits, keySize, valSize); 
+  pthread_mutex_unlock(&linearHashMutex);
+
+
 
 }
 int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
@@ -216,30 +224,77 @@ void instant_expand (int xid, recordid hash, int next_split, int i, int keySize,
   }
 
   }*/
+/** you must hold linearHashMutex to call this function, which will release, and reaquire the mutex for you, as apprpriate. */
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
   /* Total hack; need to do this better, by storing stuff in the hash table headers.*/
+  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  static pthread_mutex_t slow_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
   static int count = 4096 * .25;
+
+  pthread_mutex_lock(&mutex);
+
   count --;
+  int mycount = count;
+  pthread_mutex_unlock(&mutex);
+
+
+
 #define AMORTIZE 1000
 #define FF_AM    750
-  if(count <= 0 && !(count * -1) % FF_AM) {
-    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+  if(mycount <= 0 && !(mycount * -1) % FF_AM) {
+    pthread_mutex_lock(&slow_mutex);
+
     int j;
     TarrayListInstantExtend(xid, hash, AMORTIZE);
+
+    //    pthread_mutex_lock(&linearHashMutex);
+    
+    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+
     for(j = 0; j < AMORTIZE; j++) {
 
       if(next_split >= twoToThe(i-1)+2) {
 	i++;
 	next_split = 2;
       } 
+      
+      while(pblHtLookup(lockedBuckets, &next_split, sizeof(int))) {
+	pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+      }
+      int other_bucket = next_split + twoToThe(i-1);
+      pblHtInsert(lockedBuckets, &next_split, sizeof(int), &other_bucket);
+      while(pblHtLookup(lockedBuckets, &other_bucket, sizeof(int))) {
+	pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+      }
+      pblHtInsert(lockedBuckets, &other_bucket, sizeof(int), &other_bucket);
+	
+      pthread_mutex_unlock(&linearHashMutex);
+
       instant_rehash(xid, hash, next_split, i, keySize, valSize); 
+
+
+      pthread_mutex_lock(&linearHashMutex);
+
+      pblHtRemove(lockedBuckets, &next_split, sizeof(int));
+      pblHtRemove(lockedBuckets, &other_bucket, sizeof(int));
+
       next_split++;
       headerNextSplit = next_split;
       headerHashBits = i; 
     }
     instant_update_hash_header(xid, hash, i, next_split);  
+
+    //    pthread_mutex_unlock(&linearHashMutex);
+    pthread_mutex_unlock(&slow_mutex);
+    pthread_cond_broadcast(&bucketUnlocked);
+			       
+
   }
+
 }
+
 
 
 void instant_update_hash_header(int xid, recordid hash, int i, int next_split) {
@@ -770,12 +825,26 @@ void ThashInstantInsert(int xid, recordid hashRid,
 	    const void * key, int keySize, 
 	    const void * val, int valSize) {
 
+  pthread_mutex_lock(&linearHashMutex);
+
   recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   
   assert(headerRidB);
   
   int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+
+  while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
+    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+    bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  }
   
+  int foo;
+  pblHtInsert(lockedBuckets, &bucket, sizeof(int), &foo );
+
+  headerRidB = NULL;
+  
+  pthread_mutex_unlock(&linearHashMutex);
+
   hashEntry * e = calloc(1,sizeof(hashEntry) + keySize + valSize);
   memcpy(e+1, key, keySize);
   memcpy(((byte*)(e+1)) + keySize, val, valSize);
@@ -789,6 +858,11 @@ void ThashInstantInsert(int xid, recordid hashRid,
   hashRid.slot = 0;
   instant_insertIntoBucket(xid, hashRid, bucket, bucket_contents, e, keySize, valSize, 0);
 
+  pthread_mutex_lock(&linearHashMutex);
+  pblHtRemove(lockedBuckets, &bucket, sizeof(int));
+  pthread_cond_broadcast(&bucketUnlocked);
+  pthread_mutex_unlock(&linearHashMutex);
+
   free(e);
 
 }
@@ -796,17 +870,38 @@ void ThashInstantInsert(int xid, recordid hashRid,
     so that expand can be selectively called. */
 void ThashInstantDelete(int xid, recordid hashRid, 
 	    const void * key, int keySize, int valSize) {
+
+  pthread_mutex_lock(&linearHashMutex);
+
+
   recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   recordid tmp = hashRid;
   tmp.slot = 1;
 
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  while(pblHtLookup(lockedBuckets, &bucket_number, sizeof(int))) {
+    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+    bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  }
+  int foo;
+  pblHtInsert(lockedBuckets, &bucket_number, sizeof(int), &foo );
+
+  headerRidB = NULL;
+  
+  pthread_mutex_unlock(&linearHashMutex);
+
   recordid deleteMe;
   hashRid.slot = bucket_number;
   hashEntry * bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
   TreadUnlocked(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
   if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, key, keySize, valSize, &deleteMe)) {
+
+  pthread_mutex_lock(&linearHashMutex);
+  pblHtRemove(lockedBuckets, &bucket_number, sizeof(int));
+  pthread_cond_broadcast(&bucketUnlocked);
+  pthread_mutex_unlock(&linearHashMutex);
+
     /*    Tdealloc(xid, deleteMe);  */
   }
 }
@@ -821,6 +916,7 @@ void ThashInstantDelete(int xid, recordid hashRid,
   return 0;
   }*/
 
+/** @todo  TlogicalHashUpdate is not threadsafe, is very slow, and is otherwise in need of help */
 void TlogicalHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
   void * dummy = malloc(valSize);
   TlogicalHashDelete(xid, hashRid, key, keySize, dummy, valSize);
@@ -848,3 +944,27 @@ int ThashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, 
 }
 
 */
+int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
+  pthread_mutex_lock(&linearHashMutex);
+  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
+  /*  printf("lookup header: %d %d\n", headerHashBits, headerNextSplit); */
+  recordid tmp = hashRid;
+  tmp.slot = 1;
+  int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  while(pblHtLookup(lockedBuckets, &bucket_number, sizeof(int))) {
+    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+    bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  }
+
+  pblHtInsert(lockedBuckets, &bucket_number, sizeof(int), &tmp);
+
+  pthread_mutex_unlock(&linearHashMutex);
+  int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
+
+  pthread_mutex_lock(&linearHashMutex);
+  pblHtRemove(lockedBuckets, &bucket_number, sizeof(int));
+  pthread_mutex_unlock(&linearHashMutex);
+  pthread_cond_broadcast(&bucketUnlocked);
+  return ret;
+}
+ 

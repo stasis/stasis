@@ -23,7 +23,7 @@ my @ttbl;
 sub parse_t_distribution {
     ## Takes the t-distribution.tbl file, and parses it into a nice, fat array.
 
-    open (T, "/home/morph/bin/t-distribution.tbl") || die "No T dist! $!";
+    open (T, "/home/sears/bin/t-distribution.tbl") || die "No T dist! $!";
     my $i =0;
     while(my $line = <T>) {
 	my @tok = split /\s+/, $line;
@@ -41,17 +41,15 @@ sub parse_t_distribution {
 sub runit {
     my $cmd = shift;
 
-    `rm storefile.txt logfile.txt blob0_file.txt blob1_file.txt; sync`;
+    `rm -rf storefile.txt logfile.txt blob0_file.txt blob1_file.txt TXNAPP; sync; sleep 1`;
 
     my $start_sec = `getTimeOfDay`;
-    
 
-    chomp($start_sec);
-    
     system($cmd);
     
     my $end_sec = `getTimeOfDay`;
     
+    chomp($start_sec);
     chomp($end_sec);
     
     my $time = ($end_sec - $start_sec) / 1000.0;

@@ -39,8 +39,17 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#define _XOPEN_SOURCE 600
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+/** For O_DIRECT.  It's unclear that this is the correct thing to #define, but it works under linux. */
+#define __USE_GNU
+#include <fcntl.h>
+#include <unistd.h>
 
+
+#define _XOPEN_SOURCE 600
+#include <stdlib.h>
 
 #include <config.h>
 #include <lladd/common.h>
@@ -51,8 +60,7 @@ terms specified in this license.
 #include "latches.h"
 #include "io.h"
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
+
 
 #include <lladd/bufferManager.h>
 
@@ -130,14 +138,22 @@ pthread_mutex_t truncateLog_mutex;
 
 static int sought = 1;
 int openLogWriter() {
-#define BUFSIZE 1024*16
+#define BUFSIZE 1024*96
   char * buffer ;/*= malloc(BUFSIZE);*/
+
   assert(!posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE));
 
-  log = fopen(LOG_FILE, "a+");
+  int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  if(logFD == -1) {
+    perror("Couldn't open log file (A)");
+    abort();
+  }
+  log = fdopen(logFD, "a+");
+  //  log = fopen(LOG_FILE, "a+");
 
   if (log==NULL) {
-    assert(0);
+    perror("Couldn't open log file");
+    abort();
     /*there was an error opening this file */
     return FILE_WRITE_OPEN_ERROR;
   }
@@ -327,12 +343,13 @@ void syncLog() {
   /* Wait to set the static variable until after the flush returns. */
   
   fflush(log);
+  // Since we open the logfile with O_SYNC, fflush suffices.
 #ifdef HAVE_FDATASYNC
   /* Should be available in linux >= 2.4 */
-  fdatasync(fileno(log)); 
+  /*  fdatasync(fileno(log));  */
 #else
   /* Slow - forces fs implementation to sync the file metadata to disk */
-  fsync(fileno(log));  
+  /* fsync(fileno(log));   */
 #endif
 
   writelock(flushedLSN_lock, 0);
@@ -371,7 +388,9 @@ void deleteLogWriter() {
 
 static LogEntry * readLogEntry() {
   LogEntry * ret = NULL;
-  long size, entrySize;
+  long size;
+  //  assert(!posix_memalign((void*)&(size), 512, sizeof(long)));
+  long entrySize;
   int nmemb;
   
   if(feof(log)) {
@@ -391,6 +410,7 @@ static LogEntry * readLogEntry() {
     }
   }
 
+  //  assert(!posix_memalign(&ret, 512, (*size)));
   ret = malloc(size);
 
   nmemb = fread(ret, size, 1, log);

@@ -13,10 +13,10 @@ int main(int argc, char** argv) {
   int count = atoi(argv[2]);
   int k;
 
-  unlink("storefile.txt");
+  /*  unlink("storefile.txt");
   unlink("logfile.txt");
   unlink("blob0_file.txt");
-  unlink("blob1_file.txt");
+  unlink("blob1_file.txt"); */
   
   Tinit();
    int xid = Tbegin();
@@ -41,6 +41,6 @@ int main(int argc, char** argv) {
      
    }
 
-   /*  Tdeinit(); */
+   Tdeinit();
 
 }
