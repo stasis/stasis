@@ -45,6 +45,30 @@ AM_CONDITIONAL(HAVE_CHECK, test x$have_check = xtrue)
 #AC_CHECK_LIB(efence,memalign)
 #fi
 
+# Linux has a broken O_DIRECT flag, but we allow people to override it from
+# the command line.
+test_host_prw=yes
+AC_CACHE_CHECK([for open/O_DIRECT], db_cv_open_o_direct, [
+AC_TRY_LINK([
+#include <sys/types.h>
+#include <fcntl.h>], [
+	open("a", O_RDONLY | O_DIRECT, 0);
+], [db_cv_open_o_direct=yes; test_host_prw=no], [db_cv_open_o_direct=no])])
+if test "$test_host_prw" = "no" -a "$db_cv_open_o_direct" = "yes"; then
+	case "$host_os" in
+	linux*)
+		db_cv_open_o_direct=no;
+		AC_MSG_WARN(
+		    [O_DIRECT interface ignored on $host_os-$host_vendor.]);;
+	esac
+fi
+if test "$db_cv_open_o_direct" = "yes"; then
+	AC_DEFINE(HAVE_O_DIRECT)
+	AH_TEMPLATE(HAVE_O_DIRECT, [Define to 1 if you have the O_DIRECT flag.])
+fi
+
+
+
 AC_CHECK_LIB([m], [sqrt])
 AC_CHECK_LIB([db], [db_open])
 AC_CHECK_LIB([pthread], [pthread_create])

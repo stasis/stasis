@@ -143,10 +143,12 @@ int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
 /*int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
   int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
 
+/** The server side state for a CHT. */
 typedef struct {
   int ht_xid;
   jbHashTable_t * xid_ht;
   jbHashTable_t * ht_ht;
+  /** This gets incremented by the coordinator each time a new hashtable is allocated. */
   int next_hashTableId;
 } CHTAppState;
 

@@ -43,14 +43,14 @@ static int _chtEval(DfaSet * dfaSet,
   Message m;
   
   if(ht != NULL) {
-    printf("_chtEval(request=%d, response=%d, xid=%ld, ht=%d ", request_type, response_type, *xid, ht->id);
+    DEBUG("_chtEval(request=%d, response=%d, xid=%ld, ht=%d ", request_type, response_type, *xid, ht->id);
   } else {
-    printf("_chtEval(request=%d, response=%d, xid=%ld, ht=NULL ", request_type, response_type, *xid);
+    DEBUG("_chtEval(request=%d, response=%d, xid=%ld, ht=NULL ", request_type, response_type, *xid);
   }
   if(key == NULL) {
-    printf(")\n");
+    DEBUG(")\n");
   } else {
-    printf("key=%d)\n", *(int*)key);
+    DEBUG("key=%d)\n", *(int*)key);
   }
   * requestType(&m) = request_type;
   m.response_type = response_type;
@@ -96,7 +96,7 @@ static int _chtEval(DfaSet * dfaSet,
 
   *xid = m.to_machine_id;
 
-  printf("+chtEval returning %d\n", m.type);
+  DEBUG("+chtEval returning %d\n", m.type);
 
   return m.type;
 }
@@ -140,12 +140,9 @@ DfaSet * cHtClientInit(char * configFile) {
   assert(config->coordinator);
   printf("config->localhost:%s config->broadcast_lists[0][0]:%s (localport %d)(port %d)\n",
          config->localhost, config->broadcast_lists[0][0], config->localport, parse_port(config->broadcast_lists[0][0]));
- /* DfaSet * ret = cHtInit(CHT_CLIENT, parse_addr(config->broadcast_lists[0][0]), NULL, 
-                       parse_port(config->broadcast_lists[0][0]), config->broadcast_lists+1, config->broadcast_lists_count-1,
-		       config->broadcast_list_host_count+1); */
   DfaSet * ret = cHtInit(CHT_CLIENT, NULL, config);
   assert(config->coordinator);
- // free (config);
+  free (config);
   return ret;
 }
 

@@ -53,14 +53,7 @@ terms specified in this license.
 
 
 
-/** TODO: Endianness. (ICK) */
-//state_name request_type =*(requestType(m));                                                 \sdsd
-//state_name response_type =*(responseType(m));                                               \sd
-//TwoPCMachineState * machine_state_2pc = (TwoPCMachineState*) &(stateMachine->app_state);    \sd
-
-
-
-
+/** TODO: Endianness for CHT (ICK) */
 
 /**
  * Hash function generator, taken directly from pblhash
@@ -81,24 +74,26 @@ static int hash( const unsigned char * key, size_t keylen , int table_length) {
 }
 
 
-/** TODO: multiplex_interleaved needs to return a special group for
+/** @todo multiplex_interleaved needs to return a special group for
     begin/commit/abort requests.  There will then be two types of
     transactions.  Explicit ones will create xids on all replicas, and
     span multiple operations.  Implcit ones will only span one replica
     group, but may only contain a single operation.
-*/
+
+    @todo bc group is one-indexed, which is really irritating! */
+
 short multiplex_interleaved(DfaSet * dfaSet, Message * m) {
   short table_length = dfaSet->networkSetup.broadcast_lists_count;
   short bc_group;
   if((*requestType(m) == CREATE) || (*requestType(m) == DELETE)) {
-    /* Special case: Send to all replicas...bc_group one should contain all replicas... */
+    /* Special case: Send to all replicas. */
     bc_group = ALL_BUT_GROUP_ZERO;
   } else {
     /* Need to add one so that no requests are assigned to the coordinator (bc:0) */
     bc_group = hash(getKeyAddr(m), getKeyLength(m), table_length) + 1;  
   }
 
-//  printf("request %d bc group: %d\n", *requestType(m), bc_group);
+ DEBUG("request %d bc group: %d\n", *requestType(m), bc_group);
 
   return bc_group;
 
@@ -119,26 +114,19 @@ int xid_exists(int ht_xid, jbHashTable_t * xid_ht, StateMachine * stateMachine) 
   }
 }
 
-DfaSet * cHtInit(int cht_type, /*char * localhost, */
+DfaSet * cHtInit(int cht_type, 
 		 short (* get_broadcast_group)(DfaSet *, Message *),
-		/* short port,
-		 char *** broadcast_lists,
-		 int  broadcast_lists_count,
-		 int* broadcast_list_host_count */
 		 NetworkSetup * ns) {
   
   DfaSet * dfaSet;
   int xid = Tbegin();
-//		   printf("Init %s port %d\n", ns->localhost, ns->localport);
+  DEBUG("Init %s port %d\n", ns->localhost, ns->localport);
   TwoPCAppState * twoPC_state; 
   CHTAppState * chtApp_state;
   
   int error; 
 
- // dfaSet = dfa_malloc(DFA_MACHINE_COUNT, port, broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
   dfaSet = dfa_malloc(DFA_MACHINE_COUNT, ns);
-
-  /* srand(time(NULL)); */
 
   twoPC_state  = calloc(1, sizeof(TwoPCAppState));
   chtApp_state = calloc(1, sizeof(CHTAppState));
@@ -158,7 +146,7 @@ DfaSet * cHtInit(int cht_type, /*char * localhost, */
     chtApp_state->xid_ht     = jbHtCreate(xid, 79);
     chtApp_state->ht_ht      = jbHtCreate(xid, 79);
     chtApp_state->ht_xid = Tbegin(); // !!!!
-    chtApp_state->next_hashTableId = 0; /* This gets incremented each time a new hashtable is allocated. */
+    chtApp_state->next_hashTableId = 0; 
 
     twoPC_state->is_coordinator = (cht_type == CHT_COORDINATOR);
     twoPC_state->init_xact_2pc = init_xact_cht;
