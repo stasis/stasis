@@ -18,6 +18,11 @@
  * due to alignment, hence make hashing quite redundant...). */
 #define OBJ2KEY(obj)  ((unsigned long) (obj) >> 2)
 
+/* Flag macros. */
+#define CHECK_FLAG(v,f)  ((v) & (f))
+#define SET_FLAG(v,f)    (v) |= (f)
+#define UNSET_FLAG(v,f)  (v) &= ~(f)
+
 
 /* Limits.
  * TODO: use dynamic limits instead (switch to growable structures). */
@@ -452,14 +457,17 @@ pobj_unpersistify (void *obj)
 int
 pobj_is_persistent (void *obj)
 {
+    if (! g_is_init)
+	return -1;
+
     struct pobj *p = OBJ2POBJ (obj);
     return (p->repo_index >= 0);
 }
 
 
-static void *
+void *
 pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
-	       int persist, int zero)
+	       unsigned char flags)
 {
     struct pobj *p;
     void *obj;
@@ -486,7 +494,7 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
     obj = POBJ2OBJ (p);
 
     /* Zero allocated buffer as necessary. */
-    if (zero)
+    if (CHECK_FLAG (flags, POBJ_ALLOC_F_ZERO))
 	memset (obj, 0, size);
 
     /* Initialize persistent object header and type flags. */
@@ -499,7 +507,7 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
 	   obj, (void *) p, size, ALIGN (POBJ_HEADER_SIZE), ALIGN (size),
        	   POBJ_REFFLAGS_SIZE (size), pobj_size);
 
-    if (persist && pobj_persistify (obj) < 0) {
+    if (CHECK_FLAG (flags, POBJ_ALLOC_F_PERSIST) && pobj_persistify (obj) < 0) {
 	debug ("error: persistification failed");
 	dealloc (p);
 	debug_end ();
@@ -510,70 +518,18 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
     return obj;
 }
 
-void *
-pobj_malloc (size_t size)
+
+void
+pobj_dismiss (void *obj, unsigned char flags)
 {
-    return pobj_allocate (size, NULL, NULL, 1, 0);
-}
-
-void *
-pobj_malloc_transient (size_t size)
-{
-    return pobj_allocate (size, NULL, NULL, 0, 0);
-}
-
-void *
-pobj_calloc (size_t n, size_t size)
-{
-    return pobj_allocate (n * size, NULL, NULL, 1, 1);
-}
-
-void *
-pobj_calloc_transient (size_t n, size_t size)
-{
-    return pobj_allocate (n * size, NULL, NULL, 0, 1);
-}
-
-
-void *
-pobj_malloc_adhoc (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *))
-{
-    return pobj_allocate (size, alloc, dealloc, 1, 0);
-}
-
-void *
-pobj_malloc_transient_adhoc (size_t size, void *(*alloc) (size_t),
-			     void (*dealloc) (void *))
-{
-    return pobj_allocate (size, alloc, dealloc, 0, 0);
-}
-
-void *
-pobj_calloc_adhoc (size_t n, size_t size, void *(*alloc) (size_t),
-		   void (*dealloc) (void *))
-{
-    return pobj_allocate (n * size, alloc, dealloc, 1, 1);
-}
-
-void *
-pobj_calloc_transient_adhoc (size_t n, size_t size, void *(*alloc) (size_t),
-			     void (*dealloc) (void *))
-{
-    return pobj_allocate (n * size, alloc, dealloc, 0, 1);
-}
-
-
-static void
-pobj_free_finalize (void *obj, int deallocate, int raw)
-{
-    struct pobj *p = (raw ? obj : OBJ2POBJ (obj));
+    struct pobj *p = (CHECK_FLAG (flags, POBJ_DISMISS_F_RAW) ? obj : OBJ2POBJ (obj));
 
     if (! g_is_init)
 	return;
 
     debug_start ();
 
-    if (raw)
+    if (CHECK_FLAG (flags, POBJ_DISMISS_F_RAW))
 	obj = POBJ2OBJ (p);
 
     /* Destruct persistent image. */
@@ -584,7 +540,7 @@ pobj_free_finalize (void *obj, int deallocate, int raw)
     }
 
     /* Deallocate augmented memory object, or switch to transient mode. */
-    if (deallocate) {
+    if (CHECK_FLAG (flags, POBJ_DISMISS_F_DEALLOC)) {
 	debug ("deallocating memory");
 	g_memfunc.free (p);
     }
@@ -592,29 +548,6 @@ pobj_free_finalize (void *obj, int deallocate, int raw)
     debug_end ();
 }
 
-void
-pobj_free (void *obj)
-{
-    pobj_free_finalize (obj, 1, 0);
-}
-
-void
-pobj_finalize (void *obj)
-{
-    pobj_free_finalize (obj, 0, 0);
-}
-
-void
-pobj_free_raw (void *obj)
-{
-    pobj_free_finalize (obj, 1, 1);
-}
-
-void
-pobj_finalize_raw (void *obj)
-{
-    pobj_free_finalize (obj, 0, 1);
-}
 
 
 /* Note: behavior of type enforcement is not symmetrical, in the sense that
@@ -881,6 +814,9 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 #endif /* HAVE_IMPLICIT_TYPES */
     int xid = -1;
 
+    if (! g_is_init)
+	return -1;
+
     debug_start ();
 
     /* Safety check. */
@@ -1003,6 +939,9 @@ pobj_update_range (void *obj, void *fld, size_t len)
     struct pobj_repo_list_item *pobj_slot;
     int xid;
 
+    if (! g_is_init)
+	return -1;
+
     if (p->repo_index < 0)
 	return 0;  /* transient mode. */
 
@@ -1062,6 +1001,9 @@ pobj_update_recursive (void *obj, int persist)
     int init_ok = 1;
     char *debug_msg = NULL;
 
+
+    if (! g_is_init)
+	return -1;
 
     debug_start ();
 
@@ -1413,12 +1355,16 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 int
 pobj_static_set_ref (void *static_tmp_ptr, void *obj)
 {
+    if (! g_is_init)
+	return -1;
     return pobj_static_set_update_ref (static_tmp_ptr, obj, 1);
 }
 
 int
 pobj_static_update_ref (void *static_tmp_ptr)
 {
+    if (! g_is_init)
+	return -1;
     return pobj_static_set_update_ref (static_tmp_ptr, NULL, 0);
 }
 
@@ -2119,6 +2065,12 @@ pobj_shutdown (void)
     int i;
 
     debug_start ();
+
+    if (pthread_getspecific (g_active_xid_key)) {
+	debug ("error: open transaction exists");
+	debug_end ();
+	return -1;
+    }
 
     debug ("locking");
     if ((lock_ret = pthread_mutex_trylock (&g_pobj_repo_mutex))

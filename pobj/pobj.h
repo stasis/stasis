@@ -22,22 +22,39 @@ int pobj_persistify (void *);
 int pobj_unpersistify (void *);
 int pobj_is_persistent (void *);
 
-/* Memory management calls. */
-void *pobj_malloc (size_t);
-void *pobj_malloc_transient (size_t);
-void *pobj_calloc (size_t, size_t);
-void *pobj_calloc_transient (size_t, size_t);
-void pobj_free (void *);
+/* Object allocation. */
+#define POBJ_ALLOC_F_PERSIST  1
+#define POBJ_ALLOC_F_ZERO     2
+void *pobj_allocate (size_t, void *(*) (size_t), void (*) (void *), unsigned char);
+#define pobj_malloc(s)  \
+    pobj_allocate(s, NULL, NULL, POBJ_ALLOC_F_PERSIST)
+#define pobj_malloc_transient(s)  \
+    pobj_allocate(s, NULL, NULL, 0)
+#define pobj_calloc(n,s)  \
+    pobj_allocate((n)*(s), NULL, NULL, POBJ_ALLOC_F_PERSIST | POBJ_ALLOC_F_ZERO)
+#define pobj_calloc_transient(n,s)  \
+    pobj_allocate((n)*(s), NULL, NULL, POBJ_ALLOC_F_ZERO)
+#define pobj_malloc_adhoc(s,a,d)  \
+    pobj_allocate(s, a, d, POBJ_ALLOC_F_PERSIST)
+#define pobj_malloc_transient_adhoc (s,a,d)  \
+    pobj_allocate(s, a, d, 0)
+#define pobj_calloc_adhoc (n,s,a,d)  \
+    pobj_allocate((n)*(s), a, d, POBJ_ALLOC_F_PERSIST | POBJ_ALLOC_F_ZERO)
+#define pobj_calloc_transient_adhoc (n,s,a,d)  \
+    pobj_allocate((n)*(s), a, d, POBJ_ALLOC_F_ZERO)
 
-/* GC-oriented memory management calls (experts only!). */
-void *pobj_malloc_adhoc (size_t, void *(*) (size_t), void (*) (void *));
-void *pobj_malloc_transient_adhoc (size_t, void *(*) (size_t), void (*) (void *));
-void *pobj_calloc_adhoc (size_t, size_t, void *(*) (size_t), void (*) (void *));
-void *pobj_calloc_transient_adhoc (size_t, size_t, void *(*) (size_t),
-				   void (*) (void *));
-void pobj_finalize (void *);
-void pobj_finalize_raw (void *);
-void pobj_free_raw (void *);
+/* Object dismissal. */
+#define POBJ_DISMISS_F_DEALLOC  1
+#define POBJ_DISMISS_F_RAW      2
+void pobj_dismiss (void *, unsigned char);
+#define pobj_free(p)  \
+    pobj_dismiss((p), POBJ_DISMISS_F_DEALLOC)
+#define pobj_finalize(p)  \
+    pobj_dismiss((p), 0)
+#define pobj_free_raw(p)  \
+    pobj_dismiss((p), POBJ_DISMISS_F_DEALLOC | POBJ_DISMISS_F_RAW)
+#define pobj_finalize_raw(p)  \
+    pobj_dismiss((p), POBJ_DISMISS_F_RAW)
 
 
 int pobj_ref_flag (void *, void *);
