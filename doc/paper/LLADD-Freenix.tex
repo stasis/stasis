@@ -55,18 +55,17 @@ Your N.\ Here \\
 
 \subsection*{Abstract}
 
-While many systems provide transactionally consistent data management,
-existing implementations are generally monolithic and tied to a higher
-level system, limiting the scope of their usefulness to a single application,
+Although many systems provide transactionally consistent data management,
+existing implementations are generally monolithic and tied to a higher-level DBMS, limiting the scope of their usefulness to a single application,
 or a specific type of problem. As a result, many systems are forced
-to 'work-around' the data models provided by a transactional storage
+to ``work around'' the data models provided by a transactional storage
 layer. Manifestation of this problem include 'impedence mismatch'
 in the database world and the limited number of data models provided
 by existing libraries such as BerkeleyDB. In this paper, we describe
-a light-weight, easily extendible library, LLADD, that allows application
+a light-weight, easily extensible library, LLADD, that allows application
 developers to develop scalable and transactional application-specific
 data structures. We demonstrate that LLADD is simpler than prior systems
-and is extremely flexible while performing favorably in a number of
+and is very flexible, while performing favorably in a number of
 micro-benchmarks. We also describe, in simple and concrete terms,
 the issues inherent in the design and implementation of robust, scalable
 transactional data structures. In addition to the source code, we
@@ -80,13 +79,27 @@ and debugging mechanisms publicly available.%
 
 Changes in data models, consistency requirements, system scalibility,
 communication models and fault models require changes to the storage
-and recovery subsystems of modern applications. Such changes require
-increased flexibility at the data durability and isolation layer.
-We refer to the functionality provided by this layer as \emph{transactional
-pages,} and in this paper deal with crash recovery, application level
-support for transaction abort and commit, and basic latching for multithreaded
-applications. We leave transaction-level consitency to a higher level
-library.
+and recovery subsystems of modern applications. 
+
+For applications that are willing to store all of their data in a
+DBMS, and access it only via SQL, existing databases are just fine and
+LLADD has little to offer.  However, for those applications that need
+more direct management of data, LLADD offers a layered architecture
+that enables simple but robust data management.\footnote{Such
+applications are ``navigational'' in the database vocabulary, as they
+directly navigate data structures rather than perform set operations.}
+
+The basic approach of LLADD, taken from ARIES [xx], is to build
+\emph{transactional pages}, which enables recovery on a page-by-page
+basis, despite support for high concurrency and the minimization of
+seeks during commit (by using a log).  We show how to build a variety
+of useful data managers on top of this layer, including persistent
+hash tables, lightweight recoverable virtual memory, and simple
+databases.  We also cover the details of crash recovery,
+application-level support for transaction abort and commit, and basic
+latching for multithreaded applications.
+
+[more coverage of kinds of apps?  imap, lrvm, cht, file system, database]
 
 Many implementations of transactional pages exist in industry and
 in the literature. Unfortunately, these algorithms tend either to
@@ -94,28 +107,30 @@ be straightforward and unsuitable for real-world deployment, or are
 robust and scalable, but achieve these properties by relying upon
 intricate sets of internal (and often implicit) interactions. The
 ARIES algorithm falls into the second category, has been extremely
-sucessful, and is used by many real-world applications. It provides
-performance and reliability that is comparable to that of current
+sucessful as part of the IBM DB2 database system.
+It provides performance and reliability that is comparable to that of current
 commercial and open-source products. Unfortunately, while the algorithm
 is conceptually simple, many subtlties arise in its implementation.
 We chose ARIES as the basis of LLADD, and have made a significant
-effort to document these interactions. While a complete discussion
+effort to document these interactions. Although  a complete discussion
 of the AIRES algorithm is beyond the scope of this paper, we will
 provide a breif overview, and explain the details that are relevant
 to developers that wish to extend LLADD. 
 
 By documenting the interface between AIRES and higher-level primitives
-such as data structures, and by structuring LLADD to make this interface
-explicit in both the library and its extensions, we hope to make it
-easy to produce correct and efficient durable data structures. In
-existing systems (and indeed, in earlier versions of LLADD), the implementation
-of such structures is extremely complicated, and subject to the introduction
-of incredibly subtle errors that would only be evident during crash
-recovery or at other inconvenient times.
+such as data structures, and by structuring LLADD to make this
+interface explicit in both the library and its extensions, we hope to
+make it easy to produce correct and efficient durable data
+structures. In existing systems (and indeed, in earlier versions of
+LLADD), the implementation of such structures is extremely
+complicated, and subject to the introduction of incredibly subtle
+errors that would only be evident during crash recovery or at other
+inconvenient times.  Thus there is great value is reusing these lower
+layers once developed.
 
 Finally, by approaching this problem by implementing a number of simple
-modules that {}``do one thing and do it well'', we believe that
-LLADD can provide superior performance while making future improvements
+modules that ``do one thing and do it well'', we believe that
+LLADD can provide competitive performance while making future improvements
 to its core implementation significantly easier. In order to achieve
 this goal, LLADD has been split into a number of modules forming a
 'core library', and a number of extensions called 'operations' that
