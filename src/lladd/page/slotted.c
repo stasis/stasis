@@ -18,7 +18,8 @@ increase the available free space.
 
 The caller of this function must have a writelock on the page.
 */
-static void slottedCompact(Page * page) {
+
+void slottedCompact(Page * page) {
 
 	int i;
 	Page bufPage;
@@ -192,7 +193,16 @@ recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
   
   *pp = loadPage(page);
   
-  assert(slottedFreespace(*pp) >= size);
+  if(slottedFreespace(*pp) < size) {
+    releasePage(*pp);
+    *pp = NULL;
+    recordid rid;
+    rid.page = 0;
+    rid.slot = 0;
+    rid.size = -1;
+    return rid;
+  }
+  
   if(*page_type_ptr(*pp) == UNINITIALIZED_PAGE) {
     slottedPageInitialize(*pp);
   }

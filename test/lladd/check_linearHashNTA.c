@@ -130,9 +130,12 @@ START_TEST(linearHashNTAVariableSizetest)
     val.page = i * NUM_ENTRIES;
     val.slot = val.page * NUM_ENTRIES;
     val.size = val.slot * NUM_ENTRIES;
+    val2 = 0;
     assert(-1 == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    val2 =0;
+    int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == ret);
     assert(val2->page == i * NUM_ENTRIES);
     assert(val2->slot == val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);

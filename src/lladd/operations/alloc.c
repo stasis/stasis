@@ -143,7 +143,11 @@ recordid TallocFromPage(int xid, long page, long size) {
   } else {
     pthread_mutex_lock(&talloc_mutex); 
     rid = slottedPreRallocFromPage(xid, page, size, &p);
-    assert(p != NULL);
+    if(p == NULL) {
+      assert(rid.size == -1);
+      pthread_mutex_unlock(&talloc_mutex);
+      return rid;
+    }
   }
   Tupdate(xid,rid, NULL, OPERATION_ALLOC);
   

@@ -1,216 +1,173 @@
 #include <lladd/transactional.h>
-#include "../blobManager.h"
-#include "../page.h"
-#include "../page/slotted.h"
+
+
+#include <malloc.h>
 #include <assert.h>
 #include <string.h>
-/** 
-    Low level function that looks at the page structure, and finds the 'real' recordid 
-    of a page oriented list rid */
-/*recordid dereferencePagedListRID(int xid, recordid rid) {
-  Page * p = loadPage(rid.page);
-  while((*numslots_ptr(p)-POLL_NUM_RESERVED) <= rid.slot) {
-    int oldSlot = rid.slot;
-    oldSlot -= (*numslots_ptr(p) - POLL_NUM_RESERVED);
-    rid.slot = POLL_NEXT;
-    readRecord(xid, p , rid, &rid);
-    rid.slot = oldSlot;
-    releasePage(p);
-    p = loadPage(rid.page);
-  }
-  releasePage(p);
-  rid.slot+=POLL_NUM_RESERVED;
-  return rid;
-}*/
+
+typedef struct {
+  short nextEntry;
+  short keySize;
+} pagedListEntry;
 
 recordid TpagedListAlloc(int xid) {
-  long page = TpageAlloc(xid);
-  recordid list = TallocFromPage(xid, page, sizeof(long));
-  long zero = 0;
-  Tset(xid, list, &zero);
-  assert(list.slot == 0);
-  assert(list.size == sizeof(long));
-  return list;
-}
 
-int TpagedListSpansPages(int xid, recordid list) {
-  // TpagedListCompact(int xid, recordid list);
+  recordid NULLRID;
+  NULLRID.page = 0;
+  NULLRID.slot = 0;
+  NULLRID.size = -1;
 
-  list.slot = 0;
-  list.size = sizeof(long);
-  long nextPage;
-  Tread(xid, list, &nextPage);
-  return nextPage != 0;
-}
-
-/** Should have write lock on page for this whole function. */
-int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
-  int ret = 0;
-  // if find in list, return 1
-  byte * val;
-  if(-1 != TpagedListFind(xid, list, key, keySize, &val)) {
-    free(val);
-    ret = 1;
-    int removed = TpagedListRemove(xid, list, key, keySize);
-    assert(removed);
-  }
-  Page * p = loadPage(list.page);
-  int recordSize = (sizeof(short)+keySize+valueSize);
-  int isBlob = recordSize >= BLOB_THRESHOLD_SIZE;
-  int realSize = recordSize;
-  if(isBlob) {
-    recordSize = sizeof(blob_record_t);
-  }
-
-  while(slottedFreespace(p) < recordSize) {
-    // load next page, update some rid somewhere
-    list.slot = 0;
-    list.size = sizeof(long);
-    long nextPage;
-    readRecord(xid, p, list, &nextPage);
-    //    printf("+ page = %d nextpage=%ld freespace: %d recordsize: %d\n", list.page, nextPage, slottedFreespace(p), recordSize); fflush(stdout);
-    if(nextPage == 0) {
-      releasePage(p);
-      nextPage = TpageAlloc(xid);
-      Tset(xid, list, &nextPage);
-      p = loadPage(nextPage);
-      //slottedPageInitialize(p);
-      // ** @todo shouldn't a log entry be generated here?? */
-      list.page = nextPage;
-      assert(slottedFreespace(p) >= recordSize);
-      long zero = 0;
-      recordid rid = TallocFromPage(xid, list.page, sizeof(long));
-      Tset(xid, rid, &zero);
-    } else {
-      releasePage(p);
-      list.page = nextPage;
-      p = loadPage(nextPage);
-
-    }
-  }
-
-  if(isBlob) {
-    recordSize = realSize;
-  }
-
-  releasePage(p);
-  //  printf("recordsize = %d\n", recordSize);
-  recordid rid = TallocFromPage(xid, list.page, recordSize); // Allocates a record at a location given by the caller
-  short* record = malloc(recordSize);
-  *record = keySize;
-  memcpy((record+1), key, keySize);
-  memcpy(((char*)(record+1))+keySize, value, valueSize);
-  Tset(xid, rid, record);
-  
+  recordid ret = Talloc(xid, sizeof(pagedListHeader));
+  pagedListHeader header;
+  header.thisPage = 0;
+  header.nextPage = NULLRID;
+  Tset(xid, ret, &header);
   return ret;
 }
-int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
 
-  long nextPage = 1;
-  
-  while (nextPage) {
-    int i;
+int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+  pagedListHeader header;
+  Tread(xid, list, &header);
+  recordid headerRid = list;
 
-    Page * p = loadPage(list.page);
-    
-    //    int pageCount = TrecordsInPage(xid, list.page);
-    int pageCount = *numslots_ptr(p);
- 
-    //    printf("%ld\n", nextPage);
-    //fflush(stdout);
+  byte * garbage;
+  int ret = (TpagedListFind(xid, list, key, keySize, &garbage) != -1);
+  if(ret) {
+    TpagedListRemove(xid, list, key, keySize);
+    free(garbage);
+  }
+  int entrySize = sizeof(pagedListEntry) + keySize + valueSize;
 
-    for(i = 1; i < pageCount; i++) {
-      recordid entry = list;
-      entry.slot = i;
-      //      int length = TrecordSize(xid, entry);
-      int length = getRecordSize(xid,p,entry);
-      if(length != -1) {  // then entry is defined.
-	short * dat = malloc(length);
-	entry.size = length;
-	//	Tread(xid, entry, dat);
-	slottedRead(xid, p, entry, (byte*)dat);
-	if(*dat == keySize && !memcmp(dat+1, key, keySize)) {
-	  int valueSize = length-keySize-sizeof(short);
-	  *value = malloc(valueSize);
-	  
-	  memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
-	  
-	  free(dat);
-	  releasePage(p);
-	  return valueSize;
-	}
-	free(dat);
-      }
+  recordid rid = TallocFromPage(xid, headerRid.page, entrySize);
+  DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
+
+  // When the loop completes, header will contain the contents of the page header the entry will be inserted into, 
+  // headerrid will contain the rid of that header, and rid will contain the newly allocated recordid
+  while(rid.size == -1) {
+    if(header.nextPage.size == -1)  {
+      header.nextPage = Talloc(xid, sizeof(pagedListHeader));
+      DEBUG("allocing on new page %d\n", header.nextPage.page);
+      Tset(xid, headerRid, &header);
+      pagedListHeader newHead;
+      newHead.thisPage = 0;
+      newHead.nextPage.page =0;
+      newHead.nextPage.slot =0;
+      newHead.nextPage.size =-1;
+      Tset(xid, header.nextPage, &newHead);
     }
 
+    headerRid = header.nextPage;
+    Tread(xid, header.nextPage, &header);
+    rid = TallocFromPage(xid, headerRid.page, entrySize);
+    DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
+  }
 
-    //    recordid rid = list;
+  pagedListEntry * dat = malloc(entrySize);
+  
+  dat->keySize   = keySize;
+  dat->nextEntry = header.thisPage;
+  memcpy(dat+1, key, keySize);
+  memcpy(((byte*)(dat+1))+keySize, value, valueSize);
+  Tset(xid, rid, dat);
+
+  header.thisPage = rid.slot;
+  DEBUG("Header.thisPage = %d\n", rid.slot);
+  Tset(xid, headerRid, &header);
+  free(dat);
+
+  return ret;
+}
+
+int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
+  pagedListHeader header;
+  Tread(xid, list, &header);
+
+  recordid rid;
+  rid.page = list.page;
+  rid.slot = header.thisPage;
+
+  while(rid.slot || header.nextPage.size != -1) {
+    rid.size = TrecordSize(xid, rid);
+
+    pagedListEntry * dat = malloc(rid.size);
+    Tread(xid, rid, dat);
     
-    list.slot = 0;
-    list.size = sizeof(long);
+    if(!memcmp(dat+1, key, keySize)) {
+      int valueSize = rid.size - keySize - sizeof(pagedListEntry);
+      *value = malloc(valueSize);
+      memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
+      free(dat);
+      return valueSize;
+    }
+    if(dat->nextEntry) {          // another entry on this page
+      rid.slot = dat->nextEntry;
+    } else if (header.nextPage.size != -1) {  // another page
+      rid.page = header.nextPage.page;
+      Tread(xid, header.nextPage, &header);
+      rid.slot = header.thisPage;
+    } else {                     // we've reached the end of the last page
+      rid.slot = 0;
+    }
+    
+    free(dat);
+  }
 
-    //    Tread(xid, list, &nextPage);
-    slottedRead(xid, p, list, (byte*)&nextPage);
-
-    list.page = nextPage;
-
-    releasePage(p);
-
-
-  } 
   return -1;
 }
+
 int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
-  long nextPage = 1;
-  
-  while (nextPage) {
-    int i;
+  pagedListHeader header;
+  Tread(xid, list, &header);
+  recordid headerRid;
+  recordid rid;
+  rid.page = list.page;
+  rid.slot = header.thisPage;
+  short lastSlot = -1;
+  headerRid = list;
+  while(rid.slot || header.nextPage.size != -1) {
+    rid.size = TrecordSize(xid, rid);
+    pagedListEntry * dat = malloc(rid.size);
+    Tread(xid, rid, dat);
+    
+    if(!memcmp(dat+1, key, keySize)) {
 
-    Page * p = loadPage(list.page);
-
-    //    int pageCount = TrecordsInPage(xid, list.page);
-    int pageCount = *numslots_ptr(p);
- 
-    //    printf("%ld\n", nextPage);
-    fflush(stdout);
-
-    for(i = 1; i < pageCount; i++) {
-      recordid entry = list;
-      entry.slot = i;
-      //      int length = TrecordSize(xid, entry);
-      int length = getRecordSize(xid, p, entry);
-      if(length != -1) {  // then entry is defined.
-	short * dat = malloc(length);
-	entry.size = length;
-	
-	slottedRead(xid,p,entry,(byte*)dat);
-
-	//	Tread(xid, entry, dat);
-	
-	if(*dat == keySize && !memcmp(dat+1, key, keySize)) {
-	  releasePage(p);
-	  Tdealloc(xid, entry);
-	  //	  assert(-1 == TrecordSize(xid, entry));
-	  free(dat);
-	  return 1;
-	}
-	free(dat);
+      if(lastSlot != -1) {
+	recordid lastRid = rid;
+	lastRid.slot = lastSlot;
+	lastRid.size = TrecordSize(xid, lastRid);
+	pagedListEntry * lastRidBuf = malloc(lastRid.size);
+	Tread(xid, lastRid, lastRidBuf);
+	lastRidBuf->nextEntry = dat->nextEntry;
+	Tset(xid, lastRid, lastRidBuf);
+	free(lastRidBuf);
+      } else {
+	header.thisPage = dat->nextEntry;
+	Tset(xid, headerRid, &header);
       }
+      Tdealloc(xid, rid);
+      free(dat);
+      return 1;
+    }
+    if(dat->nextEntry) {          // another entry on this page
+      lastSlot = rid.slot;
+      rid.slot = dat->nextEntry;
+    } else if (header.nextPage.size != -1) {  // another page
+      lastSlot = -1;
+      rid.page = header.nextPage.page;
+      headerRid = header.nextPage;
+      Tread(xid, header.nextPage, &header);
+      rid.slot = header.thisPage;
+    } else {                     // we've reached the end of the last page
+      rid.slot = 0;
     }
     
-    list.slot = 0;
-    list.size = sizeof(long);
+    free(dat);
+  }
 
-    //    Tread(xid, list, &nextPage);
-    slottedRead(xid,p,list, (byte*)&nextPage);
-
-    list.page = nextPage;
-    releasePage(p);
-  } 
   return 0;
-
 }
-int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
+
+int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
   byte * value;
   int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
   if(valueSize != -1) {
@@ -225,57 +182,54 @@ int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *
   }
 }
 
-lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) {
-  lladd_pagedList_iterator * ret = malloc(sizeof(lladd_pagedList_iterator));
+lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) { 
+  pagedListHeader header;
+  Tread(xid, list, &header);
+  lladd_pagedList_iterator * it = malloc(sizeof(lladd_pagedList_iterator));
 
-  ret->page = list.page;
-  ret->slot = 1;
+  it->headerRid = header.nextPage;
+  it->entryRid  = list;
+  //  printf("slot <- %d\n", header.thisPage);
+  it->entryRid.slot = header.thisPage;
 
-  return ret;
+  return it;
 }
 
 int TpagedListNext(int xid, lladd_pagedList_iterator * it,
-		   byte ** key, int * keySize, 
+		   byte ** key, int * keySize,
 		   byte ** value, int * valueSize) {
-  //  printf("next: page %d slot %d\n", it->page, it->slot);
-  recordid rid;
-  while(it->page) {
-    while(it->slot < TrecordsInPage(xid, it->page)) {
-      rid.page = it->page;
-      rid.slot = it->slot;
-      rid.size=TrecordSize(xid, rid);
-      if(rid.size != -1) {
-	// found entry!
-	
-	byte * dat = malloc(rid.size);
-	Tread(xid, rid, dat);
-	
-	// populate / alloc pointers passed in by caller.
-	
-	*keySize = *(short*)dat;
-	*valueSize = rid.size - *keySize - sizeof(short);
+  while(it->entryRid.slot || it->headerRid.size != -1) {
+    if(it->entryRid.slot) {
+      it->entryRid.size = TrecordSize(xid, it->entryRid);
+      assert(it->entryRid.size != -1);
 
-	*key = malloc(*keySize);
-	*value = malloc(*valueSize);
+      pagedListEntry * entry = malloc(it->entryRid.size);
+      
+      Tread(xid, it->entryRid, entry);
+      
+      *keySize = entry->keySize;
+      *valueSize = it->entryRid.size - *keySize - sizeof(pagedListEntry);
 
-	memcpy(*key, ((short*)dat)+1, *keySize);
-	memcpy(*value, ((byte*)(((short*)dat)+1)) + *keySize, *valueSize);
+      *key = malloc(*keySize);
+      *value = malloc(*valueSize);
 
-	free(dat);
-	it->slot++;
-	return 1;
-      } 
-      it->slot++;
+      memcpy(*key, entry+1, *keySize);
+      memcpy(*value, ((byte*)(entry+1))+*keySize, *valueSize);
+      
+      it->entryRid.slot = entry->nextEntry;
+      //      printf("slotA <- %d\n", it->entryRid.slot);
+
+      free(entry);
+      return 1;
+
+    } else {  // move to next page.
+      pagedListHeader header;
+      Tread(xid, it->headerRid, &header);
+      it->entryRid.page = it->headerRid.page;
+      it->headerRid = header.nextPage;
+      it->entryRid.slot = header.thisPage;
+      //      printf("slotB <- %d\n", it->entryRid.slot);
     }
-    rid.page = it->page;
-    rid.slot = 0;
-    rid.size = sizeof(long);
-    Tread(xid, rid, &(it->page));
-    it->slot = 1;
-
   }
-  free(it);
-    
   return 0;
-  
 }

@@ -116,7 +116,7 @@ START_TEST(pagedListCheck) {
       
       ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)&bb);
       
-      assert(!ret);
+      assert(-1==ret);
       assert(!bb);
     }
   }

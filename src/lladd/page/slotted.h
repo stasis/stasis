@@ -206,3 +206,5 @@ int  slottedGetType(Page * p, int slot);
  *
  */
 void slottedSetType(Page * p, int slot, int type);
+/** The caller of this function must have a write lock on the page. */
+void slottedCompact(Page * page);

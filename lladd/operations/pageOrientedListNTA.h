@@ -43,8 +43,13 @@ terms specified in this license.
 /**
   @file 
  
-  A linked list implementation designed to handle variable length entries, and 
-  minimize the number of pages spanned by each list. 
+  A linked list implementation designed to handle variable length
+  entries, and minimize the number of pages spanned by each list.
+  This linked list implementation is currently used to implement
+  buckets for the linear hash table.  Unfortunately, due to
+  limitations in the allocation mechanisms, the full benefits of this
+  linked list implementation are not available to the linear hash
+  table.
   
   The data is stored using the slotted page implementation.
   
@@ -59,11 +64,22 @@ terms specified in this license.
 #define __pageOrientedListNTA_H
 
 
-typedef struct {
-  long page;
+//typedef struct {
+//  long page;
   /* The slot of the next record to be returned. */
-  int slot;
+//  int slot;
+//} lladd_pagedList_iterator;
+
+typedef struct {
+  recordid headerRid;
+  recordid entryRid;
 } lladd_pagedList_iterator;
+
+typedef struct {
+  short thisPage;
+  recordid nextPage;
+} pagedListHeader;
+
 
 //recordid dereferencePagedListRID(int xid, recordid rid);
 /** @return 1 if the key was already in the list. */
