@@ -1686,11 +1686,8 @@ asymptotic behavior of the list is less important than the
 behavior with a bounded number of list entries.  In a separate experiment
 not presented here, we compared the implementation of the 
 page-oriented linked list to \yad's conventional linked-list 
-implementation.  Although the conventional implementation
-performs better when bulk loading large amounts of data into a single
-list, we have found that a hashtable built with the page-oriented list
-significantly outperforms one built with conventional linked lists.
-
+implementation, and found that the page-oriented list is faster 
+when used within the context of our hashtable implementation.
 
 %The NTA (Nested Top Action) version of \yad's hash table is very
 %cleanly implemented by making use of existing \yad data structures,
@@ -1742,13 +1739,24 @@ generate a fixed number of requests per second.  We then meaured
 response latency, and found that Berkeley DB and \yad behave
 similarly.
 
+In summary, there are a number of primatives that are necessary to
+implement custom, high concurrency and low level transactional data
+structures.  In order to implement and optimize a hashtable we used a
+number of low level APIs that are not supported by other systems.  We
+needed to customize page layouts to implement ArrayList.  The page-oriented
+list addresses and allocates data with respect to pages in order to
+preserve locality.  The hashtable implementation is built upon these two
+data structures, and needs to be able to generate custom log entries,
+define custom latching/locking semantics, and make use of, or
+implement a custom variant of nested top actions.
+
 The fact that our straightforward hashtable is competitive 
-with Berkeley DB's hashtable shows that
+with Berkeley BD shows that
 straightforward implementations of specialized data structures can 
-compete with comparable, highly tuned, general-purpose implementations.  
+compete with comparable, highly-tuned, general-purpose implementations.  
 Similarly, it seems as though it is not difficult to implement specialized 
-data structures that will significantly outperform existing 
-general purpose structures when applied to an appropriate application.
+data structures that can significantly outperform existing 
+general purpose structures.
 
 This finding suggests that it is appropriate for
 application developers to consider the development of custom
@@ -1768,17 +1776,6 @@ transactional systems.
 %\item{Nested Top Actions for simple implementation.}
 %\item{Bypasses Nested Top Action API to optimize log bandwidth}
 %\end{enumerate}
-
-In summary, there are a number of primatives that are necessary to
-implement custom, high concurrency and low level transactional data
-structures.  In order to implement and optimize a hashtable we used a
-number of low level APIs that are not supported by other systems.  We
-needed to customize page layouts to implement ArrayList.  The Page
-Oriented list addresses and allocates data by page in order to
-preserve locality.  The hashtable implementation built upon these two
-data structures, and needs to be able to generate custom log entries,
-define custom latching/locking semantics, and make use of, or
-implement a custom variant of nested top actions.
 
 
 \begin{figure*}
@@ -2047,14 +2044,27 @@ whitespace, comments and boilerplate function registrations.  Although
 the reasoning required to ensure the correctness of this code is
 complex, the simplicity of the implementation is encouraging.
 
-This section uses:
+In addition to the hashtable, which is required by OASYS's API, this
+section made use of custom log formace and semantics to reduce log
+bandwidth and page file usage.  Berkeley DB supports a similar
+mechanism that is designed to reduce log bandwidth, but it only
+supports range updates and does not map naturally to OASYS's data
+model.  Contrast the to our \yad extension which simply makes upcalls
+into the object serialization layer during recovery to ensure that the
+compact, object specific diffs that OASYS produces are correctly
+applied.  The custom log format, when combined with direct access to
+the page file and buffer pool drastcally reduced disk and memory usage
+for write intensive loads, and a simple extension to our recovery algorithm makes it
+easy to implement similar optimizations in the future.
 
-\begin{enumerate}
-\item{Custom log formats to implement diff based updates}
-\item{Custom log semantics to reduce log bandwidth and page file usage}
-\item{Direct page file access to reduce page file usage}
-\item{Custom recovery and checkpointing semantics to maintain correctness}
-\end{enumerate}
+%This section uses:
+%
+%\begin{enumerate}
+%\item{Custom log formats to implement diff based updates}
+%\item{Custom log semantics to reduce log bandwidth and page file usage}
+%\item{Direct page file access to reduce page file usage}
+%\item{Custom recovery and checkpointing semantics to maintain correctness}
+%\end{enumerate}
 
 \section{Graph Traversal\label{TransClos}}
 
@@ -2223,14 +2233,25 @@ depth-first search of a graph with good locality will also have good
 locality.  Therefore, processing a request via the queue-based multiplexer 
 is more expensive then making a recursive function call.
 
-This section uses:
+We considered applying some of the optimizations discussed earlier in
+the paper to our graph traversal algorithm, but opted to dedicate this
+section to request reordering.  Diff based log entries would be an
+obvious benifit for this scheme, and there may be a way to use the
+OASYS implementation to reduce page file utilization.  The request 
+reordering optimization made use of reusable operation implementations 
+by borrowing ArrayList from the hashtable.  It cleanly seperates wrapper 
+functions from implementations and makes use of application-level log 
+manipulation primatives to produce locality in workloads.  We believe 
+these techniques can be generalized to other applications in future work.
 
-\begin{enumerate}
-\item{Reusability of operation implementations (borrows the hashtable's bucket list (the Array List) implementation to store objects}
-\item{Clean separation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
-\item{Addressability of data by page offset provides the information that is necessary to produce locality in workloads}
-\item{The idea of the log as an application primitive, which can be generalized to other applications such as log entry merging, more advanced reordering primitives, network replication schemes, etc.} 
-\end{enumerate}
+%This section uses:
+%
+%\begin{enumerate}
+%\item{Reusability of operation implementations (borrows the hashtable's bucket list (the Array List) implementation to store objects}
+%\item{Clean separation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
+%\item{Addressability of data by page offset provides the information that is necessary to produce locality in workloads}
+%\item{The idea of the log as an application primitive, which can be generalized to other applications such as log entry merging, more advanced reordering primitives, network replication schemes, etc.} 
+%\end{enumerate}
 %\begin{enumerate}
 %
 %  \item {\bf Comparison of transactional primitives (best case for each operator)}
@@ -2270,8 +2291,8 @@ initial design and implementation.
 
 We have not yet verified that it is easy for developers to implement
 \yad extensions, and it would be worthwhile to perform user studies
-and obtain feedback from programmers that are otherwise unfamiliar
-with our work or the implementation of transactional systems.
+and obtain feedback from programmers that are unfamiliar with the 
+implementation of transactional systems.
 
 Also, we believe that development tools could be used to greatly
 improve the quality and performance of our implementation and
@@ -2279,13 +2300,13 @@ extensions written by other developers.  Well-known static analysis
 techniques could be used to verify that operations hold locks (and
 initiate nested top actions) where appropriate, and to ensure
 compliance with \yad's API.  We also hope to re-use the infrastructure
-necessary that implements such checks to detect opportunities for
+that implements such checks to detect opportunities for
 optimization.  Our benchmarking section shows that our stable
 hashtable implementation is 3 to 4 times slower then our optimized
 implementation.  Using static checking and high-level automated code
 optimization techniques may allow us to narrow or close this
 gap, and enhance the performance and reliability of application-specific 
-extensions written in the future.
+extensions.
 
 We would like to extend our work into distributed system
 development.  We believe that \yad's implementation anticipates many
@@ -2303,6 +2324,8 @@ that logical, host independent logs may be a good fit for applications
 that make use of streaming data or that need to perform
 transformations on application requests before they are materialized
 in a transactional data store.
+
+\rcs{ Cut the next 3 paragraphs? }
 
 We also hope to provide a library of
 transactional data structures with functionality that is comparable to
