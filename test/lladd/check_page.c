@@ -47,6 +47,7 @@ terms specified in this license.
 #include "../../src/lladd/page.h"
 #include "../../src/lladd/page/slotted.h"
 #include "../../src/lladd/page/fixed.h"
+#include "../../src/lladd/page/indirect.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 
@@ -334,6 +335,9 @@ START_TEST(pageThreadTest) {
 } END_TEST
 
 
+/** 
+    @test
+*/
 START_TEST(fixedPageThreadTest) {
   pthread_t workers[THREAD_COUNT];
   int i;
@@ -354,6 +358,60 @@ START_TEST(fixedPageThreadTest) {
   releasePage(p);
 } END_TEST
 
+START_TEST(pageCheckSlotTypeTest) {
+	Tinit();
+	
+	int xid = Tbegin();
+	
+	recordid slot      = Talloc(xid, sizeof(int));
+	recordid fixedRoot = TarrayListAlloc(xid, 2, 10, 10);
+	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
+	
+	Page * p = loadPage(slot.page);
+	assert(getRecordType(xid, p, slot) == SLOTTED_RECORD);
+	releasePage(p);
+	
+	/** @todo the use of the fixedRoot recordid to check getRecordType is 
+		  a bit questionable, but should work. */
+	p = loadPage(fixedRoot.page);
+	assert(getRecordType(xid, p, fixedRoot) == FIXED_RECORD);  
+	releasePage(p);
+	
+	fixedRoot.slot = 1;
+	recordid  fixedEntry = dereferenceRID(fixedRoot);
+	fixedRoot.slot = 0;
+	
+	p = loadPage(fixedEntry.page);
+	assert(getRecordType(xid, p, fixedEntry) == FIXED_RECORD);
+	releasePage(p);
+	
+	p = loadPage(blob.page);
+	int type = getRecordType(xid, p, blob);
+	assert(type == BLOB_RECORD);
+	releasePage(p);
+	
+	recordid bad;
+	bad.page = slot.page;
+	bad.slot = slot.slot + 10;
+	bad.size = 4;
+	
+	p = loadPage(bad.page);
+	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	bad.size = 100000;
+	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	/** @todo this test could be better... The behavior for getRecordType in this 
+			case (valid slot, invalid size) is a bit ambiguous. Maybe an INVALID_RECORDID
+			would be an appropriate return value... */
+	bad.slot = slot.slot;
+	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	
+	releasePage(p);
+	
+	Tcommit(xid);
+	
+	Tdeinit();
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("page");
   /* Begin a new test */
@@ -363,7 +421,7 @@ Suite * check_suite(void) {
 
   tcase_add_test(tc, pageCheckMacros);
 
-  
+  tcase_add_test(tc, pageCheckSlotTypeTest);
 
   tcase_add_test(tc, pageNoThreadMultPageTest);
   tcase_add_test(tc, pageNoThreadTest);
