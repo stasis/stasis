@@ -11,11 +11,11 @@ filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
 [filenumbers]
-0=386
-1=28
+0=43
+1=33
 2=340
-3=229
-4=14
+3=1
+4=312
 5=510
 6=71
 7=1

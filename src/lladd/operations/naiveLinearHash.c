@@ -40,7 +40,7 @@ void lockBucket(int bucket) {
   pblHtInsert(lockedBuckets, &bucket, sizeof(int), (void*)1);
 }
 
-int lockBucketForKey(byte * key, int keySize, recordid * headerRidB) {
+int lockBucketForKey(const byte * key, int keySize, recordid * headerRidB) {
   int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
 
   while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
