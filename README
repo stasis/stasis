@@ -34,3 +34,27 @@ http://mission.base.com/peter/source/
 LLADD's version of the package adds the jbhash.* files, and compiles PBL using
 LLADD's make files.  Currently, LLADD's hash table implementations are based upon
 code from PBL, and pbl is used in a number of places throughout LLADD.
+
+In order to use gcc's profiling and coverage tools (gprof, and gcov, respectively),
+ execute this command:
+
+export CFLAGS="-fprofile-arcs -ftest-coverage -pg -O0"
+./configure
+make clean
+make check
+
+
+The 'make check' step will output profiles and test coverage that reflects the test
+cases.  You can simply invoke 'make' if you are interested in profiling the 
+library for a specific program.
+
+To produce the gcov output, you may then run this command in src/
+
+ls *.c logger/*.c operations/*.c page/*.c | xargs -n 1 gcov | grep  executed | sort -k1,1n
+
+Or, run this:
+
+lcov -c --directory .  > tmp.info
+genhtml tmp.info
+
+For HTML output.

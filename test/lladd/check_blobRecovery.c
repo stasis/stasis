@@ -129,15 +129,15 @@ END_TEST
 
     @todo:  Until we have a non-idempotent operation on blobs, this test can't be written.
 */
-START_TEST (recoverBlob__exactlyOnce) {
+/* START_TEST (recoverBlob__exactlyOnce) {
   
   int xid; 
   int j;
   int k;
   recordid rid;
-  /*  if(1) {
+  / *  if(1) {
     return;
-    } */
+    } * /
   fail_unless(0, "Need to write this test...");
 
   Tinit();
@@ -161,7 +161,7 @@ START_TEST (recoverBlob__exactlyOnce) {
   
   Tdeinit();
 
-  Tinit();  /* Runs recovery.. */
+  Tinit();  / * Runs recovery.. * /
 
   k = 12312;
 
@@ -180,7 +180,7 @@ START_TEST (recoverBlob__exactlyOnce) {
 }
 END_TEST
 
-
+*/
 /** 
     @test
     Makes sure that aborted idempotent operations are correctly undone.
@@ -266,15 +266,15 @@ END_TEST
 
     @todo  logical operations on blobs.
 */
-START_TEST (recoverBlob__exactlyOnceAbort) {
+/* START_TEST (recoverBlob__exactlyOnceAbort) {
   
   int xid; 
   int j;
   int k;
   recordid rid;
-  /*  if(1) 
+  / *  if(1) 
     return ;
-  */
+  * /
   fail_unless(0, "Need to write this test...");
 
   Tinit();
@@ -311,20 +311,20 @@ START_TEST (recoverBlob__exactlyOnceAbort) {
 
 }
 END_TEST
-
+*/
 /**
    @test 
    Check the CLR mechanism with an aborted logical operation, and multipl Tinit()/Tdeinit() cycles.
 
    @todo Devise a way of implementing this for blobs. 
 */
-START_TEST(recoverBlob__clr) {
+/*START_TEST(recoverBlob__clr) {
   recordid rid;
   int xid;
   int j;
   int k;
 
-  /*  if(1) return; */
+  / *  if(1) return; * /
 
   fail_unless(0, "Need to write this test...");
 
@@ -381,7 +381,7 @@ START_TEST(recoverBlob__clr) {
 
 
 } END_TEST
-
+*/
 void simulateBufferManagerCrash();
 extern int numActiveXactions;
 /** 
@@ -550,22 +550,22 @@ Suite * check_suite(void) {
   Suite *s = suite_create("recovery_suite");
   /* Begin a new test */
   TCase *tc = tcase_create("recovery");
-  void * foobar;  /* used to supress warnings. */
+  /* void * foobar; */  /* used to supress warnings. */
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, recoverBlob__idempotent);
-  /*   tcase_add_test(tc, recoverBlob__exactlyOnce); */
-  foobar = (void*)&recoverBlob__exactlyOnce;
+  /*  tcase_add_test(tc, recoverBlob__exactlyOnce); 
+      foobar = (void*)&recoverBlob__exactlyOnce; */
 
   tcase_add_test(tc, recoverBlob__idempotentAbort);
-  /* tcase_add_test(tc, recoverBlob__exactlyOnceAbort); */
-  foobar = (void*)&recoverBlob__exactlyOnceAbort;
+  /*  tcase_add_test(tc, recoverBlob__exactlyOnceAbort);
+      foobar = (void*)&recoverBlob__exactlyOnceAbort; 
 
-  /* tcase_add_test(tc, recoverBlob__clr); */
-  foobar = (void*)&recoverBlob__clr;
+  tcase_add_test(tc, recoverBlob__clr);
+  foobar = (void*)&recoverBlob__clr; */
 
   tcase_add_test(tc, recoverBlob__crash);
-  /* tcase_add_test(tc, recoverBlob__multiple_xacts); */
-  foobar = (void*)&recoverBlob__multiple_xacts;  
+  tcase_add_test(tc, recoverBlob__multiple_xacts); 
+    /*foobar = (void*)&recoverBlob__multiple_xacts;   */
 
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

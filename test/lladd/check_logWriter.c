@@ -240,7 +240,7 @@ START_TEST(logWriterTruncate) {
 
 } END_TEST
 
-#define ENTRIES_PER_THREAD 1000
+#define ENTRIES_PER_THREAD 2000
 
 pthread_mutex_t random_mutex;
 
@@ -318,7 +318,7 @@ START_TEST(logWriterCheckWorker) {
 
 START_TEST(logWriterCheckThreaded) {
 
-#define  THREAD_COUNT 50
+#define  THREAD_COUNT 100
   pthread_t workers[THREAD_COUNT];
   int i;
   pthread_mutex_init(&random_mutex, NULL);

@@ -83,8 +83,11 @@ void downgradelock(rwl * lock) {
   assert(lock->writers);
   lock->writers--;
   lock->readers++;
-  pthread_cond_signal (lock->writeOK); 
-  pthread_cond_broadcast(lock->readOK);
+  if(lock->waiting) {
+    pthread_cond_signal (lock->writeOK); 
+  } else {
+    pthread_cond_broadcast(lock->readOK);
+  }
   pthread_mutex_unlock(lock->mut);
 }
 
@@ -92,13 +95,18 @@ void unlock(rwl * lock) {
   pthread_mutex_lock (lock->mut);
   if(lock->readers) {
     lock->readers--;
-    pthread_cond_signal (lock->writeOK);
+    if(lock->waiting) {
+      pthread_cond_signal (lock->writeOK);
+    }
   } else {
     assert (lock->writers);
     lock->writers--;
     /* Need this as well (in case there's another writer, which is blocking the all of the readers. */
-    pthread_cond_signal (lock->writeOK); 
-    pthread_cond_broadcast (lock->readOK);
+    if(lock->waiting) {
+      pthread_cond_signal (lock->writeOK); 
+    } else {
+      pthread_cond_broadcast (lock->readOK);
+    }
   }
   pthread_mutex_unlock (lock->mut);
 }
