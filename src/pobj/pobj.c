@@ -143,6 +143,8 @@ static pthread_mutex_t g_static_repo_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t g_active_xid_key;
 static pthread_key_t g_active_nested_key;
 static int g_is_init = 0;
+static int g_is_constructed = 0;
+
 
 
 int
@@ -1516,13 +1518,14 @@ pobj_adjust (void *old_objid, struct hash *pobj_convert_hash, int xid)
     return new_objid;
 }
 
+
 /* TODO: possibly use distinct transactions for read/write?
  * Right now doesn't seem to matter, as reads do not generate log entries.
  */
 static int
 pobj_boot_restore (int xid)
 {
-    struct hash *pobj_convert_hash;
+    struct hash *pobj_convert_hash = NULL;
     recordid tmp_rid;
     struct pobj *p;
     void *objid, *new_objid;
@@ -1595,59 +1598,61 @@ pobj_boot_restore (int xid)
     /*
      * Reconstruct heap objects.
      */
-    debug ("reconstructing objects and forming conversion table...");
-    if (! (pobj_convert_hash = hash_new (CONVERT_HASH_NBUCKEXP))) {
-	debug ("error: hash initialization failed");
-	debug ("...interrupted");
-	ret = -1;
-    }
-    else {
-	for (count = 0, i = g_pobj_repo.occupied_head; i >= 0;
-	     count++, i = pobj_slot->next_index)
-	{
-	    pobj_slot = g_pobj_repo_list[POBJ_REPO_SEG (i)].list
-		+ POBJ_REPO_OFF (i);
-	    objid = pobj_slot->objid;
-	    size = pobj_slot->size;
+    if (! g_is_constructed) {
+	debug ("reconstructing objects and forming conversion table...");
+	if (! (pobj_convert_hash = hash_new (CONVERT_HASH_NBUCKEXP))) {
+	    debug ("error: hash initialization failed");
+	    debug ("...interrupted");
+	    ret = -1;
+	}
+	else {
+	    for (count = 0, i = g_pobj_repo.occupied_head; i >= 0;
+		 count++, i = pobj_slot->next_index)
+	    {
+		pobj_slot = g_pobj_repo_list[POBJ_REPO_SEG (i)].list
+		    + POBJ_REPO_OFF (i);
+		objid = pobj_slot->objid;
+		size = pobj_slot->size;
 
-	    debug ("restoring objid=%p size=%d (%d) rid={%d,%d,%ld}",
-		   objid, size, POBJ_SIZE (size), pobj_slot->rid.page,
-		   pobj_slot->rid.slot, pobj_slot->rid.size);
+		debug ("restoring objid=%p size=%d (%d) rid={%d,%d,%ld}",
+		       objid, size, POBJ_SIZE (size), pobj_slot->rid.page,
+		       pobj_slot->rid.slot, pobj_slot->rid.size);
 
-	    /* Allocate memory. */
-	    p = (struct pobj *) g_memfunc.malloc (POBJ_SIZE (size));
-	    if (! p) {
-		debug ("error :object allocation failed");
-		ret = -1;
-	    }
-	    else {
-		new_objid = POBJ2OBJ (p);
-		debug ("new object allocated at %p (%p)", new_objid, (void *) p);
-		
-		/* Read object from backing store. */
-		Tread (xid, pobj_slot->rid, p);
-
-		debug ("inserting %p->%p conversion pair",
-		       objid, new_objid);
-
-		/* Insert old/new objid pair to conversion table. */
-		if (hash_insert (pobj_convert_hash, OBJ2KEY (objid),
-				 (unsigned long) new_objid) < 0) {
-		    debug ("error: hash insertion failed");
+		/* Allocate memory. */
+		p = (struct pobj *) g_memfunc.malloc (POBJ_SIZE (size));
+		if (! p) {
+		    debug ("error :object allocation failed");
 		    ret = -1;
 		}
-	    }
+		else {
+		    new_objid = POBJ2OBJ (p);
+		    debug ("new object allocated at %p (%p)", new_objid, (void *) p);
+		    
+		    /* Read object from backing store. */
+		    Tread (xid, pobj_slot->rid, p);
 
-	    if (ret < 0) {
-		if (p)
-		    g_memfunc.free (p);
-		break;
+		    debug ("inserting %p->%p conversion pair",
+			   objid, new_objid);
+
+		    /* Insert old/new objid pair to conversion table. */
+		    if (hash_insert (pobj_convert_hash, OBJ2KEY (objid),
+				     (unsigned long) new_objid) < 0) {
+			debug ("error: hash insertion failed");
+			ret = -1;
+		    }
+		}
+
+		if (ret < 0) {
+		    if (p)
+			g_memfunc.free (p);
+		    break;
+		}
 	    }
+	    if (ret < 0)
+		debug ("...interrupted (%d object reconstructed)", count);
+	    else
+		debug ("...done (%d objects reconstructed)", count);
 	}
-	if (ret < 0)
-	    debug ("...interrupted (%d object reconstructed)", count);
-	else
-	    debug ("...done (%d objects reconstructed)", count);
     }
     
     /*
@@ -1710,14 +1715,16 @@ pobj_boot_restore (int xid)
      * Adjust references within objects.
      */
     if (! ret) {
-	debug ("adjusting object references...");
-	for (i = g_pobj_repo.occupied_head, count = 0; i >= 0;
-	     i = pobj_slot->next_index, count++) {
-	    pobj_slot = g_pobj_repo_list[POBJ_REPO_SEG (i)].list + POBJ_REPO_OFF (i);
-	    pobj_adjust (pobj_slot->objid, pobj_convert_hash, xid);
+       	if (! g_is_constructed) {
+	    debug ("adjusting object references...");
+	    for (i = g_pobj_repo.occupied_head, count = 0; i >= 0;
+		 i = pobj_slot->next_index, count++) {
+		pobj_slot = g_pobj_repo_list[POBJ_REPO_SEG (i)].list + POBJ_REPO_OFF (i);
+		pobj_adjust (pobj_slot->objid, pobj_convert_hash, xid);
+	    }
+	    debug ("...done (%d objects adjusted)", count);
 	}
 	adjusted = 1;
-	debug ("...done (%d objects adjusted)", count);
     }
 
     /*
@@ -1737,13 +1744,17 @@ pobj_boot_restore (int xid)
 		 count++, i = static_slot->next_index) {
 		static_slot = g_static_repo_list[STATIC_REPO_SEG(i)].list
 		    + STATIC_REPO_OFF(i);
-		new_objid = (void *) hash_lookup (pobj_convert_hash,
-						  OBJ2KEY (static_slot->objid));
+
+		if (! g_is_constructed) {
+		    new_objid = (void *) hash_lookup (pobj_convert_hash,
+				    		      OBJ2KEY (static_slot->objid));
 		
-		debug ("adjusting %p: %p->%p",
-		       (void *) static_slot->static_ptr, static_slot->objid, new_objid);
-		*static_slot->static_ptr = new_objid;
-		static_slot->objid = new_objid;
+		    debug ("adjusting %p: %p->%p",
+			   (void *) static_slot->static_ptr,
+			   static_slot->objid, new_objid);
+		    *static_slot->static_ptr = new_objid;
+		    static_slot->objid = new_objid;
+		}
 		
 		/* Note: we apply a deliberate offset of 1 to index values,
 		 * so as to be able to distinguish a 0 index value from "key not found"
@@ -1792,17 +1803,16 @@ pobj_boot_restore (int xid)
 	    debug ("...done");
 	}
 
-	if (pobj_convert_hash) {
+	if (! g_is_constructed && pobj_convert_hash) {
 	    debug ("deallocating persistent objects...");
 	    for (count = 0, i = g_pobj_repo.occupied_head; i >= 0;
 		 count++, i = pobj_slot->next_index) {
 		pobj_slot = g_pobj_repo_list[POBJ_REPO_SEG (i)].list
 		    + POBJ_REPO_OFF (i);
-		if (adjusted)
-		    new_objid = pobj_slot->objid;
-		else
-		    new_objid = (void *) hash_lookup (pobj_convert_hash,
-			    			      OBJ2KEY (pobj_slot->objid));
+		
+		new_objid = (adjusted ? pobj_slot->objid :
+			     (void *) hash_lookup (pobj_convert_hash,
+			 			   OBJ2KEY (pobj_slot->objid)));
 		if (new_objid) {
 		    p = OBJ2POBJ (new_objid);
 		    debug ("deallocating %p (%p)", new_objid, (void *) p);
@@ -1821,6 +1831,8 @@ pobj_boot_restore (int xid)
 	g_pobj_repo_list = NULL;
 	debug ("...done");
     }
+    else
+	g_is_constructed = 1;
 
     if (pobj_convert_hash)
 	hash_free (pobj_convert_hash);
@@ -1980,6 +1992,8 @@ pobj_boot_init (int xid)
     Tset (xid, g_boot_rid, &g_boot);
     debug ("...done");
 
+    g_is_constructed = 1;
+
     debug_end ();
     return 0;
 }
@@ -2102,6 +2116,7 @@ int
 pobj_shutdown (void)
 {
     int lock_ret;
+    int i;
 
     debug_start ();
 
@@ -2124,8 +2139,25 @@ pobj_shutdown (void)
 	return -1;
     }
     
+    debug ("deallocating static reference fast lookup table");
     hash_free (g_static_repo_hash);
+
+    debug ("deallocating static reference repository...");
+    for (i = 0; i < g_static_repo.nseg; i++)
+	XFREE (g_static_repo_list[i].list);
+    XFREE (g_static_repo_list);
+    g_static_repo_list = NULL;
+    debug ("...done");
+
+    debug ("deallocating persistent object repository...");
+    for (i = 0; i < g_pobj_repo.nseg; i++)
+	XFREE (g_pobj_repo_list[i].list);
+    XFREE (g_pobj_repo_list);
+    g_pobj_repo_list = NULL;
+    debug ("...done");
+
     Tdeinit ();
+
     g_is_init = 0;
 
     debug ("unlocking");
