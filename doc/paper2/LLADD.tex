@@ -1853,19 +1853,6 @@ Such an optimization would be difficult to achieve with Berkeley DB
 since the only diff-based mechanism it supports requires changes to 
 span contiguous regions of a record, which is not necessarily the case for arbitrary
 object updates.
-In a database server context, this type of optimization can be
-supported if the fields of the object are broken into database table
-columns. and a SQL update query only modifies a subset of the fields. 
-However, as we have seen in some preliminary evaluation, 
-the overheads associated with a SQL based interface outweigh the
-advantages of this optimization.  To avoid RPC costs, we ran the 
-benchmark using libmysqld, which bypasses RPC costs by linking MySQL 
-into an application binary.  We used an InnoDB table, which seemed 
-to perform better than tables backed by Berkeley DB.  Still, MySQL 
-was significantly slower then native Berkeley DB.  If we do not link 
-the MySQL server into the application binary then the cost of local 
-interprocess communication dominates the test, causing the benchmark to 
-take too long to be reported here.
 
 %% \footnote{It is unclear if
 %% this optimization would outweigh the overheads associated with an SQL
