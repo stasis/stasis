@@ -1733,8 +1733,8 @@ significantly better than Berkeley DB's with both filesystems.}
 %more of \yad's internal APIs.  Our choice of C as an implementation 
 %language complicates this task somewhat.}
 
-\rcs{Is the graph for the next paragraph worth the space?}
-\eab{I can combine them onto one graph I think (not 2).}
+%\rcs{Is the graph for the next paragraph worth the space?}
+%\eab{I can combine them onto one graph I think (not 2).}
 %
 %The final test measures the maximum number of sustainable transactions
 %per second for the two libraries.  In these cases, we generate a
@@ -1761,8 +1761,10 @@ general purpose structures when applied to an appropriate application.
 This finding suggests that it is appropriate for
 application developers to consider the development of custom
 transactional storage mechanisms when application performance is
-important.  The next two sections are devoted to developing such mechanisms, 
-confirming their practicality.
+important.  The next two sections are devoted to confirming the 
+practicality of such mechanisms by applying them to applications 
+that suffer from long-standing performance problems with layered 
+transactional systems.
 
 
 %This section uses:
@@ -1876,7 +1878,10 @@ memory pressure.}
 to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
 the log instead of writing the entire object during an update.
-Such an optimization would be difficult to achieve with Berkeley DB,
+Such an optimization would be difficult to achieve with Berkeley DB 
+since its record diffing mechanism assumes that changes span contiguous 
+byte ranges, and this may not be the case for arbitrary object updates.
+\rcs { MIKE IMPLEMENTED THIS!  FIXME }
 but could be performed by a database server if the fields of the
 objects were broken into database table columns. 
 \footnote{It is unclear if
