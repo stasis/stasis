@@ -1394,86 +1394,66 @@ number.
 
 \subsection{The Bucket List}
 
-\rcs{This seems overly complicated to me...}
+%\rcs{This seems overly complicated to me...}
 
 \yad provides access to transactional storage with page-level
 granularity and stores all record information in the same page file.
-Therefore, our bucket list must be partitioned into page size chunks,
-and (since other data structures may concurrently use the page file)
-we cannot assume that the entire bucket list is contiguous.
+Therefore, our bucket list must be partitioned into page-size chunks,
+and we cannot assume that the entire bucket list is contiguous.
 Therefore, we need some level of indirection to allow us to map from
 bucket number to the record that stores the corresponding bucket.
 
 \yad's allocation routines allow applications to reserve regions of
 contiguous pages.  Therefore, if we are willing to allocate the bucket
-list in sufficiently large chunks, we can limit the number of such
-contiguous regions that we will require.  Borrowing from Java's
-ArrayList structure, we initially allocate a fixed number of pages to
-store buckets and allocate more pages as necessary, doubling the
-number allocated each time.  
+list in sufficiently large chunks, we can limit the number of distinct
+contiguous regions.  Borrowing from Java's ArrayList structure, we
+initially allocate a fixed number of pages to store buckets and
+allocate more pages as necessary, doubling the allocation each
+time. We use a single ``header'' page to store the list of regions and
+their sizes.
 
-We allocate a fixed amount of storage for each bucket, so we know how
-many buckets will fit in each of these pages.  Therefore, in order to
-look up an aribtrary bucket we simply need to calculate which chunk
-of allocated pages will contain the bucket and then caculate the offset the
-appropriate page within that group of allocated pages.  
+We use fixed-sized buckets, so given we can treat a region as an array
+of buckets using the fixed-size record page layout. Thus, we use the
+header page to find the right region, and then index into it, to get
+the $(page, slot)$ address.  Once we have this address, the redo/undo
+entries are trivial: they simply log the before and after image of the
+appropriate record.
+
 
 %Since we double the amount of space allocated at each step, we arrange
 %to run out of addressable space before the lookup table that we need
 %runs out of space. 
 
-\rcs{This parapgraph doesn't really belong}
-Normal \yad slotted pages are not without overhead.  Each record has
-an assoiciated size field, and an offset pointer that points to a
-location within the page.  Throughout our bucket list implementation,
-we only deal with fixed-length slots.  Since \yad supports multiple
-page layouts, we use the ``Fixed Page'' layout, which implements a
-page consisting on an array of fixed-length records.  Each bucket thus
-maps directly to one record, and it is trivial to map bucket numbers
-to record numbers within a page.  
+%\rcs{This parapgraph doesn't really belong}
+%Normal \yad slotted pages are not without overhead.  Each record has
+%an assoiciated size field, and an offset pointer that points to a
+%location within the page.  Throughout our bucket list implementation,
+%we only deal with fixed-length slots.  Since \yad supports multiple
+%page layouts, we use the ``Fixed Page'' layout, which implements a
+%page consisting on an array of fixed-length records.  Each bucket thus
+%maps directly to one record, and it is trivial to map bucket numbers
+%to record numbers within a page.  
 
-\yad provides a call that allocates a contiguous range of pages.  We
-use this method to allocate increasingly larger regions of pages as
-the array list expands, and store the regions' offsets in a single 
-page header.  
+%\yad provides a call that allocates a contiguous range of pages.  We
+%use this method to allocate increasingly larger regions of pages as
+%the array list expands, and store the regions' offsets in a single 
+%page header.  
 
-When we need to access a record, we first calculate 
-which region the record is in, and use the header page to determine 
-its offset.  We can do this because the size of each region is 
-deterministic; it is simply $size_{first~region} * 2^{region~number}$.  
-We then calculate the $(page,slot)$ offset within that region.  
+%When we need to access a record, we first calculate 
+%which region the record is in, and use the header page to determine 
+%its offset.  We can do this because the size of each region is 
+%deterministic; it is simply $size_{first~region} * 2^{region~number}$.  
+%We then calculate the $(page,slot)$ offset within that region.  
 
-\yad 
-allows us to reference records by using a $(page,slot,size)$ triple, 
-which we call a {\em recordid}, and we already know the size of the 
-record.  Once we have the recordid, the redo/undo entries are trivial.  
-They simply log the before and after image of the appropriate record, 
-and are provided by the Fixed Page interface.
-
-%In fact, this is essentially identical to the transactional array
-%implementation, so we can just use that directly: a range of
-%contiguous pages is treated as a large array of buckets. The linear
-%hash table is thus a tuple of such arrays that map ranges of IDs to
-%each array.  For a table split into $m$ arrays, we thus get $O(lg m)$
-%in-memory operations to find the right array, followed by an $O(1)$
-%array lookup.  The redo/undo functions for the array are trivial: they
-%just log the before or after image of the specific record.
-%
-%\eab{should we cover transactional arrays somewhere?}
-
-%% The ArrayList page handling code overrides the recordid ``slot'' field
-%% to refer to a logical offset within the ArrayList.  Therefore,
-%% ArrayList provides an interface that can be used as though it were
-%% backed by an infinitely large page that contains fixed length records.
-%% This seems to be generally useful, so the ArrayList implementation may
-%% be used independently of the hashtable.
-
-%For brevity we do not include a description of how the ArrayList
-%operations are logged and implemented.
 
 \subsection{Bucket Overflow}
 
 \eab{don't get this section, and it sounds really complicated, which is counterproductive at this point  -- Is this better now? -- Rusty}
+
+\eab{some basic questions: 1) does the record described above contain
+key/value pairs or a pointer to a linked list?  Ideally it would be
+one bucket with a next pointer at the end... 2) what about values that
+are bigger than one bucket?, 3) add caption to figure.}
 
 \begin{figure}
 \includegraphics[width=3.25in]{LHT2.pdf}
@@ -1481,17 +1461,17 @@ and are provided by the Fixed Page interface.
 \end{figure}
 
 For simplicity, our buckets are fixed length.  In order to support
-variable length entries we store the keys and values
+variable-length entries we store the keys and values
 in linked lists, and represent each list as a list of 
 smaller lists.  The first list links pages together, and the smaller
-lists reside within a single page. (Figure~\ref{fig:LHT})
+lists reside within a single page (Figure~\ref{fig:LHT}).
 
 All of the entries within a single page may be traversed without
 unpinning and repinning the page in memory, providing very fast
 traversal over lists that have good locality.  This optimization would
 not be possible if it were not for the low level interfaces provided
 by the buffer manager.  In particular, we need to be able to specify
-which page we would like to allocate space on, and need to be able to
+which page on which to allocate space, and need to be able to
 read and write multiple records with a single call to pin/unpin.  Due to
 this data structure's nice locality properties, and good performance
 for short lists, it can also be used on its own.
@@ -1515,7 +1495,7 @@ described in that section and lock the entire hashtable for each
 operation.  This prevents the hashtable implementation from fully
 exploiting multiprocessor systems,\footnote{\yad passes regression 
 tests on multiprocessor systems.}  but seems to be adequate on single 
-processor machines. (Figure~\ref{fig:TPS}) 
+processor machines (Figure~\ref{fig:TPS}).
 We describe a finer grained concurrency mechanism below.
 
 %We have found a simple recipe for converting a non-concurrent data structure into a concurrent one, which involves three steps:
@@ -1585,16 +1565,16 @@ straightforward.  The only complications are a) defining a logical undo, and b) 
 %Next we describe some additional optimizations and evaluate the
 %performance of our implementations.
 
-\subsection{The optimized hashtable}
+\subsection{The Optimized Hashtable}
 
-Our optimized hashtable implementation is optimized for log
-bandwidth, only stores fixed-length entries, and does not obey normal
-recovery semantics.  
+Our optimized hashtable implementation is optimized for log bandwidth,
+only stores fixed-length entries, and exploits a more aggresive
+version of nested top actions.
 
 Instead of using nested top actions, the optimized implementation
 applies updates in a carefully chosen order that minimizes the extent
-to which the on disk representation of the hash table could be
-corrupted.  (Figure~\ref{linkedList}) Before beginning updates, it
+to which the on disk representation of the hash table can be
+corrupted (Figure~\ref{linkedList}). Before beginning updates, it
 writes an undo entry that will check and restore the consistency of
 the hashtable during recovery, and then invokes the inverse of the
 operation that needs to be undone.  This recovery scheme does not
@@ -1602,20 +1582,18 @@ require record-level undo information.  Therefore, pre-images of
 records do not need to be written to log, saving log bandwidth and
 enhancing performance.
 
-Also, since this implementation does not need to support variable size
+Also, since this implementation does not need to support variable-size
 entries, it stores the first entry of each bucket in the ArrayList
 that represents the bucket list, reducing the number of buffer manager
 calls that must be made.  Finally, this implementation caches
-information about hashtables in memory so that it does not have to 
-obtain a copy of hashtable
-header information from the buffer mananger for each request.
+the header information in memory, rather than getting it from the buffer manager on each request.
 
 The most important component of \yad for this optimization is \yad's
 flexible recovery and logging scheme.  For brevity we only mention
-that this hashtable implementation uses bucket granularity latching, 
-but we do not describe how this was implemented.  Finer grained
-latching is relatively easy in this case since all operations only 
-affect a few buckets, and buckets have a natural ordering.
+that this hashtable implementation uses bucket-granularity latching;
+fine-grain latching is relatively easy in this case since all
+operations only affect a few buckets, and buckets have a natural
+ordering.
 
 \begin{figure*}
 \includegraphics[%
@@ -1649,16 +1627,16 @@ library.  For comparison, we also provide throughput for many different
 \yad operations, BerkeleyDB's DB\_HASH hashtable implementation,
 and lower level DB\_RECNO record number based interface.  
 
-Both of \yad's hashtable implementations perform well, but the complex
+Both of \yad's hashtable implementations perform well, but the
 optimized implementation is clearly faster.  This is not surprising as
 it issues fewer buffer manager requests and writes fewer log entries
 than the straightforward implementation.
 
-We see that \yad's other operation implementations also perform well
-in this test.  The page-oriented list implementation is geared toward
-preserving the locality of short lists, and we see that it has
-quadratic performance in this test.  This is because the list is
-traversed each time a new page must be allocated.  
+\eab{missing} We see that \yad's other operation implementations also
+perform well in this test.  The page-oriented list implementation is
+geared toward preserving the locality of short lists, and we see that
+it has quadratic performance in this test.  This is because the list
+is traversed each time a new page must be allocated.
 
 %Note that page allocation is relatively infrequent since many entries
 %will typically fit on the same page.  In the case of our linear
@@ -1671,13 +1649,13 @@ traversed each time a new page must be allocated.
 
 Since the linear hash table bounds the length of these lists, the 
 performance of the list when only contains one or two elements is
-much more important than asymptotic behavior. In a seperate experiment
+much more important than asymptotic behavior. In a separate experiment
 not presented here, we compared the
 implementation of the page-oriented linked list to \yad's conventional
 linked-list implementation.  Although the conventional implementation
 performs better when bulk loading large amounts of data into a single
 list, we have found that a hashtable built with the page-oriented list
-outperforms an otherwise equivalent hashtable implementation that uses 
+outperforms one built with 
 conventional linked lists.
 
 
@@ -1693,7 +1671,7 @@ The second test (Figure~\ref{fig:TPS}) measures the two libraries' ability to ex
 concurrent transactions to reduce logging overhead.  Both systems
 can service concurrent calls to commit with a single 
 synchronous I/O. Because different approaches to this 
-optimization make sense under different circumstances,~\cite{findWorkOnThisOrRemoveTheSentence} this may 
+optimization make sense under different circumstances~\cite{findWorkOnThisOrRemoveTheSentence}, this may 
 be another aspect of transactional storage systems where
 application control over a transactional storage policy is desirable.  
 
@@ -1727,7 +1705,7 @@ general purpose structures when applied to an appropriate application.
 
 This finding suggests that it is appropriate for
 application developers to consider the development of custom
-transactional storage mechanisms if application performance is
+transactional storage mechanisms when application performance is
 important.
 
 \begin{figure*}
@@ -1762,8 +1740,8 @@ serialization is also a convenient way of adding persistent storage to
 an existing application without developing an explicit file format or
 dealing with low-level I/O interfaces.
 
-A simple object serialization scheme would bulk-write and bulk-read
-sets of application objects to an operating system file.  These
+A simple serialization scheme would bulk-write and bulk-read
+sets of application objects to an OS file.  These
 schemes suffer from high read and write latency, and do not handle
 small updates well.  More sophisticated schemes store each object in a
 seperate, randomly accessible record, such as a database tuple or
