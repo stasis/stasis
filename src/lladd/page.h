@@ -97,27 +97,57 @@ typedef struct Page_s {
       
       Each page has an associated read/write lock.  This lock only
       protects the internal layout of the page, and the members of the
-      page struct.  Here is how it is held in various circumstances:
+      page struct.  Here is how rwlatch is held in various circumstances:
       
       Record allocation:  Write lock
       Record read:        Read lock
       Read LSN            Read lock
       Record write       *READ LOCK*
       Write LSN           Write lock
+      Write page to disk  No lock
+      Read page from disk No lock
 
-      Since the bufferManager re-uses page structs, this lock is also
-      held when the page is being read or written to disk:
-
-      Write page to disk    Write lock
-      Read page from disk   Write lock
-      
       Any circumstance where one these locks are held during an I/O
-      operation is a bug.  (Unless the I/O operation is reading or
-      writing the locked page to disk)
+      operation is a bug.  
+      
+      For the 'no lock' cases, see @loadlatch
+
   */
   
   rwl * rwlatch;
 
+  /**
+      Since the bufferManager re-uses page structs, this lock is used
+      to ensure that the page is in one of two consistent states,
+      depending on whether a read lock or a write lock is being held.
+      If a read lock is held, then the page is managed by the rwlatch
+      also defined in this struct.  Therefore, it cannot be read from
+      or written to disk.  Furthermore, since we do not impose an
+      order on operations, the holder of a readlock may not use the
+      lsn field to determine whether a particular operation has
+      completed on the page.
+
+      The write lock is used to block all writers (other than the one
+      holding the page), and to ensure that all updates with lsn less
+      than or equal to the page's lsn have been applied.  Therefore,
+      threads that write the page to disk must hold this lock.  Since
+      it precludes access by all other threads, a write lock also
+      allows the holder to evict the current page, and replace it.
+
+      Examples:
+      
+      Write page to disk    Write lock
+      Read page from disk   Write lock
+      Allocate a new record Read lock
+      Write to a record     Read lock
+      Read from a record    Read lock
+
+
+      @see rwlatch, getPage(), pageRalloc(), pageRead()
+
+
+      
+  */
   rwl * loadlatch;
 
   /** This mutex protects the pending field.  We don't use rwlatch for
