@@ -163,7 +163,7 @@ void pageInit() {
     int ret = posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE);
     assert(!ret);
 #else
-#warn Not using posix_memalign
+//#warn Not using posix_memalign
     pool[i].memAddr = malloc(PAGE_SIZE);
     assert(pool[i].memAddr);
 #endif

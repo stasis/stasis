@@ -6,6 +6,7 @@
 #define MAX_ITERATOR_TYPES 10
 #define LINEAR_HASH_NTA_ITERATOR 0
 #define ARRAY_ITERATOR           1
+#define LOG_MEMORY_ITERATOR      2
 
 typedef struct { 
   //  void * new(void * arg);
@@ -13,6 +14,7 @@ typedef struct {
   int  (*next) (int xid, void * it);
   int  (*key)  (int xid, void * it, byte ** key);
   int  (*value)(int xid, void * it, byte ** value);
+  int  (*releaseTuple)(int xid, void * it);
 } lladdIterator_def_t;
 
 typedef struct { 
@@ -37,6 +39,14 @@ void Titerator_close(int xid, lladdIterator_t * it);
 
 */
 int Titerator_next(int xid, lladdIterator_t * it);
+
+/**
+ NOTE: next  acquires a mutex, releaseTuple releases mutex,
+       next key value --atomic
+       provides , allows iterator to clean up if necessary
+                                                 > such as release lock
+*/
+int  (*releaseTuple)(int xid, void * it);
 
 /** 
     This function allows the caller to access the current iterator

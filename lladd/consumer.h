@@ -3,9 +3,10 @@
 #ifndef __CONSUMER_H
 #define __ITERATOR_H
 
-#define MAX_ITERATOR_TYPES 10
-#define FIFO_CONSUMER       0
-#define ARRAY_CONSUMER      1
+#define MAX_ITERATOR_TYPES  10
+#define FIFO_CONSUMER        0
+#define ARRAY_CONSUMER       1
+#define LOG_MEMORY_CONSUMER  2
 
 typedef struct {
   int foo;
@@ -22,8 +23,7 @@ void consumer_init();
 void Tconsumer_close(int xid, lladdConsumer_t * it);
 /**
    
-   @param xid Transaction id
-   @param it  The consumer
+   @param xid Transaction id @param it  The consumer
    @param key Can be null if there is no key.
    @param value Can be null if there is no value, but both can't be null.  (Or can they???)
    
@@ -37,4 +37,4 @@ int Tconsumer_push(int xid, lladdConsumer_t * it, byte * key, size_t keySize, by
 */
 //int Tconsumer_tryPush(int xid, ....);
 
-#endif
+#endif // __CONSUMER_H

@@ -5,7 +5,7 @@ lib_LIBRARIES=liblladd.a
 # removed: recovery.c transactional.c logger.c logger/logparser.c logger/logstreamer.c
 liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
                    pageFile.c pageCache.c page.c blobManager.c recovery2.c transactional2.c \
-		   lockManager.c iterator.c arrayCollection.c \
+		   lockManager.c iterator.c arrayCollection.c ringbuffer.c \
 	           logger/logEntry.c logger/logWriter.c logger/logHandle.c logger/logger2.c \
 		   logger/logMemory.c multiplexer.c\
 		   page/slotted.c page/header.c page/fixed.c  compensations.c \
@@ -16,5 +16,7 @@ liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c op
 		   operations/naiveLinearHash.c operations/nestedTopActions.c \
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c
+
+#		   logger/logMemory.c \ ringbuffer.c \   asdfas
 #operations/lladdhash.c 
 AM_CFLAGS= -g -Wall -pedantic -std=gnu99

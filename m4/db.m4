@@ -96,7 +96,7 @@ AC_DEFUN([AC_FIND_DB], [
     if test ! x"$ac_dbdir" = x"yes" ; then
         ac_dbincdirs=$ac_dbdir/include
     else
-        ac_dbincdirs="/usr/include /usr/local/include/db4"
+        ac_dbincdirs="/usr/include /usr/local/include/db4 /usr/local/include/db42"
         ac_dbincdirs="$ac_dbincdirs /usr/include/db$ac_dbver"
         ac_dbincdirs="$ac_dbincdirs /usr/local/BerkeleyDB.$ac_dbver/include"
     fi
@@ -104,7 +104,7 @@ AC_DEFUN([AC_FIND_DB], [
     if test ! x"$ac_dbdir" = x"yes" ; then
         ac_dblibdirs="$ac_dbdir/lib"
     else
-        ac_dblibdirs="/usr/lib /usr/local/lib"
+        ac_dblibdirs="/usr/lib /usr/local/lib /usr/local/lib/db42"
         ac_dblibdirs="$ac_dblibdirs /usr/local/BerkeleyDB.$ac_dbver/lib"
     fi
 

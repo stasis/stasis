@@ -133,7 +133,7 @@ void openPageFile() {
   // O_DIRECT is broken under linux 2.4.. 
   stable = open (STORE_FILE, O_CREAT | O_RDWR /*| O_DIRECT*/, S_IRWXU | S_IRWXG | S_IRWXO);
 #else
-#warn Not using O_DIRECT
+//#warn Not using O_DIRECT
   // If we don't have posix_memalign(), then we aren't aligning our pages in memory, and can't use O_DIRECT.
   stable = open (STORE_FILE, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
 #endif
