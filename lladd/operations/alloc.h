@@ -27,4 +27,6 @@ recordid Talloc(int xid, long size);
 /** @todo Currently, we just leak store space on dealloc. */
 void Tdealloc(int xid, recordid rid);
 
+int TrecordType(int xid, recordid rid);
+
 #endif

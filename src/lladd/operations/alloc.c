@@ -142,3 +142,10 @@ void Tdealloc(int xid, recordid rid) {
   releasePage(p);  
   free(preimage);
 }
+
+int TrecordType(int xid, recordid rid) {
+  Page * p = loadPage(rid.page);
+  int ret = getRecordType(xid, p, rid);
+  releasePage(p);
+  return ret;
+}

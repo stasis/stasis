@@ -411,6 +411,53 @@ START_TEST(pageCheckSlotTypeTest) {
 	
 	Tdeinit();
 } END_TEST
+/**
+  @test unit test for TrecordType
+*/
+START_TEST(pageTrecordTypeTest) {
+	Tinit();
+	
+	int xid = Tbegin();
+	
+	recordid slot      = Talloc(xid, sizeof(int));
+	recordid fixedRoot = TarrayListAlloc(xid, 2, 10, 10);
+	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
+	
+	assert(TrecordType(xid, slot) == SLOTTED_RECORD);
+	
+	/** @todo the use of the fixedRoot recordid to check getRecordType is 
+		  a bit questionable, but should work. */
+	
+	assert(TrecordType(xid, fixedRoot) == FIXED_RECORD);  
+	
+	fixedRoot.slot = 1;
+	recordid  fixedEntry = dereferenceRID(fixedRoot);
+	fixedRoot.slot = 0;
+	
+	assert(TrecordType(xid, fixedEntry) == FIXED_RECORD);
+	
+	int type = TrecordType(xid, blob);
+	assert(type == BLOB_RECORD);
+		
+	recordid bad;
+	bad.page = slot.page;
+	bad.slot = slot.slot + 10;
+	bad.size = 4;
+	
+	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	bad.size = 100000;
+	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	/** @todo this test could be better... The behavior for getRecordType in this 
+			case (valid slot, invalid size) is a bit ambiguous. Maybe an INVALID_RECORDID
+			would be an appropriate return value... */
+	bad.slot = slot.slot;
+	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	
+	Tcommit(xid);
+	
+	Tdeinit();
+} END_TEST
+
 
 Suite * check_suite(void) {
   Suite *s = suite_create("page");
@@ -422,7 +469,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageCheckMacros);
 
   tcase_add_test(tc, pageCheckSlotTypeTest);
-
+  tcase_add_test(tc, pageTrecordTypeTest);
   tcase_add_test(tc, pageNoThreadMultPageTest);
   tcase_add_test(tc, pageNoThreadTest);
   tcase_add_test(tc, pageThreadTest);

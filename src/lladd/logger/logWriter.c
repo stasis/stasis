@@ -138,7 +138,8 @@ pthread_mutex_t truncateLog_mutex;
 
 static int sought = 1;
 int openLogWriter() {
-#define BUFSIZE 1024*96
+#define BUFSIZE (1024*96)
+//#define BUFSIZE (512)
   char * buffer ;/*= malloc(BUFSIZE);*/
 
   assert(!posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE));
@@ -578,4 +579,3 @@ int truncateLog(lsn_t LSN) {
 lsn_t firstLogEntry() {
   return global_offset + sizeof(lsn_t);
 }
-
