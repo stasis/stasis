@@ -43,8 +43,6 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
   
   int myFifo = -1;
   
-  
-
   int deltaNumOut = 0;
   int deltaNumSkipped = 0;
   int deltaNumShortcutted = 0;
@@ -66,9 +64,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
       //      assert(myFifo == crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount);
     }
 
-
     Titerator_tupleDone(xid, local->iterator);
-
     Tread(xid, localRid, node);
 
     if(node[transClos_outdegree] != num) {

@@ -108,8 +108,10 @@ transaction systems to compliment not replace relational systems.
 The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
-mapping each object to a row in a table and then issuing queries to
-keep the objects and rows consistent.  A typical update must confirm
+mapping each object to a row in a table\footnote{If the object is
+stored in normalized relational format, it may span many rows and tables.~\cite{Hibernate}} 
+and then issuing queries to
+keep the objects and rows consistent  A typical update must confirm
 it has the current version, modify the object, write out a serialized
 version using the SQL {\tt update} command, and commit.  This is an
 awkward and slow mechanism, but it does provide transactional
@@ -122,7 +124,7 @@ transaction system is complex and highly optimized for
 high-performance update-in-place transactions (mostly financial).
 
 In this paper, we introduce a flexible framework for ACID
-transactions, \yad, that is intended to support this broader range of
+transactions, \yad, that is intended to support a broader range of
 applications.  Although we believe it could also be the basis of a
 DBMS, there are clearly excellent existing solutions, and we thus
 focus on the rest of the applications.  The primary goal of \yad is to
@@ -130,8 +132,8 @@ provide flexible and complete transactions.
 
 By {\em flexible} we mean that \yad can implement a wide range of
 transactional data structures, that it can support a variety of
-policies for locking, commit, clusters, and buffer management, and
-that it is extensible for both new core operations and new data
+policies for locking, commit, clusters and buffer management. Also,
+it is extensible for both new core operations and new data
 structures.  It is this flexibility that allows the support of a wide
 range of systems.
 
@@ -159,9 +161,7 @@ define custom operations. Rather than hiding the underlying complexity
 of the library from developers, we have produced narrow, simple API's
 and a set of invariants that must be maintained in order to ensure
 transactional consistency, allowing application developers to produce
-high-performance extensions with only a little effort.  We walk
-through a sequence of such optimizations for a transactional hash
-table in Section~\ref{hashtable}.
+high-performance extensions with only a little effort.  
 
 Specifically, application developers using \yad can control: 1)
 on-disk representations, 2) access-method implemenations (including
@@ -197,12 +197,23 @@ implementation's API are still changing, but the interfaces to low
 level primitives, and implementations of basic functionality have
 stablized.  
 
-To validate these claims, we developed a number of applications such
-as an efficient persistant object layer, {\em @todo locality preserving
-graph traversal algorithm}, and a cluster hash table based upon
-on-disk durability and two-phase commit.  We also provide benchmarking
-results for some of \yad's primitives and the systems that it
-supports.
+To validate these claims, we walk
+through a sequence of optimizations for a transactional hash
+table in Section~\ref{sub:Linear-Hash-Table}, an object serialization 
+scheme in Section~\ref{OASYS}, and a graph traversal algorithm in 
+Section~\ref{TransClos}.  Bechmarking figures are provided for each 
+application.  \yad also includes a cluster hash table 
+built upon two-phase commit which will not be descibed in detail 
+in this paper.  Similarly we did not have space to discuss \yad's 
+blob implementation, which demonstrates how \yad can
+add transactional primatives to data stored in the file system.
+
+%To validate these claims, we developed a number of applications such
+%as an efficient persistant object layer, {\em @todo locality preserving
+%graph traversal algorithm}, and a cluster hash table based upon
+%on-disk durability and two-phase commit.  We also provide benchmarking
+%results for some of \yad's primitives and the systems that it
+%supports.
 
 %\begin{enumerate}
 
@@ -288,8 +299,13 @@ solutions are overkill (and expensive).  MySQL~\cite{mysql} has
 largely filled this gap by providing a simpler, less concurrent
 database that can work with a variety of storage options including
 Berkeley DB (covered below) and regular files, although these
-alternatives tend to affect the semantics of a transaction.  \eab{need
-to discuss other flaws! clusters? what else?}
+alternatives affect the semantics of transactions, and sometimes 
+disable or interfere with high level database features.  MySQL 
+includes these multiple storage engines for performance reasons.  
+We argue that by reusing code, and providing for a greater amount 
+of customization, a modular storage engine can provide better 
+performance, increased transparency and more flexibility then a 
+set of monolithic storage engines.\eab{need to discuss other flaws! clusters? what else?}
 
 %% Databases are designed for circumstances where development time often
 %% dominates cost, many users must share access to the same data, and
@@ -314,14 +330,26 @@ Although some of the proposed methods are similar to ones presented
 here, \yad also implements a lower-level interface that can coexist
 with these methods.  Without these low-level APIs, Postgres
 suffers from many of the limitations inherent to the database systems
-mentioned above.  This is because Postgres was not intended to address
-the problems that we are interested in.\eab{Be specific -- what does it not address?}  Some of the Postgres interfaces are higher-level than \yad as well, and could be built on top; however, since these are generally for relations, we have not tried them to date.
+mentioned above.  This is because Postgres was designed to provide 
+these extensions within the context of the relational model.  
+Therefore, these extensions focused upon improving query language 
+and indexing support.  Instead of focusing upon this, \yad is more 
+interested in supporting conventional (imperative) software development
+efforts.  Therefore, while we believe that many of the high level 
+Postgres interfaces could be built using \yad, we have not yet tried 
+to implement them.
+
+{\em In the above paragrap, is imperative too strong a word?}
+
 % seems to provide
 %equivalents to most of the calls proposed in~\cite{newTypes} except
 %for those that deal with write ordering, (\yad automatically orders
 %writes correctly) and those that refer to relations or application
 %data types, since \yad does not have a built-in concept of a relation.
-However, \yad does provide have an iterator interface.
+
+However, \yad does provide an iterator interface which we hope to
+extend to provide support for relational algebra, and common
+programming paradigms.
 
 Object-oriented and XML database systems provide models tied closely
 to programming language abstractions or hierarchical data formats.
@@ -330,9 +358,10 @@ often inappropriate for applications with stringent performance
 demands, or that use these models in a way that was not anticipated by
 the database vendor.  Furthermore, data stored in these databases
 often is fomatted in a way that ties it to a specific application or
-class of algorithms~\cite{lamb}.  We will show that \yad can support
-both classes of applications, via a persistent object example (Section
-y) and a @todo graph traversal example (Section x).
+class of algorithms~\cite{lamb}.  We will show that \yad can provide 
+specialized support for both classes of applications, via a persistent 
+object example (Section~\ref{OASYS}) and a graph traversal example 
+(Section~\ref{TransClos}).
 
 %% We do not claim that \yad provides better interoperability then OO or
 %% XML database systems.  Instead, we would like to point out that in
@@ -362,33 +391,34 @@ developed.  Some are extremely complex, such as semantic file
 systems, where the file system understands the contents of the files
 that it contains, and is able to provide services such as rapid
 search, or file-type specific operations such as thumb-nailing,
-automatic content updates, and so on [cites?].  Others are simpler, such as
+automatic content updates, and so on \cite{Reiser4,WinFS,BeOS,SemanticFSWork,SemanticWeb}.  Others are simpler, such as
 Berkeley~DB~\cite{berkeleyDB, bdb}, which provides transactional
-storage of data in unindexed form, or in indexed form using a hash
-table or tree.  LRVM is a version of malloc() that provides
-transactional memory, and is similar to an object-oriented database
-but is much lighter weight, and lower level~\cite{lrvm}.  
+% bdb's recno interface seems to be a specialized b-tree implementation - Rusty
+storage of data in indexed form using a hashtable or tree, or as a queue.  
 
 \eab{need a (careful) dedicated paragraph on Berkeley DB}
 
 \eab{this paragraph needs work...}
-With the 
-exception of LRVM, each of these solutions imposes limitations on the 
-layout of application data.  LRVM's approach does not handle concurrent
-transactions well.  The implementation of a concurrent transactional
-data structure on top of LRVM would not be straightforward as such
-data structures typically require control over log formats in order 
-to correctly implement physiological logging.  
-However, LRVM's use of virtual memory to implement the buffer pool 
-does not seem to be incompatible with our work, and it would be 
-interesting to consider potential combinartions of our approach 
-with that of LRVM.  In particular, the recovery algorithm that is used to 
-implement LRVM could be changed, and \yad's logging interface could 
-replace the narrow interface that LRVM provides.  Also, LRVM's inter- 
+LRVM is a version of malloc() that provides
+transactional memory, and is similar to an object-oriented database
+but is much lighter weight, and lower level~\cite{lrvm}.  Unlike 
+the solutions mentioned above, it does not impose limitations upon 
+the layout of application data.
+However, its approach does not handle concurrent
+transactions well because the implementation of a concurrent transactional
+data structure typically requires control over log formats (Section~\ref{WALConcurrencyNTA}).  
+%However, LRVM's use of virtual memory to implement the buffer pool 
+%does not seem to be incompatible with our work, and it would be 
+%interesting to consider potential combinartions of our approach 
+%with that of LRVM.  In particular, the recovery algorithm that is used to 
+%implement LRVM could be changed, and \yad's logging interface could 
+%replace the narrow interface that LRVM provides.  Also, 
+LRVM's inter- 
 and intra-transactional log optimizations collapse multiple updates 
-into a single log entry.  While we have not implemented these 
-optimizations, be beleive that we have provided the necessary API hooks 
-to allow extensions to \yad to transparently coalesce log entries.
+into a single log entry.  In the past, we have implemented such 
+optimizations in an ad-hoc fashion in \yad.  However, we beleive 
+that we have developed the necessary API hooks 
+to allow extensions to \yad to transparently coalesce log entries in the future. (Section~\ref{TransClos})
 
 %\begin{enumerate}
 %  \item {\bf Incredibly scalable, simple servers CHT's, google fs?, ...}
@@ -414,8 +444,8 @@ atomicity semantics may be relaxed under certain circumstances.  \yad is unique 
 
 
 We believe, but cannot prove, that \yad can support all of these
-applications. We will demonstrate several of them, but leave a real
-DB, LRVM and Boxwood to future work.  However, in each case it is
+applications. We will demonstrate several of them, but leave implementation of a real
+DBMS, LRVM and Boxwood to future work.  However, in each case it is
 relatively easy to see how they would map onto \yad.
 
 
@@ -469,16 +499,16 @@ most important for flexibility.
 
 A transaction consists of an arbitrary combination of actions, that
 will be protected according to the ACID properties mentioned above.
-Since transactions may be aborted, the effects of an action must be
-reversible, implying that any information that is needed in order to
-reverse the action must be stored for future use.  Typically, the
+%Since transactions may be aborted, the effects of an action must be
+%reversible, implying that any information that is needed in order to
+%reverse the action must be stored for future use.  
+Typically, the
 information necessary to redo and undo each action is stored in the
 log.  We refine this concept and explicitly discuss {\em operations},
 which must be atomically applicable to the page file.  For now, we
 simply assume that operations do not span pages, and that pages are
-atomically written to disk.  We relax this limitation in
-Section~\ref{nested-top-actions}, where we describe how to implement
-page-spanning operations using techniques such as nested top actions.
+atomically written to disk.  In Section~\ref{nested-top-actions}, we 
+explain how operations can be nested, allowing them to span pages.
 
 One unique aspect of \yad, which is not true for ARIES, is that {\em
 normal} operations are defined in terms of redo and undo
@@ -487,16 +517,19 @@ function.\footnote{Actually, even this can be overridden, but doing so
 complicates recovery semantics, and only should be done as a last
 resort.  Currently, this is only done to implement the OASYS flush()
 and update() operations described in Section~\ref{OASYS}.}  This has
-the nice property that the REDO code is known to work, since it the
+the nice property that the REDO code is known to work, since the
 original operation was the exact same ``redo''.  In general, the \yad
 philosophy is that you define operations in terms of their REDO/UNDO
-behavior, and then build a user friendly interface around them.  The
+behavior, and then build a user friendly {\em wrapper} interface around them.  The
 value of \yad is that it provides a skeleton that invokes the
 redo/undo functions at the {\em right} time, despite concurrency, crashes,
-media failures, and aborted transactions.
+media failures, and aborted transactions.  Also unlike ARIES, \yad refines
+the concept of the wrapper interface, making it possible to 
+reschedule operations according to an application-level (or built-in) 
+policy. (Section~\ref{TransClos})
 
 
-\subsection{Concurrency}
+\subsection{Isolation\label{Isolation}}
 
 We allow transactions to be interleaved, allowing concurrent access to
 application data and exploiting opportunities for hardware
@@ -528,7 +561,8 @@ isolation among transactions.
 latching implementation that is guaranteed not to deadlock.  These
 implementations need not ensure consistency of application data.
 Instead, they must maintain the consistency of any underlying data
-structures.
+structures.  Generally, latches do not persist across calls performed 
+by high-level code.
 
 For locking, due to the variety of locking protocols available, and
 their interaction with application
@@ -537,7 +571,10 @@ application to decide what sort of transaction isolation is
 appropriate.  \yad provides a default page-level lock manager that
 performs deadlock detection, although we expect many applications to
 make use of deadlock avoidance schemes, which are already prevalent in
-multithreaded application development.
+multithreaded application development.  The Lock Manager is designed 
+to be generic enough to also provide index locks for hashtable 
+implementations.  We leave the implementation of hierarchical locking 
+to future work.
 
 For example, it would be relatively easy to build a strict two-phase
 locking hierarchical lock
@@ -605,7 +642,8 @@ that we can use to redo the operation in case the committed version never
 makes it to disk.  \yad ensures that the REDO entry is durable in the
 log before the transaction commits.  REDO entries are physical changes
 to a single page (``page-oriented redo''), and thus must be redone in
-order.
+order.  Therefore, they are produced after any rescheduling or computation
+specfic to the current state of the page file is performed.
 
 %% One unique aspect of \yad, which is not true for ARIES, is that {\em
 %% normal} operations use the REDO function; i.e. there is no way to
@@ -714,7 +752,7 @@ concrete examples.
 \subsection{Concurrency and Aborted Transactions}
 \label{nested-top-actions}
 
-\eab{Can't tell if you rewrote this section or not...  do we support nested top actions?  I thought we did.}
+\eab{Can't tell if you rewrote this section or not...  do we support nested top actions?  I thought we did. -- This section is horribly out of date (and confuses me when I try to read it!)  We do support nested top actions. Where does this belong w.r.t. the isolation section? Really, we should just explain how NTA's work so we don't have to explain why the hashtable is concurrent...-- Rusty}
 
 % @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
 
@@ -774,13 +812,12 @@ and optimizations.
 
 The second component provides the actual data structure
 implementations, policies regarding page layout (other than the
-location of the LSN field), and the implementation of any operations
-that are appropriate for the application that is using the library.
+location of the LSN field), and the implementation of any application-specific operations.
 As long as each layer provides well defined interfaces, the application, 
 operation implementation, and write ahead logging component can be 
 independently extended and improved.
 
-We have implemented a number of simple, high performance,
+We have implemented a number of simple, high performance
 and general purpose data structures.  These are used by our sample
 applications, and as building blocks for new data structures.  Example
 data structures include two distinct linked list implementations, and
@@ -918,16 +955,17 @@ constraints that these extensions must obey:
 
 \begin{itemize}
 \item Pages should only be updated inside of a redo or undo function.
-\item An update to a page should update the LSN. 
+\item An update to a page atomically updates the LSN by pinning the page.
 \item If the data read by the wrapper function must match the state of
 the page that the redo function sees, then the wrapper should latch
 the relevant data.
-\item Redo operations should address pages by their physical offset,
-while Undo operations should use a more permanent address (such as
-index key) if the data may move between pages over time.
+\item Redo operations address {\em pages} by physical offset,
+while Undo operations address {\em data} with a permanent address (such as an index key)
 \end{itemize}
 
 There are multiple ways to ensure the atomicity of operations:
+
+{\em @todo this list could be part of the broken section called ``Concurrency and Aborted Transactions''}
 
 \begin{itemize}
 \item An operation that spans pages can be made atomic by simply
@@ -954,11 +992,11 @@ an example of the sort of details that can arise in this case.
 \end{itemize}
 
 We believe that it is reasonable to expect application developers to
-correctly implement extensions that follow this set of constraints.  
+correctly implement extensions that make use of Nested Top Actions.  
 
 Because undo and redo operations during normal operation and recovery
 are similar, most bugs will be found with conventional testing
-strategies.  There is some hope of verifying the atomicity property if
+strategies.  There is some hope of verifying atomicity~\cite{StaticAnalysisReference} if
 nested top actions are used.  Furthermore, we plan to develop a
 number of tools that will automatically verify or test new operation
 implementations' behavior with respect to these constraints, and
@@ -975,9 +1013,9 @@ Note that the ARIES algorithm is extremely complex, and we have left
 out most of the details needed to understand how ARIES works, or to 
 implement it correctly.
 Yet, we believe we have covered everything that a programmer needs
- to know in order to implement new data structures using the 
-functionality that our library provides. This was possible due to the encapsulation
-of the ARIES algorithm inside of \yad, which is the feature that
+ to know in order to implement new transactional data structures. 
+This was possible due to the careful encapsulation
+of portions of the ARIES algorithm, which is the feature that
 most strongly differentiates \yad from other, similar libraries.
 
 %We hope that this will increase the availability of transactional
@@ -985,9 +1023,9 @@ most strongly differentiates \yad from other, similar libraries.
 
 
 
-\begin{enumerate}
+%\begin{enumerate}
 
-  \item {\bf Log entries as a programming primitive }
+%  \item {\bf Log entries as a programming primitive }
 
   %rcs: Not quite happy with existing text; leaving this section out for now.
   %
@@ -1003,12 +1041,12 @@ most strongly differentiates \yad from other, similar libraries.
   %           - reordering
   %           - distribution
 
-  \item {\bf Error handling with compensations as {}``abort() for C''}
+%  \item {\bf Error handling with compensations as {}``abort() for C''}
 
   % stylized usage of Weimer -> cheap error handling, no C compiler modifications...
 
-  \item {\bf Concurrency models are fundamentally application specific, but
-  record/page level locking and index locks are often a nice trade-off}  @todo We sort of cover this above
+%  \item {\bf Concurrency models are fundamentally application specific, but
+%  record/page level locking and index locks are often a nice trade-off}  @todo We sort of cover this above
 
 %  \item {\bf {}``latching'' vs {}``locking'' - data structures internal to
 %  \yad are protected by \yad, allowing applications to reason in
@@ -1030,30 +1068,30 @@ most strongly differentiates \yad from other, similar libraries.
 
 
 
-\end{enumerate}
+%\end{enumerate}
 
-\section{Sample operations}
-
-\begin{enumerate}
-
-  \item {\bf Atomic file-based transactions. 
-    
-    Prototype blob implementation  using force, shadow copies (it is trivial to implement given transactional
-  pages).  
-
-  File systems that implement atomic operations may allow
-  data to be stored durably without calling flush() on the data
-  file. 
-
-  Current implementation useful for blobs that are typically
-  changed entirely from update to update, but smarter implementations
-  are certainly possible. 
-
-  The blob implementation primarily consists
-  of special log operations that cause file system calls to be made at
-  appropriate times, and is simple, so it could easily be replaced by
-  an application that frequently update small ranges within blobs, for
-  example.}
+%\section{Other operations (move to the end of the paper?)}
+%
+%\begin{enumerate}
+%
+%  \item {\bf Atomic file-based transactions. 
+%    
+%    Prototype blob implementation  using force, shadow copies (it is trivial to implement given transactional
+%  pages).  
+%
+%  File systems that implement atomic operations may allow
+%  data to be stored durably without calling flush() on the data
+%  file. 
+%
+%  Current implementation useful for blobs that are typically
+%  changed entirely from update to update, but smarter implementations
+%  are certainly possible. 
+%
+%  The blob implementation primarily consists
+%  of special log operations that cause file system calls to be made at
+%  appropriate times, and is simple, so it could easily be replaced by
+%  an application that frequently update small ranges within blobs, for
+%  example.}
 
 %\subsection{Array List}
    % Example of how to avoid nested top actions
@@ -1089,28 +1127,28 @@ most strongly differentiates \yad from other, similar libraries.
 %
 %% Implementation simple!  Just slap together the stuff from the prior two sections, and add a header + bucket locking.
 %
-  \item {\bf Asynchronous log implementation/Fast
-  writes. Prioritization of log writes (one {}``log'' per page)
-  implies worst case performance (write, then immediate read) will
-  behave on par with normal implementation, but writes to portions of
-  the database that are not actively read should only increase system
-  load (and not directly increase latency)} This probably won't go
-  into the paper.  As long as the buffer pool isn't thrashing, this is
-  not much better than upping the log buffer.
-
-  \item {\bf Custom locking. Hash table can support all of the SQL
-  degrees of transactional consistency, but can also make use of
-  application-specific invariants and synchronization to accommodate
-  deadlock-avoidance, which is the model most naturally supported by C
-  and other programming languages.}  This is covered above, but we
-  might want to mention that we have a generic lock manager
-  implemenation that operation implementors can reuse.  The argument
-  would be stronger if it were a generic hierarchical lock manager.
+%  \item {\bf Asynchronous log implementation/Fast
+%  writes. Prioritization of log writes (one {}``log'' per page)
+%  implies worst case performance (write, then immediate read) will
+%  behave on par with normal implementation, but writes to portions of
+%  the database that are not actively read should only increase system
+%  load (and not directly increase latency)} This probably won't go
+%  into the paper.  As long as the buffer pool isn't thrashing, this is
+%  not much better than upping the log buffer.
+%
+%  \item {\bf Custom locking. Hash table can support all of the SQL
+%  degrees of transactional consistency, but can also make use of
+%  application-specific invariants and synchronization to accommodate
+%  deadlock-avoidance, which is the model most naturally supported by C
+%  and other programming languages.}  This is covered above, but we
+%  might want to mention that we have a generic lock manager
+%  implemenation that operation implementors can reuse.  The argument
+%  would be stronger if it were a generic hierarchical lock manager.
 
 %Many plausible lock managers, can do any one you want.
 %too much implemented part of DB; need more 'flexible' substrate.
 
-\end{enumerate}
+%\end{enumerate}
 
 \section{Experimental setup}
 
@@ -1160,7 +1198,7 @@ generate this data is publicly available, and we have been able to
 reproduce the trends reported here on multiple systems.
 
 
-\section{Linear Hash Table}
+\section{Linear Hash Table\label{sub:Linear-Hash-Table}}
 
 \begin{figure*}
 \includegraphics[%
@@ -1227,12 +1265,13 @@ same. At this point, we could simply block all concurrent access and
 iterate over the entire hash table, reinserting values according to
 the new hash function.
 
-However, because of the way we chose $h_{n+1}(x),$ we know that the
+However, 
+%because of the way we chose $h_{n+1}(x),$ 
+we know that the
 contents of each bucket, $m$, will be split between bucket $m$ and
 bucket $m+2^{n}$. Therefore, if we keep track of the last bucket that
 was split, we can split a few buckets at a time, resizing the hash
-table without introducing long pauses while we reorganize the hash
-table~\cite{lht}. 
+table without introducing long pauses.~\cite{lht}. 
 
 In order to implement this scheme, we need two building blocks.  We
 need a data structure that can handle bucket overflow, and we need to
@@ -1274,18 +1313,32 @@ we only deal with fixed-length slots.  Since \yad supports multiple
 page layouts, we use the ``Fixed Page'' layout, which implements a
 page consisting on an array of fixed-length records.  Each bucket thus
 maps directly to one record, and it is trivial to map bucket numbers
-to record numbers within a page. 
+to record numbers within a page.  
 
-In fact, this is essentially identical to the transactional array
-implementation, so we can just use that directly: a range of
-contiguous pages is treated as a large array of buckets. The linear
-hash table is thus a tuple of such arrays that map ranges of IDs to
-each array.  For a table split into $m$ arrays, we thus get $O(lg m)$
-in-memory operations to find the right array, followed by an $O(1)$
-array lookup.  The redo/undo functions for the array are trivial: they
-just log the before or after image of the specific record.
+\yad provides a call that allocates a contiguous range of pages.  We
+use this method to allocate increasingly larger regions of pages as
+the array list expands, and store the regions' offsets in a single 
+page header.  When we need to access a record, we first calculate 
+which region the record is in, and use the header page to determine 
+its offset.  (We can do this because the size of each region is 
+deterministic; it is simply $size_{first~region} * 2^{region~number}$.  
+We then calculate the $(page,slot)$ offset within that region.  \yad 
+allows us to reference records by using a $(page,slot,size)$ triple, 
+which we call a {\em recordid}, and we already know the size of the 
+record.  Once we have the recordid, the redo/undo entries are trivial.  
+They simply log the before and after image of the appropriate record, 
+and are provided by the Fixed Page interface.
 
-\eab{should we cover transactional arrays somewhere?}
+%In fact, this is essentially identical to the transactional array
+%implementation, so we can just use that directly: a range of
+%contiguous pages is treated as a large array of buckets. The linear
+%hash table is thus a tuple of such arrays that map ranges of IDs to
+%each array.  For a table split into $m$ arrays, we thus get $O(lg m)$
+%in-memory operations to find the right array, followed by an $O(1)$
+%array lookup.  The redo/undo functions for the array are trivial: they
+%just log the before or after image of the specific record.
+%
+%\eab{should we cover transactional arrays somewhere?}
 
 %% The ArrayList page handling code overrides the recordid ``slot'' field
 %% to refer to a logical offset within the ArrayList.  Therefore,
@@ -1299,34 +1352,38 @@ just log the before or after image of the specific record.
 
 \subsection{Bucket Overflow}
 
-\eab{don't get this section, and it sounds really complicated, which is counterproductive at this point}
+\eab{don't get this section, and it sounds really complicated, which is counterproductive at this point  -- Is this better now? -- Rusty}
 
 For simplicity, our buckets are fixed length.  However, we want to
-store variable length objects.  Therefore, we store a header record in
-the bucket list that contains the location of the first item in the
-list.  This is represented as a $(page,slot)$ tuple.  If the bucket is
-empty, we let $page=-1$.  We could simply store each linked list entry
-as a seperate record, but it would be nicer if we could preserve
-locality, but it is unclear how \yad's generic record allocation
-routine could support this directly.  Based upon the observation that
-a space reservation scheme could arrange for pages to maintain a bit
-of free space we take a 'list of lists' approach to our bucket list
-implementation.  Bucket lists consist of two types of entries.  The
-first maintains a linked list of pages, and contains an offset
-internal to the page that it resides in, and a $(page,slot)$ tuple
-that points to the next page that contains items in the list.  All of
-the internal page offsets may be traversed without asking the buffer
-manager to unpin and repin the page in memory, providing very fast
-list traversal if the members if the list is allocated in a way that
-preserves locality.  This optimization would not be possible if it
+store variable length objects.  For simplicity, we decided to store 
+the keys and values outside of the bucket list.
+%Therefore, we store a header record in
+%the bucket list that contains the location of the first item in the
+%list.  This is represented as a $(page,slot)$ tuple.  If the bucket is
+%empty, we let $page=-1$.  We could simply store each linked list entry
+%as a seperate record, but it would be nicer if we could preserve
+%locality, but it is unclear how \yad's generic record allocation
+%routine could support this directly.  
+%Based upon the observation that
+%a space reservation scheme could arrange for pages to maintain a bit
+In order to help maintain the locality of our bucket lists, store these lists as a list of smaller lists.  The first list links pages together.  The smaller lists reside within a single page.
+%of free space we take a 'list of lists' approach to our bucket list
+%implementation.  Bucket lists consist of two types of entries.  The
+%first maintains a linked list of pages, and contains an offset
+%internal to the page that it resides in, and a $(page,slot)$ tuple
+%that points to the next page that contains items in the list.  
+All of entries within a single page may be traversed without 
+unpinning and repinning the page in memory, providing very fast
+traversal if the list has good locality.
+This optimization would not be possible if it
 were not for the low level interfaces provided by the buffer manager
 (which seperates pinning pages and reading records into seperate
-API's)  Again, since this data structure seems to have some intersting 
-properties, it can also be used on its own.
+API's)  Since this data structure has some intersting 
+properties (good locality and very fast access to short linked lists), it can also be used on its own.
 
 \subsection{Concurrency}
 
-Given the structures described above, implementation of a linear hash
+Given the structures described above, the implementation of a linear hash
 table is straightforward.  A linear hash function is used to map keys
 to buckets, insertions and deletions are handled by the array implementation,
 %linked list implementation, 
@@ -1342,7 +1399,7 @@ bit more complex if we allow interleaved transactions.
 We have found a simple recipe for converting a non-concurrent data structure into a concurrent one, which involves three steps:
 \begin{enumerate}
 \item Wrap a mutex around each operation, this can be done with a lock
-  manager, or just using pthreads mutexes.  This provides isolation.
+  manager, or just using pthread mutexes.  This provides isolation.
 \item Define a logical UNDO for each operation (rather than just using
   the lower-level undo in the transactional array).  This is easy for a
   hash table; e.g. the undo for an {\em insert} is {\em remove}.
@@ -1351,10 +1408,32 @@ We have found a simple recipe for converting a non-concurrent data structure int
   nested top action'' where we release the mutex.
 \end{enumerate}
 
-\eab{need to explain better why this gives us concurrent
-transactions.. is there a mutex for each record? each bucket?  need to
-explain that the logical undo is really a compensation that undoes the
-insert, but not the structural changes.}
+Note that this scheme prevents multiple threads from accessing the
+hashtable concurrently.  However, it achieves a more important (and
+somewhat unintuitive) goal.  The use of a nested top action protects
+the hashtable against {\em future} modifications by other
+transactions.  Since other transactions may commit even if this
+transaction aborts, we need to make sure that we can safely undo the
+hashtable insertion.  Unfortunately, a future hashtable operation
+could split a hash bucket, or manipulate a bucket overflow list,
+potentially rendering any phyisical undo information that we could
+record useless.  Therefore, we need to have a logical undo operation
+to protect against this.  However, we could still crash as the
+physical update is taking place, leaving the hashtable in an
+inconsistent state after REDO completes.  Therefore, we need to use
+physical undo until the hashtable operation completes, and then {\em
+switch to} logical undo before any other operation manipulates data we
+just altered.  This is exactly the functionality that a nested top
+action provides.  Since a normal hashtable operation is usually fast,
+and this is meant to be a simple hashtable implementation, we simply
+latch the entire hashtable to prevent any other threads from
+manipulating the hashtable until after we switch from phyisical to
+logical undo.
+
+%\eab{need to explain better why this gives us concurrent
+%transactions.. is there a mutex for each record? each bucket?  need to
+%explain that the logical undo is really a compensation that undoes the
+%insert, but not the structural changes.}
 
 %% To get around
 %% this, and to allow multithreaded access to the hashtable, we protect
@@ -1376,8 +1455,8 @@ straightforward.  The only complications are a) defining a logical undo, and b) 
 %not fundamentally more difficult or than the implementation of normal
 %data structures). 
 
-\eab{this needs updating:} Also, while implementing the hash table, we also
-implemented two generally useful transactional data structures.
+%\eab{this needs updating:} Also, while implementing the hash table, we also
+%implemented two generally useful transactional data structures.
 
 Next we describe some additional optimizations and evaluate the
 performance of our implementations.
@@ -1403,21 +1482,21 @@ Also, since this implementation does not need to support variable size
 entries, it stores the first entry of each bucket in the ArrayList
 that represents the bucket list, reducing the number of buffer manager
 calls that must be made.  Finally, this implementation caches
-information about each hashtable that the application is working with
-in memory so that it does not have to obtain a copy of hashtable
+information about hashtables in memory so that it does not have to 
+obtain a copy of hashtable
 header information from the buffer mananger for each request.
 
 The most important component of \yad for this optimization is \yad's
 flexible recovery and logging scheme.  For brevity we only mention
-that this hashtable implementation uses finer-grained latching than the one
-mentioned above, but do not describe how this was implemented.  Finer
-grained latching is relatively easy in this case since most changes
-only affect a few buckets.
+that this hashtable implementation uses bucket granularity latching, 
+but we do not describe how this was implemented.  Finer grained
+latching is relatively easy in this case since all operations only 
+affect a few buckets, and buckets have a natural ordering.
 
 \subsection{Performance}
 
 We ran a number of benchmarks on the two hashtable implementations
-mentioned above, and used Berkeley BD for comparison.
+mentioned above, and used Berkeley DB for comparison.
 
 %In the future, we hope that improved
 %tool support for \yad will allow application developers to easily apply
@@ -1445,21 +1524,25 @@ preserving the locality of short lists, and we see that it has
 quadratic performance in this test.  This is because the list is
 traversed each time a new page must be allocated.  
 
-Note that page allocation is relatively infrequent since many entries
-will typically fit on the same page.  In the case of our linear
-hashtable, bucket reorganization ensures that the average occupancy of
-a bucket is less than one.  Buckets that have recently had entries
-added to them will tend to have occupancies greater than or equal to
-one.  As the average occupancy of these buckets drops over time, the
-page oriented list should have the opportunity to allocate space on
-pages that it already occupies.
+%Note that page allocation is relatively infrequent since many entries
+%will typically fit on the same page.  In the case of our linear
+%hashtable, bucket reorganization ensures that the average occupancy of
+%a bucket is less than one.  Buckets that have recently had entries
+%added to them will tend to have occupancies greater than or equal to
+%one.  As the average occupancy of these buckets drops over time, the
+%page oriented list should have the opportunity to allocate space on
+%pages that it already occupies.
 
-In a seperate experiment not presented here, we compared the
+Since the linear hash table bounds the length of these lists, the 
+performance of the list when only contains one or two elements is
+much more important than asymptotic behavior. In a seperate experiment
+not presented here, we compared the
 implementation of the page-oriented linked list to \yad's conventional
 linked-list implementation.  Although the conventional implementation
 performs better when bulk loading large amounts of data into a single
-linked list, we have found that a hashtable built with the page-oriented list
-outperforms otherwise equivalent hashtables that use conventional linked lists.
+list, we have found that a hashtable built with the page-oriented list
+outperforms an otherwise equivalent hashtable implementation that uses 
+conventional linked lists.
 
 
 %The NTA (Nested Top Action) version of \yad's hash table is very
@@ -1494,13 +1577,13 @@ application control over a transactional storage policy is desirable.
 \includegraphics[%
    width=1\columnwidth]{tps-extended.pdf}
 \caption{\label{fig:TPS} The logging mechanisms of \yad and Berkeley
-DB are able to combine calls to commit() into a single disk force.
+DB are able to combine multiple calls to commit() into a single disk force.
 This graph shows how \yad and Berkeley DB's throughput increases as
 the number of concurrent requests increases.  The Berkeley DB line is
-cut off at 40 concurrent transactions because we were unable to
+cut off at 50 concurrent transactions because we were unable to
 reliable scale it past this point, although we believe that this is an
 artifact of our testing environment, and is not fundamental to
-BerkeleyDB.} {\em @todo There are two copies of this graph because I intend to make a version that scales \yad up to the point where performance begins to degrade.  Also, I think I can get BDB to do more than 40 threads...}
+Berkeley DB.} 
 \end{figure*}
 
 The final test measures the maximum number of sustainable transactions
@@ -1512,14 +1595,17 @@ response times for each case.
 
 @todo analysis / come up with a more sane graph format.
 
-The fact that our straightfoward hashtable outperforms Berkeley DB's hashtable shows that
+The fact that our straightfoward hashtable is competitive with Berkeley DB's hashtable shows that
 straightforward implementations of specialized data structures can 
-often outperform highly tuned, general-purpose implementations.
+compete with comparable, highly tuned, general-purpose implementations.  
+Similarly, it seems as though it is not difficult to implement specialized 
+data structures that will significantly outperform existing 
+general purpose structures when applied to an appropriate application.
+
 This finding suggests that it is appropriate for
 application developers to consider the development of custom
 transactional storage mechanisms if application performance is
 important.
-
 
 \section{Object Serialization}
 \label{OASYS}
@@ -1604,7 +1690,8 @@ new record value to the page, and unpinning the page.
 If \yad knows that the client will not ask to read the record, then
 there is no real reason to update the version of the record in the
 page file.  In fact, if no undo or redo information needs to be
-generated, there is no need to bring the page into memory at all.
+generated, there is no need to bring the page into memory in 
+order to service a write.
 There are at least two scenarios that allow \yad to avoid loading the page.
 
 \eab{are you arguing that the client doesn't need to read the record in the page file, or doesn't need to read the object at all?}
@@ -1612,14 +1699,13 @@ There are at least two scenarios that allow \yad to avoid loading the page.
 
 \eab{I don't get this section either...}
 
-First, the application may not be interested in transactional
+First, the application might not be interested in transactional
 atomicity.  In this case, by writing no-op undo information instead of
 real undo log entries, \yad could guarantee that some prefix of the
 log will be applied to the page file after recovery.  The redo
 information is already available: the object is in the application's
 cache.  ``Transactions'' could still be durable, as commit() could be
-used to force the log to disk.  The idea that the current version is
-available elsewhere, typically in a cache, seems broadly useful.
+used to force the log to disk.  
 
 Second, the application could provide the undo information to \yad.
 This could be implemented in a straightforward manner by adding
@@ -1629,16 +1715,22 @@ the first approach.
 
 We have removed the need to use the on-disk version of the object to
 generate log entries, but still need to guarantee that the application
-will not attempt to read a stale record from the page file.  This
-problem also has a simple solution.  In order to service a write
+will not attempt to read a stale record from the page file.  We use
+the cache to guarantee this.  In order to service a write
 request made by the application, the cache calls a special
-``update()'' operation.  This method only writes a log entry.  If the
+``update()'' operation that only writes a log entry, but does not 
+update the page file.  If the
 cache must evict an object, it performs a special ``flush()''
 operation.  This method writes the object to the buffer pool (and
 probably incurs the cost of a disk {\em read}), using a LSN recorded by the
 most recent update() call that was associated with the object.  Since
 \yad implements no-force, it does not matter if the
-version of the object in the page file is stale.
+version of the object in the page file is stale. The idea that the
+current version is available outside of transactional storage, 
+typically in a cache, seems broadly useful.
+
+
+\subsection{Recovery and Log Truncation}
 
 An observant reader may have noticed a subtle problem with this
 scheme.  More than one object may reside on a page, and we do not
@@ -1671,6 +1763,8 @@ point, we can invoke a normal ARIES checkpoint with the restriction
 that the log is not truncated past the minimum LSN encountered in the
 object pool.\footnote{We do not yet enfore this checkpoint limitation.}
 
+\subsection{Evaluation}
+
 We implemented a \yad plugin for OASYS, a C++ object serialization
 library includes various object serialization backends, including one
 for Berkeley DB.  The \yad plugin makes use of the optimizations
@@ -1696,7 +1790,7 @@ complex, the simplicity of the implementation is encouraging.
 
 @todo analyse OASYS data.
 
-\subsection{Transitive closure}
+\section{Transitive closure\label{TransClos}}
 
 @todo implement transitive closu....
 
@@ -1751,10 +1845,10 @@ compliance with \yad's API.  We also hope to re-use the infrastructure
 necessary that implements such checks to detect opportunities for
 optimization.  Our benchmarking section shows that our stable
 hashtable implementation is 3 to 4 times slower then our optimized
-implementation.  Between static checking and high-level automated code
-optimization techniques it may be possible to narrow or close this
-gap, increasing the benefits that our library offers to applications
-that implement specialized data access routines.
+implementation.  Using static checking and high-level automated code
+optimization techniques may allow us to narrow or close this
+gap, and enhance the performance and reliability of application-specific 
+extensions written in the future.
 
 We would like to extend our work into distributed system
 development.  We believe that \yad's implementation anticipates many
