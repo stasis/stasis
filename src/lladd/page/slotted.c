@@ -156,8 +156,12 @@ int slottedFreespace(Page * page) {
     interface?  (The xid is there for now, in case it allows some
     optimizations later.  Perhaps it's better to cluster allocations
     from the same xid on the same page, or something...)
+
+    @todo slottedPreRalloc should understand deadlock, and try another page if deadlock occurs.
+
+    @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
 */
-recordid slottedPreRalloc(int xid, long size, Page ** pp) {
+compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   recordid ret;
   
@@ -175,18 +179,24 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
   if(lastFreepage == -1) {
     lastFreepage = TpageAlloc(xid);
-    *pp = loadPage(xid, lastFreepage);
+    try_ret(NULLRID) {
+      *pp = loadPage(xid, lastFreepage);
+    } end_ret(NULLRID);
     assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
   } else {
-    *pp = loadPage(xid, lastFreepage);
+    try_ret(NULLRID) {
+      *pp = loadPage(xid, lastFreepage);
+    } end_ret(NULLRID);
   }
 
 
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
     lastFreepage = TpageAlloc(xid);
-    *pp = loadPage(xid, lastFreepage);
+    try_ret(NULLRID) {
+      *pp = loadPage(xid, lastFreepage);
+    } end_ret(NULLRID);
     slottedPageInitialize(*pp);
   }
   
@@ -201,24 +211,20 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   return ret;
 }
 
-recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
+compensated_function recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
   recordid ret;
   int isBlob = 0;
   if(size == BLOB_SLOT) {
     isBlob = 1;
     size = sizeof(blob_record_t);
   }
-
-  *pp = loadPage(xid, page);
-  
+  try_ret(NULLRID) {
+    *pp = loadPage(xid, page);
+  } end_ret(NULLRID);
   if(slottedFreespace(*pp) < size) {
     releasePage(*pp);
     *pp = NULL;
-    recordid rid;
-    rid.page = 0;
-    rid.slot = 0;
-    rid.size = -1;
-    return rid;
+    return NULLRID;
   }
   
   if(*page_type_ptr(*pp) == UNINITIALIZED_PAGE) {
@@ -302,8 +308,8 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
 }
 
-recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
-
+compensated_function recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
+  
 	writelock(page->rwlatch, 376);
 
 	if(*page_type_ptr(page) != SLOTTED_PAGE) {
@@ -347,26 +353,27 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 		  (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
 
 	}
-
-	pageWriteLSN(xid, page, lsn);
-
-	writeunlock(page->rwlatch);
+	begin_action_ret(writeunlock, page->rwlatch, NULLRID) { // lock acquired above.
+	  pageWriteLSN(xid, page, lsn);
+	} compensate_ret(NULLRID);
 
 	return rid;
 }
 
-void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
+compensated_function void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 
-  readlock(page->rwlatch, 443);
+  begin_action(unlock, page->rwlatch) { 
+    readlock(page->rwlatch, 443);
+    
+    *slot_ptr(page, rid.slot) =  INVALID_SLOT;
+    *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
+    *freelist_ptr(page) = rid.slot;  
+    /*  *slot_length_ptr(page, rid.slot) = 0; */
 
-  *slot_ptr(page, rid.slot) =  INVALID_SLOT;
-  *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
-  *freelist_ptr(page) = rid.slot;  
-  /*  *slot_length_ptr(page, rid.slot) = 0; */
+    pageWriteLSN(xid, page, lsn);
 
-  pageWriteLSN(xid, page, lsn);
+  } compensate;
 
-  unlock(page->rwlatch);
 }
 
 void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff) {
@@ -427,7 +434,7 @@ void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat
 
   /*page->LSN = lsn;
     *lsn_ptr(page) = lsn * / 
-  pageWriteLSN(page); */
+  pageWriteLSN-page); */
   unlock(page->rwlatch); 
 
 }

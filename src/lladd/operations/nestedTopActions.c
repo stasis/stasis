@@ -64,13 +64,9 @@ extern TransactionLog XactionTable[];
 
 pblHashTable_t * nestedTopActions = NULL;
 /** @todo this really should be set somewhere globally. */
-static recordid NULLRID;
 
 void initNestedTopActions() {
   nestedTopActions = pblHtCreate();
-  NULLRID.page = 0;
-  NULLRID.slot = 0;
-  NULLRID.size = -1;
 }
 /** @todo TbeginNestedTopAction's API might not be quite right.  
     Are there cases where we need to pass a recordid in?

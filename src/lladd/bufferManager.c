@@ -267,9 +267,10 @@ Page * getPage(int pageid, int locktype) {
   return ret;
 }
 
-Page *loadPage(int xid, int pageid) {
-  if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-
+compensated_function Page *loadPage(int xid, int pageid) {
+  try_ret(NULL) {
+    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+  } end_ret(NULL);
   Page * ret = getPage(pageid, RO);
   return ret;
 }

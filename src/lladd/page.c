@@ -107,11 +107,11 @@ void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
   /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
   
-  begin_action(NULL,NULL) {
+  try {
     if(globalLockManager.writeLockPage) { 
       globalLockManager.writeLockPage(xid, page->id); 
     }
-  } end_action;
+  } end;
 
   if(page->LSN < lsn) {
     page->LSN = lsn;

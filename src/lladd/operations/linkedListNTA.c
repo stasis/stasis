@@ -3,8 +3,17 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#define __USE_GNU
+
+#define __USE_GNU 
 #include <pthread.h>
+
+/*** @todo this is a big hack but it seems necessary to work with
+     gcc when the moon is full. (thanks mike demmer. ;) */
+#ifndef PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
+# define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP \
+  {0, 0, 0, PTHREAD_MUTEX_RECURSIVE_NP, __LOCK_INITIALIZER}
+#endif
+
 
 /** A quick note on the format of linked lists.  Each entry consists 
      of a struct with some variable length data appended to it.
@@ -31,7 +40,9 @@
   
 	@file
 */
+
 static pthread_mutex_t linked_list_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+
 static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
 static int  __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
 typedef struct {

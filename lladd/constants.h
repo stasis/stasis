@@ -173,4 +173,21 @@ terms specified in this license.
 #define XEND 6
 #define CLRLOG 7
 
+/* Page types */
+
+#define UNINITIALIZED_PAGE  0
+#define SLOTTED_PAGE        1
+#define INDIRECT_PAGE       2
+#define LLADD_HEADER_PAGE   3
+#define LLADD_FREE_PAGE     4
+#define FIXED_PAGE          5
+#define ARRAY_LIST_PAGE     6
+
+/* Record types */
+
+#define UNINITIALIZED_RECORD 0
+#define BLOB_RECORD          1
+#define SLOTTED_RECORD       2
+#define FIXED_RECORD         3
+
 #endif

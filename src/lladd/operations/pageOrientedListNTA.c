@@ -12,11 +12,6 @@ typedef struct {
 
 recordid TpagedListAlloc(int xid) {
 
-  recordid NULLRID;
-  NULLRID.page = 0;
-  NULLRID.slot = 0;
-  NULLRID.size = -1;
-
   recordid ret = Talloc(xid, sizeof(pagedListHeader));
   pagedListHeader header;
   header.thisPage = 0;

@@ -20,7 +20,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
-
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
 typedef struct {

@@ -93,13 +93,6 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-#define UNINITIALIZED_PAGE  0
-#define SLOTTED_PAGE        1
-#define INDIRECT_PAGE       2
-#define LLADD_HEADER_PAGE   3
-#define LLADD_FREE_PAGE     4
-#define FIXED_PAGE          5
-#define ARRAY_LIST_PAGE     6
 #define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
 #define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
 #define end_of_usable_space_ptr(page)   page_type_ptr((page))
@@ -111,10 +104,10 @@ BEGIN_C_DECLS
 
 #define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
 
-#define UNINITIALIZED_RECORD 0
+/*#define UNINITIALIZED_RECORD 0
 #define BLOB_RECORD          1
 #define SLOTTED_RECORD       2
-#define FIXED_RECORD         3
+#define FIXED_RECORD         3 */
 
 
 
@@ -221,7 +214,7 @@ void pageDeInit();
  * @param page You must have a writelock on page before calling this function.
  * @param lsn The new lsn of the page.  If the new lsn is less than the page's current lsn, then the page's lsn will not be changed.
  */
-void pageWriteLSN(int xid, Page * page, lsn_t lsn);
+compensated_function void pageWriteLSN(int xid, Page * page, lsn_t lsn);
 
 /**
  * assumes that the page is already loaded in memory.  It takes

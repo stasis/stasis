@@ -14,8 +14,11 @@ void indirectInitialize(Page * p, int height) {
   memset(p->memAddr, INVALID_SLOT, ((int)level_ptr(p)) - ((int)p->memAddr));
 }
 /** @todo locking for dereferenceRID? */
-recordid dereferenceRID(int xid, recordid rid) {
-  Page * this = loadPage(xid, rid.page);
+compensated_function recordid dereferenceRID(int xid, recordid rid) {
+  Page * this;
+  try_ret(NULLRID) {
+    this = loadPage(xid, rid.page);
+  } end_ret(NULLRID);
   int offset = 0;
   int max_slot;
   while(*page_type_ptr(this) == INDIRECT_PAGE) {
@@ -32,7 +35,9 @@ recordid dereferenceRID(int xid, recordid rid) {
     int nextPage = *page_ptr(this, i);
 
     releasePage(this);
-    this = loadPage(xid, nextPage);
+    try_ret(NULLRID) {
+      this = loadPage(xid, nextPage);
+    } end_ret(NULLRID);
   }
   
   rid.page = this->id;
@@ -168,8 +173,11 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
   return rid;
 }
 
-unsigned int indirectPageRecordCount(int xid, recordid rid) {
-  Page * p = loadPage(xid, rid.page);
+compensated_function int indirectPageRecordCount(int xid, recordid rid) {
+  Page * p;
+  try_ret(-1){
+    p = loadPage(xid, rid.page);
+  }end_ret(-1);
   int i = 0;
   unsigned int ret;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
@@ -193,7 +201,7 @@ unsigned int indirectPageRecordCount(int xid, recordid rid) {
     }
     
   } else {
-    printf("Unknown page type in indirectPageRecordCount()\n");
+    printf("Unknown page type in indirectPageRecordCount\n");
     abort();
   }
   releasePage(p);

@@ -112,6 +112,8 @@ extern int errno;
 #else 
 #define DEBUG(...)
 
+#include "compensations.h"
+
 #endif /*DEBUGGING*/
 
 #endif /* __lladd_common_h */

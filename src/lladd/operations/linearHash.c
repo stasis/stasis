@@ -323,8 +323,6 @@ static void recover_split(int xid, recordid hashRid, int i, int next_split, int 
   hashRid.slot = 0;
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
-  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = -1;
-
   
   if(headerHashBits <= i && headerNextSplit <= next_split) {
   
@@ -416,7 +414,6 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
-  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = -1;
   
   //  recordid ba_contents; TreadUnlocked(xid, ba, &ba_contents);
   //  recordid bb_contents = NULLRID; 
@@ -821,20 +818,18 @@ int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void 
 
 
 linearHash_iterator * TlogicalHashIterator(int xid, recordid hashRid) {
-  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=2; NULLRID.size = -1;
   linearHash_iterator * ret = malloc(sizeof(linearHash_iterator));
   ret->current_hashBucket = 0;
   ret->current_rid = NULLRID;
+  ret->current_rid.slot = 2;
   return ret;
 }
 void TlogicalHashIteratorFree(linearHash_iterator * it) {
   free(it);
 }
 linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, linearHash_iterator * it, int keySize, int valSize) {
-  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=2; NULLRID.size = -1;
   recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
-  
   
   linearHash_iteratorPair p;// = malloc(sizeof(linearHash_iteratorPair));
     
@@ -862,6 +857,7 @@ linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, line
       p.key   = NULL;
       p.value = NULL;
     it->current_rid = NULLRID;
+    it->current_rid.slot = 2;
 //      memcpy(&(it->current_rid), &(NULLRID), sizeof(recordid));
       it->current_hashBucket = 0;
   } else {

@@ -91,12 +91,12 @@ void slottedPageInitialize(Page * p);
  * @see postRallocSlot the implementation of the second phase.
  *
  */
-recordid slottedPreRalloc(int xid, long size, Page**p);
+compensated_function recordid slottedPreRalloc(int xid, long size, Page**p);
 /** 
   Identical to slottedPreRalloc, but allows the user to specify which page the 
   record should be allocated in.
   */
-recordid slottedPreRallocFromPage(int xid, long page, long size, Page**p);
+compensated_function recordid slottedPreRallocFromPage(int xid, long page, long size, Page**p);
 
 /**
  * The second phase of slot allocation.  Called after the log entry
@@ -113,13 +113,13 @@ recordid slottedPreRallocFromPage(int xid, long page, long size, Page**p);
  * page for this record (though it is possible that we need to compact
  * the page)
  */
-recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
+compensated_function recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 /**
  * Mark the space used by a record for reclaimation.
  *
  * @param rid the recordid to be freed.
  */
-void     slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
+compensated_function void     slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 
 void slottedPageInit();
 void slottedPageDeinit();

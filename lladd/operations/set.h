@@ -74,7 +74,7 @@ Operation getSetRange();
   efficiently, it performs a number of extra memcpy() calls over the
   entire record.
 */
-void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
+compensated_function void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
 
 
 #endif

@@ -84,6 +84,10 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int val
 */
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize);
 
+
+/** Free the hash iterator and its associated resources. */
+void ThashDone(int xid, lladd_hash_iterator * it);
+
 Operation getLinearHashInsert();
 Operation getLinearHashRemove();
 

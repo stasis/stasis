@@ -140,7 +140,7 @@ terms specified in this license.
    In order to facilitate this, LLADD provides the function TgetRecordType() and
    guarantess that the first recordid returned by any allocation will point to 
    the same page and slot as the constant ROOT_RECORD.  TgetRecordType 
-   will return NULL_RECORD if the record passed to it does not exist.  
+   will return NULLRID if the record passed to it does not exist.  
    
    Therefore, the following code will safely initialize or reopen a data 
    store:
@@ -262,8 +262,8 @@ typedef struct {
   long size;
 } recordid;
 
-extern const recordid ZERO_RID;
-
+extern const recordid ROOT_RECORD;
+extern const recordid NULLRID;
 
 /**
    If a recordid's slot field is set to this, then the recordid
@@ -378,6 +378,7 @@ void Trevive(int xid, long lsn);
  * @param xid  The new active transaction count. 
  */
 void TsetXIDCount(int xid);
+
 
 END_C_DECLS
 

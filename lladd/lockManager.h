@@ -17,8 +17,8 @@ extern LockManagerSetup globalLockManager;
 
 void lockManagerInit();
 
-int lockManagerReadLockRecord(int xid, recordid rid);
-int lockManagerWriteLockRecord(int xid, recordid rid);
+compensated_function int lockManagerReadLockRecord(int xid, recordid rid);
+compensated_function int lockManagerWriteLockRecord(int xid, recordid rid);
 
 int lockManagerUnlockRecord(int xid, recordid rid);
 int lockManagerCommit(int xid);

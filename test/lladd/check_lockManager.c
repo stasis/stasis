@@ -30,22 +30,37 @@ void * pageWorkerThread(void * j) {
 
     if(rw) {
       // readlock
-      if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
-	k = 0; 
-	globalLockManager.abort(xid);
-	deadlocks++;
-	printf("-");
-      }
-      
-      
+      int locked = 0;
+      //      begin_action_ret(NULL,NULL, 0) {
+	if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
+	  k = 0; 
+	  globalLockManager.abort(xid);
+	  deadlocks++;
+	  printf("-");
+	}
+	//      } end_action_ret(0);
+	/*      if(locked) {
+	assert(compensation_error() == LLADD_DEADLOCK);
+	compensation_clear_error();
+	} */
     } else {
       // writelock
+      int locked = 0;
+      //      begin_action_ret(NULL, NULL, 0) {
+	
       if(LLADD_DEADLOCK == globalLockManager.writeLockPage(xid, m)) {
 	k = 0; 
 	globalLockManager.abort(xid);
 	deadlocks++;
 	printf("-");
+	locked = 1;
       }
+      /*      if(locked) {
+	int err = compensation_error();
+	assert(err == LLADD_DEADLOCK);
+	compensation_clear_error();
+	}  */
+	//      } end_action_ret(0);
 
     }
   }
@@ -73,23 +88,27 @@ void * ridWorkerThread(void * j) {
 
     if(rw) {
       // readlock
-      if(LLADD_DEADLOCK == globalLockManager.readLockRecord(xid, rid)) {
-	k = 0;
-	globalLockManager.abort(xid);
-	deadlocks++;
-	printf("-");
-      }
-      
+
+      //      begin_action_ret(NULL, NULL, 0) {
+	if(LLADD_DEADLOCK == globalLockManager.readLockRecord(xid, rid)) {
+	  k = 0;
+	  globalLockManager.abort(xid);
+	  deadlocks++;
+	  printf("-");
+	}
+	//      } end_action_ret(0);
       
     } else {
       // writelock
-      if(LLADD_DEADLOCK == globalLockManager.writeLockRecord(xid, rid)) {
-	k = 0;
-	globalLockManager.abort(xid);
-	deadlocks++;
-	printf("-");
-      }
 
+      //      begin_action_ret(NULL, NULL, 0) {
+	if(LLADD_DEADLOCK == globalLockManager.writeLockRecord(xid, rid)) {
+	  k = 0;
+	  globalLockManager.abort(xid);
+	  deadlocks++;
+	  printf("-");
+	}
+	//      } end_action_ret(0);
     }
   }
   

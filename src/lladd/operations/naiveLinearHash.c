@@ -140,7 +140,6 @@ void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int v
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
-  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = -1;
   
   hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
   hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);

@@ -371,3 +371,13 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
   }
   return 1;
 }
+
+void ThashDone(int xid, lladd_hash_iterator * it) {
+  if(it->it) {
+    free(it->it);
+  } 
+  if(it->pit) {
+    free(it->pit);
+  }
+  free(it);
+}

@@ -186,7 +186,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     ts.tv_nsec = tv.tv_usec * 1000;
     if(tod_ret != 0) {
       perror("Could not get time of day");
-      compensation_set_error(LLADD_DEADLOCK);
+      compensation_set_error(LLADD_INTERNAL_ERROR);
       return LLADD_INTERNAL_ERROR;
     }
     while(ridLock->writers || (ridLock->readers - me)) { 
@@ -301,10 +301,10 @@ int lockManagerCommitHashed(int xid, int datLen) {
   return ret;
 }
 
-int lockManagerReadLockRecord(int xid, recordid rid) {
+compensated_function int lockManagerReadLockRecord(int xid, recordid rid) {
   return lockManagerReadLockHashed(xid, (byte*)&rid, sizeof(recordid));
 }
-int lockManagerWriteLockRecord(int xid, recordid rid) {
+compensated_function int lockManagerWriteLockRecord(int xid, recordid rid) {
   return lockManagerWriteLockHashed(xid, (byte*)&rid, sizeof(recordid));
 }
 int lockManagerUnlockRecord(int xid, recordid rid) {
@@ -314,10 +314,10 @@ int lockManagerCommitRecords(int xid) {
   return lockManagerCommitHashed(xid, sizeof(recordid));
 }
 
-int lockManagerReadLockPage(int xid, int p) {
+compensated_function int lockManagerReadLockPage(int xid, int p) {
   return lockManagerReadLockHashed(xid, (byte*)&p, sizeof(int));
 }
-int lockManagerWriteLockPage(int xid, int p) {
+compensated_function int lockManagerWriteLockPage(int xid, int p) {
   return lockManagerWriteLockHashed(xid, (byte*)&p, sizeof(int));
 }
 int lockManagerUnlockPage(int xid, int p) {

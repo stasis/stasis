@@ -13,7 +13,8 @@ int main(int argc, char ** argv) {
   Tinit();
   
   DfaSet * cht_client = cHtClientInit(conf);
-  pthread_t main_worker_loop = spawn_main_thread(cht_client);
+  //  pthread_t main_worker_loop = 
+  spawn_main_thread(cht_client);
   
   // cht_evals go here...
   

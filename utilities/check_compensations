@@ -49,11 +49,11 @@ foreach my $i (@source) {
     while(my $line = <IN>) {
 	$num++;
 	my $in = 0;
-	if ($line =~ /\bbegin_action(_ret)?\b/) {
+	if ($line =~ /\bbegin_action(_ret)?\s*\(\b/ ||  $line =~ /\btry(_ret)?\s*[\(\{]/) {
 	    $nest++;
 	    $in = 1;
 	} 
-	if ($line =~ /\bend_action(_ret)?\b/ || $line =~ /\bcompensate(_ret)?\b/) {
+	if ($line =~ /}\s*end(_action)?(_ret)?\b/ || $line =~ /}\s*compensate(_ret)?\b/) {
 	    $nest--;
 	    if($in) {
 		warn "$pwd/$i:$num Cannot handle single line compensation checks\n";

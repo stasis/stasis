@@ -141,7 +141,7 @@ DfaSet * cHtCoordinatorInit(char * config_file, short(*get_broadcast_group)(DfaS
 DfaSet * cHtSubordinateInit(char * config_file, short(*get_broadcast_group)(DfaSet *, Message *), int subordinate_number);
 int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
 int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
-/*  int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
+int cHtAbort(state_machine_id xid, DfaSet * dfaSet);
 
 /** The server side state for a CHT. */
 typedef struct {

@@ -97,7 +97,8 @@ void lock_c_line_1231(lock * l) {
   properly.
 
   Also, begin_action(NULL, NULL) is supported, and is useful for
-  checking the return value of a called function.
+  checking the return value of a called function, but, for
+  efficiency, try{ } end; is recommended
 */
 
 void compensations_init();
@@ -106,13 +107,19 @@ int compensation_error();
 void compensation_clear_error();
 void compensation_set_error(int code);
 
+#define try        do { if(compensation_error()) return;     do 
+#define try_ret(x) do { if(compensation_error()) return (x); do 
+
+#define end        while(0); if(compensation_error()) return;     }while(0)
+#define end_ret(x) while(0); if(compensation_error()) return (x); }while(0)
+
 #define begin_action(func, var)      \
   if(compensation_error()) return;   \
   do{                                \
   void (*_func_)(void*);             \
   pthread_cleanup_push(_func_=(void(*)(void*))(func), (void*)(var));\
   do
-
+/** @todo compensation variables don't need _func_ anymore. */
 #define end_action                   \
   while(0);                          \
   pthread_cleanup_pop(_func_ && compensation_error());        \

@@ -20,6 +20,8 @@ TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
 
+const recordid ROOT_RECORD = {1, 0, -1};
+const recordid NULLRID = {0,0,-1};
 
 /** 
     Locking for transactional2.c works as follows:

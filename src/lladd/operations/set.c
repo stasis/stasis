@@ -95,7 +95,12 @@ static int deOperateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void
   free(tmp);
   return 0;
 }
-void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
+compensated_function void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
+  Page * p;
+
+  try {
+    p = loadPage(xid, rid.page);
+  } end;
 
   set_range_t * range = malloc(sizeof(set_range_t) + 2 * length);
   byte * record = malloc(rid.size);
@@ -106,7 +111,6 @@ void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) 
   // Copy new value into log structure
   memcpy(range + 1, dat, length);
   
-  Page * p = loadPage(xid, rid.page);
   // No further locking is necessary here; readRecord protects the 
   // page layout, but attempts at concurrent modification have undefined 
   // results.  (See page.c)
