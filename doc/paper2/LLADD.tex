@@ -1,0 +1,195 @@
+
+\documentclass[letterpaper,english]{article}
+
+%\documentclass[letterpaper,twocolumn,english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+
+\usepackage{geometry}
+\geometry{verbose,letterpaper,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+
+\makeatletter
+
+\usepackage{babel}
+
+\begin{document}
+
+\title{LLADD Outline }
+
+
+\author{Russell Sears \and ... \and Eric Brewer}
+
+\maketitle
+
+
+
+\begin{enumerate}
+
+\item Abstract
+
+\item Introduction 
+
+\begin{enumerate}
+
+  \item Current transactional systems handle conventional workloads
+  well, but object persistence mechanisms are a mess, as are
+  {}``version oriented'' data stores requiring large, efficient atomic
+  updates.
+
+  \item {}``Impedance mismatch'' is a term that refers to a mismatch
+  between the data model provided by the data store and the data model
+  required by the application. A significant percentage of software
+  development effort is related to dealing with this problem. Related
+  problems that have had less treatment in the literature involve
+  mismatches between other performance-critical and labor intensive
+  programming primitives such as concurrency models, error handling
+  techniques and application development patterns.
+
+  \item Past trends in the Database community have been driven by
+  demand for tools that allow extremely specialized (but commercially
+  important!)  types of software to be developed quickly and
+  inexpensively. {[}System R, OODBMS, benchmarks, streaming databases,
+  etc{]} This has led to the development of large, monolithic database
+  severs that perform well under many circumstances, but that are not
+  nearly as flexible as modern programming languages or typical
+  in-memory data structure libraries {[}Java Collections,
+  STL{]}. Historically, programming language and software library
+  development has focused upon the production of wide array of
+  composable general purpose tools, allowing the application developer
+  to pick algorithms and data structures that are most appropriate for
+  the problem at hand.
+
+  \item In the past, modular database and transactional storage
+  implementations have hidden the complexities of page layout,
+  synchronization, locking, and data structure design under relatively
+  narrow interfaces, since transactional storage algorithms'
+  interdependencies and requirements are notoriously complicated.
+
+  \item With these trends in mind, we have implemented a modular
+  version of ARIES that makes as few assumptions as possible about
+  application data structures or workload. Where such assumptions are
+  inevitable, we have produced narrow APIs that allow the application
+  developer to plug in alternative implementations of the modules that
+  comprise our ARIES implementation. Rather than hiding the underlying
+  complexity of the library from developers, we have produced narrow,
+  simple API's and a set of invariants that must be maintained in
+  order to ensure transactional consistency, allowing application
+  developers to produce high-performance extensions with only a little
+  effort.
+
+\end{enumerate}
+\item 2.Prior work
+
+\begin{enumerate}
+
+  \item Databases' Relational model leads to performance /
+  representation problems.
+
+  \item OODBMS / XML database systems provide model tied closely to PL
+  or hierarchical formats, but, like the relational model, these
+  models are extremely general, and might be inappropriate for
+  applications with stringent performance demands, or that use these
+  models in a way that cannot be supported well with the database
+  system's underlying data structures.
+
+  \item Berkeley DB provides a lower level interface, increasing
+  performance, and providing efficient tree and hash based data
+  structures, but hides the details of storage management and the
+  primitives provided by its transactional layer from
+  developers. Again, only a handful of data formats are made available
+  to the developer.
+
+  \item Implementations of ARIES and other transactional storage
+  mechanisms include many of the useful primitives described below,
+  but prior implementations either deny application developers access
+  to these primitives {[}??{]}, or make many high-level assumptions
+  about data representation and workload {[}DB Toolkit from
+  Wisconsin??-need to make sure this statement is true!{]}
+
+\end{enumerate}
+
+\item 3.Architecture 
+
+\begin{enumerate}
+
+  \item {}``Core LLADD'' vs {}``Operations''
+
+  \item ARIES provides {}``transactional pages'' 
+
+\begin{enumerate}
+
+  \item Diversion on ARIES semantics
+  
+  \item Non-interleaved transactions vs. Nested top actions
+  vs. Well-ordered writes.
+
+\end{enumerate}
+
+  \item Log entries as a programming primitive 
+
+  \item Error handling with compensations as {}``abort() for C''
+
+  \item Concurrency models are fundamentally application specific, but
+  record/page level locking and index locks are often a nice trade-off
+
+  \item {}``latching'' vs {}``locking'' - data structures internal to
+  LLADD are protected by LLADD, allowing applications to reason in
+  terms of logical data addresses, not physical representation. Since
+  the application may define a custom representation, this seems to be
+  a reasonable tradeoff between application complexity and
+  performance.
+
+\end{enumerate}
+
+\item Applications (ie, {}``tricks with ARIES'') 
+
+\begin{enumerate}
+
+  \item Atomic file-based transactions. Prototype blob implementation
+  using force, shadow copies (trivial to implement given transactional
+  pages).  File systems that implement atomic operations may allow
+  data to be stored durably without calling flush() on the data
+  file. Current implementation useful for blobs that are typically
+  changed entirely from update to update, but smarter implementations
+  are certainly possible. The blob implementation primarily consists
+  of special log operations that cause file system calls to be made at
+  appropriate times, and is simple, so it could easily be replaced by
+  an application that frequently update small ranges within blobs, for
+  example.
+
+  \item Index implementation - modular hash table. Relies on separate
+  linked list, expandable array implementations.
+
+  \item Asynchronous log implementation/Fast writes. Prioritization of
+  log writes (one {}``log'' per page) implies worst case performance
+  (write, then immediate read) will behave on par with normal
+  implementation, but writes to portions of the database that are not
+  actively read should only increase system load (and not directly
+  increase latency)
+
+  \item Custom locking. Hash table can support all of the SQL degrees
+  of transactional consistency, but can also make use of
+  application-specific invariants and synchronization to accommodate
+  deadlock-avoidance, which is the model most naturally supported by C
+  and other programming languages.
+
+\end{enumerate}
+
+\item Validation 
+
+\begin{enumerate}
+
+  \item Serialization Benchmarks (Abstract log) 
+
+  \item Hierarchical Locking 
+
+  \item TPC-C (Flexibility) 
+
+  \item Sample Application. (Don't know what yet?) 
+
+\end{enumerate}
+
+\item Conclusion\end{enumerate}
+
+\end{document}
