@@ -1,0 +1,265 @@
+%PDF-1.1
+%Å‚Å„ÅœÅ”
+1 0 obj
+<<
+/CreationDate (D:20050322184724)
+/ModDate (D:20050322184724)
+/Title (R Graphics Output)
+/Producer (R 2.0.1)
+/Creator (R)
+>>
+endobj
+2 0 obj
+<<
+/Type /Catalog
+/Pages 3 0 R
+>>
+endobj
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F1
+/BaseFont /ZapfDingbats
+>>
+endobj
+6 0 obj
+<<
+/Type /Page
+/Parent 3 0 R
+/Contents 7 0 R
+/Resources 4 0 R
+>>
+endobj
+7 0 obj
+<<
+/Length 8 0 R
+>>
+stream
+q
+Q q 59.04 73.44 270.72 155.52 re W n
+0.000 0.000 0.000 RG
+0.75 w
+[] 0 d
+1 J
+1 j
+10.00 M
+80.94 84.90 m 112.34 94.96 l S
+126.05 99.37 m 162.49 111.20 l S
+176.19 115.61 m 212.61 127.20 l S
+226.40 131.32 m 262.66 141.40 l S
+276.78 143.87 m 312.55 146.58 l S
+BT
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 71.12 80.11 Tm (l) Tj 0 Tr
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 116.24 94.56 Tm (l) Tj 0 Tr
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 166.37 110.83 Tm (l) Tj 0 Tr
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 216.50 126.79 Tm (l) Tj 0 Tr
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 266.64 140.73 Tm (l) Tj 0 Tr
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 316.77 144.53 Tm (l) Tj 0 Tr
+ET
+Q q
+0.000 0.000 0.000 RG
+0.75 w
+[] 0 d
+1 J
+1 j
+10.00 M
+69.07 73.44 m 319.73 73.44 l S
+69.07 73.44 m 69.07 66.24 l S
+119.20 73.44 m 119.20 66.24 l S
+169.33 73.44 m 169.33 66.24 l S
+219.47 73.44 m 219.47 66.24 l S
+269.60 73.44 m 269.60 66.24 l S
+319.73 73.44 m 319.73 66.24 l S
+BT
+0.000 0.000 0.000 rg
+/F2 1 Tf 12.00 0.00 -0.00 12.00 65.73 47.52 Tm (0) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 112.53 47.52 Tm (10) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 162.66 47.52 Tm (20) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 212.79 47.52 Tm (30) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 262.93 47.52 Tm (40) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 313.06 47.52 Tm (50) Tj
+ET
+59.04 79.20 m 59.04 217.58 l S
+59.04 79.20 m 51.84 79.20 l S
+59.04 125.33 m 51.84 125.33 l S
+59.04 171.45 m 51.84 171.45 l S
+59.04 217.58 m 51.84 217.58 l S
+BT
+/F2 1 Tf 0.00 12.00 -12.00 0.00 41.76 75.86 Tm (0) Tj
+/F2 1 Tf 0.00 12.00 -12.00 0.00 41.76 115.32 Tm (500) Tj
+/F2 1 Tf 0.00 12.00 -12.00 0.00 41.76 158.11 Tm (1000) Tj
+/F2 1 Tf 0.00 12.00 -12.00 0.00 41.76 204.24 Tm (1500) Tj
+ET
+59.04 73.44 m
+329.76 73.44 l
+329.76 228.96 l
+59.04 228.96 l
+59.04 73.44 l
+S
+Q q
+BT
+0.000 0.000 0.000 rg
+/F3 1 Tf 14.00 0.00 -0.00 14.00 71.47 253.45 Tm (Concurrent Transactions Per Second) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 111.70 18.72 Tm (Number of concurrent requests) Tj
+/F2 1 Tf 0.00 12.00 -12.00 0.00 12.96 139.53 Tm (TPS) Tj
+ET
+Q q 59.04 73.44 270.72 155.52 re W n
+1.000 0.000 0.000 RG
+0.75 w
+[] 0 d
+1 J
+1 j
+10.00 M
+80.10 86.66 m 113.18 108.36 l S
+125.35 116.06 m 163.19 139.17 l S
+175.61 146.45 m 213.19 167.60 l S
+225.76 174.63 m 263.31 195.51 l S
+276.08 202.14 m 313.25 220.07 l S
+74.08 86.91 m
+77.72 80.61 l
+70.44 80.61 l
+74.08 86.91 l
+S
+119.20 116.51 m
+122.84 110.21 l
+115.56 110.21 l
+119.20 116.51 l
+S
+169.33 147.12 m
+172.97 140.82 l
+165.70 140.82 l
+169.33 147.12 l
+S
+219.47 175.33 m
+223.10 169.03 l
+215.83 169.03 l
+219.47 175.33 l
+S
+269.60 203.21 m
+273.24 196.91 l
+265.96 196.91 l
+269.60 203.21 l
+S
+319.73 227.40 m
+323.37 221.10 l
+316.10 221.10 l
+319.73 227.40 l
+S
+0.000 0.000 0.000 RG
+BT
+/F1 1 Tf 1 Tr 7.48 0 0 7.48 76.90 206.20 Tm (l) Tj 0 Tr
+ET
+1.000 0.000 0.000 RG
+79.87 198.60 m
+83.50 192.30 l
+76.23 192.30 l
+79.87 198.60 l
+S
+BT
+0.000 0.000 0.000 rg
+/F2 1 Tf 12.00 0.00 -0.00 12.00 96.07 204.49 Tm (BDB HASH TPS) Tj
+/F2 1 Tf 12.00 0.00 -0.00 12.00 96.07 190.09 Tm (LLADD HASH TPS) Tj
+ET
+Q
+endstream
+endobj
+8 0 obj
+2936
+endobj
+3 0 obj
+<<
+/Type /Pages
+/Kids [
+6 0 R
+]
+/Count 1
+/MediaBox [0 0 360 288]
+>>
+endobj
+4 0 obj
+<<
+/ProcSet [/PDF /Text]
+/Font << /F1 5 0 R /F2 10 0 R /F3 11 0 R /F4 12 0 R /F5 13 0 R /F6 14 0 R >>
+/ExtGState << >>
+>>
+endobj
+9 0 obj
+<<
+/Type /Encoding
+/BaseEncoding /PDFDocEncoding
+/Differences [ 45/minus 96/quoteleft
+144/dotlessi /grave /acute /circumflex /tilde /macron /breve /dotaccent
+/dieresis /.notdef /ring /cedilla /.notdef /hungarumlaut /ogonek /caron /space]
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F2
+/BaseFont /Helvetica
+/Encoding 9 0 R
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F3
+/BaseFont /Helvetica-Bold
+/Encoding 9 0 R
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F4
+/BaseFont /Helvetica-Oblique
+/Encoding 9 0 R
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F5
+/BaseFont /Helvetica-BoldOblique
+/Encoding 9 0 R
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F6
+/BaseFont /Symbol
+>>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000020 00000 n 
+0000000162 00000 n 
+0000003383 00000 n 
+0000003466 00000 n 
+0000000211 00000 n 
+0000000294 00000 n 
+0000000374 00000 n 
+0000003363 00000 n 
+0000003603 00000 n 
+0000003859 00000 n 
+0000003956 00000 n 
+0000004058 00000 n 
+0000004163 00000 n 
+0000004272 00000 n 
+trailer
+<<
+/Size 15
+/Info 1 0 R
+/Root 2 0 R
+>>
+startxref
+4350
+%%EOF
