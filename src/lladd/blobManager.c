@@ -4,15 +4,16 @@
 #include <assert.h>
 
 #include <lladd/transactional.h>
-#include "pageFile.h"
+
 #include <lladd/bufferManager.h>
 #include <lladd/constants.h>
 
 #include "latches.h"
 
 #include "blobManager.h"
-
+#include "io.h"
 #include <pbl/pbl.h>
+#include "page.h"
 
 #include <stdio.h>
 
@@ -296,21 +297,17 @@ void readBlob(int xid, Page * p, recordid rid, void * buf) {
   funlockfile(fd);
 }
 
-/** @todo dirtyBlobs should contain the highest LSN that wrote to the
-    current version of the dirty blob, and the lsn field should be
-    checked to be sure that it increases monotonically. */
-void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) { 
+/**
+   Examines the blob in question, marks it dirty, and returns the
+   appropriate file descriptor.
+*/
+static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
+  lsn_t * dirty = tripleHashLookup(xid, rid);
+  FILE * fd;
+  blob_record_t rec;
+
 
   /* First, determine if the blob is dirty. */
-  lsn_t * dirty = tripleHashLookup(xid, rid);
-
-  blob_record_t rec;
-  long offset;
-  FILE * fd;
-  int readcount;
-
-  DEBUG("Writing blob (size %ld)\n", rid.size);
-
 
   /* Tread() raw record */
   readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
@@ -321,9 +318,6 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
     assert(lsn > *dirty);
     *dirty = lsn;  /* Updates value in triple hash (works because of pointer aliasing.) */
     DEBUG("Blob already dirty.\n");
-    
-
-
   } else {
     DEBUG("Marking blob dirty.\n");
     tripleHashInsert(xid, rid, lsn);
@@ -336,19 +330,52 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
 
+  return fd;
+}
+
+void setRangeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf, long offset, long length) {
+  FILE * fd;
+  int readcount;
+  blob_record_t rec;
+
+  fd = getDirtyFD(xid, p, lsn, rid);
+  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
+
+  flockfile(fd);
+  offset = myFseek(fd, rec.offset + offset, SEEK_SET);
+  assert(offset == rec.offset);
+  readcount = fwrite(buf, length, 1, fd);
+  assert(1 == readcount);
+  funlockfile(fd);
+}
+/** @todo dirtyBlobs should contain the highest LSN that wrote to the
+    current version of the dirty blob, and the lsn field should be
+    checked to be sure that it increases monotonically. */
+void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) { 
+
+  long offset;
+  FILE * fd;
+  int readcount;
+  blob_record_t rec;
+
+  DEBUG("Writing blob (size %ld)\n", rid.size);
+  
+  fd = getDirtyFD(xid, p, lsn, rid);
+  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
+
   DEBUG("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
  
   flockfile(fd);
 
   offset = myFseek(fd, rec.offset, SEEK_SET);
-
   assert(offset == rec.offset);
+
   readcount = fwrite(buf, rec.size, 1, fd);
-  funlockfile(fd);
   assert(1 == readcount);
 
-  /* No need to update the raw blob record. */
+  funlockfile(fd);
 
+  /* No need to update the raw blob record. */
 }
 /** @todo check to see if commitBlobs actually needs to flush blob
     files when it's called (are there any dirty blobs associated with

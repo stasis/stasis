@@ -59,23 +59,11 @@ terms specified in this license.
 #include "pageFile.h"
 #include <pbl/pbl.h>
 
-/**
-   Invariant: This lock should be held while updating lastFreepage, or
-   while performing any operation that may decrease the amount of
-   freespace in the page that lastFreepage refers to.  
-
-   Since pageCompact and pageDeRalloc may only increase this value,
-   they do not need to hold this lock.  Since bufferManager is the
-   only place where pageRalloc is called, pageRalloc does not obtain
-   this lock.
-*/
 
 static pblHashTable_t *activePages; /* page lookup */
 
 static pthread_mutex_t loadPagePtr_mutex;
 
-static pthread_mutex_t lastFreepage_mutex;
-static unsigned int lastFreepage = 0;
 static Page * dummy_page;
 
 int bufInit() {
@@ -84,11 +72,9 @@ int bufInit() {
 	openPageFile();
 
 
-	pthread_mutex_init(&lastFreepage_mutex , NULL);
 	pthread_mutex_init(&loadPagePtr_mutex, NULL);
-	activePages = pblHtCreate();
 
-	lastFreepage = 0;
+	activePages = pblHtCreate();
 
 	dummy_page = pageAlloc(-1);
 	pageRealloc(dummy_page, -1);
@@ -150,36 +136,6 @@ void simulateBufferManagerCrash() {
 
 void releasePage (Page * p) {
   unlock(p->loadlatch);
-}
-
-Page * lastRallocPage = 0;
-
-/** @todo ralloc ignores it's xid parameter; change the interface? */
-recordid ralloc(int xid, long size) {
-  
-  recordid ret;
-  Page * p;
-  
-  /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
-  
-  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
-  
-
-  pthread_mutex_lock(&lastFreepage_mutex);  
-  while(freespace(p = loadPage(lastFreepage)) < size ) { 
-    releasePage(p);
-    lastFreepage++; 
-  }
-  
-  ret = pageRalloc(p, size);
-    
-  releasePage(p);
-
-  pthread_mutex_unlock(&lastFreepage_mutex);
-  
-  /*  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); */
-
-  return ret;
 }
 
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {

@@ -2,7 +2,7 @@
 #ifndef __PAGE_FILE_H
 #define __PAGE_FILE_H
 #include "page.h"
-#include <stdio.h>
+
 /**
  * Write page to disk, including correct LSN.  Doing so may require a
  * call to logSync().  There is not much that can be done to avoid
@@ -45,10 +45,6 @@ long pageCount();
 
 void openPageFile();
 void closePageFile();
-
-long myFseek(FILE * f, long offset, int whence);
-long myFseekNoLock(FILE * f, long offset, int whence);
-void myFwrite(const void * dat, long size, FILE * f);
 
 void finalize(Page * p);
 

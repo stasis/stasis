@@ -45,8 +45,8 @@ terms specified in this license.
 #include <lladd/transactional.h>
 #include "logWriter.h"
 #include "logHandle.h"
-
-#include "../pageFile.h"
+#include "latches.h"
+#include "io.h"
 #include <assert.h>
 #include <stdio.h>
 

@@ -216,6 +216,23 @@ lsn_t pageReadLSN(const Page * page);
 int freespace(Page * page);
 
 /**
+ * allocate a record.  This must be done in two phases.  The first
+ * phase reserves a slot, and produces a log entry.  The second phase
+ * sets up the slot according to the contents of the log entry.
+ *
+ * Ralloc implements the first phase.
+ *
+ * @param xid The active transaction.
+ * @param size The size of the new record
+ * @return allocated record
+ *
+ * @see slotRalloc the implementation of the second phase.
+ */
+recordid ralloc(int xid, long size);
+
+
+
+/**
  * assumes that the page is already loaded in memory.  It takes as
  * parameters a Page and the size in bytes of the new record.  pageRalloc()
  * returns a recordid representing the newly allocated record.

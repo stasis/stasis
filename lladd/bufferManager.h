@@ -105,13 +105,12 @@ typedef struct Page_s Page;
 /**
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
- * @return page with -1 ID if page not found
  */
 Page * loadPage(int pageid);
 
 /**
    loadPage aquires a lock when it is called, effectively pinning it
-   in memory.  realeasePage releases this lock.
+   in memory.  releasePage releases this lock.
 */
 void releasePage(Page * p);
 
@@ -123,28 +122,6 @@ void releasePage(Page * p);
  */
 int bufInit();
 
-/**
- * allocate a record.  This must be done in two phases.  The first
- * phase reserves a slot, and produces a log entry.  The second phase
- * sets up the slot according to the contents of the log entry.
- *
- * Ralloc implements the first phase.
- *
- * @param xid The active transaction.
- * @param size The size of the new record
- * @return allocated record
- *
- * @see slotRalloc the implementation of the second phase.
- */
-recordid ralloc(int xid, long size);
-
-
-/**
- * allocate a record at a given slot.  (Useful for recovery.)
- * 
- * @see ralloc
- */
-void slotRalloc(Page * page, lsn_t lsn, recordid rid);
 
 /**
  * @param pageid ID of page you want to read

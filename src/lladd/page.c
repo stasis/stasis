@@ -121,6 +121,22 @@ static int getSlotLength(byte *memAddr, int slot) ;
 static void setSlotOffset(byte *memAddr, int slot, int offset) ;
 static void setSlotLength(byte *memAddr, int slot, int length) ;
 
+
+/**
+   Invariant: This lock should be held while updating lastFreepage, or
+   while performing any operation that may decrease the amount of
+   freespace in the page that lastFreepage refers to.  
+
+   Since pageCompact and pageDeRalloc may only increase this value,
+   they do not need to hold this lock.  Since bufferManager is the
+   only place where pageRalloc is called, pageRalloc does not obtain
+   this lock.
+*/
+static pthread_mutex_t lastFreepage_mutex;
+static unsigned int lastFreepage = 0;
+
+
+
 /** @todo replace static ints in page.c with #defines. */
 
 /* ------ */
@@ -412,6 +428,10 @@ void pageInit() {
 	  pool[i].memAddr = malloc(PAGE_SIZE);
 	}
 
+	pthread_mutex_init(&lastFreepage_mutex , NULL);
+	lastFreepage = 0;
+
+
 }
 
 void pageDeInit() {
@@ -527,6 +547,36 @@ int freespace(Page * page) {
   readunlock(page->rwlatch);
   return ret;
 }
+
+/** @todo ralloc ignores it's xid parameter; change the interface? */
+recordid ralloc(int xid, long size) {
+  
+  recordid ret;
+  Page * p;
+  
+  /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
+  
+  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
+  
+
+  pthread_mutex_lock(&lastFreepage_mutex);  
+  while(freespace(p = loadPage(lastFreepage)) < size ) { 
+    releasePage(p);
+    lastFreepage++; 
+  }
+  
+  ret = pageRalloc(p, size);
+    
+  releasePage(p);
+
+  pthread_mutex_unlock(&lastFreepage_mutex);
+  
+  /*  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); */
+
+  return ret;
+}
+
+
 
 recordid pageRalloc(Page * page, int size) {
         int freeSpace;

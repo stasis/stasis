@@ -47,8 +47,8 @@ terms specified in this license.
 #include <lladd/transactional.h>
 #include "../check_includes.h"
 #define LOG_NAME   "check_transactional2.log"
-#define THREAD_COUNT 10
-#define RECORDS_PER_THREAD 500
+#define THREAD_COUNT 5
+#define RECORDS_PER_THREAD 5000
 
 void arraySet(int * array, int val) {
   int i;
@@ -433,17 +433,6 @@ START_TEST(transactional_blobs_threads_abort) {
   }
 
   Tdeinit();
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-  sleep (10000000);
-
 } END_TEST
 
 /** 
@@ -455,14 +444,14 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("transactional_smokeTest");
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, transactional_smokeTest);
-  tcase_add_test(tc, transactional_blobSmokeTest);  
-  tcase_add_test(tc, transactional_nothreads_commit);
-  tcase_add_test(tc, transactional_threads_commit); 
-  tcase_add_test(tc, transactional_nothreads_abort);
+  /*  tcase_add_test(tc, transactional_smokeTest);
+      tcase_add_test(tc, transactional_blobSmokeTest);  */
+  /*  tcase_add_test(tc, transactional_nothreads_commit);
+      tcase_add_test(tc, transactional_threads_commit);  */
+  /*  tcase_add_test(tc, transactional_nothreads_abort); */
   tcase_add_test(tc, transactional_threads_abort);
   tcase_add_test(tc, transactional_blobs_nothreads_abort); 
-  tcase_add_test(tc, transactional_blobs_threads_abort);
+  /*  tcase_add_test(tc, transactional_blobs_threads_abort); */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

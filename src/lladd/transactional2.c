@@ -25,7 +25,7 @@ int xidCount = 0;
 pthread_mutex_t transactional_2_mutex;
 
 #define INVALID_XTABLE_XID -1
-
+#define PENDING_XTABLE_XID -2
 /** Needed for debugging -- sometimes we don't want to run all of Tinit() */
 
 void setupOperationsTable() {
@@ -65,8 +65,10 @@ int Tbegin() {
 
 	pthread_mutex_lock(&transactional_2_mutex);
 
-	if( numActiveXactions == MAX_TRANSACTIONS )
-		return EXCEED_MAX_TRANSACTIONS;
+	if( numActiveXactions == MAX_TRANSACTIONS ) {
+	  pthread_mutex_unlock(&transactional_2_mutex);
+	  return EXCEED_MAX_TRANSACTIONS;
+	}
 	else
 		numActiveXactions++;
 
@@ -79,13 +81,14 @@ int Tbegin() {
 	}
 
 	xidCount_tmp = xidCount;
-	/** @todo Don't want to block while we're logging... */
 
 	assert( i < MAX_TRANSACTIONS );
 	
-	XactionTable[index] = LogTransBegin(xidCount_tmp);
+	XactionTable[index].xid = PENDING_XTABLE_XID;
 
-	pthread_mutex_unlock(&transactional_2_mutex);
+	pthread_mutex_unlock(&transactional_2_mutex);	
+
+	XactionTable[index] = LogTransBegin(xidCount_tmp);
 
 	return XactionTable[index].xid;
 }

@@ -99,8 +99,8 @@ extern int errno;
 #define lsn_t long
 
 
-/*#define DEBUGGING   
-  #define PROFILE_LATCHES */
+/*#define DEBUGGING   */
+/*#define PROFILE_LATCHES */
 
 #ifdef DEBUGGING 
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */
