@@ -2054,6 +2054,11 @@ inverse of the application request.  Since the logical inverse of most
 application request is another application request, we can {\em reuse} our
 logging format and wrapper functions to implement a purely logical log.
 
+\begin{figure}
+\includegraphics[width=1\columnwidth]{graph-traversal.pdf}
+\caption{\label{fig:multiplexor} Multiplexer...}
+\end{figure}
+
 For our graph traversal algorithm we use a {\em log multiplexer} to
 route entries from a single log into many sub-logs according to the
 page that each entry refers to.  This is easy to do with the Array
