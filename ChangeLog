@@ -1,4 +1,25 @@
-2004-07-20  sears  <sears@Morphix>
+2004-10-02  sears@euglenoid  <sears@euglenoid>
+
+	* alloc.h, instantSet.h, noop.h, prepare.h:
+	Added test cases for Tprepare(), implemented some redo-only operations, and started to clean up record allocation/deallocation.
+
+	Also, numerous bugfixes.
+
+2004-08-21  sears@euglenoid  <sears@euglenoid>
+
+	* pageOperations.h:
+	Implemented a freespace manager that should safely allocate space, even in the face of crashes, and can reclaim unused space (unless an application opens more than one simultaneous transaction that performs allocations)
+
+	Fixed some blob bugs (by adding extra fdatasync() calls).
+
+	Began factoring out the page management code so that it is an extenstion, and a less integral part of lladd.
+
+2004-08-03  sears@euglenoid  <sears@euglenoid>
+
+	* lladdhash.h, pageOperations.h:
+	Added (untested) support for whole-page operations, lladdhash now works.
+
+rr	2004-07-20  sears  <sears@Morphix>
 
 	* bufferManager.c, common.c, operations/alloc.c, page.c, page.h, pageCache.c, pageFile.c, transactional2.c:
 	Continuing work on multi-threading.  r/w access to buffer manager getting close, but still buggy.

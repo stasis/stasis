@@ -8,10 +8,6 @@
 #include "../page/header.h"
 #include "../pageFile.h"
 
-
-
-
-
 static int freelist;
 static int freepage;
 static pthread_mutex_t pageAllocMutex;
@@ -293,11 +289,6 @@ int TpageAlloc(int xid /*, int type */) {
   return newpage;
 }
 
-/** Allocs an extent of pages.  @todo CONCURRENCY BUG TpageAllocMany
-    can not be concurrent until ralloc uses TpageAlloc to allocate new
-    records. (And. concurrency for TpageAllocMany hasn't been
-    implemented yet...
-*/
 int TpageAllocMany(int xid, int count /*, int type*/) {
   /*  int firstPage = -1;
       int lastPage = -1; */
@@ -320,15 +311,6 @@ int TpageAllocMany(int xid, int count /*, int type*/) {
 
   rid.page = newpage;
 
-  /*  for(int i = 0 ; i < count; i++) {
-    int thisPage = TpageAlloc(xid, type);
-    if(lastPage == -1) {
-      firstPage = lastPage = thisPage;
-    } else {
-      assert((lastPage +1) == thisPage);
-      lastPage = thisPage;
-    }
-    } */
   pthread_mutex_unlock(&pageAllocMutex);
   return newpage;
 }

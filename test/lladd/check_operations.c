@@ -52,6 +52,8 @@ terms specified in this license.
 #include "../../src/lladd/page/slotted.h"
 #define LOG_NAME   "check_operations.log"
 
+#include <stdio.h>
+
 
 void simulateBufferManagerCrash();
 extern int numActiveXactions;
@@ -73,7 +75,8 @@ START_TEST(operation_physical_do_undo) {
   
   Tinit();
   
-  rid  = slottedPreRalloc(xid, sizeof(int));
+  rid  = slottedPreRalloc(xid, sizeof(int), &p);
+  releasePage(p);
   buf = 1;
   arg = 2;
 
@@ -375,7 +378,87 @@ START_TEST(operation_instant_set) {
 
 } END_TEST
 
+START_TEST(operation_array_list) {
 
+  Tinit();
+  
+  int xid = Tbegin();
+
+  recordid rid = TarrayListAlloc(xid, 4, 2, sizeof(int));
+
+  TarrayListExtend(xid, rid, 100000);
+  
+  printf("commit");
+  fflush(stdout);
+  Tcommit(xid);
+  printf("done1\n");
+  fflush(stdout);
+
+  xid = Tbegin();
+
+  recordid rid2;
+  rid2.page = rid.page;
+  rid2.slot = 0;
+  rid2.size = sizeof(int);
+
+  for(int i = 0; i < 100000; i++) {
+    rid2.slot = i;
+    Tset(xid, rid2, &i);
+  }
+
+  for(int i = 0; i < 100000; i++) {
+    rid2.slot = i;
+    int j;
+    Tread(xid, rid2, &j);
+    assert(i == j);
+  }
+
+  printf("commit");
+  fflush(stdout);
+  Tcommit(xid);
+  printf("-done2\n");
+  fflush(stdout);
+
+  xid = Tbegin();
+
+  for(int i = 0; i < 100000; i++) {
+    int j = 0-i;
+    rid2.slot = i;
+    Tset(xid, rid2, &j);
+  }
+
+  for(int i = 0; i < 100000; i++) {
+    rid2.slot = i;
+    int j = 0-i;
+    int k;
+    Tread(xid, rid2, &k);
+    assert(k == j);
+  }
+
+  printf("abort");
+  fflush(stdout);
+  Tabort(xid);
+  printf("-done\n");
+  fflush(stdout);
+
+  xid = Tbegin();
+  for(int i = 0; i < 100000; i++) {
+    rid2.slot = i;
+    int j;
+    Tread(xid, rid2, &j);
+    assert(i == j);
+  }
+
+  printf("commit");
+  fflush(stdout);
+  Tcommit(xid);
+  printf("done3\n");
+  fflush(stdout);
+
+
+  Tdeinit();
+
+} END_TEST
 
 /** 
   Add suite declarations here
@@ -389,6 +472,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_prepare);
+  tcase_add_test(tc, operation_array_list);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

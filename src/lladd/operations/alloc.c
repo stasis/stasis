@@ -50,34 +50,30 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
   return 0;
 }
 
-/** @todo Currently, we just leak store space on dealloc. */
+/** @todo Currently, we leak empty pages on dealloc. */
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  /*  Page * loadedPage = loadPage(rid.page); */
-  /** Has no effect during normal operation, other than updating the LSN. */
-  /*  slottedPostRalloc(p, lsn, rid); */
-  
-  /*  Page * loadedPage = loadPage(rid.page); */
   assert(rid.page == p->id);
   slottedDeRalloc(p, lsn, rid);
-  /*  releasePage(loadedPage); */
-
   return 0;
 }
 
 static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
-  /*  operate(xid, p, lsn, rid, dat); */
 
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
     rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
   } 
 
   slottedPostRalloc(p, lsn, rid); 
+  /** @todo dat should be the pointer to the space in the blob store. */
   writeRecord(xid, p, lsn, rid, dat);
 
   return 0;
 }
 
+static pthread_mutex_t talloc_mutex;
+
 Operation getAlloc() {
+  pthread_mutex_init(&talloc_mutex, NULL);
   Operation o = {
     OPERATION_ALLOC, /* ID */
     0,
@@ -111,14 +107,27 @@ Operation getRealloc() {
 
 recordid Talloc(int xid, long size) {
   recordid rid;
-
+  Page * p = NULL;
   if(size >= BLOB_THRESHOLD_SIZE) { 
     rid = preAllocBlob(xid, size);
   } else {
-    rid = slottedPreRalloc(xid, size);
+    pthread_mutex_lock(&talloc_mutex); 
+    rid = slottedPreRalloc(xid, size, &p);
+    assert(p != NULL);
   }
 
   Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+  
+  if(p != NULL) {
+    /* release the page that preAllocBlob pinned for us. */
+
+    /* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */
+    releasePage(p);
+    pthread_mutex_unlock(&talloc_mutex);  
+
+    /*pthread_mutex_unlock(&talloc_mutex); */
+
+  }
 
   return rid;
   
@@ -128,7 +137,8 @@ void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
   Page * p = loadPage(rid.page);
   readRecord(xid, p, rid, preimage);
-  releasePage(p);  /** @todo race in Tdealloc; do we care? */
+  /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
   Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
+  releasePage(p);  
   free(preimage);
 }

@@ -112,18 +112,19 @@ static void slottedCompact(Page * page) {
    certainly asking for trouble, so lastFreepage_mutex is static.)
 
 */
-static pthread_mutex_t lastFreepage_mutex;
-static unsigned int lastFreepage = -1;
+
+
+/*static pthread_mutex_t lastFreepage_mutex; */
+  static unsigned int lastFreepage = -1; 
 
 void slottedPageInit() {
-  pthread_mutex_init(&lastFreepage_mutex , NULL);
+  /*pthread_mutex_init(&lastFreepage_mutex , NULL);  */
   lastFreepage = -1;
 }
 
 void slottedPageDeinit() {
-  pthread_mutex_destroy(&lastFreepage_mutex);
+  /*  pthread_mutex_destroy(&lastFreepage_mutex); */
 }
-
 
 
 void slottedPageInitialize(Page * page) {
@@ -156,37 +157,37 @@ int slottedFreespace(Page * page) {
     optimizations later.  Perhaps it's better to cluster allocations
     from the same xid on the same page, or something...)
 */
-recordid slottedPreRalloc(int xid, long size) {
+recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   recordid ret;
-  Page * p;
+  /* Page * p; */
   
   /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
   
   assert(size < BLOB_THRESHOLD_SIZE);
   
-  pthread_mutex_lock(&lastFreepage_mutex);  
+  /*  pthread_mutex_lock(&lastFreepage_mutex);   */
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
   if(lastFreepage == -1) {
     lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
-    p = loadPage(lastFreepage);
-    slottedPageInitialize(p);
+    *pp = loadPage(lastFreepage);
+    slottedPageInitialize(*pp);
   } else {
-    p = loadPage(lastFreepage);
+    *pp = loadPage(lastFreepage);
   }
 
-  if(slottedFreespace(p) < size ) { 
-    releasePage(p);
+  if(slottedFreespace(*pp) < size ) { 
+    releasePage(*pp);
     lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
-    p = loadPage(lastFreepage);
-    slottedPageInitialize(p);
+    *pp = loadPage(lastFreepage);
+    slottedPageInitialize(*pp);
   }
   
-  ret = slottedRawRalloc(p, size);
+  ret = slottedRawRalloc(*pp, size);
     
-  releasePage(p);
+  /*  releasePage(p); */  /* This gets called in Talloc() now.  That prevents the page from being prematurely stolen. */
 
-  pthread_mutex_unlock(&lastFreepage_mutex);
+  /*  pthread_mutex_unlock(&lastFreepage_mutex); */
   
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
 
@@ -290,8 +291,8 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 	
        	} else {
 
-	  int ijk = rid.size;
-	  int lmn = *slot_length_ptr(page, rid.slot);
+	  /*	  int ijk = rid.size;
+		  int lmn = *slot_length_ptr(page, rid.slot); */
 
 	   assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
 		  (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
@@ -304,7 +305,6 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 
 	return rid;
 }
-
 
 void slottedDeRalloc(Page * page, lsn_t lsn, recordid rid) {
 

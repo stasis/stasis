@@ -9,6 +9,7 @@ liblladd_a_SOURCES=common.c stats.c io.c bufferManager.c linkedlist.c operations
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \
 		   operations/alloc.c operations/noop.c operations/instantSet.c \
-		   page/slotted.c operations/lladdhash.c page/header.c
+		   page/slotted.c operations/lladdhash.c page/header.c page/fixed.c \
+		   operations/arrayList.c
 AM_CFLAGS= -g -Wall -pedantic -std=gnu99
 

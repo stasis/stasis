@@ -56,8 +56,12 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage();
 	operationsTable[OPERATION_NOOP] = getNoop();
 	operationsTable[OPERATION_INSTANT_SET] = getInstantSet();
+	operationsTable[OPERATION_ARRAY_LIST_ALLOC]  = getArrayListAlloc();
+	operationsTable[OPERATION_INITIALIZE_FIXED_PAGE] = getInitFixed();
+	operationsTable[OPERATION_UNINITIALIZE_PAGE] = getUnInitPage();
 
 }
+
 
 int Tinit() {
          
@@ -128,7 +132,11 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
     releasePage(p);
     rid = dereferenceRID(rid);
     p = loadPage(rid.page); 
-  }
+  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) {
+    rid = dereferenceArrayListRid(p, rid.slot);
+    releasePage(p);
+    p = loadPage(rid.page); 
+  } 
 
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
   
@@ -147,15 +155,21 @@ void Tread(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE) {
-    readRecord(xid, p, rid, dat);
+
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
     rid = dereferenceRID(rid);
     p = loadPage(rid.page);
-    readRecord(xid, p, rid, dat);
+
+  } else if(page_type == ARRAY_LIST_PAGE) {
+    rid = dereferenceArrayListRid(p, rid.slot);
+    releasePage(p);
+    p = loadPage(rid.page);
+
   } else {
     abort();
   }
+  readRecord(xid, p, rid, dat);
   releasePage(p);
 }
 

@@ -89,7 +89,7 @@ void slottedPageInitialize(Page * p);
  * @see postRallocSlot the implementation of the second phase.
  *
  */
-recordid slottedPreRalloc(int xid, long size);
+recordid slottedPreRalloc(int xid, long size, Page**p);
 /**
  * The second phase of slot allocation.  Called after the log entry
  * has been produced, and during recovery.  

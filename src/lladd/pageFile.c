@@ -25,7 +25,7 @@
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
 
-static long myLseek(int f, long offset, int whence);
+/* static long myLseek(int f, long offset, int whence); */
 static long myLseekNoLock(int f, long offset, int whence);
 
 void pageRead(Page *ret) {

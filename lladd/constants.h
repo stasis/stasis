@@ -67,7 +67,7 @@ terms specified in this license.
 /* @define error codes
  */
 #define OUT_OF_MEM 1
-#define FILE_OPEN_ERROR 2
+#define FILE_OPRN_ERROR 2
 #define FILE_READ_ERROR 3
 #define FILE_WRITE_ERROR 4
 #define FILE_WRITE_OPEN_ERROR 5
@@ -75,10 +75,11 @@ terms specified in this license.
 
 #define PAGE_SIZE 4096
 
-/*#define MAX_BUFFER_SIZE 100003 */
+/* #define MAX_BUFFER_SIZE 100003 */
 /*#define MAX_BUFFER_SIZE 10007*/
 /*#define MAX_BUFFER_SIZE 5003*/
-#define MAX_BUFFER_SIZE 71 
+#define MAX_BUFFER_SIZE 2003
+/* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 /*#define BUFFER_ASOOCIATIVE 2 */
 
@@ -109,6 +110,9 @@ terms specified in this license.
 #define OPERATION_UNALLOC_FREED 17
 #define OPERATION_NOOP        18
 #define OPERATION_INSTANT_SET 19
+#define OPERATION_ARRAY_LIST_ALLOC 20
+#define OPERATION_INITIALIZE_FIXED_PAGE 21
+#define OPERATION_UNINITIALIZE_PAGE 22
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 

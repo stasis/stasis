@@ -2,7 +2,7 @@ EXTRA_DIST = reconf
 SUBDIRS = src test utilities
 AM_CFLAGS = -g -Wall -pedantic
 
-docs: 
+docs: coverage
 	doxygen doc/Doxyfile-api
 	doxygen doc/Doxyfile-developers
 

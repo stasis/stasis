@@ -98,7 +98,8 @@ BEGIN_C_DECLS
 #define INDIRECT_PAGE       2
 #define LLADD_HEADER_PAGE   3
 #define LLADD_FREE_PAGE     4
-
+#define FIXED_PAGE          5
+#define ARRAY_LIST_PAGE     6
 #define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
 #define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
 #define end_of_usable_space_ptr(page)   page_type_ptr((page))

@@ -80,14 +80,18 @@ void * workerThread(void * p) {
 
   return NULL;
 }
-
+static pthread_mutex_t ralloc_mutex;
 void * workerThreadWriting(void * q) {
 
   int offset = *(int*)q;
   recordid rids[RECORDS_PER_THREAD];
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
-
-    rids[i] = slottedPreRalloc(1, sizeof(int));
+    Page * tmp;
+    pthread_mutex_lock(&ralloc_mutex);
+    rids[i] = slottedPreRalloc(1, sizeof(int), &tmp);
+    slottedPostRalloc(tmp, 1, rids[i]);
+    releasePage(tmp);
+    pthread_mutex_unlock(&ralloc_mutex);
     
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */
@@ -203,8 +207,9 @@ START_TEST(pageSingleThreadWriterTest) {
   int i = 100;
   
   Tinit();
-  
+  pthread_mutex_init(&ralloc_mutex, NULL);
   workerThreadWriting(&i);
+  pthread_mutex_destroy(&ralloc_mutex);
 
   Tdeinit();
 }END_TEST
@@ -214,7 +219,7 @@ START_TEST(pageThreadedWritersTest) {
   int i;
 
   Tinit();
-
+  pthread_mutex_init(&ralloc_mutex, NULL);
   for(i = 0; i < RECORD_THREAD_COUNT; i++) {
     int * j = malloc(sizeof(int));
     *j = i;
@@ -223,7 +228,7 @@ START_TEST(pageThreadedWritersTest) {
   for(i = 0; i < RECORD_THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
   }
-
+  pthread_mutex_destroy(&ralloc_mutex);
   Tdeinit();
 }END_TEST
 

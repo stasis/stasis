@@ -116,9 +116,17 @@ typedef struct {
 	The other option: 
 
       - Get rid of operations that span records entirely by
-        splitting complex logical operations into simpler one.
+        splitting complex logical operations into simpler ones.
 
-	We chose the second option for now.
+	We chose the second option for now.  This implies that the
+	entries must be written to the log in an order, that if
+	repeated, guarantees that the structure will be in a logically
+	consistent state after the REDO phase, regardless of what
+	prefix of the log actually makes it to disk.  Note that
+	pinning pages before the log entry hits disk is inadequate, in
+	general, since other transactions could read dirty information
+	from the pinned pages, producsing nonsensical log entries that
+	preceed the current transaction's log entry.
 	
    */
   /**
@@ -139,6 +147,7 @@ typedef struct {
 #include "operations/pageOperations.h"
 #include "operations/noop.h"
 #include "operations/instantSet.h"
+#include "operations/arrayList.h"
 
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 

@@ -86,6 +86,7 @@ terms specified in this license.
 #include "pageFile.h"
 
 #include "page/slotted.h"
+#include "page/fixed.h"
 
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
@@ -248,8 +249,12 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid, p, lsn, rid, dat);
-  } else {
+  } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
     slottedWrite(xid, p, lsn, rid, dat);
+  } else if(*page_type_ptr(p) == FIXED_PAGE) {
+    fixedWrite(p, rid, dat);
+  } else {
+    abort();
   }
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
@@ -261,10 +266,17 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
 void readRecord(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
+  
+  int page_type = *page_type_ptr(p);
+
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     readBlob(xid, p, rid, buf);
-  } else {
+  } else if(page_type == SLOTTED_PAGE) {
     slottedRead(xid, p, rid, buf);
+  } else if(page_type == FIXED_PAGE) {
+    fixedRead(p, rid, buf);
+  } else {
+    abort();
   }
   assert(rid.page == p->id); 
 }

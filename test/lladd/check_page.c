@@ -46,6 +46,7 @@ terms specified in this license.
 
 #include "../../src/lladd/page.h"
 #include "../../src/lladd/page/slotted.h"
+#include "../../src/lladd/page/fixed.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 
@@ -106,6 +107,39 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
   return NULL;
 }
 
+
+static void* fixed_worker_thread(void * arg_ptr) {
+  Page * p = (Page*)arg_ptr;
+  int i;
+  lsn_t this_lsn;
+  int j;
+  int first = 1;
+  recordid rid;
+
+  for(i = 0; i < 100; i++) {
+    pthread_mutex_lock(&lsn_mutex);
+    this_lsn = lsn;
+    lsn++;
+    pthread_mutex_unlock(&lsn_mutex);
+
+    if(! first ) {
+      fixedRead(p, rid, (byte*)&j);
+      assert((j + 1) ==  i);
+      /*      slottedDeRalloc(p, lsn, rid); */
+      sched_yield();
+    } 
+    
+    first = 0;
+    
+    rid = fixedRawRalloc(p);
+    fixedWrite(p, rid, (byte*)&i);
+    sched_yield();
+
+    assert(pageReadLSN(p) <= lsn);
+  }
+  
+  return NULL;
+}
 
 static void* worker_thread(void * arg_ptr) {
   Page * p = (Page*)arg_ptr;
@@ -292,12 +326,33 @@ START_TEST(pageThreadTest) {
     pthread_join(workers[i], NULL);
   }
 
-  unlock(p->loadlatch);
+  /*  unlock(p->loadlatch); */
+  releasePage(p);
 
   Tdeinit();
 
 } END_TEST
 
+
+START_TEST(fixedPageThreadTest) {
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  pthread_mutex_init(&random_mutex, NULL);
+  pthread_mutex_init(&lsn_mutex, NULL);
+  Tinit();
+  Page * p = loadPage(2);
+  fixedPageInitialize(p, sizeof(int), 0);
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_create(&workers[i], NULL, fixed_worker_thread, p);
+  }
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+  }
+
+  releasePage(p);
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("page");
@@ -313,6 +368,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageNoThreadMultPageTest);
   tcase_add_test(tc, pageNoThreadTest);
   tcase_add_test(tc, pageThreadTest);
+  tcase_add_test(tc, fixedPageThreadTest);
 
   /* --------------------------------------------- */
   
