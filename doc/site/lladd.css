@@ -1,0 +1,72 @@
+.menu {
+	padding: 0.33em;
+	font-family: sans-serif;
+	text-align: left;	
+	background-color: white;
+}
+.menusection {
+	list-style-type:    none;
+	font-weight:        bold;
+	padding-left: 0em;
+	padding-right: 0.5em;
+	line-height:       1.8;
+}
+.menuitem {
+	padding-top:		  .2em;
+	list-style-type:    none;
+	font-weight:		  normal;
+	padding-right:      .5em;
+	padding-left:       1em;
+	line-height:       1.25;
+}
+a {
+	text-decoration: none;
+}
+body {
+	margin: 0px;
+}
+.version {
+   position: relative;
+	top: 2em;
+   right: 0%
+   width: 100%;
+   padding: .33em;
+
+}
+.titlebar {
+	position: relative;
+	top: 0%;
+	height: 2em;
+	width:  100%;
+	background-color: #AEBED7;
+}
+.pagename {
+	font-weight: bolder;
+	color:  black;
+	position: relative;
+   top: 0%;
+	left: 0%;
+	padding-top: .33em;
+	padding-left: .33em;
+	text-align: left;
+}
+
+.mainbar {
+	position: relative;
+	left: 20%;
+	width: 80%;
+}
+h1 {
+	font-size: 14pt;
+}
+.bodytext {
+	font-family: sans-serif; 
+	margin: 1em;
+}
+.sidebar {
+	text-align: left;
+	position: absolute;
+	top: 2em;	
+	left: 0%;
+	width: 20%;
+}

@@ -43,21 +43,21 @@ terms specified in this license.
 #include <assert.h>
 
 /** Thanks, jbhtsimple.c!! */
-
+/*
 #define C    "140.254.26.214:10010"
 #define CLIENT "140.254.26.223:12345"
 #define S0   "140.254.26.249:10010"
 #define S1   "140.254.26.250:10010"
 #define S2   "140.254.26.247:10010"
 #define S3   "140.254.26.226:10010"
-/*
+*/
 #define C    "127.0.0.1:10010"
 #define CLIENT "127.0.0.1:12345"
 #define S0   "127.0.0.1:10011"
 #define S1   "127.0.0.1:10012"
 #define S2   "127.0.0.1:10013"
 #define S3   "127.0.0.1:10014"
-*/
+
 
 char** broadcast_lists[100];
 char* star_nodes[] = { C };

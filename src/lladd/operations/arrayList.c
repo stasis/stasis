@@ -158,9 +158,12 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
     tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
     /** @todo what does this do to recovery?? */
     /** @todo locking for arrayList... */
-    *page_type_ptr(p) = FIXED_PAGE;
+    /*    *page_type_ptr(p) = FIXED_PAGE;
     Tset(xid, tmp, &newFirstPage);
-    *page_type_ptr(p) = ARRAY_LIST_PAGE;
+    *page_type_ptr(p) = ARRAY_LIST_PAGE; */
+    /* @todo This is a copy of Tupdate!! Replace it.*/
+
+    alTupdate(xid, tmp, &newFirstPage, OPERATION_SET);
 
     DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
   }

@@ -252,7 +252,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
     writeBlob(xid, p, lsn, rid, dat);
   } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
     slottedWrite(xid, p, lsn, rid, dat);
-  } else if(*page_type_ptr(p) == FIXED_PAGE || !*page_type_ptr(p) )  {
+  } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
     fixedWrite(p, rid, dat);
   } else {
     abort();
@@ -276,7 +276,7 @@ void readRecord(int xid, Page * p, recordid rid, void *buf) {
     slottedRead(xid, p, rid, buf);
     /* FIXED_PAGES can function correctly even if they have not been
        initialized. */
-  } else if(page_type == FIXED_PAGE || !page_type) { 
+  } else if(page_type == FIXED_PAGE || page_type==ARRAY_LIST_PAGE || !page_type) { 
     fixedRead(p, rid, buf);
   } else {
     abort();
@@ -314,7 +314,7 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
     writeBlob(xid, p, lsn, rid, dat);
   } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
     slottedWriteUnlocked(xid, p, lsn, rid, dat);
-  } else if(*page_type_ptr(p) == FIXED_PAGE || !*page_type_ptr(p) )  {
+  } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
     fixedWriteUnlocked(p, rid, dat);
   } else {
     abort();

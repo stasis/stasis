@@ -162,6 +162,39 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
 }
 
+void alTupdate(int xid, recordid rid, const void *dat, int op) {
+  LogEntry * e;
+  Page * p;  
+    p = loadPage(rid.page);
+    
+    /*    if(*page_type_ptr(p) == INDIRECT_PAGE) {
+      releasePage(p);
+      rid = dereferenceRID(rid);
+      p = loadPage(rid.page); 
+      / ** @todo Kludge! Shouldn't special case operations in transactional2. * /
+    } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
+	      op != OPERATION_LINEAR_INSERT && 
+	      op != OPERATION_UNDO_LINEAR_INSERT &&
+	      op != OPERATION_LINEAR_DELETE && 
+	      op != OPERATION_UNDO_LINEAR_DELETE  ) {
+      rid = dereferenceArrayListRid(p, rid.slot);
+      releasePage(p);
+      p = loadPage(rid.page); 
+      }  */
+    
+  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+  
+  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+  
+  DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
+  
+  doUpdate(e, p);
+  releasePage(p);
+  /* end Tupdate() */
+  free(e);
+}
+
+
 void TreadUnlocked(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
   int page_type = *page_type_ptr(p);
