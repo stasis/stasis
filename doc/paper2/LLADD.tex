@@ -55,7 +55,7 @@ primitives.  Due to the extensibility of our architecture, the
 implementation is competitive with existing systems on conventional
 workloads and outperforms existing systems on specialized
 workloads.  Finally, we discuss characteristics of this new
-architecture which provide opportunities for novel classes of
+architecture that provide opportunities for novel classes of
 optimizations and enhanced usability for application developers.}
 
 %Although many systems provide transactionally consistent data
@@ -172,7 +172,7 @@ can also exploit application-specific or workload-specific assumptions
 to improve performance.
 These features are enabled by the several mechanisms:
 \begin{description}
-\item[Flexible page layouts] provide low level control over 
+\item[Flexible page layouts] provide low-level control over 
       transactional data representations (Section~\ref{page-layouts}).
 \item[Extensible log formats] provide high-level control over
       transaction data structures (Section~\ref{op-def}).
@@ -184,11 +184,11 @@ These features are enabled by the several mechanisms:
       developed (Section~\ref{TransClos}).
 \item[Extensible locking API] provides registration of custom lock managers
       and a generic lock manager implementation (Section~\ref{lock-manager}).
-\item[Custom durability operations] such as two phase commit's
+\item[Custom durability operations] such as two-phase commit's
       prepare call, and savepoints (Section~\ref{OASYS}).
 \end{description}
 
-We have produced a high-concurrency, high performance and reusable
+We have produced a high-concurrency, high-performance and reusable
 open-source implementation of our system.  Portions of our
 implementation's API are still changing, but the interfaces 
 to low-level primitives, and the most important portions of the implementation have stabilized.  
@@ -281,7 +281,7 @@ database that can work with a variety of storage options including
 Berkeley DB (covered below) and regular files, although these
 alternatives affect the semantics of transactions, and sometimes 
 disable or interfere with high-level database features.  MySQL 
-includes these multiple storage options for performance reasons.  
+includes multiple storage options for performance reasons.  
 We argue that by reusing code, and providing for a greater amount 
 of customization, a modular storage engine can provide better 
 performance, transparency and flexibility than a 
@@ -305,7 +305,7 @@ set of monolithic storage engines.
 
 The Postgres storage system~\cite{postgres} provides conventional
 database functionality, but provides APIs that allow applications to 
-add new index and object types.~\cite{newTypes}  Although some of the methods are
+add new index and object types~\cite{newTypes}.  Although some of the methods are
 similar to ours, \yad also implements a lower-level
 interface that can coexist with these methods.  Without \yad's
 low-level APIs, Postgres suffers from many of the limitations inherent
@@ -314,14 +314,15 @@ improving
 query language and indexing support.
 Although we
 believe that many of the high-level Postgres interfaces could be built
-on top of \yad, we have not yet tried to implement them.
+on top of \yad, we have not yet tried to implement them, although
+we have some support for iteration.
 % seems to provide
 %equivalents to most of the calls proposed in~\cite{newTypes} except
 %for those that deal with write ordering, (\yad automatically orders
 %writes correctly) and those that refer to relations or application
 %data types, since \yad does not have a built-in concept of a relation.
-However, \yad does provide an iterator interface which we hope to
-extend to provide support for query processing.
+%However, \yad does provide an iterator interface which we hope to
+%extend to provide support for query processing.
 
 Object-oriented and XML database systems provide models tied closely
 to programming language abstractions or hierarchical data formats.
@@ -377,17 +378,17 @@ provides lower-level access to transactional primitives and provides a rich
 set of mechanisms that make it easy to use these primitives.  For
 instance, Berkeley DB does not provide access methods to access data by 
 page offset, and does not provide applications with primitive 
-access methods to facilitate the development of higher level structures.
+access methods to facilitate the development of higher-level structures.
 It also seems to be difficult to specialize existing Berkeley DB functionality 
-(for example page layouts) for new extensions.  
+(for example page layouts) for new extensions.  We will show that such functionality is useful.
 
-Although the usefulness of providing such low-level functionality to
-applications may not be immediately obvious, the focus of this paper
-is to describe how the lack of such primitives impacts application performance,
-and ultimately complicates development and deployment efforts.
+%% Although the usefulness of providing such low-level functionality to
+%% applications may not be immediately obvious, the focus of this paper
+%% is to describe how the lack of such primitives impacts application performance,
+%% and ultimately complicates development and deployment efforts.
 
 LRVM is a version of malloc() that provides
-transactional memory, and is similar to an object-oriented database
+durable memory, and is similar to an object-oriented database
 but is much lighter weight, and lower level~\cite{lrvm}.  Unlike 
 the solutions mentioned above, it does not impose limitations upon 
 the layout of application data, although it does not provide full transactions.
@@ -407,24 +408,27 @@ the layout of application data, although it does not provide full transactions.
 %that we have developed the necessary API hooks 
 %to allow extensions to \yad to transparently coalesce log entries in the future (Section~\ref{TransClos}).
 LRVM's
-approach of keeping a single in-memory copy of data in the applications
+approach of keeping a single in-memory copy of data in the application's
 address space is similar to the optimization presented in
-Section~\ref{OASYS}, but our approach circumvents can support full transactions as needed.
+Section~\ref{OASYS}, but our approach can support full transactions as needed.
 
 
 %\begin{enumerate}
 %  \item {\bf Incredibly scalable, simple servers CHT's, google fs?, ...}
 
 Finally, some applications require incredibly simple but extremely
-scalable storage mechanisms.  Cluster hash tables~\cite{cht} are a good example
-of the type of system that serves these applications well, due to
-their relative simplicity and good scalability.  Depending
-on the fault model on which a cluster hash table is based, it is
-quite plausible that key portions of the transactional mechanism, such
-as forcing log entries to disk, will be replaced with other durability
-schemes, such as in-memory replication across many nodes, or
-demultiplexing log entries across multiple systems.  Similarly,
-atomicity semantics may be relaxed under certain circumstances.  \yad is unique in that it can support the full range of semantics, from in-memory replication for commit, to full transactions involving multiple entries, which is not supported by any of the current CHT implementations.
+scalable storage mechanisms.  Cluster hash tables~\cite{cht} are a
+good example of the type of system that serves these applications
+well, due to their relative simplicity and good scalability.
+Depending on the fault model on which a cluster hash table is based,
+it is quite plausible that key portions of the transactional
+mechanism, such as forcing log entries to disk, will be replaced with
+other durability schemes, such as in-memory replication across many
+nodes.  Similarly, atomicity semantics may be relaxed under certain
+circumstances.  \yad is unique in that it can support the full range
+of semantics, from in-memory replication for commit, to full
+transactions involving multiple nodes and keys, which is not supported
+by any of the current CHT implementations.
 %Although
 %existing transactional schemes provide many of these features, we
 %believe that there are a number of interesting optimization and
@@ -434,12 +438,12 @@ atomicity semantics may be relaxed under certain circumstances.  \yad is unique 
 
 %\rcs{compare and contrast with boxwood!!}
 
-Boxwood provides a networked, fault tolerant transactional B-Tree and
-``Chunk Manager''.  We beleive that \yad could be a valuable part of
+Boxwood provides a networked, fault-tolerant transactional B-Tree and
+``Chunk Manager''.  We believe that \yad could be a valuable part of
 such a system.  However, we believe that \yad's concept of a page file
-and system independent logical log suggest an alternative
-approach to fault tolerant storage design.  We plan to
-investigate such approaches in future work.
+and system-independent logical log suggest an alternative approach to
+fault-tolerant storage design, which we hope to explore in future
+work.
 
 We believe that \yad can actually support all of these systems. We will
 demonstrate several of them, but leave implementation of a real DBMS,
