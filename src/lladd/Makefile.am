@@ -10,6 +10,6 @@ liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c op
 		   operations/increment.c  operations/prepare.c  operations/set.c \
 		   operations/alloc.c operations/noop.c operations/instantSet.c \
 		   page/slotted.c operations/lladdhash.c page/header.c page/fixed.c \
-		   operations/arrayList.c hash.c operations/linearHash.c operations/naiveLinearHash.c
+		   operations/arrayList.c hash.c operations/linearHash.c operations/naiveLinearHash.c \
+		   operations/nestedTopActions.c
 AM_CFLAGS= -g -Wall -pedantic -std=gnu99
-

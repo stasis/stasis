@@ -11,13 +11,13 @@ filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
 [filenumbers]
-0=43
-1=33
-2=340
-3=1
-4=312
-5=510
-6=71
+0=71
+1=97
+2=126
+3=155
+4=351
+5=67
+6=56
 7=1
 8=63
 9=1
@@ -51,11 +51,13 @@ filter.dir.ignore.hidden=0
 17=
 
 [filelist]
-0=/home/sears/lladd/src/lladd/operations/naiveLinearHash.c
-1=/home/sears/lladd/lladd/operations/naiveLinearHash.h
-2=/home/sears/lladd/src/lladd/operations/arrayList.c
-3=/home/sears/lladd/test/lladd/check_linearHash.c
-4=/home/sears/lladd/src/lladd/operations/linearHash.c
+0=/home/sears/lladd/lladd/logger/logger2.h
+1=/home/sears/lladd/src/lladd/transactional2.c
+2=/home/sears/lladd/src/lladd/operations.c
+3=/home/sears/lladd/lladd/operations.h
+4=/home/sears/lladd/test/lladd/check_operations.c
+5=/home/sears/lladd/lladd/operations/nestedTopActions.h
+6=/home/sears/lladd/src/lladd/operations/nestedTopActions.c
 
 [Project Tree]
 0=0
@@ -71,11 +73,11 @@ filter.dir.ignore.hidden=0
 [File Tree]
 0=0
 1=0:6
-2=0:6:2
-3=0:9
-4=0:9:4
-5=0:9:4:3
-6=0:9:4:4
+2=0:6:1
+3=0:6:2
+4=0:9
+5=0:9:4
+6=0:9:4:3
 7=0:10
 8=0:10:5
 

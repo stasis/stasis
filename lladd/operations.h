@@ -150,6 +150,8 @@ typedef struct {
 #include "operations/arrayList.h"
 #include "operations/linearHash.h"
 #include "operations/naiveLinearHash.h"
+#include "operations/nestedTopActions.h"
+
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 
 /** Performs an operation during normal execution. 

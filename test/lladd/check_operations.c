@@ -325,6 +325,76 @@ START_TEST(operation_prepare) {
   Tdeinit();
 
 } END_TEST
+/**
+  @test Runs some actions as part of a nested top action, aborts the transaction, 
+  and checks that the result is as expected. 
+
+  @todo Write a more thorough (threaded!) nested top action test. 
+*/
+START_TEST(operation_nestedTopAction) {
+  
+  printf("\nNested Top Action\n"); fflush(NULL);
+  
+  Tinit();
+  
+  int xid= Tbegin();
+  int *dat;
+  dat == malloc(sizeof(int));
+  recordid rid1 = Talloc(xid, sizeof(int));
+  recordid rid2 = Talloc(xid, sizeof(int));
+  recordid rid3 = Talloc(xid, sizeof(int));
+  recordid rid4 = Talloc(xid, sizeof(int));
+  *dat = 1;
+  Tset(xid, rid1, dat);
+  *dat = 2;
+  Tset(xid, rid2, dat);
+  *dat = 3;
+  Tset(xid, rid3, dat);
+  *dat = 4;
+  Tset(xid, rid4, dat);
+  Tcommit(xid);
+  
+  xid = Tbegin(); // Loser xact.
+  
+  *dat = 10;
+  Tset(xid, rid1, dat);
+  
+  TbeginNestedTopAction(xid);
+  
+  *dat = 20;
+  Tset(xid, rid2, dat);
+  *dat = 30;
+  Tset(xid, rid3, dat);
+  
+  TendNestedTopAction(xid);
+  
+  *dat = 40;
+
+  Tset(xid, rid4, dat);
+  
+  Tabort(xid);
+
+  xid = Tbegin();
+  int dat1;
+  int dat2;
+  int dat3;
+  int dat4;
+  
+  Tread(xid, rid1, &dat1);
+  Tread(xid, rid2, &dat2);
+  Tread(xid, rid3, &dat3);
+  Tread(xid, rid4, &dat4);
+
+  assert(dat1 == 1);
+  assert(dat2 == 20);
+  assert(dat3 == 30);
+  assert(dat4 == 4);
+  
+  Tcommit(xid);
+  Tdeinit();
+  
+} END_TEST
+
 /** 
     @test make sure the TinstantSet() operation works as expected during normal operation. 
     @todo need to write test for TinstantSet() for the recovery case...
@@ -470,6 +540,7 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, operation_physical_do_undo);
+  tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_prepare);
   tcase_add_test(tc, operation_array_list);

@@ -79,6 +79,7 @@ int Tinit() {
 	openLogWriter();
 
 	pageOperationsInit();
+	initNestedTopActions();
 	ThashInit();
 
 	InitiateRecovery();
