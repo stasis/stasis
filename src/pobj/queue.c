@@ -86,11 +86,14 @@ queue_deq (struct queue *q)
 	return 0;
     }
 
+    debug ("dequeued %lu (%p) seg=%p slot=%d",
+	   buf[seg->head], (void *) buf[seg->head],
+	   seg, seg->head);
+    
     /* Dequeue head value. */
     val = buf[seg->head++];
     if (seg->head == q->seg_size)
 	seg->head = 0;
-    debug ("dequeued %lu (%p)", val, (void *) val);
 
     /* Deallocate empty head segment, if it isn't the last one. */
     if (seg->head == seg->tail && seg->next) {
@@ -110,12 +113,13 @@ queue_enq (struct queue *q, unsigned long val)
 
     debug_start ();
     
+    debug ("enqueued %lu (%p) seg=%p slot=%d", val, (void *) val,
+	   seg, seg->tail);
+
     /* Enqueue value. */
     buf[seg->tail++] = val;
     if (seg->tail == q->seg_size)
 	seg->tail = 0;
-
-    debug ("enqueued %lu (%p)", val, (void *) val);
 
     /* Allocate new segment if current was exhausted. */
     if (seg->head == seg->tail) {
