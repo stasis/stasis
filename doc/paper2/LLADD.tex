@@ -1808,8 +1808,8 @@ and transactional libraries
 Object serialization performance is extremely important in modern web
 application systems such as Enterprise Java Beans.  Object
 serialization is also a convenient way of adding persistent storage to
-an existing application without developing an explicit file format or
-dealing with low-level I/O interfaces.
+an existing application without managing an explicit file format or
+low-level I/O interfaces.
 
 A simple object serialization scheme would bulk-write and bulk-read
 sets of application objects to an OS file.  These simple
@@ -1831,7 +1831,7 @@ objects in their unserialized form, so they can be accessed with low latency.
 The backing store also
 maintains a separate in-memory buffer pool with the serialized versions of
 some objects, as a cache of the on-disk data representation.
-Accesses to objects that are only present in the serialized buffers
+Accesses to objects that are only present in the serialized buffer
 pool incur significant latency, as they must be unmarshalled (deserialized)
 before the application may access them.  
 There may even be a third copy of this data resident in the filesystem 
@@ -1867,7 +1867,7 @@ to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
 the log instead of writing the entire object during an update.
 %Such an optimization would be difficult to achieve with Berkeley DB 
-%since the only diff-based mechanism it supports requires changes to 
+%since the only delta-based mechanism it supports requires changes to 
 %span contiguous regions of a record, which is not necessarily the case for arbitrary
 %object updates.
 
@@ -1913,7 +1913,7 @@ operation is called whenever a modified object is evicted from the
 cache. This operation updates the object in the buffer pool (and
 therefore the page file), likely incurring the cost of both a disk {\em
 read} to pull in the page, and a {\em write} to evict another page
-from the relative small buffer pool.  However, since popular 
+from the relatively small buffer pool.  However, since popular 
 objects tend to remain in the object cache, multiple update
 modifications will incur relatively inexpensive log additions,
 and are only coalesced into a single modification to the page file
@@ -1938,8 +1938,8 @@ file after recovery. These ``transactions'' would still be durable
 after commit(), as it would force the log to disk. 
 For the benchmarks below, we
 use this approach, as it is the most aggressive and is
-not supported by any other general purpose transactional 
-storage system that we know of.
+not supported by any other general-purpose transactional 
+storage system (that we know of).
 
 \subsection{Recovery and Log Truncation}
 
@@ -1958,7 +1958,7 @@ previous {\em record} updates have been applied.  One way to think about
 this optimization is that it removes the head-of-line blocking implied
 by the page LSN so that unrelated updates remain independent.
 
-Recovery work essentially the same as before, except that we need to
+Recovery works essentially the same as before, except that we need to
 use RSNs to calculate the earliest allowed point for log truncation
 (so as to not lose an older record update).  In practice, we
 also periodically flush the object cache to move the truncation point
@@ -2027,7 +2027,7 @@ for all configurations.
 The first graph in Figure \ref{fig:OASYS} shows the update rate as we
 vary the fraction of the object that is modified by each update for
 Berkeley DB, unmodified \yad, \yad with the update/flush optimization,
-and \yad with both the update/flush optimization and diff based log
+and \yad with both the update/flush optimization and delta- based log
 records.
 The graph confirms that the savings in log bandwidth and
 buffer pool overhead by both \yad optimizations 
@@ -2048,7 +2048,7 @@ which is slower than any of the \yad variants. This performance
 difference is in line with those observed in Section
 \ref{sub:Linear-Hash-Table}. We also see the increased overhead due to
 the SQL processing for the mysql implementation, although we note that
-a SQL variant of the diff-based optimization also provides performance
+a SQL variant of the delta-based optimization also provides performance
 benefits.
 
 In the second graph, we constrained the \yad buffer pool size to be a
@@ -2075,11 +2075,13 @@ partial update mechanism, but it only
 supports range updates and does not map naturally to \oasys's data
 model.  In contrast, our \yad extension simply makes upcalls
 into the object serialization layer during recovery to ensure that the
-compact, object-specific diffs that \oasys produces are correctly
+compact, object-specific deltas that \oasys produces are correctly
 applied.  The custom log format, when combined with direct access to
 the page file and buffer pool, drastically reduces disk and memory usage
-for write intensive loads. A simple extension to our recovery algorithm makes it
-easy to implement similar optimizations in the future.
+for write intensive loads.
+Versioned records provide more control over durability for
+records on a page, which allows \yad to decouple object updates from page
+updates.
 
 %This section uses:
 %
@@ -2144,19 +2146,23 @@ before presenting an evaluation.
 
 \yad's wrapper functions translate high-level (logical) application
 requests into lower level (physiological) log entries.  These
-physiological log entries generally include a logical UNDO,
+physiological log entries generally include a logical UNDO
 (Section~\ref{nested-top-actions}) that invokes the logical
 inverse of the application request.  Since the logical inverse of most
-application request is another application request, we can {\em reuse} our
+application requests is another application request, we can {\em reuse} our
 logging format and wrapper functions to implement a purely logical log.
 
 \begin{figure}
 \includegraphics[width=1\columnwidth]{graph-traversal.pdf}
-\caption{\sf\label{fig:multiplexor} Because pages are independent, we can reorder requests among different pages. Using a log demultiplexer, we can partition requests into indepedent queues that can then be handled in any order, which can improve locality and simplify log merging.}
+\caption{\sf\label{fig:multiplexor} Because pages are independent, we
+can reorder requests among different pages. Using a log demultiplexer,
+we can partition requests into indepedent queues that can then be
+handled in any order, which can improve locality and simplify log
+merging.}
 \end{figure}
 
 For our graph traversal algorithm we use a {\em log demultiplexer},
-shown in Figure~\ref{fig:multiplexor} to route entries from a single
+shown in Figure~\ref{fig:multiplexor}, to route entries from a single
 log into many sub-logs according to page number.  This is easy to do
 with the ArrayList representation that we chose for our graph, since
 it provides a function that maps from
@@ -2166,9 +2172,9 @@ The logical log allows us to insert log entries that are independent
 of the physical location of their data.  However, we are
 interested in exploiting the commutativity of the graph traversal
 operation, and saving the logical offset would not provide us with any
-obvious benefit.  Therefore, we place use page numbers for partitioning.
+obvious benefit.  Therefore, we use page numbers for partitioning.
 
-We considered a number of multiplexing policies and present two
+We considered a number of demultiplexing policies and present two
 particularly interesting ones here.  The first divides the page file
 up into equally sized contiguous regions, which enables locality.  The second takes the hash
 of the page's offset in the file, which enables load balancing.
@@ -2178,12 +2184,12 @@ of the page's offset in the file, which enables load balancing.
 %locality intrinsic to the graph's layout on disk.
 
 Requests are continuously consumed by a process that empties each of
-the multiplexer's output queues one at a time.  Instead of following
+the demultiplexer's output queues one at a time.  Instead of following
 graph edges immediately, the targets of edges leaving each node are
-simply pushed into the multiplexer's input queue.  The number of
-multiplexer output queues is chosen so that each queue addresses a
+simply pushed into the demultiplexer's input queue.  The number of
+ output queues is chosen so that each queue addresses a
 subset of the page file that can fit into cache, ensuring locality.  When the
-multiplexer's queues contain no more entries, the traversal is
+demultiplexer's queues contain no more entries, the traversal is
 complete.  
 
 Although this algorithm may seem complex, it is essentially just a
@@ -2191,8 +2197,8 @@ queue-based breadth-first search implementation, except that the queue
 reorders requests in a way that attempts to establish and maintain
 disk locality.  This kind of log manipulation is very powerful, and
 could also be used for parallelism with load balancing (using a hash
-of the page number) and log-merging optimizations
-(e.g. LRVM~\cite{LRVM}),
+of the page number) and log-merging optimizations such as those in
+LRVM~\cite{LRVM}.
 
 %% \rcs{ This belongs in future work....}
 
@@ -2216,7 +2222,7 @@ of the page number) and log-merging optimizations
 %However, most of \yad's current functionality focuses upon the single
 %node case, so we decided to choose a single node optimization for this
 %section, and leave networked logical logging to future work.  To this
-%end, we implemented a log multiplexing primitive which splits log
+%end, we implemented a log demultiplexing primitive which splits log
 %entries into multiple logs according to the value returned by a
 %callback function. (Figure~\ref{fig:mux})
 
@@ -2240,8 +2246,8 @@ then randomly adds edges between the nodes until the desired out-degree
 is obtained.  This structure ensures graph connectivity.  If the nodes
 are laid out in ring order on disk, it also ensures that one edge
 from each node has good locality, while the others generally have poor
-locality.  The results for this test are presented in
-Figure~\ref{oo7}, and we can see that the request reordering algorithm
+locality.  
+Figure~\ref{fig:oo7} presents these results;  we can see that the request reordering algorithm
 helps performance.  We re-ran the test without the ring edges, and (in
 line with our next set of results) found that the reordering algorithm
 also helped in that case.
@@ -2254,24 +2260,24 @@ nodes are in the cold set.  We use random edges instead of ring edges
 for this test.  Figure~\ref{fig:hotGraph} suggests that request reordering 
 only helps when the graph has poor locality.  This makes sense, as a 
 depth-first search of a graph with good locality will also have good 
-locality.  Therefore, processing a request via the queue-based multiplexer 
+locality.  Therefore, processing a request via the queue-based demultiplexer 
 is more expensive then making a recursive function call.
 
 We considered applying some of the optimizations discussed earlier in
 the paper to our graph traversal algorithm, but opted to dedicate this
-section to request reordering.  Diff based log entries would be an
+section to request reordering.  Delta-based log entries would be an
 obvious benefit for this scheme, and there may be a way to use the
-OASYS implementation to reduce page file utilization.  The request 
+\oasys implementation to reduce page file utilization.  The request 
 reordering optimization made use of reusable operation implementations 
 by borrowing ArrayList from the hashtable.  It cleanly separates wrapper 
 functions from implementations and makes use of application-level log 
-manipulation primatives to produce locality in workloads.  We believe 
-these techniques can be generalized to other applications in future work.
+manipulation primitives to produce locality in workloads.  We believe 
+these techniques can be generalized to other applications quite easily.
 
 %This section uses:
 %
 %\begin{enumerate}
-%\item{Reusability of operation implementations (borrows the hashtable's bucket list (the Array List) implementation to store objects}
+%\item{Reusability of operation implementations (borrows the hashtable's bucket list (the ArrayList) implementation to store objects}
 %\item{Clean separation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
 %\item{Addressability of data by page offset provides the information that is necessary to produce locality in workloads}
 %\item{The idea of the log as an application primitive, which can be generalized to other applications such as log entry merging, more advanced reordering primitives, network replication schemes, etc.} 
@@ -2313,19 +2319,19 @@ generic transactional storage primitives.  This approach raises a
 number of important questions which fall outside the scope of its
 initial design and implementation.
 
-We have not yet verified that it is easy for developers to implement
-\yad extensions, and it would be worthwhile to perform user studies
-and obtain feedback from programmers that are unfamiliar with the 
-implementation of transactional systems.
+%% We have not yet verified that it is easy for developers to implement
+%% \yad extensions, and it would be worthwhile to perform user studies
+%% and obtain feedback from programmers that are unfamiliar with the 
+%% implementation of transactional systems.
 
-Also, we believe that development tools could be used to greatly
+We believe that development tools could be used to
 improve the quality and performance of our implementation and
 extensions written by other developers.  Well-known static analysis
 techniques could be used to verify that operations hold locks (and
 initiate nested top actions) where appropriate, and to ensure
 compliance with \yad's API.  We also hope to re-use the infrastructure
 that implements such checks to detect opportunities for
-optimization.  Our benchmarking section shows that our stable
+optimization.  Our benchmarking section shows that our simple default
 hashtable implementation is 3 to 4 times slower then our optimized
 implementation.  Using static checking and high-level automated code
 optimization techniques may allow us to narrow or close this
@@ -2336,14 +2342,14 @@ We would like to extend our work into distributed system
 development.  We believe that \yad's implementation anticipates many
 of the issues that we will face in distributed domains.  By adding 
 networking support to our logical log interface,
-we should be able to multiplex and replicate log entries to sets of
-nodes easily.  Single node optimizations such as the demand based log
+we should be able to demultiplex and replicate log entries to sets of
+nodes easily.  Single node optimizations such as the demand-based log
 reordering primitive should be directly applicable to multi-node
-systems.~\footnote{For example, our (local, and non-redundant) log
+systems.\footnote{For example, our (local, and non-redundant) log
 multiplexer provides semantics similar to the
 Map-Reduce~\cite{mapReduce} distributed programming primitive, but
 exploits hard disk and buffer pool locality instead of the parallelism
-inherent in large networks of computer systems.}  Also, we believe
+inherent in large networks of computer systems.}.  Also, we believe
 that logical, host independent logs may be a good fit for applications
 that make use of streaming data or that need to perform
 transformations on application requests before they are materialized
@@ -2354,30 +2360,33 @@ in a transactional data store.
 We also hope to provide a library of
 transactional data structures with functionality that is comparable to
 standard programming language libraries such as Java's Collection API
-or portions of C++'s STL.  Our linked list implementations, array list
-implementation and hashtable represent an initial attempt to implement
+or portions of C++'s STL.  Our linked list implementations, ArrayList
+ and hashtable represent an initial attempt to implement
 this functionality.  We are unaware of any transactional system that
 provides such a broad range of data structure implementations.  
 
-Also, we have noticed that the integration between transactional
-storage primitives and in memory data structures is often fairly
-limited.  (For example, JDBC does not reuse Java's iterator
-interface.)  We have been experimenting with the production of a
+%Also, we have noticed that the integration between transactional
+%storage primitives and in memory data structures is often fairly
+%limited.  (For example, JDBC does not reuse Java's iterator
+%interface.) 
+
+We have been experimenting with the production of a
 uniform interface to iterators, maps, and other structures which would
 allow code to be simultaneously written for native in-memory storage
 and for our transactional layer.  We believe the fundamental reason
 for the differing APIs of past systems is the heavy weight nature of
 the primitives provided by transactional systems, and the highly
 specialized, light-weight interfaces provided by typical in memory
-structures.  Because \yad makes it easy to implement light weight
-transactional structures, it may be easy to integrate it further with
-programming language constructs.
+structures.  Because \yad makes it easier to implement light-weight
+transactional structures, it may enable this uniformity.
+%be easy to integrate it further with
+%programming language constructs.
 
 Finally, due to the large amount of prior work in this area, we have
 found that there are a large number of optimizations and features that
 could be applied to \yad.  It is our intention to produce a usable
 system from our research prototype.  To this end, we have already
-released \yad as an open source library, and intend to produce a
+released \yad as an open-source library, and intend to produce a
 stable release once we are confident that the implementation is correct
 and reliable.  
 
