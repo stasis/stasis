@@ -201,7 +201,7 @@ START_TEST(simpleLinearHashTest)
 
 }
 END_TEST
-
+#define NUM_ENTRIES_XACT 10000
 START_TEST(transactionalLinearHashTest)
 {
   Tinit();
@@ -220,7 +220,7 @@ START_TEST(transactionalLinearHashTest)
 	
   int i;
 
-  for(i = 0; i < 1000; i+=10) {
+  for(i = 0; i < NUM_ENTRIES_XACT; i+=10) {
 		recordid insMe;
 		insMe.page = i;
 		insMe.slot = i+1;
@@ -228,53 +228,53 @@ START_TEST(transactionalLinearHashTest)
 		ThashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
   }	  
 	
-	for(i = 0; i < 1000; i+=10) {
-		recordid theVal;
-		assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
-		assert(theVal.page == i);
-		assert(theVal.slot == i+1);
-		assert(theVal.size == i+2);
-	}
+  for(i = 0; i < NUM_ENTRIES_XACT; i+=10) {
+    recordid theVal;
+    assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+    assert(theVal.page == i);
+    assert(theVal.slot == i+1);
+    assert(theVal.size == i+2);
+  }
 	
-	Tcommit(xid);
+  Tcommit(xid);
 	
-	xid = Tbegin();
+  xid = Tbegin();
 	
-	for(i = 0; i < 1000; i++) {
-		if(!(i%10)) {
-			recordid theVal;
-			assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
-			assert(theVal.page == i);
-			assert(theVal.slot == i+1);
-			assert(theVal.size == i+2);
-		} else {
-			recordid insMe;
-			insMe.page = i;
-			insMe.slot = i+1;
-			insMe.size = i+2;
-			ThashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
-		}
-	}
+  for(i = 0; i < NUM_ENTRIES_XACT; i++) {
+    if(!(i%10)) {
+      recordid theVal;
+      assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+      assert(theVal.page == i);
+      assert(theVal.slot == i+1);
+      assert(theVal.size == i+2);
+    } else {
+      recordid insMe;
+      insMe.page = i;
+      insMe.slot = i+1;
+      insMe.size = i+2;
+      ThashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
+    }
+  }
 	
-	Tabort(xid);
-	Tdeinit();
-	Tinit();
-	xid = Tbegin();
-	ThashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
-	for(i = 0; i < 1000; i++) {
-		if(!(i%10)) {
-			recordid theVal;
-			assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
-			assert(theVal.page == i);
-			assert(theVal.slot == i+1);
-			assert(theVal.size == i+2);	
-		} else {
-			recordid theVal;
-			assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
-		}
-	}
-	Tabort(xid);
-	Tdeinit();
+  Tabort(xid);
+  Tdeinit();
+  Tinit();
+  xid = Tbegin();
+  ThashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
+  for(i = 0; i < NUM_ENTRIES_XACT; i++) {
+    if(!(i%10)) {
+      recordid theVal;
+      assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+      assert(theVal.page == i);
+      assert(theVal.slot == i+1);
+      assert(theVal.size == i+2);	
+    } else {
+      recordid theVal;
+      assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+    }
+  }
+  Tabort(xid);
+  Tdeinit();
 	
 } END_TEST
 
