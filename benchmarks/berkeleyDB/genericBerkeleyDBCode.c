@@ -46,6 +46,12 @@ env_open(DB_ENV **dbenvp)
 	dbenv->set_errpfx(dbenv, "txnapp");
 	dbenv->set_errfile(dbenv, stderr);
 
+	// match lladd's defaults...
+	dbenv->set_lg_bsize(dbenv, 1024*1024);
+	// match lladd's defaults...
+	dbenv->set_cachesize(dbenv, 0, 8204288, 0);
+
+
 	/* Do deadlock detection internally. */
 	/*	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
 		dbenv->err(dbenv, ret, "set_lk_detect: DB_LOCK_DEFAULT");
@@ -66,7 +72,7 @@ env_open(DB_ENV **dbenvp)
 	 *	read/write owner only
 	 */
 	if ((ret = dbenv->open(dbenv, ENV_DIRECTORY,
-			       DB_CREATE |/* DB_INIT_LOCK |*/ DB_INIT_LOG | /*| DB_PRIVATE*/ 
+			       DB_CREATE |/* DB_INIT_LOCK |*/ DB_INIT_LOG |  DB_PRIVATE | 
 			       DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
 			       S_IRUSR | S_IWUSR)) != 0) {
 		dbenv->err(dbenv, ret, "dbenv->open: %s", ENV_DIRECTORY);
