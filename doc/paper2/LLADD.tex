@@ -1394,9 +1394,15 @@ reproduce the trends reported here on multiple systems.
 %could support a broader range of features than those that are provided 
 %by BerkeleyDB's monolithic interface.
 
-Hash table indices are common in databases and are also applicable to
-a large number of applications.  In this section, we describe how we
-implemented two variants of linear hash tables on top of \yad and
+\yad provides a clean abstraction of transactional pages, allowing for 
+many different types of customization to be performed.  In general, when 
+a monolithic system is replaced with a layered approach there is always
+some concern that levels of indirection and abstraction in the layered 
+approach will degrade performance.  So, before 
+moving on to describe some optimizations that \yad allows, we evaluate 
+the performance of a simple linear hash table that has been implemented as an 
+extension to \yad.  We also take the opportunity to describe how we
+implemented a heavily optimized variant of the hash and
 describe how \yad's flexible page and log formats enable interesting
 optimizations.  We also argue that \yad makes it trivial to produce
 concurrent data structure implementations.
@@ -1404,12 +1410,12 @@ concurrent data structure implementations.
 %mechanical steps that will allow a non-concurrent data structure
 %implementation to be used by interleaved transactions.
 
-Finally, we describe a number of more complex optimizations and
-compare the performance of our optimized implementation, the
-straightforward implementation and Berkeley DB's hash implementation.
-The straightforward implementation is used by the other applications
-presented in this paper and is \yad's default hashtable
-implementation. 
+%Finally, we describe a number of more complex optimizations and
+%compare the performance of our optimized implementation, the
+%straightforward implementation and Berkeley DB's hash implementation.
+%The straightforward implementation is used by the other applications
+%presented in this paper and is \yad's default hashtable
+%implementation. 
 % We chose this implementation over the faster optimized
 %hash table in order to this emphasize that it is easy to implement
 %high-performance transactional data structures with \yad and because
@@ -1732,9 +1738,11 @@ synchronous I/O~\footnote{The multi-threading benchmarks presented
 here were performed using an ext3 file system, as high thread
 concurrency caused Berkeley DB and \yad to behave unpredictably when
 reiserfs was used.  However, \yad's multithreaded throughput was
-significantly better than Berkeley DB's with both filesystems.}.  \yad
-scales very well with higher concurrency, delivering over 6000 (ACID)
-transactions per second. \yad had about double the throughput of Berkeley DB (up to 50 threads).
+significantly better than Berkeley DB's with both filesystems.}.  Even 
+when using the unoptimized hash table implementation, \yad
+scales very well with higher concurrency, delivering over 6000 
+%(ACID)
+transactions per second.\footnote{This test was run without lock managers.} \yad had about double the throughput of Berkeley DB (up to 50 threads).
 
 %\footnote{Although our current implementation does not provide the hooks that 
 %would be necessary to alter log scheduling policy, the logger 
@@ -1761,18 +1769,26 @@ two data structures, and needs to generate custom log
 entries, define custom latching/locking semantics, and make use of, or
 even customize, nested top actions.
 
-The fact that our default hashtable is competitive with Berkeley BD
+The fact that our straightforward hashtable is competitive with Berkeley BD
 shows that simple \yad implementations of transactional data structures
 can compete with comparable, highly tuned, general-purpose
-implementations.  Similarly, this example shows that \yad's flexibility enables optimizations that can significantly
-outperform existing solutions.
+implementations.  Similarly, this example shows that \yad's flexibility 
+enables optimizations that can significantly
+outperform existing solutions.  
 
 This finding suggests that it is appropriate for
-application developers to consider the development of custom
+application developers to build custom
 transactional storage mechanisms when application performance is
-important.  The next two sections are devoted to confirming the 
+important.  Because we are advocating the use of 
+application-provided transactional storage primatives, we only use the 
+straightfoward (``slow'') hashtable implementation during our other benchmarks.
+
+We have shown that \yad's implementation provides primatives that perform 
+well enough to allow application-specific extensions to compete with highly 
+tuned general purpose systems.  The next two sections validate the 
 practicality of such mechanisms by applying them to applications 
-that suffer from long-standing performance problems with traditional databases.
+that suffer from long-standing performance problems with traditional databases
+and transactional libraries
 
 
 %This section uses:
