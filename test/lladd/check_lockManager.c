@@ -31,7 +31,6 @@ void * pageWorkerThread(void * j) {
     if(rw) {
       // readlock
       if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
-      //      if(LLADD_DEADLOCK == lockManagerReadLockRecord(xid, rid)) {
 	k = 0; 
 	globalLockManager.abort(xid);
 	deadlocks++;
@@ -41,7 +40,6 @@ void * pageWorkerThread(void * j) {
       
     } else {
       // writelock
-      //      if(LLADD_DEADLOCK == lockManagerWriteLockRecord(xid, rid)) {
       if(LLADD_DEADLOCK == globalLockManager.writeLockPage(xid, m)) {
 	k = 0; 
 	globalLockManager.abort(xid);
@@ -54,7 +52,6 @@ void * pageWorkerThread(void * j) {
   
   printf("%2d ", deadlocks); fflush(stdout);
 
-  //  lockManagerCommit(xid);
   globalLockManager.commit(xid);
 
   return NULL;
@@ -77,7 +74,6 @@ void * ridWorkerThread(void * j) {
     if(rw) {
       // readlock
       if(LLADD_DEADLOCK == globalLockManager.readLockRecord(xid, rid)) {
-      //      if(LLADD_DEADLOCK == lockManagerReadLockRecord(xid, rid)) {
 	k = 0;
 	globalLockManager.abort(xid);
 	deadlocks++;
@@ -87,7 +83,6 @@ void * ridWorkerThread(void * j) {
       
     } else {
       // writelock
-      //      if(LLADD_DEADLOCK == lockManagerWriteLockRecord(xid, rid)) {
       if(LLADD_DEADLOCK == globalLockManager.writeLockRecord(xid, rid)) {
 	k = 0;
 	globalLockManager.abort(xid);
@@ -100,7 +95,6 @@ void * ridWorkerThread(void * j) {
   
   printf("%2d ", deadlocks); fflush(stdout);
 
-  //  lockManagerCommit(xid);
   globalLockManager.commit(xid);
 
   return NULL;

@@ -17,6 +17,7 @@
 #include "logger/logHandle.h"
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
+#include <lladd/lockManager.h>
 
 /** @todo recovery2.c shouldn't include pageCache.h once refactoring is done. */
 #include <lladd/pageCache.h>
@@ -113,7 +114,7 @@ static void Analysis () {
 	 Therefore, we can skip redoing any of its operations.  (The
 	 timestamps on each page guarantee that the redo phase will
 	 not overwrite this transaction's work with stale data.)
-
+1
 	 The redo phase checks for a transaction's presence in
 	 transactionLSN before redoing its actions.  Therefore, if we
 	 remove this transaction from the hash, it will not be redone.
@@ -166,7 +167,9 @@ static void Redo() {
 	  /*	  addPendingEvent(e->contents.clr.rid.page); */
 	}
 	redoUpdate(e);
-      }
+      } else if(e->type == XCOMMIT && globalLockManager.commit) {
+	globalLockManager.commit(e->xid);
+      } // if transaction aborted, wait until undo is complete before notifying the globalLockManager.
     }
     free(e);
   }
@@ -202,8 +205,9 @@ static void Undo(int recovery) {
 
     /*    printf("e->prev_offset: %ld\n", e->prevLSN);
 	  printf("prev_offset: %ld\n", lh.prev_offset); */
-
+    int thisXid = -1;
     while((e = previousInTransaction(&lh))) {
+      thisXid = e->xid;
       lsn_t this_lsn, clr_lsn;
       /*      printf("."); fflush(NULL); */
       switch(e->type) {
@@ -259,8 +263,11 @@ static void Undo(int recovery) {
       }
       free(e);
     }
-    prepareAction(prepare_guard_state);
+    int transactionWasPrepared = prepareAction(prepare_guard_state);
     free(prepare_guard_state);
+    if(!transactionWasPrepared && globalLockManager.abort) {
+      globalLockManager.abort(thisXid);
+    }
 
     /*    printf("$"); fflush(NULL); */
   }

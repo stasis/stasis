@@ -93,8 +93,8 @@ int Tinit() {
 	initNestedTopActions();
 	ThashInit();
 
-	setupLockManagerCallbacksNil();
-	//	setupLockManagerCallbacksPage();
+	//setupLockManagerCallbacksNil();
+	setupLockManagerCallbacksPage();
 
 	InitiateRecovery();
 

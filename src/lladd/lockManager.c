@@ -128,8 +128,8 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
 
-	//	printf("Deadlock!\n"); fflush(stdout);
-	//	abort();
+	printf("Deadlock!\n"); fflush(stdout);
+	abort();
 	return LLADD_DEADLOCK;
       }
     } while(ridLock->writers);
@@ -195,8 +195,8 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
 	ridLock->waiting--;
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
-	//	printf("Deadlock!\n"); fflush(stdout);
-	//	abort();
+	printf("Deadlock!\n"); fflush(stdout);
+	abort();
 	return LLADD_DEADLOCK;
       }
     }
