@@ -9,21 +9,21 @@
 // unsigned long crc = -1L
 // crc = crc32(buffer, length, crc)
 
-unsigned long crc32(void *buffer, unsigned int count, unsigned long crc);
+unsigned int crc32(void *buffer, unsigned int count, unsigned int crc);
 static int BuildCRCTable(void);
 
 static unsigned long *CRCTable;	// Table constructed for fast lookup.
 
-#define CRC32_POLYNOMIAL	0xEDB88320L
+#define CRC32_POLYNOMIAL	0xEDB88320
 
 // Initialize the CRC calculation table
 //
 static int BuildCRCTable(void)
 {
 	int i, j;
-	unsigned long crc;
+	unsigned int crc;
 
-	CRCTable = malloc(256 * sizeof(unsigned long));
+	CRCTable = malloc(256 * sizeof(unsigned int));
 	if (CRCTable == NULL)
 	{
 		fprintf(stderr, "Can't malloc space for CRC table in file %s\n", __FILE__);
@@ -42,10 +42,10 @@ static int BuildCRCTable(void)
 	}
 	return 0;
 }
-
-unsigned long crc32(void *buffer, unsigned int count, unsigned long crc)
+/* changed long to int. - rusty. */
+unsigned int crc32(void *buffer, unsigned int count, unsigned int crc)
 {
-	unsigned long temp1, temp2;
+	unsigned int temp1, temp2;
 	static int firsttime = 1;
 	unsigned char *p = (unsigned char *)buffer;
 
@@ -58,7 +58,7 @@ unsigned long crc32(void *buffer, unsigned int count, unsigned long crc)
 
 	while (count-- != 0)
 	{
-		temp1 = (crc >> 8) & 0x00FFFFFFL;
+		temp1 = (crc >> 8) & 0x00FFFFFF;
 		temp2 = CRCTable[((int)crc ^ *p++) & 0xFF];
 		crc = temp1 ^ temp2;
 	}

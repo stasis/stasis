@@ -74,6 +74,7 @@ int Tinit() {
 	openLogWriter();
 
 	pageOperationsInit();
+	ThashInit();
 
 	InitiateRecovery();
 
@@ -225,7 +226,7 @@ int Tdeinit() {
 		}
 	}
 	assert( numActiveXactions == 0 );
-
+	ThashDeinit();
 	bufDeinit();
 	closeLogWriter();
 

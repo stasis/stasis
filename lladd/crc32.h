@@ -10,8 +10,8 @@
 
 /**
    Usage:
-   unsigned long crc = -1L
+   unsigned int crc = -1L
    crc = crc32(buffer, length, crc)
 */
 
-unsigned long crc32(void *buffer, unsigned int count, unsigned long crc);
+unsigned int crc32(void *buffer, unsigned int count, unsigned int crc);

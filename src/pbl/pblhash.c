@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.3  2004/10/17 02:17:00  sears
+    Optimized the 'naive' linear hash table, and moved to sourceforge. :)
+
     Revision 1.2  2004/07/20 00:15:17  sears
     pageCache.c is now re-entrant.
 
@@ -117,7 +120,7 @@ typedef struct pbl_hashtable_s pbl_hashtable_t;
 /* functions                                                                 */
 /*****************************************************************************/
 
-static int hash( const unsigned char * key, size_t keylen )
+/*static int hash( const unsigned char * key, size_t keylen )
 {
     int ret = 104729;
 
@@ -131,6 +134,10 @@ static int hash( const unsigned char * key, size_t keylen )
     }
 
     return( ret % PBL_HASHTABLE_SIZE );
+}*/
+#include <lladd/crc32.h>
+static unsigned int hash( const unsigned char * key, size_t keylen ) {
+  return ((unsigned int)(crc32((char*)key, keylen, -1))) % PBL_HASHTABLE_SIZE;
 }
 
 /**

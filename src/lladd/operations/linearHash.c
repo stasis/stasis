@@ -14,23 +14,27 @@
 #define headerKeySize (headerRidA.page)
 #define headerValSize (headerRidA.slot)
 
-#define headerHashBits (headerRidB.page)
-#define headerNextSplit (headerRidB.slot)
+#define headerHashBits (headerRidB->page)
+#define headerNextSplit (headerRidB->slot)
 
 #include <math.h>
 #include <malloc.h>
 #include <string.h>
 #include <lladd/operations/linearHash.h>
-
+#include <pbl/pbl.h>
 
 typedef struct {
   recordid next;
 } hashEntry;
 
-void rehash(int xid, recordid hash, int next_split, int i);
+pblHashTable_t * openHashes = NULL;
+
+
+
+void rehash(int xid, recordid hash, int next_split, int i, int keySize, int valSize);
 void update_hash_header(int xid, recordid hash, int i, int next_split);
-int deleteFromBucket(int xid, recordid hash, int bucket_number, void * key, int keySize, recordid * deletedEntry);
-void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * e, int keySize, int valSize, recordid deletedEntry);
+int deleteFromBucket(int xid, recordid hash, int bucket_number, recordid bucket_rid, void * key, int keySize, recordid * deletedEntry);
+void insertIntoBucket(int xid, recordid hashRid, int bucket_number, recordid bucket_rid, hashEntry * e, int keySize, int valSize, recordid deletedEntry, int skipDelete);
 int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize);
 
 
@@ -45,10 +49,13 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
 
   Tread(xid, bucket, &nextEntry);
   if(nextEntry.size) {
+    assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
+  }
+  /*  if(nextEntry.size) {
     e = malloc(nextEntry.size);
   } else {
     e = malloc(1);
-  }
+    } */
   int found = 0;
   while(nextEntry.size > 0) {
     Tread(xid, nextEntry, e);
@@ -59,10 +66,11 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
     }
     nextEntry = e->next;
   } 
+  free(e);
   return found;
 }
 
-void expand (int xid, recordid hash, int next_split, int i) {
+void expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
   TarrayListExtend(xid, hash, 1);
   if(next_split >= powl(2,i-1)+2) {
     /*    printf("\n\n%d %d (i++)\n\n", next_split, i); */
@@ -71,34 +79,33 @@ void expand (int xid, recordid hash, int next_split, int i) {
   }
   /*  printf("-%d-", next_split); */
   /*   printf("rehash(%d, %d + 2)\n", i, next_split - 2); */
-  rehash(xid, hash, next_split, i);
+  rehash(xid, hash, next_split, i, keySize, valSize);
   next_split++;
   update_hash_header(xid, hash, i, next_split);
 }
 
 void update_hash_header(int xid, recordid hash, int i, int next_split) {
-  recordid  headerRidB;
+  recordid  * headerRidB = pblHtLookup(openHashes, &hash.page, sizeof(int));
 
-  hash.slot = 1;
-  Tread(xid, hash, &headerRidB);
+  /*  hash.slot = 1; */
+  /*  Tread(xid, hash, headerRidB); */
   /* headerHashBits and headerHashSplit are #defined to refer to headerRidB. */
   headerHashBits = i;
   headerNextSplit = next_split;
   
-  Tset(xid, hash, &headerRidB);
+  Tset(xid, hash, headerRidB);
 }
 
-void rehash(int xid, recordid hashRid, int next_split, int i) {
+void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
   recordid bucket = hashRid;
   bucket.slot = next_split;
-  recordid headerRidA;
-  Tread(xid, hashRid, &headerRidA);
+  /*recordid headerRidA;
+  Tread(xid, hashRid, &headerRidA); */
   /*  recordid oldRid;
   oldRid.page = 0;
   oldRid.slot = 0;
   oldRid.size = 0; */
-  hashEntry * e = calloc(1,sizeof(hashEntry) + headerValSize + headerKeySize);
-  assert(bucket.size < 1000);
+  hashEntry * e = calloc(1,sizeof(hashEntry) + keySize + valSize /* headerValSize + headerKeySize */);
 
   if(bucket.size) {
     Tread(xid, bucket, &bucket);
@@ -109,64 +116,70 @@ void rehash(int xid, recordid hashRid, int next_split, int i) {
 
     /*     printf("#%d", *(int*)(e+1)); */
 
-    int old_hash = hash(e+1, headerKeySize, i-1, ULONG_MAX) + 2;
+    int old_hash = hash(e+1, keySize, i-1, ULONG_MAX) + 2;
     assert(next_split == old_hash); 
 
-    int new_hash = hash(e+1, headerKeySize, i, ULONG_MAX) + 2;
+    int new_hash = hash(e+1, keySize, i, ULONG_MAX) + 2;
 
     bucket = e->next;
-    /*    oldRid = bucket; */
-    assert((!bucket.size )|| bucket.size ==  sizeof(hashEntry) + headerValSize + headerKeySize);
+
+    assert((!bucket.size )|| bucket.size ==  sizeof(hashEntry) + keySize + valSize /*headerValSize + headerKeySize */);
  
     if(new_hash != next_split) {
 
       assert(new_hash == next_split + powl(2, i-1)); 
 
-      /* recordid newRid = hashRid;
-      newRid.slot = new_hash;
-            recordid ptr; 
-	      Tread(xid, newRid, &ptr); */
-      /*      printf("Moving from %d to %d.\n", next_split, new_hash);
-	      fflush(NULL); */
       recordid oldEntry;
 
-      /*     printf("!"); */
+      /** @todo could be optimized.  Why deleteFromBucket, then
+	 insertIntoBucket?  Causes us to travers the bucket list an
+	 extra time... */
 
-      assert(deleteFromBucket(xid, hashRid, next_split, e+1, headerKeySize, &oldEntry));
-      insertIntoBucket(xid, hashRid, new_hash, e, headerKeySize, headerValSize, oldEntry);
+      recordid next_split_contents, new_hash_contents;
+      recordid tmp = hashRid;
+      tmp.slot = next_split;
+      Tread(xid, tmp, &next_split_contents);
+      tmp.slot = new_hash;
+      Tread(xid, tmp, &new_hash_contents);
+
+      assert(deleteFromBucket(xid, hashRid, next_split, next_split_contents,  e+1, keySize,/* valSize, headerKeySize,*/ &oldEntry)); 
+      insertIntoBucket(xid, hashRid, new_hash, new_hash_contents, e, keySize, valSize, /*headerKeySize, headerValSize, */oldEntry, 1);
     } else {
 
-      /*      printf("-"); */
-
-      /*      printf("Not moving %d.\n", next_split);
-	      fflush(NULL); */
     }
 
   }
   free(e);
 }
 
-void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * e, int keySize, int valSize, recordid newEntry) {
+void insertIntoBucket(int xid, recordid hashRid, int bucket_number, recordid bucket_contents, hashEntry * e, int keySize, int valSize, recordid newEntry, int skipDelete) {
   recordid deleteMe; 
-  if(deleteFromBucket(xid, hashRid, bucket_number, e+1, keySize, &deleteMe)) {
-    Tdealloc(xid, deleteMe);
+  if(!skipDelete) {
+    if(deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, &deleteMe)) {
+      Tdealloc(xid, deleteMe);
+      hashRid.slot = bucket_number;
+      Tread(xid, hashRid, &bucket_contents);
+      hashRid.slot = 0;
+    }
   }
 
   /*@todo consider recovery for insertIntoBucket. */
   /*  recordid newEntry = Talloc(xid, sizeof(hashEntry) + keySize + valSize); */
   recordid bucket   = hashRid;
   bucket.slot = bucket_number;
-  Tread(xid, bucket, &(e->next));
+  /*  Tread(xid, bucket, &(e->next)); */
+  e->next = bucket_contents;
   Tset(xid, newEntry, e);
   Tset(xid, bucket, &newEntry);
 }
 
-int deleteFromBucket(int xid, recordid hash, int bucket_number, void * key, int keySize, recordid * deletedEntry) {
+int deleteFromBucket(int xid, recordid hash, int bucket_number, recordid bucket_contents, void * key, int keySize, recordid * deletedEntry) {
   hashEntry * e;
   recordid bucket = hash;
   bucket.slot = bucket_number;
   recordid nextEntry;
-  Tread(xid, bucket, &nextEntry);
+  nextEntry = bucket_contents;
+  /*  Tread(xid, bucket, &nextEntry); */
   if(nextEntry.size) {
     e = calloc(1,nextEntry.size);
   } else {
@@ -205,8 +218,9 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   recordid rid = TarrayListAlloc(xid, 16 + 2, 2, sizeof(recordid)); 
   TarrayListExtend(xid, rid, 32+2);
 
-  recordid headerRidA, headerRidB;
-  
+  recordid headerRidA;
+  recordid  * headerRidB = malloc (sizeof(recordid));
+
   headerKeySize = keySize;
   headerValSize = valSize;
   
@@ -216,23 +230,36 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   rid.slot =0;
   Tset(xid, rid, &headerRidA);
   rid.slot =1;
-  Tset(xid, rid, &headerRidB);
+  Tset(xid, rid, headerRidB);
+
+  pblHtInsert(openHashes, &rid.page, sizeof(int), headerRidB);
+
   rid.slot =0;
   return rid;
+}
+
+void ThashInit() {
+  openHashes = pblHtCreate();
+}
+
+void ThashDeinit() {
+  pblHtDelete(openHashes);
 }
 
 void ThashInsert(int xid, recordid hashRid, 
 	    void * key, int keySize, 
 	    void * val, int valSize) {
 
-  recordid headerRidA, headerRidB;
-  recordid tmp = hashRid;
-  tmp.slot = 0;
+  /*  recordid headerRidA; */
+  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
+
+  /*  recordid tmp = hashRid; */
+  /*  tmp.slot = 0;
   Tread(xid, tmp, &headerRidA);
   assert(headerKeySize == keySize);
-  tmp.slot = 1;
-  Tread(xid, tmp, &headerRidB);
-  assert(headerValSize == valSize);
+  tmp.slot = 1; */
+  /*  Tread(xid, tmp, &headerRidB); */
+  /*  assert(headerValSize == valSize); */
 
   int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   
@@ -242,8 +269,12 @@ void ThashInsert(int xid, recordid hashRid,
 
   recordid newEntry =  Talloc(xid, sizeof(hashEntry) + keySize + valSize);
   /*  printf("%d -> %d\n", *(int*)(e+1), bucket); */
-  insertIntoBucket(xid, hashRid, bucket, e, keySize, valSize, newEntry);
-  expand(xid, hashRid, headerNextSplit, headerHashBits);
+  recordid bucket_contents;
+  hashRid.slot = bucket;
+  Tread(xid, hashRid, &bucket_contents);
+  hashRid.slot = 0;
+  insertIntoBucket(xid, hashRid, bucket, bucket_contents, e, keySize, valSize, newEntry, 0);
+  expand(xid, hashRid, headerNextSplit, headerHashBits, keySize, valSize);
 
   free(e);
 
@@ -252,28 +283,50 @@ void ThashInsert(int xid, recordid hashRid,
     so that expand can be selectively called. */
 void ThashDelete(int xid, recordid hashRid, 
 	    void * key, int keySize) {
-
-  recordid headerRidB;
+  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   recordid tmp = hashRid;
   tmp.slot = 1;
-  Tread(xid, tmp, &headerRidB);
+  /*  Tread(xid, tmp, headerRidB); */
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid deleteMe;
-  if(deleteFromBucket(xid, hashRid, bucket_number, key, keySize, &deleteMe)) {
+  hashRid.slot = bucket_number;
+  recordid bucket_contents;
+  Tread(xid, hashRid, &bucket_contents);
+  hashRid.slot = 0;
+  if(deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, key, keySize, &deleteMe)) {
     Tdealloc(xid, deleteMe);
   }
+}
+
+int ThashOpen(int xid, recordid hashRid) {
+  recordid * headerRidB = malloc(sizeof(recordid));
+  hashRid.slot = 1;
+  Tread(xid, hashRid, headerRidB);
+  
+  pblHtInsert(openHashes, &hashRid.page, sizeof(int), headerRidB);
+
+  return 0;
 }
 
 void ThashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
   ThashDelete(xid, hashRid, key, keySize);
   ThashInsert(xid, hashRid, key, keySize, val, valSize);
+
+}
+
+
+int ThashClose(int xid, recordid hashRid) {
+  recordid * freeMe = pblHtLookup(openHashes,  &hashRid.page, sizeof(int));
+  pblHtRemove(openHashes, &hashRid.page, sizeof(int));
+  free(freeMe);
+  return 0;
 }
 
 int ThashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
-  recordid headerRidB;
+  /*  recordid headerRidB; */
+  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
   recordid tmp = hashRid;
   tmp.slot = 1;
-  Tread(xid, tmp, &headerRidB);
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   /*  printf("look in %d\n", bucket_number); */
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);

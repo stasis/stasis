@@ -1,28 +1,22 @@
 #include <lladd/hash.h>
-#include <math.h>
+/*#include <math.h> */
 /*static int  thomasWangs32BitMixFunction(int key);
   static unsigned long thomasWangs64BitMixFunction(unsigned long key);*/
 
 /** @todo replace powl in hash with something more efficient, if hash() becomes a bottleneck. */
+
+#define twoToThe(x) (1 << (x))
+
 unsigned int hash(void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {
-  unsigned long tableLength = powl(2, tableBits);
-  unsigned long oldTableLength = powl(2, tableBits - 1);
-  unsigned long unmixed = crc32(val, val_length, (unsigned long)-1L);
-
-  unsigned long ret = unmixed & (oldTableLength - 1); 
-
-  if(*(int*)val == 4090) {
-    printf("here too!");
-  }
+  unsigned int oldTableLength = /*powl(2, tableBits - 1); */ twoToThe(tableBits - 1);
+  unsigned int unmixed = crc32(val, val_length, (unsigned long)-1L);
+  unsigned int ret = unmixed & (oldTableLength - 1); 
 
   /* What would the low hash value be? */
-  /*  printf("hash(%d, bits=%d, ext=%ld) first: %ld ", *(int*)val, tableBits, nextExtension, ret); */
   if(ret < nextExtension) { /* Might be too low. */
+    unsigned int tableLength = /* powl(2, tableBits); */ twoToThe(tableBits);
     ret = unmixed & (tableLength - 1);
-    /*    printf("second: %ld", ret); */
   }
-  /*   printf("\n"); */
-
   return (int) ret;
 }
 
