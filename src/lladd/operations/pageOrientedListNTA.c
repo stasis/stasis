@@ -33,17 +33,25 @@ recordid TpagedListAlloc(int xid) {
   return list;
 }
 
+int TpagedListSpansPages(int xid, recordid list) {
+  // TpagedListCompact(int xid, recordid list);
+
+  list.slot = 0;
+  list.size = sizeof(long);
+  long nextPage;
+  Tread(xid, list, &nextPage);
+  return nextPage != 0;
+}
+
 int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   int ret = 0;
   // if find in list, return 1
   byte * val;
-  if(keySize == TpagedListFind(xid, list, key, keySize, &val)) {
-
+  if(-1 != TpagedListFind(xid, list, key, keySize, &val)) {
     free(val);
     ret = 1;
     int removed = TpagedListRemove(xid, list, key, keySize);
     assert(removed);
-    // delete from list
   }
   Page * p = loadPage(list.page);
   int recordSize = (sizeof(short)+keySize+valueSize);
@@ -64,13 +72,13 @@ int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, cons
       nextPage = TpageAlloc(xid);
       Tset(xid, list, &nextPage);
       p = loadPage(nextPage);
-      // slottedPageInitialize(p);
+      //slottedPageInitialize(p);
       // ** @todo shouldn't a log entry be generated here?? */
       list.page = nextPage;
       assert(slottedFreespace(p) >= recordSize);
       long zero = 0;
-      TallocFromPage(xid, list.page, sizeof(long));
-      Tset(xid, list, &zero);
+      recordid rid = TallocFromPage(xid, list.page, sizeof(long));
+      Tset(xid, rid, &zero);
     } else {
       releasePage(p);
       list.page = nextPage;
@@ -83,7 +91,7 @@ int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, cons
   }
 
   releasePage(p);
-
+  //  printf("recordsize = %d\n", recordSize);
   recordid rid = TallocFromPage(xid, list.page, recordSize); // Allocates a record at a location given by the caller
   short* record = malloc(recordSize);
   *record = keySize;
@@ -135,7 +143,7 @@ int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte *
 
     list.page = nextPage;
   } 
-  return 0;
+  return -1;
 }
 int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   long nextPage = 1;
@@ -158,7 +166,7 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
 	
 	if(*dat == keySize && !memcmp(dat+1, key, keySize)) {
 	  Tdealloc(xid, entry);
-	  
+	  assert(-1 == TrecordSize(xid, entry));
 	  free(dat);
 	  return 1;
 	}
@@ -179,7 +187,7 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
 int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
   byte * value;
   int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
-  if(valueSize) {
+  if(valueSize != -1) {
     int ret = TpagedListRemove(xid, start_list, key, keySize);
     assert(ret);
     ret = TpagedListInsert(xid, end_list, key, keySize, value, valueSize);

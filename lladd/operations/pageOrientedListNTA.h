@@ -84,6 +84,7 @@ lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list);
 int TpagedListNext(int xid, lladd_pagedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
 recordid TpagedListAlloc(int xid);
 void TpagedListDelete(int xid, recordid list);
+int TpagedListSpansPages(int xid, recordid list);
 Operation getPagedListInsert();
 Operation getPagedListRemove();
 #endif

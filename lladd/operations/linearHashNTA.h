@@ -22,6 +22,14 @@
 
 #ifndef __LINEAR_HASH_NTA_H
 #define __LINEAR_HASH_NTA_H
+/** Currently, only used in the type field of the iterators. */
+#define FIXED_LENGTH_HASH 0
+#define VARIABLE_LENGTH_HASH 1
+
+/** Pass this into the keySize and/or valueSize parameter of the
+    constructor below if the hashtable should support variable length
+    keys and/or values, respectively. */
+#define VARIABLE_LENGTH -1
 
 typedef struct {
   recordid hashHeader;
@@ -30,6 +38,7 @@ typedef struct {
   int keySize;
   int valueSize;
   lladd_linkedList_iterator * it;
+  lladd_pagedList_iterator * pit;
 } lladd_hash_iterator;
 
 recordid ThashCreate(int xid, int keySize, int valSize);

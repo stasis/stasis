@@ -37,16 +37,28 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
 recordid ThashCreate(int xid, int keySize, int valueSize) {
   recordid hashHeader = Talloc(xid, sizeof(lladd_hash_header));
   lladd_hash_header lhh;
-  lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
+  if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
+    lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(long));
+  } else {
+    lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
+  }
   TarrayListExtend(xid, lhh.buckets, HASH_INIT_ARRAY_LIST_COUNT);
   int i;
-  byte * entry = calloc(1, lhh.buckets.size);
   recordid bucket = lhh.buckets;
-  for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
-    bucket.slot = i;
-    Tset(xid, bucket, entry);
+  if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
+    for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
+      recordid rid = TpagedListAlloc(xid);
+      bucket.slot = i;
+      Tset(xid, bucket, &(rid.page));
+    }
+  } else {
+    byte * entry = calloc(1, lhh.buckets.size);
+    for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
+      bucket.slot = i;
+      Tset(xid, bucket, entry);
+    }
+    free (entry);
   }
-  free (entry);
   lhh.keySize = keySize;
   lhh.valueSize = valueSize;
   lhh.nextSplit = 0;
@@ -139,16 +151,37 @@ static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keyS
   Tread(xid, hashHeader, &lhh);
 
   lhh.numEntries ++;
-  
-  if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * HASH_FILL_FACTOR)) {
-  	ThashSplitBucket(xid, hashHeader, &lhh);
+  if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
+    /*    if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * (HASH_FILL_FACTOR * 40))) {
+      ThashSplitBucket(xid, hashHeader, &lhh);
+      } */
+  } else {
+    if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * HASH_FILL_FACTOR)) {
+      ThashSplitBucket(xid, hashHeader, &lhh);
+    }
   }
-  assert(lhh.keySize == keySize); assert(lhh.valueSize == valueSize);
   
   recordid bucket = lhh.buckets;
   bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
   
-  int ret = TlinkedListInsert(xid, bucket, key, keySize, value, valueSize);
+  int ret;
+  if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
+    
+    recordid bucketList;
+    Tread(xid, bucket, &(bucketList.page));
+    bucketList.slot = 0;
+    bucketList.size = 0;
+    //  int before = TpagedListSpansPages(xid, bucketList);
+    ret = TpagedListInsert(xid, bucketList, key, keySize, value, valueSize);
+    int after = TpagedListSpansPages(xid, bucketList);
+    if(after) {  // Page overflowed...
+      ThashSplitBucket(xid, hashHeader, &lhh);
+    }
+
+  } else {
+    assert(lhh.keySize == keySize); assert(lhh.valueSize == valueSize);
+    ret = TlinkedListInsert(xid, bucket, key, keySize, value, valueSize);
+  }
   if(ret) { lhh.numEntries--; }
   Tset(xid, hashHeader, &lhh);
   
@@ -189,12 +222,21 @@ static int __ThashRemove(int xid, recordid hashHeader, const byte * key, int key
   
   Tset(xid, hashHeader, &lhh);
   
-  assert(lhh.keySize == keySize);
   
   recordid bucket = lhh.buckets;
   bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
   
-  int ret = TlinkedListRemove(xid, bucket, key, keySize);
+  int ret;
+  if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
+    recordid bucketList;
+    Tread(xid, bucket, &(bucketList.page));
+    bucketList.slot = 0;
+    bucketList.size = 0;
+    ret = TpagedListRemove(xid, bucketList, key, keySize);
+  } else {
+    assert(lhh.keySize == keySize);
+    ret = TlinkedListRemove(xid, bucket, key, keySize);
+  }
   return ret;
 }
 
@@ -203,16 +245,26 @@ int ThashLookup(int xid, recordid hashHeader, const byte * key, int keySize, byt
   pthread_mutex_lock(&linear_hash_mutex);
   Tread(xid, hashHeader, &lhh);
   
-  assert(lhh.keySize == keySize);
   
   recordid bucket = lhh.buckets;
   bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
   
-  int ret = TlinkedListFind(xid, bucket, key, keySize, value);
+  int ret;
+  if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
+    recordid bucketList;
+    Tread(xid, bucket, &(bucketList.page));
+    bucketList.slot = 0;
+    bucketList.size = 0;
+    ret = TpagedListFind(xid, bucketList, key, keySize, value);
+  } else {
+    assert(lhh.keySize == keySize);
+    ret = TlinkedListFind(xid, bucket, key, keySize, value);
+  }
   pthread_mutex_unlock(&linear_hash_mutex);
   return ret;
 }
 static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * lhh) {
+  //  if(1) { return; }
   long old_bucket = lhh->nextSplit;
   long new_bucket = old_bucket + twoToThe(lhh->bits-1);
   recordid old_bucket_rid = lhh->buckets;
@@ -221,27 +273,54 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
   new_bucket_rid.slot = new_bucket;
  // void * handle = TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
   TarrayListExtend(xid, lhh->buckets, 1);
-  byte * entry = calloc(1, lhh->buckets.size);
-  Tset(xid, new_bucket_rid, entry);
-  free(entry);  
+  recordid new_bucket_list; // will be uninitialized if we have fixed length entries.
+  if(lhh->keySize == VARIABLE_LENGTH || lhh->valueSize == VARIABLE_LENGTH) {
+    new_bucket_list = TpagedListAlloc(xid);
+    Tset(xid, new_bucket_rid, &(new_bucket_list.page));
+  } else {
+    byte * entry = calloc(1, lhh->buckets.size);
+    Tset(xid, new_bucket_rid, entry);
+    free(entry);  
+  }
   if(lhh->nextSplit < twoToThe(lhh->bits-1)-1) {
     lhh->nextSplit++;
   } else {
     lhh->nextSplit = 0;
     lhh->bits++;    
   }
-  lladd_linkedList_iterator * it = TlinkedListIterator(xid, old_bucket_rid, lhh->keySize, lhh->valueSize);
-  byte * key, *value;
-  int keySize, valueSize;
-  while(TlinkedListNext(xid, it, &key, &keySize, &value, &valueSize)) {
-    assert(valueSize == lhh->valueSize);
-    assert(keySize == lhh->keySize);
-    if(hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
-      TlinkedListRemove(xid, old_bucket_rid, key, keySize);
-      TlinkedListInsert(xid, new_bucket_rid, key, keySize, value, valueSize);
+  /** @todo linearHashNTA's split bucket should use the 'move' function call. */
+  if(lhh->keySize == VARIABLE_LENGTH || lhh->valueSize == VARIABLE_LENGTH) {
+    recordid old_bucket_list;
+    //    recordid new_bucket_list;
+    Tread(xid, old_bucket_rid, &(old_bucket_list.page));
+    old_bucket_list.slot = 0;
+    old_bucket_list.size = 0;
+    //    Tread(xid, new_bucket_rid, &(new_bucket_list.page)); // @todo could remember value from above.
+    lladd_pagedList_iterator * pit = TpagedListIterator(xid, old_bucket_list);
+    byte *key, *value;
+    int keySize, valueSize;
+    while(TpagedListNext(xid, pit, &key, &keySize, &value, &valueSize)) {
+      if(hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+	TpagedListRemove(xid, old_bucket_list, key, keySize);
+	TpagedListInsert(xid, new_bucket_list, key, keySize, value, valueSize);
+      }
+      free(key);
+      free(value);
     }
-    free(key);
-    free(value);
+  } else {
+    lladd_linkedList_iterator * it = TlinkedListIterator(xid, old_bucket_rid, lhh->keySize, lhh->valueSize);
+    byte * key, *value;
+    int keySize, valueSize;
+    while(TlinkedListNext(xid, it, &key, &keySize, &value, &valueSize)) {
+      assert(valueSize == lhh->valueSize);
+      assert(keySize == lhh->keySize);
+      if(hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+	TlinkedListRemove(xid, old_bucket_rid, key, keySize);
+	TlinkedListInsert(xid, new_bucket_rid, key, keySize, value, valueSize);
+      }
+      free(key);
+      free(value);
+    }
   }
 //  TendNestedTopAction(xid, handle);
   return;
@@ -256,19 +335,42 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
   it->bucket.slot = 0;
   it->keySize = keySize;
   it->valueSize = valueSize;
-  it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize);
-  
+  if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
+    it->it = NULL;
+    it->pit= TpagedListIterator(xid, it->bucket);
+  } else {
+    it->pit = NULL;
+    it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize);
+  }
   return it;
 }
   
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize) {
-  while(!TlinkedListNext(xid, it->it, key, keySize, value, valueSize)) {
-    it->bucket.slot++;
-    if(it->bucket.slot < it->numBuckets) {
-      it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize); 
-    } else {
-      free(it);
-      return 0;
+  if(it->it) {
+    assert(!it->pit);
+    while(!TlinkedListNext(xid, it->it, key, keySize, value, valueSize)) {
+      it->bucket.slot++;
+      if(it->bucket.slot < it->numBuckets) {
+	it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize); 
+      } else {
+	free(it);
+	return 0;
+      }
+    }
+  } else {
+    assert(it->pit);
+    while(!TpagedListNext(xid, it->pit, key, keySize, value, valueSize)) {
+      it->bucket.slot++;
+      if(it->bucket.slot < it->numBuckets) {
+	recordid bucketList;
+	Tread(xid, it->bucket, &(bucketList.page));
+	bucketList.slot =0;
+	bucketList.size =0;
+	it->pit = TpagedListIterator(xid, bucketList);
+      } else {
+	free(it);
+	return 0;
+      }
     }
   }
   return 1;

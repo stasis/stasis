@@ -110,6 +110,68 @@ START_TEST(linearHashNTAtest)
   Tcommit(xid);
   Tdeinit();
 } END_TEST
+
+/** @test
+*/
+START_TEST(linearHashNTAVariableSizetest)
+{
+  Tinit();
+  
+  int xid = Tbegin();
+  recordid val;
+  recordid hashHeader = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+  recordid * val2;
+  int i;
+  printf("\n"); fflush(stdout);
+  for(i = 0; i < NUM_ENTRIES; i++) {
+    if(!(i % (NUM_ENTRIES/10))) {
+      printf("."); fflush(stdout);
+    }
+    val.page = i * NUM_ENTRIES;
+    val.slot = val.page * NUM_ENTRIES;
+    val.size = val.slot * NUM_ENTRIES;
+    assert(-1 == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
+    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    assert(val2->page == i * NUM_ENTRIES);
+    assert(val2->slot == val2->page * NUM_ENTRIES);
+    assert(val2->size == val2->slot * NUM_ENTRIES);
+    free(val2);
+  }
+  
+  Tcommit(xid);
+  printf("\n"); fflush(stdout);
+
+  xid = Tbegin();
+  for(i = 0; i < NUM_ENTRIES; i+=10){
+    if(!(i % (NUM_ENTRIES/10))) {
+      printf("-"); fflush(stdout);
+    }
+    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    free(val2);
+    assert(ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
+    assert(-1==ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    assert(!ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
+  }
+  printf("\nabort()\n"); fflush(stdout);
+  Tabort(xid);
+  xid = Tbegin();
+  for(i = 0; i < NUM_ENTRIES; i++) {
+    if(!(i % (NUM_ENTRIES/10))) {
+      printf("+"); fflush(stdout);
+    }
+    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    assert(val2->page == i * NUM_ENTRIES);
+    assert(val2->slot == val2->page * NUM_ENTRIES);
+    assert(val2->size == val2->slot * NUM_ENTRIES);
+    free(val2);
+  }
+  Tcommit(xid);
+  Tdeinit();
+} END_TEST
+
+
+
 #define NUM_THREADS 100
 #define NUM_T_ENTRIES 1000
 typedef struct { 
@@ -235,7 +297,7 @@ Suite * check_suite(void) {
 
 
   /* Sub tests are added, one per line, here */
-
+  tcase_add_test(tc, linearHashNTAVariableSizetest);
   tcase_add_test(tc, linearHashNTAIteratortest);
   tcase_add_test(tc, linearHashNTAtest);
   tcase_add_test(tc, linearHashNTAThreadedTest);
