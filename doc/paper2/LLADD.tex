@@ -1421,6 +1421,7 @@ resizing the hash table without introducing long pauses~\cite{lht}.
 In order to implement this scheme we need two building blocks.  We
 need a map from bucket number to bucket contents (lists), and we need to handle bucket overflow.
 
+
 \subsection{The Bucket Map}
 
 The simplest bucket map would simply use a fixed-size transactional
@@ -1506,6 +1507,19 @@ we would like to allocate space from and we need to be able to
 read and write multiple records with a single call to pin/unpin.  Due to
 this data structure's nice locality properties and good performance
 for short lists, it can also be used on its own.
+
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{bulk-load.pdf}
+\includegraphics[%
+   width=1\columnwidth]{bulk-load-raw.pdf}
+\caption{\label{fig:BULK_LOAD} This test measures the raw performance
+of the data structures provided by \yad and Berkeley DB.  Since the
+test is run as a single transaction, overheads due to synchronous I/O
+and logging are minimized.}
+\end{figure*}
+
+
 
 \subsection{Concurrency}
 
@@ -1627,17 +1641,6 @@ that this hashtable implementation uses bucket-granularity latching;
 fine-grain latching is relatively easy in this case since all
 operations only affect a few buckets, and buckets have a natural
 ordering.
-
-\begin{figure*}
-\includegraphics[%
-   width=1\columnwidth]{bulk-load.pdf}
-\includegraphics[%
-   width=1\columnwidth]{bulk-load-raw.pdf}
-\caption{\label{fig:BULK_LOAD} This test measures the raw performance
-of the data structures provided by \yad and Berkeley DB.  Since the
-test is run as a single transaction, overheads due to synchronous I/O
-and logging are minimized.}
-\end{figure*}
 
 
 \subsection{Performance}
@@ -1850,19 +1853,6 @@ memory to achieve good performance.
 
 \label{version-pages}
 
-\begin{figure*}[t!]
-\includegraphics[width=3.3in]{object-diff.pdf}
-\hspace{.3in}
-\includegraphics[width=3.3in]{mem-pressure.pdf}
-\caption{\sf \label{fig:OASYS}
-\yad optimizations for object
-serialization. The first graph shows the effect of the two \yad
-optimizations as a function of the portion of the object that is being
-modified. The second graph focuses on the 
-benefits of the update/flush optimization in cases of system
-memory pressure.}
-\end{figure*}
-
 \yad's architecture allows us to apply two interesting optimizations
 to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
@@ -1995,6 +1985,19 @@ forward, but this is not required.
 %% A background process that calls flush() for all objects in the cache
 %% allows efficient log truncation without blocking any high-priority 
 %% operations.
+
+\begin{figure*}[t!]
+\includegraphics[width=3.3in]{object-diff.pdf}
+\hspace{.3in}
+\includegraphics[width=3.3in]{mem-pressure.pdf}
+\caption{\sf \label{fig:OASYS}
+\yad optimizations for object
+serialization. The first graph shows the effect of the two \yad
+optimizations as a function of the portion of the object that is being
+modified. The second graph focuses on the 
+benefits of the update/flush optimization in cases of system
+memory pressure.}
+\end{figure*}
 
 \subsection{Evaluation}
 
