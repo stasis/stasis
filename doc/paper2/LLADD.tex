@@ -1863,18 +1863,20 @@ most difficult to implement in another storage system.
 \subsection{Recovery and Log Truncation}
 \label{version-pages}
 
-\begin{figure*}
-\includegraphics[%
-   width=1\columnwidth]{object-diff.pdf}
-\includegraphics[%
-   width=1\columnwidth]{mem-pressure.pdf}
-\caption{\label{fig:OASYS} \yad optimizations for object
+\begin{figure}[t]
+\hspace*{.15in}\includegraphics[%
+   width=3.3in]{object-diff.pdf}
+\\
+\hspace*{.15in}\includegraphics[width=3.3in]{mem-pressure.pdf}
+\vspace*{-.2in}
+\caption{\sf\label{fig:OASYS}
+\yad optimizations for object
 serialization. The first graph shows the effect of the two \yad
 optimizations as a function of the portion of the object that is being
 modified. The second graph focuses on the 
 benefits of the update/flush optimization in cases of system
 memory pressure.}
-\end{figure*}
+\end{figure}
 
 An observant reader may have noticed a subtle problem with this
 scheme.  More than one object may reside on a page, and we do not
