@@ -129,6 +129,8 @@ START_TEST(pageNoThreadTest)
 
   worker_thread(p);
 
+  unlock(p->loadlatch);
+
   Tdeinit();
 
 }
@@ -154,6 +156,9 @@ START_TEST(pageThreadTest) {
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
   }
+
+  unlock(p->loadlatch);
+
   Tdeinit();
 
 } END_TEST

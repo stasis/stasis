@@ -43,6 +43,9 @@ void openPageFile();
 void closePageFile();
 
 long myFseek(FILE * f, long offset, int whence);
+long myFseekNoLock(FILE * f, long offset, int whence);
 void myFwrite(const void * dat, long size, FILE * f);
+
+void finalize(Page * p);
 
 #endif /* __PAGE_FILE_H */

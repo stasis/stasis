@@ -14,7 +14,8 @@
 #undef pthread_mutex_lock
 #undef pthread_mutex_trylock
 #undef pthread_mutex_unlock
-
+#undef pthread_cond_timedwait
+#undef pthread_cond_wait
 
 int __lladd_pthread_mutex_init(lladd_pthread_mutex_t  *mutex,  const  pthread_mutexattr_t *mutexattr, 
 			       const char * file, int line, const char * name) {
@@ -44,8 +45,8 @@ int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int li
     blockCount ++;
     pthread_yield();
     
-    if(blockCount > 10000) {
-      DEBUG("Spinning at %s:%d, %ld times\n", file, line, blockCount);
+    if(blockCount >= 10000 && ! (blockCount % 10000)) {
+      DEBUG("Spinning at %s:%d, %ld times.  Held by: %s\n", file, line, blockCount, mutex->last_acquired_at);
     }
 
   }
@@ -108,6 +109,20 @@ int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
 
 }
 
+/**
+   @todo The profiled version of pthread_cond_wait isn't really implemented, so it throws off the mutex statistics. 
+*/
+int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, 
+			      char * file, int line, char * cond_name, char * mutex_name) {
+  return pthread_cond_wait(cond, &mutex->mutex);
+}
+
+int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, void *abstime,
+				   char * file, int line, char * cond_name, char * mutex_name) {
+  return pthread_cond_timedwait(cond, &mutex->mutex, abstime);
+}
+
+
 #undef rwl
 #undef initlock
 #undef readlock
@@ -115,6 +130,8 @@ int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
 #undef readunlock
 #undef writeunlock
 #undef deletelock
+#undef unlock
+#undef downgradelock
 
 __profile_rwl *__profile_rw_initlock (char * file, int line) {
   __profile_rwl * ret = malloc(sizeof(__profile_rwl));
@@ -142,6 +159,7 @@ void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
   /*  DEBUG("Read lock:  %s %d\n", file, line); */
 
   readlock(lock->lock, d);
+
 
 }
 void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
@@ -187,7 +205,6 @@ void __profile_readunlock (__profile_rwl *lock) {
 
   readunlock(lock->lock);
 
-
 }
 void __profile_writeunlock (__profile_rwl *lock) {
 
@@ -201,6 +218,26 @@ void __profile_writeunlock (__profile_rwl *lock) {
   writeunlock(lock->lock);
 
 }
+
+void __profile_unlock (__profile_rwl * lock) {
+  if(lock->lock->writers) {
+    __profile_writeunlock(lock);
+  } else {
+    __profile_readunlock(lock);
+  }
+}
+
+void __profile_downgradelock (__profile_rwl * lock) {
+  profile_tuple * tup = pblHtLookup(lock->lockpoints, lock->last_acquired_at, strlen(lock->last_acquired_at)+1);
+
+  released_lock(tup);
+  released_lock(&(lock->tup));
+
+  free(lock->last_acquired_at);
+
+  downgradelock(lock->lock);
+}
+
 void __profile_deletelock (__profile_rwl *lock) {
 
   profile_tuple * tup;

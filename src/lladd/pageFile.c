@@ -20,7 +20,7 @@ static FILE * stable = NULL;
 */
 
 
-static void finalize(Page * p) {
+void finalize(Page * p) {
   pthread_mutex_lock(&(p->pending_mutex));
   p->waiting++;
 
@@ -38,26 +38,39 @@ static void finalize(Page * p) {
 
 /* This function is declared in page.h */
 void pageRead(Page *ret) {
-  long fileSize = myFseek(stable, 0, SEEK_END);
-  long pageoffset = ret->id * PAGE_SIZE;
+  long fileSize;
+
+  long pageoffset;
   long offset;
 
-  DEBUG("Reading page %d\n", ret->id);
 
-  if(!ret->memAddr) {
+  /** @todo pageRead() is using fseek to calculate the file size on each read, which is inefficient. */
+  pageoffset = ret->id * PAGE_SIZE;
+  flockfile(stable);
+
+  fileSize = myFseekNoLock(stable, 0, SEEK_END);
+
+
+  /*  DEBUG("Reading page %d\n", ret->id); */
+
+  /*  if(!ret->memAddr) {
     ret->memAddr = malloc(PAGE_SIZE);
   }
-  assert(ret->memAddr);
+  if(!ret->memAddr) {
+    perror("pageFile.c");
+    fflush(NULL);
+  }
+  assert(ret->memAddr); */
   
   if ((ret->id)*PAGE_SIZE >= fileSize) {
-    myFseek(stable, (1+ ret->id) * PAGE_SIZE -1, SEEK_SET);
+    myFseekNoLock(stable, (1+ ret->id) * PAGE_SIZE -1, SEEK_SET);
     if(1 != fwrite("", 1, 1, stable)) {
       if(feof(stable)) { printf("Unexpected eof extending storefile!\n"); fflush(NULL); abort(); }
       if(ferror(stable)) { printf("Error extending storefile! %d", ferror(stable)); fflush(NULL); abort(); }
     }
 
   }
-  offset = myFseek(stable, pageoffset, SEEK_SET);
+  offset = myFseekNoLock(stable, pageoffset, SEEK_SET);
   assert(offset == pageoffset);
 
   if(1 != fread(ret->memAddr, PAGE_SIZE, 1, stable)) {
@@ -67,27 +80,27 @@ void pageRead(Page *ret) {
                                                                                                                  
   }
 
+  funlockfile(stable);
+
 }
 
 /* This function is declared in page.h */
 void pageWrite(Page * ret) {
 
   long pageoffset = ret->id * PAGE_SIZE;
-  long offset = myFseek(stable, pageoffset, SEEK_SET);
-  assert(offset == pageoffset);
-  assert(ret->memAddr);
+  long offset ;
 
-  DEBUG("Writing page %d\n", ret->id);
-  /* Need to call finalize before checking the LSN.  Once finalize
-     returns, we have exclusive access to this page, and can safely
-     write it to disk. */
-  finalize(ret);
-  
   if(flushedLSN() < pageReadLSN(ret)) {
-    DEBUG("pageWrite is calling syncLog()!\n");
+    DEBUG("pageWrite is calling syncLog()!\n"); 
     syncLog();
   }
 
+  flockfile(stable);
+  offset = myFseekNoLock(stable, pageoffset, SEEK_SET);
+  assert(offset == pageoffset);
+  assert(ret->memAddr);
+
+  /*  DEBUG("Writing page %d\n", ret->id); */
 
   if(1 != fwrite(ret->memAddr, PAGE_SIZE, 1, stable)) {
                                                                                                                  
@@ -95,6 +108,8 @@ void pageWrite(Page * ret) {
     if(ferror(stable)) { printf("Error writing stream! %d", ferror(stable)); fflush(NULL); abort(); }
                                                                                                                  
   }
+
+  funlockfile(stable);
 }
 
 void openPageFile() {
@@ -125,9 +140,15 @@ void closePageFile() {
 long myFseek(FILE * f, long offset, int whence) {
   long ret;
   flockfile(f);
+  ret = myFseekNoLock(f, offset, whence);
+  funlockfile(f);
+  return ret;
+}
+
+long myFseekNoLock(FILE * f, long offset, int whence) {
+  long ret;
   if(0 != fseek(f, offset, whence)) { perror ("fseek"); fflush(NULL); abort(); }
   if(-1 == (ret = ftell(f))) { perror("ftell"); fflush(NULL); abort(); }
-  funlockfile(f);
   return ret;
 }
 

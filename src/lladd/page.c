@@ -89,12 +89,12 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
+#include "latches.h"
 #include "page.h"
 
 #include <assert.h>
 #include <stdio.h>
 
-/*#include "latches.h" */
 #include <lladd/constants.h>
 
 /* TODO:  Combine with buffer size... */
@@ -140,7 +140,8 @@ static int MASK_FFFF0000;
 /* ------ */
 
 static pthread_mutex_t pageAllocMutex;
-Page pool[MAX_BUFFER_SIZE];
+/** We need one dummy page for locking purposes, so this array has one extra page in it. */
+Page pool[MAX_BUFFER_SIZE+1];
 
 
 int isValidSlot(byte *memAddr, int slot);
@@ -247,9 +248,9 @@ static const byte *slotMemAddr(const byte *memAddr, int slotNum) {
 lsn_t pageReadLSN(const Page * page) {
   lsn_t ret;
 
-  readlock(page->rwlatch, 259);
+  /*  readlock(page->rwlatch, 259); */
   ret = *(long *)(page->memAddr + START_OF_LSN);
-  readunlock(page->rwlatch);
+  /*  readunlock(page->rwlatch); */
 
   return ret;
 }
@@ -539,6 +540,8 @@ void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
   byte *recAddress;
   
   readlock(page->rwlatch, 519);
+
+  assert(page->id == rid.page);
   recAddress = page->memAddr + getSlotOffset(page->memAddr, rid.slot);
   memcpy(buff, recAddress,  rid.size);
   readunlock(page->rwlatch);
@@ -564,13 +567,17 @@ void pageWriteRecord(int xid, Page * page, recordid rid, lsn_t lsn, const byte *
 
 }
 
-void pageRealloc(Page *p, int id) {
-  writelock(p->rwlatch, 10);
+void pageReallocNoLock(Page *p, int id) {
   p->id = id;
   p->LSN = 0;
   p->dirty = 0;
   p->pending = 0;
   p->waiting = 0;
+}
+
+void pageRealloc(Page *p, int id) {
+  writelock(p->rwlatch, 10);
+  pageReallocNoLock(p,id);
   writeunlock(p->rwlatch);
 }
 
@@ -591,12 +598,15 @@ Page *pageAlloc(int id) {
   /* We have an implicit lock on rwlatch, since we allocated it, but
      haven't returned yet. */
   page->rwlatch = initlock();
+  page->loadlatch = initlock();
 
   pthread_mutex_init(&page->pending_mutex, NULL);
   pthread_cond_init(&page->noMorePending, NULL);
 
+  page->memAddr = malloc(PAGE_SIZE);
+
   nextPage++;
-  assert(nextPage <= MAX_BUFFER_SIZE);
+  assert(nextPage <= MAX_BUFFER_SIZE + 1); /* There's a dummy page that we need to keep around, thus the +1 */
 
   /* uggh.  Really just want to pass pages by reference */
   /*  page->pending = malloc(sizeof(int));  */
@@ -604,8 +614,6 @@ Page *pageAlloc(int id) {
   pthread_mutex_unlock(&pageAllocMutex);
 
 
-  /* pageRealloc does its own locking... */
-  pageRealloc(page, id);
   
 
   return page;

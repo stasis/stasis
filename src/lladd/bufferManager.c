@@ -47,16 +47,14 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
+#include <latches.h>
 #include <assert.h>
 #include <lladd/bufferManager.h>
 #include "blobManager.h"
 #include <lladd/pageCache.h>
-/*#include "logger/logWriter.h" */
 
 #include "page.h"
 #include "pageFile.h"
-
-
 
 /**
    Invariant: This lock should be held while updating lastFreepage, or
@@ -77,7 +75,7 @@ static unsigned int lastFreepage = 0;
  * @return fully formed Page type
  * @return page with -1 ID if page not found
  */
-Page * loadPage(int pageid); 
+Page * loadPage(int pageid);
 
 
 
@@ -116,7 +114,9 @@ void simulateBufferManagerCrash() {
 /* ** No file I/O below this line. ** */
 
 Page * loadPage (int pageid) {
-	return loadPagePtr(pageid);
+  Page * p = loadPagePtr(pageid);
+  assert (p->id == pageid);
+  return  p; 
 }
 
 Page * lastRallocPage = 0;
@@ -133,10 +133,11 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   
   pthread_mutex_lock(&lastFreepage_mutex);
   
-  while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
+  while(freespace(p = loadPage(lastFreepage)) < size ) { unlock(p->loadlatch); lastFreepage++; }
   
   ret = pageRalloc(p, size);
     
+  unlock(p->loadlatch);
   pthread_mutex_unlock(&lastFreepage_mutex);
   
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size);
@@ -147,11 +148,14 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
 void slotRalloc(int pageid, lsn_t lsn, recordid rid) {
   Page * loadedPage = loadPage(rid.page);
   pageSlotRalloc(loadedPage, lsn, rid);
+  unlock(loadedPage->loadlatch);
 }
 
 long readLSN(int pageid) {
-
-	return pageReadLSN(loadPage(pageid));
+  Page *p;
+  lsn_t lsn = pageReadLSN(p = loadPage(pageid));
+  unlock(p->loadlatch);
+  return lsn;
 }
 
 void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
@@ -159,30 +163,36 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
   Page *p;
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
-    DEBUG("Writing blob.\n");
+    /*    DEBUG("Writing blob.\n"); */
     writeBlob(xid, lsn, rid, dat);
 
   } else {
-    DEBUG("Writing record.\n");
-    p = loadPagePtr(rid.page);
+    /*    DEBUG("Writing record.\n"); */
+    p = loadPage(rid.page); /* loadPagePtr(rid.page); */
     assert( (p->id == rid.page) && (p->memAddr != NULL) );	
     /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
     /*assert(pageReadLSN(*p) <= lsn);*/
     
     pageWriteRecord(xid, p, rid, lsn, dat);
     
+    unlock(p->loadlatch);
+    
   }
 }
 
 void readRecord(int xid, recordid rid, void *buf) {
   if(rid.size > BLOB_THRESHOLD_SIZE) {
-    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
-	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    /*    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
+	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
     readBlob(xid, rid, buf);
   } else {
-    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 
-	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
-    pageReadRecord(xid, loadPage(rid.page), rid, buf);
+    Page * p = loadPage(rid.page);
+    assert(rid.page == p->id); 
+    /*    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 
+	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
+    pageReadRecord(xid, p, rid, buf);
+    assert(rid.page == p->id); 
+    unlock(p->loadlatch);
   }
 }
 
@@ -205,6 +215,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
 void setSlotType(int pageid, int slot, int type) {
   Page * p = loadPage(pageid);
   pageSetSlotType(p, slot, type);
+  unlock(p->loadlatch);
 }
 
 /** 
@@ -231,6 +242,8 @@ void addPendingEvent(int pageid){
   p->pending++;
 
   pthread_mutex_unlock(&(p->pending_mutex));
+
+  unlock(p->loadlatch);
 
 }
 
@@ -263,6 +276,8 @@ void removePendingEvent(int pageid) {
   }
 
   pthread_mutex_unlock(&(p->pending_mutex));
+
+  unlock(p->loadlatch);
 }
 
 

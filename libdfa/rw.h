@@ -34,7 +34,11 @@ typedef struct {
 rwl *initlock (void);
 void readlock (rwl *lock, int d);
 void writelock (rwl *lock, int d);
+void downgradelock(rwl * lock);
+void unlock(rwl * lock);
+/** @deprecated in favor of unlock() */
 void readunlock (rwl *lock);
+/** @deprecated in favor of unlock() */
 void writeunlock (rwl *lock);
 void deletelock (rwl *lock);
 /*

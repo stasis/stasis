@@ -4,6 +4,9 @@
 /** @todo threading should be moved into its own header file. */
 #include <pthread.h>
 
+
+
+
 /*#include <pbl/pbl.h> -- Don't want everything that touches threading to include pbl... */
 #include <lladd/stats.h>
 
@@ -50,17 +53,26 @@ typedef struct {
 #define pthread_mutex_lock(x) __lladd_pthread_mutex_lock((x), __FILE__, __LINE__)
 #define pthread_mutex_unlock(x) __lladd_pthread_mutex_unlock((x))
 #define pthread_mutex_trylock(x) NO_PROFILING_EQUIVALENT_TO_PTHREAD_TRYLOCK
+#define pthread_cond_wait(x, y) __lladd_pthread_cond_wait((x), (y), __FILE__, __LINE__, #x, #y);
+#define pthread_cond_timedwait(x, y, z) __lladd_pthread_cond_timedwait((x), (y), (z), __FILE__, __LINE__, #x, #y);
 
 int __lladd_pthread_mutex_init(lladd_pthread_mutex_t  *mutex,  const  pthread_mutexattr_t *mutexattr, const char * file, int line, const char * mutex_name);
 int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int line);
 int __lladd_pthread_mutex_unlock(lladd_pthread_mutex_t *mutex);
 int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex);
+int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, 
+			      char * file, int line, char * cond_name, char * mutex_name);
+/** @param abstime should be const struct timespec, but GCC won't take that. */
+int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, void *abstime,
+				   char * file, int line, char * cond_name, char * mutex_name);
 
 #define initlock() __profile_rw_initlock(__FILE__, __LINE__)
 #define readlock(x, y) __profile_readlock((x),(y), __FILE__, __LINE__)
 #define writelock(x, y) __profile_writelock((x), (y), __FILE__, __LINE__)
 #define readunlock(x) __profile_readunlock((x))
 #define writeunlock(x) __profile_writeunlock((x))
+#define unlock(x) __profile_unlock((x))
+#define downgradelock(x) __profile_downgradelock((x))
 #define deletelock(x) __profile_deletelock((x))
 
 #define rwl __profile_rwl
@@ -70,7 +82,11 @@ void __profile_readlock (rwl *lock, int d, char * file, int line);
 void __profile_writelock (rwl *lock, int d, char * file, int line);
 void __profile_readunlock (rwl *lock);
 void __profile_writeunlock (rwl *lock);
+void __profile_unlock (rwl *lock);
+void __profile_downgradelock (rwl *lock);
 void __profile_deletelock (rwl *lock);
+
+
 
 
 #endif  

@@ -54,14 +54,14 @@ terms specified in this license.
 #ifndef __PAGE_H__
 #define __PAGE_H__
 
+#include <config.h>
 #include <lladd/common.h>
-
+#include "latches.h"
 /** @todo page.h includes things that it shouldn't!  (Or, page.h shouldn't be an installed header.) */
 
 #include <lladd/transactional.h>
 
-#include <config.h>
-#include "latches.h"
+
 BEGIN_C_DECLS
 
 /** 
@@ -90,6 +90,9 @@ typedef struct Page_s {
   struct Page_s *prev; 
   /** Which queue is the page in? */
   int queue; 
+  /** Is the page in the cache at all? */
+  int inCache;
+
   /** Used for page-level latching.
       
       Each page has an associated read/write lock.  This lock only
@@ -113,7 +116,9 @@ typedef struct Page_s {
       writing the locked page to disk)
   */
   
-  void * rwlatch;
+  rwl * rwlatch;
+
+  rwl * loadlatch;
 
   /** This mutex protects the pending field.  We don't use rwlatch for
       this, since we also need to use a condition variable to update
@@ -207,6 +212,8 @@ void pageCommit(int xid);
 
 void pageAbort(int xid);
 
+void pageReallocNoLock(Page * p, int id);
+/** @todo Do we need a locking version of pageRealloc? */
 void pageRealloc(Page * p, int id);
 
 Page* pageAlloc(int id);

@@ -46,7 +46,6 @@ terms specified in this license.
 #include "logWriter.h"
 #include "logHandle.h"
 
-#include "../latches.h"
 #include "../pageFile.h"
 #include <assert.h>
 #include <stdio.h>

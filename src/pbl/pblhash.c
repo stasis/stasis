@@ -24,8 +24,13 @@
    please see: http://mission.base.com/.
 
     $Log$
-    Revision 1.1  2004/06/24 21:11:54  sears
-    Initial revision
+    Revision 1.2  2004/07/20 00:15:17  sears
+    pageCache.c is now re-entrant.
+
+    Revision 1.1.1.1  2004/06/24 21:11:54  sears
+    Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+    Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
 
     Revision 1.4  2004/05/26 09:55:31  sears
     Misc bugfixes / optimizations.
@@ -63,8 +68,8 @@ static int   rcsid_fct() { return( rcsid ? 0 : rcsid_fct() ); }
 /*****************************************************************************/
 /* #defines                                                                  */
 /*****************************************************************************/
-/*#define PBL_HASHTABLE_SIZE      1019*/
-#define PBL_HASHTABLE_SIZE   100003
+#define PBL_HASHTABLE_SIZE      1019
+/*#define PBL_HASHTABLE_SIZE   100003 */
 
 /*****************************************************************************/
 /* typedefs                                                                  */
