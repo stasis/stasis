@@ -495,7 +495,7 @@ concrete example.
 
 \subsection{Concurrency and Aborted Transactions}
 
-Section \ref{sub:OperationProperties} states that LLADD does not
+Section~\ref{sub:OperationProperties} states that LLADD does not
 allow cascading aborts, implying that operation implementors must
 protect transactions from any structural changes made to data structures
 by uncomitted transactions, but LLADD does not provide any mechanisms
@@ -503,13 +503,13 @@ designed for long-term locking. However, one of LLADD's goals is to
 make it easy to implement custom data structures for use within safe,
 multi-threaded transactions. Clearly, an additional mechanism is needed.
 
-The solution is to allow portions of an operation to 'commit' before
-the operation returns.%
+The solution is to allow portions of an operation to ``commit'' before
+the operation returns.
 \footnote{We considered the use of nested top actions, which LLADD could easily
 support. However, we currently use the slightly simpler (and lighter-weight)
 mechanism described here. If the need arises, we will add support
-for nested top actions.%
-} An operation's wrapper is just a normal function, and therefore may
+for nested top actions.}
+An operation's wrapper is just a normal function, and therefore may
 generate multiple log entries. First, it writes an undo-only entry
 to the log. This entry will cause the \emph{logical} inverse of the
 current operation to be performed at recovery or abort, must be idempotent,
@@ -518,19 +518,18 @@ does not contain the results of the current operation. Also, it must
 behave correctly even if an arbitrary number of intervening operations
 are performed on the data structure.
 
-[...Eric:  Is this better?]
-
-Next, the operations writes one or more redo-only log entries that may perform structural
-modifications to the data structure. These redo entries should not make any assumptions
-about the consistency of the current version of the database. Finally,
-any prefix of the sequence of the redo-only operations performed by
-this operation must leave the database in a consistent state. The
-$B^{LINK}$ tree {[}...{]} is an example of a B-Tree implementation
+Next, the operation writes one or more redo-only log entries that may perform structural
+modifications to the data structure. These redo entries have the constraint that any prefix of them must leave the database in a consistent state, since only a prefix might execute before a crash.  This is not as hard as it sounds, and in fract the
+$B^{LINK}$ tree~\cite{b-link} is an example of a B-Tree implementation
 that behaves in this way, while the linear hash table implementation
-discussed in Section \ref{sub:Linear-Hash-Table} is a scalable 
+discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable 
 hash table that meets these constraints.
 
-
+[EAB: I still think there must be a way to log all of the redoes
+before any of the actions take place, thus ensuring that you can redo
+the whole thing if needed. Alternatively, we could pin a page until
+the set completes, in which case we know that that all of the records
+are in the log before any page is stolen.]
 
 \subsection{Summary}
 
@@ -819,13 +818,13 @@ uses pure physical logging, as physical undo cannot generally tolerate
 concurrent structural modifications to data structures.
 
 
-\subsection{Two Phase Commit\label{sub:Two-Phase-Commit}}
+\subsection{Two-Phase Commit\label{sub:Two-Phase-Commit}}
 
-The two phase commit protocol is used in clustering applications where
+The two-phase commit protocol is used in clustering applications where
 multiple, well maintained, well connected computers must agree upon
 a set of successful transactions. Some of the systems could crash,
 or the network could fail during operation, but we assume that such
-failures are temporary. Two phase commit designates a single computer
+failures are temporary. Two-phase commit designates a single computer
 as the coordinator of a given transaction. This computer contacts
 the other systems participating in the transaction, and asks them
 to prepare to commit the transaction. If a subordinate system sees
