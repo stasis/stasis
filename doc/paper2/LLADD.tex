@@ -2004,9 +2004,7 @@ requests by reordering invocations of wrapper functions.
 
 \subsection {Data Representation}
 
-We loosly base the graphs for this test on the graphs used by the oo7
-benchmark~\cite{oo7}.  For the test, we hardcode the outdegree of
-graph nodes to 3, 6 and 9.  This allows us to represent graph nodes as
+For simplicity, we represent graph nodes as
 fixed length records.  The Array List from our linear hash table
 implementation (Section~\ref{sub:Linear-Hash-Table}) provides access to an
 array of such records with performance that is competive with native
@@ -2125,6 +2123,30 @@ page files.
 
 \subsection {Performance Evaluation}
 
+We loosly base the graphs for this test on the graphs used by the oo7
+benchmark~\cite{oo7}.  For the test, we hardcode the outdegree of
+graph nodes to 3, 6 and 9 and use a directed graph.  The oo7 benchmark
+constructs graphs by first connecting nodes together into a ring.  It
+then randomly adds edges between the nodes until the desired outdegree
+is obtained.  This structure ensures graph connectivity.  If the nodes
+are layed out in ring order on disk, it also ensures that one edge
+from each node has good locality, while the others generally have poor
+locality.  The results for this test are presented in
+Figure~\ref{oo7}, and we can see that the request reordering algorithm
+helps performance.  We re-ran the test without the ring edges, and (in
+line with our next set of results) found that the reordering algorithm
+also helped in that case.
+
+In order to get a better feel for the effect of graph locality on the
+two traversal algorithms we extend the idea of a hot set to graph
+generation.  Each node has a distinct hot set which includes the 10\%
+of the nodes that are closest to it in ring order.  The remaining
+nodes are in the cold set.  We use random edges instead of ring edges
+for this test.  Figure~\ref{hotGraph} suggests that request reordering 
+only helps when the graph has poor locality.  This makes sense, as a 
+depth first search of a graph with good locality will also have good 
+locality.  Therefore, processing a request via the queue-based multiplexer 
+is more expensive then making a recursive function call.
 
 This section uses:
 
