@@ -103,14 +103,8 @@ void bufDeinit() {
 
 	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) { 
 
-//	  pblHtRemove( activePages, 0, 0 );
+	  pblHtRemove( activePages, 0, 0 );
 	  DEBUG("+");
-	  /** @todo No one seems to set the dirty flag... */
-	  /*if(p->dirty && (ret = pageWrite(p)/ *flushPage(*p)* /)) {
-	    printf("ERROR: flushPage on %s line %d", __FILE__, __LINE__);
-	    abort();
-	    / *      exit(ret); * /
-	    }*/
 	  pageWrite(p);
 
 	}
@@ -133,8 +127,6 @@ void simulateBufferManagerCrash() {
   closeBlobStore();
   closePageFile();
 }
-
-/* ** No file I/O below this line. ** */
 
 void releasePage (Page * p) {
   unlock(p->loadlatch);
@@ -178,7 +170,6 @@ Page * getPage(int pageid, int locktype) {
     ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
     if(ret) {
-      //      writelock(ret->loadlatch, 217);
       if(locktype == RW) {
 	writelock(ret->loadlatch, 217);
       } else {
@@ -248,7 +239,6 @@ Page * getPage(int pageid, int locktype) {
  
     pthread_mutex_lock(&loadPagePtr_mutex);
 
-    /*    pblHtRemove(activePages, &(ret->id), sizeof(int));  */
     pblHtRemove(activePages, &(oldid), sizeof(int)); 
 
     /* @todo Put off putting this back into cache until we're done with
@@ -272,11 +262,7 @@ Page * getPage(int pageid, int locktype) {
     }
 
   }
-
-  /*  assert(ret->id == pageid); */
-    
   return ret;
-  
 }
 
 Page *loadPage(int pageid) {

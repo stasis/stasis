@@ -72,9 +72,14 @@ void pageRead(Page *ret) {
   pthread_mutex_unlock(&stable_mutex);
 
 }
-
+/** @todo need to sync the page file to disk occasionally, so that the
+    dirty page table can be kept up to date. */
 void pageWrite(Page * ret) {
-
+  /** If the page is clean, there's no reason to write it out. */
+  if(!ret->dirty) { 
+    DEBUG(" =^)~ "); 
+    return; 
+  }
   long pageoffset = ret->id * PAGE_SIZE;
   long offset ;
 
@@ -114,6 +119,9 @@ void pageWrite(Page * ret) {
       abort();
     }
   }
+
+  ret->dirty = 0;
+
   pthread_mutex_unlock(&stable_mutex);
 }
 /** @todo O_DIRECT is broken on old (pre 2.6.2ish?) linux, so it's disabled until the build script can be improved. :( */

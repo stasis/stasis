@@ -8,7 +8,7 @@
 int recordsPerPage(size_t size) {
   return (USABLE_SIZE_OF_PAGE - 2*sizeof(short)) / size;
 }
-
+/** @todo CORRECTNESS  Locking for fixedPageInitialize? (should hold writelock)*/
 void fixedPageInitialize(Page * page, size_t size, int count) {
   assert(*page_type_ptr(page) == UNINITIALIZED_PAGE);
   *page_type_ptr(page) = FIXED_PAGE;
@@ -31,7 +31,7 @@ recordid fixedRawRallocMany(Page * page, int count) {
 
   assert(*page_type_ptr(page) == FIXED_PAGE);
   recordid rid;
-
+  /* We need a writelock to prevent concurrent updates to the recordcount_ptr field. */
   writelock(page->rwlatch, 33);
   if(*recordcount_ptr(page) + count <= recordsPerPage(*recordsize_ptr(page))) {
     rid.page = page->id;

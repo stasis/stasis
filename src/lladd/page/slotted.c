@@ -94,7 +94,6 @@ void slottedCompact(Page * page) {
 	*/
 
 	memcpy(page->memAddr, buffer, PAGE_SIZE);
-
 }
 
 /**

@@ -109,6 +109,7 @@ void pageWriteLSN(Page * page, lsn_t lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
   } 
+  page->dirty = 1;
 }
 
 lsn_t pageReadLSN(const Page * page) {
