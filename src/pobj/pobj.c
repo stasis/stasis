@@ -1047,7 +1047,10 @@ pobj_update_recursive (void *obj, int persist)
 	    /* Grow temporary buffer as necessary. */
 	    if (POBJ_SIZE (p->size) > tmp_size) {
 		XFREE (tmp);
-		tmp_size *= TMPBUF_GROW_FACTOR;
+		
+		while (POBJ_SIZE (p->size) > tmp_size)
+		    tmp_size *= TMPBUF_GROW_FACTOR;
+		
 		tmp = XMALLOC (tmp_size);
 		if (! tmp) {
 		    debug ("error: allocation of temporary buffer failed");
