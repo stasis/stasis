@@ -1,22 +1,10 @@
 #include "iterator.h"
 #include "consumer.h"
+#include "fifo.h"
+
 #include <pbl/pbl.h>
-/**
-     A multiplexer takes an iterator, and splits its output into multiple consumers.
-*/
 
-typedef struct {  
-  lladdIterator_t *iterator;
-  lladdConsumer_t *consumer;
-} lladdFifo_t;
 
-typedef struct lladdFifoPool_t { 
-  lladdFifo_t ** pool;
-  lladdConsumer_t * (*getConsumer)(struct lladdFifoPool_t * pool, 
-			      byte * multiplexKey, 
-			      size_t multiplexKeySize);
-  int fifoCount;
-} lladdFifoPool_t;
 
 
 void multiplexHashLogByKey(byte * key,

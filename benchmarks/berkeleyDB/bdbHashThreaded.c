@@ -513,7 +513,7 @@ retry:	/* Begin the transaction. */
 		exit (1);
 	}
 
-	/* Delete any previously existing item. */
+	/* Delete any previously existing item -- LLADD always does this during insert.*/
 	switch (ret = db->del(db, tid, &key, 0)) {
 	case 0:
 	case DB_NOTFOUND:
@@ -580,7 +580,7 @@ retry:	/* Begin the transaction. */
 void
 run_xact(DB_ENV *dbenv, DB *db, int offset, int count)
 {
-	va_list ap;
+  //	va_list ap;
 	DBC *dbc;
 	DBT key, data;
 	DB_TXN *tid;
@@ -633,35 +633,55 @@ retry:	/* Begin the transaction. */
 	for(q = offset; q < offset + count; q++) {
 	  keyPtr = q;
 	  valPtr = q;
+
+	  switch (ret = db->del(db, tid, &key, 0)) {
+	  case 0:
+	    abort();  // we dont insert dups in this test!
+	  case DB_NOTFOUND:
+	    break;
+	  case DB_LOCK_DEADLOCK:
+	    /* Deadlock: retry the operation. */
+	    abort();  // the lock manager should be disabled for this test... 
+			    if ((ret = tid->abort(tid)) != 0) {
+			      dbenv->err(dbenv, ret, "DB_TXN->abort");
+			      exit (1);
+			    }
+	  goto retry;
+	  default:
+	    dbenv->err(dbenv, ret, "db->del: %d", q);
+	    exit (1);
+	  }
+
 	  /*		data.data = s;
 			data.size = strlen(s); */
 	  //	  printf("A"); fflush(NULL);
-		switch (ret = dbc->c_put(dbc, &key, &data, DB_KEYLAST)) {
-		case 0:
-		  //		  printf("B"); fflush(NULL);
-			break;
-		case DB_LOCK_DEADLOCK:
-			va_end(ap);
 
-			/* Deadlock: retry the operation. */
-			if ((ret = dbc->c_close(dbc)) != 0) {
-				dbenv->err(
-				    dbenv, ret, "dbc->c_close");
-				exit (1);
-			}
-			if ((ret = tid->abort(tid)) != 0) {
-				dbenv->err(dbenv, ret, "DB_TXN->abort");
-				exit (1);
-			}
-			goto retry;
-		default:
-			/* Error: run recovery. */
-			dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
-			exit (1);
-		}
+	  switch (ret = dbc->c_put(dbc, &key, &data, DB_KEYLAST)) {
+	  case 0:
+	    //		  printf("B"); fflush(NULL);
+	    break;
+	  case DB_LOCK_DEADLOCK:
+	    //	    va_end(ap);
+	    
+	    /* Deadlock: retry the operation. */
+	    if ((ret = dbc->c_close(dbc)) != 0) {
+	      dbenv->err(
+			 dbenv, ret, "dbc->c_close");
+	      exit (1);
+	    }
+	    if ((ret = tid->abort(tid)) != 0) {
+	      dbenv->err(dbenv, ret, "DB_TXN->abort");
+	      exit (1);
+	    }
+	    goto retry;
+	  default:
+	    /* Error: run recovery. */
+	    dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
+	    exit (1);
+	  }
 	}
-	va_end(ap);
-
+	//	va_end(ap);
+	
 	/* Success: commit the change. */
 	if ((ret = dbc->c_close(dbc)) != 0) {
 		dbenv->err(dbenv, ret, "dbc->c_close");

@@ -106,6 +106,14 @@ int ringBufferAppend(ringBufferLog_t * log, byte * dat, size_t size) {
   
 }
 
+lsn_t ringBufferAppendPosition(ringBufferLog_t * log) {
+  return log->end;
+}
+
+lsn_t ringBufferReadPosition(ringBufferLog_t * log) {
+  return log->start;
+}
+
 int ringBufferTruncateRead(byte * buf, ringBufferLog_t * log, size_t size) {
   if(size > log->size) {
     return -1;       // Request for chunk larger than entire ringbuffer

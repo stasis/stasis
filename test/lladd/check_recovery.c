@@ -495,6 +495,8 @@ Suite * check_suite(void) {
   /* Begin a new test */
   TCase *tc = tcase_create("recovery");
 
+  tcase_set_timeout(tc, 0); // disable timeouts
+
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, recovery_idempotent);
   tcase_add_test(tc, recovery_exactlyOnce);

@@ -14,7 +14,7 @@ typedef struct {
   int  (*next) (int xid, void * it);
   int  (*key)  (int xid, void * it, byte ** key);
   int  (*value)(int xid, void * it, byte ** value);
-  int  (*releaseTuple)(int xid, void * it);
+  void (*tupleDone)(int xid, void * it);
 } lladdIterator_def_t;
 
 typedef struct { 
@@ -79,6 +79,12 @@ int Titerator_key(int xid, lladdIterator_t * it, byte ** key);
     @see lladdIterator_key.
 */
 int Titerator_value(int xid, lladdIterator_t * it, byte ** value);
+/** 
+    Iterator callers must call this before calling next().  A seperate
+    call is required so that iterators can be reentrant. (Warning: Not
+    all iterators are reentrant.)
+*/
+void Titerator_tupleDone(int xid, lladdIterator_t * it);
 
 #endif
 

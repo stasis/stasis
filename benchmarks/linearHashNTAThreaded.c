@@ -20,11 +20,11 @@
 
 int activeThreads = 0;
 int max_active = 0;
-
+/*
 double avg_var = 0;
 double max_var = 0;
 double avg_mean = 0;
-double max_mean = 0;
+double max_mean = 0;*/
 
 pthread_mutex_t mutex;
 
@@ -46,18 +46,18 @@ static void * go (void * arg_ptr) {
   int j;
   int xid = Tbegin();
 
-  double sum_x_squared = 0;
-  double sum = 0;
+  //  double sum_x_squared = 0;
+  //  double sum = 0;
 
   for(j = k * count; j < (k+1) *(count) ; j++) {
 
-    struct timeval start, endtime;
+    //    struct timeval start, endtime;
 
-    gettimeofday(&start, NULL);
+    //    gettimeofday(&start, NULL);
 
     ThashInsert(xid, hash, (byte*)&j, sizeof(int), (byte*)&j, sizeof(int));
 
-    gettimeofday(&endtime, NULL);
+    /*    gettimeofday(&endtime, NULL);
 
     double microSecondsPassed = 1000000 * (endtime.tv_sec - start.tv_sec);
 
@@ -66,7 +66,7 @@ static void * go (void * arg_ptr) {
     sum += microSecondsPassed;
     sum_x_squared += (microSecondsPassed * microSecondsPassed) ;
 
-
+    */
     //    printf("(%d)", k);
   }
 
@@ -79,9 +79,9 @@ static void * go (void * arg_ptr) {
     assert(j == tmp);
     } */
 
-  double count_d = count;
-  double mean     = sum / count_d;
-  double variance = sqrt((sum_x_squared / count_d) - (mean * mean));
+  //  double count_d = count;
+  //  double mean     = sum / count_d;
+  //  double variance = sqrt((sum_x_squared / count_d) - (mean * mean));
 
   
 
@@ -90,11 +90,11 @@ static void * go (void * arg_ptr) {
   pthread_mutex_lock(&mutex);
   activeThreads--;
 
-  avg_mean += mean;
+  /*  avg_mean += mean;
   avg_var  += variance;
 
   if(mean > max_mean ) { max_mean = mean; }
-  if(variance > max_var) { max_var = variance; } 
+  if(variance > max_var) { max_var = variance; }  */
 
   pthread_mutex_unlock(&mutex);
 
@@ -150,10 +150,10 @@ int main(int argc, char** argv) {
   }
 
 
-  printf("mean:     (max, avg)  %f, %f\n", max_mean, avg_mean / (double)thread_count);
+  /*  printf("mean:     (max, avg)  %f, %f\n", max_mean, avg_mean / (double)thread_count);
 
   printf("variance: (max, avg)  %f, %f\n", max_var, avg_var / (double)thread_count);
-
+  */
 
   Tdeinit();
 }

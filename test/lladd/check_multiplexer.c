@@ -39,7 +39,6 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
 #include <lladd/transactional.h>
 #include <pbl/pbl.h>
 #include <stdlib.h>
@@ -58,27 +57,96 @@ terms specified in this license.
 
 #define LOG_NAME   "check_iterator.log"
 
+#define NUM_BYTES_IN_FIFO 100
+#define NUM_INSERTS 100000
+#define NUM_THREADS 10000
+
+int * array;
+
+static pthread_mutex_t mutex;
+static pthread_cond_t  never;
+
+
+static void * go( void * arg) {
+  lladdIterator_t * it = (lladdIterator_t *) arg;
+
+  pthread_mutex_lock(&mutex);
+  pthread_mutex_unlock(&mutex);
+  
+  int itRet = 0;
+  while((itRet = Titerator_next(-1, it))) {
+    byte * key, * value;
+    int keySize, valueSize;
+    
+    keySize   = Titerator_key  (-1, it, &key);
+    valueSize = Titerator_value(-1, it, &value);
+    
+    assert(keySize == sizeof(lsn_t));
+    LogEntry * e = (LogEntry*)value;
+    linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
+    
+    assert(arg->keySize == sizeof(int));
+    assert(arg->valueSize == sizeof(char));
+    
+    int i = *(int*)(arg+1);
+    array[i]++;
+    assert(array[i] == 1);
+
+    Titerator_tupleDone(-1, it);
+
+  }  
+  return NULL;
+}
+
 /**
    @test 
 
 */
 
 
-
-
-#define NUM_ENTRIES 10000
-#define NUM_THREADS 100 
 START_TEST(multiplexTest) {
   Tinit();
   int xid = Tbegin();
-  recordid hash;
-  lladdIterator_t * it = ThashGenericIterator(xid, hash);
-  lladdFifoPool_t * fifoPool = fifoPool_ringBufferInit(NUM_THREADS, NUM_ENTRIES);
-  lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, &multiplexHashLogByKey, &fifoPool_getConsumerCRC32, fifoPool);
-  
-  // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.) 
+
+  recordid hash = ThashCreate(xid, sizeof(int), VARIABLE_LENGTH);
+  linearHash_remove_arg * arg = malloc(sizeof(linearHash_remove_arg) + sizeof(int) + sizeof(char));
+  arg->keySize = sizeof(int);
+  arg->valueSize = sizeof(char);
+
 
   int i;
+
+  array = (int*)calloc(NUM_INSERTS, sizeof(int));
+
+  for(i = 0; i < NUM_INSERTS; i++) { 
+
+    (*(int*)(arg+1)) = i;
+    LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, NULLRID, (byte*)arg,
+				       sizeof(linearHash_remove_arg) + sizeof(int) + sizeof(char), NULL);
+    
+    ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)e, sizeofLogEntry(e));
+
+
+    free(e);
+
+  }
+
+  free(arg);
+  Tcommit(xid);
+
+  lladdIterator_t * it = ThashGenericIterator(xid, hash);
+  lladdFifoPool_t * fifoPool = fifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO);
+
+
+
+  lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, 
+						    &multiplexHashLogByKey, 
+						    &fifoPool_getConsumerCRC32, 
+						    fifoPool);
+  
+
+  // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.) 
+
   
   /* threads have static thread sizes.  Ughh. */
   pthread_attr_t attr;
@@ -91,20 +159,31 @@ START_TEST(multiplexTest) {
   pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
   pthread_mutex_lock(&mutex);
 
+  lladdMultiplexer_start(mux, &attr);
+
+  //  printf("->(%d)", fifoPool->fifoCount); fflush(stdout);
+
   pthread_t * workers = malloc(sizeof(pthread_t) * fifoPool->fifoCount);
 
   for(i = 0 ; i < fifoPool->fifoCount; i++) {
     lladdConsumer_t * consumer = fifoPool->pool[i]->consumer;
 
+    //    printf("%d ", i);
+
     pthread_create(&workers[i], &attr, go, consumer);
     
   }
+  //  printf("<-(%d)", fifoPool->fifoCount); fflush(stdout);
 						    
   pthread_mutex_unlock(&mutex);
   
+  lladdMultiplexer_join(mux);
+
   for(i = 0; i < fifoPool->fifoCount; i++) {
-    pthread_join(&workers[i], NULL);    
+    pthread_join(workers[i], NULL);    
   }
+
+
 } END_TEST
 
 

@@ -2,6 +2,9 @@
 #include <lladd/crc32.h>
 #include <stdlib.h>
 #include <lladd/operations/linearHashNTA.h>
+
+#include "logger/logMemory.h"
+
 lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it, 
 					    void (*multiplexer)(byte * key,
 							      size_t keySize, 
@@ -37,7 +40,8 @@ int lladdMultiplexer_join(lladdMultiplexer_t * multiplexer) {
 
 void * multiplexer_worker(void * arg) { 
   lladdMultiplexer_t * m = arg;
-  
+  lladdConsumer_t * consumer;
+
   while(Titerator_next(m->xid, m->it)) {
     byte * mkey, * key, * value;
     size_t mkeySize, keySize, valueSize;
@@ -47,7 +51,8 @@ void * multiplexer_worker(void * arg) {
 
     m->multiplexer(key, keySize, value, valueSize, &mkey, &mkeySize);
 
-    lladdConsumer_t * consumer = m->getConsumer(m->getConsumerArg, mkey, mkeySize);
+    
+    consumer = m->getConsumer(m->getConsumerArg, mkey, mkeySize);
 
     /*   lladdConsumer_t * consumer = pblHtLookup(m->consumerHash);
     if(consumer == NULL) {
@@ -63,6 +68,12 @@ void * multiplexer_worker(void * arg) {
 
   Titerator_close(m->xid, m->it);
 
+  lladdFifoPool_t * pool = m->getConsumerArg;
+  int i;
+  for(i = 0; i < pool->fifoCount; i++) {
+    Tconsumer_close(m->xid, pool->pool[i]->consumer);
+  }
+
   return (void*)compensation_error();
 }
 
@@ -70,16 +81,7 @@ void * multiplexer_worker(void * arg) {
 
   Sample callbacks follow.
 
-*********************************************************************/
-// @todo remove the code until the //-----, as it just makes up for code that Jimmy needs to commit!
-
-
-lladdFifo_t * logMemory_init(int bufferSize, int initialLSN);
-
-//---------
-
-
-
+*/
 void multiplexHashLogByKey(byte * key,
 			   size_t keySize, 
 			   byte * value, 
@@ -105,12 +107,14 @@ void multiplexHashLogByKey(byte * key,
       *multiplexKey = (byte*) (arg+1);
       *multiplexKeySize = arg->keySize;
     }
+    break;
   case OPERATION_LINEAR_HASH_REMOVE:
     {
       linearHash_insert_arg * arg = (linearHash_insert_arg*)updateArgs;  // this *is* correct.  Don't ask.... 
       *multiplexKey = (byte*) (arg + 1);
       *multiplexKeySize = arg->keySize;
     }
+    break;
   default:
     abort();
   }
@@ -122,6 +126,7 @@ lladdConsumer_t * fifoPool_getConsumerCRC32( lladdFifoPool_t * pool, byte * mult
   int memberId =  crc32(multiplexKey, multiplexKeySize, (unsigned long)-1L) % pool->fifoCount;
   return pool->pool[memberId]->consumer;
 }
+
 
 /**
    Create a new pool of ringBuffer based fifos
@@ -135,7 +140,8 @@ lladdFifoPool_t * fifoPool_ringBufferInit (int consumerCount, int bufferSize) {
   pool->pool = malloc(sizeof(lladdFifo_t*) * consumerCount);
   int i;
   for(i = 0; i < consumerCount; i++) {
-    pool->pool[i] = logMemory_init(bufferSize, 0);
+    pool->pool[i] = logMemoryFifo(bufferSize, 0);
   }
+  pool->fifoCount = consumerCount;
   return pool;
 }

@@ -1,7 +1,7 @@
 #include <lladd/transactional.h>
 
 #ifndef __CONSUMER_H
-#define __ITERATOR_H
+#define __CONSUMER_H
 
 #define MAX_ITERATOR_TYPES  10
 #define FIFO_CONSUMER        0
