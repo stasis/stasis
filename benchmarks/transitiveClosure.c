@@ -153,21 +153,23 @@ int main(int argc, char ** argv) {
   transClos_outdegree = OUTDEGREE  = atoi(argv[4]);
   int hot    = atoi(argv[5]);
   int seed   = atoi(argv[6]);
-  if(seed == -1) {
-    struct timeval tv;
-    gettimeofday(&tv);
-    srandom(tv.usec);
-    if(!silent) {
-      printf("Seed: %d\n", tv.usec);
-    }
-  } else {
-    srandom(seed);
-  }
   int silent = atoi(argv[7]);
   if(!silent) {
     printf("naive=%d crc=%d ring=%d outdegree=%d hot=%d seed=%d\n", naive, useCRC, ring, OUTDEGREE, hot, seed);
     assert(!hot || !ring);
   }
+
+  if(seed == -1) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srandom(tv.tv_usec);
+    if(!silent) {
+      printf("Seed: %ld\n", tv.tv_usec);
+    }
+  } else {
+    srandom(seed);
+  }
+
   //  int lastPage = -1;
   //  int pageCount = 0;
 
