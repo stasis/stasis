@@ -561,12 +561,12 @@ For locking, due to the variety of locking protocols available, and
 their interaction with application
 workloads~\cite{multipleGenericLocking}, we leave it to the
 application to decide what degree of isolation is
-appropriate. Section~\ref{lock-manager} presents the Lock Manager.
+appropriate. Section~\ref{lock-manager} presents the lock manager.
 
 
 
 
-\subsection{The Log Manager}
+\subsection{Log Manager}
 \label{log-manager}
 
 All actions performed by a committed transaction must be
@@ -723,7 +723,7 @@ various primitives that \yad provides to application developers.
  \yad provides a default page-level lock manager that performs deadlock
 detection, although we expect many applications to make use of
 deadlock-avoidance schemes, which are already prevalent in
-multithreaded application development.  The Lock Manager is flexible
+multithreaded application development.  The lock manager is flexible
 enough to also provide index locks for hashtable implementations and 
 more complex locking protocols such as hierarhical two-phase 
 locking.~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample}  
@@ -1087,9 +1087,7 @@ trivial). Here we show how increment/decrement map onto \yad operations.
 First, we define the operation-specific part of the log record:
 \begin{small}
 \begin{verbatim}
-typedef struct {
-  int amount;
-} inc_dec_t;
+typedef struct { int amount } inc_dec_t;
 \end{verbatim}
 \noindent {\normalsize Here is the increment operation; decrement is
 analogous:}
@@ -1099,11 +1097,11 @@ int operateIncrement(int xid, Page* p, lsn_t lsn,
                      recordid rid, const void *d) {
   inc_dec_t * arg = (inc_dec_t)d;
   int i;
-
   latchRecord(rid); 
   readRecord(xid, p, rid, &i);   // read current value
   i += arg->amount;
-  // writeRecord updates the page and the LSN
+  
+  // write new value and update the LSN
   writeRecord(xid, p, lsn, rid, &i);
   unlatchRecord(rid); 
   return 0;                      // no error
@@ -1144,13 +1142,16 @@ int Tincrement(int xid, recordid rid, int amount) {
 \end{verbatim}
 \end{small}
 
+
 With some examination it is possible to show that this example meets
 the invariants.  In addition, because the REDO code is used for normal
 operation, most bugs are easy to find with conventional testing
-strategies.  As future work, there is some hope of verifying these
-invariants statically; for example, it is easy to verify that pages
-are only modified by operations, and it is also possible to verify
-latching for our page layouts that support records.
+strategies.  
+% covered this in future work...
+%As future work, there is some hope of verifying these
+%invariants statically; for example, it is easy to verify that pages
+%are only modified by operations, and it is also possible to verify
+%latching for our page layouts that support records.
 
 %% Furthermore, we plan to develop a number of tools that will
 %% automatically verify or test new operation implementations' behavior
