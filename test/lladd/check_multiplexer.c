@@ -64,19 +64,47 @@ terms specified in this license.
 */
 
 
-#define NUM_ENTRIES 10000
 
+
+#define NUM_ENTRIES 10000
+#define NUM_THREADS 100 
 START_TEST(multiplexTest) {
   Tinit();
   int xid = Tbegin();
   recordid hash;
   lladdIterator_t * it = ThashGenericIterator(xid, hash);
-  lladdFifoPool_t * fifoPool = fifoPool_ringBufferInit(100, 10000);
+  lladdFifoPool_t * fifoPool = fifoPool_ringBufferInit(NUM_THREADS, NUM_ENTRIES);
   lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, &multiplexHashLogByKey, &fifoPool_getConsumerCRC32, fifoPool);
   
   // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.) 
-						    
 
+  int i;
+  
+  /* threads have static thread sizes.  Ughh. */
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+
+  pthread_mutex_init(&mutex, NULL);
+  pthread_cond_init(&never, NULL);
+
+  pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
+  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+  pthread_mutex_lock(&mutex);
+
+  pthread_t * workers = malloc(sizeof(pthread_t) * fifoPool->fifoCount);
+
+  for(i = 0 ; i < fifoPool->fifoCount; i++) {
+    lladdConsumer_t * consumer = fifoPool->pool[i]->consumer;
+
+    pthread_create(&workers[i], &attr, go, consumer);
+    
+  }
+						    
+  pthread_mutex_unlock(&mutex);
+  
+  for(i = 0; i < fifoPool->fifoCount; i++) {
+    pthread_join(&workers[i], NULL);    
+  }
 } END_TEST
 
 

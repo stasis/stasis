@@ -49,7 +49,7 @@ static void * go (void * arg_ptr) {
 
   int k = *(int*)arg_ptr;
   int j;
-  int xid = Tbegin();
+  int xid;// = Tbegin();
 
   double sum_x_squared = 0;
   double sum = 0;
@@ -98,7 +98,7 @@ static void * go (void * arg_ptr) {
     assert(timeout.tv_nsec <= start.tv_nsec || timeout.tv_sec < start.tv_sec);
     */
   
-
+    xid = Tbegin();
 
     ThashInsert(xid, hash, (byte*)&j, sizeof(int), (byte*)&j, sizeof(int));
 
@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
   pthread_cond_init(&never, NULL);
 
   pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
-  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+  //  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
   pthread_mutex_lock(&mutex);
 
 
