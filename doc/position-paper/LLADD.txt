@@ -1,4 +1,3 @@
-
 Russell Sears
 Eric Brewer
 
@@ -11,30 +10,96 @@ geared toward specific workloads and data layouts such as those
 traditionally associated with SQL.  Lower level implementations such
 as Berkeley DB handle a wider variety of workloads and are built in a
 modular fashion.  However, they do not provide APIs to allow
-applications to build upon or modify low level policies such as
-allocation strategies, page layout or details of the recovery
-algorithm.  Furthermore, data structure implementations are typically
-not broken into separable, public API's, encouraging a "from scratch"
+applications to build upon and modify low level policies such as
+allocation strategies, page layout or details of recovery semantics.
+Furthermore, data structure implementations are typically
+not broken into separable, public APIs, encouraging a "from scratch"
 approach to the implementation of extensions.
 
 Contrast this to the handling of data structures within modern object
-oriented programming languages such as Java or C++ that provide a
-large number of data storage algorithm implementations.  Such
+oriented programming languages such as Java or C++.  Such languages typically provide a
+large number of data storage algorithm implementations.  These
 structures may be used interchangeably with application-specific data
 collections, and collection implementations can be composed into more
-sophisticated data structures.
+sophisticated data structures.  
 
 We have implemented LLADD (/yad/), an extensible transactional storage
-implementation that takes a composable and layered approach to
-transactional storage.  In other work, we show that its performance on
-traditional workloads is competitive with existing systems and show
-significant increases in throughput and memory utilization on
-specialized workloads.[XXX]
+library that takes a composable and layered approach to
+transactional storage.  Below, we present some of the high level
+features and performance characteristics of this system and discuss
+our plans to extend the system into distributed domains.  Finally we
+introduce our current research focus, the application of automated
+program verification and optimization techniques to application specific extensions.  Such
+techniques should significantly enhance the usability and performance
+of our system.
 
-We further argue that because of its natural integration into standard
-system software development practices our library can be naturally
-extended into networked and distributed domains.  Typical
-write-ahead-logging protocols implicitly implement machine
+Overview of the LLADD Architecture
+
+General purpose transactional storage systems are extremely complex
+and only handle certain types of workloads efficiently.  However, new
+types of applications and workloads are introduced on a regular basis.
+This results in the implementation of specialized, ad-hoc data storage
+systems from scratch, wasting resources and preventing code reuse.
+
+Instead of developing a set of general purpose data structures that
+attempt to behave well across many workloads, we have implemented a
+lower level API that makes it easy for application designers to
+implement specialized data structures.  Essentially, we have
+implemented a modern, extensible navigational database system.  We
+believe that this system will support modern development practices and
+address new applications that are evolving too quickly to allow
+appropriate general-purpose solutions to be developed.
+
+The library is based upon an extensible version of ARIES but does not
+hard-code details such as page format or data structure implementation.
+It provides a number of "operation" implementations which consist of
+redo/undo implementations that apply log entries and wrapper
+functions that produce log entries.
+During normal forward operations, page file writes are processed by
+applying redo entries from the log.  Other than the invocation of code
+that allocates and writes log entries there is no difference between
+the redo phase of recovery and normal forward operation.  This reduces
+the amount of code that must be developed in order to implement new
+data structures and page layouts.
+
+Of course, LLADD ships with a number of default data structures and
+layouts, ranging from byte-level page layouts to a linear hashtable 
+that was built using high-level reusable components.  The 
+hashtable is implemented on top of a resizable array and a
+locality preserving linked list implementation.
+
+Unlike existing solutions, we view data structure implementations from
+a reusability standpoint, allowing and encouraging application
+developers to compose existing transactional operations into
+application-specific data structures.
+
+In other work, we have shown that the system is competitive with
+Berkeley DB on traditional (hashtable based) workloads, and have shown
+significant performance improvements for less conventional workloads
+including custom data structure implementations, graph traversal 
+algorithms and transactional object persistence workloads.
+
+We showed a 2-3x performance improvement over Berkeley DB on object
+persistence across our benchmarks, and a 3-4x improvement over an
+in-process version of MySQL with the InnoDB backend.  (A traditional,
+IPC-based MySQL benchmark was prohibitively slow and InnoDB provided 
+the best performance among MySQL's durable storage managers.)
+
+Furthermore, our system only keeps one copy of each object in memory
+at a time, while most existing systems keep a second copy in the
+transactional system's page cache (and possibly a third copy in 
+operating system cache).  Therefore, our system can cache roughly
+twice as many objects in memory as the systems we compared it to.  We leave systematic
+performance tuning of LLADD to future work, and believe that further 
+optimizations would
+improve our performance on these benchmarks significantly.
+
+LLADD's customizability provides superior performance over existing,
+complex systems.  Because of its natural 
+integration into standard system software development practices, we think that LLADD
+can be naturally extended into networked and distributed domains.  
+
+For example, typical write-ahead-logging protocols implicitly implement machine
 independent, reorderable log entries in order to implement logical
 undo.  These two properties have been crucial in past system software
 designs, including data replication, distribution, and conflict
@@ -43,19 +108,20 @@ logical redo log as an application-level primitive, and to explore
 system designs that leverage these primitives.
 
 However, our approach assumes that application developers will
-correctly implement new transactional structures even though these
-data structures are notoriously difficult to implement correctly.  In
-this work we present our current attempts to address these concerns.
+implement high performance transactional data structures.  This 
+is a big assumption, as these
+data structures are notoriously difficult to implement correctly.  
+Our current research attempts to address these concerns.
 
-For such infrastructure to be generally useful, however, the
+For our infrastructure to be generally useful the
 functionality that it provides should be efficient, reliable and
-applicable to new application domains.  We believe that ease of
-development is a prerequisite to our other goals.
+applicable to new application domains.  We believe that improvements 
+to the development process can address each of these goals.
 
 Application developers typically have a limited amount of time to
 spend implementing and verifying application-specific storage
-extensions, and bugs in these extensions affect data durability.
-While the underlying data structure algorithms tend to be simple and
+extensions, but bugs in these extensions have dire consequences.
+Also, while data structure algorithms tend to be simple and
 easily understood, performance tuning and verification of
 implementation correctness is extremely difficult.
 
@@ -75,25 +141,26 @@ Existing work in the static-analysis community has verified that
 device driver implementations correctly adhere to complex operating
 system kernel locking schemes[SLAM]. If we formalize LLADD's latching
 and logging APIs, we believe that analyses such as these will be
-directly applicable, and allow us to verify that data structure
-behavior during recovery is equivalent to its behavior on each prefix
-of the log produced during normal forward operation.
+directly applicable, allowing us to verify that data structure
+behavior during recovery is equivalent to the behavior that would 
+result if an abort() was issued on each prefix of the log that is 
+generated during normal forward operation.
 
 By using coarse (one latch per logical operation) latching, we can
 drastically reduce the size of this space, allowing conventional
 state-state based search techniques (such as randomized or exhaustive
-state-space searches, or simple unit testing techniques) to be
+state-space searches, or even standard unit testing techniques) to be
 practical.  It has been shown that such coarse grained latching can
 yield high performance concurrent data structures if
 semantics-preserving optimizations such as page prefetching are
 applied[ARIES/IM].
 
-A separate approach toward static analysis of LLADD extensions
-involves compiler optimization techniques.  Software built on top of
-layered API's frequently makes repeated calls to low level functions
+A separate approach to the static analysis of LLADD extensions
+uses compiler optimization techniques.  Software built on top of
+layered APIs frequently makes repeated calls to low level functions
 that must repeat work.  A common example in LLADD involves loops over
 data with good locality in the page file.  The vast majority of the
-time, these loops call high level API's that needlessly pin and unpin
+time, these loops call high level APIs that needlessly pin and unpin
 the same underlying data.
 
 The code for each of these high level API calls could be copied into
@@ -107,11 +174,20 @@ elimination solve an analogous problem to remove unnecessary algebraic
 computations.  We hope to extend such techniques to reduce the number
 of buffer manager and locking calls made by existing code at runtime.
 
+We suspect that similar optimization techniques are applicable to
+application code.  Because local LLADD calls are simply normal
+function calls, it may even be possible to push the optimizations
+mentioned above up into application code, providing a class of
+optimizations that would be very difficult to replicate with existing
+transactional storage systems.  However, combining this technique with
+distributed storage systems may raise a number of interesting
+questions.
+
 Our implementation of LLADD is still unstable and inappropriate for
 use on important data.  We hope to validate our static analysis tools
 by incorporating them into LLADD's development process as we increase
 the reliability and overall quality of our implementation and its
-API's.
+APIs.
 
 LLADD provides a set of tools that allow applications to implement
 custom transactional data structures and page layouts.  This avoids
