@@ -2,11 +2,15 @@
 #define __LINEAR_HASH_NTA_H
 
 typedef struct {
-  long current_hashBucket;
-  recordid current_recordid;
+  recordid hashHeader;
+  recordid bucket;
+  int numBuckets;
+  int keySize;
+  int valueSize;
+  lladd_linkedList_iterator * it;
 } lladd_hash_iterator;
 
-/** Implementaiton of a linear hash table that makes use of nested top actions. */
+/** Implementation of a linear hash table that makes use of nested top actions. */
 
 recordid ThashCreate(int xid, int keySize, int valSize);
 void ThashDelete(int xid, recordid hash);
@@ -19,9 +23,11 @@ int ThashRemove(int xid, recordid hash, const byte* key, int keySize);
                    (a return value of zero means the key is associated with an
 		   empty value.) */
 int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
-lladd_hash_iterator * ThashIterator(int xid, recordid hash);
-int ThashIteratorNext(int xid, recordid hash, lladd_hash_iterator * it, byte ** key, byte** value);
-void ThashIteratorFree(int xid, lladd_hash_iterator * it);
+lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int valueSize);
+int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize);
+
+Operation getLinearHashInsert();
+Operation getLinearHashRemove();
 
 //Support 16 entries by default.
 #define HASH_INIT_BITS 4

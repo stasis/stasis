@@ -368,14 +368,14 @@ START_TEST(operation_nestedTopAction) {
   *dat = 10;
   Tset(xid, rid1, dat);
   
-  TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
+  void * handle = TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
   
   *dat = 20;
   Tset(xid, rid2, dat);
   *dat = 30;
   Tset(xid, rid3, dat);
   
-  TendNestedTopAction(xid);
+  TendNestedTopAction(xid, handle);
  // printf("B"); fflush(NULL);
   *dat = 40;
 

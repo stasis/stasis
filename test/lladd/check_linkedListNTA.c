@@ -49,6 +49,7 @@ terms specified in this license.
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
 
 #define LOG_NAME   "check_linkedListNTA.log"
 START_TEST(linkedListNTAtest)
@@ -99,8 +100,77 @@ START_TEST(linkedListNTAtest)
   Tcommit(xid);
   Tdeinit();
 } END_TEST
+#define NUM_THREADS 100
+#define NUM_T_ENTRIES 100
+static recordid makekey(int thread, int i) {
+  recordid rid;
+  rid.page = thread*NUM_THREADS+i;
+  rid.slot = thread*NUM_THREADS+i+1;
+  rid.size = thread*NUM_THREADS+i+1;
+  return rid;
+}
+typedef struct {
+  int thread;
+  recordid listRoot;
+} workerarg;
+static void * worker(void * arg) {
+  workerarg * arguments = (workerarg*) arg;
+  int thread = arguments->thread;
+  recordid listRoot = arguments->listRoot;
+  free(arg);
+  int xid = Tbegin();
+  int i;
+  for(i = 0; i < NUM_T_ENTRIES; i++) {
+    recordid key = makekey(thread, i);
+    int value = i + thread * NUM_THREADS;
+    int ret = TlinkedListInsert(xid, listRoot, (byte*)&key, sizeof(recordid), (byte*)&value, sizeof(int));
+    assert(!ret);
+  }
+  Tcommit(xid);
+  xid = Tbegin();
+  for(i = 0; i < NUM_T_ENTRIES; i+=10) {
+    recordid key = makekey(thread, i);
+    int ret = TlinkedListRemove(xid, listRoot, (byte*)&key, sizeof(recordid));
+    assert(ret);
+    ret = TlinkedListRemove(xid, listRoot, (byte*)&key, sizeof(recordid));
+    assert(!ret);
+  }
+  Tabort(xid);
+  xid = Tbegin();
+  for(i = 0; i < NUM_T_ENTRIES; i++) {
+    recordid key = makekey(thread, i);
+    int * value;
+    int ret = TlinkedListFind(xid, listRoot, (byte*)&key, sizeof(recordid), (byte**)&value);
+    assert(ret == sizeof(int));
+    assert(*value == i+thread*NUM_THREADS);
+    free(value);
+  }
+  Tcommit(xid);
+  return NULL;
+}
 
-
+START_TEST ( linkedListMultiThreadedNTA ) {
+  Tinit();
+  int xid = Tbegin();
+  recordid listRoot = TlinkedListCreate(xid, sizeof(recordid), sizeof(int));
+  Tcommit(xid);
+  int i;
+  pthread_t threads[NUM_THREADS];
+  
+  for(i = 0; i < NUM_THREADS; i++) {
+    workerarg * arg = malloc(sizeof(workerarg));
+    arg->thread = i;
+    arg->listRoot = listRoot;
+    pthread_create(&threads[i],NULL, &worker, arg);
+  }
+  for(i = 0; i < NUM_THREADS; i++) {
+    void * ptr;
+    pthread_join(threads[i], &ptr);
+  }
+  
+  
+  Tdeinit();
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("linkedListNTA");
@@ -111,7 +181,7 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, linkedListNTAtest);
-  
+  tcase_add_test(tc, linkedListMultiThreadedNTA);
   /* --------------------------------------------- */
   
   tcase_add_checked_fixture(tc, setup, teardown);

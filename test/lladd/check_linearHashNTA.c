@@ -49,9 +49,11 @@ terms specified in this license.
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
-
+#include <pthread.h>
 #define LOG_NAME   "check_linearHashNTA.log"
 #define NUM_ENTRIES 100000
+/** @test
+*/
 START_TEST(linearHashNTAtest)
 {
   Tinit();
@@ -108,6 +110,123 @@ START_TEST(linearHashNTAtest)
   Tcommit(xid);
   Tdeinit();
 } END_TEST
+#define NUM_THREADS 100
+#define NUM_T_ENTRIES 1000
+typedef struct { 
+  int thread;
+  recordid rid;
+} linear_hash_worker_args;
+recordid makekey(int thread, int i) {
+  recordid ret;
+  ret.page = thread * NUM_T_ENTRIES + i;
+  ret.slot = thread * NUM_T_ENTRIES + i * 2;
+  ret.size= thread * NUM_T_ENTRIES + i * 3;
+  return ret;
+}
+void * worker(void* arg) {
+  linear_hash_worker_args * args = arg;
+  int thread = args->thread;
+  recordid hash = args->rid;
+  
+  int xid = Tbegin();
+
+  int i;
+  
+  for(i = 0; i < NUM_T_ENTRIES; i++) {
+    int value = i + thread * NUM_T_ENTRIES;
+    recordid key = makekey(thread,i);
+    ThashInsert(xid, hash, (byte*)&key, sizeof(recordid), (byte*)&value, sizeof(int));
+  }
+  
+  Tcommit(xid);
+  xid = Tbegin();
+  
+  for(i = 0; i < NUM_T_ENTRIES; i+=10) {
+    int * value;
+    recordid key = makekey(thread,i);
+    assert(ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)));
+    assert(-1==ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value));
+    assert(!ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)));
+  }
+  
+  Tabort(xid);
+  xid = Tbegin();
+  
+  for(i = 0; i < NUM_T_ENTRIES; i+=10) {
+    recordid key = makekey(thread,i);
+    int * value;
+    assert(sizeof(int) == ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value));
+    assert(*value == i + thread * NUM_T_ENTRIES);
+    free (value);
+  }
+  Tcommit(xid);
+  return NULL;
+}
+START_TEST(linearHashNTAThreadedTest) {
+  Tinit();
+  int xid = Tbegin();
+  recordid rid = ThashCreate(xid, sizeof(recordid), sizeof(int));
+  int i;
+  Tcommit(xid);
+  pthread_t threads[NUM_THREADS];
+  for(i = 0; i < NUM_THREADS; i++) {
+    linear_hash_worker_args * args = malloc(sizeof(linear_hash_worker_args));
+    args->thread = i;
+    args->rid= rid;
+    pthread_create(&threads[i], NULL, &worker, args);
+  }
+  for(i = 0; i < NUM_THREADS; i++) {
+    void * ret;
+    pthread_join(threads[i], ret);
+  }
+  Tdeinit();
+} END_TEST
+
+START_TEST(linearHashNTAIteratortest) {
+  Tinit();
+  int xid = Tbegin();
+  
+  recordid hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
+  
+  int i = 0;
+  
+  for(i = 0; i < NUM_ENTRIES; i++) {
+    recordid value = makekey(0, i);
+    assert(!ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid)));
+  }
+  
+  int seen[NUM_ENTRIES];
+  
+  for(i = 0; i < NUM_ENTRIES; i++) {
+    seen[i] = 0;
+  }
+  
+  lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
+  
+  int * key;
+  recordid * value;
+  int keySize; 
+  int valueSize;
+  
+  while(ThashNext(xid, it, (byte**)&key, &keySize, (byte**)&value, &valueSize)) {
+    
+    recordid check = makekey(0, *key);
+    assert(!memcmp(value, &check, sizeof(recordid)));
+    
+    assert(!seen[*key]);
+    seen[*key]++;
+    
+    free(key);
+    free(value);
+  }
+  
+  for(i = 0 ; i < NUM_ENTRIES; i++) { 
+    assert(seen[i] == 1);
+  }
+  
+  Tcommit(xid);
+  Tdeinit();
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHashNTA");
@@ -117,7 +236,9 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
+  tcase_add_test(tc, linearHashNTAIteratortest);
   tcase_add_test(tc, linearHashNTAtest);
+  tcase_add_test(tc, linearHashNTAThreadedTest);
   
   /* --------------------------------------------- */
   

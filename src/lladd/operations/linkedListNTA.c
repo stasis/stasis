@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#define __USE_GNU
+#include <pthread.h>
+
 /** A quick note on the format of linked lists.  Each entry consists 
      of a struct with some variable length data appended to it.
 
@@ -28,8 +31,9 @@
   
 	@file
 */
+static pthread_mutex_t linked_list_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
-
+static int  __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
 typedef struct {
   recordid list;
   int keySize;  
@@ -52,11 +56,12 @@ static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void 
   valueSize = log->valueSize;
   key = (byte*)(log+1);
   value = ((byte*)(log+1))+keySize;
-  
+  pthread_mutex_lock(&linked_list_mutex);
 //  printf("Operate insert called: rid.page = %d keysize = %d valuesize = %d %d {%d %d %d}\n", rid.page, log->keySize, log->valueSize, *(int*)key, value->page, value->slot, value->size);
   // Skip writing the undo!  Recovery will write a CLR after we're done, effectively
   // wrapping this in a nested top action, so we needn't worry about that either.
   __TlinkedListInsert(xid, log->list, key, keySize, value, valueSize);
+  pthread_mutex_unlock(&linked_list_mutex);
   
   return 0;
 }
@@ -69,11 +74,11 @@ static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void 
   
   keySize = log->keySize;
   key = (byte*)(log+1);
-  
+  pthread_mutex_lock(&linked_list_mutex);
 //  printf("Operate remove called: %d\n", *(int*)key);
   // Don't call the version that writes an undo entry!
   __TlinkedListRemove(xid, log->list, key, keySize);
-  
+  pthread_mutex_unlock(&linked_list_mutex);
   return 0;
 }
 
@@ -85,13 +90,14 @@ int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, con
   undoLog->list = list;
   undoLog->keySize = keySize;
   memcpy(undoLog+1, key, keySize);
-
-  TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT, 
+  pthread_mutex_lock(&linked_list_mutex);
+  void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT, 
                     (byte*)undoLog, sizeof(lladd_linkedListInsert_log) + keySize);
-  
+  free(undoLog);
   __TlinkedListInsert(xid, list, key, keySize, value, valueSize);
 
-  TendNestedTopAction(xid);
+  TendNestedTopAction(xid, handle);
+  pthread_mutex_unlock(&linked_list_mutex);
   
   return ret;  
 }
@@ -142,10 +148,12 @@ static void __TlinkedListInsert(int xid, recordid list, const byte * key, int ke
 
 int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
   lladd_linkedList_entry * entry = malloc(list.size);
+  pthread_mutex_lock(&linked_list_mutex);
   Tread(xid, list, entry);
 
   if(!entry->next.size) {
     free(entry);    
+    pthread_mutex_unlock(&linked_list_mutex);
     return -1; // empty list 
   }
   while(1) {
@@ -155,6 +163,7 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
      *value  = malloc(valueSize);
       memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
       free(entry);
+      pthread_mutex_unlock(&linked_list_mutex);
       return valueSize;
     }
     if(entry->next.size != -1) {
@@ -165,19 +174,22 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
     }
   }
   free(entry);
+  pthread_mutex_unlock(&linked_list_mutex);
   return -1;
 }
 
-static int __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
+
 
 
 int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   byte * value;
   int valueSize;
+  pthread_mutex_lock(&linked_list_mutex);
   int ret = TlinkedListFind(xid, list, key, keySize, &value);
   if(ret != -1) {
     valueSize = ret;
   } else {
+    pthread_mutex_unlock(&linked_list_mutex);
     return 0;
   }
   int entrySize = sizeof(lladd_linkedListRemove_log) + keySize + valueSize;
@@ -191,24 +203,25 @@ int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   memcpy(((byte*)(undoLog+1))+keySize, value, valueSize);
  // printf("entry size %d sizeof(remove_log)%d keysize %d valuesize %d sizeof(rid) %d key %d value {%d %d %ld}\n",
  //       entrySize, sizeof(lladd_linkedListRemove_log), keySize, valueSize, sizeof(recordid), key, value->page, value->slot, value->size);
-  TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_REMOVE, 
+  void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_REMOVE, 
   			(byte*)undoLog, entrySize);
   free(value);
-  
+  free(undoLog);
   __TlinkedListRemove(xid, list, key, keySize);
 
-  TendNestedTopAction(xid);
-  
+  TendNestedTopAction(xid, handle);
+  pthread_mutex_unlock(&linked_list_mutex);
   return 1;  
 }
 
 static int __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   lladd_linkedList_entry * entry = malloc(list.size);
-
+  pthread_mutex_lock(&linked_list_mutex);
   Tread(xid, list, entry);
   if(entry->next.size == 0) {
     //Empty List.
     free(entry);
+    pthread_mutex_unlock(&linked_list_mutex);
     return 0;
   }
   int listRoot = 1;
@@ -240,6 +253,7 @@ static int __TlinkedListRemove(int xid, recordid list, const byte * key, int key
 	free (entry2);
       }
       free(entry);
+      pthread_mutex_unlock(&linked_list_mutex);
       return 1;
     } else { // Entry doesn't match the key we're looking for.
       if(entry->next.size != -1) {
@@ -254,17 +268,21 @@ static int __TlinkedListRemove(int xid, recordid list, const byte * key, int key
     }
   } 
   free(entry);
+  pthread_mutex_unlock(&linked_list_mutex);
   return 0;
 }
 /*** @todo TlinkedListMove could be much faster, but this is good enough for a first pass */
 int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
   byte * value;
+  pthread_mutex_lock(&linked_list_mutex);
   int valueSize = TlinkedListFind(xid, start_list, key, keySize, &value);
   if(valueSize == -1) {
+    pthread_mutex_unlock(&linked_list_mutex);
     return 0;
   } else {
     TlinkedListRemove(xid, start_list, key, keySize);
     TlinkedListInsert(xid, end_list, key, keySize, value, valueSize);
+    pthread_mutex_unlock(&linked_list_mutex);
     return 1;
   }
 }
@@ -308,7 +326,7 @@ lladd_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keyS
 int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * keySize, byte **value, int * valueSize) {
 
   if(it->next.size == -1)  { free(it); return 0; }
-
+  pthread_mutex_lock(&linked_list_mutex);
   if(it->first == -1) {
     it->first = 1;
   } else if(it->first) {
@@ -321,7 +339,9 @@ int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * 
       //The root entry was removed.  Reset the iterator.
       it->first = -1;
       it->next = it->listRoot;
-      return TlinkedListNext(xid, it, key, keySize, value, valueSize);
+      int ret = TlinkedListNext(xid, it, key, keySize, value, valueSize);
+      pthread_mutex_unlock(&linked_list_mutex);
+      return ret;
     } else {
       //continue as normal.
       it->first = 0;
@@ -332,6 +352,7 @@ int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * 
 
   lladd_linkedList_entry * entry = malloc(it->next.size);
   Tread(xid, it->next, entry);
+  int ret;
   if(entry->next.size) {
     *keySize = it->keySize;
     *valueSize = it->valueSize;
@@ -343,12 +364,14 @@ int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * 
     memcpy(*key, entry+1, *keySize);
     memcpy(*value, ((byte*)(entry + 1))+*keySize, *valueSize);
     
-    free(entry);  
-    return 1;
+    ret = 1;    
   } else {
     // This entry was empty (this case occurs with empty lists)
-    free(it); 
-    free(entry);
-    return 0;
+    free(it);
+
+    ret = 0;    
   }
+  free(entry);  
+  pthread_mutex_unlock(&linked_list_mutex);
+  return ret;
 }

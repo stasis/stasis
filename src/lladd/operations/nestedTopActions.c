@@ -74,19 +74,26 @@ void initNestedTopActions() {
 }
 /** @todo TbeginNestedTopAction's API might not be quite right.  
     Are there cases where we need to pass a recordid in?
+
+    @return a handle that must be passed into TendNestedTopAction
 */
-void TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
+void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   recordid rid = NULLRID;
+  
   rid.page = datSize;
   LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, rid, op, dat);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
   lsn_t * prevLSN = malloc(sizeof(lsn_t));
   *prevLSN = e->LSN;
   pthread_mutex_lock(&transactional_2_mutex);
-  assert(!pblHtLookup(nestedTopActions, &xid, sizeof(int)));
+  void * ret = pblHtLookup(nestedTopActions, &xid, sizeof(int));
+  if(ret) { 
+    pblHtRemove(nestedTopActions, &xid, sizeof(int));
+  }
   pblHtInsert(nestedTopActions, &xid, sizeof(int), prevLSN);
   pthread_mutex_unlock(&transactional_2_mutex);
   free(e);
+  return ret;
 }
 
 /** 
@@ -97,12 +104,15 @@ void TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
     @todo LogCLR()'s API is useless.  Make it private, and implement a better 
     public version. (Then rewrite TendNestedTopAction) 
 */
-lsn_t TendNestedTopAction(int xid) {
+lsn_t TendNestedTopAction(int xid, void * handle) {
   
   pthread_mutex_lock(&transactional_2_mutex);
   
   lsn_t * prevLSN = pblHtLookup(nestedTopActions, &xid, sizeof(int));
   pblHtRemove(nestedTopActions, &xid, sizeof(int));
+  if(handle) {
+    pblHtInsert(nestedTopActions, &xid, sizeof(int), handle);
+  }
   // This action wasn't really undone -- This is a nested top action!
   lsn_t undoneLSN = XactionTable[xid].prevLSN; 
   recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)

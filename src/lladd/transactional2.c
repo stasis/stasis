@@ -71,6 +71,9 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_LINKED_LIST_INSERT] = getLinkedListInsert();
 	operationsTable[OPERATION_LINKED_LIST_REMOVE] = getLinkedListRemove();
 
+	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
+	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
+
 }
 
 

@@ -61,6 +61,6 @@ terms specified in this license.
 
 #include <lladd/operations.h>
 void initNestedTopActions();
-void TbeginNestedTopAction(int xid, int op, const byte* log_arguments, int log_arguments_length);
-lsn_t TendNestedTopAction(int xid);
+void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments, int log_arguments_length);
+lsn_t TendNestedTopAction(int xid, void * handle);
 #endif

@@ -122,6 +122,9 @@ terms specified in this license.
 #define OPERATION_SET_RANGE_INVERSE 28
 #define OPERATION_LINKED_LIST_INSERT 29
 #define OPERATION_LINKED_LIST_REMOVE 30
+#define OPERATION_LINEAR_HASH_INSERT 31
+#define OPERATION_LINEAR_HASH_REMOVE 32
+
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 
