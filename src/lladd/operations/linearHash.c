@@ -24,7 +24,6 @@
 #define headerNextSplit (headerRidB->slot)
 
 #include <math.h>
-#include <malloc.h>
 #include <string.h>
 #include <lladd/operations/linearHash.h>
 #include <pbl/pbl.h>
@@ -82,7 +81,7 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
 		     argBytes + keySize, valSize);
   return 0;
 }
-static int noop (int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { pageWriteLSN(xid, p, lsn); return 0; }
+//statiint noop (int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { pageWriteLSN(xid, p, lsn); return 0; }
 
 Operation getLinearInsert() {
   Operation o = { 

@@ -43,7 +43,7 @@ terms specified in this license.
 #include "logHandle.h"
 #include "logWriter.h" 
 #include <config.h> 
-#include <malloc.h>
+#include <stdlib.h>
 
 /**
    Sets the next and prev field of h, but does not set h.file_offset.

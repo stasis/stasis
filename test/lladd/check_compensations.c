@@ -43,7 +43,7 @@ terms specified in this license.
 
 #include <config.h>
 #include <check.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <lladd/compensations.h>
 
 #include <assert.h>

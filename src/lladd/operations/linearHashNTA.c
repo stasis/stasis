@@ -10,7 +10,7 @@
 #include <string.h>
 #include <lladd/operations/noop.h>
 
-static pthread_mutex_t linear_hash_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+
 
 /**
    re-entrant implementation of a linear hash hable, using nensted top actions.
@@ -19,6 +19,9 @@ static pthread_mutex_t linear_hash_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_N
    
    @todo Improve concurrency of linearHashNTA and linkedListNTA.
 */
+
+static pthread_mutex_t linear_hash_mutex;// = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+
 
 typedef struct {
   recordid buckets;
@@ -29,6 +32,14 @@ typedef struct {
   long numEntries;
 } lladd_hash_header;
 
+
+void LinearHashNTAInit() {
+  // only need this function since PTHREAD_RECURSIVE_MUTEX_INITIALIZER is really broken...
+  pthread_mutexattr_t attr;
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&linear_hash_mutex, &attr);
+}
 
 
 /* private methods... */

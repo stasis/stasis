@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 #include "../../libdfa/libdfa.h"
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

@@ -283,9 +283,13 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
   if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
 
+#ifdef HAVE_FDATASYNC
   fdatasync(fileno(blobf0));
   fdatasync(fileno(blobf1));
-
+#else
+  fsync(fileno(blobf0));
+  fsync(fileno(blobf1));
+#endif
 
   funlockfile(blobf0);
   funlockfile(blobf1);
@@ -426,7 +430,11 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
   readcount = fwrite(buf, rec.size, 1, fd);
   assert(1 == readcount);
 
+#ifdef HAVE_FDATASYNC
   fdatasync(fileno(fd));
+#else
+  fsync(fileno(fd));
+#endif
 
   funlockfile(fd);
 

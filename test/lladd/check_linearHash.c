@@ -77,7 +77,7 @@ START_TEST(checkHashFcn) {
     unsigned long second = hash(&j, sizeof(int), k, boundary);
     assert(first == second);
     unsigned long third =  hash(&j, sizeof(int), k+1, ULONG_MAX);
-    assert((first == third) || (powl(2,k)+ first == third));
+    assert((first == third) || (pow(2,k)+ first == third));
   }
 } END_TEST
 

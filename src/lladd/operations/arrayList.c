@@ -1,3 +1,4 @@
+
 #include <config.h>
 #include <lladd/common.h>
 
@@ -8,7 +9,10 @@
 #include <lladd/bufferManager.h>
 
 #include <assert.h>
+#define _XOPEN_SOURCE 600
 #include <math.h>
+
+
 
 /** 
     Implement resizable arrays, just like java's ArrayList class.
@@ -122,7 +126,10 @@ Operation getArrayListAlloc() {
 
 /** @todo locking for arrayList... this isn't pressing since currently
     the only thing that calls arraylist (the hashtable
-    implementations) serialize bucket list operations anyway... */
+    implementations) serialize bucket list operations anyway... 
+
+    @todo this function calls pow(), which is horribly inefficient. 
+*/
 
 static compensated_function int TarrayListExtendInternal(int xid, recordid rid, int slots, int op) {
   Page * p;
@@ -154,7 +161,7 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
   try_ret(compensation_error()) {
     for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
       /* Alloc block i */
-      int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
+      int blockSize = tlp.initialSize * pow(tlp.multiplier, i);
       int newFirstPage = TpageAllocMany(xid, blockSize);
       DEBUG("block %d\n", i);
       /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */

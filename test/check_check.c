@@ -43,6 +43,10 @@ terms specified in this license.
 #include <check.h>
 #include <assert.h>
 
+
+#ifndef NULL
+#define NULL 0
+#endif
 #define LOG_NAME   "check_check.log"
 
 /** @test A trivial test case for check_check

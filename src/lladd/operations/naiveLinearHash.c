@@ -19,7 +19,7 @@
 #define headerNextSplit (headerRidB->slot)
 
 #include <math.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <lladd/operations/linearHash.h>
 #include <pbl/pbl.h>

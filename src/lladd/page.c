@@ -157,9 +157,15 @@ void pageInit() {
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     pool[i].rwlatch = initlock();
     pool[i].loadlatch = initlock();
+#ifdef HAVE_POSIX_MEMALIGN
+    // Note that the backup behavior for posix_memalign breaks O_DIRECT.  Therefore, O_DIRECT should be
+    // disabled whenever posix_memalign is not present. 
     int ret = posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE);
-
     assert(!ret);
+#else
+    pool[i].memAddr = malloc(PAGE_SIZE);
+    assert(pool[i].memAddr);
+#endif
   }
   pthread_mutex_init(&lastAllocedPage_mutex , NULL);
 	

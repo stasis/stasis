@@ -4,7 +4,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
 #include <assert.h>

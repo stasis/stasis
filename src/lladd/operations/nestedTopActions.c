@@ -51,7 +51,7 @@ terms specified in this license.
 #include "../logger/logWriter.h"
 #include <pbl/pbl.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
 /** @todo Remove extern declaration of transactional_2_mutex from nestedTopActions.c */

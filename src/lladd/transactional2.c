@@ -79,9 +79,10 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
 	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
 	
-	int i;
+	/* 
+	   int i;
 
-	/*	for(i = 0; i <= OPERATION_LINEAR_HASH_REMOVE; i++) {
+		for(i = 0; i <= OPERATION_LINEAR_HASH_REMOVE; i++) {
 	  if(operationsTable[i].id != i) {
 	    printf("mismatch %d -> %d\n", i, operationsTable[i].id);
 	  }
@@ -105,7 +106,8 @@ int Tinit() {
 	} end_ret(compensation_error());
 	initNestedTopActions();
 	ThashInit();
-	
+	LinearHashNTAInit();
+	LinkedListNTAInit();
 	compensations_init();
 	
 	setupLockManagerCallbacksNil();
