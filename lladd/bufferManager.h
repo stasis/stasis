@@ -102,7 +102,7 @@ int bufInit();
  * @return fully formed Page type
  * @return page with -1 ID if page not found
  */
-Page loadPage(int pageid);
+Page loadPage(int pageid); 
 
 /**
  * allocate a record

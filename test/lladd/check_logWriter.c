@@ -312,7 +312,7 @@ START_TEST(logWriterCheckWorker) {
 } END_TEST
 
 START_TEST(logWriterCheckThreaded) {
-  int four = 4;
+
 #define  THREAD_COUNT 50
   pthread_t workers[THREAD_COUNT];
   int i;
@@ -321,7 +321,7 @@ START_TEST(logWriterCheckThreaded) {
   Tinit();
 
   for(i = 0; i < THREAD_COUNT; i++) {
-    pthread_create(&workers[i], NULL, worker_thread, &four);
+    pthread_create(&workers[i], NULL, worker_thread, &i);
   }
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);

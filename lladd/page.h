@@ -67,18 +67,84 @@ typedef struct {
   long size;
 } recordid;
 
+/** 
+    The page type contains in-memory information about pages.  This
+    information is used by LLADD to track the page while it is in
+    memory, and is never written to disk.
 
+    In particular, our current page replacement policy requires two doubly
+    linked lists, 
+
+    @todo In general, we pass around page structs (as opposed to page
+    pointers).  This is starting to become cumbersome, as the page
+    struct is becoming more complex...)
+*/
 typedef struct Page_s {
-	int id;
-	long LSN;
-	byte *memAddr;
-	int dirty;
-	struct Page_s *next;
-        /** for replacement policy */
-	struct Page_s *prev; 
-        /** this too */
-	int queue; 
+  /** @todo Shouldn't Page.id be a long? */
+  int id;
+  /** @todo The Page.LSN field seems extraneous.  Why do we need it? */
+  long LSN;
+  byte *memAddr;
+  /** @todo dirty pages currently aren't marked dirty! */
+  int dirty;
+  /** The next item in the replacement policy's queue */
+  struct Page_s *next;
+  /** The previous item in the replacement policy's queue. */
+  struct Page_s *prev; 
+  /** Which queue is the page in? */
+  int queue; 
+  /** Used for page-level latching.
+      
+      Each page has an associated read/write lock.  This lock only
+      protects the internal layout of the page, and the members of the
+      page struct.  Here is how it is held in various circumstances:
+      
+      Record allocation:  Write lock
+      Record read:        Read lock
+      Read LSN            Read lock
+      Record write       *READ LOCK*
+      Write LSN           Write lock
+
+      kickPage() does not require a lock, since it may not be called
+      if any threads could still be manipulating the page.
+      
+      Any circumstance where these locks are held during an I/O operation
+      is a bug.
+  */
+  
+  void * rwlatch;
+
+  /** 
+      In the multi-threaded case, before we steal a page, we need to
+      know that all pending actions have been completed.  Here, we
+      track that on a per-resident page basis, by incrementing the
+      pending field each time we generate a log entry that will result
+      in a write to the corresponding page.
+
+      (For a concrete example of why this is needed, imagine two
+      threads write to different records on the same page, and get
+      LSN's 1 and 2.  If 2 happens to write first, then the page is
+      stolen, and then we crash, recovery will not know that the page
+      does not reflect LSN 1.)
+
+      "Pending events" are calls to functions that take lsn's.
+      Currently, those functions are writeRecord and pageSlotRalloc.
+
+      @todo work out what happens with kickPage() and loadPage() more
+      carefully.
+
+  */
+  int * pending;
 } Page;
+
+void addPendingEvent(Page p);
+
+/** 
+    This function blocks until there are no events pending for this page.
+    
+    @todo implement addPendingEvent and unload for real!
+*/
+void acquireUnloadLock(Page p);
 
 /**
  * initializes all the important variables needed in all the
@@ -98,7 +164,7 @@ void pageInit();
  * as a parameter a Page and returns the LSN that is currently written on that
  * page in memory.
  */
-lsn_t pageReadLSN(Page page);
+lsn_t pageReadLSN(const Page page);
 
 /**
  * assumes that the page is already loaded in memory.  It takes as a
@@ -124,6 +190,8 @@ int freespace(Page page);
  */
 recordid pageRalloc(Page page, int size);
 
+void pageDeRalloc(Page page, recordid rid);
+
 void pageWriteRecord(int xid, Page page, recordid rid, lsn_t lsn, const byte *data);
 
 void pageReadRecord(int xid, Page page, recordid rid, byte *buff);
@@ -132,7 +200,7 @@ void pageCommit(int xid);
 
 void pageAbort(int xid);
 
-void pageRealloc(Page *p, int id);
+void pageRealloc(Page * p, int id);
 
 Page* pageAlloc(int id);
 

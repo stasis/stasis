@@ -26,6 +26,8 @@ void pageCacheInit() {
   activePages = pblHtCreate();
   assert(activePages);
   
+  DEBUG("pageCacheInit()");
+
   first = pageAlloc(0);
   pblHtInsert(activePages, &first->id, sizeof(int), first);
   

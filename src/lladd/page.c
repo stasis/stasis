@@ -39,26 +39,9 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-/************************************************
- * $Id$
- *
- * implementation of pages
- ************************************************/
-
-#include <config.h>
-#include <lladd/common.h>
-#include <lladd/page.h>
-
-#include <assert.h>
-#include <stdio.h>
-
-#include <lladd/constants.h>
-
-/* TODO:  Combine with buffer size... */
-static int nextPage = 0;
-
 
 /************************************************************************
+ * implementation of pages
 
  STRUCTURE OF A PAGE
 
@@ -85,7 +68,37 @@ static int nextPage = 0;
    - slots are zero indexed.
    - slots are of implemented as (offset, length)
 
+ Latching summary:
+
+   Each page has an associated read/write lock.  This lock only
+   protects the internal layout of the page, and the members of the
+   page struct.  Here is how it is held in various circumstances:
+
+   Record allocation:  Write lock
+   Record read:        Read lock
+   Read LSN            Read lock
+   Record write       *READ LOCK*
+   Write LSN           Write lock
+ 
+ Any circumstance where these locks are held during an I/O operation
+ is a bug.
+ 
+ $Id$
+
 ************************************************************************/
+
+#include <config.h>
+#include <lladd/common.h>
+#include <lladd/page.h>
+
+#include <assert.h>
+#include <stdio.h>
+
+#include "latches.h"
+#include <lladd/constants.h>
+
+/* TODO:  Combine with buffer size... */
+static int nextPage = 0;
 
 static const byte *slotMemAddr(const byte *memAddr, int slotNum) ;
 
@@ -105,6 +118,10 @@ static int getSlotLength(byte *memAddr, int slot) ;
 static void setSlotOffset(byte *memAddr, int slot, int offset) ;
 static void setSlotLength(byte *memAddr, int slot, int length) ;
 
+/** @todo replace static ints in page.c with #defines. */
+
+/* ------ */
+
 static int SLOT_OFFSET_SIZE;
 static int SLOT_LENGTH_SIZE;
 static int SLOT_SIZE;
@@ -120,12 +137,21 @@ static int START_OF_NUMSLOTS;
 static int MASK_0000FFFF;
 static int MASK_FFFF0000;
 
+/* ------ */
+
+static pthread_mutex_t pageAllocMutex;
+Page pool[MAX_BUFFER_SIZE];
+
 
 int isValidSlot(byte *memAddr, int slot);
 void invalidateSlot(byte *memAddr, int slot);
 void pageDeRalloc(Page page, recordid rid);
 
-void pageCompact(Page page);
+/**
+   The caller of this function must already have a writelock on the
+   page.
+*/
+static void pageCompact(Page page);
 
 /**
  * pageInit() initializes all the important variables needed in
@@ -161,6 +187,8 @@ void pageInit() {
 	MASK_0000FFFF = (1 << (2*BITS_PER_BYTE)) - 1;
 	MASK_FFFF0000 = ~MASK_0000FFFF;
 
+	
+	pthread_mutex_init(&pageAllocMutex, NULL);
 }
 
 void pageCommit(int xid) {
@@ -170,6 +198,49 @@ void pageCommit(int xid) {
 void pageAbort(int xid) {
   /* rmTouch(xid); */
 }
+
+
+
+/*void addPendingEvent(Page p){
+  pthread_mutex_lock(p.pending_mutex);
+  
+  assert(!(p.waiting));
+
+  (*(p.pending))++;
+  
+  pthread_mutex_unlock(p.pending_mutex);
+}
+
+void removePendingEvent(Page p) {
+  pthread_mutex_lock(p.pending_mutex);
+  
+  (*(p.pending))--;
+  
+  if(p.waiting && ! p.pending) {
+    pthread_cond_broadcast(p.removePendingCond);
+  }
+
+  pthread_mutex_unlock(p.pending_mutex);
+
+}
+
+*/
+
+/** Assume single threaded for now. 
+
+*/
+/*void unload(Page p) {
+  pthread_mutex_lock(p.pending_mutex);
+  p.waiting = 1;
+  while(*(p.pending)) {
+    
+    pthread_cond_wait(p.removePendingCond);
+  }
+  pthread_mutex_unlock(p.pending_mutex);
+
+  return;
+  }*/
+
 
 static int getFirstHalfOfWord(unsigned int *memAddr) {
   unsigned int word = *memAddr;
@@ -216,18 +287,28 @@ static const byte *slotMemAddr(const byte *memAddr, int slotNum) {
  * page in memory.
  */
 lsn_t pageReadLSN(Page page) {
-	return *(long *)(page.memAddr + START_OF_LSN);
+  lsn_t ret;
+
+  readlock(page.rwlatch, 259);
+  ret = *(long *)(page.memAddr + START_OF_LSN);
+  readunlock(page.rwlatch);
+
+  return ret;
 }
 
 /**
  * pageWriteLSN() assumes that the page is already loaded in memory.  It takes
  * as a parameter a Page.  The Page struct contains the new LSN and the page
  * number to which the new LSN must be written to.
+ *
+ * @param page You must have a writelock on page before calling this function.
  */
 static void pageWriteLSN(Page page) {
-	*(long *)(page.memAddr + START_OF_LSN) = page.LSN;
+
+  *(long *)(page.memAddr + START_OF_LSN) = page.LSN;
 }
 
+static int unlocked_freespace(Page page);
 /**
  * freeSpace() assumes that the page is already loaded in memory.  It takes 
  * as a parameter a Page, and returns an estimate of the amount of free space
@@ -236,8 +317,20 @@ static void pageWriteLSN(Page page) {
  * or an underestimate.
  */
 int freespace(Page page) {
-	int space = (slotMemAddr(page.memAddr, readNumSlots(page.memAddr)) - (page.memAddr + readFreeSpace(page.memAddr)));
-	return (space < 0) ? 0 : space;
+  int ret;
+  readlock(page.rwlatch, 292);
+  ret = unlocked_freespace(page);
+  readunlock(page.rwlatch);
+  return ret;
+}
+
+/** 
+    Just like freespace(), but doesn't obtain a lock.  (So that other methods in this file can use it.)
+*/
+static int unlocked_freespace(Page page) {
+  int space;
+  space= (slotMemAddr(page.memAddr, readNumSlots(page.memAddr)) - (page.memAddr + readFreeSpace(page.memAddr)));
+  return (space < 0) ? 0 : space;
 }
 
 /**
@@ -277,32 +370,56 @@ static void writeNumSlots(byte *memAddr, int numSlots) {
 }
 
 recordid pageRalloc(Page page, int size) {
-	int freeSpace = readFreeSpace(page.memAddr);
-	int numSlots = readNumSlots(page.memAddr);
+        int freeSpace;
+        int numSlots;
+	int i;
+
+	writelock(page.rwlatch, 342);
+	if(unlocked_freespace(page) < size) {
+	  
+	  pageCompact(page);
+
+	/* Make sure there's enough free space... */
+
+#ifdef DEBUGGING
+	  assert (unlocked_freespace(page) >= (int)size); /*Expensive, so skip it when debugging is off. */
+#endif
+
+	}
+	freeSpace = readFreeSpace(page.memAddr);
+	numSlots = readNumSlots(page.memAddr);
 	recordid rid;
+
 
 	rid.page = page.id;
 	rid.slot = numSlots;
 	rid.size = size;
 
-	/* Make sure there's enough free space... */
-	/*	assert (freespace(page) >= (int)size); */ /*Expensive, so skipped not done. */
 
-	/* Reuse an old (invalid) slot entry.  Why was this here? */
-	/*	for (i = 0; i < numSlots; i++) { 
-		if (!isValidSlot(page.memAddr, i)) {
-			rid.slot = i;
-			break;
-		}
+	/* 
+	   Reuse an old (invalid) slot entry.  Why was this here? 
+	   
+	   @todo is slot reuse in page.c a performance bottleneck? 
+	   
+	*/
+	for (i = 0; i < numSlots; i++) { 
+	  if (!isValidSlot(page.memAddr, i)) {
+	    rid.slot = i;
+	    break;
+	  }
 	}
 
-	if (rid.slot == numSlots) {*/
-		writeNumSlots(page.memAddr, numSlots+1);
-		/*	}*/
+	if (rid.slot == numSlots) {
+	  writeNumSlots(page.memAddr, numSlots+1);
+	}
 
 	setSlotOffset(page.memAddr, rid.slot, freeSpace);
 	setSlotLength(page.memAddr, rid.slot, rid.size);  
 	writeFreeSpace(page.memAddr, freeSpace + rid.size);
+
+	writeunlock(page.rwlatch);
+
+	/*	DEBUG("slot: %d freespace: %d\n", rid.slot, freeSpace); */
 
 	return rid;
 }
@@ -311,8 +428,13 @@ recordid pageRalloc(Page page, int size) {
 /** Only used for recovery, to make sure that consistent RID's are created 
  * on log playback. */
 recordid pageSlotRalloc(Page page, lsn_t lsn, recordid rid) {
-	int freeSpace = readFreeSpace(page.memAddr);
-	int numSlots = readNumSlots(page.memAddr);
+        int freeSpace; 
+	int numSlots;
+
+	writelock(page.rwlatch, 376);
+
+	freeSpace = readFreeSpace(page.memAddr);
+	numSlots= readNumSlots(page.memAddr);
 
 /*	if(rid.size > BLOB_THRESHOLD_SIZE) {
 	  return blobSlotAlloc(page, lsn_t lsn, recordid rid);
@@ -333,12 +455,14 @@ recordid pageSlotRalloc(Page page, lsn_t lsn, recordid rid) {
 	} else {
 	  /*  assert(rid.size == getSlotLength(page.memAddr, rid.slot)); */ /* Fails.  Why? */
 	}
+
+	writeunlock(page.rwlatch);
 	return rid;
 }
 
 
 int isValidSlot(byte *memAddr, int slot) {
-	return getSlotOffset(memAddr, slot) != INVALID_SLOT ? 1 : 0;
+	return (getSlotOffset(memAddr, slot) != INVALID_SLOT) ? 1 : 0;
 }
 
 void invalidateSlot(byte *memAddr, int slot) {
@@ -347,7 +471,9 @@ void invalidateSlot(byte *memAddr, int slot) {
 
 
 void pageDeRalloc(Page page, recordid rid) {
-	invalidateSlot(page.memAddr, rid.slot);
+  writelock(page.rwlatch, 416);
+  invalidateSlot(page.memAddr, rid.slot);
+  writeunlock(page.rwlatch);
 }
 
 /**
@@ -355,25 +481,32 @@ void pageDeRalloc(Page page, recordid rid) {
  	Move all of the records to the beginning of the page in order to 
 	increase the available free space.
 
-	TODO: If we were supporting multithreaded operation, this routine 
+	@todo If we were supporting multithreaded operation, this routine 
 	      would need to pin the pages that it works on.
 */
-void pageCompact(Page page) {
+static void pageCompact(Page page) {
 
 	int i;
 	byte buffer[PAGE_SIZE];
 	int freeSpace = 0;
-	int numSlots = readNumSlots(page.memAddr);
-	int meta_size = LSN_SIZE + FREE_SPACE_SIZE + NUMSLOTS_SIZE + (SLOT_SIZE*numSlots);
+	int numSlots;
+	int meta_size; 
 	int slot_length;
-	int last_used_slot = 0;
+	int last_used_slot = -1;
+
+	numSlots = readNumSlots(page.memAddr);
+
+	/*	DEBUG("Compact: numSlots=%d\n", numSlots); */
+	meta_size = LSN_SIZE + FREE_SPACE_SIZE + NUMSLOTS_SIZE + (SLOT_SIZE*numSlots);
 
 	/* Can't compact in place, slot numbers can come in different orders than 
 	   the physical space allocated to them. */
 	memcpy(buffer + PAGE_SIZE - meta_size, page.memAddr + PAGE_SIZE - meta_size, meta_size);
 
 	for (i = 0; i < numSlots; i++) {
-		if (isValidSlot(page.memAddr, i)) {
+	  /*	  DEBUG("i = %d\n", i); */
+	          if (isValidSlot(page.memAddr, i)) {
+		    /*  		  DEBUG("Buffer offset: %d\n", freeSpace); */
 			slot_length = getSlotLength(page.memAddr, i);
 			memcpy(buffer + freeSpace, page.memAddr + getSlotOffset(page.memAddr, i), slot_length);
 			setSlotOffset(buffer, i, freeSpace);
@@ -382,11 +515,17 @@ void pageCompact(Page page) {
 		} 
 	}
 
-	if (last_used_slot < numSlots) {
-		writeNumSlots(buffer, last_used_slot + 1);
-	}
+	
+	/*	if (last_used_slot < numSlots) { */
+	writeNumSlots(buffer, last_used_slot + 1);
+		/*} */
 
+	/*	DEBUG("freeSpace = %d, num slots = %d\n", freeSpace, last_used_slot + 1); */
+	
+	writeFreeSpace(buffer, freeSpace);
+	
 	memcpy(page.memAddr, buffer, PAGE_SIZE);
+
 }
 
 /**
@@ -439,16 +578,19 @@ int isBlobSlot(byte *pageMemAddr, int slot) {
   sure that this really is a special record.
 */
 void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
-
-  byte *recAddress = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
+  byte *recAddress;
+  
+  readlock(page.rwlatch, 519);
+  recAddress = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
   memcpy(buff, recAddress,  rid.size);
-
+  readunlock(page.rwlatch);
+  
 }
 
 void pageWriteRecord(int xid, Page page, recordid rid, lsn_t lsn, const byte *data) {
 
   byte *rec; 
-  
+  readlock(page.rwlatch, 529);
   assert(rid.size < PAGE_SIZE);
   
   rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
@@ -460,30 +602,48 @@ void pageWriteRecord(int xid, Page page, recordid rid, lsn_t lsn, const byte *da
 
   page.LSN = lsn;
   pageWriteLSN(page);
-
+  readunlock(page.rwlatch);
 }
 
 void pageRealloc(Page *p, int id) {
-	p->id = id;
-	p->LSN = 0;
-	p->dirty = 0;
+  writelock(p->rwlatch, 10);
+  p->id = id;
+  p->LSN = 0;
+  p->dirty = 0;
+  *(p->pending)=0;
+  writeunlock(p->rwlatch);
 }
 
-Page pool[MAX_BUFFER_SIZE];
 
 /** 
 	Allocate a new page. 
         @param id The id of the new page.
 	@return A pointer to the new page.  This memory is part of a pool, 
-	        and should never be freed by manually.
+	        and should never be freed manually.
  */
 Page *pageAlloc(int id) {
-  Page *p = &(pool[nextPage]);
+  Page *p;
+
+  pthread_mutex_lock(&pageAllocMutex);
+  
+  p = &(pool[nextPage]);
+  
+  /* We have an implicit lock on rwlatch, since we allocated it, but
+     haven't returned yet. */
+  p->rwlatch = initlock();
 
   nextPage++;
-
   assert(nextPage <= MAX_BUFFER_SIZE);
+
+  /* uggh.  Really just want to pass pages by reference */
+  p->pending = malloc(sizeof(int)); 
+
+  pthread_mutex_unlock(&pageAllocMutex);
+
+
+  /* pageRealloc does its own locking... */
   pageRealloc(p, id);
+  
 
   return p;
 }
@@ -549,13 +709,13 @@ int pageTest() {
 void setSlotType(Page p, int slot, int type) {
 
   assert(type > PAGE_SIZE);
-
+  /* setSlotLength does the locking for us. */
   setSlotLength(p.memAddr, slot, type);
 
 }
 
 int getSlotType(Page p, int slot, int type) {
   int ret = getSlotLength(p.memAddr, slot);
-
+  /* getSlotType does the locking for us. */
   return ret > PAGE_SIZE ? ret : NORMAL_SLOT;
 }
