@@ -1,4 +1,4 @@
-noinst_PROGRAMS = test-list test-multilist
+noinst_PROGRAMS = test-list test-multilist test-list2
 LDADD = $(top_builddir)/src/pobj/libpobj.a $(top_builddir)/src/lladd/liblladd.a \
 	$(top_builddir)/src/pbl/libpbl.a $(top_builddir)/src/libdfa/librw.a
 CLEANFILES = storefile.txt logfile.txt blob0_file.txt blob1_file.txt
