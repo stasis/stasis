@@ -1,0 +1,4 @@
+#!/bin/bash
+grep -v \#include |cpp|grep -v '^\# [0-9]'
+
+
