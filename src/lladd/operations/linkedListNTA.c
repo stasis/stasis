@@ -282,6 +282,7 @@ int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte 
   } else {
     TlinkedListRemove(xid, start_list, key, keySize);
     TlinkedListInsert(xid, end_list, key, keySize, value, valueSize);
+    free(value);
     pthread_mutex_unlock(&linked_list_mutex);
     return 1;
   }

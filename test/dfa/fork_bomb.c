@@ -88,7 +88,7 @@ int main (int argc, char** argv) {
   /*  dfaSet->monoTree.buffer = calloc(DFA_MACHINE_COUNT, sizeof(StateMachine));
       dfa_initialize_new (dfaSet, 10001, DFA_MACHINE_COUNT); */
   /*   dfaSet->monoTree.buffer = calloc(100, sizeof(StateMachine)); */
-  dfa_initialize_new (dfaSet, 10001, 1000);
+  dfa_initialize_new (dfaSet, 10001, 100);
   
   /*  initial_sm1 = allocMachine(&(dfaSet->monoTree)); */
   assert(NULL != (initial_sm1 = allocSmash(dfaSet->smash)));
@@ -190,4 +190,3 @@ state_name recv_ack(void * dfaSet, StateMachine * stateMachine, Message * m, cha
 
 
 }
-

@@ -53,7 +53,7 @@ smash_t *  init_Smash(int size) {
   ret->next_sm_id = 0;
   ret->store = store;
 //  ret->hash = jbHtCreate(xid, 3499);
-  ret->hash = lHtCreate(xid, 7);
+  ret->hash = ThashCreate(xid, sizeof(state_machine_id), sizeof(StateMachine));//lHtCreate(xid, 7);
   ret->xid = xid;
   ret->lock = malloc(sizeof(pthread_mutex_t));
   ret->memHash = pblHtCreate();
@@ -92,7 +92,7 @@ StateMachine *  _insertSmash(smash_t * smash, state_machine_id id) {
   
   new->current_state = START_STATE;
   /*  printf("Insert %ld\n", id);  */
-  TlogicalHashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine));
+  ThashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine));
   pblHtInsert(smash->memHash, &id, sizeof(state_machine_id), new);
   /*  Tcommit(smash->xid);
       smash->xid = Tbegin(); */
@@ -130,11 +130,12 @@ StateMachine *  allocSmash (smash_t * smash) {
 /** @return -1 on error, 0 if there isn't any more room, and 1 on success. */
 StateMachine *  insertSmash(smash_t * smash, state_machine_id id) {
   void * ret;
-  StateMachine junk;
+  StateMachine * junk;
 
   pthread_mutex_lock(smash->lock);
    
-  if(TlogicalHashLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte*)&junk, sizeof(state_machine_id)) != -1) {
+  if(ThashLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte**)&junk) != -1) {
+    free(junk);
     pthread_mutex_unlock(smash->lock);
     return NULL;
   }
@@ -165,8 +166,8 @@ int  freeSmash  (smash_t * smash, state_machine_id id) {
   free(old->sleepCond); 
   
   pblHtRemove(smash->memHash, &(id), sizeof(state_machine_id));
-  ret = TlogicalHashDelete(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id), NULL, sizeof(state_machine_id)) != -1;
-  
+  //ret = TlogicalHashDelete(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id), NULL, sizeof(state_machine_id)) != -1;
+  ret = ThashRemove(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id));
   free(old);
   
   /*  Tcommit(smash->xid);
@@ -192,8 +193,10 @@ void _setSmash(smash_t * smash, state_machine_id id) {
   
   StateMachine * machine;
   machine = _getSmash(smash, id);
-  TlogicalHashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id),(byte*) machine, sizeof(StateMachine));
-
+  //TlogicalHashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id),(byte*) machine, sizeof(StateMachine));
+  ThashInsert(smash->xid, smash->hash, 
+  	      (byte*)&id, sizeof(state_machine_id),
+              (byte*) machine, sizeof(StateMachine));
 }
 
 

@@ -213,7 +213,7 @@ START_TEST(check_linearHashIterator) {
   int key;
   int val;
   
-  int * keySeen = calloc(NUM_ITERATOR_ENTRIES, sizeof(int));
+//  int * keySeen = calloc(NUM_ITERATOR_ENTRIES, sizeof(int));
   for(int i = 0; i < NUM_ITERATOR_ENTRIES; i++) {
     key = i;
     val = NUM_ITERATOR_ENTRIES * key;
@@ -235,7 +235,7 @@ START_TEST(check_linearHashIterator) {
   linearHash_iteratorPair next = TlogicalHashIteratorNext(xid,rid, it, sizeof(int), sizeof(int));
   assert(next.key );
   while(next.key != NULL) {
-    	printf("%d -> %d\n", *(next.key), *(next.value));
+    //	printf("%d -> %d\n", *(next.key), *(next.value));
 	next = TlogicalHashIteratorNext(xid, rid, it, sizeof(int), sizeof(int));
   }
   TlogicalHashIteratorFree(it);

@@ -137,12 +137,13 @@ pthread_mutex_t truncateLog_mutex;
 
 
 static int sought = 1;
+static char * buffer;
 int openLogWriter() {
 #define BUFSIZE (1024*96)
 //#define BUFSIZE (512)
-  char * buffer ;/*= malloc(BUFSIZE);*/
-
-  assert(!posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE));
+  //char * buffer ;/*= malloc(BUFSIZE);*/
+  int ret = posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE);
+  assert(!ret);
 
   int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND /*| O_SYNC*/, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
@@ -380,7 +381,7 @@ void closeLogWriter() {
   deletelock(log_read_lock);
   pthread_mutex_destroy(&log_write_mutex);
   pthread_mutex_destroy(&truncateLog_mutex);
-
+  free (buffer);  // breaks efence. :(
 }
 
 void deleteLogWriter() {

@@ -160,7 +160,7 @@ void pageDeInit() {
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     deletelock(pool[i].rwlatch);
     deletelock(pool[i].loadlatch);
-    free(pool[i].memAddr);
+    free(pool[i].memAddr); // breaks efence
   }
   pthread_mutex_destroy(&lastAllocedPage_mutex);
 }

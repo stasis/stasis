@@ -111,7 +111,7 @@ START_TEST(simpleLinearHashTest)
 
 
     if(! (i % 1000)) {
-      printf("%d\n", i);
+    //  printf("%d\n", i);
       fflush(NULL);
     }
 
@@ -210,11 +210,11 @@ START_TEST(transactionalLinearHashTest)
 
 	recordid foo = Talloc(xid, 1);
 
-	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
+//	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
 	
   recordid hashRoot =  ThashAlloc(xid, sizeof(int), sizeof(recordid));
 
-	printf("%d %d %ld", hashRoot.page, hashRoot.slot, hashRoot.size);
+//	printf("%d %d %ld", hashRoot.page, hashRoot.slot, hashRoot.size);
 	
 // Insert some entries, see if they stick around. 
 	

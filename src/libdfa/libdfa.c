@@ -137,19 +137,26 @@ void recover(DfaSet * dfaSet) {
   for(i = 0; i < machine_count; i++) {
     machines[i].worker_thread = spawn_worker_thread(dfaSet, machines[i].machine_id);
     } */
-  StateMachine sm_stack; 
-  StateMachine * sm = &sm_stack;
+  //StateMachine sm_stack; 
+  StateMachine * sm;//= &sm_stack;
   StateMachine * this;
   // Need to write iterator...
-  int ret = (jbHtFirst(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
+//  int ret = (jbHtFirst(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
+  int keySize = sizeof(state_machine_id);
+  state_machine_id * sm_id;
+  int valueSize = sizeof(StateMachine);
+  lladd_hash_iterator * it = ThashIterator(dfaSet->smash->xid, dfaSet->smash->hash, keySize, valueSize);
 
-  assert(0);  // need to call linear hash iterator here. 
-
-  while(ret) {
-    this = getSmash(dfaSet->smash, sm->machine_id);
+  //assert(0);  // need to call linear hash iterator here. 
+  while(ThashNext(dfaSet->smash->xid, it, (byte**)&sm_id, &keySize, (byte**)&sm, &valueSize)) {
+//  while(ret) {
+    assert(*sm_id == sm->machine_id);
+    this = getSmash(dfaSet->smash, *sm_id);
     DEBUG("StateMachine %ld\n", sm->machine_id);
     this->worker_thread = spawn_worker_thread(dfaSet, sm->machine_id);
-    ret = (jbHtNext(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
+    free(sm_id);
+    free(sm);
+ //   ret = (jbHtNext(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
   }
 
 }
@@ -591,7 +598,6 @@ void * worker_loop(void * arg_void) {
   StateMachine * stateMachine; /* = &stateMachine_stack; */
   DfaSet * dfaSet = arg->dfaSet;
   state_machine_id machine_id = arg->machine_id;
-
   readlock(dfaSet->lock, machine_id);
 
   /*  printf("Worker loop: %ld\n", machine_id); */

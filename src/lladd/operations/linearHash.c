@@ -840,7 +840,7 @@ linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, line
   //next.size == 0 -> empty bucket.  == -1 -> end of list.
   int inBucket = 0;
   //while(!memcmp(&(it->current_rid), &(NULLRID), sizeof(recordid)) 
-  printf("--- %d %d %d\n", it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
+ // printf("--- %d %d %d\n", it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
   int found = 0;
   while(/*it->current_rid.size == -1
 	&& */it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
@@ -853,7 +853,7 @@ linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, line
       inBucket = 1;
     } else {
       found = 1;
-      printf("bbb {%d, %d, %d} {%d, %d, %d} %d %d\n", e->next.page, e->next.slot, e->next.size, it->current_rid.page, it->current_rid.slot, it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
+//      printf("bbb {%d, %d, %d} {%d, %d, %d} %d %d\n", e->next.page, e->next.slot, e->next.size, it->current_rid.page, it->current_rid.slot, it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
       break;
     }      // else, it stays NULLRID.
   }

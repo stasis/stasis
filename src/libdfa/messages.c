@@ -215,11 +215,13 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to) {
 
   if(addr == NULL) {
     fprintf(stderr, "Send failed.  Could not parse addr.\n");
+    free(to_sa);
     return -1;
   }
 
   if(port == -1) {
     fprintf(stderr, "Send failed.  Could not parse port.\n");
+    free(to_sa);
     free(addr);
     return -1;
   }
@@ -228,6 +230,7 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to) {
 
   if(err == 0) {
     perror("inet_aton");
+    free(to_sa);
     free(addr);
     return -1;
   }
@@ -244,9 +247,10 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to) {
   if(ret < 0) {
     perror("send_message");
   }
+  free(to_sa);
   if(ret != sizeof(Message)) {
     fprintf(stderr, "send_message sent partial message!\n");
-
+    
     return -1;
   }
   return ret;
