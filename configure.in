@@ -79,6 +79,7 @@ AC_CONFIG_FILES([Makefile
                  src/lladd/Makefile
                  src/pbl/Makefile
                  src/timing/Makefile
+		 src/pobj/Makefile
                  test/2pc/Makefile
                  test/Makefile
                  test/cht/Makefile
@@ -87,6 +88,7 @@ AC_CONFIG_FILES([Makefile
                  test/lladd/Makefile
                  test/messages/Makefile
                  test/monotree/Makefile
+		 test/pobj/Makefile
                  utilities/Makefile
                  benchmarks/Makefile
                  benchmarks/berkeleyDB/Makefile
