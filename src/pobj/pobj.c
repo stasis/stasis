@@ -719,8 +719,9 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
     if (p->rep_index >= 0) {
 	pobj_slot = POBJ2REPSLOT (p);
     
-	/* TODO: switch to set_range update. */
-	Tset (xid, pobj_slot->rid, p);
+	if (ret)
+	    TsetRange (xid, pobj_slot->rid, (char *) flags_ptr - (char *) p,
+		       sizeof (unsigned long), flags_ptr);
 
 	pobj_end ();
     }
@@ -801,8 +802,8 @@ pobj_ref_typify (void *obj, int *reflist)
     if (p->rep_index >= 0) {
 	pobj_slot = POBJ2REPSLOT (p);
 
-	/* TODO: switch to set_range update. */
-	Tset (xid, pobj_slot->rid, p);
+	TsetRange (xid, pobj_slot->rid, POBJ_REFFLAGS_OFFSET (p->size),
+		   POBJ_REFFLAGS_SIZE (p->size), POBJ2REFS (p));
 	
 	pobj_end ();
     }
@@ -865,8 +866,7 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
     if (p->rep_index >= 0) {
 	pobj_slot = POBJ2REPSLOT (p);
 
-	/* TODO: switch to set_range update; note the is_changed field! */
-	Tset (xid, pobj_slot->rid, p);
+	TsetRange (xid, pobj_slot->rid, (char *) fld - (char *) p, len, fld);
 	
 	pobj_end ();
     }
@@ -949,8 +949,10 @@ pobj_update_range (void *obj, void *fld, size_t len)
     }
     
     /* Update corresponding record. */
-    /* TODO: switch to set_range update. */
-    Tset (xid, pobj_slot->rid, p);
+    if (len)
+	TsetRange (xid, pobj_slot->rid, (char *) fld - (char *) p, len, fld);
+    else
+	Tset (xid, pobj_slot->rid, p);
 
     pobj_end ();
 
@@ -1404,7 +1406,7 @@ pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
     debug ("...done (%d references adjusted)", changed);
 
     /* Update persistent image of object. */
-    /* TODO: use delta updates, via set_range method. */
+    /* TODO: use delta updates, via set_range method -- is that beneficial? */
     Tset (xid, pobj_slot->rid, p);
 
     return new_objid;
