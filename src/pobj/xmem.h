@@ -22,6 +22,7 @@ enum {
 
 void *xmem_malloc (int, char *, int, size_t);
 void xmem_free (int, void *);
+int xmem_memfunc (void *(*) (size_t), void (*) (void *));
 int xmem_obj_mtype (void *);
 char *xmem_obj_file (void *);
 int xmem_obj_line (void *);

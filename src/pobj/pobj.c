@@ -1411,7 +1411,7 @@ pobj_boot_init (void)
 
 
 int
-pobj_init (struct pobj_memfunc *ext_memfunc /* , struct pobj_memfunc *int_memfunc */)
+pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 {
     recordid tmp_rid;
     int xid;
@@ -1446,23 +1446,10 @@ pobj_init (struct pobj_memfunc *ext_memfunc /* , struct pobj_memfunc *int_memfun
 	if (ext_memfunc->free)
 	    g_ext_memfunc.free = ext_memfunc->free;
     }
-#if 0
-    /* Gilad, 2004-12-13: disabled in order to make project compile... */
-    if (int_memfunc) {
 
-	/* STOPPED HERE: don't necessarily initiate a whole new structure
-	 * for internal calls, but rather initialize XMALLOC with them. */
-	
-	if (int_memfunc->malloc)
-	    g_int_memfunc.malloc = int_memfunc->malloc;
-	if (int_memfunc->calloc)
-	    g_int_memfunc.calloc = int_memfunc->calloc;
-	if (int_memfunc->realloc)
-	    g_int_memfunc.realloc = int_memfunc->realloc;
-	if (int_memfunc->free)
-	    g_int_memfunc.free = int_memfunc->free;
-    }
-#endif
+    /* Initialize internal memory manager. */
+    if (int_memfunc)
+	xmem_memfunc (int_memfunc->malloc, int_memfunc->free);
 
     Tinit ();
 

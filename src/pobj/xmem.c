@@ -31,12 +31,17 @@ struct xmem_stat {
 #endif /* HAVE_XMEM */
 
 
+/* Default memory calls. */
+void *(*g_memfunc_malloc) (size_t) = malloc;
+void (*g_memfunc_free) (void *) = free;
+
+
 void *
 xmem_malloc (int mtype, char *file, int line, size_t size)
 {
     struct xmem *x;
 
-    x = (struct xmem *) malloc (size + XMEM_OFFSET);
+    x = (struct xmem *) g_memfunc_malloc (size + XMEM_OFFSET);
     if (! x)
 	exit (1);
 
@@ -99,8 +104,20 @@ xmem_free (int mtype, void *p)
     xmem_stats[mtype].count--;
 #endif /* HAVE_XMEM */
 
-    free (x);
+    g_memfunc_free (x);
 }
+
+int
+xmem_memfunc (void *(*memfunc_malloc)(size_t), void (*memfunc_free)(void *))
+{
+    if (memfunc_malloc)
+	g_memfunc_malloc = memfunc_malloc;
+    if (memfunc_free)
+	g_memfunc_free = memfunc_free;
+
+    return 0;
+}
+
 
 int
 xmem_obj_mtype (void *p)
