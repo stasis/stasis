@@ -8,7 +8,7 @@
 #define ARRAY_CONSUMER      1
 
 typedef struct {
-
+  int foo;
 } lladdConsumer_def_t;
 
 typedef struct {
@@ -19,7 +19,7 @@ typedef struct {
 /* call once per Tinit() call */
 void consumer_init();
 
-Tconsumer_close(int xid, lladdConsumer_t * it);
+void Tconsumer_close(int xid, lladdConsumer_t * it);
 /**
    
    @param xid Transaction id
@@ -35,4 +35,6 @@ int Tconsumer_push(int xid, lladdConsumer_t * it, byte * key, size_t keySize, by
 /* @see Tconsumer_push
    @return Error, or 'consumer full'
 */
-int Tconsumer_tryPush(int xid, ....);
+//int Tconsumer_tryPush(int xid, ....);
+
+#endif

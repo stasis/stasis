@@ -113,6 +113,23 @@ int                   linearHashNTAIterator_next (int xid, void * it);
 int                   linearHashNTAIterator_key  (int xid, void * it, byte **key);
 int                   linearHashNTAIterator_value(int xid, void * it, byte **value);
 
+/** @todo these should be in linearHashNTA.c, but they've been moved
+    here so that multiplexer.c can (temoprarily) implement a
+    multiplexer for logical hash operations. */
+
+typedef struct {
+  recordid hashHeader;
+  int keySize;
+} linearHash_insert_arg;
+
+typedef struct {
+  recordid hashHeader;
+  int keySize;
+  int valueSize;
+} linearHash_remove_arg;
+
+
+
 //Support 16 entries by default.
 #define HASH_INIT_BITS 4
 #define HASH_FILL_FACTOR 0.7

@@ -64,7 +64,7 @@ int Titerator_next(int xid, lladdIterator_t * it);
 */
 int Titerator_key(int xid, lladdIterator_t * it, byte ** key);
 /** 
-    Analagour to lladdIterator_key.
+    Analagous to lladdIterator_key.
 
     @see lladdIterator_key.
 */

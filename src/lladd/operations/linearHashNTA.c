@@ -105,7 +105,7 @@ compensated_function void ThashDelete(int xid, recordid hash) {
 compensated_function static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize);
 compensated_function static int __ThashRemove(int xid, recordid hashHeader, const byte * key, int keySize);
 
-typedef struct {
+/*typedef struct {
   recordid hashHeader;
   int keySize;
 } linearHash_insert_arg;
@@ -114,7 +114,7 @@ typedef struct {
   recordid hashHeader;
   int keySize;
   int valueSize;
-} linearHash_remove_arg;
+  } linearHash_remove_arg;*/
 
 compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   const linearHash_remove_arg * args = dat;
@@ -185,10 +185,11 @@ compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* k
     free(arg);
     ret = __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);  
   } end_action_ret(compensation_error());
-  //  beg in_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
-    TendNestedTopAction(xid, handle);
-    // } comp ensate_ret(compensation_error());
-    pthread_mutex_unlock(&linear_hash_mutex);
+
+  TendNestedTopAction(xid, handle);
+
+  pthread_mutex_unlock(&linear_hash_mutex);
+
   return ret;
 }
 compensated_function static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize) {
