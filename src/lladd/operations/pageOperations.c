@@ -148,7 +148,7 @@ void pageOperationsInit() {
 
   assert(freepage);
 
-  free(p.memAddr);
+  /*  free(p.memAddr); */
   
   deletelock(p.loadlatch);
   deletelock(p.rwlatch);

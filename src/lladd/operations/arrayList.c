@@ -50,7 +50,7 @@ recordid TarrayListAlloc(int xid, int count, int multiplier, int size) {
   recordid rid;
 
   rid.page = firstPage;
-  rid.size = 0;
+  rid.size = size;
   rid.slot = 0;
 
   Tupdate(xid, rid, &tlp, OPERATION_ARRAY_LIST_ALLOC);

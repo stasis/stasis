@@ -148,7 +148,7 @@ typedef struct {
 #include "operations/noop.h"
 #include "operations/instantSet.h"
 #include "operations/arrayList.h"
-
+#include "operations/linearHash.h"
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 
 /** Performs an operation during normal execution. 

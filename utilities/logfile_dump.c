@@ -63,7 +63,7 @@ int main() {
     printf("Couldn't open log.\n");
   }
 
-  lh = getLSNHandle(44);
+  lh = getLogHandle(); /*LSNHandle(0); */
 
   while((le = nextInLog(&lh))) {
 
