@@ -205,7 +205,7 @@ if(mycount <= 0 && !(mycount * -1) % FF_AM) { */
 //    int j;
     TarrayListInstantExtend(xid, hash, 1 /*AMORTIZE*/);
 
-    pthread_mutex_lock(&linearHashMutex);
+  //  pthread_mutex_lock(&linearHashMutex);  //Already hold this!
     
     recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
 

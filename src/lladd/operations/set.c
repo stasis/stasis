@@ -48,10 +48,82 @@ terms specified in this license.
 #include <lladd/operations/set.h>
 /*#include <lladd/bufferManager.h>*/
 #include "../page.h"
-
+#include <string.h>
+#include <assert.h>
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
 	writeRecord(xid, p, lsn, rid, dat);
 	return 0;
+}
+typedef struct {
+  int offset;
+  int realRecordLength;
+} set_range_t;
+
+static int operateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)  {
+  int diffLength = rid.size - sizeof(set_range_t);
+  assert(! (diffLength % 2));
+  diffLength /= 2;
+  const set_range_t * range = dat;
+  rid.size = range->realRecordLength;
+
+  byte * data = (byte*)(range + 1);
+  byte * tmp = malloc(rid.size);
+
+  readRecord(xid, p, rid, tmp);
+  memcpy(tmp+range->offset, data, diffLength);
+  writeRecord(xid, p, lsn, rid, tmp);
+
+  free(tmp);
+  return 0;
+}
+
+static int deOperateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)  {
+  int diffLength = rid.size - sizeof(set_range_t);
+  assert(! (diffLength % 2));
+  diffLength /= 2;
+  
+  const set_range_t * range = dat;
+  rid.size = range->realRecordLength;
+
+  byte * data = (byte*)(range + 1);
+  data += diffLength;
+  byte * tmp = malloc(rid.size);
+
+  readRecord(xid, p, rid, tmp);
+  memcpy(tmp+range->offset, data, diffLength);
+  writeRecord(xid, p, lsn, rid, tmp);
+
+  free(tmp);
+  return 0;
+}
+void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
+
+  set_range_t * range = malloc(sizeof(set_range_t) + 2 * length);
+  byte * record = malloc(rid.size);
+  
+  range->offset = offset;
+  range->realRecordLength = rid.size;
+
+  // Copy new value into log structure
+  memcpy(range + 1, dat, length);
+  
+  Page * p = loadPage(rid.page);
+  // No further locking is necessary here; readRecord protects the 
+  // page layout, but attempts at concurrent modification have undefined 
+  // results.  (See page.c)
+  readRecord(xid, p, rid, record);
+
+  // Copy old value into log structure 
+  memcpy((byte*)(range + 1) + length, record+offset, length);
+  
+  // Pass size of range into Tupdate via the recordid.
+  rid.size = sizeof(set_range_t) + 2 * length;
+  Tupdate(xid, rid, range, OPERATION_SET_RANGE);
+
+  releasePage(p);
+  free(record);
+  free(range);
+  
 }
 
 Operation getSet() { 
@@ -60,6 +132,26 @@ Operation getSet() {
 		SIZEOF_RECORD, /* use the size of the record as size of arg */
 		NO_INVERSE, 
 		&operate /* Function */
+	};
+	return o;
+}
+
+Operation getSetRange() {
+	Operation o = {
+		OPERATION_SET_RANGE,
+		SIZEOF_RECORD,
+		OPERATION_SET_RANGE_INVERSE,
+		&operateRange
+	};
+	return o;
+}
+
+Operation getSetRangeInverse() {
+	Operation o = {
+		OPERATION_SET_RANGE_INVERSE,
+		SIZEOF_RECORD,
+		OPERATION_SET_RANGE,
+		&deOperateRange
 	};
 	return o;
 }

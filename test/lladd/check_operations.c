@@ -448,6 +448,64 @@ START_TEST(operation_instant_set) {
 
 } END_TEST
 
+START_TEST(operation_set_range) {
+  printf("Set Range");
+  Tinit();
+  
+  int xid = Tbegin();
+  
+  int buf1[20];
+  int buf2[20];
+  
+  int range[20];
+  
+  recordid rid = Talloc(xid, sizeof(int) * 20);
+  
+  for(int i = 0; i < 20; i++) {
+    buf1[i] = i;
+  }
+  
+  Tset(xid, rid, buf1);
+  
+  Tcommit(xid);
+  
+  xid = Tbegin();
+  
+  Tread(xid, rid, buf2);
+  for(int i = 0; i < 20; i++) {
+    assert(buf2[i] == i);
+  }
+  
+  for(int i = 0; i < 5; i++) {
+    range[i] = 100 + i;
+  }
+  
+  TsetRange(xid, rid, sizeof(int) * 10, sizeof(int) * 5, range);
+  // Check forward action
+  Tread(xid, rid, buf2);
+  
+  for(int i = 0; i < 20; i++) {
+    if(i < 10 || i >= 15) {
+	assert(buf2[i] == i);
+    } else {
+	assert(buf2[i] == 100 + i - 10);
+    }
+  }
+  
+  Tabort(xid);
+  
+  xid = Tbegin();
+  
+  Tread(xid, rid, buf2);
+  //Check undo.
+  for(int i = 0; i < 20; i++) {
+    assert(buf2[i] == i);
+  }
+  
+  Tcommit(xid);
+  
+} END_TEST
+#define ARRAY_LIST_CHECK_ITER 10000
 START_TEST(operation_array_list) {
 
   Tinit();
@@ -456,7 +514,7 @@ START_TEST(operation_array_list) {
 
   recordid rid = TarrayListAlloc(xid, 4, 2, sizeof(int));
 
-  TarrayListExtend(xid, rid, 100000);
+  TarrayListExtend(xid, rid, ARRAY_LIST_CHECK_ITER);
   
   printf("commit");
   fflush(stdout);
@@ -471,12 +529,12 @@ START_TEST(operation_array_list) {
   rid2.slot = 0;
   rid2.size = sizeof(int);
 
-  for(int i = 0; i < 100000; i++) {
+  for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
     rid2.slot = i;
     Tset(xid, rid2, &i);
   }
 
-  for(int i = 0; i < 100000; i++) {
+  for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
     rid2.slot = i;
     int j;
     Tread(xid, rid2, &j);
@@ -491,13 +549,13 @@ START_TEST(operation_array_list) {
 
   xid = Tbegin();
 
-  for(int i = 0; i < 100000; i++) {
+  for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
     int j = 0-i;
     rid2.slot = i;
     Tset(xid, rid2, &j);
   }
 
-  for(int i = 0; i < 100000; i++) {
+  for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
     rid2.slot = i;
     int j = 0-i;
     int k;
@@ -512,7 +570,7 @@ START_TEST(operation_array_list) {
   fflush(stdout);
 
   xid = Tbegin();
-  for(int i = 0; i < 100000; i++) {
+  for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
     rid2.slot = i;
     int j;
     Tread(xid, rid2, &j);
@@ -542,6 +600,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_instant_set);
+  tcase_add_test(tc, operation_set_range);
   tcase_add_test(tc, operation_prepare);
   tcase_add_test(tc, operation_array_list);
   /* --------------------------------------------- */

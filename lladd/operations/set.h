@@ -59,4 +59,13 @@ terms specified in this license.
 
 Operation getSet();
 
+Operation getSetRangeInverse();
+Operation getSetRange();
+/**
+  @todo TsetRange is slow as implemented; although it is efficient with log 
+  space, it performs a number of extra memcpy() calls over the entire record.
+*/
+void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
+
+
 #endif

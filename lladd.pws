@@ -11,15 +11,15 @@ filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
 [filenumbers]
-0=71
-1=97
-2=126
-3=155
-4=351
-5=67
-6=56
-7=1
-8=63
+0=135
+1=1
+2=1
+3=113
+4=51
+5=439
+6=545
+7=122
+8=30
 9=1
 10=67
 11=1
@@ -51,13 +51,15 @@ filter.dir.ignore.hidden=0
 17=
 
 [filelist]
-0=/home/sears/lladd/lladd/logger/logger2.h
-1=/home/sears/lladd/src/lladd/transactional2.c
-2=/home/sears/lladd/src/lladd/operations.c
-3=/home/sears/lladd/lladd/operations.h
-4=/home/sears/lladd/test/lladd/check_operations.c
-5=/home/sears/lladd/lladd/operations/nestedTopActions.h
-6=/home/sears/lladd/src/lladd/operations/nestedTopActions.c
+0=/home/sears/lladd/lladd/constants.h
+1=/home/sears/lladd/lladd/operations.h
+2=/home/sears/lladd/src/lladd/page.c
+3=/home/sears/lladd/src/lladd/operations/set.c
+4=/home/sears/lladd/src/lladd/operations/arrayList.c
+5=/home/sears/lladd/test/lladd/check_page.c
+6=/home/sears/lladd/test/lladd/check_operations.c
+7=/home/sears/lladd/src/lladd/operations/alloc.c
+8=/home/sears/lladd/lladd/operations/alloc.h
 
 [Project Tree]
 0=0
@@ -73,11 +75,11 @@ filter.dir.ignore.hidden=0
 [File Tree]
 0=0
 1=0:6
-2=0:6:1
-3=0:6:2
-4=0:9
-5=0:9:4
-6=0:9:4:3
+2=0:6:2
+3=0:9
+4=0:9:4
+5=0:9:4:3
+6=0:9:4:4
 7=0:10
 8=0:10:5
 

@@ -64,6 +64,9 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_UNDO_LINEAR_INSERT] = getUndoLinearInsert();
 	operationsTable[OPERATION_LINEAR_DELETE] = getLinearDelete();
 	operationsTable[OPERATION_UNDO_LINEAR_DELETE] = getUndoLinearDelete();
+	
+	operationsTable[OPERATION_SET_RANGE] = getSetRange();
+	operationsTable[OPERATION_SET_RANGE_INVERSE] = getSetRangeInverse();
 
 }
 
