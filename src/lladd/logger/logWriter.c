@@ -146,6 +146,7 @@ int openLogWriter() {
   assert(!ret); */
   char * buffer = malloc(BUFSIZE);
   
+  if(!buffer) { return LLADD_NO_MEM; }
 
   int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND /*| O_SYNC*/, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
@@ -157,9 +158,9 @@ int openLogWriter() {
 
   if (log==NULL) {
     perror("Couldn't open log file");
-    abort();
+    //    abort();
     /*there was an error opening this file */
-    return FILE_WRITE_OPEN_ERROR;
+    return LLADD_IO_ERROR; //FILE_WRITE_OPEN_ERROR;
   }
   
   setbuffer(log, buffer, BUFSIZE);
@@ -200,8 +201,8 @@ int openLogWriter() {
     int nmemb = fwrite(&zero, sizeof(lsn_t), 1, log);
     if(nmemb != 1) {
       perror("Couldn't start new log file!");
-      assert(0);
-      return FILE_WRITE_OPEN_ERROR;
+      //      assert(0);
+      return LLADD_IO_ERROR; //FILE_WRITE_OPEN_ERROR;
     }
     global_offset = 0;
   } else {
@@ -330,7 +331,7 @@ static int flushLog() {
   if(nmemb != 1) {
     perror("writeLog couldn't write next log entry!");
     assert(0);
-    return FILE_WRITE_ERROR;
+    return LLADD_IO_ERROR; // FILE_WRITE_ERROR;
   }
   return 0;
   
@@ -408,9 +409,8 @@ static LogEntry * readLogEntry() {
       return NULL;
     }
     if(ferror(log)) {
-      perror("Error reading log!");
-      assert(0);
-      return 0;
+      perror("Error reading log");
+      return (LogEntry*)LLADD_IO_ERROR;
     }
   }
 
@@ -428,23 +428,24 @@ static LogEntry * readLogEntry() {
     if(ferror(log)) {
       perror("Error reading log!");
       free(ret);
-      assert(0);
-      return 0;
+      return (LogEntry*)LLADD_IO_ERROR;
     }
-    assert(0);
-    free(ret);
-    return 0;
+    perror("Unknown error in readLogEntry");
+    return (LogEntry*)LLADD_IO_ERROR;
   }
 
 
   entrySize = sizeofLogEntry(ret);
 
+  // This sanity check makes no sense -- sizeOfLogEntry() has nothing
+  // to do with the number of bytes read. */
 
   /** Sanity check -- Did we get the whole entry? */
-  if(size < entrySize) {
-    return 0;
-  }
-
+  //  if(size < entrySize) {
+    /* Read partial entry. */
+  //    free(ret);
+  //    return 0;
+  //  }
 
   assert(size == entrySize);
 
@@ -453,15 +454,6 @@ static LogEntry * readLogEntry() {
 
 LogEntry * readLSNEntry(lsn_t LSN) {
   LogEntry * ret;
-
-  /* We would need a lock to support this operation, and that's not worth it.  
-     if(!writeLogEntryIsReady) {
-     if(LSN > maxLSNEncountered) {
-     maxLSNEncountered = LSN;
-     }
-     } */
-
-  /*  readlock(log_read_lock); */
 
   /* Irritating overhead; two mutex acquires to do a read. */
   readlock(log_read_lock, 200);
@@ -477,7 +469,6 @@ LogEntry * readLSNEntry(lsn_t LSN) {
   return ret;
   
 }
-
 
 int truncateLog(lsn_t LSN) {
   FILE *tmpLog;
@@ -502,10 +493,10 @@ int truncateLog(lsn_t LSN) {
   tmpLog = fopen(LOG_FILE_SCRATCH, "w+");  /* w+ = truncate, and open for writing. */
 
   if (tmpLog==NULL) {
-    assert(0);
     /*there was an error opening this file */
+    pthread_mutex_unlock(&truncateLog_mutex);
     perror("logTruncate() couldn't create scratch log file!");
-    return FILE_WRITE_OPEN_ERROR;
+    return LLADD_IO_ERROR;
   }
 
   /* Need to write LSN - sizeof(lsn_t) to make room for the offset in
@@ -553,26 +544,30 @@ int truncateLog(lsn_t LSN) {
   fclose(tmpLog); 
  
   if(rename(LOG_FILE_SCRATCH, LOG_FILE)) {
-    perror("Log truncation failed!");
-    abort();
+    writeunlock(log_read_lock);
+    pthread_mutex_unlock(&log_write_mutex);
+    pthread_mutex_unlock(&truncateLog_mutex);
+  
+    perror("Error replacing old log file with new log file");
+    return LLADD_IO_ERROR;
   }
 
 
   log = fopen(LOG_FILE, "a+");
-  if (log==NULL) {
-    abort();
-    /*there was an error opening this file */
-    return FILE_WRITE_OPEN_ERROR;
+  if (log==NULL) { 
+
+    writeunlock(log_read_lock);
+    pthread_mutex_unlock(&log_write_mutex);
+    pthread_mutex_unlock(&truncateLog_mutex);
+
+    perror("Couldn't reopen log after truncate");
+    return LLADD_IO_ERROR;
   }
 
-  /*  myFseek(log, 0, SEEK_SET); */
-  global_offset = LSN - sizeof(lsn_t); /*= fread(&global_offset, sizeof(lsn_t), 1, log);*/
-  /*assert(count == 1); */
+  global_offset = LSN - sizeof(lsn_t);
 
-  /*  funlockfile(log);  */
   writeunlock(log_read_lock);
   pthread_mutex_unlock(&log_write_mutex);
-
   pthread_mutex_unlock(&truncateLog_mutex);
 
   return 0;

@@ -67,9 +67,11 @@ START_TEST(linkedListNTAtest)
     val.page = i * 1000;
     val.slot = val.page * 1000;
     val.size = val.slot * 1000;
-    assert(-1==TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2));
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2); 
+    assert(-1==found);
     TlinkedListInsert(xid, linkedList, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
-    assert(sizeof(recordid)==TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2));
+    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid)==found);
     assert(!memcmp(&val, val2, sizeof(recordid)));
     free(val2);
   }
@@ -79,20 +81,26 @@ START_TEST(linkedListNTAtest)
   xid = Tbegin();
   for(i = 0; i < 1000; i+=10) {
     recordid * val2 = NULL;
-    assert(sizeof(recordid)==TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2));
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid)==found);
     assert(val2->page == i * 1000);
     assert(val2->slot == i * 1000 * 1000);
     assert(val2->size == i * 1000 * 1000 * 1000);
     free(val2);
-    assert(TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int)));
-    assert(-1==TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2));
-    assert(!TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int)));
+    
+    found = TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int));
+    assert(found);
+    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    assert(-1==found);
+    found = TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int));
+    assert(!found);
   }
   Tabort(xid);
   xid = Tbegin();
   for(i = 0; i < 1000; i++) {
     recordid * val2;
-    assert(sizeof(recordid)==TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2));
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid)==found);
     assert(val2->page == i * 1000);
     assert(val2->slot == i * 1000 * 1000);
     assert(val2->size == i * 1000 * 1000 * 1000);

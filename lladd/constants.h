@@ -66,12 +66,16 @@ terms specified in this license.
 
 /* @define error codes
  */
-#define OUT_OF_MEM 1
-#define FILE_OPRN_ERROR 2
-#define FILE_READ_ERROR 3
-#define FILE_WRITE_ERROR 4
-#define FILE_WRITE_OPEN_ERROR 5
-#define MEM_WRITE_ERROR 6
+#define LLADD_DEADLOCK       -1
+#define LLADD_NO_MEM         -2
+#define LLADD_IO_ERROR       -3
+#define LLADD_INTERNAL_ERROR -4
+
+//#define FILE_OPRN_ERROR 2
+//#define FILE_READ_ERROR 3
+//#define FILE_WRITE_ERROR 4
+//#define FILE_WRITE_OPEN_ERROR 5
+//#define MEM_WRITE_ERROR 6
 
 #define PAGE_SIZE 4096
 

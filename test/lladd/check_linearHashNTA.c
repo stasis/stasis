@@ -71,9 +71,11 @@ START_TEST(linearHashNTAtest)
     val.page = i * NUM_ENTRIES;
     val.slot = val.page * NUM_ENTRIES;
     val.size = val.slot * NUM_ENTRIES;
-    assert(-1 == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(-1 == found);
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == found);
     assert(val2->page == i * NUM_ENTRIES);
     assert(val2->slot == val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
@@ -88,11 +90,15 @@ START_TEST(linearHashNTAtest)
     if(!(i % (NUM_ENTRIES/10))) {
       printf("-"); fflush(stdout);
     }
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == found);
     free(val2);
-    assert(ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
-    assert(-1==ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
-    assert(!ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)); 
+    assert(found);
+    found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(-1==found);
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
+    assert(!found);
   }
   printf("\nabort()\n"); fflush(stdout);
   Tabort(xid);
@@ -101,7 +107,8 @@ START_TEST(linearHashNTAtest)
     if(!(i % (NUM_ENTRIES/10))) {
       printf("+"); fflush(stdout);
     }
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == found);
     assert(val2->page == i * NUM_ENTRIES);
     assert(val2->slot == val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
@@ -131,7 +138,8 @@ START_TEST(linearHashNTAVariableSizetest)
     val.slot = val.page * NUM_ENTRIES;
     val.size = val.slot * NUM_ENTRIES;
     val2 = 0;
-    assert(-1 == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(-1 == found);
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
     val2 =0;
     int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
@@ -150,11 +158,15 @@ START_TEST(linearHashNTAVariableSizetest)
     if(!(i % (NUM_ENTRIES/10))) {
       printf("-"); fflush(stdout);
     }
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == found);
     free(val2);
-    assert(ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
-    assert(-1==ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
-    assert(!ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)));
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)); 
+    assert(found);
+    found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(-1==found);
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
+    assert(!found);
   }
   printf("\nabort()\n"); fflush(stdout);
   Tabort(xid);
@@ -210,9 +222,12 @@ void * worker(void* arg) {
   for(i = 0; i < NUM_T_ENTRIES; i+=10) {
     int * value;
     recordid key = makekey(thread,i);
-    assert(ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)));
-    assert(-1==ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value));
-    assert(!ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)));
+    int found = ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)); 
+    assert(found);
+    found = ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value);
+    assert(-1==found);
+    found = ThashRemove(xid, hash, (byte*)&key, sizeof(recordid));
+    assert(!found);
   }
   
   Tabort(xid);
@@ -221,7 +236,8 @@ void * worker(void* arg) {
   for(i = 0; i < NUM_T_ENTRIES; i+=10) {
     recordid key = makekey(thread,i);
     int * value;
-    assert(sizeof(int) == ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value));
+    int found = ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)&value);
+    assert(sizeof(int) == found); 
     assert(*value == i + thread * NUM_T_ENTRIES);
     free (value);
   }
@@ -258,7 +274,8 @@ START_TEST(linearHashNTAIteratortest) {
   
   for(i = 0; i < NUM_ENTRIES; i++) {
     recordid value = makekey(0, i);
-    assert(!ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid)));
+    int found = ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid));
+    assert(!found);
   }
   
   int seen[NUM_ENTRIES];
