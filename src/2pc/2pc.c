@@ -186,7 +186,18 @@ state_name coordinator_init_xact_2pc(void * dfaSet, StateMachine * stateMachine,
   } else {
     ret = 1;
   }
-  /* Where was this before?? */
+
+  if(m->type==AWAIT_ARRIVAL && ret) {
+    // need to (n)ack the client:
+    // Respond using the machine id expected by the client.
+    m->from_machine_id = m->initiator_machine_id;
+
+    printf("Responding\n");
+    
+    respond_once(&((DfaSet*)dfaSet)->networkSetup, 
+    		 COORDINATOR_START_2PC, m, m->initiator);
+  }
+
   m->from_machine_id = stateMachine->machine_id;
 
   return ret;
@@ -204,7 +215,9 @@ state_name send_ack_2pc(void * dfaSet, StateMachine * stateMachine, Message * m,
 state_name veto_or_prepare_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
 
-  return app_state->veto_or_prepare_2pc(dfaSet, stateMachine, m, from);
+  int ret = app_state->veto_or_prepare_2pc(dfaSet, stateMachine, m, from);
+  
+  return ret;
 }
 
 /**
@@ -213,10 +226,21 @@ state_name veto_or_prepare_2pc(void * dfaSet, StateMachine * stateMachine, Messa
 
 state_name abort_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
-
   send_ack_2pc(dfaSet, stateMachine, m, from);
-  
-  return app_state->abort_2pc(dfaSet, stateMachine, m, from);
+  int ret = app_state->abort_2pc(dfaSet, stateMachine, m, from);
+
+  //if((*responseType(m) == AWAIT_COMMIT_POINT || *responseType(m) == AWAIT_RESULT)) {
+  if(m->response_type == AWAIT_COMMIT_POINT || m->response_type == AWAIT_RESULT) {
+    state_machine_id tmp = m->from_machine_id;
+
+    /* TODO:  Could the chages to from_machine_id be moved into libdfa (it does this anyway, but it does it too late.) */
+    m->from_machine_id = m->initiator_machine_id; /*stateMachine->machine_id;*/
+
+    printf("Response being sent to: %s:%ld\n", m->initiator, m->to_machine_id);
+    respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_VETO_2PC, m, m->initiator);
+    m->from_machine_id = tmp;
+  }
+  return ret;
 }
 
 state_name commit_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
@@ -270,11 +294,22 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
 
     sprintf(from, "bc:%d", bc_group);
 
-    if(ret && app_state->tally_2pc != NULL) {
-      return app_state->tally_2pc(dfaSet, stateMachine, m, from);
-    } else {
-      return ret;
+    if(ret && app_state->tally_2pc != NULL) {  
+      ret = app_state->tally_2pc(dfaSet, stateMachine, m, from);
     }
+  /* TODO: CORRECTNESS BUG Make sure this is after tally forces the log. Also, need to
+     make sure that it increments the (currently unimplemented)
+     sequence number before flushing... */
+
+    if(ret && (m->response_type == AWAIT_COMMIT_POINT && m->response_type == COORDINATOR_START_2PC)) { 
+//    if(ret && (*responseType(m) == AWAIT_COMMIT_POINT && stateMachine->current_state==COORDINATOR_START_2PC)) {
+	state_machine_id tmp = m->from_machine_id;
+	m->from_machine_id = m->initiator_machine_id;
+	//printf("Coordinator responding: ? ht=? (key length %d) %d ->   to %s:%ld\n",  getKeyLength(m), *(int*)getKeyAddr(m), /*getValAddr(m),*/ m->initiator, m->initiator_machine_id );
+	respond_once(&((DfaSet*)dfaSet)->networkSetup, COORDINATOR_COMMITTING_2PC, m, m->initiator);
+	m->from_machine_id = tmp;
+    }
+    return ret; 
   } else {
     sprintf(from, "bc:%d", bc_group);
   
@@ -282,4 +317,3 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
   }
   
 }
-

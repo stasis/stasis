@@ -40,7 +40,8 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include <libdfa/libdfa.h>
-
+#include <pbl/jbhash.h>
+#include "../../2pc/2pc.h"
 #define CHT_COORDINATOR 1
 #define CHT_SERVER      2
 #define CHT_CLIENT      3
@@ -138,3 +139,17 @@ DfaSet * cHtInit(int cht_type, char * localhost,
 int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
 /*int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
   int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
+
+typedef struct {
+  int ht_xid;
+  jbHashTable_t * xid_ht;
+  jbHashTable_t * ht_ht;
+  int next_hashTableId;
+} CHTAppState;
+
+
+callback_fcn veto_or_prepare_cht;
+callback_fcn commit_cht;
+callback_fcn tally_cht;
+callback_fcn abort_cht;
+callback_fcn init_xact_cht;

@@ -41,6 +41,8 @@ terms specified in this license.
 ---*/
 #include <libdfa/libdfa.h>
 
+#ifndef __TWOPC_H
+#define __TWOPC_H
 #define MAX_SUBORDINATES 10
 
 /** To use this library, you need to implement:
@@ -69,7 +71,9 @@ the current implementation, but no scheduling is done.  The first
 request that retries after a transaction completes is the one that
 gets to reuse the transaction id.
 
-
+@todo Users of 2pc should not have to deal with dfaSets, so they shouldn't
+      be passed into the callbacks.  Instead, only pass in the app-specific 
+      payload.
 */
 /* 
    These will generally be defined by the user of the library. 
@@ -151,3 +155,4 @@ extern Transition client_transitions_2pc[];
 extern Transition transitions_2pc[];
 extern State states_2pc[];
 /* #endif */
+#endif /*__TWOPC_H */

@@ -81,6 +81,7 @@ typedef struct message {
   state_machine_id from_machine_id;
   state_machine_id initiator_machine_id;
   char initiator[MAX_ADDRESS_LENGTH];
+  unsigned char response_type;
   message_name type;
   /** Payload is a byte array of arbitrary length. **/ 
   char payload[MAX_PAYLOAD];
