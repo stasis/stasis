@@ -1788,7 +1788,7 @@ well enough to allow application-specific extensions to compete with highly
 tuned general purpose systems.  The next two sections validate the 
 practicality of such mechanisms by applying them to applications 
 that suffer from long-standing performance problems with traditional databases
-and transactional libraries
+and transactional libraries.
 
 
 %This section uses:
@@ -1917,7 +1917,7 @@ from the relatively small buffer pool.  However, since popular
 objects tend to remain in the object cache, multiple update
 modifications will incur relatively inexpensive log additions,
 and are only coalesced into a single modification to the page file
-when the object is flushed from cache.
+when the object is flushed.
 
 \yad provides a several options  to handle UNDO records in the context
 of object serialization. The first is to use a single transaction for
