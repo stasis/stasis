@@ -144,7 +144,7 @@ int openLogWriter() {
 
   assert(!posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE));
 
-  int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND /*| O_SYNC*/, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
     perror("Couldn't open log file (A)");
     abort();
@@ -347,10 +347,10 @@ void syncLog() {
   // Since we open the logfile with O_SYNC, fflush suffices.
 #ifdef HAVE_FDATASYNC
   /* Should be available in linux >= 2.4 */
-  /*  fdatasync(fileno(log));  */
+  fdatasync(fileno(log));  
 #else
   /* Slow - forces fs implementation to sync the file metadata to disk */
-  /* fsync(fileno(log));   */
+  fsync(fileno(log));   
 #endif
 
   writelock(flushedLSN_lock, 0);

@@ -44,7 +44,8 @@ static int operateUndoInsert(int xid, Page * p, lsn_t lsn, recordid rid, const v
   int keySize = rid.size;
   int valSize = rid.slot;
   rid.slot = 0;
-  rid.size = sizeof(recordid);
+//  rid.size = sizeof(recordid);
+  rid.slot = sizeof(hashEntry) + keySize + valSize;
 
   if(!pblHtLookup(openHashes, &rid.page, sizeof(int))) {
     abort();
@@ -158,6 +159,7 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
     hashRid.size = sizeof(undoDeleteArg) + keySize + valSize;
 
     Tupdate(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
+    hashRid.size = sizeof(hashEntry) + keySize + valSize;
     free(arg);
     /*    hashRid.size = sizeof(recordid); */
     ThashInstantDelete(xid, hashRid, key, keySize, valSize);
@@ -188,7 +190,6 @@ void instant_expand (int xid, recordid hash, int next_split, int i, int keySize,
   /* Total hack; need to do this better, by storing stuff in the hash table headers.*/
   /*  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
       static pthread_mutex_t slow_mutex = PTHREAD_MUTEX_INITIALIZER; */
-
 
 /*  static int count = 4096 * .25;
 
@@ -445,14 +446,16 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
     if(D_contents->next.size != -1) {
       D = D_contents->next;
       TreadUnlocked(xid, D, D_contents);
+    } else {
+      abort(); // Got here?  We're starting a new bucket, but found that it is already -1 terminated...
     }
-  }
+  } 
 
   int old_hash;
   int new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
 
   while(new_hash != next_split) {
-    // Need a record in A that belongs in the first bucket... 
+    // Move things into the new bucket until we find something that belongs in the first bucket... 
     
     recordid oldANext = A_contents->next;
 
@@ -487,6 +490,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
     assert(A.size == sizeof(hashEntry) + keySize + valSize);
     if(oldANext.size == -1) {
       memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
+      A_contents->next.size = -1; // added
       //      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
       TinstantSet(xid, A, A_contents);
       free(D_contents);
@@ -813,14 +817,7 @@ int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void 
   return ret;
 }
 
-typedef struct {
-  long current_hashBucket;
-  recordid current_rid;
-} linearHash_iterator;
-typedef struct {
-  byte * key;
-  byte * value;
-} linearHash_iteratorPair;
+
 
 linearHash_iterator * TlogicalHashIterator(int xid, recordid hashRid) {
   recordid NULLRID; NULLRID.page = 0; NULLRID.slot=2; NULLRID.size = -1;
@@ -843,23 +840,32 @@ linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, line
   //next.size == 0 -> empty bucket.  == -1 -> end of list.
   int inBucket = 0;
   //while(!memcmp(&(it->current_rid), &(NULLRID), sizeof(recordid)) 
-  while(it->current_rid.size == -1
-	&& it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
+  printf("--- %d %d %d\n", it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
+  int found = 0;
+  while(/*it->current_rid.size == -1
+	&& */it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
     hashRid.slot = it->current_hashBucket;
     Tread(xid, hashRid, e);
-    if(e->next.size == -1) {
-      it->current_rid = hashRid;
-      inBucket = 1;
-    } // else, it stays NULLRID.
+    it->current_rid = hashRid;
     it->current_hashBucket++;
+    if(e->next.size == 0) {
+//      printf("aaa {%d, %d, %d} {%d, %d, %d} %d %d\n", e->next.page, e->next.slot, e->next.size, it->current_rid.page, it->current_rid.slot, it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
+      inBucket = 1;
+    } else {
+      found = 1;
+      printf("bbb {%d, %d, %d} {%d, %d, %d} %d %d\n", e->next.page, e->next.slot, e->next.size, it->current_rid.page, it->current_rid.slot, it->current_rid.size, it->current_hashBucket, max_bucket(headerHashBits, headerNextSplit)); fflush(NULL);	 
+      break;
+    }      // else, it stays NULLRID.
   }
-  if(! it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
+  if(it->current_hashBucket > max_bucket(headerHashBits, headerNextSplit)) {
       p.key   = NULL;
       p.value = NULL;
-      memcpy(&(it->current_rid), &(NULLRID), sizeof(recordid));
+    it->current_rid = NULLRID;
+//      memcpy(&(it->current_rid), &(NULLRID), sizeof(recordid));
       it->current_hashBucket = 0;
   } else {
-      p.key   = memcpy(malloc(keySize), (e+1), keySize);
+//      Tread(xid, e->next, e);
+      p.key   = memcpy(malloc(keySize), e+1, keySize);
       p.value = memcpy(malloc(valSize), ((byte*)(e+1))+keySize, valSize);
       it->current_rid = e->next;
   }

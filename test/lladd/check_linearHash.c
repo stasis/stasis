@@ -57,7 +57,7 @@ terms specified in this license.
     executes each of the insert / remove / lookup operations a few times.
 */
 //#define NUM_ENTRIES 100000   
-#define NUM_ENTRIES 2001
+#define NUM_ENTRIES 10000
 /* #define NUM_ENTRIES 1000  */
 /*#define NUM_ENTRIES 100  */
 
@@ -277,6 +277,8 @@ START_TEST(transactionalLinearHashTest)
   Tdeinit();
 	
 } END_TEST
+
+
 
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHash");

@@ -25,6 +25,21 @@ void TlogicalHashUpdate(int xid, recordid hashRid, void * key, int keySize, void
 void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 int  TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize);
+typedef struct {
+  long current_hashBucket;
+  recordid current_rid;
+} linearHash_iterator;
+typedef struct {
+  byte * key;
+  byte * value;
+} linearHash_iteratorPair;
+
+linearHash_iterator * TlogicalHashIterator(int xid, recordid hashRid);
+void TlogicalHashIteratorFree(linearHash_iterator * it);
+linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, linearHash_iterator * it, int keySize, int valSize);
+
+
+Operation getLinearInsert();
 Operation getLinearInsert();
 Operation getLinearDelete();
 Operation getUndoLinearInsert();

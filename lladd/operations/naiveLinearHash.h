@@ -12,7 +12,6 @@
 */
 
 
-
 recordid ThashAlloc(int xid, int keySize, int valSize) ;
 
 void TnaiveHashInsert(int xid, recordid hashRid, 

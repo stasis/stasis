@@ -57,8 +57,8 @@ terms specified in this license.
     executes each of the insert / remove / lookup operations a few times.
 */
 //#define NUM_ENTRIES 100000   
-#define NUM_ENTRIES 2001  
-/* #define NUM_ENTRIES 1000  */
+/*#define NUM_ENTRIES 10000*/
+#define NUM_ENTRIES 1000  
 /*#define NUM_ENTRIES 100  */
 
 /**
@@ -200,7 +200,48 @@ START_TEST(simpleLinearHashTest)
 
 }
 END_TEST
+#define NUM_ITERATOR_ENTRIES 2000
 
+START_TEST(check_linearHashIterator) {
+  Tinit();
+  
+  int xid = Tbegin();
+  
+  recordid rid = ThashAlloc(xid, sizeof(int), sizeof(int));
+  
+  printf("Testing iterator.\n");  
+  int key;
+  int val;
+  
+  int * keySeen = calloc(NUM_ITERATOR_ENTRIES, sizeof(int));
+  for(int i = 0; i < NUM_ITERATOR_ENTRIES; i++) {
+    key = i;
+    val = NUM_ITERATOR_ENTRIES * key;
+    TnaiveHashInsert(xid, rid, &key, sizeof(int), &val, sizeof(int));
+  }
+  Tcommit(xid);
+  
+  xid = Tbegin();
+  for(int i = 0; i < NUM_ITERATOR_ENTRIES; i++) {
+    key = i;
+    TlogicalHashLookup(xid, rid, &key, sizeof(int), &val, sizeof(int));
+    assert(key == i);
+    assert(val == NUM_ITERATOR_ENTRIES * key);
+  }
+  Tcommit(xid);
+  xid = Tbegin();
+  linearHash_iterator * it = TlogicalHashIterator(xid, rid);
+  
+  linearHash_iteratorPair next = TlogicalHashIteratorNext(xid,rid, it, sizeof(int), sizeof(int));
+  assert(next.key );
+  while(next.key != NULL) {
+    	printf("%d -> %d\n", *(next.key), *(next.value));
+	next = TlogicalHashIteratorNext(xid, rid, it, sizeof(int), sizeof(int));
+  }
+  TlogicalHashIteratorFree(it);
+  Tcommit(xid);
+  Tdeinit();
+} END_TEST
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHash");
   /* Begin a new test */
@@ -211,7 +252,7 @@ Suite * check_suite(void) {
 
   /*  tcase_add_test(tc, checkHashFcn); */
   tcase_add_test(tc, simpleLinearHashTest);
-
+  tcase_add_test(tc, check_linearHashIterator);
   /* --------------------------------------------- */
   
   tcase_add_checked_fixture(tc, setup, teardown);
