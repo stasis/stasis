@@ -85,7 +85,7 @@ optimizations and enhanced usability for application developers.}
 
 Transactions are at the core of databases and thus form the basis of many
 important systems. However, the mechanisms for transactions are
-typically hidden within monolithic database implementations (DBMS) that make
+typically hidden within monolithic database implementations (DBMSs) that make
 it hard to benefit from transactions without inheriting the rest of
 the database machinery and design decisions, including a the use of a
 query interface.  Although this is clearly not a problem for
@@ -94,8 +94,8 @@ systems.
 
 Other systems that could benefit from transactions include file
 systems, version control systems, bioinformatics, workflow
-applications, search engines, and programming languages with
-persistent objects (or structures).
+applications, search engines, recoverable virtual memory, and
+programming languages with persistent objects (or structures).
 
 In essence, there is an {\em impedance mismatch} between the data
 model provided by a DBMS and that required by these applications. This is
@@ -106,7 +106,7 @@ Thus in some sense, we are arguing for the return of navigational
 transaction systems to compliment not replace relational systems.
 
 The most obvious example of this mismatch is in the support for
-persistent objects in Java, called {\em Entreprise Java Beans}
+persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table and then issuing queries to
 keep the objects and rows consistent.  A typical update must confirm
@@ -132,8 +132,8 @@ By {\em flexible} we mean that \yad can implement a wide range of
 transactional data structures, that it can support a variety of
 policies for locking, commit, clusters, and buffer management, and
 that it is extensible for both new core operations and new data
-structures.  It is this flexibility that allows the support of wide
-range of systems. \eab{somewhere we need to list the axes of flexibility}
+structures.  It is this flexibility that allows the support of a wide
+range of systems.
 
 By {\em complete} we mean full redo/undo logging that supports both
 {\em no force}, which provides durability with only log writes, and
@@ -150,31 +150,29 @@ meet and form the {\em raison d'\^{e}tre} for \yad: the framework delivers
 these properties in a way that is reusable, thus providing and easy
 way for systems to provide complete transactions.
 
-With these trends in mind, we have implemented a modular version of
-ARIES that makes as few assumptions as possible about application data
-structures or workload. Where such assumptions are inevitable, we have
-produced narrow APIs that allow the application developer to plug in
-alternative implementations of the modules that comprise our ARIES
-implementation. Rather than hiding the underlying complexity of the
-library from developers, we have produced narrow, simple API's and a
-set of invariants that must be maintained in order to ensure
+With these trends in mind, we have implemented a modular, extensible
+transaction system based on on ARIES that makes as few assumptions as
+possible about application data structures or workload. Where such
+assumptions are inevitable, we have produced narrow APIs that allow
+the application developer to plug in alternative implementations or
+define custom operations. Rather than hiding the underlying complexity
+of the library from developers, we have produced narrow, simple API's
+and a set of invariants that must be maintained in order to ensure
 transactional consistency, allowing application developers to produce
-high-performance extensions with only a little effort.
+high-performance extensions with only a little effort.  We walk
+through a sequence of such optimizations for a transactional hash
+table in Section~\ref{hashtable}.
 
-Specifically, there are a number of features that \yad provides that, when combined,
-provide applications with control over:
+Specifically, application developers using \yad can control: 1)
+on-disk representations, 2) access-method implemenations (including
+adding new transactional access methods), 3) the granularity of
+concurrency, 4) the precise semantics of atomicity, isolation and
+durability, 5) request scheduling policies, and 6) the style of
+synchronization (e.g. deadlock detection or avoidance).  Developers
+can also exploit application-specific or workload-specific assumptions
+to improve performance.
 
-\begin{itemize}
-\item On-disk representations
-\item Access method implementations
-\item Granularity of concurrency
-\item The exact semantics of Atomicity Consistency, Isolation and Durability
-\item Workload specific assumptions
-\item Choice of synchronization primitives (deadlock detection, avoidance, etc).
-\item Request scheduling policies.
-\end{itemize}
-These features include:
-%\eab{list of contributions}
+These features are enabled by the several mechanisms:
 \begin{description}
 \item[Flexible page formats] provide low level control over 
       transactional data representations.
@@ -190,30 +188,21 @@ These features include:
       prepare call, and savepoints.
 \item[Extensible locking API] provides registration of custom lock managers
       and a generic lock manager implementation.
+\item[2PC?]
 \end{description}
 
 We have produced a high-concurrency, high performance and reusable
 open-source implementation of these concepts.  Portions of our
 implementation's API are still changing, but the interfaces to low
 level primitives, and implementations of basic functionality have
-stablized.
+stablized.  
 
 To validate these claims, we developed a number of applications such
 as an efficient persistant object layer, {\em @todo locality preserving
 graph traversal algorithm}, and a cluster hash table based upon
-on-disk durability and two phase commit.  We also provide benchmarking
+on-disk durability and two-phase commit.  We also provide benchmarking
 results for some of \yad's primitives and the systems that it
 supports.
-
-%\item An efficient persistent object layer
-%\item A cluster hash table based upon two-phase commit.
-%\item others?
-%\end{itemize}
-
-\eab{We also need to list the APIs that are easy to change and maybe explain the interaction between locking and commit/abort.}
-{\em I think this is more or less covered now, but we might want to be a little more concrete with the api's.}
-
-%\eab{need to incorporate paragraph 5 from below; I think the other 4 are covered.}
 
 %\begin{enumerate}
 
