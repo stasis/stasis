@@ -1850,10 +1850,10 @@ memory to achieve good performance.
 to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
 the log instead of writing the entire object during an update.
-Such an optimization would be difficult to achieve with Berkeley DB 
-since the only diff-based mechanism it supports requires changes to 
-span contiguous regions of a record, which is not necessarily the case for arbitrary
-object updates.
+%Such an optimization would be difficult to achieve with Berkeley DB 
+%since the only diff-based mechanism it supports requires changes to 
+%span contiguous regions of a record, which is not necessarily the case for arbitrary
+%object updates.
 
 %% \footnote{It is unclear if
 %% this optimization would outweigh the overheads associated with an SQL
@@ -2022,10 +2022,10 @@ only one integer field from a ~1KB object is modified, the fully
 optimized \yad correspond to a twofold speedup over the unoptimized
 \yad.
 
-In all cases, the update rate for mysql\footnote{We ran mysql using
+In all cases, the update rate for MySQL\footnote{We ran MySQL using
 InnoDB for the table engine, as it is the fastest engine that provides
 similar durability to \yad. For this test, we also linked directly
-with the mysqld daemon library, bypassing the RPC layer. In
+with the libmysqld daemon library, bypassing the RPC layer. In
 experiments that used the RPC layer, test completion times were orders
 of magnitude slower.} is slower than Berkeley DB,
 which is slower than any of the \yad variants. This performance
@@ -2063,7 +2063,7 @@ compact, object-specific diffs that \oasys produces are correctly
 applied.  The custom log format, when combined with direct access to
 the page file and buffer pool, drastically reduces disk and memory usage
 for write intensive loads. A simple extension to our recovery algorithm makes it
-easy to implement other similar optimizations in the future.
+easy to implement similar optimizations in the future.
 
 %This section uses:
 %
@@ -2089,7 +2089,7 @@ requests by reordering invocations of wrapper functions.
 \subsection {Data Representation}
 
 For simplicity, we represent graph nodes as
-fixed-length records.  The Array List from our linear hash table
+fixed-length records.  The ArrayList from our linear hash table
 implementation (Section~\ref{sub:Linear-Hash-Table}) provides access to an
 array of such records with performance that is competitive with native
 recordid accesses, so we use an ArrayList to store the records.  We
@@ -2111,7 +2111,7 @@ application, but we note that the memory utilization of the simple
 depth-first search algorithm is certainly no better than the algorithm
 presented in the next section.
 
-Also, for simplicity, we do not apply any of the optimizations in
+For simplicity, we do not apply any of the optimizations in
 Section~\ref{OASYS}.  This allows our performance comparison to
  measure only the optimization presented here.
 
@@ -2142,7 +2142,7 @@ logging format and wrapper functions to implement a purely logical log.
 For our graph traversal algorithm we use a {\em log demultiplexer},
 shown in Figure~\ref{fig:multiplexor} to route entries from a single
 log into many sub-logs according to page number.  This is easy to do
-with the Array List representation that we chose for our graph, since
+with the ArrayList representation that we chose for our graph, since
 it provides a function that maps from
 array index to a $(page, slot, size)$ triple.
 
