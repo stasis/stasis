@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   if (argc > 1) {
     num = atoi(argv[1]);
   }
-  if (pobj_init(NULL) == 0) {
+  if (pobj_init(NULL, NULL) == 0) {
     pthread_t threads[num];
     int ids[num];
     int i;

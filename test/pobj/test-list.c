@@ -20,7 +20,7 @@ main (int argc, char **argv)
     struct item *tmp, *next;
     int i;
     
-    switch (pobj_init (NULL)) {
+    switch (pobj_init (NULL, NULL)) {
     case 0:
 	printf ("first-time init\n");
 	/* Build list. */
