@@ -43,7 +43,7 @@ terms specified in this license.
 #include <config.h>
 #include <check.h>
 
-#include "../../src/lladd/logger/logMemory.h"
+#include <lladd/ringbuffer.h>
 #include <assert.h>
 
 #include "../check_includes.h"

@@ -1,135 +1,117 @@
-#include <stdlib.h> 
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include "logMemory.h"
-
-/* Could also use mod here, but 64-bit mod under intel is kinda slow,
-   and (in theory) gcc should only calculate ((lsn)-(x)->start) one
-   time...besides, I implemented it this way before I thought of using mod. ;) */
-
-/*#define lsn_to_offset(x, lsn) \
-   ((((lsn)-(x)->start) < (x)->size) ? \
-     ((lsn)-(x)->start) :              \
-     ((lsn)-(x)->start) - (x)->size); */
-
-#undef end
-struct ringBufferLog_s {
-  /** An array of bytes that holds the contents of the ringbuffer. */
-  byte * buf;
-  /** The number of bytes in the ringbuffer */
-  int size;
-  /** The first byte in the ringbuffer that is valid. */
-  lsn_t start;
-  /** The last byte in the ringbuffer that is valid.  Note that due to
-      the nature of a ringbuffer, end may be less than start.  This
-      simply means that the ring buffer wraps around the end of
-      buf. */
-  lsn_t end;
-  /** The offset of the first byte in the ring buffer.  Ignoring
-      wrap-around, lsn(buf[i]) = offset + (i-start). */
-  lsn_t offset;
-} ringBufferLog_s;
-
-
-#define lsn_to_offset(x, lsn) ((lsn) % (x)->size)
-#define offset_to_lsn(x, lsn) ((lsn) + (x)->offset)
-
-static int truncateLog(ringBufferLog_t * log, lsn_t lsn);
-
-ringBufferLog_t * openLogRingBuffer(size_t size, lsn_t initialOffset) {
-  ringBufferLog_t * ret = malloc(sizeof(ringBufferLog_t));
-  ret->buf = malloc(size);
-  ret->size = size;
-  ret->start = initialOffset % size;
-  ret->end   = initialOffset % size;
-  
-  ret->offset= initialOffset / size;;
-  
-  return ret;
-}
-
-void closeLogRingBuffer(ringBufferLog_t * log) {
-  free(log->buf);
-  free(log);
-}
-/** 
-    This function copies size bytes from the ringbuffer at offset
-    'offset'.  size must be less than log->size.
-    
-    It probably also should lie within the boundaries defined by start
-    and end, but this is optional.
+/**
+  NOTE: Person who's using the consumer interface calls close first, (for now).
 */
-static void memcpyFromRingBuffer(byte * dest, ringBufferLog_t * log, lsn_t lsn, size_t size) { 
-  int offset = lsn_to_offset(log, lsn);
-  if(offset + size < log->size) {
-    memcpy(dest, &(log->buf[offset]), size);
-  } else {
-    int firstPieceLength = log->size - offset;
-    int secondPieceLength = size - firstPieceLength;
-    memcpy(dest, &(log->buf[offset]), firstPieceLength);
-    memcpy(dest + firstPieceLength, &(log->buf[0]), secondPieceLength);
-  }
-}
 
-static void memcpyToRingBuffer(ringBufferLog_t * log, byte *src, lsn_t lsn, size_t size) {
-  int offset = lsn_to_offset(log, lsn);
-  if(offset + size < log->size) {
-    memcpy(&(log->buf[offset]), src, size);
-  } else {
-    int firstPieceLength = log->size - offset;
-    int secondPieceLength = size - firstPieceLength;
-    memcpy(&(log->buf[offset]), src, firstPieceLength);
-    memcpy(&(log->buf[0]), src + firstPieceLength, secondPieceLength);
-  }
-}
-/** @todo Return values for ringBufferAppend! */
 
-int ringBufferAppend(ringBufferLog_t * log, byte * dat, size_t size) {
+#include <stdlib.h>
+#include <lladd/ringbuffer.h>
+#include <lladd/consumer.h>
+#include <lladd/iterator.h>
 
-  assert(lsn_to_offset(log, log->end + size)  == (lsn_to_offset(log, log->end + size)));
-
-  if(size > log->size) {
-    //    printf("!");
-    return -1;       // the value cannot possibly fit in the ring buffer.
-  }
-
-  if(log->size < (log->end-log->start) + size) {
-    //    printf("[WX]");
-    return -2;       // there is not enough room in the buffer right now.
-  }
-
-  memcpyToRingBuffer(log, dat, log->end, size);
-  log->end += size; // lsn_to_offset(log, log->end + size);
-
-  return 0;
+ 
+typedef struct {
+  //mutex?
+  ringBufferLog_t * ringBuffer;
+  lsn_t cached_lsn;
+  byte * cached_value;
+  size_t cached_value_size;
   
+} logMemory_fifo_t;
+
+
+typedef struct {
+  lladdIterator_t *iterator;
+  lladdConsumer_t *consumer;
+} lladdFifo_t;
+
+
+void logMemory_init() {
+/* NO-OP */
 }
 
-int ringBufferTruncateRead(byte * buf, ringBufferLog_t * log, size_t size) {
-  if(size > log->size) {
-    return -1;       // Request for chunk larger than entire ringbuffer
-  }
-  if(log->start + size > log->end) {
-    //    printf("[RX]");
-    return -2;
-  }
-  memcpyFromRingBuffer(buf, log, lsn_to_offset(log, log->start), size);
+lladdFifo_t * logMemoryFifo(size_t size, lsn_t initialOffset) {
+                                    
+ lladdFifo_t * fifo = (lladdFifo_t *) malloc(sizeof(lladdFifo_t));
 
-  return truncateLog(log, log->start + size);
+ lladdIterator_t * iterator = (lladdIterator_t *) malloc(sizeof(lladdIterator_t));
+ iterator->type = LOG_MEMORY_ITERATOR;
+ iterator->impl = malloc(sizeof(logMemory_fifo_t)); 
+ ((logMemory_fifo_t *)iterator->impl)->ringBuffer = openLogRingBuffer(size, initialOffset);
+
+ lladdConsumer_t * consumer = (lladdConsumer_t *) malloc(sizeof(lladdConsumer_t));
+ consumer->type = LOG_MEMORY_CONSUMER;
+ consumer->impl = iterator->impl; /* FIXME: same logMemory_iterator_t as iterator?*/
+ 
+ fifo->iterator = iterator;
+ fifo->consumer = consumer; 
+
+ return fifo;
+} 
+
+
+
+
+/* iterator interface implementation */
+
+/* NOTE: assumes currently that the consumer interface is done so we can
+         safely deallocate resources
+*/
+void logMemory_Iterator_close(int xid, void * impl) {
+  closeLogRingBuffer( ((logMemory_fifo_t *) impl)->ringBuffer );
+  free(impl);
+}
+
+int logMemory_Iterator_next (int xid, void * impl) {
+
+  logMemory_fifo_t *fifo = (logMemory_fifo_t *) impl;
+  size_t size;
+  int lsn; 
+  int ret;
+  ret = ringBufferTruncateRead((byte *)&size, fifo->ringBuffer,  sizeof(size_t) );
+
+  if (ret == 0) { /* NOTE: I assume that ringBufferTruncateRead returns 0 when a read is successfull. */
+	 
+	  /* TODO: the following might return null, in which case we should ... ? */
+	  fifo->cached_value = realloc(fifo->cached_value, size); 
+	  
+	  lsn = ringBufferTruncateRead( fifo->cached_value, fifo->ringBuffer, size);
+	  fifo->cached_lsn = (lsn_t)lsn;
+          return 1;  /* FIXME: is this the right return value if there is a next value? */
+  } else {
+    return 0;        /* FIXME: is this the right return value when there is no next value? */
+  }
 
 }
 
-/** static because it does no error checking. */
-static int truncateLog(ringBufferLog_t * log, lsn_t lsn) {
+/* return the lsn */
+int logMemory_Iterator_key (int xid, void * impl, byte ** key) {
+  logMemory_fifo_t * fifo = (logMemory_fifo_t *) impl;
+  *key = (byte *)&(fifo->cached_lsn);
+  return sizeof(lsn_t);
+}
 
-  int newStart = lsn_to_offset(log, lsn);
+int logMemory_Iterator_value (int xid, void * impl, byte ** value) {
+  logMemory_fifo_t * fifo = (logMemory_fifo_t *) impl;
+  *value = fifo->cached_value;
+  return fifo->cached_value_size;
+}
 
-  if(newStart < lsn_to_offset(log, log->start));  // buffer wrapped. 
+int logMemory_Iterator_releaseTuple(int xid, void *it) {
+ /* NO-OP */
+ return 0;
+}
 
-  log->offset += log->size;
-  log->start = lsn;
 
-  return 0;
 
+
+/* consumer implementation */
+
+
+void logMemory_Tconsumer_close(int xid, lladdConsumer_t *it){
+  /* Currently this doesn't have to do anything */
+}
+
+int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key, size_t keySize, byte *val, size_t Valsize) {
+  ringBufferAppend( ((logMemory_fifo_t *) it->impl)->ringBuffer, (byte *)&Valsize, sizeof(size_t) );
+  ringBufferAppend( ((logMemory_fifo_t *) it->impl)->ringBuffer, val, Valsize);
 }
