@@ -50,7 +50,7 @@ terms specified in this license.
 
 #define LOG_NAME   "check_pageOrientedListNTA.log"
 /** @test */
-#define NUM_ENTRIES 2000
+#define NUM_ENTRIES 3000
 START_TEST(pagedListCheck) {
   Tinit();
 

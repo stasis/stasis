@@ -87,20 +87,23 @@ int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte *
   rid.slot = header.thisPage;
 
   while(rid.slot || header.nextPage.size != -1) {
-    rid.size = TrecordSize(xid, rid);
 
-    pagedListEntry * dat = malloc(rid.size);
-    Tread(xid, rid, dat);
-    
-    if(!memcmp(dat+1, key, keySize)) {
-      int valueSize = rid.size - keySize - sizeof(pagedListEntry);
-      *value = malloc(valueSize);
-      memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
-      free(dat);
-      return valueSize;
-    }
-    if(dat->nextEntry) {          // another entry on this page
+    if(rid.slot) {
+      rid.size = TrecordSize(xid, rid);
+      pagedListEntry * dat;      
+      dat = malloc(rid.size);
+      Tread(xid, rid, dat);
+      
+      if(!memcmp(dat+1, key, keySize)) {
+	int valueSize = rid.size - keySize - sizeof(pagedListEntry);
+	*value = malloc(valueSize);
+	memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
+	free(dat);
+	return valueSize;
+      }
+      //      if(dat->nextEntry) {          // another entry on this page
       rid.slot = dat->nextEntry;
+      free(dat);	//      }
     } else if (header.nextPage.size != -1) {  // another page
       rid.page = header.nextPage.page;
       Tread(xid, header.nextPage, &header);
@@ -109,7 +112,7 @@ int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte *
       rid.slot = 0;
     }
     
-    free(dat);
+
   }
 
   return -1;
@@ -125,43 +128,48 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   short lastSlot = -1;
   headerRid = list;
   while(rid.slot || header.nextPage.size != -1) {
-    rid.size = TrecordSize(xid, rid);
-    pagedListEntry * dat = malloc(rid.size);
-    Tread(xid, rid, dat);
-    
-    if(!memcmp(dat+1, key, keySize)) {
-
-      if(lastSlot != -1) {
-	recordid lastRid = rid;
-	lastRid.slot = lastSlot;
-	lastRid.size = TrecordSize(xid, lastRid);
-	pagedListEntry * lastRidBuf = malloc(lastRid.size);
-	Tread(xid, lastRid, lastRidBuf);
-	lastRidBuf->nextEntry = dat->nextEntry;
-	Tset(xid, lastRid, lastRidBuf);
-	free(lastRidBuf);
-      } else {
-	header.thisPage = dat->nextEntry;
-	Tset(xid, headerRid, &header);
+    if(rid.slot) {
+      rid.size = TrecordSize(xid, rid);
+      pagedListEntry * dat = malloc(rid.size);
+      Tread(xid, rid, dat);
+      
+      if(!memcmp(dat+1, key, keySize)) {
+	
+	if(lastSlot != -1) {
+	  recordid lastRid = rid;
+	  lastRid.slot = lastSlot;
+	  lastRid.size = TrecordSize(xid, lastRid);
+	  pagedListEntry * lastRidBuf = malloc(lastRid.size);
+	  Tread(xid, lastRid, lastRidBuf);
+	  lastRidBuf->nextEntry = dat->nextEntry;
+	  Tset(xid, lastRid, lastRidBuf);
+	  free(lastRidBuf);
+	} else {
+	  header.thisPage = dat->nextEntry;
+	  Tset(xid, headerRid, &header);
+	}
+	Tdealloc(xid, rid);
+	free(dat);
+	return 1;
       }
-      Tdealloc(xid, rid);
-      free(dat);
-      return 1;
-    }
-    if(dat->nextEntry) {          // another entry on this page
       lastSlot = rid.slot;
       rid.slot = dat->nextEntry;
+      //    }
+      //    if(dat->nextEntry) {          // another entry on this page
+      //      lastSlot = rid.slot;
+      //      rid.slot = dat->nextEntry;
+      free(dat);
     } else if (header.nextPage.size != -1) {  // another page
       lastSlot = -1;
       rid.page = header.nextPage.page;
       headerRid = header.nextPage;
       Tread(xid, header.nextPage, &header);
       rid.slot = header.thisPage;
-    } else {                     // we've reached the end of the last page
-      rid.slot = 0;
+      //    } else {                     // we've reached the end of the last page
+      //      rid.slot = 0;
     }
     
-    free(dat);
+    //    free(dat);
   }
 
   return 0;

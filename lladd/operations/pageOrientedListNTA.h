@@ -56,6 +56,12 @@ terms specified in this license.
   slot 0 is a long that points to the next page in the list.
   
   The rest of the slots store data.
+
+  @todo Performance optimization for pageOrientedList: Currently, when
+  the list overflows onto a new page, that page is inserted into the
+  end of the list.  Instead, insert this page in after the first page,
+  so that subsequent inserts only have to check the first page before
+  finding a (mostly) empty one.
   
   $Id $
 */

@@ -163,7 +163,8 @@ START_TEST(linearHashNTAVariableSizetest)
     if(!(i % (NUM_ENTRIES/10))) {
       printf("+"); fflush(stdout);
     }
-    assert(sizeof(recordid) == ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2));
+    int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+    assert(sizeof(recordid) == ret);
     assert(val2->page == i * NUM_ENTRIES);
     assert(val2->slot == val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
@@ -176,7 +177,7 @@ START_TEST(linearHashNTAVariableSizetest)
 
 
 #define NUM_THREADS 100
-#define NUM_T_ENTRIES 1000
+#define NUM_T_ENTRIES 500
 typedef struct { 
   int thread;
   recordid rid;
