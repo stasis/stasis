@@ -1845,20 +1845,24 @@ when the object is flushed from cache.
 \yad provides a several options  to handle undo records in the context
 of object serialization. The first is to use a single transaction for
 each object modification, avoiding the cost of generating or logging
-any undo records. No other transactional system that we know of allows
-this type of optimization \eab{sure?}. The second option is to assume that the
-application will provide a custom undo for the delta, which requires a log entry for each update, but still avoids the need to read or update the page
+any undo records. The second option is to assume that the
+application will provide a custom undo for the delta, 
+which requires a log entry for each update, 
+but still avoids the need to read or update the page
 file.
 
 The third option is to relax the atomicity requirements for a set of
 object updates, and again avoid generating any undo records. This
-assumes that the application cannot abort individual updates, and is willing to
-accept that a prefix of the logged updates will be applied to the page
-file after recovery. These ``transactions'' would still be durable, as
-commit() could force the log to disk. For the benchmarks below, we
-opted for this approach, as it is the most aggressive and would be the
-most difficult to implement in another storage system.
-\eab{dont' get why we get a prefix if we use commit}
+assumes that the application cannot abort individual updates, 
+and is willing to
+accept that some prefix of logged but uncommitted updates may 
+be applied to the page
+file after recovery. These ``transactions'' would still be durable
+after commit(), as it would force the log to disk. 
+For the benchmarks below, we
+use this approach, as it is the most aggressive and is
+not supported by any other general purpose transactional 
+storage system that we know of.
 
 \subsection{Recovery and Log Truncation}
 \label{version-pages}
@@ -1896,7 +1900,7 @@ by the page LSN so that unrelated updates remain independent.
 Recovery work essentially the same as before, except that we need to
 use RSNs to calculate the earliest allowed point for log truncation
 (so as to not lose an older record update).  In the implementation, we
-also peridically flush the object cache to move the truncation point
+also periodically flush the object cache to move the truncation point
 forward, but this is not required.
 
 %% We have two solutions to this problem.  One solution is to
