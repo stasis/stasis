@@ -1541,8 +1541,8 @@ to complete the linear hash table implementation.  Unfortunately, as
 we mentioned in Section~\ref{nested-top-actions}, things become a bit
 more complex if we allow interleaved transactions.  The solution for
 the default hashtable is simply to follow the recipe for Nested
-Top Actions, and only lock the whole table during structural changes.
-We also explore a version with finer-grain locking below.
+Top Actions, and latch the entire table for each operation.
+We also explore a version with finer-grain latching below.
 %This prevents the
 %hashtable implementation from fully exploiting multiprocessor
 %systems,\footnote{\yad passes regression tests on multiprocessor
@@ -1626,11 +1626,11 @@ version of nested top actions.
 
 Instead of using nested top actions, the optimized implementation
 applies updates in a carefully chosen order that minimizes the extent
-to which the on disk representation of the hash table can be corrupted
-\eab{(Figure~\ref{linkedList})}. This is essentially ``soft updates''
+to which the on disk representation of the hash table can be corrupted. 
+\eab{(Figure~\ref{linkedList})} This is essentially ``soft updates''
 applied to a multi-page update~\cite{soft-updates}.  Before beginning
-the update, it writes an UNDO entry that will check and restore the
-consistency of the hashtable during recovery, and then invokes the
+the update, it writes an UNDO entry that will first check and restore the
+consistency of the hashtable during recovery, and then invoke the
 inverse of the operation that needs to be undone.  This recovery
 scheme does not require record-level UNDO information, and thus avoids
 before-image log entries, which saves log bandwidth and improves
@@ -1781,7 +1781,7 @@ application developers to build custom
 transactional storage mechanisms when application performance is
 important.  Because we are advocating the use of 
 application-provided transactional storage primatives, we only use the 
-straightfoward (``slow'') hashtable implementation during our other benchmarks.
+straightfoward hashtable implementation during our other benchmarks.
 
 We have shown that \yad's implementation provides primatives that perform 
 well enough to allow application-specific extensions to compete with highly 
