@@ -31,7 +31,7 @@
 %% \newcommand{\mjd}[1]{}
 
 \begin{document}
-\title{\vspace*{-36pt}\yad: Flexible Transactions without Databases\vspace*{-36pt}}
+\title{\vspace*{-36pt}\yad: A Flexible Transactional Storage System\vspace*{-36pt}}
 %\author{}
 
 \maketitle
@@ -113,9 +113,9 @@ persistent objects in Java, called {\em Enterprise Java Beans}
 mapping each object to a row in a table\footnote{Normalized objects may actually span many tables~\cite{hibernate}.}  and then issuing queries to keep the
 objects and rows consistent. A typical update must confirm it has the
 current version, modify the object, write out a serialized version
-using the SQL {\tt update} command, and commit.  This is an awkward
+using the SQL {\tt update} command and commit.  This is an awkward
 and slow mechanism; we show up to a 5x speedup over a MySQL implementation 
-that is optimized for single-threaded access (Section~\ref{OASYS}).
+that is optimized for single-threaded, local access (Section~\ref{OASYS}).
 
 The DBMS actually has a navigational transaction system within it,
 which would be of great use to EJB, but it is not accessible except
@@ -196,7 +196,7 @@ to low-level primitives, and the most important portions of the implementation h
 To validate these claims, we walk
 through a sequence of optimizations for a transactional hash
 table in Section~\ref{sub:Linear-Hash-Table}, an object serialization 
-scheme in Section~\ref{OASYS}, and a graph traversal algorithm in 
+scheme in Section~\ref{OASYS} and a graph traversal algorithm in 
 Section~\ref{TransClos}.  Benchmarking figures are provided for each 
 application.  \yad also includes a cluster hash table 
 built upon two-phase commit, which will not be described.  Similarly we did not have space to discuss \yad's 
@@ -279,7 +279,7 @@ solutions are overkill and expensive.  MySQL~\cite{mysql} has
 largely filled this gap by providing a simpler, less concurrent
 database that can work with a variety of storage options including
 Berkeley DB (covered below) and regular files.  However, these
-alternatives affect the semantics of transactions, and sometimes 
+alternatives affect the semantics of transactions and sometimes 
 disable or interfere with high-level database features.  MySQL 
 includes multiple storage options for performance reasons.  
 We argue that by reusing code, and providing for a greater amount 
@@ -1606,7 +1606,7 @@ This completes our description of \yad's default hashtable
 implementation.  Implementing
 transactional support and concurrency for this data structure is
 straightforward; the only complications are a) defining a logical
-UNDO, and b) dealing with fixed-length records. \yad hides the hard parts of transactions.
+UNDO, and b) using the bucket list to handle variable-length records. \yad hides the hard parts of transactions.
 
 %, and (other than requiring the design of a logical
 %logging format, and the restrictions imposed by fixed length pages) is
@@ -2048,7 +2048,7 @@ of magnitude slower.} is slower than Berkeley DB,
 which is slower than any of the \yad variants. This performance
 difference is in line with those observed in Section
 \ref{sub:Linear-Hash-Table}. We also see the increased overhead due to
-the SQL processing for the mysql implementation, although we note that
+the SQL processing for the MySQL implementation, although we note that
 a SQL variant of the delta-based optimization also provides performance
 benefits.
 
@@ -2247,7 +2247,7 @@ constructs graphs by first connecting nodes together into a ring.  It
 then randomly adds edges between the nodes until the desired out-degree
 is obtained.  This structure ensures graph connectivity.  If the nodes
 are laid out in ring order on disk, it also ensures that one edge
-from each node has good locality, while the others generally have poor
+from each node has good locality while the others generally have poor
 locality.  
 Figure~\ref{fig:oo7} presents these results;  we can see that the request reordering algorithm
 helps performance.  We re-ran the test without the ring edges, and (in
