@@ -1399,63 +1399,51 @@ hash table in order to this emphasize that it is easy to implement
 high-performance transactional data structures with \yad and because
 it is easy to understand.
 
-We decided to implement a {\em linear} hash table~\cite{lht}.  Linear hash tables are
-hash tables that are able to extend their bucket list incrementally at
-runtime. They work as follows. Imagine that we want to double the size
-of a hash table of size $2^{n}$ and that the hash table has been
-constructed with some hash function $h_{n}(x)=h(x)\, mod\,2^{n}$.
-Choose $h_{n+1}(x)=h(x)\, mod\,2^{n+1}$ as the hash function for the
-new table. Conceptually, we are simply prepending a random bit to the
-old value of the hash function, so all lower order bits remain the
-same. At this point, we could simply block all concurrent access and
-iterate over the entire hash table, reinserting values according to
-the new hash function.
+We decided to implement a {\em linear} hash table~\cite{lht}.  Linear
+hash tables are hash tables that are able to extend their bucket list
+incrementally at runtime. They work as follows. Imagine that we want
+to double the size of a hash table of size $2^{n}$ and that the hash
+table has been constructed with some hash function $h_{n}(x)=h(x)\,
+mod\,2^{n}$.  Choose $h_{n+1}(x)=h(x)\, mod\,2^{n+1}$ as the hash
+function for the new table. Conceptually, we are simply prepending a
+random bit to the old value of the hash function, so all lower order
+bits remain the same. At this point, we could simply block all
+concurrent access and iterate over the entire hash table, reinserting
+values according to the new hash function.
 
 However, 
 %because of the way we chose $h_{n+1}(x),$ 
-we know that the
-contents of each bucket, $m$, will be split between bucket $m$ and
-bucket $m+2^{n}$. Therefore, if we keep track of the last bucket that
-was split then we can split a few buckets at a time, resizing the hash
-table without introducing long pauses~\cite{lht}. 
+we know that the contents of each bucket, $m$, will be split between
+bucket $m$ and bucket $m+2^{n}$. Therefore, if we keep track of the
+last bucket that was split then we can split a few buckets at a time,
+resizing the hash table without introducing long pauses~\cite{lht}.
 
 In order to implement this scheme we need two building blocks.  We
-need a data structure that can handle bucket overflow, and we need to
-be able index into an expandable set of buckets using the bucket
-number.
+need a map from bucket number to bucket contents (lists), and we need to handle bucket overflow.
 
-\subsection{The Bucket List}
+\subsection{The Bucket Map}
 
-%\rcs{This seems overly complicated to me...}
+The simplest bucket map would simply use a fixed-size transactional
+array. However, since we want the size of the table to grow, we should
+not assume that it fits in a contiguous range of pages. Insteed, we build
+on top of \yad's transactional ArrayList data structure (inspired by
+Java's structure of the same name).
 
-\yad provides access to transactional storage with page-level
-granularity and stores all record information in the same page file.
-Therefore, our bucket list must be partitioned into page-size chunks,
-and we cannot assume that the entire bucket list is contiguous.
-We need some level of indirection to allow us to map from
-bucket number to the record that stores the corresponding bucket.
+The ArrayList provides the appearance of large growable array by
+breaking the array into a tuple of contiguous page intervals that
+partition the array.  Since we expect relatively few partitions (one
+per enlargement typically), this leads to an efficient map. We use a
+single ``header'' page to store the list of intervals and their sizes.
 
-\yad's allocation routines allow applications to reserve regions of
-contiguous pages.  We use this functionality to allocate the bucket
-list in sufficiently large chunks, bounding the number of distinct
-contiguous regions.  Borrowing from Java's ArrayList structure, we
-initially allocate a fixed number of pages to store buckets and
-allocate more pages as necessary, doubling the allocation each
-time. We use a single ``header'' page to store the list of regions and
-their sizes.
+%We use fixed-sized buckets, which allows us to treat a region of pages
+% as an array of buckets. 
+For space efficiency, the array elements themselves are stored using
+the fixed-size record page layout. Thus, we use the header page to
+find the right interval, and then index into it to get the $(page,
+slot)$ address.  Once we have this address, the redo/undo entries are
+trivial: they simply log the before and after image of the that
+record.
 
-We use fixed-sized buckets, which allows us to treat a region of pages
- as an array of buckets.  For space efficiency, the buckets are stored 
-using the fixed-size record page layout. Thus, we use the
-header page to find the right region, and then index into it, to get
-the $(page, slot)$ address.  Once we have this address, the redo/undo
-entries are trivial: they simply log the before and after image of the
-appropriate record.
-
-
-%Since we double the amount of space allocated at each step, we arrange
-%to run out of addressable space before the lookup table that we need
-%runs out of space. 
 
 %\rcs{This paragraph doesn't really belong}
 %Normal \yad slotted pages are not without overhead.  Each record has
