@@ -136,8 +136,7 @@ struct Page_s {
   /** @todo The Page.LSN field seems extraneous.  Why do we need it? */
   long LSN;
   byte *memAddr;
-  /** @todo dirty pages currently aren't marked dirty! */
-  int dirty;
+  byte dirty;
   /** The next item in the replacement policy's queue */
   struct Page_s *next;
   /** The previous item in the replacement policy's queue. */
@@ -201,6 +200,7 @@ struct Page_s {
       
   */
   rwl * loadlatch;
+
 };
 
 /**

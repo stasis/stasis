@@ -1,0 +1,90 @@
+#include <lladd/transactional.h>
+#include <lladd/lockManager.h>
+#include <pthread.h>
+#include <config.h>
+#include <check.h>
+
+#include <lladd/transactional.h>
+#include <assert.h>
+#include "../check_includes.h"
+#include <stdlib.h>
+#define LOG_NAME   "check_lockManager.log"
+
+/** Needs to be formatted as a floating point */
+#define NUM_RECORDS 100000000.0
+#define THREAD_COUNT 100
+#define RIDS_PER_THREAD 10000
+
+void * workerThread(void * j) {
+
+  int xid = *(int*)j;
+  startTransaction(xid);
+  recordid rid;
+  rid.page = 0;
+  rid.size = 0;
+  int k;
+  int deadlocks = 0;
+  for(k = 0; k < RIDS_PER_THREAD; k++) {
+    rid.slot = (int) (NUM_RECORDS*random()/(RAND_MAX+1.0));
+    int rw = random() % 2;
+
+    if(rw) {
+      // readlock
+      
+      if(LLADD_DEADLOCK == lockManagerReadLockRecord(xid, rid)) {
+	deadlocks++;
+      }
+      
+      
+    } else {
+      // writelock
+      if(LLADD_DEADLOCK == lockManagerWriteLockRecord(xid, rid)) {
+	deadlocks++;
+      }
+
+    }
+  }
+  
+  printf("%2d ", deadlocks); fflush(stdout);
+
+  lockManagerReleaseAll(xid);
+
+  return NULL;
+
+}
+
+START_TEST(lockManagerTest) {
+
+  lockManagerInit();
+  pthread_t workers[THREAD_COUNT];
+  int i; 
+  for(i = 0; i < THREAD_COUNT; i++) {
+    int *j = malloc(sizeof(int));
+    *j = i;
+    pthread_create(&workers[i], NULL, workerThread, j);
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+  }
+
+} END_TEST
+
+Suite * check_suite(void) {
+  Suite *s = suite_create("lockManager");
+  /* Begin a new test */
+  TCase *tc = tcase_create("multithreaded");
+
+  /* Sub tests are added, one per line, here */
+
+  tcase_add_test(tc, lockManagerTest); 
+
+  /* --------------------------------------------- */
+  
+  tcase_add_checked_fixture(tc, setup, teardown);
+
+
+  suite_add_tcase(s, tc);
+  return s;
+}
+
+#include "../check_setup.h"

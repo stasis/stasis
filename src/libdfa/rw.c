@@ -67,7 +67,7 @@ void writelock (rwl *lock, int d)
     /* printf ("writer %d blocked. %d readers, %d writers, %d waiting\n", d, lock->readers,  lock->writers, lock->waiting);  */
     pthread_cond_wait (lock->writeOK, lock->mut);
     /*    printf ("writer %d unblocked.\n", d);  */
-	}
+  }
   lock->waiting--;
   lock->writers++;
   pthread_mutex_unlock (lock->mut);
@@ -111,44 +111,13 @@ void unlock(rwl * lock) {
   pthread_mutex_unlock (lock->mut);
 }
 
-/*void readunlock(rwl *lock) {
-  writeunlock(lock);
-  }*/
 void readunlock(rwl * lock) {
   unlock(lock);
 }
 void writeunlock(rwl * lock) {
   unlock(lock);
 }
-/*
-  void readunlock (rwl *lock)
-  {
-  pthread_mutex_lock (lock->mut);
-  lock->readers--;
-  pthread_cond_signal (lock->writeOK); 
 
-  / * Don't need to broadcast, since only one writer can run at
-  once. * /
-  
-  / *  pthread_cond_broadcast (lock->writeOK);  * / 
-  
-  pthread_mutex_unlock (lock->mut);
-  / *  printf("readunlock done\n"); * /
-  }
-
-  void writeunlock (rwl *lock)
-   {
-   / * printf("writeunlock done\n"); 
-   fflush(NULL); * /
-   
-   pthread_mutex_lock (lock->mut);
-   lock->writers--;
-   / * Need this as well (in case there's another writer, which is blocking the all of the readers. * /
-   pthread_cond_signal (lock->writeOK); 
-   pthread_cond_broadcast (lock->readOK);
-   pthread_mutex_unlock (lock->mut);
-   }
-*/
 void deletelock (rwl *lock)
 {
 	pthread_mutex_destroy (lock->mut);
