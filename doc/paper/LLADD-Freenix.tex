@@ -61,7 +61,7 @@ or a specific type of problem. As a result, many systems are forced
 to ``work around'' the data models provided by a transactional storage
 layer. Manifestation of this problem include ``impedence mismatch''
 in the database world and the limited number of data models provided
-by existing libraries such as BerkeleyDB. In this paper, we describe
+by existing libraries such as Berkeley DB. In this paper, we describe
 a light-weight, easily extensible library, LLADD, that allows application
 developers to develop scalable and transactional application-specific
 data structures. We demonstrate that LLADD is simpler than prior systems
@@ -200,7 +200,7 @@ semantic file systems, where the file system understands the contents
 of the files that it contains, and is able to provide services such as
 rapid search, or file-type specific operations such as thumbnailing,
 automatic content updates, and so on.  Others are simpler, such as
-BerkeleyDB, which provides transactional storage of data in unindexed
+Berkeley DB, which provides transactional storage of data in unindexed
 form, in indexed form using a hash table, or a tree.  LRVM is a version
 of malloc() that provides transacational memory, and is similar to an
 object-oriented database, but is much lighter weight, and more
@@ -767,8 +767,7 @@ for crash recovery; it is possible that LLADD will crash before the
 entire sequence of operations has been completed. The logging protocol
 guarantees that some prefix of the log will be available. Therefore,
 as long as the run-time version of the hash table is always consistent,
-we do not have to consider the impact of skipped updates, but we must
-be certain that the logical consistency of the linked list is maintained
+we may be certain that the logical consistency of the linked list is maintained
 at all steps. Here, the challenge comes from the fact that the buffer
 manager only provides atomic updates of single pages; in practice,
 a linked list may span pages.
@@ -783,8 +782,8 @@ a given bucket with no ill-effects. Also note that (for our purposes),
 there is never a good reason to undo a bucket split, so we can safely
 apply the split whether or not the current transaction commits.
 
-First, an ``undo'' record that checks the hash table's meta data and
-redoes the split if necessary is written (this record has no effect 
+First, we write an ``undo'' record that checks the hash table's metadata and
+redoes the split if necessary (this record has no effect 
 unless we crash during this bucket split). Second, we write (and execute) a series
 of redo-only records to the log. These encode the bucket split, and follow
 the linked list protocols listed above. Finally, we write a redo-only
@@ -793,7 +792,7 @@ entry that updates the hash table's metadata.%
 undo entry, but we would need to store {\em physical} undo information for
 each of the modifications made to the bucket, since any subset of the pages may have been stolen. This method does have
 the disadvantage of producing a few redo-only entries during recovery,
-but recovery is an uncommon case, and the number of such entries is
+but the number of such entries is
 bounded by the number of entries that would be produced during normal 
 operation.%
 }
@@ -838,8 +837,8 @@ to prepare to commit the transaction. If a subordinate system sees
 that an error has occurred, or the transaction should be aborted for
 some other reason, then it informs the coordinator. Otherwise, it
 enters the \emph{prepared} state, and tells the coordinator that it
-is ready to commit. At some point in the future, the coordinator will
-reply telling the subordinate to commit or abort. From LLADD's point
+is ready to commit. At some point in the future the coordinator will
+reply, telling the subordinate to commit or abort. From LLADD's point
 of view, the interesting portion of this algorithm is the \emph{prepared}
 state, since it must be able to commit a prepared transaction if it
 crashes before the coordinator responds, but cannot commit before
@@ -855,8 +854,66 @@ could be added relatively easily if a lock manager were implemented
 on top of LLADD.%
 } Due to LLADD's extendible logging system, and the simplicity
 of its recovery code, it took an afternoon to add a prepare operation
-to LLADD.
+to LLADD, allowing it to support applications that require two-phase commit.  
+A preliminary implementation of a cluster hash table that employs two-phase
+commit is included in LLADD's CVS repository, but is not ready for
+real-world deployment.
 
+\subsection{Other Applications}
+
+Previously, we mentioned a few programs that we think would benefit
+from LLADD.  Here we sketch the process of implementing such
+applictions.  LRVM implements a transactional version of malloc().  It
+employs the operating system's virtual memory system to generate page
+faults if the application accesses a portion of memory that have not
+been swapped in.  These page faults are intercepted and processed by a
+transactional storage layer which loads the corresponding pages from
+disk.  A few simple functions such as abort() and commit() are
+provided to the application, and allow it to control the duration of
+its transactions.  LLADD provides such a layer and the necessary
+calls, reducing the LRVM implementation to an implementation of the
+page fault handling code.  The performance of the transactional
+storage system is crucial for this sort of application, and the
+variable length, keyed access, and higher levels of abstractions
+provided by existing libraries would be overkill.  LLADD could easily
+be extended so that it employs an appropriate on-disk structure that
+provides efficient, offset based access to aligned, fixed length
+blocks of data.  Furthermore, LRVM requires a set\_range() operation
+that efficiently updates a range of a record, saving logging overhead.
+All of these features could easily added to LLADD, providing a simple,
+fast version of LRVM that would benefit from the infrastructure
+surrounding LLADD.
+
+CVS provides version control over large sets of files.  Multiple users
+may concurrently update the repository of files, and CVS attempts to
+merge conflicts, and maintain the consistency of the file tree.  By
+adding the ability to perform file system manipulations to LLADD, we
+could easily support applications with requirements similar to those
+of CVS.  Furthermore, we could combine the file-system manipulation
+with record-oriented storage to store application-level logs, and
+other important metadata.  This would allow a single mechanism to
+support applications such as CVS, simplifying fault tolerance, and
+improving the scalibility of such applications.
+
+IMAP is similar to CVS, but benefits further since it uses a simple,
+folder-based locking protocol, which would be extremely easy to
+implement using LLADD.
+
+These last two examples highlight some of the potential advantages of
+extending LLADD to manipulate the file system, although it is possible
+that LLADD's page file would provide improved performance over the
+file system, at the expense of some complexity, and the transparency
+of file-system based storage mechanisms.
+
+Another area of interest is in transactional serialization mechanisms
+for programming languages.  Existing solutions are often complex, or
+are layered on top of a relational database, or other system that uses
+a data format that is different than the representation the
+programming language uses.  The wide variety of persistance mechanisms
+available for Java provide a nice survey of the potential design
+choices and tradeoffs.  Since LLADD can easily be adapted to an
+application's desired data format, we believe that it is a good match
+for such persistance mechanisms.
 
 \section{Performance}
 
@@ -872,10 +929,10 @@ keys and values, so this this test puts us at a significant advantage.
 It also provides an example of the type of workload that LLADD handles
 well, since LLADD is specifically designed to support application
 specific transactional data structures.  For comparison, we ran 
-``Record Number'' trials, named after the BerkeleyDB access method.  
+``Record Number'' trials, named after the Berkeley DB access method.  
 In this case, the two programs essentially stored the data in a large 
 array on disk.  This test provides a measurement of the speed of the 
-lowest level primitive supported by BerkeleyDB. 
+lowest level primitive supported by Berkeley DB, and the corresponding LLADD extension. 
 
 %
 \begin{figure*}
@@ -893,7 +950,7 @@ test spawned 200 threads and split its workload into 200 separate transactions.}
 \end{figure*}
 The times included in Figure \ref{cap:INSERTS} include page file
 and log creation, insertion of the tuples as a single transaction,
-and a clean program shutdown. We used the 'transapp.cs' program from
+and a clean program shutdown. We used the ``transapp.cs'' program from
 the Berkeley DB 4.2 tutorial to run the Berkeley DB tests, and hardcoded
 it to use integers instead of strings. We used the Berkeley DB {}``DB\_HASH''
 index type for the hashtable implementation, and {}``DB\_RECNO''
@@ -910,13 +967,15 @@ hash table implementation that is tuned for fixed-length data. Instead,
 the conclusions we draw from this test are that, first, LLADD's primitive
 operations are on par, perforance wise, with Berkeley DB's, which
 we find very encouraging. Second, even a highly tuned implementation
-of a 'simple,' general purpose data structure is not without overhead,
+of a ``simple,'' general purpose data structure is not without overhead,
 and for applications where performance is important a special purpose
 structure may be appropriate.
 
 Also, the multithreaded test run shows that the library is capable of
 handling a large number of threads. The performance degradation
-associated with running 200 concurrent threads was negligible.  The
+associated with running 200 concurrent threads was negligible.  Figure
+TODO expands upon this point by plotting the time taken for various
+numbers of threads to perform a total of 500,000 (TODO-CHECK) read operations.  The
 logical logging version of LLADD's hashtable outperformed the physical
 logging version for two reasons.  First, since it writes fewer undo
 records, it generates a smaller log file.  Second, in order to
@@ -955,8 +1014,8 @@ ensuring data integrity and adding database-style functionality, such
 as continuous backup to systems that currently do not provide such
 mechanisms. We believe that there is quite a bit of room for the developement
 of new software systems in the space between the high-level, but sometimes
-inappropriate interfaces exported by database servers, and the low-level,
-general-purpose primitives supported by current file systems.
+inappropriate interfaces exported by existing transactiona storage systems, 
+and the unsafe, low-level primitives provided supported by current file systems.
 
 Currently, although we have implemented a two-phase commit algorithm,
 LLADD really is not very network aware. If we provided a clean abstraction
