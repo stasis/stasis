@@ -75,13 +75,13 @@ void slottedCompact(Page * page) {
 	    truncate the list before continuing. */
 
 	short next = *freelist_ptr(page);
-	while(next >= numSlots) {
+	while(next >= numSlots && next != INVALID_SLOT) {
 	  next = *slot_length_ptr(page, next);
 	}
 
 	*freelist_ptr(page) = next;
 	
-	/* Rebuild the freelist. */
+	// Rebuild the freelist. 
 	
 	/*	*freelist_ptr(&bufPage) = 0;
 	for (i = 0; i < numSlots; i++) { 
@@ -90,8 +90,8 @@ void slottedCompact(Page * page) {
 	    *freelist_ptr(&bufPage) = i;
 	    break;
 	  }
-	}
-	*/
+	  } */
+	
 
 	memcpy(page->memAddr, buffer, PAGE_SIZE);
 }

@@ -216,8 +216,16 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
       if(rid.size == size) { 
 	Tupdate(xid,rid, NULL, OPERATION_ALLOC);
       } else {
-	//	slottedCompact(p);
-	assert(rid.size < 0);
+	p = loadPage(xid, page);
+	slottedCompact(p);
+	releasePage(p);
+	p = NULL;
+	rid = slottedPreRallocFromPage(xid, page, size, &p);
+	if(rid.size == size) {
+	  Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+	} else {
+	  assert(rid.size < 0);
+	}
       }
       if(p) {
 	/* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */      
