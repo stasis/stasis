@@ -209,8 +209,8 @@ static void Undo(int recovery) {
       switch(e->type) {
       case UPDATELOG:
 	{
-	  /* Need write lock for undo.. */
-	  Page * p = getPage(e->contents.update.rid.page, RW); 
+	  /* Need write lock for undo.. (Why??) */
+	  Page * p = getPage(e->contents.update.rid.page, RO); 
 	  this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
 	  
 	  

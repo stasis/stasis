@@ -26,4 +26,5 @@ Operation getUnInitPage();
 
 recordid dereferenceArrayListRid(Page * p, int offset);
 int TarrayListExtend(int xid, recordid rid, int slots);
+int TarrayListInstantExtend(int xid, recordid rid, int slots);
 #endif

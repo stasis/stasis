@@ -113,6 +113,10 @@ terms specified in this license.
 #define OPERATION_ARRAY_LIST_ALLOC 20
 #define OPERATION_INITIALIZE_FIXED_PAGE 21
 #define OPERATION_UNINITIALIZE_PAGE 22
+#define OPERATION_LINEAR_INSERT 23
+#define OPERATION_UNDO_LINEAR_INSERT 24
+#define OPERATION_LINEAR_DELETE 25
+#define OPERATION_UNDO_LINEAR_DELETE 26
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 

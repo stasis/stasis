@@ -249,7 +249,7 @@ Page * getPage(int pageid, int locktype) {
     /*    pblHtRemove(activePages, &(ret->id), sizeof(int));  */
     pblHtRemove(activePages, &(oldid), sizeof(int)); 
 
-    /* Put off putting this back into cache until we're done with
+    /* @todo Put off putting this back into cache until we're done with
        it. -- This could cause the cache to empty out if the ratio of
        threads to buffer slots is above ~ 1/3, but it decreases the
        liklihood of thrashing. */

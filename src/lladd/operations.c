@@ -118,21 +118,21 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
     if(undo == NO_INVERSE) {
       /* Physical undo */
 
-      DEBUG("OPERATION Physical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION %d Physical undo, %ld {%d %d %ld}\n", undo, e->LSN, e->contents.update.rid.page, e->contents.update.rid.slot, e->contents.update.rid.size);
       writeRecord(e->xid, p, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
     } else if(undo == NO_INVERSE_WHOLE_PAGE) {
-      DEBUG("OPERATION Whole page physical undo, %ld {%d}\n", e->LSN, rid.page);
+      DEBUG("OPERATION %d Whole page physical undo, %ld {%d}\n", undo, e->LSN, e->contents.update.rid.page);
       memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
       pageWriteLSN(p, clr_lsn);
 
     } else {
       /* @see doUpdate() */
       /*      printf("Logical undo"); fflush(NULL); */
-      DEBUG("OPERATION Logical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION %d Logical undo, %ld {%d %d %ld}\n", undo, e->LSN, e->contents.update.rid.page, e->contents.update.rid.slot, e->contents.update.rid.size);
       operationsTable[undo].run(e->xid, p, clr_lsn, e->contents.update.rid, getUpdateArgs(e));
     }
   } else {
-    DEBUG("OPERATION Skipping undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
+    DEBUG("OPERATION %d Skipping undo, %ld {%d %d %ld}\n", undo, e->LSN, e->contents.update.rid.page, e->contents.update.rid.slot, e->contents.update.rid.size);
   }
 
   /*  printf("Undo done."); fflush(NULL); */

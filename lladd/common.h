@@ -100,7 +100,7 @@ extern int errno;
 
 
 /*#define DEBUGGING   */
-/*#define PROFILE_LATCHES   */
+/* #define PROFILE_LATCHES   */
 
 #ifdef DEBUGGING 
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */

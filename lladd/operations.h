@@ -149,6 +149,7 @@ typedef struct {
 #include "operations/instantSet.h"
 #include "operations/arrayList.h"
 #include "operations/linearHash.h"
+#include "operations/naiveLinearHash.h"
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 
 /** Performs an operation during normal execution. 
@@ -179,8 +180,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn);
     before redoing it. (if(e->lsn > e->rid.lsn) { doUpdate(e); } return)
 
     Also, this is the only function in operations.h that can take
-    either CLR or UPDATE log entries.  The other functions can only
-    handle update entries.
+    either CLR or UPDATE log entries.  The other functions can     handle update entries.
 
     Does not write to the log.
 */

@@ -77,7 +77,7 @@ Operation getAlloc() {
   Operation o = {
     OPERATION_ALLOC, /* ID */
     0,
-    OPERATION_DEALLOC,
+    OPERATION_DEALLOC, /* OPERATION_NOOP, */
     &operate
   };
   return o;
@@ -88,7 +88,7 @@ Operation getDealloc() {
   Operation o = {
     OPERATION_DEALLOC,
     SIZEOF_RECORD,
-    OPERATION_REALLOC,
+    OPERATION_REALLOC, /* OPERATION_NOOP, */
     &deoperate
   };
   return o;

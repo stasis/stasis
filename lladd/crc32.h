@@ -14,4 +14,4 @@
    crc = crc32(buffer, length, crc)
 */
 
-unsigned int crc32(void *buffer, unsigned int count, unsigned int crc);
+unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc);

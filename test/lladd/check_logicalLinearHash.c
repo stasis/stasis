@@ -57,7 +57,7 @@ terms specified in this license.
     executes each of the insert / remove / lookup operations a few times.
 */
 //#define NUM_ENTRIES 100000   
-#define NUM_ENTRIES 2001
+#define NUM_ENTRIES 2001  
 /* #define NUM_ENTRIES 1000  */
 /*#define NUM_ENTRIES 100  */
 
@@ -102,7 +102,7 @@ START_TEST(simpleLinearHashTest)
     /*    assert(isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid))); 
 	  assert(!isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid))); */
 
-    ThashInsert(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
+    TlogicalHashInsert(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
     assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
 
     assert(rid.page == i+1);
@@ -112,12 +112,12 @@ START_TEST(simpleLinearHashTest)
 
     if(! (i % 1000)) {
       printf("%d\n", i);
-      fflush(NULL);
+      /* flush(NULL); */
     }
 
   }
   printf("Done inserting.\n");
-  fflush(NULL);
+  /*  fflush(NULL); */
 
   for(int i = 0; i < NUM_ENTRIES; i+=10) {
     /*recordid rid = lHtRemove(xid, hash, &i, sizeof(int)); */
@@ -126,12 +126,12 @@ START_TEST(simpleLinearHashTest)
     assert(rid.page == (i+1));
     assert(rid.slot == (i+2));
     assert(rid.size == (i+3));
-    ThashDelete(xid, hashRoot, &i, sizeof(int));
+    TlogicalHashDelete(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
 
   }
 
   printf("Done deleting mod 10.\n");
-  fflush(NULL);
+  /*  fflush(NULL); */
 
 
   for(int i = 0; i < NUM_ENTRIES; i++) {
@@ -155,28 +155,29 @@ START_TEST(simpleLinearHashTest)
 
     if(i % 10) {
       assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
-      ThashDelete(xid, hashRoot, &i, sizeof(int));
+      TlogicalHashDelete(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
       assert(rid.page == (i+1));
       assert(rid.slot == (i+2));
       assert(rid.size == (i+3));
     } else {
       assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
-      ThashDelete(xid, hashRoot, &i, sizeof(int));
+      TlogicalHashDelete(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
     }
   }
 
   printf("Done deleting rest.\n");
-  fflush(NULL);
+  /*  fflush(NULL);*/
 
   for(int i = 0; i < NUM_ENTRIES; i++) {
     assert(!ThashLookup(xid, hashRoot, &i, sizeof(int),  &rid, sizeof(recordid)));
   }
 
+
   printf("Aborting..\n");
-  fflush(NULL);
+  /*  fflush(NULL); */
   Tabort(xid);
   printf("done aborting..\n");
-  fflush(NULL);
+  /*  fflush(NULL); */
 
   xid = Tbegin();
 
@@ -191,7 +192,7 @@ START_TEST(simpleLinearHashTest)
     }
   }
   printf("done checking..\n");
-  fflush(NULL);
+  /*  fflush(NULL); */
 
   Tcommit(xid);
   

@@ -68,17 +68,10 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   int multiplier = tlp->multiplier;
   int size = tlp->size;
 
-  /*  Page * p = loadPage(firstPage); */
-
   fixedPageInitialize(p, sizeof(int), recordsPerPage(sizeof(int)));
 
-  /*  recordid countRid         = fixedRawRalloc(p);
-  recordid multiplierRid    = fixedRawRalloc(p);
-  recordid slotSizeRid      = fixedRawRalloc(p); */
 #define MAX_OFFSET_POSITION    3
-  /* recordid maxOffset        = fixedRawRalloc(p); */
 #define FIRST_DATA_PAGE_OFFSET 4
-  /*  recordid firstDataPageRid = fixedRawRalloc(p); */
   
   recordid countRid, multiplierRid, slotSizeRid, maxOffset, firstDataPageRid;
   countRid.page = multiplierRid.page = slotSizeRid.page =  maxOffset.page = firstDataPageRid.page = p->id;
@@ -98,7 +91,6 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   fixedWriteUnlocked(p, slotSizeRid, (byte*)&size);
   int minusOne = -1;
   fixedWriteUnlocked(p, maxOffset, (byte*)&minusOne);
-
 
   /* Write lsn... */
 
@@ -128,7 +120,6 @@ Operation getArrayListAlloc() {
 int TarrayListExtend(int xid, recordid rid, int slots) {
   Page * p = loadPage(rid.page);
   TarrayListParameters tlp = pageToTLP(p);
-  releasePage(p);
 
   int lastCurrentBlock;
   if(tlp.maxOffset == -1) {
@@ -147,14 +138,20 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
   recordid tmp2;  /* recordid of newly created pages. */
   tmp2.slot = 0;
   tmp2.size = tlp.size;
+  /* Iterate over the (small number) of indirection blocks that need to be updated */
   for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
     /* Alloc block i */
     int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
     int newFirstPage = TpageAllocMany(xid, blockSize);
     DEBUG("block %d\n", i);
+    /* Iterate over the storage blocks that are pointed to by our current indirection block. */
     for(int j = 0; j < blockSize; j++) {
       DEBUG("page %d (%d)\n", j, j + newFirstPage);
       tmp2.page = j + newFirstPage;
+      /** @todo If we were a little smarter about this, and fixed.c
+	  could handle uninitialized blocks correctly, then we
+	  wouldn't have to iterate over the datapages in
+	  TarrayListExtend() */
       Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
     }
     
@@ -174,6 +171,71 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
   *page_type_ptr(p) = FIXED_PAGE;
   Tset(xid, tmp, &newMaxOffset);
   *page_type_ptr(p) = ARRAY_LIST_PAGE;
+  releasePage(p);
+
+  return 0;
+
+}
+/** @todo:  TarrayListInstantExtend, is a hacked-up cut and paste version of TarrayListExtend */
+int TarrayListInstantExtend(int xid, recordid rid, int slots) {
+  Page * p = loadPage(rid.page);
+  TarrayListParameters tlp = pageToTLP(p);
+
+  int lastCurrentBlock;
+  if(tlp.maxOffset == -1) {
+    lastCurrentBlock = -1;
+  } else{
+    lastCurrentBlock = getBlockContainingOffset(tlp, tlp.maxOffset, NULL);
+  } 
+  int lastNewBlock = getBlockContainingOffset(tlp, tlp.maxOffset+slots, NULL);
+
+  DEBUG("lastCurrentBlock = %d, lastNewBlock = %d\n", lastCurrentBlock, lastNewBlock);
+
+  recordid tmp;   /* recordid of slot in base page that holds new block. */
+  tmp.page = rid.page;
+  tmp.size = sizeof(int);
+  
+  recordid tmp2;  /* recordid of newly created pages. */
+  tmp2.slot = 0;
+  tmp2.size = tlp.size;
+  /* Iterate over the (small number) of indirection blocks that need to be updated */
+  for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
+    /* Alloc block i */
+    int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
+    int newFirstPage = TpageAllocMany(xid, blockSize);
+    DEBUG("block %d\n", i);
+    /* Iterate over the storage blocks that are pointed to by our current indirection block. */
+    for(int j = 0; j < blockSize; j++) {
+      DEBUG("page %d (%d)\n", j, j + newFirstPage);
+      tmp2.page = j + newFirstPage;
+      /** @todo If we were a little smarter about this, and fixed.c
+	  coulds handle uninitialized blocks correctly, then we
+	  wouldn't have to iterate over the datapages in
+	  TarrayListExtend() */
+      Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
+    }
+    
+    tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
+    /** @todo what does this do to recovery?? */
+    /** @todo locking for arrayList... */
+    *page_type_ptr(p) = FIXED_PAGE;
+    TinstantSet(xid, tmp, &newFirstPage);
+    *page_type_ptr(p) = ARRAY_LIST_PAGE;
+
+    DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
+  }
+
+  tmp.slot = MAX_OFFSET_POSITION;
+
+  int newMaxOffset = tlp.maxOffset+slots;
+  /** @todo CORRECTNESS BUG: From recovery's point of view, this is totally wrong! The
+      only reason we mess with p is beacuse TinstantSet doesn't handle
+      ARRAY_LIST_PAGES the way we need it to, so this won't be hard to
+      fix... */
+  *page_type_ptr(p) = FIXED_PAGE;
+  TinstantSet(xid, tmp, &newMaxOffset);
+  *page_type_ptr(p) = ARRAY_LIST_PAGE;
+  releasePage(p);
 
   return 0;
 
@@ -198,7 +260,7 @@ Operation getInitFixed() {
   Operation o = {
     OPERATION_INITIALIZE_FIXED_PAGE,
     0,  /* The necessary parameters are hidden in the rid */
-    OPERATION_UNINITIALIZE_PAGE,
+    /*OPERATION_UNINITIALIZE_PAGE,*/  OPERATION_NOOP, 
     &operateInitFixed
   };
   return o;
@@ -207,7 +269,7 @@ Operation getUnInitPage() {
   Operation o = {
     OPERATION_UNINITIALIZE_PAGE,
     PAGE_SIZE,
-    NO_INVERSE_WHOLE_PAGE,
+    NO_INVERSE_WHOLE_PAGE, /* OPERATION_NOOP,*/
     &operateUnInitPage
   };
   return o;
@@ -232,16 +294,10 @@ recordid dereferenceArrayListRid(Page * p, int offset) {
   int blockPage = dataSlot / rec_per_page;  /* The page in the block of interest that contains the slot we want */
   int blockSlot = dataSlot - blockPage * rec_per_page;
 
-  /*  recordid tmp;
-  tmp.page = tlp.firstPage;
-  tmp.size = sizeof(int);
-  tmp.slot = pageRidSlot + FIRST_DATA_PAGE_OFFSET; */
-
   int thePage;
 
   assert(pageRidSlot + FIRST_DATA_PAGE_OFFSET < fixedPageCount(p));
-  /*  fixedReadUnlocked(p, tmp, (byte*)&thePage); *//* reading immutable record.. */
-  thePage = *(int*)fixed_record_ptr(p, pageRidSlot + FIRST_DATA_PAGE_OFFSET);
+  thePage = *(int*)fixed_record_ptr(p, pageRidSlot + FIRST_DATA_PAGE_OFFSET); /*reading immutable record; don't need latch.*/
 
   recordid rid;
   rid.page = thePage + blockPage;

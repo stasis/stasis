@@ -1,5 +1,5 @@
 EXTRA_DIST = reconf
-SUBDIRS = src test utilities
+SUBDIRS = src test utilities benchmarks
 AM_CFLAGS = -g -Wall -pedantic
 
 docs:

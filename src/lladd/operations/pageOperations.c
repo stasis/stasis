@@ -241,8 +241,8 @@ int TpageAlloc(int xid /*, int type */) {
 #ifdef REUSE_PAGES
   if(freelist) {
     
-    printf("Re-using old page: %d\n", freelist);
-    fflush(NULL);
+    DEBUG("Re-using old page: %d\n", freelist);
+
     newpage = freelist;
 
     Page * p = loadPage(newpage);  /* Could obtain write lock here,
@@ -343,7 +343,7 @@ Operation getUpdateFreespace() {
   Operation o = {
     OPERATION_UPDATE_FREESPACE,
     sizeof(update_tuple),
-    OPERATION_UPDATE_FREESPACE_INVERSE,
+    /*    OPERATION_UPDATE_FREESPACE_INVERSE, */ OPERATION_NOOP,
     &__update_freespace
   };
   return o;
@@ -364,7 +364,7 @@ Operation getUpdateFreelist() {
   Operation o = {
     OPERATION_UPDATE_FREELIST,
     sizeof(update_tuple),
-    OPERATION_UPDATE_FREELIST_INVERSE,
+    OPERATION_NOOP,
     &__update_freelist
   };
   return o;

@@ -5,9 +5,7 @@
 
 /** @todo replace powl in hash with something more efficient, if hash() becomes a bottleneck. */
 
-#define twoToThe(x) (1 << (x))
-
-unsigned int hash(void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {
+unsigned int hash(const void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {
   unsigned int oldTableLength = /*powl(2, tableBits - 1); */ twoToThe(tableBits - 1);
   unsigned int unmixed = crc32(val, val_length, (unsigned long)-1L);
   unsigned int ret = unmixed & (oldTableLength - 1); 

@@ -87,5 +87,7 @@ AC_CONFIG_FILES([Makefile
                  test/lladd/Makefile
                  test/messages/Makefile
                  test/monotree/Makefile
-                 utilities/Makefile])
+                 utilities/Makefile
+                 benchmarks/Makefile
+])
 AC_OUTPUT

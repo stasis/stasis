@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.4  2004/10/18 18:24:51  sears
+    Preliminary version of logical logging linear hash.  (No latching yet, and there are some bugs re-opening a closed hash.)
+
     Revision 1.3  2004/10/17 02:17:00  sears
     Optimized the 'naive' linear hash table, and moved to sourceforge. :)
 
@@ -71,7 +74,8 @@ static int   rcsid_fct() { return( rcsid ? 0 : rcsid_fct() ); }
 /*****************************************************************************/
 /* #defines                                                                  */
 /*****************************************************************************/
-#define PBL_HASHTABLE_SIZE      1019
+/*#define PBL_HASHTABLE_SIZE      1019*/
+#define PBL_HASHTABLE_SIZE      2017
 /*#define PBL_HASHTABLE_SIZE   100003 */
 
 /*****************************************************************************/

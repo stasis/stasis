@@ -60,6 +60,11 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_INITIALIZE_FIXED_PAGE] = getInitFixed();
 	operationsTable[OPERATION_UNINITIALIZE_PAGE] = getUnInitPage();
 
+	operationsTable[OPERATION_LINEAR_INSERT] = getLinearInsert();
+	operationsTable[OPERATION_UNDO_LINEAR_INSERT] = getUndoLinearInsert();
+	operationsTable[OPERATION_LINEAR_DELETE] = getLinearDelete();
+	operationsTable[OPERATION_UNDO_LINEAR_DELETE] = getUndoLinearDelete();
+
 }
 
 
@@ -133,7 +138,12 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
     releasePage(p);
     rid = dereferenceRID(rid);
     p = loadPage(rid.page); 
-  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) {
+    /** @todo Kludge! Shouldn't special case operations in transactional2. */
+  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
+	    op != OPERATION_LINEAR_INSERT && 
+	    op != OPERATION_UNDO_LINEAR_INSERT &&
+	    op != OPERATION_LINEAR_DELETE && 
+	    op != OPERATION_UNDO_LINEAR_DELETE  ) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
     p = loadPage(rid.page); 
@@ -155,7 +165,7 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 void Tread(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
   int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE) {
+  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
