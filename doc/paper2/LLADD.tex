@@ -35,10 +35,9 @@
 
 %\subsection*{Abstract}
 
-{\em The sections marked @todo or bolded still need to be written, and
-graphs need to be produced.  Also, I would like to add a
+\rcs{Should we add a
 ``cheat-sheet'' style reference of an idealized version of \yad's
-API.}
+API?}
 \vspace*{6pt}
 
 {\em Existing transactional systems are designed to handle specific
@@ -693,10 +692,59 @@ operations.
 \subsection{Nested Top Actions}
 \label{nested-top-actions}
 
+%explain that with a ``big lock'' it is easy to write transactional data structure. (trivial example?)
 
-\eab{here is the new location for this section}
+There are three levels of concurency that a transactional data
+structure can support.  If we do not implement any sort of consistency
+code, we can use physical undo and redo to update the structure.  This
+works well if the application only runs one transaction at a time and
+is single threaded.  To understand why transactions that such a data
+structure may not overlap, consider what would happen if one
+transaction, $A$, rearranged the layout of a data structure, a second
+transaction, $B$, added a value to the rearranged structure, and then
+the first transaction called abort().  While applying physical undo
+information to the altered data structure, the $A$ would undo the
+writes that it performed without considering the data values and
+structural changes introduced $B$.  For concreteness, imagine that $A$
+split a B-Tree bucket, and that $B$ added a value to the newly
+allocated bucket.  $A$'s physical undo would deallocate the new
+bucket, and remove any references to it within the B-Tree, losing
+$B$'s data.
 
-explain that with a ``big lock'' it is easy to write transactional data structure. (trivial example?)
+The reason this is not a problem in the single transaction case is
+that $A$'s changes atomically exposed to the other transactions in the
+system.  ($B$ can only run before $A$ begins, or after $A$ commits, so
+it can never see changes that $A$ made, but did not commit.)
+
+\rcs{I'm not going to mention cascading aborts, unless you think it makes this section more clear.}
+
+\rcs{@todo this list could be part of the broken section called ``Concurrency and Aborted Transactions''}
+
+\begin{itemize}
+\item An operation that spans pages can be made atomic by simply
+wrapping it in a nested top action and obtaining appropriate latches
+at runtime.  This approach reduces development of atomic page spanning
+operations to something very similar to conventional multithreaded
+development using mutexes for synchroniztion.  Unfortunately, this
+mode of operation writes redundant undo entry to the log, and has
+performance implications that will be discussed later.  However, for
+most circumstances, the ease of development with nested top actions
+outweighs the difficulty verifying the correctness of implementations
+that use the next method.
+
+\item It nested top actions are not used, an undo operation must
+correctly update a data structure if any prefix of its corresponding
+redo operations are applied to the structure, and if any number of
+intervening operations are applied to the structure.  In the best
+case, this simply means that the operation should fail gracefully if
+the change it should undo is not already reflected in the page file.
+However, if the page file may temporarily lose consistency, then the
+undo operation must be aware of this, and be able to handle all cases
+that could arise at recovery time.  Figure~\ref{linkedList} provides
+an example of the sort of details that can arise in this case.
+\end{itemize}
+
+
 
 but we want more concurrency, which means 2 problems: 1) finer grain locking and 2) weaker isolation since interleaved transactions seeing the same structure
 
@@ -966,35 +1014,12 @@ the page that the redo function sees, then the wrapper should latch
 the relevant data.
 \item Redo operations address {\em pages} by physical offset,
 while Undo operations address {\em data} with a permanent address (such as an index key)
+\item An operation must never leave the data store in an unrecoverable state.  Usually 
+this means ensuring operation atomicity at some level of granularity, and arranging for re
+covery to perform physical and logical undo as appropriate. (Section~\ref{nested-top-actions})
 \end{itemize}
 
-There are multiple ways to ensure the atomicity of operations:
-
-{\em @todo this list could be part of the broken section called ``Concurrency and Aborted Transactions''}
-
-\begin{itemize}
-\item An operation that spans pages can be made atomic by simply
-wrapping it in a nested top action and obtaining appropriate latches
-at runtime.  This approach reduces development of atomic page spanning
-operations to something very similar to conventional multithreaded
-development using mutexes for synchroniztion.  Unfortunately, this
-mode of operation writes redundant undo entry to the log, and has
-performance implications that will be discussed later.  However, for
-most circumstances, the ease of development with nested top actions
-outweighs the difficulty verifying the correctness of implementations
-that use the next method.
-
-\item It nested top actions are not used, an undo operation must
-correctly update a data structure if any prefix of its corresponding
-redo operations are applied to the structure, and if any number of
-intervening operations are applied to the structure.  In the best
-case, this simply means that the operation should fail gracefully if
-the change it should undo is not already reflected in the page file.
-However, if the page file may temporarily lose consistency, then the
-undo operation must be aware of this, and be able to handle all cases
-that could arise at recovery time.  Figure~\ref{linkedList} provides
-an example of the sort of details that can arise in this case.
-\end{itemize}
+\rcs{Implementation of Increment here?}
 
 We believe that it is reasonable to expect application developers to
 correctly implement extensions that make use of Nested Top Actions.  
@@ -1226,8 +1251,8 @@ similar to \yad.  Also, it is available both in open-source form, and as a
 commercially maintained and supported program.  Finally, it has been 
 designed for high-performance, high-concurrency environments.
 
-All benchmarks were run on and Intel .... {\em @todo} with the
-following Berkeley DB flags enabled {\em @todo}.  We used the copy
+All benchmarks were run on and Intel .... \rcs{@todo} with the
+following Berkeley DB flags enabled \rcs{@todo}.  We used the copy
 of Berkeley DB 4.2.52 as it existed in Debian Linux's testing
 branch during March of 2005.  These flags were chosen to match 
 Berkeley DB's configuration to \yad's as closely as possible.  In cases where
@@ -1274,10 +1299,7 @@ reproduce the trends reported here on multiple systems.
 \caption{\label{fig:BULK_LOAD} This test measures the raw performance
 of the data structures provided by \yad and Berkeley DB.  Since the
 test is run as a single transaction, overheads due to synchronous I/O
-and logging are minimized.
-{\em @todo of course, these aren't the final graphs.  I plan to add points for 1 insertion, fix
-the stair stepping, and split the numbers into 'hashtable' and 'raw
-access' graphs.}}
+and logging are minimized.}
 \end{figure*}
 
 %\subsection{Conventional workloads}
@@ -1659,7 +1681,7 @@ threads, and varying the number of requests each thread issues per
 second, and report the cumulative density of the distribution of
 response times for each case.
 
-@todo analysis / come up with a more sane graph format.
+\rcs{analysis / come up with a more sane graph format.}
 
 The fact that our straightfoward hashtable is competitive with Berkeley DB's hashtable shows that
 straightforward implementations of specialized data structures can 
@@ -1854,11 +1876,11 @@ whitespace, comments and boilerplate function registrations.  Although
 the reasoning required to ensure the correctness of this code was
 complex, the simplicity of the implementation is encouraging.
 
-@todo analyse OASYS data.
+\rcs{analyse OASYS data.}
 
 \section{Transitive closure\label{TransClos}}
 
-@todo implement transitive closu....
+\rcs{implement transitive closu....}
 
 %\begin{enumerate}
 %
@@ -1966,7 +1988,7 @@ and reliable.
 
 \section{Conclusion}
 
-{\em @todo write conclusion section}
+\rcs{write conclusion section}
 
 \begin{thebibliography}{99}
 
