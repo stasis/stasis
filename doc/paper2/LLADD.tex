@@ -1711,15 +1711,18 @@ significantly outperforms one built with conventional linked lists.
 The second test (Figure~\ref{fig:TPS}) measures the two libraries' ability to exploit
 concurrent transactions to reduce logging overhead.  Both systems
 can service concurrent calls to commit with a single 
-synchronous I/O. Because different approaches to this 
-optimization make sense under different circumstances~\cite{findWorkOnThisOrRemoveTheSentence}, this may 
-be another aspect of transactional storage systems where
-application control over a transactional storage policy is 
-desirable.~\footnote{The multi-threading benchmarks presented 
+synchronous I/O.~\footnote{The multi-threading benchmarks presented 
 here were performed using an ext3 file system, as high thread 
 concurrency caused Berkeley DB and \yad to behave unpredictably 
 when reiserfs was used.  However, \yad's multithreaded throughput was 
 significantly better than Berkeley DB's with both filesystems.}
+
+
+%Because different approaches to this 
+%optimization make sense under different circumstances~\cite{findWorkOnThisOrRemoveTheSentence}, this may 
+%be another aspect of transactional storage systems where
+%application control over a transactional storage policy is 
+%desirable.
 
 %\footnote{Although our current implementation does not provide the hooks that 
 %would be necessary to alter log scheduling policy, the logger 
@@ -1755,6 +1758,13 @@ Similarly, it seems as though it is not difficult to implement specialized
 data structures that will significantly outperform existing 
 general purpose structures when applied to an appropriate application.
 
+This finding suggests that it is appropriate for
+application developers to consider the development of custom
+transactional storage mechanisms when application performance is
+important.  The next two sections are devoted to developing such mechanisms, 
+confirming their practicality.
+
+
 %This section uses:
 %\begin{enumerate}
 %\item{Custom page layouts to implement ArrayList}
@@ -1765,12 +1775,17 @@ general purpose structures when applied to an appropriate application.
 %\item{Bypasses Nested Top Action API to optimize log bandwidth}
 %\end{enumerate}
 
+In summary, there are a number of primatives that are necessary to
+implement custom, high concurrency and low level transactional data
+structures.  In order to implement and optimize a hashtable we used a
+number of low level APIs that are not supported by other systems.  We
+needed to customize page layouts to implement ArrayList.  The Page
+Oriented list addresses and allocates data by page in order to
+preserve locality.  The hashtable implementation built upon these two
+data structures, and needs to be able to generate custom log entries,
+define custom latching/locking semantics, and make use of, or
+implement a custom variant of nested top actions.
 
-This finding suggests that it is appropriate for
-application developers to consider the development of custom
-transactional storage mechanisms when application performance is
-important.  The next two sections are devoted to developing such mechanisms, 
-confirming their practicality.
 
 \begin{figure*}
 \includegraphics[%
