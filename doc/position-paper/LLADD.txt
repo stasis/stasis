@@ -1,24 +1,24 @@
 Russell Sears
 Eric Brewer
+UC Berkeley
 
-Automated Verification and Optimization of Extensions to Transactional
-Storage Systems.
+A Flexible, Extensible Transaction Framework
 
 Existing transactional systems are designed to handle specific
 workloads well.  Unfortunately, these systems' implementations are
-geared toward specific workloads and data layouts such as those
-traditionally associated with SQL.  Lower level implementations such
-as Berkeley DB handle a wider variety of workloads and are built in a
-modular fashion.  However, they do not provide APIs to allow
-applications to build upon and modify low level policies such as
-allocation strategies, page layout or details of recovery semantics.
-Furthermore, data structure implementations are typically not broken
-into separable, public APIs, encouraging a "from scratch" approach to
-the implementation of new transactional data structures. 
+mononolithic and hide the transactional infrastructure underneath a
+SQL interface. Lower-level implementations such as Berkeley DB handle
+a wider variety of workloads and are built in a more modular fashion.
+However, they do not provide APIs to allow applications to build upon
+and modify low-level policies such as allocation strategies, page
+layout or details of recovery semantics.  Furthermore, data structure
+implementations are typically not broken into separable, public APIs,
+which discourages the implementation of new transactional data
+structures.
 
-Contrast this to the handling of data structures within modern object
-oriented programming languages such as C++ or Java.  Such languages
-typically provide a large number of data storage algorithm
+Contrast this to the handling of data structures within modern
+object-oriented programming languages such as C++ or Java.  Such
+languages typically provide a large number of data storage algorithm
 implementations.  These structures may be used interchangeably with
 application-specific data collections, and collection implementations
 may be composed into more sophisticated data structures.
@@ -37,7 +37,7 @@ developers to implement sophisticated cross-layer optimizations easily.
 Overview of the LLADD Architecture
 ----------------------------------
 
-General purpose transactional storage systems are extremely complex
+General-purpose transactional storage systems are extremely complex
 and only handle certain types of workloads efficiently.  However, new
 types of applications and workloads are introduced on a regular basis.
 This results in the implementation of specialized, ad-hoc data storage
@@ -45,25 +45,27 @@ systems from scratch, wasting resources and preventing code reuse.
 
 Instead of developing a set of general purpose data structures that
 attempt to behave well across many workloads, we have implemented a
-lower level API that makes it easy for application designers to
+lower-level API that makes it easy for application designers to
 implement specialized data structures.  Essentially, we have
 implemented an extensible navigational database system.  We
 believe that this system will support modern development practices and
-address rapidly evolving applications before 
-appropriate general-purpose solutions have been developed.  
+allows transactions to be used in a wider range of applications.
 
-In cases
-where the development of a general-purpose solution is not economical, 
-our approach should lead to maintainable and efficient long-term 
-solutions.  Semi-structured data stores provide good examples of both 
-types of scenarios.  General XML storage technologies are improving
-rapidly, but still fail to handle many types of applications.  
+*** This paragraph doesn't make sense to me:
 
+In cases where the development of a general-purpose solution is not
+economical, our approach should lead to maintainable and efficient
+long-term solutions.  Semi-structured data stores provide good
+examples of both types of scenarios.  General XML storage technologies
+are improving rapidly, but still fail to handle many types of
+applications.
+
+*** this is risky: there are many people working on XML databases
 For instance, 
-we know of no general purpose solution that seriously addresses 
+we know of no general-purpose solution that seriously addresses 
 semi-structured scientific information, such as the large repositories 
 typical of bioinformatics research efforts[PDB, NCBI, Gene Ontology].
-While many scientific projects are moving toward XML for their data 
+Although many scientific projects are moving toward XML for their data 
 representation, we have found that XML is used primarily as a data 
 interchange format, and that existing XML tools fail to address the 
 needs of automated data mining, scientific computing and interactive 
@@ -89,7 +91,7 @@ These structures were developed with reusability in mind, encouraging
 developers to compose existing operations into application-specific data
 structures.  For example, the hashtable is 
 implemented on top of reusable modules that implement a resizable array 
-and two exchangeable linked list variants.  
+and two exchangeable linked-list variants.  
 
 In other work, we show that the system is competitive with
 Berkeley DB on traditional (hashtable based) workloads, and have shown
@@ -113,25 +115,24 @@ page cache in order to efficiently service write requests.  We also
 leveraged our customizable log format to log differences to objects 
 instead of entire copies of objects.
 
-With these optimizations, we showed a 2-3x performance improvement over Berkeley DB on object
-persistence across our benchmarks, and a 3-4x improvement over an
-in-process version of MySQL with the InnoDB backend.  (A traditional
-MySQL setup that made use of a separate server process was prohibitively 
-slow.  InnoDB provided the best performance among MySQL's durable storage managers.)
-Furthermore, our system uses memory more efficiently, 
-increasing its performance advantage in situations where the size of
-system memory is a bottleneck.  
+With these optimizations, we showed a 2-3x performance improvement
+over Berkeley DB on object persistence across our benchmarks, and a
+3-4x improvement over an in-process version of MySQL with the InnoDB
+backend.  (A traditional MySQL setup that made use of a separate
+server process was prohibitively slow.  InnoDB provided the best
+performance among MySQL's durable storage managers.)  Furthermore, our
+system uses memory more efficiently, increasing its performance
+advantage in situations where the size of system memory is a
+bottleneck.
 
-We
-leave systematic performance tuning of LLADD to future work, and
+We leave systematic performance tuning of LLADD to future work, and
 believe that further optimizations will improve our performance on
-these benchmarks significantly.
+these benchmarks significantly.  In general, LLADD's customizability
+enables many optimizations that are difficult for other systems.
 
-LLADD's customizability provides superior performance over existing,
-complicated systems.  Because of its natural integration into standard
+Because of its natural integration into standard
 system software development practices, we think that LLADD can be
 naturally extended into networked and distributed domains.
-
 For example, typical write-ahead-logging protocols implicitly
 implement machine independent, reorderable log entries in order to
 implement logical undo.  These two properties have been crucial in
@@ -144,7 +145,7 @@ Current Research Focus
 ----------------------
 
 LLADD's design assumes that application developers will
-implement high performance transactional data structures.  This is a
+implement high-performance transactional data structures.  This is a
 big assumption, as these data structures are notoriously difficult to
 implement correctly.  Our current research attempts to address these
 concerns.
@@ -161,7 +162,7 @@ Also, while data structure algorithms tend to be simple and easily
 understood, performance tuning and verification of implementation
 correctness is extremely difficult.
 
-Recovery based algorithms must behave correctly during forward
+Recovery-based algorithms must behave correctly during forward
 operation and also under arbitrary recovery scenarios.  The latter
 requirement is particularly difficult to verify due to the large
 number of materialized page file states that could occur after a
@@ -169,7 +170,7 @@ crash.
 
 Fortunately, write-ahead-logging schemes such as ARIES make use of
 nested-top-actions to vastly simplify the problem.  Given the
-correctness of page based physical undo and redo, logical undo may
+correctness of page-based physical undo and redo, logical undo may
 assume that page spanning operations are applied to the data store
 atomically.
 
@@ -182,14 +183,15 @@ behavior during recovery is equivalent to the behavior that would
 result if an abort() was issued on each prefix of the log that is
 generated during normal forward operation.
 
-By using coarse (one latch per logical operation) latching, we can
+*** below implies that two operations have two latches and can thus run in parallel ***
+By using coarse latching (one latch per logical operation), we can
 drastically reduce the size of this space, allowing conventional
 state-state based search techniques (such as randomized or exhaustive
 state-space searches, or unit testing techniques) to be
-practical.  It has been shown that such coarse grained latching can
+practical.  It has been shown that such coarse-grained latching can
 yield high-performance concurrent data structures if
 semantics-preserving optimizations such as page prefetching are
-applied[ARIES/IM].
+applied [ARIES/IM].
 
 A separate approach to the static analysis of LLADD extensions uses
 compiler optimization techniques.  Software built on top of layered
@@ -205,25 +207,25 @@ latching/unlatching behavior, but this would greatly complicate the
 API that application developers must work with, and complicate any
 application code that made use of such optimizations.
 
+*** code hoisting might be a better example
 Compiler optimization techniques such as partial common subexpression
 elimination solve an analogous problem to remove redundant algebraic
 computations.  We hope to extend such techniques to reduce the number
 of buffer manager and locking calls made by existing code at runtime.
 
-Anecdotal evidence and personal experience suggest
-that similar optimization techniques are applicable to
-application code.  Because local LLADD calls are simply normal
-function calls, it may even be possible to apply the transformations that these optimizations
-perform to application code that is unaware of the underlying storage implementation.
-This class of
-optimizations would be very difficult to implement with existing
-transactional storage systems but should significantly improve application performance.
+Anecdotal evidence and personal experience suggest that similar
+optimization techniques are applicable to application code.  Because
+local LLADD calls are simply normal function calls, it may even be
+possible to apply the transformations that these optimizations perform
+to application code that is unaware of the underlying storage
+implementation.  This class of optimizations would be very difficult
+to implement with existing transactional storage systems but should
+significantly improve application performance.
 
-Our implementation of LLADD is still unstable and inappropriate for
-use on important data.  We hope to validate our ideas about static analysis 
-by incorporating them into the development process as we increase
-the reliability and overall quality of LLADD's implementation and its
-APIs.
+*** no reason to say this: Our implementation of LLADD is still unstable and inappropriate for use on important data. 
+ We hope to validate our ideas about static analysis by incorporating
+them into the development process as we increase the reliability and
+overall quality of LLADD's implementation and its APIs.
 
 Our architecture provides a set of tools that allow applications to implement
 custom transactional data structures and page layouts.  This avoids
