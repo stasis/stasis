@@ -18,6 +18,7 @@ struct queue_seg {
 struct queue {
     struct queue_seg *head_seg;
     struct queue_seg *tail_seg;
+    struct queue_seg *recycle_seg;
     int seg_size;
 };
 
@@ -52,6 +53,7 @@ queue_new (int seg_size)
 	return NULL;
     }
 
+    q->recycle_seg = NULL;
     q->seg_size = seg_size;
     debug_end ();
     return q;
@@ -66,6 +68,8 @@ queue_free (struct queue *q)
 	next = seg->next;
 	XFREE (seg);
     }
+    if (q->recycle_seg)
+	XFREE (q->recycle_seg);
     XFREE (q);
 }
 
@@ -95,10 +99,18 @@ queue_deq (struct queue *q)
     if (seg->head == q->seg_size)
 	seg->head = 0;
 
-    /* Deallocate empty head segment, if it isn't the last one. */
+    /* Deallocate empty head segment, if it isn't the last one.
+     * Note: we "recycle" a single segment, to avoid repeated allocation /
+     * deallocation when a contant length cyclic enq/deq sequence is due. */
     if (seg->head == seg->tail && seg->next) {
 	q->head_seg = seg->next;
-	XFREE (seg);
+	if (q->recycle_seg)
+	    XFREE (seg);
+	else {
+	    debug ("recycling seg=%p", seg);
+	    memset (seg, 0, sizeof (struct queue_seg));
+	    q->recycle_seg = seg;
+	}
     }
 
     debug_end ();
@@ -123,13 +135,20 @@ queue_enq (struct queue *q, unsigned long val)
 
     /* Allocate new segment if current was exhausted. */
     if (seg->head == seg->tail) {
-	seg->next = queue_seg_alloc (q->seg_size);
-	if (! seg->next) {
-	    if (! seg->tail--)
-		seg->tail += q->seg_size;
-	    debug ("segment allocation failed, enqueue undone");
-	    debug_end ();
-	    return -1;
+	if (q->recycle_seg) {
+	    debug ("using recycled segment seg=%p", q->recycle_seg);
+	    seg->next = q->recycle_seg;
+	    q->recycle_seg = NULL;
+	}
+	else {
+	    seg->next = queue_seg_alloc (q->seg_size);
+	    if (! seg->next) {
+		if (! seg->tail--)
+		    seg->tail += q->seg_size;
+		debug ("segment allocation failed, enqueue undone");
+		debug_end ();
+		return -1;
+	    }
 	}
 	q->tail_seg = seg->next;
     }
