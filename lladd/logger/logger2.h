@@ -108,29 +108,17 @@ lsn_t LogTransAbort(TransactionLog * l);
   LogUpdate writes an UPDATE log record to the log tail
 */
 LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, const byte * args);
-/* *
-   (Was folded into LogUpdate.)
-
-   Logs the fact that a rid has been allocated for a transaction.
-   @ todo Should this be folded into LogUpdate?  (Make "alloc" an operation...)
-   @ todo Surely, we need a dealloc!
- */
-/*lsn_t LogTransAlloc(TransactionLog * l, recordid rid);*/
-
 
 /**
    Write a compensation log record.  These records are used to allow
    for efficient recovery, and possibly for log truncation.  They
-   record the completion of undo operations.
+   record the completion of undo operations, amongst other things.
 
    @return the lsn of the CLR entry that was written to the log.
    (Needed so that the lsn slot of the page in question can be
    updated.)  
-
-   @todo Remove this from this interface?  Should it be internal to
-   the recovery routines?
 */
-lsn_t LogCLR (LogEntry * undone); /*TransactionLog * l, long ulLSN, recordid ulRID, long ulPrevLSN); */
+lsn_t LogCLR (LogEntry * undone);
 
 /**
    Write a end transaction record @see XEND

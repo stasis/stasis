@@ -287,6 +287,7 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   fdatasync(fileno(blobf0));
   fdatasync(fileno(blobf1));
 #else
+#warn Not using fdatasync
   fsync(fileno(blobf0));
   fsync(fileno(blobf1));
 #endif
@@ -433,6 +434,7 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
 #ifdef HAVE_FDATASYNC
   fdatasync(fileno(fd));
 #else
+#warn Not using fdatasync()
   fsync(fileno(fd));
 #endif
 

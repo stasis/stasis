@@ -7,6 +7,7 @@ liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c op
                    pageFile.c pageCache.c page.c blobManager.c recovery2.c transactional2.c \
 		   lockManager.c \
 	           logger/logEntry.c logger/logWriter.c logger/logHandle.c logger/logger2.c \
+		   logger/logMemory.c \
 		   page/slotted.c page/header.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \
