@@ -64,7 +64,8 @@ terms specified in this license.
 #define BLOB0_FILE "blob0_file.txt"
 #define BLOB1_FILE "blob1_file.txt"
 
-/* @define error codes
+/* 
+   define error codes
  */
 #define LLADD_DEADLOCK       -1
 #define LLADD_NO_MEM         -2

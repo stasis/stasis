@@ -30,30 +30,31 @@ void * pageWorkerThread(void * j) {
 
     if(rw) {
       // readlock
-      //      int locked = 0;
-      //      begin_action_ret(NULL,NULL, 0) {
+      int locked = 0;
+      //      try_ret(0) {
 	if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
 	  k = 0; 
+	  assert(compensation_error() == LLADD_DEADLOCK);
+	  compensation_clear_error();
 	  globalLockManager.abort(xid);
 	  deadlocks++;
 	  printf("-");
+	  locked = 1;
 	}
-	//      } end_action_ret(0);
-	/*      if(locked) {
-	assert(compensation_error() == LLADD_DEADLOCK);
-	compensation_clear_error();
-	} */
+	//     } end_ret();
     } else {
       // writelock
       int locked = 0;
       //      begin_action_ret(NULL, NULL, 0) {
-	
+      
       if(LLADD_DEADLOCK == globalLockManager.writeLockPage(xid, m)) {
 	k = 0; 
 	globalLockManager.abort(xid);
 	deadlocks++;
 	printf("-");
-	locked = 1;
+	int err = compensation_error();
+	assert(err == LLADD_DEADLOCK);
+	compensation_clear_error();
       }
       /*      if(locked) {
 	int err = compensation_error();
@@ -161,6 +162,9 @@ Suite * check_suite(void) {
   Suite *s = suite_create("lockManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
+
+  // kinda hacky, but here it is: 
+  compensations_init();
 
   /* Sub tests are added, one per line, here */
 

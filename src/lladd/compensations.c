@@ -1,7 +1,10 @@
 #include <lladd/compensations.h>
 
 #include <assert.h>
-pthread_key_t error_key;
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+static pthread_key_t error_key;
 
 void compensations_init () {
   int ret = pthread_key_create(&error_key, NULL);
@@ -10,7 +13,8 @@ void compensations_init () {
 }
 
 void compensations_deinit() {
-  pthread_key_delete(error_key);
+  int ret = pthread_key_delete(error_key);
+  assert(!ret);
 }
 
 int compensation_error() {
@@ -23,5 +27,10 @@ void compensation_clear_error() {
 }
 
 void compensation_set_error(int error) {
-  pthread_setspecific(error_key, (void *)error);
+  int ret = pthread_setspecific(error_key, (void *)error);
+  if(ret) {
+    printf("Unhandled error: %s\n", strerror(ret));
+    abort();
+  }
+  assert(!ret);
 }
