@@ -707,8 +707,13 @@ various primitives that \yad provides to application developers.
    width=1\columnwidth]{structure.pdf}
 \vspace{-30pt}
 \caption{\sf\label{fig:structure} \yad architecture.  The shaded 
-region covers extensions which we call {\em operations}. The other modules implement the 
-transactional storage mechanism.  Operations can be composed of other operations or written from scratch.}
+region covers extensions which we call {\em operations}. Arrows
+point in the direction of application data flow.  Note that writes 
+to the page file and log are protected by the Tupdate() call, and
+that wrapper functions may be built upon each other.  Operation 
+implementations are automatically invoked  by the transactional 
+library.  Not shown are a set of convenience functions that 
+make it easy to write high level operations and wrappers.}
 \end{figure}
 
 
@@ -1527,7 +1532,7 @@ hash table is straightforward.  A linear hash function is used to map
 keys to buckets, insertions and deletions are handled by the ArrayList
 implementation, and the table can be extended lazily by
 transactionally removing items from one bucket and adding them to
-another.
+another.  
 
 The underlying transactional data structures and a
 single lock around the hashtable are all that are needed
@@ -2339,7 +2344,7 @@ gap, and enhance the performance and reliability of application-specific
 extensions.
 
 We would like to extend our work into distributed system
-development.  We believe that \yad's implementation anticipates many
+development and believe that \yad's implementation anticipates many
 of the issues that we will face in distributed domains.  By adding 
 networking support to our logical log interface,
 we should be able to demultiplex and replicate log entries to sets of
@@ -2422,15 +2427,15 @@ benefit from the power of transactions.
 
 %\bibitem[3]{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
 
-\bibitem[4]{oo7} Carey, Michael J., DeWitt, David J., Naughton, Jeffrey F. {\em The OO7 Benchmark.} SIGMOD (1993)
+\bibitem[2]{oo7} Carey, Michael J., DeWitt, David J., Naughton, Jeffrey F. {\em The OO7 Benchmark.} SIGMOD (1993)
 
-\bibitem[4]{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
+\bibitem[3]{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
 
-\bibitem[5]{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
+\bibitem[4]{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
 
 %\bibitem[5]{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
 
-\bibitem[6]{soft-updates} Greg Ganger.  {\em Soft Updates: A Solution to the Metadata Update Problem in File Systems } ACM Transactions (2000)
+\bibitem[5]{soft-updates} Greg Ganger.  {\em Soft Updates: A Solution to the Metadata Update Problem in File Systems } ACM Transactions (2000)
 
 \bibitem[6]{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
 
@@ -2450,23 +2455,23 @@ benefit from the power of transactions.
 
 \bibitem[12]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) % p. 212-223
 
-\bibitem[14]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
+\bibitem[13]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
 
-\bibitem[15]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
+\bibitem[14]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
 
-\bibitem[16]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+\bibitem[15]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
 
-\bibitem[17]{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
+\bibitem[16]{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
 
-\bibitem[18]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
+\bibitem[17]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
 %
-\bibitem[19]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+\bibitem[18]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
 
-\bibitem[20]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
+\bibitem[19]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
 
-\bibitem[21]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base. } ICDE (1986) %p. 262-269
+\bibitem[20]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base. } ICDE (1986) %p. 262-269
 
-\bibitem[22]{postgres} Stonebraker and Kemnitz. {\em The POSTGRES Next-Generation Database Management System. } CACM (1991)
+\bibitem[21]{postgres} Stonebraker and Kemnitz. {\em The POSTGRES Next-Generation Database Management System. } CACM (1991)
 
 %\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
 %
