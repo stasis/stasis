@@ -48,6 +48,7 @@ terms specified in this license.
 #include "../../src/lladd/page/slotted.h"
 #include "../../src/lladd/page/fixed.h"
 #include "../../src/lladd/page/indirect.h"
+#include "../../src/lladd/blobManager.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 
@@ -448,7 +449,11 @@ START_TEST(pageTrecordTypeTest) {
 
 	bad.slot = slot.slot;
 	assert(TrecordType(xid, bad) == SLOTTED_RECORD);
-	
+	/* Try to trick TrecordType by allocating a record that's the
+	   same length as the slot used by blobs. */
+	recordid rid2 = Talloc(xid, sizeof(blob_record_t));
+	assert(TrecordType(xid, rid2) == SLOTTED_RECORD);
+
 	Tcommit(xid);
 	
 	Tdeinit();

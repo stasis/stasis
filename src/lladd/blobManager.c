@@ -205,7 +205,7 @@ recordid preAllocBlob(int xid, long blobSize) {
 
   /* First in buffer manager. */
 
-  recordid rid = Talloc(xid, sizeof(blob_record_t));
+  recordid rid = Talloc(xid, BLOB_SLOT); //sizeof(blob_record_t));
 
   rid.size = blobSize;
 
@@ -223,7 +223,7 @@ recordid preAllocBlobFromPage(int xid, long page, long blobSize) {
 
   /* First in buffer manager. */
 
-  recordid rid = TallocFromPage(xid, page, sizeof(blob_record_t));
+  recordid rid = TallocFromPage(xid, page, BLOB_SLOT); //sizeof(blob_record_t));
 
   rid.size = blobSize;
 

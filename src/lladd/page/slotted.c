@@ -2,7 +2,7 @@
 
 
 #include "../page.h"
-/*#include "../blobManager.h" */
+#include "../blobManager.h"  /** So that we can call sizeof(blob_record_t) */
 #include "slotted.h"
 #include <assert.h>
 
@@ -161,8 +161,17 @@ int slottedFreespace(Page * page) {
 recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   recordid ret;
-  assert(size < BLOB_THRESHOLD_SIZE);
   
+  int isBlob = 0;
+
+  if(size == BLOB_SLOT) {
+    isBlob = 1;
+    size = sizeof(blob_record_t);
+  }
+
+  assert(size < BLOB_THRESHOLD_SIZE);
+
+
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
 
   if(lastFreepage == -1) {
@@ -174,6 +183,7 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
     *pp = loadPage(lastFreepage);
   }
 
+
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
     lastFreepage = TpageAlloc(xid);
@@ -183,6 +193,10 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   ret = slottedRawRalloc(*pp, size);
   
+  if(isBlob) {
+    *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
+  }
+
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
 
   return ret;
@@ -190,7 +204,12 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
 recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
   recordid ret;
-  
+  int isBlob = 0;
+  if(size == BLOB_SLOT) {
+    isBlob = 1;
+    size = sizeof(blob_record_t);
+  }
+
   *pp = loadPage(page);
   
   if(slottedFreespace(*pp) < size) {
@@ -208,7 +227,9 @@ recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
   }
   assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
   ret = slottedRawRalloc(*pp, size);
-  
+  if(isBlob) {
+    *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
+  }
   return ret;
   
 }
@@ -243,6 +264,13 @@ recordid slottedRawRalloc(Page * page, int size) {
 static void __really_do_ralloc(Page * page, recordid rid) {
 
   int freeSpace;
+  
+  int isBlob = 0;
+
+  if(rid.size == BLOB_SLOT) {
+    isBlob = 1;
+    rid.size = sizeof(blob_record_t);
+  }
 
   assert(rid.size > 0);
   
@@ -267,7 +295,11 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
   *slot_ptr(page, rid.slot)  = freeSpace;
   /*  assert(!*slot_length_ptr(page, rid.slot) || (-1 == *slot_length_ptr(page, rid.slot)));*/
-  *slot_length_ptr(page, rid.slot) = rid.size; 
+  if(isBlob) {
+    *slot_length_ptr(page, rid.slot = BLOB_SLOT);
+  } else {
+    *slot_length_ptr(page, rid.slot) = rid.size; 
+  }
 
 }
 
@@ -343,7 +375,7 @@ void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff) {
 
   assert(page->id == rid.page);
   slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+  assert((rid.size == slot_length) || (rid.size == BLOB_SLOT && slot_length == sizeof(blob_record_t))|| (slot_length >= PAGE_SIZE));
 
   if(!memcpy(buff, record_ptr(page, rid.slot),  rid.size)) {
     perror("memcpy");
@@ -366,7 +398,7 @@ void slottedRead(int xid, Page * page, recordid rid, byte *buff) {
 
   assert(page->id == rid.page);
   slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+  assert((rid.size == slot_length) || (rid.size == BLOB_SLOT && slot_length == sizeof(blob_record_t))|| (slot_length >= PAGE_SIZE));
 
   if(!memcpy(buff, record_ptr(page, rid.slot),  rid.size)) {
     perror("memcpy");
@@ -387,7 +419,7 @@ void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat
   assert(page->id == rid.page);
   
   slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+  assert((rid.size == slot_length) || (rid.size == BLOB_SLOT && slot_length == sizeof(blob_record_t))|| (slot_length >= PAGE_SIZE));
 
   if(!memcpy(record_ptr(page, rid.slot), data, rid.size)) {
     perror("memcpy");
@@ -407,7 +439,7 @@ void slottedWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const b
   assert(page->id == rid.page);
   
   slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
+  assert((rid.size == slot_length) ||  (rid.size == BLOB_SLOT && slot_length == sizeof(blob_record_t))|| (slot_length >= PAGE_SIZE));
 
   if(!memcpy(record_ptr(page, rid.slot), data, rid.size)) {
     perror("memcpy");

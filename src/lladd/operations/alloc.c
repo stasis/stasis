@@ -41,7 +41,7 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
 
   assert(*page_type_ptr(p) == SLOTTED_PAGE); */
   
-  if(rid.size >= BLOB_THRESHOLD_SIZE) {
+  if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
     allocBlob(xid, p, lsn, rid);
   } else {
     slottedPostRalloc(p, lsn, rid); 
@@ -59,8 +59,9 @@ static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * da
 
 static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
 
-  if(rid.size >= BLOB_THRESHOLD_SIZE) {
-    rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
+  if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
+    //    rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
+    rid.size = sizeof(blob_record_t); 
   } 
 
   slottedPostRalloc(p, lsn, rid); 
@@ -108,7 +109,7 @@ Operation getRealloc() {
 recordid Talloc(int xid, long size) {
   recordid rid;
   Page * p = NULL;
-  if(size >= BLOB_THRESHOLD_SIZE) { 
+  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
     /**@todo is it OK that Talloc doesn't pin the page when a blob is alloced?*/
     rid = preAllocBlob(xid, size);
   } else {
@@ -126,8 +127,6 @@ recordid Talloc(int xid, long size) {
     releasePage(p);
     pthread_mutex_unlock(&talloc_mutex);  
 
-    /*pthread_mutex_unlock(&talloc_mutex); */
-
   }
 
   return rid;
@@ -138,7 +137,7 @@ recordid TallocFromPage(int xid, long page, long size) {
   recordid rid;
 
   Page * p = NULL;
-  if(size >= BLOB_THRESHOLD_SIZE) { 
+  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
     rid = preAllocBlobFromPage(xid, page, size);
   } else {
     pthread_mutex_lock(&talloc_mutex); 

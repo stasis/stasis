@@ -104,14 +104,26 @@ state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * m, char
 
 
 
-int xid_exists(int ht_xid, jbHashTable_t * xid_ht, StateMachine * stateMachine) {
-  int xid;
-  if (-1 == jbHtLookup(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid)) {
+int xid_exists(int ht_xid, recordid xid_ht, StateMachine * stateMachine) {
+  int * xid = 0;
+  /*  if (-1 == jbHtLookup(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid)) {
       return 0;
   } else {
       assert(xid);
       return xid;
+      } */
+  int size = ThashLookup(ht_xid, xid_ht, 
+			 (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), 
+			 (byte**)&xid);
+  if(size != -1) {
+    assert(size == sizeof(int));
+    int ret = *xid;
+    free(xid);
+    return ret;
+  } else {
+    return 0;
   }
+
 }
 
 DfaSet * cHtInit(int cht_type, 
@@ -143,8 +155,10 @@ DfaSet * cHtInit(int cht_type,
   }
 
   if(cht_type != CHT_CLIENT) {
-    chtApp_state->xid_ht     = jbHtCreate(xid, 79);
-    chtApp_state->ht_ht      = jbHtCreate(xid, 79);
+    /*    chtApp_state->xid_ht     = jbHtCreate(xid, 79);
+	  chtApp_state->ht_ht      = jbHtCreate(xid, 79); */
+    chtApp_state->xid_ht = ThashCreate(xid, sizeof(state_machine_id), sizeof(int));
+    chtApp_state->ht_ht =  ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
     chtApp_state->ht_xid = Tbegin(); // !!!!
     chtApp_state->next_hashTableId = 0; 
 

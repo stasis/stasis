@@ -324,7 +324,8 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
   } else if(page_type == SLOTTED_PAGE) {
     if(*numslots_ptr(p) <= rid.slot || *slot_ptr(p, rid.slot) == INVALID_SLOT /*|| *slot_length_ptr(p, rid.slot) == INVALID_SLOT*/) {
       return UNINITIALIZED_PAGE;
-    } else if(*slot_length_ptr(p, rid.slot) == BLOB_REC_SIZE) {
+      //    } else if(*slot_length_ptr(p, rid.slot) == BLOB_REC_SIZE) {
+    } else if (*slot_length_ptr(p, rid.slot) == BLOB_SLOT) {
       return BLOB_RECORD; 
     } else {
       return SLOTTED_RECORD;

@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include <netinet/in.h>
-#define setup_vars                                                                          \
+/*#define setup_vars                                                                          \
 TwoPCAppState * app_state_2pc = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));           \
 CHTAppState * app_state_cht = app_state_2pc->app_state;                                     \
 jbHashTable_t * xid_ht = app_state_cht->xid_ht;                                             \
@@ -12,68 +12,110 @@ int ht_xid = app_state_cht->ht_xid;                                             
 int xid;                                                                                    \
 int xid_exists = (-1 != jbHtLookup(ht_xid, xid_ht,(byte*) &(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid)); \
 jbHashTable_t ht;                                                                                    \
-int ht_exists = (-1 != jbHtLookup(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t),(byte*) &ht))
+int ht_exists = (-1 != jbHtLookup(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t),(byte*) &ht))*/
+#define setup_vars                                                                          \
+TwoPCAppState * app_state_2pc = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));           \
+CHTAppState * app_state_cht = app_state_2pc->app_state;                                     \
+recordid xid_ht = app_state_cht->xid_ht;                                             \
+recordid ht_ht = app_state_cht->ht_ht;                                               \
+int ht_xid = app_state_cht->ht_xid;                                                         \
+int xid;                                        \
+int * xid_ptr = 0;                                                                                 \
+int xid_exists = (-1 != ThashLookup(ht_xid, xid_ht,(byte*) &(stateMachine->machine_id), sizeof(state_machine_id), (byte**)&xid_ptr)); \
+if(xid_ptr) { xid=*xid_ptr; free(xid_ptr); }\
+recordid ht;                                                                                    \
+recordid * ht_ptr = 0;                                         \
+int ht_exists = (-1 != ThashLookup(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t),(byte**) &ht_ptr)); \
+if(ht_ptr) { ht=*ht_ptr; free(ht_ptr) ;}
 
 /** TODO For now, we ignore the possiblity that jbHashTable's functions
     return error codes.  Instead, we assume that they always
     succeed. */
 static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
-  int ret;
+
   setup_vars;
-  
+  int ret = 1;  
   switch(*requestType(m)) 
     {  
     case CREATE: 
       {
-	jbHashTable_t * new = jbHtCreate(ht_xid, 79);
-	if(new != NULL) {
-	  ret = (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)new, sizeof(jbHashTable_t)) >= 0);
-	} else {
-	  ret = 0;
-	}
-	if(ret) {
-	  printf("Created local slice of global hash table %d\n", (__header_ptr(m)->hashTable));
-	  Tcommit(app_state_cht->ht_xid);
-	  app_state_cht->ht_xid = Tbegin();	  
-	} else {
-	  printf("Failed to insert new hash table slice!");
-	}
-
+	recordid new = ThashCreate(ht_xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+	//	jbHashTable_t * new = jbHtCreate(ht_xid, 79);
+	//	if(new != NULL) {
+	ThashInsert(ht_xid, ht_ht, 
+		    (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), 
+		    (byte*)&new, sizeof(recordid));
+	//	  ret = (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)new, sizeof(jbHashTable_t)) >= 0);
+	//	} else {
+	//	  ret = 0;
+	//	}
+	//	if(ret) {
+	printf("Created local slice of global hash table %d\n", (__header_ptr(m)->hashTable)); fflush(stdout);
+	Tcommit(app_state_cht->ht_xid);
+	app_state_cht->ht_xid = Tbegin();	  
+	//	} else {
+	//	  printf("Failed to insert new hash table slice!");
+	//	}
+	
       } break;
       
     case INSERT: 
       {
-	if(!ht_exists) { printf ("Hash table %d doesn't exist!\n", (__header_ptr(m)->hashTable)); fflush(NULL); ret = 0; } else {
-	  ret = (jbHtInsert(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m), getValLength(m)) >= 0);
-	  printf("Insert: %d ht=%d (key length %d) %d -> %d\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), *(int*)getValAddr(m));
-	  fflush(NULL);
-	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
+	if(!ht_exists) {
+	  printf ("Hash table %d doesn't exist!\n", (__header_ptr(m)->hashTable)); fflush(stdout); ret = 0; 
+	} else {
+	  //ret = (jbHtInsert(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m), getValLength(m)) >= 0);
+	  ThashInsert(xid, ht, getKeyAddr(m), getKeyLength(m), getValAddr(m), getValLength(m));
+	  printf("Insert: %d ht=%d (key length %d) %d -> %d\n", ret, 
+		 (__header_ptr(m)->hashTable), getKeyLength(m), 
+		 *(int*)getKeyAddr(m), *(int*)getValAddr(m));
+	  fflush(stdout);
+	  
+	  //	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
 	  
 	}
       } break;
       
     case LOOKUP:
       {
-	if(!ht_exists) { printf ("Hash table doesn't exist!\n"); fflush(NULL); ret = 0; } else {
-	  ret = (jbHtLookup(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
-	  printf("Lookup: %d ht=%d (key length %d) %d -> %d\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), *(int*)getValAddr(m));
-	  fflush(NULL);
+	if(!ht_exists) { 
+	  printf ("Hash table doesn't exist!\n"); fflush(stdout); ret = 0; 
+	} else {
+	  byte * new;
+	  int valueLength = ThashLookup(xid, ht, getKeyAddr(m), getKeyLength(m), &new);
+	  if(valueLength != -1) {
+	    assert(valueLength <= getValLength(m));
+	    memcpy(getValAddr(m), new, valueLength);
+	    free(new);
+	  } else {
+	    ret = 0;
+	  }
+	  //	  ret = (jbHtLookup(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
+	  printf("Lookup: %d ht=%d (key length %d) %d -> %d\n", ret, 
+		 (__header_ptr(m)->hashTable), getKeyLength(m),
+		 *(int*)getKeyAddr(m), *(int*)getValAddr(m));
+	  fflush(stdout);
 	} 
       } break;
       
     case REMOVE:
       {
-	if(!ht_exists) { printf ("Hash table doesn't exist!\n"); fflush(NULL); ret = 0; } else {
-	  ret = (jbHtRemove(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
-	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
+	if(!ht_exists) { 
+	  printf ("Hash table doesn't exist!\n"); fflush(stdout); ret = 0; 
+	} else {
+	  /** @todo no longer return old value on remove... */
+	  ret = ThashRemove(xid, ht, getKeyAddr(m), getKeyLength(m));
+	  //	  ret = (jbHtRemove(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
+	  //  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
 	}
       } break;
       
     case DELETE: 
       {
 	if(!ht_exists) { printf ("Hash table doesn't exist!\n"); fflush(NULL); ret = 0; } else {
-	  jbHtRemove(xid, ht_ht, getKeyAddr(m), getKeyLength(m), NULL);
-	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
+	  ThashRemove(xid, ht_ht, getKeyAddr(m), getKeyLength(m));
+	  //	  jbHtRemove(xid, ht_ht, getKeyAddr(m), getKeyLength(m), NULL);
+	  //	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
 	  /*	  ret = (jbHtDelete(xid, &ht) >= 0); */ /* Don't need this--jbHtDelete just frees the (stack!) pointer. */
 	  Tcommit(app_state_cht->ht_xid);
 	  app_state_cht->ht_xid = Tbegin();	  
@@ -168,13 +210,10 @@ state_name veto_or_prepare_cht(void * dfaSet, StateMachine * stateMachine, Messa
 
     printf("Tbegin failed; %d\n", xid);
 
-  } else if(jbHtInsert(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid, sizeof(int)) == -1) {
-
-    printf("jbHtInsert failed.\n");
-
+    //  } else if(jbHtInsert(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid, sizeof(int)) == -1) {
   } else {
-
-	xid_exists = 1;
+    ThashInsert(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid, sizeof(int));
+    xid_exists = 1;
   }
   Tcommit(app_state_cht->ht_xid);
   app_state_cht->ht_xid = Tbegin();
@@ -205,7 +244,8 @@ state_name abort_cht(void * dfaSet, StateMachine * stateMachine, Message * m, ch
   assert(xid_exists);
 
   Tabort(xid); // !!!!
-  jbHtRemove(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid);
+  //  jbHtRemove(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid);
+  ThashRemove(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id));
   Tcommit(app_state_cht->ht_xid);
   app_state_cht->ht_xid = Tbegin();
   return 1;
@@ -218,7 +258,8 @@ state_name commit_cht(void * dfaSet, StateMachine * stateMachine, Message * m, c
   
   assert(xid_exists);
   Tcommit(xid);
-  jbHtRemove(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid);
+  //  jbHtRemove(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid);
+  ThashRemove(app_state_cht->ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id));
   Tcommit(app_state_cht->ht_xid);
   app_state_cht->ht_xid = Tbegin();
     /* }*/

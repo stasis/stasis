@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include <libdfa/libdfa.h>
-#include <pbl/jbhash.h>
+//#include <pbl/jbhash.h>
 #include "../../2pc/2pc.h"
 #define CHT_COORDINATOR 1
 #define CHT_SERVER      2
@@ -146,8 +146,10 @@ int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
 /** The server side state for a CHT. */
 typedef struct {
   int ht_xid;
-  jbHashTable_t * xid_ht;
-  jbHashTable_t * ht_ht;
+  //  jbHashTable_t * xid_ht;
+  //  jbHashTable_t * ht_ht;
+  recordid xid_ht;
+  recordid ht_ht;
   /** This gets incremented by the coordinator each time a new hashtable is allocated. */
   int next_hashTableId;
 } CHTAppState;

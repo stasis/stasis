@@ -132,12 +132,16 @@ terms specified in this license.
     @see slotted.c, indirect.c
 */
 #define INVALID_SLOT PAGE_SIZE
+/** This constant is used as a placeholder to mark slot locations that contain blobs. 
+    @see slotted.c, indirect.c,  blobManager.c  */
+#define BLOB_SLOT (PAGE_SIZE + 1)
 
 /*  #define NORMAL_SLOT (PAGE_SIZE + 1)
   #define BLOB_SLOT (PAGE_SIZE + 2)*/
 
-/** @deprecated Replace all occurrances with sizeof(blob_record_t) */
-#define BLOB_REC_SIZE sizeof(blob_record_t) /*12*/
+/* * @ deprecated Replace all occurrances with sizeof(blob_record_t) */
+//#define BLOB_REC_SIZE sizeof(blob_record_t) /*12*/
+
 #define BLOB_THRESHOLD_SIZE (PAGE_SIZE-30)
 
 #define BITS_PER_BYTE 8
