@@ -457,14 +457,14 @@ relatively easy to see how they would map onto \yad.
 
 This section describes how existing write-ahead logging protocols
 implement the four properties of transactional storage: Atomicity,
-Consistency, Isolation and Durability.  \yad provides these four
-properties to applications but also allows applications to opt-out of
-certain of properties as appropriate.  This can be useful for
+Consistency, Isolation and Durability.  \yad provides these
+properties but also allows applications to opt-out of
+them as appropriate.  This can be useful for
 performance reasons or to simplify the mapping between application
 semantics and the storage layer.  Unlike prior work, \yad also exposes
 the primitives described below to application developers, allowing
-unanticipated optimizations to be implemented and allowing low-level
-behavior such as recovery semantics to be customized on a
+unanticipated optimizations and allowing low-level
+behavior, such as recovery semantics, to be customized on a
 per-application basis.
 
 The write-ahead logging algorithm we use is based upon ARIES, but
@@ -483,7 +483,7 @@ will be protected according to the ACID properties mentioned above.
 %reversible, implying that any information that is needed in order to
 %reverse the action must be stored for future use.  
 Typically, the
-information necessary to redo and undo each action is stored in the
+information necessary to REDO and UNDO each action is stored in the
 log.  We refine this concept and explicitly discuss {\em operations},
 which must be atomically applicable to the page file.  
 
@@ -495,8 +495,8 @@ to build. In Section~\ref{nested-top-actions}, we explain how to
 handle operations that span pages.
 
 One unique aspect of \yad, which is not true for ARIES, is that {\em
-normal} operations are defined in terms of redo and undo
-functions. There is no way to modify the page except via the redo
+normal} operations are defined in terms of REDO and UNDO
+functions. There is no way to modify the page except via the REDO
 function.\footnote{Actually, even this can be overridden, but doing so
 complicates recovery semantics, and only should be done as a last
 resort.  Currently, this is only done to implement the \oasys flush()
@@ -504,9 +504,9 @@ and update() operations described in Section~\ref{OASYS}.}  This has
 the nice property that the REDO code is known to work, since the
 original operation was the exact same ``redo''.  In general, the \yad
 philosophy is that you define operations in terms of their REDO/UNDO
-behavior, and then build a user friendly {\em wrapper} interface
+behavior, and then build a user-friendly {\em wrapper} interface
 around them.  The value of \yad is that it provides a skeleton that
-invokes the redo/undo functions at the {\em right} time, despite
+invokes the REDO/UNDO functions at the {\em right} time, despite
 concurrency, crashes, media failures, and aborted transactions.  Also
 unlike ARIES, \yad refines the concept of the wrapper interface,
 making it possible to reschedule operations according to an
@@ -521,8 +521,9 @@ We allow transactions to be interleaved, allowing concurrent access to
 application data and exploiting opportunities for hardware
 parallelism.  Therefore, each action must assume that the
 physical data upon which it relies may contain uncommitted
-information and that this information may have been produced by a
-transaction that will be aborted by a crash or by the application.
+information that might be undone due to a crash or an abort.
+%and that this information may have been produced by a
+%transaction that will be aborted by a crash or by the application.
 %(The latter is actually harder, since there is no ``fate sharing''.)
 
 % Furthermore, aborting
@@ -554,7 +555,7 @@ For locking, due to the variety of locking protocols available, and
 their interaction with application
 workloads~\cite{multipleGenericLocking}, we leave it to the
 application to decide what degree of isolation is
-appropriate. Section~\ref{lock-manager} presents the Lock Manager API.
+appropriate. Section~\ref{lock-manager} presents the Lock Manager.
 
 
 
@@ -563,15 +564,15 @@ appropriate. Section~\ref{lock-manager} presents the Lock Manager API.
 \label{log-manager}
 
 All actions performed by a committed transaction must be
-restored in the case of a crash, and all actions performed by aborting
-transactions must be undone. In order for \yad to arrange for this
+restored in the case of a crash, and all actions performed by aborted
+transactions must be undone. In order to arrange for this
 to happen at recovery, operations must produce log entries that contain
-all information necessary for undo and redo.
+all information necessary for REDO and UNDO.
 
 An important concept in ARIES is the ``log sequence number'' or {\em
 LSN}.  An LSN is essentially a virtual timestamp that goes on every
 page; it marks the last log entry that is reflected on the page and
-implies that all previous log entries are also reflected.  Given the
+implies that {\em all previous log entries} are also reflected.  Given the
 LSN, \yad calculates where to start playing back the log to bring the
 page up to date.  The LSN is stored in the page that it refers to so
 that it is always written to disk atomically with the data on the
@@ -584,7 +585,7 @@ a increased need for buffer memory (to hold all dirty pages). Worse,
 as we allow multiple transactions to run concurrently on the same page
 (but not typically the same item), it may be that a given page {\em
 always} contains some uncommitted data and thus can never be written
-back to disk.  To handle stolen pages, we log UNDO records that
+back.  To handle stolen pages, we log UNDO records that
 we can use to undo the uncommitted changes in case we crash.  \yad
 ensures that the UNDO record is durable in the log before the
 page is written to disk and that the page LSN reflects this log entry.
@@ -595,17 +596,10 @@ that we can use to redo the operation in case the committed version never
 makes it to disk.  \yad ensures that the REDO entry is durable in the
 log before the transaction commits.  REDO entries are physical changes
 to a single page (``page-oriented redo''), and thus must be redone in
-order.  Therefore, they are produced after any rescheduling or computation
-specific to the current state of the page file is performed.
+order. 
+% Therefore, they are produced after any rescheduling or computation
+%specific to the current state of the page file is performed.
 
-Eventually, the page makes it to disk, but the REDO entry is still
-useful: we can use it to roll forward a single page from an archived
-copy.  Thus one of the nice properties of \yad, which has been tested,
-is that we can handle media failures very gracefully: lost disk blocks
-or even whole files can be recovered given an old version and the log.
-Because pages can be recovered independently from each other, there is
-no need to stop transactions to make a snapshot for archiving: any
-fuzzy snapshot is fine.
 
 
 
@@ -620,7 +614,7 @@ fuzzy snapshot is fine.
 We use the same basic recovery strategy as ARIES, which consists of
 three phases: {\em analysis}, {\em redo} and {\em undo}.  The first,
 analysis, is implemented by \yad, but will not be discussed in this
-paper. The second, redo, ensures that each redo entry is applied to
+paper. The second, redo, ensures that each REDO entry is applied to
 its corresponding page exactly once.  The third phase, undo, rolls
 back any transactions that were active when the crash occurred, as
 though the application manually aborted them with the ``abort''
@@ -636,21 +630,22 @@ present, it also works with a truncated log and an archive copy.}
 Because we make no further assumptions regarding the order in which
 pages were propagated to disk, redo must assume that any data
 structures, lookup tables, etc. that span more than a single page are
-in an inconsistent state. Therefore, as the redo phase re-applies the
-information in the log to the page file, it must address all pages
-directly.
+in an inconsistent state. 
+%Therefore, as the redo phase re-applies the
+%information in the log to the page file, it must address all pages
+%directly.
 
-This implies that the redo information for each operation in the log
+This implies that the REDO information for each operation in the log
 must contain the physical address (page number) of the information
 that it modifies, and the portion of the operation executed by a
-single redo log entry must only rely upon the contents of that
+single REDO log entry must only rely upon the contents of that
 page.
 % (Since we assume that pages are propagated to disk atomically,
 %the redo phase can rely upon information contained within a single
 %page.)
 
 Once redo completes, we have essentially repeated history: replaying
-all redo entries to ensure that the page file is in a physically
+all REDO entries to ensure that the page file is in a physically
 consistent state.  However, we also replayed updates from transactions
 that should be aborted, as they were still in progress at the time of
 the crash.  The final stage of recovery is the undo phase, which simply
@@ -658,6 +653,12 @@ aborts all uncommitted transactions. Since the page file is physically
 consistent, the transactions may be aborted exactly as they would be
 during normal operation.
 
+One of the nice properties of ARIES, which has been tested with \yad,
+is that we can handle media failures very gracefully: lost disk blocks
+or even whole files can be recovered given an old version and the log.
+Because pages can be recovered independently from each other, there is
+no need to stop transactions to make a snapshot for archiving: any
+fuzzy snapshot is fine.
 
 
 
@@ -684,7 +685,7 @@ parts.
 The lower layer implements the write-ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
 The complexity of the write-ahead logging component lies in
-determining exactly when the undo and redo operations should be
+determining exactly when the UNDO and REDO operations should be
 applied, when pages may be flushed to disk, log truncation, logging
 optimizations, and a large number of other data-independent extensions
 and optimizations.  This layer is the core of \yad.
@@ -869,16 +870,16 @@ that should be presented here. {\em Physical logging }
 is the practice of logging physical (byte-level) updates
 and the physical (page-number) addresses to which they are applied.
 
-\rcs{Do we really need to differentiate between types of diffs applied to pages?  The concept of physical redo/logical undo is probably more important...}
+\rcs{Do we really need to differentiate between types of diffs applied to pages?  The concept of physical REDO/logical UNDO is probably more important...}
 
-{\em Physiological logging } is what \yad recommends for its redo
+{\em Physiological logging } is what \yad recommends for its REDO
 records~\cite{physiological}. The physical address (page number) is
 stored, but the byte offset and the actual delta are stored implicitly
-in the parameters of the redo or undo function. These parameters allow
+in the parameters of the REDO or UNDO function. These parameters allow
 the function to update the page in a way that preserves application
 semantics.  One common use for this is {\em slotted pages}, which use
 an on-page level of indirection to allow records to be rearranged
-within the page; instead of using the page offset, redo operations use
+within the page; instead of using the page offset, REDO operations use
 the index to locate the data within the page. This allows data within a single
 page to be re-arranged at runtime to produce contiguous regions of
 free space. \yad generalizes this model; for example, the parameters
@@ -934,7 +935,7 @@ transaction, $A$, rearranged the layout of a data structure, a second
 transaction, $B$, added a value to the rearranged structure, and then
 the first transaction aborted.  (Note that the structure is not
 isolated.)  While applying physical undo information to the altered
-data structure,  $A$ would undo its writes
+data structure,  $A$ would UNDO its writes
 without considering the modifications made by
 $B$, which is likely to cause corruption.  At this point, $B$ would
 have to be aborted as well ({\em cascading aborts}).
@@ -959,7 +960,7 @@ three steps:
   with deadlock detection is required, this can be done with the lock
   manager.  Alternatively, this can be done using mutexes for fine-grain isolation.
 \item Define a logical UNDO for each operation (rather than just using
-  a lower-level physical undo).  For example, this is easy for a
+  a lower-level physical UNDO).  For example, this is easy for a
   hashtable; e.g. the UNDO for an {\em insert} is {\em remove}.
 \item For mutating operations (not read-only), add a ``begin nested
   top action'' right after the mutex acquisition, and a ``commit
@@ -968,7 +969,7 @@ three steps:
 This recipe ensures that operations that might span multiple pages
 atomically apply and commit any structural changes and thus avoids 
 cascading aborts.  If the transaction that encloses the operations
-aborts, the logical undo will {\em compensate} for
+aborts, the logical UNDO will {\em compensate} for
 its effects, but leave its structural changes intact. Note that by releasing the mutex before we commit, we are
 violating strict two-phase locking in exchange for better performance 
 and support for deadlock avoidance.
@@ -991,7 +992,7 @@ changes, such as growing a hash table or array.
 %% mechanism described here. If the need arises, we will add support
 %% for nested top actions.}
 %% An operation's wrapper is just a normal function, and therefore may
-%% generate multiple log entries. First, it writes an undo-only entry
+%% generate multiple log entries. First, it writes an UNDO-only entry
 %% to the log. This entry will cause the \emph{logical} inverse of the
 %% current operation to be performed at recovery or abort, must be idempotent,
 %% and must fail gracefully if applied to a version of the database that
@@ -1028,15 +1029,15 @@ representations and data structures by defining new operations.
 
 There are a number of invariants that these operations must obey:
 \begin{enumerate}
-\item Pages should only be updated inside of a redo or undo function.
+\item Pages should only be updated inside of a REDO or UNDO function.
 \item An update to a page atomically updates the LSN by pinning the page.
 \item If the data read by the wrapper function must match the state of
-the page that the redo function sees, then the wrapper should latch
+the page that the REDO function sees, then the wrapper should latch
 the relevant data.
-\item Redo operations use page numbers and possibly record numbers
-while Undo operations use these or logical names/keys
+\item REDO operations use page numbers and possibly record numbers
+while UNDO operations use these or logical names/keys
 \item Acquire latches as needed (typically per page or record)
-\item Use nested top actions (which require a logical undo log record) 
+\item Use nested top actions (which require a logical UNDO log record) 
 or ``big locks'' (which drastically reduce concurrency) for multi-page updates.
 \end{enumerate}
 
@@ -1045,7 +1046,7 @@ or ``big locks'' (which drastically reduce concurrency) for multi-page updates.
 A common optimization for TPC benchmarks is to provide hand-built
 operations that support adding/subtracting from an account.  Such
 operations improve concurrency since they can be reordered and can be
-easily made into nested top actions (since the logical undo is
+easily made into nested top actions (since the logical UNDO is
 trivial). Here we show how increment/decrement map onto \yad operations.
 
 First, we define the operation-specific part of the log record:
@@ -1109,7 +1110,7 @@ int Tincrement(int xid, recordid rid, int amount) {
 \end{small}
 
 With some examination it is possible to show that this example meets
-the invariants.  In addition, because the redo code is used for normal
+the invariants.  In addition, because the REDO code is used for normal
 operation, most bugs are easy to find with conventional testing
 strategies.  As future work, there is some hope of verifying these
 invariants statically; for example, it is easy to verify that pages
@@ -1418,7 +1419,7 @@ single ``header'' page to store the list of intervals and their sizes.
 For space efficiency, the array elements themselves are stored using
 the fixed-size record page layout. Thus, we use the header page to
 find the right interval, and then index into it to get the $(page,
-slot)$ address.  Once we have this address, the redo/undo entries are
+slot)$ address.  Once we have this address, the REDO/UNDO entries are
 trivial: they simply log the before and after image of the that
 record.
 
@@ -1529,8 +1530,8 @@ We explore a version with finer-grain locking below.
 %\item Wrap a mutex around each operation, this can be done with a lock
 %  manager, or just using pthread mutexes.  This provides isolation.
 %\item Define a logical UNDO for each operation (rather than just using
-%  the lower-level undo in the transactional array).  This is easy for a
-%  hash table; e.g. the undo for an {\em insert} is {\em remove}.
+%  the lower-level UNDO in the transactional array).  This is easy for a
+%  hash table; e.g. the UNDO for an {\em insert} is {\em remove}.
 %\item For mutating operations (not read-only), add a ``begin nested
 %  top action'' right after the mutex acquisition, and a ``commit
 %  nested top action'' where we release the mutex.
@@ -1578,7 +1579,7 @@ We explore a version with finer-grain locking below.
 This completes our description of \yad's default hashtable
 implementation.  We would like to emphasize the fact that implementing
 transactional support and concurrency for this data structure is
-straightforward.  The only complications are a) defining a logical undo, and b) dealing with fixed-length records.
+straightforward.  The only complications are a) defining a logical UNDO, and b) dealing with fixed-length records.
 
 %, and (other than requiring the design of a logical
 %logging format, and the restrictions imposed by fixed length pages) is
@@ -1601,10 +1602,10 @@ Instead of using nested top actions, the optimized implementation
 applies updates in a carefully chosen order that minimizes the extent
 to which the on disk representation of the hash table can be
 corrupted (Figure~\ref{linkedList}). Before beginning updates, it
-writes an undo entry that will check and restore the consistency of
+writes an UNDO entry that will check and restore the consistency of
 the hashtable during recovery, and then invokes the inverse of the
 operation that needs to be undone.  This recovery scheme does not
-require record-level undo information.  Therefore, pre-images of
+require record-level UNDO information.  Therefore, pre-images of
 records do not need to be written to log, saving log bandwidth and
 enhancing performance.
 
@@ -1890,17 +1891,17 @@ modifications will incur relatively inexpensive log additions,
 and are only coalesced into a single modification to the page file
 when the object is flushed from cache.
 
-\yad provides a several options  to handle undo records in the context
+\yad provides a several options  to handle UNDO records in the context
 of object serialization. The first is to use a single transaction for
 each object modification, avoiding the cost of generating or logging
-any undo records. The second option is to assume that the
-application will provide a custom undo for the delta, 
+any UNDO records. The second option is to assume that the
+application will provide a custom UNDO for the delta, 
 which requires a log entry for each update, 
 but still avoids the need to read or update the page
 file.
 
 The third option is to relax the atomicity requirements for a set of
-object updates, and again avoid generating any undo records. This
+object updates, and again avoid generating any UNDO records. This
 assumes that the application cannot abort individual updates, 
 and is willing to
 accept that some prefix of logged but uncommitted updates may 
@@ -2102,7 +2103,7 @@ before presenting an evaluation.
 
 \yad's wrapper functions translate high-level (logical) application
 requests into lower level (physiological) log entries.  These
-physiological log entries generally include a logical undo,
+physiological log entries generally include a logical UNDO,
 (Section~\ref{nested-top-actions}) that invokes the logical
 inverse of the application request.  Since the logical inverse of most
 application request is another application request, we can {\em reuse} our
