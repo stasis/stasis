@@ -1030,7 +1030,7 @@ or ``big locks'' (which drastically reduce concurrency) for multi-page updates.
 A common optimization for TPC benchmarks is to provide hand-built
 operations that support adding/subtracting from an account.  Such
 operations improve concurrency since they can be reordered and can be
-easily made into nested top actions (since the the logical undo is
+easily made into nested top actions (since the logical undo is
 trivial). Here we show how increment/decrement map onto \yad operations.
 
 First, we define the operation-specific part of the log record:
