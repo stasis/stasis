@@ -101,7 +101,7 @@ START_TEST(indirectAlloc) {
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
   fail_unless(rid.size == 1, NULL);
 
-  Page * p = loadPage(page);
+  Page * p = loadPage(xid, page);
 
   int page_type = *page_type_ptr(p);
 
@@ -122,7 +122,7 @@ START_TEST(indirectAlloc) {
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
   fail_unless(rid.size == 2000, NULL);
 
-  p = loadPage(page);
+  p = loadPage(xid, page);
 
   page_type = *page_type_ptr(p);
 
@@ -146,7 +146,7 @@ START_TEST(indirectAlloc) {
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
   fail_unless(rid.size == 2, NULL);
 
-  p = loadPage(page);
+  p = loadPage(xid, page);
 
   page_type = *page_type_ptr(p);
 
@@ -177,7 +177,7 @@ START_TEST(indirectAccessDirect) {
   page = rid.page;
   /* Make sure that it didn't create any indirect pages. */
 
-  Page * p = loadPage(page);
+  Page * p = loadPage(xid, page);
 
   int page_type = *page_type_ptr(p);
 
@@ -193,7 +193,7 @@ START_TEST(indirectAccessDirect) {
   
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
-    Tset(xid, dereferenceRID(rid), &i);
+    Tset(xid, dereferenceRID(xid, rid), &i);
   }
   
   Tcommit(xid);
@@ -202,7 +202,7 @@ START_TEST(indirectAccessDirect) {
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
     int j;
-    Tread(xid, dereferenceRID(rid), &j);
+    Tread(xid, dereferenceRID(xid, rid), &j);
     assert(j == i);
   }
   
@@ -222,7 +222,7 @@ START_TEST(indirectAccessIndirect) {
   page = rid.page;
   /* Make sure that it didn't create any indirect pages. */
 
-  Page * p = loadPage(page);
+  Page * p = loadPage(xid, page);
 
   int page_type = *page_type_ptr(p);
 
@@ -236,7 +236,7 @@ START_TEST(indirectAccessIndirect) {
 
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
-    Tset(xid, dereferenceRID(rid), &i);
+    Tset(xid, dereferenceRID(xid, rid), &i);
   }
   
   Tcommit(xid);
@@ -245,7 +245,7 @@ START_TEST(indirectAccessIndirect) {
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
     int j;
-    Tread(xid, dereferenceRID(rid), &j);
+    Tread(xid, dereferenceRID(xid, rid), &j);
     assert(j == i);
   }
   
@@ -264,12 +264,12 @@ START_TEST(indirectSizeTest) {
   int xid = Tbegin();
 
   recordid rid = rallocMany(xid, sizeof(int), 20);
-  int count = indirectPageRecordCount(rid);
+  int count = indirectPageRecordCount(xid, rid);
   assert(count == 20);
 
   recordid rid2 = rallocMany(xid, sizeof(int), 5000);
   
-  count = indirectPageRecordCount(rid2);
+  count = indirectPageRecordCount(xid, rid2);
   assert(count == 5000);
 
   Tcommit(xid);

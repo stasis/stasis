@@ -74,7 +74,7 @@ START_TEST(operation_physical_do_undo) {
   Page * p;
   
   Tinit();
-  
+  xid = -1;
   rid  = slottedPreRalloc(xid, sizeof(int), &p);
   releasePage(p);
   buf = 1;
@@ -87,17 +87,17 @@ START_TEST(operation_physical_do_undo) {
 
   DEBUG("B\n");
   
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   writeRecord(xid, p, lsn, rid, &buf);
   releasePage(p);
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   doUpdate(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
   releasePage(p);
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, &buf);
   releasePage(p);
 
@@ -107,7 +107,7 @@ START_TEST(operation_physical_do_undo) {
 
   DEBUG("D\n");
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
 
   fail_unless(10 == pageReadLSN(p), "page lsn not set correctly.");
 
@@ -116,7 +116,7 @@ START_TEST(operation_physical_do_undo) {
   undoUpdate(setToTwo, p, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
   releasePage(p);
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, &buf);
   releasePage(p);
 
@@ -126,7 +126,7 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);
   
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, &buf);
   releasePage(p);
 
@@ -145,7 +145,7 @@ START_TEST(operation_physical_do_undo) {
   lsn = 0;
   buf = 1;
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   writeRecord(xid, p, lsn, rid, &buf);
   releasePage(p);
   /* Trace of test: 
@@ -169,7 +169,7 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("F\n");
   redoUpdate(setToTwo);
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, &buf);
   assert(buf == 2);
   fail_unless(buf == 2, NULL);
@@ -185,7 +185,7 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("H don't redo set to 2\n");
   redoUpdate(setToTwo);        /* Fails */
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
 
   readRecord(xid, p, rid, &buf);
 
@@ -197,7 +197,7 @@ START_TEST(operation_physical_do_undo) {
 
   releasePage(p);
   redoUpdate(setToTwo);        /* Succeeds */
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, &buf);
 
   fail_unless(buf == 2, NULL);
@@ -330,6 +330,7 @@ START_TEST(operation_prepare) {
   and checks that the result is as expected. 
 
   @todo Write a more thorough (threaded!) nested top action test. 
+
 */
 START_TEST(operation_nestedTopAction) {
   
@@ -512,7 +513,8 @@ START_TEST(operation_set_range) {
   }
   
   Tcommit(xid);
-  
+  Tdeinit();
+
 } END_TEST
 
 START_TEST(operation_alloc_test) {

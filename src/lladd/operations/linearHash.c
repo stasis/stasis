@@ -82,7 +82,7 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
 		     argBytes + keySize, valSize);
   return 0;
 }
-static int noop (int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { pageWriteLSN(p, lsn); return 0; }
+static int noop (int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { pageWriteLSN(xid, p, lsn); return 0; }
 
 Operation getLinearInsert() {
   Operation o = { 
@@ -316,7 +316,8 @@ void instant_update_hash_header(int xid, recordid hash, int i, int next_split) {
 static void recover_split(int xid, recordid hashRid, int i, int next_split, int keySize, int valSize) {
   // This function would be simple, except for the ridiculous mount
   // of state that it must maintain.  See above for a description of what it does.
-  recordid * headerRidB;
+  recordid headerRidBstack;
+  recordid * headerRidB = &headerRidBstack;
   hashRid.slot = 1;
   Tread(xid, hashRid, headerRidB);
   hashRid.slot = 0;

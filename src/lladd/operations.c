@@ -65,7 +65,7 @@ void redoUpdate(const LogEntry * e) {
   if(e->type == UPDATELOG) {
     /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
     recordid rid = e->contents.update.rid;
-    Page * p = loadPage(rid.page);
+    Page * p = loadPage(e->xid, rid.page);
     lsn_t pageLSN = pageReadLSN(p);
 
     if(e->LSN > pageLSN) {
@@ -79,7 +79,7 @@ void redoUpdate(const LogEntry * e) {
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
-    Page * p = loadPage(rid.page);
+    Page * p = loadPage(e->xid, rid.page);
 
     assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
 
@@ -127,7 +127,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
       assert(p);
       DEBUG("OPERATION %d Whole page physical undo, %ld {%d}\n", undo, e->LSN, e->contents.update.rid.page);
       memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
-      pageWriteLSN(p, clr_lsn);
+      pageWriteLSN(e->xid, p, clr_lsn);
 
     } else {
       /* @see doUpdate() */

@@ -221,7 +221,7 @@ void pageDeInit();
  * @param page You must have a writelock on page before calling this function.
  * @param lsn The new lsn of the page.  If the new lsn is less than the page's current lsn, then the page's lsn will not be changed.
  */
-void pageWriteLSN(Page * page, lsn_t lsn);
+void pageWriteLSN(int xid, Page * page, lsn_t lsn);
 
 /**
  * assumes that the page is already loaded in memory.  It takes

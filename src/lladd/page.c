@@ -83,6 +83,7 @@ terms specified in this license.
 #include <lladd/constants.h>
 #include <assert.h>
 #include "blobManager.h"
+#include <lladd/lockManager.h>
 #include "pageFile.h"
 
 #include "page/slotted.h"
@@ -102,9 +103,11 @@ static pthread_mutex_t pageMallocMutex;
 /** We need one dummy page for locking purposes, so this array has one extra page in it. */
 Page pool[MAX_BUFFER_SIZE+1];
 
-void pageWriteLSN(Page * page, lsn_t lsn) {
+void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
   /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
+  if(globalLockManager.writeLockPage) { globalLockManager.writeLockPage(xid, page->id); }
+
   if(page->LSN < lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
@@ -263,7 +266,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
   writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   unlock(p->rwlatch);    
 
 }
@@ -378,7 +381,7 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
   writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   unlock(p->rwlatch);    
 
 }

@@ -96,7 +96,7 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
 
   *page_type_ptr(p) = ARRAY_LIST_PAGE;
 
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
 
   recordid ret;
   ret.page = firstPage;
@@ -118,7 +118,7 @@ Operation getArrayListAlloc() {
 /*----------------------------------------------------------------------------*/
 
 int TarrayListExtend(int xid, recordid rid, int slots) {
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   TarrayListParameters tlp = pageToTLP(p);
 
   int lastCurrentBlock;
@@ -181,7 +181,7 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
 }
 /** @todo:  TarrayListInstantExtend, is a hacked-up cut and paste version of TarrayListExtend */
 int TarrayListInstantExtend(int xid, recordid rid, int slots) {
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   TarrayListParameters tlp = pageToTLP(p);
 
   int lastCurrentBlock;
@@ -249,13 +249,13 @@ static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const vo
   
   fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
 
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 
 static int operateUnInitPage(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   *page_type_ptr(p) = UNINITIALIZED_PAGE;
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 

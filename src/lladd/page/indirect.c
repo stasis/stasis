@@ -14,8 +14,8 @@ void indirectInitialize(Page * p, int height) {
   memset(p->memAddr, INVALID_SLOT, ((int)level_ptr(p)) - ((int)p->memAddr));
 }
 /** @todo locking for dereferenceRID? */
-recordid dereferenceRID(recordid rid) {
-  Page * this = loadPage(rid.page);
+recordid dereferenceRID(int xid, recordid rid) {
+  Page * this = loadPage(xid, rid.page);
   int offset = 0;
   int max_slot;
   while(*page_type_ptr(this) == INDIRECT_PAGE) {
@@ -32,7 +32,7 @@ recordid dereferenceRID(recordid rid) {
     int nextPage = *page_ptr(this, i);
 
     releasePage(this);
-    this = loadPage(nextPage);
+    this = loadPage(xid, nextPage);
   }
   
   rid.page = this->id;
@@ -168,8 +168,8 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
   return rid;
 }
 
-unsigned int indirectPageRecordCount(recordid rid) {
-  Page * p = loadPage(rid.page);
+unsigned int indirectPageRecordCount(int xid, recordid rid) {
+  Page * p = loadPage(xid, rid.page);
   int i = 0;
   unsigned int ret;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {

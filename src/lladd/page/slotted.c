@@ -175,18 +175,18 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
   if(lastFreepage == -1) {
     lastFreepage = TpageAlloc(xid);
-    *pp = loadPage(lastFreepage);
+    *pp = loadPage(xid, lastFreepage);
     assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
   } else {
-    *pp = loadPage(lastFreepage);
+    *pp = loadPage(xid, lastFreepage);
   }
 
 
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
     lastFreepage = TpageAlloc(xid);
-    *pp = loadPage(lastFreepage);
+    *pp = loadPage(xid, lastFreepage);
     slottedPageInitialize(*pp);
   }
   
@@ -209,7 +209,7 @@ recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
     size = sizeof(blob_record_t);
   }
 
-  *pp = loadPage(page);
+  *pp = loadPage(xid, page);
   
   if(slottedFreespace(*pp) < size) {
     releasePage(*pp);
@@ -302,7 +302,7 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
 }
 
-recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
+recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 
 	writelock(page->rwlatch, 376);
 
@@ -348,14 +348,14 @@ recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 
 	}
 
-	pageWriteLSN(page, lsn);
+	pageWriteLSN(xid, page, lsn);
 
 	writeunlock(page->rwlatch);
 
 	return rid;
 }
 
-void slottedDeRalloc(Page * page, lsn_t lsn, recordid rid) {
+void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 
   readlock(page->rwlatch, 443);
 
@@ -364,7 +364,7 @@ void slottedDeRalloc(Page * page, lsn_t lsn, recordid rid) {
   *freelist_ptr(page) = rid.slot;  
   /*  *slot_length_ptr(page, rid.slot) = 0; */
 
-  pageWriteLSN(page, lsn);
+  pageWriteLSN(xid, page, lsn);
 
   unlock(page->rwlatch);
 }

@@ -100,7 +100,7 @@ typedef struct Page_s Page;
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
  */
-Page * loadPage(int pageid);
+Page * loadPage(int xid, int pageid);
 
 /**
    loadPage aquires a lock when it is called, effectively pinning it

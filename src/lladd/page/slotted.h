@@ -113,13 +113,13 @@ recordid slottedPreRallocFromPage(int xid, long page, long size, Page**p);
  * page for this record (though it is possible that we need to compact
  * the page)
  */
-recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid);
+recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 /**
  * Mark the space used by a record for reclaimation.
  *
  * @param rid the recordid to be freed.
  */
-void     slottedDeRalloc(Page * page, lsn_t lsn, recordid rid);
+void     slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 
 void slottedPageInit();
 void slottedPageDeinit();

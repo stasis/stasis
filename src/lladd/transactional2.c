@@ -6,6 +6,8 @@
 #include <lladd/recovery.h>
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
+#include <lladd/lockManager.h>
+
 #include "page.h"
 #include <lladd/logger/logger2.h>
 
@@ -91,8 +93,10 @@ int Tinit() {
 	initNestedTopActions();
 	ThashInit();
 
-	InitiateRecovery();
+	setupLockManagerCallbacksNil();
+	//	setupLockManagerCallbacksPage();
 
+	InitiateRecovery();
 
 	return 0;
 }
@@ -130,6 +134,8 @@ int Tbegin() {
 
 	XactionTable[index] = LogTransBegin(xidCount_tmp);
 
+	if(globalLockManager.begin) { globalLockManager.begin(XactionTable[index].xid); }
+
 	return XactionTable[index].xid;
 }
 
@@ -142,12 +148,12 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
   pthread_mutex_unlock(&transactional_2_mutex);
 #endif
 
-  p = loadPage(rid.page);
+  p = loadPage(xid, rid.page);
 
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRID(rid);
-    p = loadPage(rid.page); 
+    rid = dereferenceRID(xid, rid);
+    p = loadPage(xid, rid.page); 
     /** @todo Kludge! Shouldn't special case operations in transactional2. */
   } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
 	    op != OPERATION_LINEAR_INSERT && 
@@ -156,7 +162,7 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 	    op != OPERATION_UNDO_LINEAR_DELETE  ) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    p = loadPage(rid.page); 
+    p = loadPage(xid, rid.page); 
   } 
 
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
@@ -175,7 +181,7 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 void alTupdate(int xid, recordid rid, const void *dat, int op) {
   LogEntry * e;
   Page * p;  
-    p = loadPage(rid.page);
+    p = loadPage(xid, rid.page);
     
     /*    if(*page_type_ptr(p) == INDIRECT_PAGE) {
       releasePage(p);
@@ -206,19 +212,19 @@ void alTupdate(int xid, recordid rid, const void *dat, int op) {
 
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRIDUnlocked(rid);
-    p = loadPage(rid.page);
+    rid = dereferenceRIDUnlocked(xid, rid);
+    p = loadPage(xid, rid.page);
 
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRidUnlocked(p, rid.slot);
     releasePage(p);
-    p = loadPage(rid.page);
+    p = loadPage(xid, rid.page);
 
   } else {
     abort();
@@ -228,19 +234,19 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
 }
 
 void Tread(int xid, recordid rid, void * dat) {
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRID(rid);
-    p = loadPage(rid.page);
+    rid = dereferenceRID(xid, rid);
+    p = loadPage(xid, rid.page);
 
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    p = loadPage(rid.page);
+    p = loadPage(xid, rid.page);
 
   } else {
     abort();

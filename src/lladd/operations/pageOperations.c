@@ -34,7 +34,7 @@ int __pageDealloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
 */
 int __pageSet(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   memcpy(p->memAddr, d, PAGE_SIZE);
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 
@@ -50,7 +50,7 @@ int __update_freepage(int xid, Page * p, lsn_t lsn, recordid r, const void * d) 
       fflush(NULL);  */
   * headerFreepage_ptr(p) = t->after;
   freepage = t->after;
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 
@@ -64,7 +64,7 @@ int __update_freespace_inverse(int xid, Page * p, lsn_t lsn, recordid r, const v
   * headerFreepage_ptr(p) = t->before;
   freepage = t->before;
 #endif
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 #ifdef REUSE_PAGES
@@ -102,18 +102,18 @@ int __free_page(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   memset(p->memAddr, 0, PAGE_SIZE);
   *page_type_ptr(p) = LLADD_FREE_PAGE;
   *nextfreepage_ptr(p) = *successor;
-  pageWriteLSN(p, lsn);
+  pageWriteLSN(xid, p, lsn);
   return 0;
 }
 
 int __alloc_freed(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   memset(p->memAddr, 0, PAGE_SIZE);
-  pageWriteLSN(p, lsn); 
+  pageWriteLSN(xid, p, lsn); 
   return 0;
 }
 
 int TpageGet(int xid, int pageid, byte *memAddr) {
-  Page * q = loadPage(pageid);
+  Page * q = loadPage(xid, pageid);
   memcpy(memAddr, q->memAddr, PAGE_SIZE);
   releasePage(q);
   return 0;
@@ -139,7 +139,8 @@ void pageOperationsInit() {
   assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
   p.id = 0;*/
 
-  Page * p = loadPage(0);
+  Page * p = loadPage(-1, 0);
+  /** Release lock on page zero. */
   
  // pageRead(&p);
 

@@ -43,11 +43,11 @@ BEGIN_C_DECLS
     Translates a recordid that points to an indirect block into the
     physical location of the record.
 */
-recordid dereferenceRID(recordid rid);
-#define dereferenceRIDUnlocked(x) dereferenceRID((x))
+recordid dereferenceRID(int xid, recordid rid);
+#define dereferenceRIDUnlocked(y, x) dereferenceRID((y), (x))
 void indirectInitialize(Page * p, int height);
 recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);
-unsigned int indirectPageRecordCount(recordid rid);
+unsigned int indirectPageRecordCount(int xid, recordid rid);
 
 END_C_DECLS
 

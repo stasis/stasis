@@ -44,7 +44,7 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
   if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
     allocBlob(xid, p, lsn, rid);
   } else {
-    slottedPostRalloc(p, lsn, rid); 
+    slottedPostRalloc(xid, p, lsn, rid); 
   }
 
   return 0;
@@ -53,7 +53,7 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
 /** @todo Currently, we leak empty pages on dealloc. */
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   assert(rid.page == p->id);
-  slottedDeRalloc(p, lsn, rid);
+  slottedDeRalloc(xid, p, lsn, rid);
   return 0;
 }
 
@@ -64,7 +64,7 @@ static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat
     rid.size = sizeof(blob_record_t); 
   } 
 
-  slottedPostRalloc(p, lsn, rid); 
+  slottedPostRalloc(xid, p, lsn, rid); 
   /** @todo dat should be the pointer to the space in the blob store. */
   writeRecord(xid, p, lsn, rid, dat);
 
@@ -162,7 +162,7 @@ recordid TallocFromPage(int xid, long page, long size) {
 
 void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   readRecord(xid, p, rid, preimage);
   /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
   Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
@@ -171,7 +171,7 @@ void Tdealloc(int xid, recordid rid) {
 }
 
 int TrecordType(int xid, recordid rid) {
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   int ret = getRecordType(xid, p, rid);
   releasePage(p);
   return ret;
@@ -179,14 +179,14 @@ int TrecordType(int xid, recordid rid) {
 
 int TrecordSize(int xid, recordid rid) {
   int ret;
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   ret = getRecordSize(xid, p, rid);
   releasePage(p);
   return ret;
 }
 
 int TrecordsInPage(int xid, int pageid) {
-  Page * p = loadPage(pageid);
+  Page * p = loadPage(xid, pageid);
   readlock(p->rwlatch, 187);
   int ret = *numslots_ptr(p);
   unlock(p->rwlatch);

@@ -106,7 +106,7 @@ void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) 
   // Copy new value into log structure
   memcpy(range + 1, dat, length);
   
-  Page * p = loadPage(rid.page);
+  Page * p = loadPage(xid, rid.page);
   // No further locking is necessary here; readRecord protects the 
   // page layout, but attempts at concurrent modification have undefined 
   // results.  (See page.c)

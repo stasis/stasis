@@ -51,7 +51,7 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/bufferManager.h>
-
+#include <lladd/lockManager.h>
 #include "page.h"
 #include "blobManager.h"
 #include <lladd/pageCache.h>
@@ -133,9 +133,9 @@ void releasePage (Page * p) {
 }
 
 int bufTransCommit(int xid, lsn_t lsn) {
-
   commitBlobs(xid);
   pageCommit(xid);
+  if(globalLockManager.commit) { globalLockManager.commit(xid);} 
 
   return 0;
 }
@@ -144,6 +144,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
 
   abortBlobs(xid);  /* abortBlobs doesn't write any log entries, so it doesn't need the lsn. */
   pageAbort(xid);
+  if(globalLockManager.abort) { globalLockManager.abort(xid);} 
 
   return 0;
 }
@@ -151,6 +152,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
 Page * getPage(int pageid, int locktype) {
   Page * ret;
   int spin  = 0;
+
   pthread_mutex_lock(&loadPagePtr_mutex);
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
@@ -265,7 +267,9 @@ Page * getPage(int pageid, int locktype) {
   return ret;
 }
 
-Page *loadPage(int pageid) {
+Page *loadPage(int xid, int pageid) {
+  if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+
   Page * ret = getPage(pageid, RO);
   return ret;
 }

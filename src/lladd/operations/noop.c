@@ -52,7 +52,7 @@ static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) 
   /* If p is null, then this is a logical no-op that spans pages, so do nothing.
      Otherwise, write the LSN to the appropriate page (to keep recovery happy) 
      and return  */
-  if(p) pageWriteLSN(p, lsn);
+  if(p) pageWriteLSN(xid, p, lsn);
   return 0;
 }
 
