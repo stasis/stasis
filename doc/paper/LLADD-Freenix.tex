@@ -106,7 +106,7 @@ of useful data managers on top of this layer, including persistent
 hash tables, lightweight recoverable virtual memory (LRVM)~\cite{lrvm}, and simple
 databases.  We also cover the details of crash recovery,
 application-level support for transaction abort and commit, and latching for multi-threaded applications.
-Finally, we discuss the shortcomings of common applications, and explain
+Finally, we discuss the shortcomings of a few common applications, and explain
 why LLADD provides an appropriate solution to these problems.
 
 %[more coverage of kinds of apps?  imap, lrvm, cht, file system, database]
@@ -124,7 +124,7 @@ is conceptually simple, many subtleties arise in its implementation.
 We chose ARIES as the basis of LLADD, and have made a significant
 effort to document these interactions. Although  a complete discussion
 of the ARIES algorithm is beyond the scope of this paper, we will
-provide a brief overview, and explain the details that are relevant
+provide a brief overview and explain the details that are relevant
 to developers that wish to extend LLADD. 
 
 By documenting the interface between ARIES and higher-level primitives
@@ -135,8 +135,7 @@ structures. In existing systems (and indeed, in earlier versions of
 LLADD), the implementation of such structures is extremely
 complicated, and subject to the introduction of incredibly subtle
 errors that would only be evident during crash recovery or at other
-inconvenient times.  Thus there is great value in reusing these lower
-layers.
+inconvenient times.  Thus there is great value in reusing lower layers.
 
 Finally, by approaching this problem by implementing a number of simple
 modules that ``do one thing and do it well'', we believe that
@@ -168,7 +167,7 @@ application-specific modules.}
 \end{figure}
 
 Many systems make use of transactional storage that is
-designed for a specific application, or set of applications.  LLADD
+designed for a specific application or set of applications.  LLADD
 provides a flexible substrate that allows such systems to be
 developed easily.  The complexity of existing systems varies widely, as do
 the applications for which these systems are designed.  
@@ -188,7 +187,7 @@ variants of that application.~\cite{lamb}
 Databases are designed for circumstances where development time may
 dominate cost, many users must share access to the same data, and
 where security, scalability, and a host of other concerns are
-important.  In many, if not most, circumstances these issues are less
+important.  In many, if not most circumstances these issues are less
 important, or even irrelevant.  Therefore, applying a database in
 these situations is likely overkill, which may partially explain the
 popularity of MySQL~\cite{mysql}, which allows some of these constraints to be
@@ -202,13 +201,13 @@ of the files that it contains, and is able to provide services such as
 rapid search, or file-type specific operations such as thumb-nailing,
 automatic content updates, and so on.  Others are simpler, such as
 Berkeley~DB,~\cite{berkeleyDB, bdb} which provides transactional storage of data in unindexed
-form, in indexed form using a hash table or tree.  LRVM is a version
+form, or in indexed form using a hash table or tree.  LRVM is a version
 of malloc() that provides transactional memory, and is similar to an
-object-oriented database, but is much lighter weight, and more
+object-oriented database but is much lighter weight, and more
 flexible~\cite{lrvm}.
 
 Finally, some applications require incredibly simple, but extremely
-scalable storage mechanisms.  Cluster Hash Tables are a good example
+scalable storage mechanisms.  Cluster hash tables are a good example
 of the type of system that serves these applications well, due to
 their relative simplicity, and extremely good scalability
 characteristics.  Depending on the fault model on which a cluster hash table is
@@ -217,7 +216,7 @@ the transactional mechanism, such as forcing log entries to disk, will
 be replaced with other durability schemes, such as in-memory
 replication across many nodes, or multiplexing log entries across
 multiple systems.  This level of flexibility would be difficult to
-retrofit into existing transactional applications, but is often appropriate
+retrofit into existing transactional applications, but is often important
 in the environments in which these applications are deployed.
 
 We have only provided a small sampling of the many applications that
@@ -235,13 +234,13 @@ either ignore the problem, leaving the burden of recovery to system
 administrators or users, or implement ad-hoc solutions that employ
 complex, application-specific storage protocols in order to ensure
 the consistency of their data.  This increases the complexity of such
-applications, and often provides only a partial solution to the
+applications and often provides only a partial solution to the
 transactional storage problem, resulting in erratic and unpredictable
 application behavior.
 
 In addition to describing a flexible implementation of ARIES, a well-tested
 ``industrial strength'' algorithm for transactional storage, this paper
-outlines the most important interactions that we discovered (that
+outlines the most important interactions in ARIES (that
 is, the ones that could not or should not be encapsulated within our
 implementation), and gives the reader a sense of how to use the
 primitives the library provides.
@@ -269,7 +268,7 @@ operations in LLADD.
 \subsection{Properties of an Operation\label{sub:OperationProperties}}
 
 A LLADD operation consists of some code that manipulates data that has 
-been stored in transactional pages.  These operations implement the high-level
+been stored in transactional pages.  These operations implement high-level
 actions that are composed into transactions.  They are implemented at
 a relatively low level, and have full access to the ARIES algorithm.
 Applications are implemented on top of the interfaces provided 
@@ -853,9 +852,11 @@ commit is included in LLADD's CVS repository.
 
 Previously, we mentioned a few systems that we think would benefit
 from LLADD.  Here we sketch the process of implementing such
-applications.  LRVM implements a transactional version of malloc() \cite{lrvm}.  It
+applications.  
+
+LRVM implements a transactional version of malloc() \cite{lrvm}.  It
 employs the operating system's virtual memory system to generate page
-faults if the application accesses a portion of memory that have not
+faults if the application accesses a portion of memory that has not
 been swapped in.  These page faults are intercepted and processed by a
 transactional storage layer which loads the corresponding pages from
 disk.  A few simple functions such as abort() and commit() are
@@ -868,15 +869,15 @@ variable length, keyed access, and higher levels of abstraction
 provided by existing libraries impose a severe performance penalty.  LLADD could easily
 be extended so that it employs an appropriate on-disk structure that
 provides efficient, offset based access to aligned, fixed length
-blocks of data.  Furthermore, LRVM requires a set\_range() operation
-that efficiently updates a range of a record, saving logging overhead.
-All of these features could easily added to LLADD, providing a simple,
+blocks of data.  A, LRVM requires a set\_range() operation
+that efficiently updates a portion of a record, saving logging overhead.
+This feature could also be implemented as an operation, providing a simple,
 fast version of LRVM that would benefit from the infrastructure
 surrounding LLADD.
 
 CVS provides version control over large sets of files.  Multiple users
 may concurrently update the repository of files, and CVS attempts to
-merge conflicts, and maintain the consistency of the file tree.  By
+merge conflicts and maintain the consistency of the file tree.  By
 adding the ability to perform file system manipulations to LLADD, we
 could easily support applications with requirements similar to those
 of CVS.  Furthermore, we could combine the file-system manipulation
@@ -899,7 +900,7 @@ of file-system based storage mechanisms.
 
 Another area of interest is in transactional serialization mechanisms
 for programming languages.  Existing solutions are often complex, or
-are layered on top of a relational database, or other system that uses
+are layered on top of a relational database or other system that uses
 a data format that is different than the representation the
 programming language uses.  J2EE implementations and the wide variety of 
 other persistence mechanisms
@@ -1047,21 +1048,21 @@ updates to file system directory trees, or integration of networking
 or other operations directly into LLADD transactions. Doing this would
 allow LLADD to act as a sort of ``glue code'' among various systems,
 ensuring data integrity and adding database-style functionality, such
-as continuous backup to systems that currently do not provide such
+as continuous backup, to systems that currently do not provide such
 mechanisms. We believe that there is quite a bit of room for the development
-of new software systems in the space between the high-level, but sometimes
+of new software systems in the space between the high-level but sometimes
 inappropriate interfaces exported by existing transactional storage systems, 
-and the unsafe, low-level primitives provided supported by current file systems.
+and the unsafe, low-level primitives provided by current file systems.
 
 Currently, although we have implemented a two-phase commit algorithm,
 LLADD really is not very network aware. If we provided a clean abstraction
 that allowed LLADD extensions and operations to cross network boundaries,
-then we could provide a wider range of network consistency algorithms,
+then we could provide a wider range of network consistency algorithms
 and cleanly support the implementation of operations that perform
 well in networked and in local environments.
 
 Although LLADD is re-entrant, its latching mechanisms only provide physical
-consistency. Traditionally, lock managers, which provide higher levels
+consistency. Traditionally lock managers, which provide higher levels
 of consistency, have been tightly coupled with transactional page implementations.
 Generally, the semantics of undo and redo operations provided by the
 transactional page layer and its associated data structures determine
@@ -1077,7 +1078,7 @@ the implementation of extremely flexible transactional systems.
 
 As a final note, we believe that a large fraction of the ``application
 specific'' extensions made to LLADD will be reusable in their own
-right.  Over time, we hope to provide a set of specialized, but still
+right.  Over time, we hope to provide a set of specialized, but 
 reusable components that will be able to support an unprecedented
 range of applications.  We have focused upon LLADD's extensibility in
 this paper, but we also intend for the library to be useful to
@@ -1095,17 +1096,17 @@ these customizations and the storage system, we make it easy to
 implement such customizations.  
 
 Current applications generally must choose between high-level,
-general-purpose libraries that impose severe performance penalties,
+general-purpose libraries that impose severe performance penalties
 and ad-hoc ``from scratch'' atomicity and durability mechanisms.  We aim to
 bridge this gap, allowing applications to make use of high-level,
-efficient, and special-purpose transactional storage.
-Today, many applications have to choose between efficiency, reliable storage, and ease of development.  As a result applications that handle important or complex information are often difficult to develop and maintain, or fail to meet their users requirements.
+efficient and special-purpose transactional storage.
+Today, many applications have to choose between efficiency, reliable storage and ease of development.  As a result, applications that handle important or complex information are often difficult to develop and maintain, or fail to meet their users requirements.
 
-Because of the interface between operation extensions and the
+Because of the stable interface between operation implementations and the
 underlying implementation of the ARIES algorithm, we allow operation
-extensions and the implementation of the library to evolve
+implementations and the implementation of the library to evolve
 independently, allowing applications to make use of advanced replication and storage
-techniques as the circumstances in which they are deployed changes.
+techniques as the circumstances in which they are deployed changes and as LLADD evolves
 
 By releasing LLADD to the community, we hope that we will be able to
 provide a toolkit that aids in the development of real-world
