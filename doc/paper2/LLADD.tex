@@ -19,8 +19,11 @@
 \usepackage{babel}
 
 \newcommand{\yad}{Lemon\xspace}
+\newcommand{\oasys}{Juicer\xspace}
+
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
+\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
 \begin{document}
 
@@ -948,7 +951,8 @@ commit any structural changes and thus avoids cascading aborts.  If
 this transaction aborts, the logical undo will {\em compensate} for
 its effects, but leave its structural changes in tact (or augment
 them). Note that by releasing the mutex before we commit, we are
-violating strict two-phase locking in exchange for better performance.
+violating strict two-phase locking in exchange for better performance 
+and support for deadlock avoidance schemes.
 We have found the recipe to be easy to follow and very effective, and
 we use in everywhere we have structural changes, such as growing a
 hash table or array.
@@ -1917,7 +1921,47 @@ This section uses:
 
 \section{Transitive closure\label{TransClos}}
 
-\rcs{implement transitive closu....}
+Database servers (and most transactional storage systems) are not
+designed to handle large graph structures well.  Typically, each edge
+traversal will involve an index lookup, and worse, since most systems
+do not provide information about the physical layout of the data that
+they store, it is not straightforward to implement graph algorithms in
+a way that exploits on disk locality.  In this section, we describe an
+efficient representation of graph data using \yad's primatives, and
+present an optimization that introduces locality into random disk
+requests by reordering invocations of wrapper functions.
+
+\subsection {Data Representation}
+
+We loosly base the graphs for this test on the graphs used by the oo7
+benchmark~\cite{oo7}.  For the test, we hardcode the outdegree of
+graph nodes to 3, 6 and 9.  This allows us to represent graph nodes as
+fixed length records.  The Array List from our linear hash table
+implementation (Section~\ref{linear-hash-table}) provides access to an
+array of such records with performance that is competive with native
+recordid accesses, so we use an Array List to store the records.  We
+could have opted for a slightly more efficient representation by
+implementing a fixed length array strucutre, but doing so seems to be
+overkill for our purposes.  The nodes themselves are stored as an
+array of integers of length one greater than their outdegree. The
+extra int is used to hold information about the node.  (In our case,
+it is simply a set to a constant value by a graph traversal.)
+
+We implement a ``naive'' graph traversal algorithm that uses depth
+first search to find all nodes that are reachable from node zero.
+This algorithm (predictably) consumes a large amount of memory, as
+nothing stops it from placing the entire graph upon its stack.  For
+the purposes of this section, which focuses on page access locality,
+we ignore the amount of memory utlization used to store stacks and
+worklists, as they can vary greatly from application to application,
+but we note that the simple depth first search algorithm is at least
+as bad we
+
+\subsection {Request Reordering for Locality}
+
+
+\subsection {Performance Evaluation}
+
 
 This section uses:
 
