@@ -1,0 +1,40 @@
+#!/usr/bin/perl -w
+use strict;
+
+print("\n\nRunning Cluster Hash Table self test.\n");
+print("-------------------------------------\n");
+
+mkdir 'coord';
+mkdir 'sub0';
+mkdir 'sub1';
+mkdir 'sub2';
+mkdir 'sub3';
+
+chdir 'coord';
+system ("rm *.txt");
+system ("../coordinator ../cluster.conf > /dev/null &");
+chdir '..';
+chdir 'sub0';
+system ("rm *.txt");
+system ("../subordinate 0 ../cluster.conf > /dev/null &");
+chdir '..';
+chdir 'sub1';
+system ("rm *.txt");
+system ("../subordinate 1 ../cluster.conf > /dev/null &");
+chdir '..';
+chdir 'sub2';
+system ("rm *.txt");
+system ("../subordinate 2 ../cluster.conf > /dev/null &");
+chdir '..';
+chdir 'sub3';
+system ("rm *.txt");
+system ("../subordinate 3 ../cluster.conf > /dev/null &");
+chdir '..';
+
+system ("rm *.txt");
+my $ret = system ("./client 2>&1");
+
+`killall coordinator`;
+`killall subordinate`;
+
+exit $ret;

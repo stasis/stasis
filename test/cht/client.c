@@ -37,13 +37,14 @@ int main(int argc, char ** argv) {
     unsigned int newLen = sizeof(int);
     int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
     xid++;
-    printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
+    //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
+    assert(ret);
     assert(newOne == one);
     assert(newTwo == two);
     assert(newLen == sizeof(int));
   }
   
-  // shutdown main thread somehow...
+  /** @todo devise a way to cleanly shut a CHT down. */
   
  // dfa_free(cht_client);
 }
