@@ -310,7 +310,7 @@ all information necessary for undo and redo.
 
 An important concept in ARIES is the ``log sequence number'' or LSN.
 An LSN is essentially a virtual timestamp that goes on every page; it
-tells you the last log entry that is reflect on the page, which
+marks  the last log entry that is reflected on the page, which
 implies that all previous log entries are also reflected. Given the
 LSN, you can tell where to start playing back the log to bring a page
 up to date.  The LSN goes on the page so that it is always written to
@@ -325,7 +325,7 @@ as we allow multiple transactions to run concurrently on the same page
 always} contains some uncommitted data and thus could never be written
 back to disk.  To handle stolen pages, we log UNDO records that
 we can use to undo the uncommitted changes in case we crash.  LLADD
-ensures that the UNDO record is be durable in the log before the
+ensures that the UNDO record is durable in the log before the
 page is written back to disk, and that the page LSN reflects this log entry.
 
 Similarly, we do not force pages out to disk every time a transaction
@@ -366,19 +366,18 @@ processing.
 \subsubsection{The buffer manager}
 
 LLADD manages memory on behalf of the application and prevents pages
-from being stolen prematurely. Although LLADD uses the STEAL policy and
-may write buffer pages to disk before transaction commit, it still
-must make sure that the undo log entries have been forced
-to disk before the page is written to disk. Therefore, operations
-must inform the buffer manager when they write to a page, and update
-the LSN of the page. This is handled automatically
-by many of the write methods provided to operation implementors (such
-as writeRecord()), but the low-level page manipulation calls (which
-allow byte-level page manipulation) leave it to their callers to update
-the page metadata appropriately.
+from being stolen prematurely. Although LLADD uses the STEAL policy
+and may write buffer pages to disk before transaction commit, it still
+must make sure that the UNDO log entries have been forced to disk
+before the page is written to disk. Therefore, operations must inform
+the buffer manager when they write to a page, and update the LSN of
+the page. This is handled automatically by the write methods that LLADD 
+provides to operation implementors (such as writeRecord()). However,
+it is also possible to create your own low-level page manipulation
+routines, in which case these routines must follow the protocol.
 
 
-\subsubsection{Log entries and forward operation (the Tupdate() function)\label{sub:Tupdate}}
+\subsubsection{Log entries and forward operation\\ (the Tupdate() function)\label{sub:Tupdate}}
 
 In order to handle crashes correctly, and in order to the undo the
 effects of aborted transactions, LLADD provides operation implementors
@@ -386,8 +385,8 @@ with a mechanism to log undo and redo information for their actions.
 This takes the form of the log entry interface, which works as follows.
 Operations consist of a wrapper function that performs some pre-calculations
 and perhaps acquires latches. The wrapper function then passes a log
-entry to LLADD. LLADD passes this entry to the logger, and then processes
-it as though it were redoing the action during recovery, calling a function
+entry to LLADD. LLADD passes this entry to the logger, {\em and then processes
+it as though it were redoing the action during recovery}, calling a function
 that the operation implementor registered with
 LLADD. When the function returns, control is passed back to the wrapper
 function, which performs any post processing (such as generating return
