@@ -11,7 +11,7 @@
 
 pthread_cond_t never;
 pthread_mutex_t mutex;
-
+double thread_requests_per_sec = 1.0;
 int alwaysCommit;
 
 #define MAX_SECONDS 100
@@ -26,6 +26,16 @@ int buckets[COUNTER_RESOLUTION];
 #ifndef PTHREAD_STACK_MIN
 #include <limits.h>
 #endif
+
+void addTimespec(struct timespec * ts, long nsec) {
+  ts->tv_nsec += nsec;
+  
+  //               0123456789
+  if(ts->tv_nsec > 1000000000) {
+    ts->tv_nsec -= 1000000000;
+    ts->tv_sec ++;
+  }
+}
 
 int activeThreads = 0;
 int max_active = 0;
@@ -51,7 +61,10 @@ static void * go (void * arg_ptr) {
 
   int k = *(int*)arg_ptr;
   int j;
-  int xid;// = Tbegin();
+  int xid = 0;
+  if(!alwaysCommit) {
+    xid = Tbegin();
+  }
 
   double sum_x_squared = 0;
   double sum = 0;
@@ -127,7 +140,9 @@ static void * go (void * arg_ptr) {
     
     if(bucket >= COUNTER_RESOLUTION) { bucket = COUNTER_RESOLUTION - 1; }
     
-    timeout.tv_sec++;
+    //    timeout.tv_sec++;
+    //                    0123456789
+    addTimespec(&timeout, 1000000000.0 / thread_requests_per_sec);
     pthread_mutex_lock(&mutex);
     buckets[bucket]++;
     pthread_cond_timedwait(&never, &mutex, &timeout);
@@ -162,7 +177,10 @@ static void * go (void * arg_ptr) {
   if(variance > max_var) { max_var = variance; }  */
 
   pthread_mutex_unlock(&mutex);
+  if(!alwaysCommit) {
+    Tcommit(xid);
 
+  }
 
   return NULL;
 }
