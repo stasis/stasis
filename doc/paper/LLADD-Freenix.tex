@@ -512,7 +512,7 @@ not to validate our hash table, but to show that the underlying architecture
 is able to efficiently support interesting data structures.
 
 Despite the complexity of the interactions between its modules, the
-ARIES algorithm itself is quite simple. Therefore, in order to keep
+basic ARIES algorithm itself is quite simple. Therefore, in order to keep
 LLADD simple, we started with a set of modules, and iteratively refined
 the boundaries between these modules. A summary of the result is presented
 in Figure \ref{cap:LLADD-Architecture}. The core of the LLADD library
@@ -546,7 +546,8 @@ or network requests, or even leveraging some of the advances being
 made in the Linux and other modern operating system kernels. For example,
 ReiserFS recently added support for atomic file system operations.
 It is possible that this could be used to provide variable sized pages
-to LLADD.
+to LLADD.  Combining some of these ideas should make it easy to 
+implement some interesting applications.
 
 From the testing point of view, the advantage of LLADD's division
 into subsystems with simple interfaces is obvious. We are able to
@@ -559,7 +560,8 @@ state, re-initializing the library and verifying that recovery was
 successful. These tests currently cover approximately 90\% of the
 code. We have not yet developed a mechanism that will allow us to
 accurately model hardware failures, which is an area where futher
-work is needed.
+work is needed.  However, the basis for this work will be the development
+of test harnesses that verify operation behavior in exceptional circumstances.
 
 LLADD's performance requirements vary wildly depending on the workload
 with which it is presented. Its performance on a large number of small,
@@ -568,7 +570,7 @@ required to flush a page to disk. To some extent, compact logical
 and physiological log entries improve this situation. On the other
 hand, long running transactions only rarely force-write to disk and
 become CPU bound. Standard profiling techniques of the overall library's
-performance, and microbenchmarks of crucial modules handle such situations
+performance and microbenchmarks of crucial modules handle such situations
 nicely. 
 
 A more interesting set of performance requirements are imposed by
@@ -591,8 +593,8 @@ LLADD must force the log to disk one time per transaction. This problem
 is not fundamental, but simply has not made it into the current code
 base. Similarly, since page eviction requires a force-write if the
 full ARIES recovery algorithm is in use, we could implement a thread
-that asynchronously maintained a set of free buffer pages. Such optimizations
-will be implemented before LLADD's final release, but are not reflected
+that asynchronously maintained a set of free buffer pages. We plan to 
+implement such optimizations, but they are not reflected
 in this paper's performance figures.
 
 
@@ -637,8 +639,10 @@ undo. This implementation provided a stepping stone to the more sophisticated
 version which employs logical undo, and uses an identical on-disk
 layout. As we discussed earlier, logical undo provides more opportunities
 for concurrency, while decreasing the size of log entries. In fact,
-the physical-redo implementation of the linear hash table cannot support
-concurrent transactions!%
+the physical-undo implementation of the linear hash table cannot support
+concurrent transactions, while threads utilizing the physical-undo 
+implementation never hold locks on more than two buckets.%
+\footnote{However, only one thread may expand the hashtable at once.  In order to amortize the overhead of initiating an expansion, and to allow concurrent insertions, the hash table is expanded in increments of a few thousand buckets.}%
 \begin{figure}
 ~~~~~~~~\includegraphics[%
   width=0.80\columnwidth]{LinkedList.pdf}
@@ -659,14 +663,14 @@ from LLADD's point of view is always consistent. This is important
 for crash recovery; it is possible that LLADD will crash before the
 entire sequence of operations has been completed. The logging protocol
 guarantees that some prefix of the log will be available. Therefore,
-as long as the run-time version of the hash table is always consisten,
+as long as the run-time version of the hash table is always consistent,
 we do not have to consider the impact of skipped updates, but we must
 be certain that the logical consistency of the linked list is maintained
-at all steps. Here, challenge comes from the fact that the buffer
+at all steps. Here, the challenge comes from the fact that the buffer
 manager only provides atomic updates of single pages; in practice,
 a linked list may span pages.
 
-The last case, where buckets are split as the bucket list is expanded
+The last case, where buckets are split as the bucket list is expanded,
 is a bit more complicated. We must maintain consistency between two
 linked lists, and a page at the begining of the hash table that contains
 the last bucket that we successfully split. Here, we misuse the undo
@@ -677,15 +681,18 @@ there is never a good reason to undo a bucket split, so we can safely
 apply the split whether or not the current transaction commits.
 
 First, an 'undo' record that checks the hash table's meta data and
-redoes the split if necessary is written. Second, we write a series
-of redo-only records to log. These encode the bucket split, and follow
+redoes the split if necessary is written (this record has no effect 
+unless we crash during this bucket split). Second, we write (and execute) a series
+of redo-only records to the log. These encode the bucket split, and follow
 the linked list protocols listed above. Finally, we write a redo-only
 entry that updates the hash table's metadata.%
 \footnote{Had we been using nested top actions, we would not need the special
 undo entry, but we would need to store physical undo information for
 each of the modifications made to the bucket. This method does have
 the disadvantage of producing a few redo-only entries during recovery,
-but recovery is an uncommon case.%
+but recovery is an uncommon case, and the number of such entries is
+bounded by the number of entries that would be produced during normal 
+operation.%
 }
 
 We allow pointer aliasing at this step so that a given key can be
@@ -705,11 +712,11 @@ is in an inconsistent physical state, although normally the redo phase
 is able to bring the database to a fully consistent physical state.
 We handle this by obtaining a runtime lock on the bucket during normal
 operation. This runtime lock blocks any attempt to write log entries
-that effect a bucket that is being split, so we know that no other
+that alter a bucket that is being split, so we know that no other
 logical operations will attempt to access an inconsistent bucket.
 
 Since the second implementation of the linear hash table uses logical
-redo, we are able to allow concurrent updates to different portions
+undo, we are able to allow concurrent updates to different portions
 of the table. This is not true in the case of the implementation that
 uses pure physical logging, as physical undo cannot generally tolerate
 concurrent structural modifications to data structures.
@@ -743,7 +750,7 @@ and instead add it to the list of active transactions.%
 which is outside of the scope of LLADD, although this functionality
 could be added relatively easily if a lock manager were implemented
 on top of LLADD.%
-} Due to LLADD's extendible logging system, and the simplicity of simplicity
+} Due to LLADD's extendible logging system, and the simplicity
 of its recovery code, it took an afternoon to add a prepare operation
 to LLADD.
 
@@ -765,8 +772,8 @@ specific transactional data structures.
 
 %
 \begin{figure*}
-%\includegraphics[%
-%  width=1.0\textwidth]{INSERT.pdf}
+\includegraphics[%
+  width=1.0\textwidth]{INSERT.pdf}
 
 
 \caption{\label{cap:INSERTS}The final data points for LLADD's and Berkeley
