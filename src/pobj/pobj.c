@@ -1059,11 +1059,11 @@ pobj_update_recursive (void *obj, int persist)
 		}
 	    }
 	    
-	    debug ("reading persistent image of object %p (%p)", obj, p);
+	    debug ("reading persistent image of object %p (%p)", obj, (void *) p);
 	    Tread (xid, pobj_slot->rid, tmp);
 	}
 
-	if (fresh || memcmp (p, tmp, p->size)) {
+	if (fresh || memcmp (p, tmp, POBJ_SIZE (p->size))) {
 	    debug (" processing %p (%p): object changed, updating...",
 		   obj, (void *) p);
 
