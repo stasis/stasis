@@ -43,7 +43,7 @@ terms specified in this license.
 #include <limits.h>
 #include <stdio.h>
 #include <assert.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #define EPOCH ((time_t)0)
 

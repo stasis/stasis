@@ -91,6 +91,9 @@ void ThashDone(int xid, lladd_hash_iterator * it);
 Operation getLinearHashInsert();
 Operation getLinearHashRemove();
 
+void LinearHashNTAInit();
+
+
 //Support 16 entries by default.
 #define HASH_INIT_BITS 4
 #define HASH_FILL_FACTOR 0.7

@@ -16,8 +16,7 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 ## Need AC_PROG_LIBTOOL
 AC_PROG_LIBTOOL
-#AC_PROG_RANLIB
-
+AC_PROG_RANLIB
 # Checks for libraries.
 
 #AM_PATH_CHECK(,[have_check="yes"],
@@ -72,7 +71,7 @@ fi
 AC_CHECK_LIB([m], [sqrt])
 AC_CHECK_LIB([db], [db_open])
 AC_CHECK_LIB([pthread], [pthread_create])
-
+AC_CHECK_LIB([confuse], [cfg_set_validate_func])
 # Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
@@ -92,7 +91,7 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_REALLOC
 AC_FUNC_STAT
-AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir socket sqrt strchr strdup strerror strrchr strstr strtoul])
+AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir powl posix_memalign socket sqrt strchr strdup strerror strrchr strstr strtoul])
 
 AC_CONFIG_FILES([Makefile
                  benchmarks/Makefile

@@ -26,8 +26,13 @@
    please see: http://mission.base.com/.
 
     $Log$
-    Revision 1.1  2004/06/24 21:11:33  sears
-    Initial revision
+    Revision 1.2  2005/03/02 05:46:29  sears
+    Compiles on FreeBSD!
+
+    Revision 1.1.1.1  2004/06/24 21:11:33  sears
+    Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+    Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
 
     Revision 1.4  2004/06/09 21:27:40  sears
     Final CVS checkin before major refactoring.
@@ -61,7 +66,8 @@ static char* _PBL_H_id = "$Id$";
 static int   _PBL_H_fct() { return( _PBL_H_id ? 0 : _PBL_H_fct() ); }
 
 #include <dirent.h>
-
+  // for size_t
+#include <stdio.h> 
 /*****************************************************************************/
 /* #defines                                                                  */
 /*****************************************************************************/

@@ -53,7 +53,7 @@ terms specified in this license.
 #include <stdlib.h>
 #include <netdb.h>
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include <libdfa/messages.h>
@@ -201,7 +201,7 @@ int __send_message(const NetworkSetup *ns, Message *message, const char *to) {
  //     fprintf(stderr, "Sending message to coordinator: %s", ns->coordinator);
       return __send_message(ns, message, ns->coordinator);
     }
-    if(ns->broadcast_list_host_count[list_number] == 0) {
+    if(ns->broadcast_list_host_count[list_number-1] == 0) {
       fprintf(stderr, "Sending to empty broadcast list! Address was %s\n", to);
     }
     

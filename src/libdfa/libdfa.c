@@ -44,7 +44,7 @@ terms specified in this license.
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>

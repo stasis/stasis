@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include <libdfa/smash.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
 
 smash_t *  init_Smash(int size) {

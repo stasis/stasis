@@ -46,6 +46,8 @@ compensated_function lladd_linkedList_iterator * TlinkedListIterator(int xid, re
 compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
 compensated_function recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
 compensated_function void TlinkedListDelete(int xid, recordid list);
+
+void LinkedListNTAInit();
 Operation getLinkedListInsert();
 Operation getLinkedListRemove();
 #endif //__LINKED_LIST_NTA_H
