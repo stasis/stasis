@@ -1,0 +1,61 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>int pblHtRemove</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2>int <A HREF="#DOC.DOCU">pblHtRemove</A></H2><H2>( <!1><A HREF="pblHashTable_t.html">pblHashTable_t</A>*  h,   void*  key,<BR>&nbsp;  size_t keylen )</H2><BLOCKQUOTE> remove an item from the hash table</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+remove an item from the hash table
+
+<P>parameters key and keylen are optional, if they are not given
+the current record is deleted
+
+<P>if the current record is removed the pointer to the current record
+is moved to the next record.
+
+<P><PRE>
+   Example:
+
+<P>   for( data = pblHtFirst( h ); data; data = pblHtRemove( h, 0, 0 ))
+   {
+       this loop removes all items from a hash table
+   }
+   </PRE>
+
+<P>if the current record is moved by this function the next call to
+<!1><A HREF="pblHtNext.html">pblHtNext</A> will return the data of the then current record.
+Therefore the following code does what is expected:
+It visits all items of the hash table and removes the expired ones.
+
+<P><PRE>
+   for( data = pblHtFirst( h ); data; data = pblHtNext( h ))
+   {
+       if( needs to be deleted( data ))
+       {
+           pblHtRemove( h, 0, 0 );
+       }
+   }
+   </PRE>
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>h</B> -   hash table to remove from           
+<BR><B>key</B> -   OPT: key to remove                  
+<BR><B>keylen</B> -   OPT: length of that key             <BR><DT><B>Returns:</B><DD>  int ret == 0: ok
+<BR>  int ret == -1: an error, see pbl_errno:
+<BR>  PBL_ERROR_NOT_FOUND: the current item is not positioned
+<BR>  or there is no item with the given key
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

@@ -1,0 +1,72 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+PACKAGE=LLADD
+VERSION=0.1
+AC_PREREQ(2.59)
+AC_INIT(PACKAGE, VERSION, sears@cs.berkeley.edu)
+AM_INIT_AUTOMAKE(hello,0.1)
+AC_CONFIG_SRCDIR([config.h.in])
+AC_CONFIG_HEADER([config.h])
+
+# Checks for programs.
+AC_PROG_CXX
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+## Need AC_PROG_LIBTOOL
+AC_PROG_LIBTOOL
+#AC_PROG_RANLIB
+
+# Checks for libraries.
+
+AM_PATH_CHECK(,[have_check="yes"],
+  AC_MSG_WARN([Check not found; cannot run unit tests!])
+  [have_check="no"])
+AM_CONDITIONAL(HAVE_CHECK, test x"$have_check", "xyes")
+
+# Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h malloc.h memory.h netdb.h netinet/in.h stddef.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_FUNC_MMAP
+AC_FUNC_STAT
+AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa memmove memset mkdir munmap socket strchr strdup strerror strrchr strstr strtoul])
+
+AC_CHECK_LIB(pthread, pthread_create)
+
+AC_CONFIG_FILES([Makefile
+                 libdfa/Makefile
+                 lladd/Makefile
+                 pbl/Makefile
+                 src/2pc/Makefile
+                 src/Makefile
+                 src/apps/Makefile
+                 src/apps/cht/Makefile
+                 src/apps/cyrus/Makefile
+                 src/libdfa/Makefile
+                 src/lladd/Makefile
+                 src/pbl/Makefile
+                 src/timing/Makefile
+                 test/2pc/Makefile
+                 test/Makefile
+                 test/cht/Makefile
+                 test/dfa/Makefile
+                 test/lladd/Makefile
+                 test/lladd-old/Makefile
+                 test/messages/Makefile
+                 test/monotree/Makefile])
+AC_OUTPUT

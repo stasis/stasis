@@ -1,0 +1,42 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>pblKeyFile_t* pblKfOpen</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2><!1><A HREF="pblKeyFile_t.html">pblKeyFile_t</A>* <A HREF="#DOC.DOCU">pblKfOpen</A></H2><H2>( char*  path,<BR>&nbsp;  int update,<BR>&nbsp;  void*  filesettag )</H2><BLOCKQUOTE> open an existing key file</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+open an existing key file
+
+<P>if update is 0, the file is opened for read access only,
+if update is not 0 the file is opened for reading and writing
+
+<P>a file set tag can be attached to the file,
+if a file having a non NULL file set tag is flushed
+to disk all files having the same file set tag attached
+are flushed as well.
+
+<P><P>
+<B>RESTRICTIONS</B>:
+<BR> - the file must exist already
+<BR> - the current record of the file will not be set
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>path</B> -   path of file to create                                 
+<BR><B>update</B> -   flag: should file be opened for update?                
+<BR><B>filesettag</B> -   file set tag, for flushing multiple files consistently <BR><DT><B>Returns:</B><DD>  pblKeyFile_t * retptr == NULL: an error occured, see pbl_errno
+<BR>  pblKeyFile_t * retptr != NULL: a pointer to a key file descriptor
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

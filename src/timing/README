@@ -1,0 +1,31 @@
+README for timing suite:
+
+Installation:
+
+cd timing
+gcc getTimeOfDay.c -o getTimeOfDay
+
+# replace ~/bin with something in your path.
+
+cp timer.pl getTimeOfDay ~/bin  
+
+Finally, edit your copy of timer.pl to reflect the location of t-distribution.tbl on your system.
+
+--------------------------------
+
+README for graphing suite:
+
+Look in the timing-test-case for an example.  The .def file contains definitions that set the title, and x,y labels of the graph.  
+
+The .dat files are the raw x,y data points (not all x's, y's need be present, or consistent between data sets).
+
+It should work for an arbitrary number of .dat files.
+
+
+To use the .ps file, you'll have to do this when you compile your latex:
+
+latex bar.tex
+dvips -j0 bar.dvi
+ps2pdf bar.ps
+
+

@@ -1,0 +1,4 @@
+LDADD=$(top_builddir)/src/libdfa/libdfa.a $(top_builddir)/src/lladd/liblladd.a 
+bin_PROGRAMS=bit_arithmetic binary_search soundness
+soundness_SOURCES = soundness.c
+AM_CFLAGS= -g -Wall -pedantic -std=c99

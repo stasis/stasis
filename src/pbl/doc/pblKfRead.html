@@ -1,0 +1,39 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>long pblKfRead</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2>long <A HREF="#DOC.DOCU">pblKfRead</A></H2><H2>( <!1><A HREF="pblKeyFile_t.html">pblKeyFile_t</A>*  k,   unsigned char*  data,<BR>&nbsp;  long datalen )</H2><BLOCKQUOTE> read the data of the current record of the file</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+read the data of the current record of the file
+
+<P>the caller can restrict the number of bytes read by
+specifying the maximum number of bytes to read by parameter
+datalen, if datalen is 0, all bytes stored for the
+current record are copied to the buffer pointed to by data.
+<P>
+<B>RESTRICTIONS</B>:
+<BR> - data must point to an area of memory being big enough to hold
+the bytes copied
+<BR> - datalen must not be negative, it is ignored otherwise
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>k</B> -   key file to read from                             
+<BR><B>data</B> -   data to insert                                    
+<BR><B>datalen</B> -   length of the data                                <BR><DT><B>Returns:</B><DD>  int rc == 0: call went ok, rc is the number of bytes copied
+<BR>  int rc != 0: some error occured, see pbl_errno
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

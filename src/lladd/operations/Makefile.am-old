@@ -1,0 +1,3 @@
+lib_LIBRARIES=liboperations.a
+liboperations_a_SOURCES=decrement.c  increment.c  lladdhash.c  prepare.c  set.c
+AM_CFLAGS= -g -Wall -pedantic

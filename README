@@ -1,0 +1,31 @@
+LLADD is an experimental Lightweight Library for Atomicity and Durability of Data.
+
+Please see the COPYING file for licensing information.  
+
+To build, do:
+
+./configure
+make
+make check
+make install
+
+To build the API and internals documentation, run:
+
+make docs
+
+after configure.
+
+'make check' requires the GNU check library, 'make doc' requires Doxygen.
+
+We haven't tested make install. ;)
+
+This package contains a copy of Peter Graf's Program Base Library, PBL, which is
+distributed under the terms of the LGPL.
+
+The original version can be found at:
+
+http://mission.base.com/peter/source/
+
+LLADD's version of the package adds the jbhash.* files, and compiles PBL using
+LLADD's make files.  Currently, LLADD's hash table implementations are based upon
+code from PBL, and pbl is used in a number of places throughout LLADD.

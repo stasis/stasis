@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>long pblKfGetAbs</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2>long <A HREF="#DOC.DOCU">pblKfGetAbs</A></H2><H2>( <!1><A HREF="pblKeyFile_t.html">pblKeyFile_t</A>*  k,   long absindex,   char*  okey,<BR>&nbsp;  int*  okeylen )</H2><BLOCKQUOTE> set current record to a record with an absolute position index</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+set current record to a record with an absolute position index
+
+<P>this function is only to be used through the macro functions:
+
+<P><BR><B> <!1><A HREF="pblKfFirst.html">pblKfFirst</A>( k, okey, okeylen ) </B> read key of first record
+<BR><B> <!1><A HREF="pblKfLast.html">pblKfLast</A>( k, okey, okeylen ) </B> read key of last record
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>k</B> -   key file to position in                
+<BR><B>absindex</B> -   index of record to positon to          
+<BR><B>okey</B> -   buffer for result key                  
+<BR><B>okeylen</B> -   length of the result key after return  <BR><DT><B>Returns:</B><DD>  long rc >= 0:
+<UL>
+<LI>                  call went ok,
+the value returned is the length
+of the data of the record found,
+<LI>                  the length of the key of the record is set in
+the out parameter okeylen,
+<LI>                  the key of the record is copied to okey,
+<LI>                  the current record of the file is set to the
+record found
+</UL>
+<BR>  long rc <  0:
+<UL>
+<LI>                  some error occured, see pbl_errno
+</UL>
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

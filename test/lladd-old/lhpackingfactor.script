@@ -1,0 +1,9 @@
+./lhpackingfactor.test 53
+./lhpackingfactor.test 101
+./lhpackingfactor.test 503
+./lhpackingfactor.test 1009
+./lhpackingfactor.test 5003
+./lhpackingfactor.test 10007
+./lhpackingfactor.test 49999
+./lhpackingfactor.test 100003
+

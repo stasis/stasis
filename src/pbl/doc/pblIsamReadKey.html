@@ -1,0 +1,46 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>int pblIsamReadKey</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2>int <A HREF="#DOC.DOCU">pblIsamReadKey</A></H2><H2>( <!1><A HREF="pblIsamFile_t.html">pblIsamFile_t</A>*  isamfile,   int index,<BR>&nbsp;  unsigned char*  okey )</H2><BLOCKQUOTE> read the key and keylen of the current record</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+read the key and keylen of the current record
+
+<P>parameter index specifies which of the keys to read
+
+<P><P>
+<B>RESTRICTIONS</B>:
+<BR> - the out parameter okey must point to a memory area that is
+big enough to hold any possible key, i.e 255 bytes
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>isamfile</B> -   ISAM file to read in                      
+<BR><B>index</B> -   index of key read                         
+<BR><B>okey</B> -   buffer for result key                     <BR><DT><B>Returns:</B><DD>  int rc >= 0:
+<UL>
+<LI>                  call went ok,
+the value returned is the length of the key
+<LI>                  the key of the record is copied to okey,
+<LI>                  the current record of the file is not affected
+by this function
+</UL>                 
+<BR>  int rc <  0: 
+<UL>                  
+<LI>                  some error occured, see pbl_errno
+</UL>
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

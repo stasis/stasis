@@ -1,0 +1,74 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>int pblISAMFILE_TestFrame</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2>int <A HREF="#DOC.DOCU">pblISAMFILE_TestFrame</A></H2><H2>( int argc,  char*  argv[] )</H2><BLOCKQUOTE> test frame for the ISAM file library</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+test frame for the ISAM file library
+
+<P>This test frame calls the PBL ISAM file library,
+it is an interactive test frame capable of regression tests.
+
+<P><B>Interactive mode:</B>
+<UL>
+Call the program pbliftst from a UNIX or DOS shell.
+<BR>
+The following commands to test the PBL ISAM File Library are supplied:
+<UL>
+<PRE>
+ q       FOR QUIT
+ open filename keyfile1,dupfile2,... update
+ transaction < START | COMMIT | ROLLBACK >
+ close
+ flush
+ insert ,key1,key2... data
+ ninsert n key1,key2,... data
+ find index key < LT | LE | FI | EQ | LA | GE | GT >
+ nfind n index key < LT | LE | FI | EQ | LA | GE | GT >
+ get index < NEXT | PREV | FIRST | LAST | THIS >
+ datalen
+ readdata
+ readkey index
+ updatedata data
+ updatekey index key
+ ndelete n
+ </PRE>
+</UL>
+See <!1><A HREF="pblKEYFILE_TestFrame.html">pblKEYFILE_TestFrame</A> for an example to interactively use the
+test frame.
+</UL>
+<B>Regression mode:</B>
+<UL>
+Five regression test cases are supplied with the PBL ISAM library.
+
+<P>ISAM0001.TST, ISAM0002.TST, ISAM0003.TST, ISAM0004.TST and ISAM0005.TST.
+
+<P>ISAM0001.TST and ISAM0004.TST are run when the "make test" 
+is done. Do the following if you want to run the test cases per hand
+<PRE>
+   1. Build the pbliftst executable.          make all
+   2. Create the sub directory isamtest.      mkdir isamtest
+   3. Clear the sub directory isamtest.       rm imamtest/0*
+   4. Run the test frame on this file.        pbliftst ISAM0001.TST
+   5. Compare ISAM0001.TST and pbliftst.log   diff ISAM0001.TST pbliftst.log
+ </PRE>
+There should be no differences reported, if so your build of the
+PBL library is most likely ok!
+
+<P></UL></BLOCKQUOTE>
+<DL><DT><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

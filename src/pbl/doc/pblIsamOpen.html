@@ -1,0 +1,40 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+<HEAD>
+   <TITLE>pblIsamFile_t* pblIsamOpen</TITLE>
+   <META NAME="GENERATOR" CONTENT="DOC++ 3.4.9">
+</HEAD>
+ <center>
+<H2>Program Base Library Functions</H2>
+</center>
+
+<H2><!1><A HREF="pblIsamFile_t.html">pblIsamFile_t</A>* <A HREF="#DOC.DOCU">pblIsamOpen</A></H2><H2>( char*  path,<BR>&nbsp;  int update,<BR>&nbsp;  void*  filesettag,<BR>&nbsp;  int nkeys,<BR>&nbsp;  char** keyfilenames,<BR>&nbsp;  int*  keydup )</H2><BLOCKQUOTE> open an ISAM file, creates the file if necessary</BLOCKQUOTE>
+
+<A NAME="DOC.DOCU"></A>
+<HR>
+<H2>Documentation</H2>
+<BLOCKQUOTE>
+open an ISAM file, creates the file if necessary
+
+<P>if update is 0, the ISAM file is opened for read access only,
+if update is not 0 the ISAM file is opened for reading and writing
+
+<P>a file set tag can be attached to the ISAM file,
+if a file having a non NULL file set tag is flushed
+to disk all files having the same file set tag attached
+are flushed as well.
+
+<P></BLOCKQUOTE>
+<DL><DT><DT><B>Parameters:</B><DD><B>path</B> -   path of file to create                               
+<BR><B>update</B> -   flag: should file be opened for update?              
+<BR><B>filesettag</B> -   filesettag, for flushing multiple files consistently 
+<BR><B>nkeys</B> -   number of key files to create                        
+<BR><B>keyfilenames</B> -   list of names of key index files to create           
+<BR><B>keydup</B> -   flaglist: is the i'th index key a duplicate key?     <BR><DT><B>Returns:</B><DD>  pblIsamFile_t * retptr == NULL: an error occured, see pbl_errno
+<BR>  pblIsamFile_t * retptr != NULL: a pointer to an ISAM file descriptor
+<BR><DD></DL><P><P><I><A HREF="index.html">Alphabetic index</A></I></P><HR>
+<BR>
+This page was generated with the help of <A HREF="http://docpp.sourceforge.net">DOC++</A>.
+</BODY>
+</HTML>

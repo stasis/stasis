@@ -1,0 +1,306 @@
+# Anjuta Version 1.2.2 
+Compatibility Level: 1 
+
+<PROJECT_DESCRIPTION_START>
+LLADD - Lightweight Library for Atomicity and Data Durability<PROJECT_DESCRIPTION_END>
+<CONFIG_PROGS_START>
+<CONFIG_PROGS_END>
+<CONFIG_LIBS_START>
+<CONFIG_LIBS_END>
+<CONFIG_HEADERS_START>
+<CONFIG_HEADERS_END>
+<CONFIG_CHARACTERISTICS_START>
+<CONFIG_CHARACTERISTICS_END>
+<CONFIG_LIB_FUNCS_START>
+<CONFIG_LIB_FUNCS_END>
+<CONFIG_ADDITIONAL_START>
+<CONFIG_ADDITIONAL_END>
+<CONFIG_FILES_START>
+<CONFIG_FILES_END>
+<MAKEFILE_AM_START>
+<MAKEFILE_AM_END>
+
+props.file.type=project
+
+anjuta.version=1.2.2
+anjuta.compatibility.level=1
+
+project.name=lladd
+project.type=GENERIC
+project.target.type=EXECUTABLE
+project.version=0.99
+project.author=Russell Sears
+project.source.target=unknown
+project.has.gettext=0
+project.gui.command=
+project.programming.language=C
+project.excluded.modules=intl
+
+project.config.extra.modules.before=
+project.config.extra.modules.after=
+project.config.blocked=1
+project.config.disable.overwriting=1 1 1 1 1 1 1 1 1 
+
+project.menu.entry=lladd Version 0.99
+project.menu.group=Application
+project.menu.comment=lladd Version 0.99
+project.menu.icon=
+project.menu.need.terminal=0
+
+project.configure.options=
+anjuta.program.arguments=
+preferences.build.option.jobs=0
+preferences.build.option.silent=0
+preferences.build.option.autosave=0
+preferences.make=make
+preferences.build.option.keep.going=1
+preferences.build.option.warn.undef=0
+preferences.autoformat.custom.style= -i8 -sc -bli0 -bl0 -cbi0 -ss
+preferences.indent.opening=0
+preferences.autoformat.disable=1
+preferences.indent.automatic=1
+preferences.use.tabs=1
+preferences.indent.size=4
+preferences.tabsize=4
+preferences.indent.closing=0
+
+module.include.name=.
+module.include.type=
+module.include.files=\
+	2pc/src/2pc/2pc.h\
+	2pc/src/cht/cht.h\
+	2pc/src/libdfa/rw.h\
+	2pc/src/libdfa/messages.h\
+	2pc/src/libdfa/smash.h\
+	2pc/src/libdfa/monotree.h\
+	2pc/src/libdfa/callbacks.h\
+	2pc/src/libdfa/libdfa.h\
+	2pc/src/libdfa/statemachine.h\
+	2pc/config.h\
+	pbl/pbl.h\
+	pbl/jbhash.h\
+	test/test.h\
+	test/rand_str.h\
+	constants.h\
+	bufferManager.h\
+	operations/set.h\
+	operations/lladdhash.h\
+	operations/increment.h\
+	operations/decrement.h\
+	operations/prepare.h\
+	recovery.h\
+	logger/logstreamer.h\
+	logger/logparser.h\
+	page.h\
+	logger.h\
+	transactional.h\
+	linkedlist.h\
+	operations.h
+
+module.source.name=.
+module.source.type=
+module.source.files=\
+	2pc/src/2pc/2pc.c\
+	2pc/src/cht/cht.c\
+	2pc/src/tests/2pc/always_commit.c\
+	2pc/src/tests/cht/simple.c\
+	2pc/src/tests/cht/cht_server.c\
+	2pc/src/tests/dfa/ping_pong_dfa.c\
+	2pc/src/tests/dfa/star.c\
+	2pc/src/tests/dfa/fork_bomb.c\
+	2pc/src/tests/messages/ping_pong.c\
+	2pc/src/tests/monotree/binary_search.c\
+	2pc/src/tests/monotree/bit_arithmetic.c\
+	2pc/src/tests/monotree/soundness.c\
+	2pc/src/libdfa/rw.c\
+	2pc/src/libdfa/messages.c\
+	2pc/src/libdfa/smash.c\
+	2pc/src/libdfa/monotree.c\
+	2pc/src/libdfa/callbacks.c\
+	2pc/src/libdfa/libdfa.c\
+	pbl/pbl.c\
+	pbl/pblkfblockprint.c\
+	pbl/pbliftst.c\
+	pbl/pblhttst.c\
+	pbl/pblhash.c\
+	pbl/jbhash.c\
+	pbl/pblisam.c\
+	pbl/pblkf.c\
+	pbl/pbltest.c\
+	pbl/pblkftst.c\
+	test/db41/dbInsertSequential.c\
+	test/db41/jbhashmany.c\
+	test/db41/dbInsert.c\
+	test/db41/dbAbort.c\
+	test/db41/jbhashsimple.c\
+	test/db41/dbUpdate.c\
+	test/db41/dbGet.c\
+	test/strings.c\
+	test/jbhashdisk.c\
+	test/TGet.c\
+	test/TUpdate.c\
+	test/jbhashmany.c\
+	test/twentyfour2.c\
+	test/abort-speed.c\
+	test/nontrans.c\
+	test/lhpackingfactor.c\
+	test/jbhtsimple.c\
+	test/inc_dec.c\
+	test/test0.c\
+	test/test1.c\
+	test/test2.c\
+	test/test3.c\
+	test/recover.c\
+	test/commit-speed.c\
+	test/logvals.c\
+	test/jbht-speed.c\
+	test/interleaved.c\
+	test/TAbort.c\
+	test/loop.c\
+	test/abort.c\
+	test/test.c\
+	test/TInsertSequential.c\
+	test/lhmany.c\
+	test/twentyfour.c\
+	test/prepare_1.c\
+	test/prepare_2.c\
+	test/prepare_3.c\
+	test/rand_str.c\
+	test/TInsert.c\
+	cyrus/cyrusdb_lladd.c\
+	bufferManager.c\
+	operations/set.c\
+	operations/lladdhash.c\
+	operations/increment.c\
+	operations/decrement.c\
+	operations/prepare.c\
+	recovery.c\
+	logger/logstreamer.c\
+	logger/logparser.c\
+	page.c\
+	timing/getTimeOfDay.c\
+	logger.c\
+	transactional.c\
+	linkedlist.c
+
+module.pixmap.name=.
+module.pixmap.type=
+module.pixmap.files=\
+	pbl/doc/icon1.gif\
+	pbl/doc/icon2.gif
+
+module.data.name=.
+module.data.type=
+module.data.files=
+
+module.help.name=.
+module.help.type=
+module.help.files=
+
+module.doc.name=.
+module.doc.type=
+module.doc.files=\
+	2pc/COPYING\
+	pbl/doc/pblKfInit.html\
+	pbl/doc/pblHtNext.html\
+	pbl/doc/pblKfPrev.html\
+	pbl/doc/pbl_LongToBuf.html\
+	pbl/doc/pbl_LongToVarBuf.html\
+	pbl/doc/pbl_VarBufToLong.html\
+	pbl/doc/pblKfFlush.html\
+	pbl/doc/pblKfOpen.html\
+	pbl/doc/pblIsamGet.html\
+	pbl/doc/pblKfDelete.html\
+	pbl/doc/pblIsamFile_t.html\
+	pbl/doc/pbl_LongSize.html\
+	pbl/doc/pbl_errno.html\
+	pbl/doc/pblIsamReadKey.html\
+	pbl/doc/pblIsamCommit.html\
+	pbl/doc/AIntroduction.html\
+	pbl/doc/pblKEYFILE_TestFrame.html\
+	pbl/doc/pbl_mem2dup.html\
+	pbl/doc/pbl_ShortToBuf.html\
+	pbl/doc/pblIsamFlush.html\
+	pbl/doc/pblHtInsert.html\
+	pbl/doc/DDefinitionsforKeyFileParameters.html\
+	pbl/doc/pbl_memlcpy.html\
+	pbl/doc/pblKfCreate.html\
+	pbl/doc/pblIsamFind.html\
+	pbl/doc/pblHtLookup.html\
+	pbl/doc/pblKfUpdate.html\
+	pbl/doc/index.html\
+	pbl/doc/pblHtDelete.html\
+	pbl/doc/pblHtRemove.html\
+	pbl/doc/pbl_malloc0.html\
+	pbl/doc/pblIsamInsert.html\
+	pbl/doc/pblKfGetRel.html\
+	pbl/doc/pblKfLast.html\
+	pbl/doc/pblKfStartTransaction.html\
+	pbl/doc/pblIsamStartTransaction.html\
+	pbl/doc/pblKfRead.html\
+	pbl/doc/pblIsamDelete.html\
+	pbl/doc/BFiles.html\
+	pbl/doc/pblHashTable_t.html\
+	pbl/doc/pblKeyFile_t.html\
+	pbl/doc/pbl_memdup.html\
+	pbl/doc/pblIsamOpen.html\
+	pbl/doc/pblIsamUpdateData.html\
+	pbl/doc/pbl_memcmplen.html\
+	pbl/doc/pblHtFirst.html\
+	pbl/doc/pblHtCreate.html\
+	pbl/doc/pblKfClose.html\
+	pbl/doc/pblKfSetCompareFunction.html\
+	pbl/doc/CErrorcodes.html\
+	pbl/doc/pblKfNext.html\
+	pbl/doc/PBLKEYLENGTH.html\
+	pbl/doc/pbl_malloc.html\
+	pbl/doc/pblIsamReadDatalen.html\
+	pbl/doc/pblISAMFILE_TestFrame.html\
+	pbl/doc/pblHtCurrent.html\
+	pbl/doc/General.html\
+	pbl/doc/pblKfRestorePosition.html\
+	pbl/doc/pblKfFirst.html\
+	pbl/doc/pblIsamUpdateKey.html\
+	pbl/doc/pbl_BufToShort.html\
+	pbl/doc/PBL_LIST_PUSH.html\
+	pbl/doc/pbl_memcmp.html\
+	pbl/doc/pblKfThis.html\
+	pbl/doc/pblKfCommit.html\
+	pbl/doc/pblKfGetAbs.html\
+	pbl/doc/pblIsamClose.html\
+	pbl/doc/pbl_errstr.html\
+	pbl/doc/PBLDATALENGTH.html\
+	pbl/doc/PBL_LIST_APPEND.html\
+	pbl/doc/PBL_LIST_.html\
+	pbl/doc/pblKfFind.html\
+	pbl/doc/PBL_FREE.html\
+	pbl/doc/EDefinitionsforISAMParameters.html\
+	pbl/doc/pbl_VarBufSize.html\
+	pbl/doc/pblKfSavePosition.html\
+	pbl/doc/PBL_LIST_UNLINK.html\
+	pbl/doc/pblIsamReadData.html\
+	pbl/doc/pbl_BufToLong.html\
+	pbl/doc/pblKfInsert.html\
+	pbl/doc/pblIsamSetCompareFunction.html\
+	timing/README
+
+module.po.files=
+
+compiler.options.supports=
+compiler.options.include.paths=\
+	.\
+	..
+compiler.options.library.paths=
+compiler.options.libraries=
+compiler.options.libraries.selected=
+compiler.options.defines=\
+	HAVE_CONFIG_H
+compiler.options.defines.selected=
+compiler.options.warning.buttons=0 0 1 1 0 1 0 0 0 0 0 0 0 1 0 0 
+compiler.options.optimize.buttons=0 0 1 0 
+compiler.options.other.buttons=1 0 
+compiler.options.other.c.flags=
+compiler.options.other.l.flags=
+compiler.options.other.l.libs=
+
+project.src.paths=

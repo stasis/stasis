@@ -1,0 +1,11 @@
+#!/bin/sh
+rm -f config.cache
+rm -f acconfig.h
+#touch acconfig.h
+#aclocal -I m4
+aclocal
+autoconf
+autoheader
+#acconfig
+automake -a
+exit
