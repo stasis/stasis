@@ -51,11 +51,6 @@ terms specified in this license.
 
 #include <stdio.h>
 
-#ifndef NULL
-#define NULL 0
-#endif 
-
-
 void printList(LinkedList *l) {
 	LinkedListPtr tmp = l;
 	printf ("List is ");

@@ -47,6 +47,7 @@ terms specified in this license.
 
 #include "../check_includes.h"
 #include "../../src/lladd/page.h"
+#include "../../src/lladd/page/slotted.h"
 #define LOG_NAME   "check_operations.log"
 
 
@@ -66,7 +67,7 @@ START_TEST(operation_physical_do_undo) {
   
   Tinit();
   
-  rid  = ralloc(xid, sizeof(int));
+  rid  = slottedPreRalloc(xid, sizeof(int));
   buf = 1;
   arg = 2;
 
@@ -75,7 +76,6 @@ START_TEST(operation_physical_do_undo) {
 
   /* Do, undo and redo operation without updating the LSN field of the page. */
 
-  /*  writeLSN(lsn, rid.page); */
   DEBUG("B\n");
   
   p = loadPage(rid.page);
@@ -84,7 +84,6 @@ START_TEST(operation_physical_do_undo) {
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
-  /*  addPendingEvent(rid.page); */
   p = loadPage(rid.page);
   doUpdate(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
   releasePage(p);
@@ -105,7 +104,6 @@ START_TEST(operation_physical_do_undo) {
 
   setToTwo->LSN = 5;
 
-  /*  addPendingEvent(rid.page); */
   undoUpdate(setToTwo, p, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
   releasePage(p);
 
@@ -116,7 +114,6 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   DEBUG("E\n");
-  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);
   
 
@@ -126,8 +123,6 @@ START_TEST(operation_physical_do_undo) {
 
   fail_unless(buf == 1, NULL);
   
-  /*  writeLSN(3,rid.page); */
-
   /* Now, simulate scenarios from normal operation:
          do the operation, and update the LSN, (update happens)
 	 then undo, and update the LSN again.  (undo happens)
@@ -141,7 +136,6 @@ START_TEST(operation_physical_do_undo) {
   lsn = 0;
   buf = 1;
 
-  /*  writeLSN(lsn, rid.page); */
   p = loadPage(rid.page);
   writeRecord(xid, p, lsn, rid, &buf);
   releasePage(p);
@@ -164,9 +158,7 @@ START_TEST(operation_physical_do_undo) {
   setToTwo->LSN = 10;
   
   DEBUG("F\n");
-  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);
-  /*  writeLSN(setToTwo->LSN, rid.page); */
 
   p = loadPage(rid.page);
   readRecord(xid, p, rid, &buf);
@@ -174,7 +166,6 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
-  /*  addPendingEvent(rid.page); */
   undoUpdate(setToTwo, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   readRecord(xid, p, rid, &buf);
@@ -183,7 +174,6 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
   
   DEBUG("H don't redo set to 2\n");
-  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);        /* Fails */
 
   p = loadPage(rid.page);
@@ -193,10 +183,8 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   writeRecord(xid, p, 0, rid, &buf); /* reset the page's LSN. */
-  /*  writeLSN(0,rid.page); */
 
   DEBUG("I redo set to 2\n");
-  /*  addPendingEvent(rid.page); */
 
   releasePage(p);
   redoUpdate(setToTwo);        /* Succeeds */

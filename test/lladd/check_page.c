@@ -72,11 +72,11 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
   Page * p = (Page*)arg_ptr;
   int i;
   lsn_t this_lsn;
-  int j;
+  short j;
   int first = 1;
   int k;
   recordid rid[100];
-
+  
   for(i = 0; i < 10000; i++) {
     pthread_mutex_lock(&lsn_mutex);
     this_lsn = lsn;
@@ -84,13 +84,11 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
     pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {
-      /*      addPendingEvent(p); */
-      /*pageReadRecord(1, p, rid, (byte*)&j);*/
       for(k = 0; k < 100; k++) {
 	readRecord(1, p, rid[k], (byte*)&j);
 
 	assert((j + 1) ==  i + k);
-	pageDeRalloc(p, rid[k]);
+	slottedDeRalloc(p, rid[k]);
 	sched_yield();
       }
     } 
@@ -99,15 +97,12 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
     
     for(k = 0; k < 100; k++) {
     
-      rid[k] = pageRalloc(p, sizeof(short));
+      rid[k] = slottedRawRalloc(p, sizeof(short));
       i +=k;
-      /*       printf("Slot = %d\n", rid[k].slot); */
+      /*       printf("Slot %d = %d\n", rid[k].slot, i);  */
       writeRecord(1, p, lsn, rid[k], (byte*)&i);
       i -=k;
       sched_yield();
-      
-
-
     }
       
     assert(pageReadLSN(p) <= lsn);
@@ -131,17 +126,15 @@ static void* worker_thread(void * arg_ptr) {
     pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {
-      /*      addPendingEvent(p); */
-      /*pageReadRecord(1, p, rid, (byte*)&j);*/
       readRecord(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
-      pageDeRalloc(p, rid);
+      slottedDeRalloc(p, rid);
       sched_yield();
     } 
     
     first = 0;
     
-    rid = pageRalloc(p, sizeof(int));
+    rid = slottedRawRalloc(p, sizeof(int));
     writeRecord(1, p, lsn, rid, (byte*)&i);
     sched_yield();
 
@@ -175,7 +168,7 @@ START_TEST(pageNoThreadTest)
   Tinit();
 
   p = loadPage(0);
-
+  slottedPageInitialize(p);
   worker_thread(p);
 
   unlock(p->loadlatch);
@@ -264,10 +257,10 @@ START_TEST(pageNoThreadMultPageTest)
   Tinit();
 
   p = loadPage(1);
-
+  slottedPageInitialize(p);
   multiple_simultaneous_pages(p);
-
-  unlock(p->loadlatch);
+  releasePage(p);
+  /*  unlock(p->loadlatch); */
 
   Tdeinit();
 
@@ -292,6 +285,7 @@ START_TEST(pageThreadTest) {
   fail_unless(1, NULL);
 
   Page * p = loadPage(2);
+  slottedPageInitialize(p);
   fail_unless(1, NULL);
 
   for(i = 0; i < THREAD_COUNT; i++) {

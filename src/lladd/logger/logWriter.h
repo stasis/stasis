@@ -160,7 +160,7 @@ void deleteLogWriter();
 /**
    Read a log entry at a particular LSN.
 
-   @param the LSN of the entry that will be read.
+   @param LSN the LSN of the entry that will be read.
 */
 LogEntry * readLSNEntry(lsn_t LSN);
 

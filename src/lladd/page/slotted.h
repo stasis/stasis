@@ -59,17 +59,10 @@ Slotted page layout:
 #define SLOTTED_PAGE_OVERHEAD_PER_RECORD 4
 #define SLOTTED_PAGE_HEADER_OVERHEAD 6
 
-void pageWriteRecord(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
-void pageReadRecord(int xid, Page * page, recordid rid, byte *buff);
+void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
+void slottedRead(int xid, Page * page, recordid rid, byte *buff);
 
-/**
- * assumes that the page is already loaded in memory.  It takes as a
- * parameter a Page, and returns an estimate of the amount of free space on this
- * page.  This is either exact, or an underestimate.
- * @todo how should this be handled? */
-int freespace(Page * p);
-
-void pageInitialize(Page * p);
+void slottedPageInitialize(Page * p);
 
 #define freespace_ptr(page)      shorts_from_end((page), 1)
 #define numslots_ptr(page)       shorts_from_end((page), 2)
@@ -79,3 +72,129 @@ void pageInitialize(Page * p);
 #define record_ptr(page, n)      bytes_from_start((page), *slot_ptr((page), (n)))
 #define isValidSlot(page, n)   ((*slot_ptr((page), (n)) == INVALID_SLOT) ? 0 : 1)
 
+/**
+ * allocate a record.  This must be done in two phases.  The first
+ * phase reserves a slot, and produces a log entry.  The second phase
+ * sets up the slot according to the contents of the log entry.
+ *
+ * Essentially, the implementation of this function chooses a page
+ * with enough space for the allocation, then calls slottedRawRalloc.
+ *
+ * Ralloc implements the first phase.
+ *
+ * @param xid The active transaction.
+ * @param size The size of the new record
+ * @return allocated record
+ *
+ * @see postRallocSlot the implementation of the second phase.
+ *
+ */
+recordid slottedPreRalloc(int xid, long size);
+/**
+ * The second phase of slot allocation.  Called after the log entry
+ * has been produced, and during recovery.  
+ * 
+ * @param page The page that should contain the new record.
+ *
+ * @param lsn The lsn of the corresponding log entry (the page's LSN
+ * is updated to reflect this value.)
+ * 
+ * @param rid A recordid that should exist on this page.  If it does
+ * not exist, then it is created.  Because slottedPreRalloc never
+ * 'overbooks' pages, we are guaranteed to have enough space on the
+ * page for this record (though it is possible that we need to compact
+ * the page)
+ */
+recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid);
+/**
+ * Mark the space used by a record for reclaimation.
+ *
+ * @param rid the recordid to be freed.
+ */
+void     slottedDeRalloc(Page * page, recordid rid);
+
+void slottedPageInit();
+void slottedPageDeinit();
+
+/**
+ *
+ * Bypass logging and allocate a record.  It should only be used
+ * when the recordid returned is deterministic, and will be available
+ * during recovery, as it bypassses the normal two-phase alloc / log
+ * procedure for record allocation.  This usually means that this
+ * function must be called by an Operation implementation that
+ * alocates entire pages, logs the page ids that were allocated,
+ * initializes the pages and finally calls this function in a
+ * deterministic fashion.
+ *
+ * @see indirect.c for an example of how to use this function
+ * correctly.
+ *
+ * This function assumes that the page is already loaded in memory.
+ * It takes as parameters a Page and the size in bytes of the new
+ * record.
+ *
+ * If you call this function, you probably need to be holding
+ * lastFreepage_mutex.
+ *
+ * @see lastFreepage_mutex
+ *
+ * @return a recordid representing the newly allocated record.
+ *
+ * NOTE: might want to pad records to be multiple of words in length, or, simply
+ *       make sure all records start word aligned, but not necessarily having 
+ *       a length that is a multiple of words.  (Since Tread(), Twrite() ultimately 
+ *       call memcpy(), this shouldn't be an issue)
+ *
+ * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
+ *       amount of freespace exists in this page.  
+ * @see slottedFreespace()
+ *
+ * @todo pageRalloc's algorithm for reusing slot id's reclaims the
+ * highest numbered slots first, which encourages fragmentation.
+ */
+recordid slottedRawRalloc(Page * page, int size);
+
+/**
+ * Obtain an estimate of the amount of free space on this page.
+ * Assumes that the page is already loaded in memory. 
+ *
+ * (This function is particularly useful if you need to use
+ * slottedRawRalloc for something...)
+ * 
+ * @param p the page whose freespace will be estimated. 
+ *
+ * @return an exact measurment of the freespace, or, in the case of
+ * fragmentation, an underestimate.
+ */
+int  slottedFreespace(Page * p);
+
+
+
+/** 
+ *  Check to see if a slot is a normal slot, or something else, such
+ *  as a blob.  This is stored in the size field in the slotted page
+ *  structure.  If the size field is greater than PAGE_SIZE, then the
+ *  slot contains a special value, and the size field indicates the
+ *  type.  (The type is looked up in a table to determine the amount
+ *  of the page's physical space used by the slot.)
+ *
+ *  @param p the page of interest
+ *  @param slot the slot in p that we're checking.
+ *  @param The type of this slot.
+ */
+int  slottedGetType(Page * p, int slot); 
+/**
+ *  Set the type of a slot to a special type, such as BLOB_SLOT.  This
+ *  function does not update any other information in the page
+ *  structure, and just writes the raw value of type into the slot's
+ *  size field.  In particular, setting the type to NORMAL_SLOT will
+ *  result in undefined behavior.  (Such a call would destroy all
+ *  record of the slot's true physical size)
+ *
+ *  @param p the page containing the slot to be updated.
+ *  @param slot the slot whose type will be changed.
+ *  @param type the new type of slot.  Must be greater than PAGE_SIZE.
+ *
+ */
+void slottedSetType(Page * p, int slot, int type);

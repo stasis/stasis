@@ -153,7 +153,7 @@ struct Page_s {
       Any circumstance where one these locks are held during an I/O
       operation is a bug.  
       
-      For the 'no lock' cases, see @loadlatch
+      For the 'no lock' cases, @see loadlatch
 
   */
   
@@ -193,16 +193,22 @@ struct Page_s {
 };
 
 /**
- * initializes all the important variables needed in all the
- * functions dealing with pages.
+ * initializes all the global variables needed by the functions
+ * dealing with pages.
  */
 void pageInit();
+/**
+ * releases all resources held by the page sub-system.
+ */
 void pageDeInit();
 
 /**
  * assumes that the page is already loaded in memory.  It takes
  * as a parameter a Page.  The Page struct contains the new LSN and the page
  * number to which the new LSN must be written to.
+ *
+ * @param page You must have a writelock on page before calling this function.
+ * @param lsn The new lsn of the page.  If the new lsn is less than the page's current lsn, then the page's lsn will not be changed.
  */
 void pageWriteLSN(Page * page, lsn_t lsn);
 
@@ -226,65 +232,23 @@ void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat)
 
 /**
  * @param xid transaction ID
- * @param rid
  * @param dat buffer for data
  */
 void readRecord(int xid, Page * page, recordid rid, void *dat);
 
-/**
- * allocate a record.  This must be done in two phases.  The first
- * phase reserves a slot, and produces a log entry.  The second phase
- * sets up the slot according to the contents of the log entry.
- *
- * Ralloc implements the first phase.
- *
- * @param xid The active transaction.
- * @param size The size of the new record
- * @return allocated record
- *
- * @see slotRalloc the implementation of the second phase.
- */
-recordid ralloc(int xid, long size);
-
-
-/**
- * assumes that the page is already loaded in memory.  It takes as
- * parameters a Page and the size in bytes of the new record.  pageRalloc()
- * returns a recordid representing the newly allocated record.
- *
- * If you call this function, you probably need to be holding lastFreepage_mutex.
- *
- * @see lastFreepage_mutex
- *
- * NOTE: might want to pad records to be multiple of words in length, or, simply
- *       make sure all records start word aligned, but not necessarily having 
- *       a length that is a multiple of words.  (Since Tread(), Twrite() ultimately 
- *       call memcpy(), this shouldn't be an issue)
- *
- * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
- * amount of freespace exists in this page.  (@see freespace())
- *
- * @todo Makes no attempt to reuse old recordid's.
- */
-recordid pageRalloc(Page * page, int size);
-recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid);
-void pageDeRalloc(Page * page, recordid rid);
-
 void pageCommit(int xid);
 void pageAbort(int xid);
 
-Page* pageAlloc(int id);
+Page* pageMalloc();
 void  pageRealloc(Page * p, int id);
 
-/** Allocates a set of contiguous pages on disk.  Has nothing to do with pageAlloc.
-    @todo need a better naming convention for pageAlloc (alloc's memory) and pageAllocMultiple (alloc's disk)
+/** 
+    Allocates a single page on disk.  Has nothing to do with pageMalloc.
 
-    @todo is there any case where this function can safely be called with newPageCount > 1?
+    @return the pageid of the newly allocated page, which is the
+    offset of the page in the file, divided by the page size.
 */
-int pageAllocMultiple(int newPageCount) ;
-
-int  pageGetSlotType(Page * p, int slot, int type); 
-void pageSetSlotType(Page * p, int slot, int type);
+int pageAlloc() ;
 
 END_C_DECLS
 

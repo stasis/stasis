@@ -2,11 +2,13 @@
 #include <lladd/common.h>
 
 #include <lladd/operations/alloc.h>
-
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
 #include "../blobManager.h"
 #include "../page.h"
+#include "../page/slotted.h"
+
+#include <assert.h>
 /**
    @file
 
@@ -31,14 +33,17 @@
 */
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+  /* * @ todo Currently, Talloc() needs to clean up the page type (for recovery).  Should this be elsewhere? */
+
+  /*  if(*page_type_ptr(p) == UNINITIALIZED_PAGE) {
+    *page_type_ptr(p) = SLOTTED_PAGE;
+    } */
+  assert(*page_type_ptr(p) == SLOTTED_PAGE);
+
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
     allocBlob(xid, p, lsn, rid);
   } else {
-    /*    Page * loadedPage = loadPage(rid.page); */
-    /*    pageSlotRalloc(loadedPage, lsn, rid); */
-
-    /** Has no effect during normal operation. */
-    pageSlotRalloc(p, lsn, rid); 
+    slottedPostRalloc(p, lsn, rid); 
   }
 
   return 0;
@@ -48,8 +53,7 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   /*  Page * loadedPage = loadPage(rid.page); */
   /** Has no effect during normal operation, other than updating the LSN. */
-  /*  pageSlotRalloc(loadedPage, lsn, rid); */
-  pageSlotRalloc(p, lsn, rid);
+  slottedPostRalloc(p, lsn, rid);
   return 0;
 }
 
@@ -70,9 +74,7 @@ recordid Talloc(int xid, long size) {
   if(size >= BLOB_THRESHOLD_SIZE) { 
     rid = preAllocBlob(xid, size);
   } else {
-
-    rid = ralloc(xid, size);
-
+    rid = slottedPreRalloc(xid, size);
   }
 
   Tupdate(xid,rid, NULL, OPERATION_ALLOC);

@@ -14,7 +14,7 @@
 #include "io.h"
 #include <pbl/pbl.h>
 #include "page.h"
-
+#include "page/slotted.h"
 #include <stdio.h>
 
 pthread_mutex_t blob_hash_mutex;
@@ -231,7 +231,7 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_rec.offset = fileSize;
   
-  pageSetSlotType(p, rid.slot, BLOB_SLOT);
+  slottedSetType(p, rid.slot, BLOB_SLOT);
   rid.size = BLOB_SLOT;
 
   /* Tset() needs to know to 'do the right thing' here, since we've

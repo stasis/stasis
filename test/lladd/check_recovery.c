@@ -285,6 +285,9 @@ START_TEST(recovery_clr) {
 	       
   Tread(xid, rid, &j);
 
+  Tcommit(xid);
+  xid = Tbegin();
+
   Tincrement(xid, rid);
 
   Tabort(xid); 

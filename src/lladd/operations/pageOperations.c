@@ -1,10 +1,15 @@
 #include "../page.h"
 #include <lladd/operations/pageOperations.h>
 #include <assert.h>
+#include "../page/slotted.h"
 int __pageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   int type = *(int*)d;
 
   *page_type_ptr(p) = type;
+  /** @todo this sort of thing should be done in a centralized way. */
+  if(type == SLOTTED_PAGE) {
+    slottedPageInitialize(p);
+  }
 
   return 0;
 
@@ -32,7 +37,7 @@ int TpageSet(int xid, int pageid, Page* p) {
 /** @todo Need to re-think TpageDealloc/TpageAlloc's logging
 strategies when we implement page re-use. Currently, TpageDealloc can
 use logical logging.  Perhaps TpageDealloc should use physical
-logging, and wipe the page to zero, while pageAlloc should continue to
+logging, and wipe the page to zero, while TpageAlloc should continue to
 use logical logging.  (Have we ever had operation's whose inverses
 took differnt types of log entries?  Do such operations work?) */
 
@@ -53,7 +58,7 @@ int TpageDealloc(int xid, int pageid) {
 int TpageAlloc(int xid, int type) {
   recordid rid;
 
-  int pageid = pageAllocMultiple(1);
+  int pageid = pageAlloc();
 
   rid.page = pageid;
   rid.slot = 0;
@@ -68,14 +73,14 @@ int TpageAlloc(int xid, int type) {
     implemented yet...
 */
 int TpageAllocMany(int xid, int count, int type) {
-  int firstPage;
+  int firstPage = -1;
   int lastPage = -1;
   for(int i = 0 ; i < count; i++) {
     int thisPage = TpageAlloc(xid, type);
     if(lastPage == -1) {
       firstPage = lastPage = thisPage;
     } else {
-      assert(lastPage +1 == thisPage);
+      assert((lastPage +1) == thisPage);
       lastPage = thisPage;
     }
   }

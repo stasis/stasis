@@ -76,10 +76,10 @@ int bufInit() {
 
 	activePages = pblHtCreate();
 
-	dummy_page = pageAlloc(-1);
+	dummy_page = pageMalloc();
 	pageRealloc(dummy_page, -1);
 	Page *first;
-	first = pageAlloc(0);
+	first = pageMalloc();
 	pageRealloc(first, 0);
 	pblHtInsert(activePages, &first->id, sizeof(int), first);
   
@@ -218,7 +218,7 @@ Page * getPage(int pageid, int locktype) {
 
     } else {
 
-      ret = pageAlloc(-1);
+      ret = pageMalloc();
       ret->id = -1;
       ret->inCache = 0;
     }

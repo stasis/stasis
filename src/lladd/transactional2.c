@@ -132,9 +132,10 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
 void Tread(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
-  if(*page_type_ptr(p) == SLOTTED_PAGE) {
+  int page_type = *page_type_ptr(p);
+  if(page_type == SLOTTED_PAGE) {
     readRecord(xid, p, rid, dat);
-  } else if(*page_type_ptr(p) == INDIRECT_PAGE) {
+  } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
     rid = dereferenceRID(rid);
     p = loadPage(rid.page);

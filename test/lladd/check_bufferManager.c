@@ -9,6 +9,7 @@
 #include "../../src/lladd/logger/logWriter.h"
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"
+#include "../../src/lladd/page/slotted.h"
 #include <lladd/bufferManager.h>
 #include <sched.h>
 #include <assert.h>
@@ -35,15 +36,11 @@ void initializePages() {
     rid.slot = 0;
     rid.size = sizeof(int);
     p = loadPage(rid.page); 
-    /*    p = loadPage(i); */
-    assert(p->id != -1); 
-    pageSlotRalloc(p, 0, rid);
-    /*    rid = pageRalloc(p, sizeof(int)); */
 
-    /*    addPendingEvent(rid.page);  */
+    assert(p->id != -1); 
+    slottedPostRalloc(p, 0, rid);
+
     writeRecord(1, p, 1, rid, &i);
-    /*  removePendingEvent(rid.page);  */
-    /*    assert(p->pending == 0); */
 
     releasePage(p);    
   }
@@ -90,7 +87,7 @@ void * workerThreadWriting(void * q) {
   recordid rids[RECORDS_PER_THREAD];
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
 
-    rids[i] = ralloc(1, sizeof(int));
+    rids[i] = slottedPreRalloc(1, sizeof(int));
     
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */

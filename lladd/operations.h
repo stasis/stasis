@@ -159,6 +159,7 @@ void doUpdate(const LogEntry * e, Page * p);
     extra CLRs being generated during recovery.
 
     @param e The log entry containing the operation to be undone.  
+    @param p A pointer to the memory resident copy of the page that is being managed by bufferManager.
     @param clr_lsn The lsn of the clr that corresponds to this undo operation.
 */
 void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn);

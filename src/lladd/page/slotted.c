@@ -18,7 +18,7 @@ increase the available free space.
 
 The caller of this function must have a writelock on the page.
 */
-static void pageCompact(Page * page) {
+static void slottedCompact(Page * page) {
 
 	int i;
 	Page bufPage;
@@ -40,7 +40,7 @@ static void pageCompact(Page * page) {
 
 	memcpy(buffer + PAGE_SIZE - meta_size, page->memAddr + PAGE_SIZE - meta_size, meta_size);
 
-	pageInitialize(&bufPage);
+	slottedPageInitialize(&bufPage);
 
 	numSlots = *numslots_ptr(page);
 	for (i = 0; i < numSlots; i++) {
@@ -96,7 +96,37 @@ static void pageCompact(Page * page) {
 
 }
 
-void pageInitialize(Page * page) {
+/**
+   Invariant: This lock should be held while updating lastFreepage, or
+   while performing any operation that may decrease the amount of
+   freespace in the page that lastFreepage refers to.  
+
+   Since pageCompact and slottedDeRalloc may only increase this value,
+   they do not need to hold this lock.  Since bufferManager is the
+   only place where rawPageRallocSlot is called, rawPageRallocSlot does not obtain
+   this lock.
+   
+   If you are calling rawPageRallocSlot on a page that may be the page
+   lastFreepage refers to, then you will need to acquire
+   lastFreepage_mutex.  (Doing so from outside of slotted.c is almost
+   certainly asking for trouble, so lastFreepage_mutex is static.)
+
+*/
+static pthread_mutex_t lastFreepage_mutex;
+static unsigned int lastFreepage = -1;
+
+void slottedPageInit() {
+  pthread_mutex_init(&lastFreepage_mutex , NULL);
+  lastFreepage = -1;
+}
+
+void slottedPageDeinit() {
+  pthread_mutex_destroy(&lastFreepage_mutex);
+}
+
+
+
+void slottedPageInitialize(Page * page) {
   /*  printf("Initializing page %d\n", page->id);
       fflush(NULL); */
   memset(page->memAddr, 0, PAGE_SIZE);
@@ -104,23 +134,15 @@ void pageInitialize(Page * page) {
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
   *freelist_ptr(page)  = INVALID_SLOT;
+
 }
 
-int unlocked_freespace(Page * page) {
+static int unlocked_freespace(Page * page) {
   return (int)slot_length_ptr(page, *numslots_ptr(page)) - (int)(page->memAddr + *freespace_ptr(page));
 }
 
-/**
- * freeSpace() assumes that the page is already loaded in memory.  It takes 
- * as a parameter a Page, and returns an estimate of the amount of free space
- * available to a new slot on this page.  (This is the amount of unused space 
- * in the page, minus the size of a new slot entry.)  This is either exact, 
- * or an underestimate.
- *
- * @todo is it ever safe to call freespace without a lock on the page? 
- * 
- */
-int freespace(Page * page) {
+
+int slottedFreespace(Page * page) {
   int ret;
   readlock(page->rwlatch, 292);
   ret = unlocked_freespace(page);
@@ -129,11 +151,49 @@ int freespace(Page * page) {
 }
 
 
-/**
-   @todo pageRalloc's algorithm for reusing slot id's reclaims the
-   highest numbered slots first, which encourages fragmentation.
+/** @todo slottedPreRalloc ignores it's xid parameter; change the
+    interface?  (The xid is there for now, in case it allows some
+    optimizations later.  Perhaps it's better to cluster allocations
+    from the same xid on the same page, or something...)
 */
-recordid pageRalloc(Page * page, int size) {
+recordid slottedPreRalloc(int xid, long size) {
+  
+  recordid ret;
+  Page * p;
+  
+  /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
+  
+  assert(size < BLOB_THRESHOLD_SIZE);
+  
+  pthread_mutex_lock(&lastFreepage_mutex);  
+  /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
+  if(lastFreepage == -1) {
+    lastFreepage = TpageAlloc(xid, SLOTTED_PAGE);
+    p = loadPage(lastFreepage);
+  } else {
+    p = loadPage(lastFreepage);
+  }
+
+  if(slottedFreespace(p) < size ) { 
+    releasePage(p);
+    lastFreepage = TpageAlloc(xid, SLOTTED_PAGE);
+    p = loadPage(lastFreepage);
+  }
+  
+  ret = slottedRawRalloc(p, size);
+    
+  releasePage(p);
+
+  pthread_mutex_unlock(&lastFreepage_mutex);
+  
+  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
+
+  return ret;
+}
+
+
+
+recordid slottedRawRalloc(Page * page, int size) {
 
 	writelock(page->rwlatch, 342);
 
@@ -166,7 +226,7 @@ static void __really_do_ralloc(Page * page, recordid rid) {
   assert(rid.size > 0);
   
   if(unlocked_freespace(page) < rid.size) {
-    pageCompact(page);
+    slottedCompact(page);
     
     /* Make sure there's enough free space... */
     assert (unlocked_freespace(page) >= rid.size);
@@ -190,9 +250,7 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
 }
 
-/** Only used for recovery, to make sure that consistent RID's are created 
- * on log playback. */
-recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid) {
+recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 
 	writelock(page->rwlatch, 376);
 
@@ -215,7 +273,7 @@ recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid) {
 }
 
 
-void pageDeRalloc(Page * page, recordid rid) {
+void slottedDeRalloc(Page * page, recordid rid) {
 
   readlock(page->rwlatch, 443);
 
@@ -233,7 +291,7 @@ void pageDeRalloc(Page * page, recordid rid) {
   @todo If the rid size has been overridden, we should check to make
   sure that this really is a special record.
 */
-void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
+void slottedRead(int xid, Page * page, recordid rid, byte *buff) {
 
   int slot_length;
   readlock(page->rwlatch, 519);
@@ -251,7 +309,7 @@ void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
   
 }
 
-void pageWriteRecord(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data) {
+void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data) {
   int slot_length;
 
   readlock(page->rwlatch, 529);  
@@ -275,16 +333,14 @@ void pageWriteRecord(int xid, Page * page, lsn_t lsn, recordid rid, const byte *
 
 }
 
-
-/** @todo:  Should the caller need to obtain the writelock when calling pageSetSlotType? */
-void pageSetSlotType(Page * p, int slot, int type) {
+void slottedSetType(Page * p, int slot, int type) {
   assert(type > PAGE_SIZE);
   writelock(p->rwlatch, 686);
   *slot_length_ptr(p, slot) = type;
   unlock(p->rwlatch);
 }
 
-int pageGetSlotType(Page *  p, int slot, int type) {
+int slottedGetType(Page *  p, int slot) {
   int ret; 
   readlock(p->rwlatch, 693);
   ret = *slot_length_ptr(p, slot);

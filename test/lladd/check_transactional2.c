@@ -73,7 +73,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, 1024 * sizeof(int)); 
+    rids[i] = Talloc(xid, 1024 * sizeof(int)); 
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -134,7 +134,7 @@ void * writingAbortingWorkerThread ( void * v ) {
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, sizeof(int)); 
+    rids[i] = Talloc(xid, sizeof(int)); 
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -192,7 +192,7 @@ void * writingWorkerThread ( void * v ) {
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, sizeof(int)); 
+    rids[i] = Talloc(xid, sizeof(int)); 
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -450,8 +450,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, transactional_threads_commit);
   tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_abort);
-  tcase_add_test(tc, transactional_blobs_nothreads_abort); 
-  /*  tcase_add_test(tc, transactional_blobs_threads_abort); */
+  tcase_add_test(tc, transactional_blobs_nothreads_abort);  
+  /*  tcase_add_test(tc, transactional_blobs_threads_abort);  */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

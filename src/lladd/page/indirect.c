@@ -142,14 +142,16 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
 
   } else {
     DEBUG("recordsize = %d, recordCount = %d, level = 0 (don't need indirect pages)\n", recordSize, recordCount);
+    
+    /* Initialize leaves.  (As SLOTTED_PAGE's) */
 
-    pageInitialize(&p); 
+    slottedPageInitialize(&p); 
     p.id = parentPage;
     for(int i = 0; i < recordCount; i++) {
       /* Normally, we would worry that the page id isn't set, but
 	 we're discarding the recordid returned by page ralloc
 	 anyway. */
-      pageRalloc(&p, recordSize);
+      slottedRawRalloc(&p, recordSize);
     }
     
   }

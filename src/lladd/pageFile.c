@@ -1,12 +1,10 @@
 /**
-   
+   @file 
     This file handles all of the file I/O for pages.
 
 */
 #include "page.h"
-#include "page/slotted.h"
 #include <lladd/bufferManager.h>
-
 
 #include "pageFile.h"
 #include <assert.h>
@@ -15,7 +13,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define __USE_GNU  /* For O_DIRECT.. */
+/** For O_DIRECT.  It's unclear that this is the correct thing to #define, but it works under linux. */
+#define __USE_GNU
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -45,8 +44,8 @@ void pageRead(Page *ret) {
       offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
       assert(offset == pageoffset);
       if(fileSize <= pageoffset) { 
-	pageInitialize(ret);
-	write(stable, ret->memAddr, PAGE_SIZE);
+	memset(ret->memAddr, 0, PAGE_SIZE);
+	write(stable, ret->memAddr, PAGE_SIZE);  /* all this does is extend the file.. */
       }
     } else if(read_size == -1) { 
       perror("pageFile.c couldn't read");
