@@ -82,21 +82,28 @@ hash_lookup (struct hash_table *h, unsigned long key)
     return 0;
 }
 
-void
+int
 hash_insert (struct hash_table *h, unsigned long key, unsigned long val)
 {
     unsigned long bucket_mask = h->bucket_mask;
     int bucket_index = (int) (key & bucket_mask);
     struct hash_item *new;
 
+    new = (struct hash_item *) XMALLOC (sizeof (struct hash_item));
+    if (! new) {
+	debug ("allocation failed");
+	return -1;
+    }
+
     debug ("inserting %lu->%lu (%p->%p) to bucket %d",
 	   key, val, (void *) key, (void *) val, bucket_index);
 
-    new = (struct hash_item *) XMALLOC (sizeof (struct hash_item));
     new->key = key;
     new->val = val;
     new->next = h->table[bucket_index];
     h->table[bucket_index] = new;
+
+    return 0;
 }
 
 unsigned long
