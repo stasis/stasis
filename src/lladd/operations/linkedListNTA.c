@@ -55,7 +55,7 @@ typedef struct {
   int valueSize;
 } lladd_linkedListRemove_log;
 
-static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   assert(!p);
   lladd_linkedListRemove_log * log = (lladd_linkedListRemove_log*)dat;
   
@@ -76,7 +76,7 @@ static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void 
   
   return 0;
 }
-static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   assert(!p);
   lladd_linkedListRemove_log * log = (lladd_linkedListRemove_log*)dat;
   
@@ -133,60 +133,73 @@ Operation getLinkedListRemove() {
 }
 static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   //int ret = TlinkedListRemove(xid, list, key, keySize);
-  lladd_linkedList_entry * entry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
-  Tread(xid, list, entry);
-  if(!entry->next.size) {
-    memcpy(entry+1, key, keySize);
-    memcpy(((byte*)(entry+1))+keySize, value, valueSize);
-    entry->next.page = 0;
-    entry->next.slot = 0;
-    entry->next.size = -1;
-    Tset(xid, list, entry);
-  } else {
-    lladd_linkedList_entry * newEntry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
-    memcpy(newEntry + 1, key, keySize);
-    memcpy(((byte*)(newEntry+1))+keySize, value, valueSize);
-    newEntry->next = entry->next;
-    recordid newRid = Talloc(xid, sizeof(lladd_linkedList_entry) + keySize + valueSize);
-    Tset(xid, newRid, newEntry);
-    entry->next = newRid;
-    Tset(xid, list, entry);
-    free(newEntry);
-  }
-  free(entry);
-  //return ret;
+
+  try {
+    
+    lladd_linkedList_entry * entry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
+    
+    Tread(xid, list, entry);
+    if(!entry->next.size) {
+      memcpy(entry+1, key, keySize);
+      memcpy(((byte*)(entry+1))+keySize, value, valueSize);
+      entry->next.page = 0;
+      entry->next.slot = 0;
+      entry->next.size = -1;
+      Tset(xid, list, entry);
+    } else {
+      lladd_linkedList_entry * newEntry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
+      memcpy(newEntry + 1, key, keySize);
+      memcpy(((byte*)(newEntry+1))+keySize, value, valueSize);
+      newEntry->next = entry->next;
+      recordid newRid = Talloc(xid, sizeof(lladd_linkedList_entry) + keySize + valueSize);
+      Tset(xid, newRid, newEntry);
+      entry->next = newRid;
+      Tset(xid, list, entry);
+      free(newEntry);
+    }
+    free(entry);
+  } end;
 }
 
 int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
-  lladd_linkedList_entry * entry = malloc(list.size);
-  pthread_mutex_lock(&linked_list_mutex);
-  Tread(xid, list, entry);
 
+  lladd_linkedList_entry * entry = malloc(list.size);
+
+  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
+    pthread_mutex_lock(&linked_list_mutex);
+    Tread(xid, list, entry);
+  } end_action_ret(-2);
+  
   if(!entry->next.size) {
     free(entry);    
     pthread_mutex_unlock(&linked_list_mutex);
     return -1; // empty list 
   }
-  while(1) {
-    if(!memcmp(entry + 1, key, keySize)) { 
-      // Bucket contains the entry of interest.
-      int valueSize = list.size - (sizeof(lladd_linkedList_entry) + keySize);
-     *value  = malloc(valueSize);
-      memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
-      free(entry);
-      pthread_mutex_unlock(&linked_list_mutex);
-      return valueSize;
+  
+  int done = 0;
+  int ret = -1;
+  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
+    while(!done) {
+      
+      if(!memcmp(entry + 1, key, keySize)) { 
+	// Bucket contains the entry of interest.
+	int valueSize = list.size - (sizeof(lladd_linkedList_entry) + keySize);
+	*value  = malloc(valueSize);
+	memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
+	done = 1;
+	ret = valueSize;
+      }
+      if(entry->next.size != -1) {
+	assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
+	Tread(xid, entry->next, entry);
+      } else {
+	done = 1;
+      }
     }
-    if(entry->next.size != -1) {
-       assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
-       Tread(xid, entry->next, entry);
-    } else {
-       break;
-    }
-  }
-  free(entry);
-  pthread_mutex_unlock(&linked_list_mutex);
-  return -1;
+    free(entry);  
+  } compensate_ret(-2);
+
+  return ret;
 }
 
 

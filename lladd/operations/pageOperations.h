@@ -65,11 +65,11 @@ terms specified in this license.
     multiple concurrent transactions. */
 /*#define REUSE_PAGES */
 
-int TpageAlloc(int xid/*, int type*/);
-int TpageAllocMany(int xid, int count/*, int type*/);
-int TpageDealloc(int xid, int pageid);
-int TpageSet(int xid, int pageid, byte* dat);
-int TpageGet(int xid, int pageid, byte* buf);
+compensated_function int TpageAlloc(int xid/*, int type*/);
+compensated_function int TpageAllocMany(int xid, int count/*, int type*/);
+compensated_function int TpageDealloc(int xid, int pageid);
+compensated_function int TpageSet(int xid, int pageid, byte* dat);
+compensated_function int TpageGet(int xid, int pageid, byte* buf);
 /*Operation getPageAlloc();
   Operation getPageDealloc(); */
 Operation getPageSet();
@@ -81,5 +81,5 @@ Operation getUpdateFreelistInverse();
 Operation getFreePageOperation();
 Operation getAllocFreedPage();
 Operation getUnallocFreedPage();
-void pageOperationsInit();
+compensated_function void pageOperationsInit();
 #endif

@@ -46,10 +46,14 @@ foreach my $i (@source) {
 #    open IN, "utilities/cpp_no_inc <$i |";
     $nest = 0;
     my $num = 0;
+    my $checked_fcns = 0;
     while(my $line = <IN>) {
 	$num++;
 	my $in = 0;
 	if ($line =~ /\bbegin_action(_ret)?\s*\(\b/ ||  $line =~ /\btry(_ret)?\s*[\(\{]/) {
+	    if(!$nest) {
+		$checked_fcns = 0;
+	    }
 	    $nest++;
 	    $in = 1;
 	} 
@@ -58,16 +62,22 @@ foreach my $i (@source) {
 	    if($in) {
 		warn "$pwd/$i:$num Cannot handle single line compensation checks\n";
 	    }
-	}
-	if($line !~ /\bcompensated_function\b/) {
-	    foreach my $j (keys %h) {
-		if(($line =~ /$j\s*\(/) && !$nest) {
-		    warn "$pwd/$i:$num Unchecked invocation of $j\n";
-		}
-	    }
 	    if ($nest < 0) { 
 		warn "$pwd/$i:$num Closed compensation check without open.\n";
 		$nest = 0;
+	    }
+	    if(!$checked_fcns && !$nest) {
+		warn "$pwd/$i:$num Unnecessary compensation check.\n";
+	    }
+	}
+	if($line !~ /\bcompensated_function\b/) {
+	    foreach my $j (keys %h) {
+		if(($line =~ /$j\s*\(/)) {
+		    if(!$nest) {
+			warn "$pwd/$i:$num Unchecked invocation of $j\n";
+		    }
+		    $checked_fcns++;	
+		}
 	    }
 	}
     }

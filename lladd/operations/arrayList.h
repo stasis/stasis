@@ -53,7 +53,7 @@ terms specified in this license.
 #ifndef __ARRAY_LIST_H
 #define __ARRAY_LIST_H
 
-recordid TarrayListAlloc(int xid, int count, int multiplier, int size);
+compensated_function recordid TarrayListAlloc(int xid, int count, int multiplier, int size);
 
 Operation getArrayListAlloc();
 Operation getInitFixed();
@@ -68,6 +68,6 @@ Operation getUnInitPage();
 
 recordid dereferenceArrayListRid(Page * p, int offset);
 #define dereferenceArrayListRidUnlocked(x, y) dereferenceArrayListRid((x),(y))
-int TarrayListExtend(int xid, recordid rid, int slots);
-int TarrayListInstantExtend(int xid, recordid rid, int slots);
+compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
+compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
 #endif

@@ -61,17 +61,25 @@ unsigned int calculate_level (unsigned int number_of_pages) {
   return level;
 }
 
-recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount);
+compensated_function recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount);
 /**
    @todo is there a way to implement rallocMany so that it doesn't
    have to physically log pre- and post-images of the allocated space?
 */
-recordid rallocMany(int xid, int recordSize, int recordCount) {
-  int page = TpageAlloc(xid/*, SLOTTED_PAGE*/);
-  return __rallocMany(xid, page, recordSize, recordCount);
+compensated_function recordid rallocMany(int xid, int recordSize, int recordCount) {
+  recordid ret;
+  int page;
+  try_ret(NULLRID) {
+    page = TpageAlloc(xid/*, SLOTTED_PAGE*/);
+  }end_ret(NULLRID);
+  try_ret(NULLRID) {
+    ret = __rallocMany(xid, page, recordSize, recordCount);
+  }end_ret(NULLRID);
+
+  return  ret;
 }
 
-recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) {
+compensated_function recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) {
 
   /* How many levels of pages do we need? */
 
@@ -111,14 +119,19 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
     }
     
     int newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
+    int firstChildPage;
 
-    int firstChildPage = TpageAllocMany(xid, newPageCount/*, SLOTTED_PAGE*/);/*pageAllocMultiple(newPageCount); */
+    try_ret(NULLRID) {
+      firstChildPage = TpageAllocMany(xid, newPageCount/*, SLOTTED_PAGE*/);/*pageAllocMultiple(newPageCount); */
+    } end_ret(NULLRID);
+
     int tmpRecordCount = recordCount;
     int thisChildPage = firstChildPage;    
 
     while(tmpRecordCount > 0) {
-      
-      __rallocMany(xid, thisChildPage, recordSize, min(tmpRecordCount, next_level_records_per_page));
+      try_ret(NULLRID) {
+	__rallocMany(xid, thisChildPage, recordSize, min(tmpRecordCount, next_level_records_per_page));
+      } end_ret(NULLRID);
       tmpRecordCount -= next_level_records_per_page;
       thisChildPage ++;
 
@@ -160,9 +173,10 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
     }
     
   }
+  try_ret(NULLRID) {
+    TpageSet(xid, parentPage, p.memAddr);
+  } end_ret(NULLRID);
 
-  TpageSet(xid, parentPage, p.memAddr);
-  
   rid.page = parentPage;
   rid.slot = RECORD_ARRAY;
   rid.size = recordSize;

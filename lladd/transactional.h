@@ -322,14 +322,14 @@ int Tbegin();
  *
  * @see operations.h set.h
  */
-void Tupdate(int xid, recordid rid, const void *dat, int op);
+compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op);
 
 /**
  * @param xid transaction ID
  * @param rid reference to page/slot
  * @param dat buffer into which data goes
  */
-void Tread(int xid, recordid rid, void *dat);
+compensated_function void Tread(int xid, recordid rid, void *dat);
 void TreadUnlocked(int xid, recordid rid, void *dat);
 
 /**

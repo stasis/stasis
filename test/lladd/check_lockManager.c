@@ -30,7 +30,7 @@ void * pageWorkerThread(void * j) {
 
     if(rw) {
       // readlock
-      int locked = 0;
+      //      int locked = 0;
       //      begin_action_ret(NULL,NULL, 0) {
 	if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
 	  k = 0; 

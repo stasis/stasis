@@ -178,7 +178,9 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
 
   if(lastFreepage == -1) {
-    lastFreepage = TpageAlloc(xid);
+    try_ret(NULLRID) {
+      lastFreepage = TpageAlloc(xid);
+    } end_ret(NULLRID);
     try_ret(NULLRID) {
       *pp = loadPage(xid, lastFreepage);
     } end_ret(NULLRID);
@@ -193,7 +195,9 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
-    lastFreepage = TpageAlloc(xid);
+    try_ret(NULLRID) {
+      lastFreepage = TpageAlloc(xid);
+    } end_ret(NULLRID);
     try_ret(NULLRID) {
       *pp = loadPage(xid, lastFreepage);
     } end_ret(NULLRID);
@@ -308,7 +312,7 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
 }
 
-compensated_function recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
+recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   
 	writelock(page->rwlatch, 376);
 
@@ -353,16 +357,16 @@ compensated_function recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn,
 		  (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
 
 	}
-	begin_action_ret(writeunlock, page->rwlatch, NULLRID) { // lock acquired above.
-	  pageWriteLSN(xid, page, lsn);
-	} compensate_ret(NULLRID);
+
+	pageWriteLSN(xid, page, lsn);
+
+	writeunlock(page->rwlatch);
 
 	return rid;
 }
 
-compensated_function void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
+void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 
-  begin_action(unlock, page->rwlatch) { 
     readlock(page->rwlatch, 443);
     
     *slot_ptr(page, rid.slot) =  INVALID_SLOT;
@@ -372,8 +376,8 @@ compensated_function void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recor
 
     pageWriteLSN(xid, page, lsn);
 
-  } compensate;
-
+    readunlock(page->rwlatch);
+    
 }
 
 void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff) {

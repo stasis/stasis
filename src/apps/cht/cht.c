@@ -104,7 +104,7 @@ state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * m, char
 
 int xid_exists(int ht_xid, recordid xid_ht, StateMachine * stateMachine) {
   int * xid = 0;
-
+  
   int size = ThashLookup(ht_xid, xid_ht, 
 			 (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), 
 			 (byte**)&xid);

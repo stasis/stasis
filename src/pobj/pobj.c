@@ -615,7 +615,7 @@ pobj_ref_mark_update (void *obj, void *fld_arg, int set)
     /* Update corresponding record (persistent objects only). */
     if (p->repo_index >= 0) {
 	pobj_slot = POBJ2REPOSLOT (p);
-    
+
 	if (ret)
 	    TsetRange (xid, pobj_slot->rid, (char *) flags_ptr - (char *) p,
 		       sizeof (unsigned long), flags_ptr);

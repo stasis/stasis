@@ -35,10 +35,12 @@ static int getBlockContainingOffset(TarrayListParameters tlp, int offset, int * 
 
 /*----------------------------------------------------------------------------*/
 
-recordid TarrayListAlloc(int xid, int count, int multiplier, int size) {
-
-  int firstPage = TpageAllocMany(xid, count+1);
-
+compensated_function recordid TarrayListAlloc(int xid, int count, int multiplier, int size) {
+  
+  int firstPage;
+  try_ret(NULLRID) {
+    firstPage = TpageAllocMany(xid, count+1);
+  } end_ret(NULLRID);
   TarrayListParameters tlp;
 
   tlp.firstPage = firstPage;
@@ -52,8 +54,9 @@ recordid TarrayListAlloc(int xid, int count, int multiplier, int size) {
   rid.page = firstPage;
   rid.size = size;
   rid.slot = 0;
-
-  Tupdate(xid, rid, &tlp, OPERATION_ARRAY_LIST_ALLOC);
+  try_ret(NULLRID) {
+    Tupdate(xid, rid, &tlp, OPERATION_ARRAY_LIST_ALLOC);
+  } end_ret(NULLRID);
 
   return rid;
 }
@@ -117,8 +120,11 @@ Operation getArrayListAlloc() {
 }
 /*----------------------------------------------------------------------------*/
 
-int TarrayListExtend(int xid, recordid rid, int slots) {
-  Page * p = loadPage(xid, rid.page);
+compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
+  Page * p;
+  try_ret(compensation_error()) {
+    p = loadPage(xid, rid.page);
+  } end_ret(compensation_error());
   TarrayListParameters tlp = pageToTLP(p);
 
   int lastCurrentBlock;
@@ -142,18 +148,21 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
   for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
     /* Alloc block i */
     int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
-    int newFirstPage = TpageAllocMany(xid, blockSize);
+    int newFirstPage;
+    begin_action_ret(releasePage, p, compensation_error()) {
+      newFirstPage = TpageAllocMany(xid, blockSize);
+    } end_action_ret(compensation_error());
     DEBUG("block %d\n", i);
     /* Iterate over the storage blocks that are pointed to by our current indirection block. */
-    for(int j = 0; j < blockSize; j++) {
-      DEBUG("page %d (%d)\n", j, j + newFirstPage);
-      tmp2.page = j + newFirstPage;
+    //    for(int j = 0; j < blockSize; j++) {
+      //      DEBUG("page %d (%d)\n", j, j + newFirstPage);
+      //     tmp2.page = j + newFirstPage;
       /** @todo If we were a little smarter about this, and fixed.c
 	  could handle uninitialized blocks correctly, then we
 	  wouldn't have to iterate over the datapages in
-	  TarrayListExtend() */
-      //      Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
-    }
+	  TarrayListExtend() (Fixed?)*/
+      //      T update(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
+      //    }
     
     tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
     /** @todo what does this do to recovery?? */
@@ -162,8 +171,9 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
     Tset(xid, tmp, &newFirstPage);
     *page_type_ptr(p) = ARRAY_LIST_PAGE; */
     /* @todo This is a copy of Tupdate!! Replace it.*/
-
-    alTupdate(xid, tmp, &newFirstPage, OPERATION_SET);
+    begin_action_ret(releasePage, p, compensation_error()) {
+      alTupdate(xid, tmp, &newFirstPage, OPERATION_SET);
+    } end_action_ret(compensation_error());
 
     DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
   }
@@ -171,16 +181,20 @@ int TarrayListExtend(int xid, recordid rid, int slots) {
   tmp.slot = MAX_OFFSET_POSITION;
 
   int newMaxOffset = tlp.maxOffset+slots;
-  *page_type_ptr(p) = FIXED_PAGE;
-  Tset(xid, tmp, &newMaxOffset);
-  *page_type_ptr(p) = ARRAY_LIST_PAGE;
-  releasePage(p);
-
+  //  *page_type_ptr(p) = FIXED_PAGE;
+  //  Tset(xid, tmp, &newMaxOffset);
+  //  *page_type_ptr(p) = ARRAY_LIST_PAGE;
+  //  releasePage(p);
+    /* @todo This is a copy of Tupdate!! Replace it.*/
+  begin_action_ret(releasePage, p, compensation_error()) {
+    alTupdate(xid, tmp, &newMaxOffset, OPERATION_SET);
+  } compensate_ret(compensation_error());
+  
   return 0;
 
 }
 /** @todo:  TarrayListInstantExtend, is a hacked-up cut and paste version of TarrayListExtend */
-int TarrayListInstantExtend(int xid, recordid rid, int slots) {
+compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots) {
   Page * p = loadPage(xid, rid.page);
   TarrayListParameters tlp = pageToTLP(p);
 

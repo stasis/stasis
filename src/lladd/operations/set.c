@@ -121,11 +121,13 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   
   // Pass size of range into Tupdate via the recordid.
   rid.size = sizeof(set_range_t) + 2 * length;
-  Tupdate(xid, rid, range, OPERATION_SET_RANGE);
 
-  releasePage(p);
   free(record);
-  free(range);
+  /** @todo will leak 'range' if interrupted with pthread_cancel */
+  begin_action(releasePage, p) {
+    Tupdate(xid, rid, range, OPERATION_SET_RANGE);
+    free(range);
+  } compensate;
   
 }
 

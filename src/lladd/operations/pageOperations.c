@@ -112,19 +112,23 @@ int __alloc_freed(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   return 0;
 }
 
-int TpageGet(int xid, int pageid, byte *memAddr) {
-  Page * q = loadPage(xid, pageid);
-  memcpy(memAddr, q->memAddr, PAGE_SIZE);
-  releasePage(q);
+compensated_function int TpageGet(int xid, int pageid, byte *memAddr) {
+  Page * q = 0;
+  try_ret(compensation_error()) {
+    q = loadPage(xid, pageid);
+    memcpy(memAddr, q->memAddr, PAGE_SIZE);
+  } end_ret(compensation_error());
   return 0;
 }
 
-int TpageSet(int xid, int pageid, byte * memAddr) {
+compensated_function int TpageSet(int xid, int pageid, byte * memAddr) {
   recordid rid;
   rid.page = pageid;
   rid.slot = 0;
   rid.size = 0;
-  Tupdate(xid,rid,memAddr, OPERATION_PAGE_SET);
+  try_ret(compensation_error()) { 
+    Tupdate(xid,rid,memAddr, OPERATION_PAGE_SET);
+  } end_ret(compensation_error());
   return 0;
 }
 
@@ -132,22 +136,22 @@ int TpageSet(int xid, int pageid, byte * memAddr) {
 /** This needs to be called immediately after the storefile is opened,
     since it needs to perform raw, synchronous I/O on the pagefile for
     bootstrapping purposes. */
-void pageOperationsInit() {
+compensated_function void pageOperationsInit() {
 /*  Page p;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
   assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
   p.id = 0;*/
-
-  Page * p = loadPage(-1, 0);
+  Page * p;
+  try {
+    p = loadPage(-1, 0);
+    assert(!compensation_error());
+  } end;
   /** Release lock on page zero. */
   
- // pageRead(&p);
-
   if(*page_type_ptr(p) != LLADD_HEADER_PAGE) {
     /*printf("Writing new LLADD header\n"); fflush(NULL); */
     headerPageInitialize(p);
- //   pageWrite(p);
   } else {
     /*printf("Found LLADD header.\n"); fflush(NULL);*/
   }
@@ -157,19 +161,13 @@ void pageOperationsInit() {
   freepage = *headerFreepage_ptr(p);
 
   assert(freepage);
-
-  /*  free(p.memAddr); */
-  
-  //deletelock(p.loadlatch);
-  //deletelock(p.rwlatch);
   releasePage(p);
 
   pthread_mutex_init(&pageAllocMutex, NULL);
-
 }
 
 
-/** @todo TpageAlloc / TpageDealloc + undo is not multi-transaction / threadsafe. 
+/** @todo TpageAlloc / TpageDealloc + undo + page reuse is not multi-transaction / threadsafe. 
     
    Example of the problem:
 
@@ -200,48 +198,39 @@ void pageOperationsInit() {
 
 */
 
-int TpageDealloc(int xid, int pageid) {
-  recordid rid;
+compensated_function int TpageDealloc(int xid, int pageid) {
 #ifdef REUSE_PAGES
 
-  update_tuple t;
-
-  pthread_mutex_lock(&pageAllocMutex);
-#endif
-
-  rid.page = pageid;
-  rid.slot = 0;
-  rid.size = 0;
-
-#ifdef REUSE_PAGES
-  assert(freelist != pageid);
+  begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, -1) {
+    recordid rid;
     
-
-  t.before = freelist;  
-
-//#endif
-  
-
-  Tupdate(xid, rid, &freelist, OPERATION_FREE_PAGE);
-  
-//#ifdef REUSE_PAGES
-  t.after = pageid;
-  freelist = pageid;
-  
-  rid.page = 0;
-  Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREELIST);
-
-  
-
-  /* OLD STUFF:  Page * p = loadPage(pageid);  int type = *page_type_ptr(p);   releasePage(p);   Tupdate(xid, rid, &type, OPERATION_PAGE_DEALLOC); */
-
-  pthread_mutex_unlock(&pageAllocMutex); 
+    update_tuple t;
+    pthread_mutex_lock(&pageAllocMutex);
+    
+    rid.page = pageid;
+    rid.slot = 0;
+    rid.size = 0;
 #endif
 
+
+#ifdef REUSE_PAGES
+    assert(freelist != pageid);
+    t.before = freelist;  
+    //#endif
+    Tupdate(xid, rid, &freelist, OPERATION_FREE_PAGE);
+    //#ifdef REUSE_PAGES
+    t.after = pageid;
+    freelist = pageid;
+    rid.page = 0;
+    Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREELIST);
+    pthread_mutex_unlock(&pageAllocMutex); 
+  } end_action_ret(-1);
+#endif
+    
   return 0;
 }
 
-int TpageAlloc(int xid /*, int type */) {
+compensated_function int TpageAlloc(int xid /*, int type */) {
   recordid rid;
   update_tuple t;
   rid.slot = 0;
@@ -257,24 +246,28 @@ int TpageAlloc(int xid /*, int type */) {
 
     newpage = freelist;
 
-    Page * p = loadPage(newpage);  /* Could obtain write lock here,
+    Page * p;
+    begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, compensation_error()) {
+      p = loadPage(newpage);  /* Could obtain write lock here,
 				      but this is the only function
 				      that should ever touch pages of
 				      type LLADD_FREE_PAGE, and we
 				      already hold a mutex... */
+    } end_ret(compensation_error());
     assert(*page_type_ptr(p) == LLADD_FREE_PAGE);
     t.before = freelist;
     freelist = *nextfreepage_ptr(p);
     t.after = freelist;
     assert(newpage != freelist);
     releasePage(p);
-
-    rid.page = newpage;
-    Tupdate(xid, rid, &freelist, OPERATION_ALLOC_FREED);
-
-    rid.page = 0;
-    Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREELIST);
-
+    
+    begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, compensation_error()) {
+      rid.page = newpage;
+      Tupdate(xid, rid, &freelist, OPERATION_ALLOC_FREED);
+      
+      rid.page = 0;
+      Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREELIST);
+    } end_ret;
     rid.page = newpage;
     
     } else {
@@ -291,7 +284,10 @@ int TpageAlloc(int xid /*, int type */) {
       /* Don't need to touch the new page. */
     
     rid.page = 0;
-    Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREESPACE);
+
+    begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, compensation_error()) {
+      Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREESPACE);
+    } end_action_ret(compensation_error());
 
     rid.page = newpage;
 #ifdef REUSE_PAGES
@@ -303,7 +299,7 @@ int TpageAlloc(int xid /*, int type */) {
   return newpage;
 }
 
-int TpageAllocMany(int xid, int count /*, int type*/) {
+compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
   /*  int firstPage = -1;
       int lastPage = -1; */
   recordid rid;
@@ -321,11 +317,11 @@ int TpageAllocMany(int xid, int count /*, int type*/) {
   /* Don't need to touch the new pages. */
     
   rid.page = 0;
-  Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREESPACE);
+  begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, compensation_error()) {
+    Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREESPACE);
+    rid.page = newpage;
+  } compensate_ret(compensation_error());
 
-  rid.page = newpage;
-
-  pthread_mutex_unlock(&pageAllocMutex);
   return newpage;
 }
 
@@ -336,9 +332,9 @@ int TpageAllocMany(int xid, int count /*, int type*/) {
      obtain mutex
         choose a free page using in-memory data
 	load page to be used, and update in-memory data.  (obtains lock on loaded page)
-	Tupdate() the page, zeroing it, and saving the old successor in the log.
+	T update() the page, zeroing it, and saving the old successor in the log.
 	relase the page (avoid deadlock in next step)
-	Tupdate() LLADD's header page (the first in the store file) with a new copy of 
+	T update() LLADD's header page (the first in the store file) with a new copy of 
 	                              the in-memory data, saving old version in the log.
      release mutex
 
@@ -346,9 +342,9 @@ int TpageAllocMany(int xid, int count /*, int type*/) {
 
      obtain mutex
         determine the current head of the freelist using in-memory data
-        Tupdate() the page, initializing it to be a freepage, and physically logging the old version
+        T update() the page, initializing it to be a freepage, and physically logging the old version
 	release the page
-	Tupdate() LLADD's header page with a new copy of the in-memory data, saving old version in the log
+	T update() LLADD's header page with a new copy of the in-memory data, saving old version in the log
      release mutex
 
 */

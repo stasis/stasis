@@ -107,11 +107,11 @@ void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
   /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
   
-  try {
-    if(globalLockManager.writeLockPage) { 
-      globalLockManager.writeLockPage(xid, page->id); 
+  /*  tr y {
+    if(globalLockM anager.writ eLockPage) { 
+      globalLock Manager.writeL ockPage(xid, page->id); 
     }
-  } end;
+    } en d; */
 
   if(page->LSN < lsn) {
     page->LSN = lsn;
@@ -189,12 +189,12 @@ static int pageAllocUnlocked() {
 
   lastAllocedPage += 1;
   
-  p = loadPage(lastAllocedPage);
+  p = load Page(lastAllocedPage);
   / ** TODO Incorrect, but this kludge tricks the tests (for now) * /
   while(*page_type_ptr(p) != UNINITIALIZED_PAGE) {
     releasePage(p);
     lastAllocedPage++;
-    p = loadPage(lastAllocedPage);
+    p = load Page(lastAllocedPage);
   }
   releasePage(p);
 
@@ -268,11 +268,9 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
     return lock_ret;
     } */
 
-  begin_action((void(*)(void*))unlock, p->rwlatch) {
-    writelock(p->rwlatch, 225);
-    pageWriteLSN(xid, p, lsn);
-  } compensate;
-
+  writelock(p->rwlatch, 225);
+  pageWriteLSN(xid, p, lsn);
+  unlock(p->rwlatch);
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid, p, lsn, rid, dat);
@@ -391,10 +389,11 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
 
 
   // Need a writelock so that we can update the lsn. 
-  begin_action(unlock, p->rwlatch) {
-    writelock(p->rwlatch, 225);
-    pageWriteLSN(xid, p, lsn);
-  } compensate;
+
+  writelock(p->rwlatch, 225);
+  pageWriteLSN(xid, p, lsn);
+  unlock(p->rwlatch);
+
 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     abort();

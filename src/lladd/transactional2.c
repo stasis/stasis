@@ -144,7 +144,7 @@ int Tbegin() {
 	return XactionTable[index].xid;
 }
 
-void Tupdate(int xid, recordid rid, const void *dat, int op) {
+compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
   LogEntry * e;
   Page * p;  
 #ifdef DEBUGGING
@@ -152,7 +152,6 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
   assert(numActiveXactions <= MAX_TRANSACTIONS);
   pthread_mutex_unlock(&transactional_2_mutex);
 #endif
-
   p = loadPage(xid, rid.page);
 
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
@@ -170,6 +169,13 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
     p = loadPage(xid, rid.page); 
   } 
 
+  /** @todo For logical undo logs, grabbing a lock makes no sense! */
+  try { 
+    if(globalLockManager.writeLockPage) {
+      globalLockManager.writeLockPage(xid, rid.page);
+    }
+  } end;
+
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
   
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
@@ -183,11 +189,20 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
 }
 
-void alTupdate(int xid, recordid rid, const void *dat, int op) {
+compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
   LogEntry * e;
   Page * p;  
+
+  try { 
+    if(globalLockManager.writeLockPage) {
+      globalLockManager.writeLockPage(xid, rid.page);
+    }
+  } end;
+
     p = loadPage(xid, rid.page);
     
+
+
     /*    if(*page_type_ptr(p) == INDIRECT_PAGE) {
       releasePage(p);
       rid = dereferenceRID(rid);
@@ -238,20 +253,29 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
   releasePage(p);
 }
 
-void Tread(int xid, recordid rid, void * dat) {
-  Page * p = loadPage(xid, rid.page);
+compensated_function void Tread(int xid, recordid rid, void * dat) {
+  Page * p;
+  try { 
+    p = loadPage(xid, rid.page);
+  } end;
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRID(xid, rid);
-    p = loadPage(xid, rid.page);
+    try { 
+      rid = dereferenceRID(xid, rid);
+    } end;
+    try {
+      p = loadPage(xid, rid.page);
+    } end;
 
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    p = loadPage(xid, rid.page);
+    try { 
+      p = loadPage(xid, rid.page);
+    } end;
 
   } else {
     abort();
@@ -276,8 +300,6 @@ int Tcommit(int xid) {
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
   pthread_mutex_unlock(&transactional_2_mutex);
-
-
 
   return 0;
 }

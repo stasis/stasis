@@ -89,10 +89,10 @@ typedef struct {
 
 //recordid dereferencePagedListRID(int xid, recordid rid);
 /** @return 1 if the key was already in the list. */
-int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
-int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
-int TpagedListRemove(int xid, recordid list, const byte * key, int keySize);
-int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
+compensated_function int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
+compensated_function int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
+compensated_function int TpagedListRemove(int xid, recordid list, const byte * key, int keySize);
+compensated_function int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
 /** The linked list iterator can tolerate the concurrent removal of values that 
     it has already returned.  In the presence of such removals, the iterator 
     will return the keys and values present in the list as it existed when next()

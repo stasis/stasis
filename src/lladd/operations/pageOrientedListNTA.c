@@ -20,7 +20,7 @@ recordid TpagedListAlloc(int xid) {
   return ret;
 }
 
-int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+compensated_function int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   pagedListHeader header;
   Tread(xid, list, &header);
   recordid headerRid = list;
@@ -73,7 +73,7 @@ int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, cons
   return ret;
 }
 
-int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
+compensated_function int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
   pagedListHeader header;
   Tread(xid, list, &header);
 
@@ -113,7 +113,7 @@ int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte *
   return -1;
 }
 
-int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
+compensated_function int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   pagedListHeader header;
   Tread(xid, list, &header);
   recordid headerRid;
@@ -170,7 +170,7 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   return 0;
 }
 
-int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
+compensated_function int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
   byte * value;
   int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
   if(valueSize != -1) {
