@@ -1,18 +1,14 @@
 #define _GNU_SOURCE
 
+#include <config.h>
 #include <lladd/common.h>
+
+#include "latches.h"
+
+#include <pbl/pbl.h>
 #include <errno.h>
 
-#include <assert.h>
-#include <math.h>
-
-
-#include <stdio.h>
-#include <string.h>
-#include <malloc.h>
-
 #undef pthread_mutex_t
-
 #undef pthread_mutex_init
 #undef pthread_mutex_destroy
 #undef pthread_mutex_lock
@@ -42,9 +38,16 @@ int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int li
   char * location;
   int location_length = asprintf(&location, "%s %d", file, line);
 
+  /* DEBUG("Acquire mutex:  %s %d\n", file, line);*/
+
   while(EBUSY == (ret = pthread_mutex_trylock(&(mutex->mutex)))) {
     blockCount ++;
     pthread_yield();
+    
+    if(blockCount > 10000) {
+      DEBUG("Spinning at %s:%d, %ld times\n", file, line, blockCount);
+    }
+
   }
   
 
@@ -135,6 +138,9 @@ __profile_rwl *__profile_rw_initlock (char * file, int line) {
     @todo For now, we only profile write locks...
 */
 void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
+
+  /*  DEBUG("Read lock:  %s %d\n", file, line); */
+
   readlock(lock->lock, d);
 
 }
@@ -144,6 +150,9 @@ void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
   int location_length = asprintf(&location, "write %s %d", file, line);
 
   profile_tuple * tup;
+
+  /*  DEBUG("Write lock:  %s %d\n", file, line); */
+
 
   /** @todo Should we spin instead of using the more efficient rwl
       implementation, or should we see how many times we were woken

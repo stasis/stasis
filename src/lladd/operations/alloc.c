@@ -1,4 +1,9 @@
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/operations/alloc.h>
+
+#include <lladd/transactional.h>
 #include <lladd/page.h>
 #include <lladd/bufferManager.h>
 #include "../blobManager.h"
@@ -50,7 +55,7 @@ Operation getAlloc() {
 }
 
 
-recordid Talloc(int xid, size_t size) {
+recordid Talloc(int xid, long size) {
   recordid rid;
 
   if(size >= BLOB_THRESHOLD_SIZE) { 

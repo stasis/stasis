@@ -48,7 +48,8 @@ terms specified in this license.
 #include <lladd/logger/logWriter.h>
 #include <lladd/transactional.h>
 
-#include <pthread.h>
+#include "../../src/lladd/latches.h"
+#include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"
 
@@ -68,7 +69,7 @@ static void setup_log() {
     LogEntry * f;
     recordid rid;
     byte * args = (byte*)"Test 123.";
-    size_t args_size = 10;  /* Including null */
+    long args_size = 10;  /* Including null */
     unsigned long preImage = 42;
 
     rid.page = 0;
@@ -289,7 +290,8 @@ static void* worker_thread(void * arg) {
     /*    fail_unless(1, NULL); */
 	
     /* Try to interleave requests as much as possible */
-    pthread_yield();
+    /*pthread_yield(); */
+    sched_yield();
 
   }
 

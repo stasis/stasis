@@ -40,13 +40,13 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <lladd/bufferManager.h>
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/logger/logger2.h>
 #include <lladd/logger/logWriter.h>
-#include <malloc.h>
-
-#include <stdlib.h>
-
+#include <lladd/bufferManager.h>
+#include <stdio.h>
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
   tl.xid = xid;
@@ -83,7 +83,7 @@ lsn_t LogTransAbort(TransactionLog * l) {
 
 LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte * args) {
   void * preImage = NULL;
-  size_t argSize  = 0;
+  long argSize  = 0;
   LogEntry * e;
 
   if(operationsTable[operation].sizeofData == SIZEOF_RECORD) {
@@ -93,7 +93,7 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
   }
 
   if(operationsTable[operation].undo == NO_INVERSE) {
-    DEBUG("Creating %d byte physical pre-image.\n", rid.size);
+    DEBUG("Creating %ld byte physical pre-image.\n", rid.size);
     preImage = malloc(rid.size);
     if(!preImage) { perror("malloc"); abort(); }
     readRecord(l->xid, rid, preImage);

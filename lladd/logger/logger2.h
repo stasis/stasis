@@ -53,10 +53,7 @@ terms specified in this license.
 #ifndef __LOGGER2_H__
 #define __LOGGER2_H__
 
-/*#include "logEntry.h"
-#include "logHandle.h"*/
 #include <lladd/operations.h>
-
 
 /**
    A callback function that allows logHandle's iterator to stop

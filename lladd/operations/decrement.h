@@ -54,9 +54,7 @@ terms specified in this license.
 #ifndef __DECREMENT_H__
 #define __DECREMENT_H__
 
-/*#include "../constants.h"*/
 #include <lladd/operations.h>
-/*#include "../bufferManager.h"*/
 
 #define Tdecrement(xid,rid) Tupdate(xid,rid,0, OPERATION_DECREMENT)
 

@@ -5,14 +5,15 @@
    allows bufferManager's implementation to focus on providing atomic
    writes, and locking.
 */
+#include <config.h>
+#include <lladd/common.h>
 #include <lladd/pageCache.h>
+#include <lladd/bufferManager.h>
+
 #include <assert.h>
 #include <pbl/pbl.h>
-#include <lladd/constants.h>
-#include <lladd/page.h>
-#include <stdlib.h>
 
-#include <lladd/bufferManager.h>
+#include <stdio.h>
 
 static pblHashTable_t *activePages; /* page lookup */
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */

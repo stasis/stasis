@@ -39,15 +39,16 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/logger/logWriter.h>
 #include <lladd/logger/logHandle.h>
-#include <assert.h>
-#include <config.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <libdfa/rw.h>
 
+#include "../latches.h"
+
+#include <assert.h>
+#include <stdio.h>
 /** 
     @todo Should the log file be global? 
 */
@@ -91,7 +92,16 @@ static lsn_t global_offset;
    if it needs the file position to be preserved across calls.  (For
    example, when using fseek(); myFseek() does this, but only
    internally, so if it is used to position the stream, it should be
-   guarded with flockfile().
+   guarded with flockfile().  Unfortunately, it appears as though we
+   cannot use flockfile() on some systems, because this sequence does
+   not behave correctly:
+
+   flockfile(foo);
+   fclose(foo);
+   fopen(foo);
+   funlockfile(foo);
+
+   Oh well.
 */
 static rwl * log_read_lock;
 
@@ -101,7 +111,7 @@ static rwl * log_read_lock;
    the tail of the old log to the new log, until after the rename call
    returns.
 */    
-pthread_mutex_t log_write_mutex;
+pthread_mutex_t log_write_mutex; 
 
 /**
    Invariant:  We only want one thread in truncateLog at a time.
@@ -109,10 +119,11 @@ pthread_mutex_t log_write_mutex;
 pthread_mutex_t truncateLog_mutex;
 
 
+
 /** 
     @todo Put myFseek, myFwrite in their own file, and make a header for it... */
 
-void myFwrite(const void * dat, size_t size, FILE * f);
+void myFwrite(const void * dat, long size, FILE * f);
 long myFseek(FILE * f, long offset, int whence);
 int openLogWriter() {
   log = fopen(LOG_FILE, "a+");
@@ -190,7 +201,7 @@ int openLogWriter() {
 */
 int writeLogEntry(LogEntry * e) {
   int nmemb;
-  const size_t size = sizeofLogEntry(e);
+  const long size = sizeofLogEntry(e);
 
 
   if(e->xid == -1) { /* Don't write log entries for recovery xacts. */
@@ -212,10 +223,12 @@ int writeLogEntry(LogEntry * e) {
     lh = getLSNHandle(nextAvailableLSN);
 
     while((le = nextInLog(&lh))) {
-      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(size_t);;
+      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(long);;
       free(le);
     }
   }
+
+  writelock(log_read_lock, 100);
 
   /* Set the log entry's LSN. */
 
@@ -229,14 +242,15 @@ int writeLogEntry(LogEntry * e) {
 
   e->LSN = nextAvailableLSN;
 
-  flockfile(log);  /* Prevent other threads from calling fseek... */
+  /* We have the write lock, so no-one else can call fseek behind our back. */
+  /*  flockfile(log); */ /* Prevent other threads from calling fseek... */
 
   fseek(log, nextAvailableLSN - global_offset, SEEK_SET); 
       
-  nextAvailableLSN += (size + sizeof(size_t));
+  nextAvailableLSN += (size + sizeof(long));
 
   /* Print out the size of this log entry.  (not including this item.) */
-  nmemb = fwrite(&size, sizeof(size_t), 1, log);
+  nmemb = fwrite(&size, sizeof(long), 1, log);
 
   if(nmemb != 1) {
     perror("writeLog couldn't write next log entry size!");
@@ -252,9 +266,10 @@ int writeLogEntry(LogEntry * e) {
     return FILE_WRITE_ERROR;
   }
   
-  funlockfile(log);
+  /*  funlockfile(log); */
 
   pthread_mutex_unlock(&log_write_mutex);  
+  writeunlock(log_read_lock);
 
   /* We're done. */
   return 0;
@@ -301,7 +316,7 @@ void closeLogWriter() {
   deletelock(flushedLSN_lock);
   deletelock(nextAvailableLSN_lock);
   deletelock(log_read_lock);
-  pthread_mutex_destroy(&log_write_mutex);
+  pthread_mutex_destroy(&log_write_mutex); 
 
 }
 
@@ -311,7 +326,7 @@ void deleteLogWriter() {
 
 static LogEntry * readLogEntry() {
   LogEntry * ret = NULL;
-  size_t size, entrySize;
+  long size, entrySize;
   int nmemb;
   
 
@@ -319,7 +334,7 @@ static LogEntry * readLogEntry() {
     return NULL;
   }
 
-  nmemb = fread(&size, sizeof(size_t), 1, log);
+  nmemb = fread(&size, sizeof(long), 1, log);
   
   if(nmemb != 1) {
     if(feof(log)) {
@@ -377,11 +392,15 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 
   /*  readlock(log_read_lock); */
 
-  flockfile(log);
+  /* Irritating overhead; two mutex acquires to do a read. */
+  readlock(log_read_lock, 200);
+
+  flockfile(log); 
   fseek(log, LSN - global_offset, SEEK_SET);
   ret = readLogEntry();
   funlockfile(log);
-  /* readunlock(log_read_lock); */
+
+  readunlock(log_read_lock); 
 
   return ret;
   
@@ -397,7 +416,7 @@ int truncateLog(lsn_t LSN) {
 
   long size;
 
-  int count;
+  /*  int count; */
 
   pthread_mutex_lock(&truncateLog_mutex);
 
@@ -435,13 +454,16 @@ int truncateLog(lsn_t LSN) {
   pthread_mutex_lock(&log_write_mutex);
 
   lh = getLSNHandle(LSN);
-  
+
+
   while((le = nextInLog(&lh))) {
     size = sizeofLogEntry(le);
     myFwrite(&size, sizeof(lsn_t), tmpLog);
     myFwrite(le, size, tmpLog);
     free (le);
   } 
+
+  writelock(log_read_lock, 300);
   
   fflush(tmpLog);
 #ifdef HAVE_FDATASYNC
@@ -452,7 +474,7 @@ int truncateLog(lsn_t LSN) {
 
   /** Time to shut out the readers */
 
-  flockfile(log);
+  /*  flockfile(log); --- Don't need this; we hold the writelock. */
 
   fclose(log);  /* closeLogWriter calls sync, but we don't need to. :) */
   fclose(tmpLog); 
@@ -470,12 +492,14 @@ int truncateLog(lsn_t LSN) {
     return FILE_WRITE_OPEN_ERROR;
   }
 
-  myFseek(log, 0, SEEK_SET);
-  count = fread(&global_offset, sizeof(lsn_t), 1, log);
-  assert(count == 1);
+  /*  myFseek(log, 0, SEEK_SET); */
+  global_offset = LSN - sizeof(lsn_t); /*= fread(&global_offset, sizeof(lsn_t), 1, log);*/
+  /*assert(count == 1); */
 
-  funlockfile(log);
+  /*  funlockfile(log);  */
+  writeunlock(log_read_lock);
   pthread_mutex_unlock(&log_write_mutex);
+
   pthread_mutex_unlock(&truncateLog_mutex);
 
   return 0;
@@ -486,7 +510,7 @@ lsn_t firstLogEntry() {
   return global_offset + sizeof(lsn_t);
 }
 
-void myFwrite(const void * dat, size_t size, FILE * f) {
+void myFwrite(const void * dat, long size, FILE * f) {
   int nmemb = fwrite(dat, size, 1, f);
   /* test */
   if(nmemb != 1) {

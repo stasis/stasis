@@ -45,22 +45,14 @@ terms specified in this license.
  * implementation of pages
  ************************************************/
 
-#include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <lladd/bufferManager.h>
-#include <lladd/constants.h>
-/*#include "linkedlist.h"*/
+#include <config.h>
+#include <lladd/common.h>
 #include <lladd/page.h>
-#include <pbl/pbl.h>
+
+#include <assert.h>
+#include <stdio.h>
+
+#include <lladd/constants.h>
 
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
@@ -243,7 +235,7 @@ void pageWriteLSN(Page page) {
  * in the page, minus the size of a new slot entry.)  This is either exact, 
  * or an underestimate.
  */
-size_t freespace(Page page) {
+int freespace(Page page) {
 	int space = (slotMemAddr(page.memAddr, readNumSlots(page.memAddr)) - (page.memAddr + readFreeSpace(page.memAddr)));
 	return (space < 0) ? 0 : space;
 }
@@ -284,22 +276,7 @@ static void writeNumSlots(byte *memAddr, int numSlots) {
 	setFirstHalfOfWord((int*)(unsigned int*)(memAddr + START_OF_NUMSLOTS), numSlots);
 }
 
-/**
- * pageRalloc() assumes that the page is already loaded in memory.  It takes
- * as parameters a Page and the size in bytes of the new record.  pageRalloc()
- * returns a recordid representing the newly allocated record.
- *
- * NOTE: might want to pad records to be multiple of words in length, or, simply
- *       make sure all records start word aligned, but not necessarily having 
- *       a length that is a multiple of words.  (Since Tread(), Twrite() ultimately 
- *       call memcpy(), this shouldn't be an issue)
- *
- * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
- * amount of freespace exists in this page.  (@see freespace())
- *
- * @todo Makes no attempt to reuse old recordid's.
- */
-recordid pageRalloc(Page page, size_t size) {
+recordid pageRalloc(Page page, int size) {
 	int freeSpace = readFreeSpace(page.memAddr);
 	int numSlots = readNumSlots(page.memAddr);
 	recordid rid;

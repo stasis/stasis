@@ -58,16 +58,13 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-#include <stddef.h>
-/*#include <pbl/pbl.h> */
-
 /**
  * represents how to look up a record on a page
  */
 typedef struct {
   int page;
   int slot;
-  size_t size;
+  long size;
 } recordid;
 
 
@@ -108,14 +105,24 @@ long pageReadLSN(Page page);
  * parameter a Page, and returns an estimate of the amount of free space on this
  * page.  This is either exact, or an underestimate.
  */
-size_t freespace(Page page);
+int freespace(Page page);
 
 /**
  * assumes that the page is already loaded in memory.  It takes as
  * parameters a Page and the size in bytes of the new record.  pageRalloc()
  * returns a recordid representing the newly allocated record.
+ *
+ * NOTE: might want to pad records to be multiple of words in length, or, simply
+ *       make sure all records start word aligned, but not necessarily having 
+ *       a length that is a multiple of words.  (Since Tread(), Twrite() ultimately 
+ *       call memcpy(), this shouldn't be an issue)
+ *
+ * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
+ * amount of freespace exists in this page.  (@see freespace())
+ *
+ * @todo Makes no attempt to reuse old recordid's.
  */
-recordid pageRalloc(Page page, size_t size);
+recordid pageRalloc(Page page, int size);
 
 void pageWriteRecord(int xid, Page page, recordid rid, const byte *data);
 

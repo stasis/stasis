@@ -1,13 +1,12 @@
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/operations/lladdhash.h>
+#include <lladd/bufferManager.h>
+#include <lladd/transactional.h>
 
 #include <assert.h>
 #include <stdio.h>
-#include <memory.h>
-#include <stdlib.h>
-
-
-#include <lladd/transactional.h>
-
 static const recordid ZERO_RECORDID = {0,0,0};
 
 typedef struct {
@@ -190,7 +189,7 @@ int _lHtInsert(int xid, recordid garbage, lladdHashRec_t * arg) {
   return 0;
 }
 /**Todo:  ht->iterData is global to the hash table... seems like a bad idea! */
-int lHtPosition( int xid, lladdHash_t *ht, const void *key, size_t key_length ) {
+int lHtPosition( int xid, lladdHash_t *ht, const void *key, int key_length ) {
 	int index = hash(key, key_length, ht->size);
 	
 	recordid rid = _getHashMap(xid, ht)[index];
@@ -221,7 +220,7 @@ int lHtPosition( int xid, lladdHash_t *ht, const void *key, size_t key_length ) 
 	}
 		
 }
-int lHtLookup( int xid, lladdHash_t *ht, const void *key, size_t keylen, void *buf ) {
+int lHtLookup( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf ) {
 
 	int index = hash(key, keylen, ht->size);
 	recordid rid = _getHashMap(xid, ht)[index];
@@ -378,7 +377,7 @@ int lHtDelete(int xid, lladdHash_t *ht) {
 }
 
 
-int lHtInsert(int xid, lladdHash_t *ht, const void *key, size_t keylen, void *dat, size_t datlen) {
+int lHtInsert(int xid, lladdHash_t *ht, const void *key, int keylen, void *dat, long datlen) {
   recordid rid;
   void * log_r;
   lladdHashRec_t lir;
@@ -401,7 +400,7 @@ int lHtInsert(int xid, lladdHash_t *ht, const void *key, size_t keylen, void *da
   return 0;
   
 }
-int lHtRemove( int xid, lladdHash_t *ht, const void *key, size_t keylen, void *buf, size_t buflen ) {
+int lHtRemove( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf, long buflen ) {
 
   recordid rid;
   void * log_r;

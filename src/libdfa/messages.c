@@ -39,7 +39,7 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <sys/types.h>
+/*#include <sys/types.h> */
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netinet/in.h>

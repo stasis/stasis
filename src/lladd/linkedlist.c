@@ -44,11 +44,12 @@ terms specified in this license.
  *
  * simple linked list
  *****************************/
-
-#include <stdlib.h>
-#include <stdio.h>
+#include <config.h>
+#include <lladd/common.h>
 
 #include "linkedlist.h"
+
+#include <stdio.h>
 
 #ifndef NULL
 #define NULL 0

@@ -39,13 +39,14 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/logger/logEntry.h>
 
 #include <assert.h>
 #include <lladd/operations.h>
-#include <config.h>
-#include <malloc.h>
-#include <string.h>
 
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = malloc(sizeof(struct __raw_log_entry));
@@ -116,7 +117,7 @@ LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid,
 
 
 
-size_t sizeofLogEntry(const LogEntry * log) {
+long sizeofLogEntry(const LogEntry * log) {
   switch (log->type) {
   case CLRLOG:
     return sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry);

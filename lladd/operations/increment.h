@@ -57,9 +57,7 @@ terms specified in this license.
 #ifndef __INCREMENT_H__
 #define __INCREMENT_H__
 
-/*#include "../constants.h"*/
 #include <lladd/operations.h>
-/*#include "../bufferManager.h"*/
 
 #define Tincrement(xid,rid) Tupdate(xid,rid,0, OPERATION_INCREMENT)
 

@@ -1,12 +1,15 @@
+#include <config.h>
+#include <lladd/common.h>
+
 #include <lladd/transactional.h>
-#include <lladd/constants.h>
-#include <lladd/logger/logger2.h>
-#include <lladd/bufferManager.h>
+
 #include <lladd/recovery.h>
-#include <string.h>
-#include <assert.h>
 #include <lladd/logger/logWriter.h>
-#include <lladd/logger/logHandle.h>
+#include <lladd/bufferManager.h>
+#include <lladd/logger/logger2.h>
+
+#include <stdio.h>
+#include <assert.h>
 
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
@@ -21,8 +24,8 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
 	operationsTable[OPERATION_PREPARE]   = getPrepare();
-	operationsTable[OPERATION_LHINSERT]  = getLHInsert();
-	operationsTable[OPERATION_LHREMOVE]  = getLHRemove();
+	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
+		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_ALLOC]     = getAlloc();
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
 

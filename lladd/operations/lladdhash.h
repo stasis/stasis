@@ -27,16 +27,14 @@
 #ifndef __LLADDHASH_H__
 #define __LLADDHASH_H__
 
-/*#include "../transactional.h"*/
-
 #include <lladd/operations.h>
 
 #define MAX_LLADDHASHES 1000
 
 typedef struct {
   recordid store;
-  size_t keylen;
-  size_t datlen;
+  int keylen;
+  long datlen;
   recordid next;
 } lladdHashItem_t;
 
@@ -55,21 +53,21 @@ typedef struct {
 
 lladdHash_t * lHtCreate(int xid, int size);
 int lHtValid(int xid, lladdHash_t *ht);
-int lHtLookup( int xid, lladdHash_t *ht, const void *key, size_t keylen, void *buf );
+int lHtLookup( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf );
 int lHtFirst( int xid, lladdHash_t *ht, void *buf );
 int lHtNext( int xid, lladdHash_t *ht, void *buf );
 int lHtCurrent( int xid, lladdHash_t *ht, void *buf);
 int lHtCurrentKey(int xid, lladdHash_t *ht, void *buf);
 int lHtDelete(int xid, lladdHash_t *ht);
-int lHtPosition( int xid, lladdHash_t *ht, const void *key, size_t key_length );
+int lHtPosition( int xid, lladdHash_t *ht, const void *key, int key_length );
 /* These two are the only ones that result in a log entry... */
 /*
-  int _lHtInsert(int xid, lladdHash_t *ht, const void *key, size_t keylen, void * dat, size_t datlen);
-  int _lHtRemove( int xid, lladdHash_t *ht, const void *key, size_t keylen, void *buf );
+  int _lHtInsert(int xid, lladdHash_t *ht, const void *key, int keylen, void * dat, long datlen);
+  int _lHtRemove( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf );
 */
 
-int lHtInsert(int xid, lladdHash_t *ht, const void *key, size_t keylen, void * dat, size_t datlen);
-int lHtRemove( int xid, lladdHash_t *ht, const void *key, size_t keylen, void *buf, size_t buflen);
+int lHtInsert(int xid, lladdHash_t *ht, const void *key, int keylen, void * dat, long datlen);
+int lHtRemove( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf, long buflen);
 
 Operation getLHInsert();
 Operation getLHRemove();

@@ -19,6 +19,11 @@ after configure.
 
 We haven't tested make install. ;)
 
+If you want to install check to a non-standard location, try this:
+
+./configure --with-check=/home/eecs/sears/check
+
+
 This package contains a copy of Peter Graf's Program Base Library, PBL, which is
 distributed under the terms of the LGPL.
 

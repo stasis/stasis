@@ -72,7 +72,7 @@ typedef struct {
 } blob_record_t;
 
 
-recordid preAllocBlob(int xid, size_t blobsize);
+recordid preAllocBlob(int xid, long blobsize);
 
 /**
    Allocate a blob of size blobSize. 

@@ -110,7 +110,7 @@ Page loadPage(int pageid);
  * @param size The size of the new record
  * @return allocated record
  */
-recordid ralloc(int xid, size_t size);
+recordid ralloc(int xid, long size);
 
 /**
  * Find a page with some free space.

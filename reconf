@@ -1,11 +1,9 @@
 #!/bin/sh
 rm -f config.cache
 rm -f acconfig.h
-#touch acconfig.h
-#aclocal -I m4
-aclocal-1.8
+aclocal -I m4
 autoconf
 autoheader
-#acconfig
-automake-1.8 -a
+libtoolize --automake
+automake  -a
 exit

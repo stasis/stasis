@@ -44,27 +44,16 @@ terms specified in this license.
  *
  * implementation of the page buffer
  * *************************************************/
-#include <unistd.h>
+
+#include <config.h>
+#include <lladd/common.h>
+
 #include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <pbl/pbl.h>
 #include <lladd/bufferManager.h>
-#include <lladd/page.h>
-#include <lladd/constants.h>
-
 #include "blobManager.h"
-
 #include <lladd/pageCache.h>
-
 #include <lladd/logger/logWriter.h>
 
 static FILE * stable = NULL;
@@ -131,27 +120,18 @@ void pageWrite(const Page * ret) {
 }
 
 static void openPageFile() {
-  int stable_fd;
 
   DEBUG("Opening storefile.\n");
   if( ! (stable = fopen(STORE_FILE, "r+"))) { /* file may not exist */
     byte* zero = calloc(1, PAGE_SIZE);
 
-    DEBUG("Creating new page storefile.\n");
-
-    if( (stable_fd = creat(STORE_FILE, 0666)) == -1 ) { /* cannot even create it */
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror("Creating store file"); abort();
-    }
-    if( close(stable_fd)) {
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror(NULL); abort();
-    }
-    if(!(stable = fopen(STORE_FILE, "r+"))) { perror("Couldn't open or create store file"); abort(); }
+    if(!(stable = fopen(STORE_FILE, "w+"))) { perror("Couldn't open or create store file"); abort(); }
 
     /* Write out one page worth of zeros to get started. */
     
     if(1 != fwrite(zero, PAGE_SIZE, 1, stable)) { assert (0); }
+
+    free(zero);
   }
   
   lastFreepage = 0;
@@ -273,7 +253,7 @@ Page loadPage (int pageid) {
 Page * lastRallocPage = 0;
 
 
-recordid ralloc(int xid, /*lsn_t lsn,*/ size_t size) {
+recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
 
   recordid ret;
   Page p;
@@ -292,7 +272,7 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ size_t size) {
     ret = pageRalloc(p, size);
     
     /*  }  */
-  DEBUG("alloced rid = {%d, %d, %d}\n", ret.page, ret.slot, ret.size);
+  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size);
   return ret;
 }
 long readLSN(int pageid) {
@@ -326,10 +306,10 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 }
 void readRecord(int xid, recordid rid, void *buf) {
   if(rid.size > BLOB_THRESHOLD_SIZE) {
-    DEBUG("Reading blob. xid = %d rid = { %d %d %d } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
     readBlob(xid, rid, buf);
   } else {
-    DEBUG("Reading record xid = %d rid = { %d %d %d } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
     pageReadRecord(xid, loadPage(rid.page), rid, buf);
   }
 }

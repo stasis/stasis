@@ -8,15 +8,22 @@
 
 */
 
+#include <config.h>
+#include <lladd/common.h>
+
+#include <lladd/recovery.h>
+
 #include <pbl/pbl.h>
 #include "linkedlist.h"
-#include <lladd/logger/logger2.h>
 #include <lladd/logger/logHandle.h>
-#include <lladd/common.h>
+#include <lladd/logger/logWriter.h>
 #include <lladd/bufferManager.h>
 
-#include <malloc.h>
+#include <lladd/transactional.h>
+
+#include <stdio.h>
 #include <assert.h>
+
 
 /** @todo This include is an artifact of our lack of infrastructure to support log iterator guards.  */
 #include <lladd/operations/prepare.h>

@@ -1,19 +1,16 @@
-#include <unistd.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <config.h>
+#include <lladd/common.h>
 
-#include <pbl/pbl.h>
+#include <assert.h>
+
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
-#include <lladd/page.h>
 #include <lladd/constants.h>
 
 #include "blobManager.h"
+#include <pbl/pbl.h>
 
-
+#include <stdio.h>
 
 static FILE * blobf0 = NULL, * blobf1 = NULL;
 /**
@@ -28,7 +25,8 @@ static pblHashTable_t * dirtyBlobs;
 static void readRawRecord(int xid, recordid rid, void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
-  readRecord(xid, blob_rec_rid, buf);
+  /*readRecord(xid, blob_rec_rid, buf);*/
+  Tread(xid, blob_rec_rid, buf);
 }
 
 static void writeRawRecord(int xid, recordid rid, const void * buf, int size) {
@@ -41,31 +39,17 @@ static void writeRawRecord(int xid, recordid rid, const void * buf, int size) {
 
 /* moved verbatim from bufferManger.c, then hacked up to use FILE * instead of ints. */
 void openBlobStore() {
-  int blobfd0, blobfd1;
+
+  /* the r+ mode opens an existing file read /write */
   if( ! (blobf0 = fopen(BLOB0_FILE, "r+"))) { /* file may not exist */
-    if( (blobfd0 = creat(BLOB0_FILE, 0666)) == -1 ) { /* cannot even create it */
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror("Creating blob 0 file"); abort();
-    }
-    if( close(blobfd0)) {
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror(NULL); abort();
-    }
-   if(!(blobf0 = fopen(BLOB0_FILE, "r+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
+    /* the w+ mode truncates, creates, and opens read / write */
+   if(!(blobf0 = fopen(BLOB0_FILE, "w+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
   }
 
   DEBUG("blobf0 opened.\n");
 
   if( ! (blobf1 = fopen(BLOB1_FILE, "r+"))) { /* file may not exist */
-    if( (blobfd1 = creat(BLOB1_FILE, 0666)) == -1 ) { /* cannot even create it */
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror("Creating blob 1 file"); abort();
-    }
-    if( close(blobfd1)) {
-      printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-      perror(NULL); abort();
-    }
-    if(!(blobf1 = fopen(BLOB1_FILE, "r+"))) { perror("Couldn't open or create blob 1 file"); abort(); }
+    if(!(blobf1 = fopen(BLOB1_FILE, "w+"))) { perror("Couldn't open or create blob 1 file"); abort(); }
   }
 
   DEBUG("blobf1 opened.\n");
@@ -102,14 +86,14 @@ long myFseek(FILE * f, long offset, int whence) {
   return ret;
 }
 
-recordid preAllocBlob(int xid, size_t blobSize) {
+recordid preAllocBlob(int xid, long blobSize) {
   long fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_record_t blob_rec;
   Page p;
   /*  char zero = 0; */
   /* Allocate space for the blob entry. */
  
-  DEBUG("Allocing blob (size %d)\n", blobSize);
+  DEBUG("Allocing blob (size %ld)\n", blobSize);
 
   assert(blobSize > 0); /* Don't support zero length blobs right now... */
 
@@ -153,7 +137,7 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
   /*  recordid rid = preAllocBlob(xid, blobSize); */
   /* Allocate space for the blob entry. */
  
-  DEBUG("post Allocing blob (size %d)\n", rid.size);
+  DEBUG("post Allocing blob (size %ld)\n", rid.size);
 
   assert(rid.size > 0); /* Don't support zero length blobs right now... */
 
@@ -280,7 +264,7 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
   FILE * fd;
   int readcount;
 
-  DEBUG("Writing blob (size %d)\n", rid.size);
+  DEBUG("Writing blob (size %ld)\n", rid.size);
 
 
   /* Tread() raw record */

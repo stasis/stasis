@@ -1,4 +1,6 @@
+#include <config.h>
 #include <lladd/common.h>
+#include "latches.h"
 
 #include <math.h>
 

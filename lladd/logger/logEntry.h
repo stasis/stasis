@@ -120,7 +120,7 @@ LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid,
 
 
 
-size_t sizeofLogEntry(const LogEntry * log);
+long sizeofLogEntry(const LogEntry * log);
 const byte * getUpdateArgs(const LogEntry * log);
 const byte * getUpdatePreImage(const LogEntry * log);
 

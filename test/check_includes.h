@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 void setup (void) { 
   remove("logfile.txt");
   remove("storefile.txt");

@@ -45,6 +45,8 @@ terms specified in this license.
 #include <lladd/bufferManager.h>
 #include <assert.h>
 
+#include <stdio.h>
+
 Operation operationsTable[MAX_OPERATIONS];
 
 void doUpdate(const LogEntry * e) {
@@ -61,10 +63,10 @@ void redoUpdate(const LogEntry * e) {
     recordid rid = e->contents.update.rid;
 #endif
     if(e->LSN > pageLSN) {
-      DEBUG("OPERATION Redo, %ld > %ld {%d %d %d}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Redo, %ld > %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
       doUpdate(e);
     } else {
-      DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %d}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
     }
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
@@ -75,10 +77,10 @@ void redoUpdate(const LogEntry * e) {
        doesn't, then undo the original operation. */
     if(f->LSN > readLSN(e->contents.update.rid.page)) {
 
-      DEBUG("OPERATION Undoing for clr, %ld {%d %d %d}\n", f->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
       undoUpdate(f, e->LSN);
     } else {
-      DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %d}\n", f->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
     }
   } else {
     assert(0);
@@ -102,16 +104,16 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
     if(undo == NO_INVERSE) {
       /* Physical undo */
 
-      DEBUG("OPERATION Physical undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Physical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
       writeRecord(e->xid, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
     } else {
       /* @see doUpdate() */
       /*      printf("Logical undo"); fflush(NULL); */
-      DEBUG("OPERATION Logical undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
+      DEBUG("OPERATION Logical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
       operationsTable[undo].run(e->xid, clr_lsn, e->contents.update.rid, getUpdateArgs(e));
     }
   } else {
-    DEBUG("OPERATION Skipping undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
+    DEBUG("OPERATION Skipping undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
   }
   /*  printf("Undo done."); fflush(NULL); */
 

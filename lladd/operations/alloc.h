@@ -5,7 +5,7 @@
 
 Operation getAlloc();
 Operation getDealloc();
-recordid Talloc(int xid, size_t size);
+recordid Talloc(int xid, long size);
 void Tdealloc(int xid, recordid rid);
 
 #endif

@@ -52,14 +52,8 @@ terms specified in this license.
 #ifndef __OPERATIONS_H__
 #define __OPERATIONS_H__
 
-/*#include <stddef.h>*/
-/*#include "common.h"*/
-
-
-
-
 #include <lladd/constants.h>
-#include <lladd/transactional.h>
+/*#include <lladd/transactional.h>*/
 #include <lladd/logger/logEntry.h>
 
 BEGIN_C_DECLS
@@ -91,7 +85,7 @@ typedef struct {
       takes.  If set to SIZEOF_RECORD, then the size of the record
       that the operation affects will be used instead.
   */
-	size_t sizeofData;
+	long sizeofData;
   /**
       Does this operation supply an undo operation?
 
@@ -132,8 +126,10 @@ typedef struct {
 } Operation;
 
 /* These need to be installed, since they are required by applications that use LLADD. */
-/*#include "constants.h"
-  #include <lladd/bufferManager.h>*/
+/*#include "constants.h"*/
+
+/*#include <lladd/bufferManager.h>*/
+/*#include "logger/logEntry.h"*/
 
 #include "operations/increment.h"
 #include "operations/decrement.h"
