@@ -420,7 +420,7 @@ and intra-transactional log optimizations collapse multiple updates
 into a single log entry.  In the past, we have implemented such 
 optimizations in an ad-hoc fashion in \yad.  However, we beleive 
 that we have developed the necessary API hooks 
-to allow extensions to \yad to transparently coalesce log entries in the future. (Section~\ref{TransClos})
+to allow extensions to \yad to transparently coalesce log entries in the future (Section~\ref{TransClos}).
 
 %\begin{enumerate}
 %  \item {\bf Incredibly scalable, simple servers CHT's, google fs?, ...}
@@ -706,44 +706,44 @@ solution: don't undo structural changes, just commit them even if the causeing x
 
 % @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
 
-\textcolor{red}{OLD TEXT:} Section~\ref{sub:OperationProperties} states that \yad does not allow
-cascading aborts, implying that operation implementors must protect
-transactions from any structural changes made to data structures by
-uncommitted transactions, but \yad does not provide any mechanisms
-designed for long-term locking. However, one of \yad's goals is to
-make it easy to implement custom data structures for use within safe,
-multi-threaded transactions. Clearly, an additional mechanism is
-needed.
+%% \textcolor{red}{OLD TEXT:} Section~\ref{sub:OperationProperties} states that \yad does not allow
+%% cascading aborts, implying that operation implementors must protect
+%% transactions from any structural changes made to data structures by
+%% uncommitted transactions, but \yad does not provide any mechanisms
+%% designed for long-term locking. However, one of \yad's goals is to
+%% make it easy to implement custom data structures for use within safe,
+%% multi-threaded transactions. Clearly, an additional mechanism is
+%% needed.
 
-The solution is to allow portions of an operation to ``commit'' before
-the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
-support. However, we currently use the slightly simpler (and lighter-weight)
-mechanism described here. If the need arises, we will add support
-for nested top actions.}
-An operation's wrapper is just a normal function, and therefore may
-generate multiple log entries. First, it writes an undo-only entry
-to the log. This entry will cause the \emph{logical} inverse of the
-current operation to be performed at recovery or abort, must be idempotent,
-and must fail gracefully if applied to a version of the database that
-does not contain the results of the current operation. Also, it must
-behave correctly even if an arbitrary number of intervening operations
-are performed on the data structure.
+%% The solution is to allow portions of an operation to ``commit'' before
+%% the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
+%% support. However, we currently use the slightly simpler (and lighter-weight)
+%% mechanism described here. If the need arises, we will add support
+%% for nested top actions.}
+%% An operation's wrapper is just a normal function, and therefore may
+%% generate multiple log entries. First, it writes an undo-only entry
+%% to the log. This entry will cause the \emph{logical} inverse of the
+%% current operation to be performed at recovery or abort, must be idempotent,
+%% and must fail gracefully if applied to a version of the database that
+%% does not contain the results of the current operation. Also, it must
+%% behave correctly even if an arbitrary number of intervening operations
+%% are performed on the data structure.
 
-Next, the operation writes one or more redo-only log entries that may
-perform structural modifications to the data structure. These redo
-entries have the constraint that any prefix of them must leave the
-database in a consistent state, since only a prefix might execute
-before a crash.  This is not as hard as it sounds, and in fact the
-$B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
-that behaves in this way, while the linear hash table implementation
-discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable hash
-table that meets these constraints.
+%% Next, the operation writes one or more redo-only log entries that may
+%% perform structural modifications to the data structure. These redo
+%% entries have the constraint that any prefix of them must leave the
+%% database in a consistent state, since only a prefix might execute
+%% before a crash.  This is not as hard as it sounds, and in fact the
+%% $B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
+%% that behaves in this way, while the linear hash table implementation
+%% discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable hash
+%% table that meets these constraints.
 
-%[EAB: I still think there must be a way to log all of the redoes
-%before any of the actions take place, thus ensuring that you can redo
-%the whole thing if needed. Alternatively, we could pin a page until
-%the set completes, in which case we know that that all of the records
-%are in the log before any page is stolen.]
+%% %[EAB: I still think there must be a way to log all of the redoes
+%% %before any of the actions take place, thus ensuring that you can redo
+%% %the whole thing if needed. Alternatively, we could pin a page until
+%% %the set completes, in which case we know that that all of the records
+%% %are in the log before any page is stolen.]
 
 
 \subsection{Recovery}
@@ -807,7 +807,7 @@ application data that is stored in the system.  This suggests a
 natural partitioning of transactional storage mechanisms into two
 parts.
 
-The first piece implements the write ahead logging component,
+The first piece implements the write-ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
 The complexity of the write ahead logging component lies in
 determining exactly when the undo and redo operations should be
@@ -1022,6 +1022,62 @@ Yet, we believe we have covered everything that a programmer needs
 This was possible due to the careful encapsulation
 of portions of the ARIES algorithm, which is the feature that
 most strongly differentiates \yad from other, similar libraries.
+
+
+\subsection{Example: Increment}
+
+\begin{small}
+\begin{verbatim}
+// Log record that holds arguments for undo/redo.
+
+typedef struct {
+  int amount;
+} inc_dec_t;
+
+int Tincrement(int xid, recordid rid, int amount) {
+   // rec will be serialized to the log.
+   inc_dec_t rec;
+   rec.amount = amount;
+
+   // write a log entry, then execute it
+   Tupdate(xid, rid, &rec, OP_INCREMENT);
+
+   // return the incremented value
+   int new_value;
+   // wrappers can call other wrappers
+   Tread(xid, rid, &new_value);
+   return new_value;
+}
+
+// p is the bufferPool's current copy of the page.
+int operateIncrement(int xid, Page* p, lsn_t lsn,
+                     recordid rid, const void *d) {
+  inc_dec_t * arg = (inc_dec_t)d;
+  int i;
+
+  latchRecord(rid); 
+  readRecord(xid, p, rid, &i);   // read current value
+  i += arg->amount;
+  // writeRecord updates the page and the LSN
+  writeRecord(xid, p, lsn, rid, &i);
+  unlatchRecord(rid); 
+  return 0;                      // no error
+}
+
+// snippet of code that registers the operation
+
+   // first set up the normal case
+   ops[OP_INCREMENT].implementation= &operateIncrement;
+   ops[OP_INCREMENT].argumentSize  = sizeof(inc_dec_t);
+
+   // set the REDO to be the same as normal operation
+   //   Sometime is useful to have them differ.
+   ops[OP_INCREMENT].redoOperation = OP_INCREMENT;
+
+   // set UNDO to be the inverse
+   ops[OP_INCREMENT].undoOperation = OP_DECREMENT;
+\end{verbatim}
+\end{small}
 
 %We hope that this will increase the availability of transactional
 %data primitives to application developers.
