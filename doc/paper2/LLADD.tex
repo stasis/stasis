@@ -583,15 +583,15 @@ page.
 
 ARIES (and thus \yad) allows pages to be {\em stolen}, i.e. written
 back to disk while they still contain uncommitted data.  It is
-tempting to disallow this, but to do so has serious consequences such as
-a increased need for buffer memory (to hold all dirty pages). Worse,
-as we allow multiple transactions to run concurrently on the same page
-(but not typically the same item), it may be that a given page {\em
-always} contains some uncommitted data and thus can never be written
-back.  To handle stolen pages, we log UNDO records that
-we can use to undo the uncommitted changes in case we crash.  \yad
-ensures that the UNDO record is durable in the log before the
-page is written to disk and that the page LSN reflects this log entry.
+tempting to disallow this, but to do so increases the need for buffer
+memory (to hold all dirty pages). Worse, as we allow multiple
+transactions to run concurrently on the same page (but not typically
+the same item), it may be that a given page {\em always} contains some
+uncommitted data and thus can never be written back.  To handle stolen
+pages, we log UNDO records that we can use to undo the uncommitted
+changes in case we crash.  \yad ensures that the UNDO record is
+durable in the log before the page is written to disk and that the
+page LSN reflects this log entry.
 
 Similarly, we do not {\em force} pages out to disk when a transaction
 commits, as this limits performance.  Instead, we log REDO records
@@ -676,7 +676,7 @@ on-disk data structures, the write-ahead logging protocol will provide
 correct ACID transactional semantics, and high performance, concurrent and scalable access to
 application data.  This suggests a
 natural partitioning of transactional storage mechanisms into two
-parts. (Figure \ref{fig:structure})
+parts (Figure \ref{fig:structure}).
 
 The lower layer implements the write-ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
@@ -725,9 +725,9 @@ deadlock-avoidance schemes, which are already prevalent in
 multithreaded application development.  The lock manager is flexible
 enough to also provide index locks for hashtable implementations and 
 more complex locking protocols such as hierarhical two-phase 
-locking.~\cite{hierarcicalLocking,ariesim}  
+locking~\cite{hierarcicalLocking,ariesim}.  
 The lock manager API is divided into callback functions that are made 
-during normal operation and recovery, and into generic lock mananger 
+during normal operation and recovery, and into generic lock manager 
 implementations that may be used with \yad and its index implementations.
 
 %For example, it would be relatively easy to build a strict two-phase
@@ -900,14 +900,14 @@ for \yad's REDO entries.  The physical address (page number) is
 stored, along with the arguments of an arbitrary function that 
 is associated with the log entry.
 
-This is used to implement many primatives, including {\em slotted pages}, which use
+This is used to implement many primitives, including {\em slotted pages}, which use
 an on-page level of indirection to allow records to be rearranged
 within the page; instead of using the page offset, REDO operations use
 the index to locate the data within the page. This allows data within a single
 page to be re-arranged easily, producing contiguous regions of
 free space.  Since the log entry is associated with an arbitrary function
 more sophisticated log entries can be implemented.  In turn, this can improve 
-performance by conserving log space, or be used to build match recovery to application
+performance by conserving log space, or be used to match recovery to application
 semantics.
 %\yad generalizes this model, allowing the parameters of a 
 %custom log entry to invoke arbitrary application-specific code.  
@@ -923,7 +923,7 @@ semantics.
 bytes, {\em fixed-page}, a record-oriented page with fixed-length records,
 {\em slotted-page}, which supports variable-sized records, and 
 {\em versioned-page},  a slotted-page with a seperate version number for 
-each record. (Section~\ref{version-pages}).  
+each record (Section~\ref{version-pages}).  
 
 {\em Logical logging} uses a higher-level key to specify the
 UNDO/REDO.  Since these higher-level keys may affect multiple pages,
@@ -961,7 +961,7 @@ make multi-page updates transactional: although many pages might be
 modified they will commit or abort as a group and be recovered
 accordingly.
 
-However, this level of isolation disallows all concurrency between 
+However, this level of isolation disallows all concurrency among 
 transactions that use the same data structure.  ARIES introduced the 
 notion of nested top actions to
 address this problem.  For example, consider what would happen if one
@@ -1005,7 +1005,7 @@ cascading aborts.  If the transaction that encloses the operations
 aborts, the logical undo will {\em compensate} for
 its effects, but leave its structural changes intact. Because this 
 recipe does not ensure transactional consistency and is largely 
-orthoganol to the use of a lock mananger, we call this class of 
+orthogonal to the use of a lock mananger, we call this class of 
 concurrenct control {\em latching} throughout this paper.
 
 We have found the recipe to be easy to follow and very effective, and
@@ -1172,7 +1172,7 @@ In this section we walked through some of the more important parts of
 the \yad API, including the lock manager, nested top actions and log
 operations.  The majority of the recovery algorithm's complexity is 
 hidden from developers.  We argue that \yad's novel approach toward 
-the encapsulation of transactional primatives makes it easy for 
+the encapsulation of transactional primitives makes it easy for 
 developers to use these mechanisms to enhance application performance
 and simplify software design.
 
