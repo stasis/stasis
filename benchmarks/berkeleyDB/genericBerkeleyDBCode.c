@@ -176,7 +176,7 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	 *	free-threaded handle
 	 *	read/write owner only
 	 */
-	if ((ret = db->open(db, NULL, name, NULL, /*DB_BTREE*//* DB_RECNO */DB_HASH,
+	if ((ret = db->open(db, NULL, name, NULL, /*DB_BTREE*//* DB_RECNO */DB_HASH, /*DB_DIRECT_LOG | DB_DIRECT_DB | */
 			    DB_AUTO_COMMIT | DB_DIRTY_READ | DB_TXN_SYNC | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
 		(void)db->close(db, 0);
 		dbenv->err(dbenv, ret, "db->open: %s", name);

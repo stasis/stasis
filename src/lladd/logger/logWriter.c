@@ -135,11 +135,12 @@ pthread_mutex_t log_write_mutex;
 */
 pthread_mutex_t truncateLog_mutex;
 
-
+/**  If 1, flushLog needs to call fseek the next time it is called. */
 static int sought = 1;
 static char * buffer;
 int openLogWriter() {
-#define BUFSIZE (1024*96)
+  //#define BUFSIZE (1024*96)
+#define BUFSIZE (1024 * 1024)
 //#define BUFSIZE (512)
   //char * buffer ;/*= malloc(BUFSIZE);*/
  /* int ret = posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE);
@@ -148,7 +149,7 @@ int openLogWriter() {
   
   if(!buffer) { return LLADD_NO_MEM; }
 
-  int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND /*| O_SYNC*/, S_IRWXU | S_IRWXG | S_IRWXO);
+  int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
     perror("Couldn't open log file (A)");
     abort();
@@ -315,7 +316,14 @@ int writeLogEntry(LogEntry * e) {
     interactions between write() calls and readLSN, and locking, so
     this currently only writes one entry at a time. (If this function
     weren't designed to bundle log entries together, it would not make
-    such heavy use of global variables...) */
+    such heavy use of global variables...) 
+
+    This function should only be called when the calling thread holds
+    a write lock on log_read_lock.  In theory, this function will not
+    block on I/O, although in the case of long running-transactions,
+    log's buffer may fill up.  Since we have opened the file with
+    O_SYNC, this function may block on disk I/O.
+*/
 static int flushLog() {
   if (!logBuffer) { return 0;}
 
@@ -339,22 +347,24 @@ static int flushLog() {
 
 void syncLog() {
   lsn_t newFlushedLSN;
+  writelock(log_read_lock, 0);
   if(sought) {
     newFlushedLSN = myFseek(log, 0, SEEK_END);
-    sought = 1;
+    sought = 1; 
   } else {
     newFlushedLSN = ftell(log);
   }
+  writeunlock(log_read_lock);
   /* Wait to set the static variable until after the flush returns. */
   
   fflush(log);
   // Since we open the logfile with O_SYNC, fflush suffices.
 #ifdef HAVE_FDATASYNC
   /* Should be available in linux >= 2.4 */
-  fdatasync(fileno(log));  
+  // fdatasync(fileno(log));  
 #else
   /* Slow - forces fs implementation to sync the file metadata to disk */
-  fsync(fileno(log));   
+  //  fsync(fileno(log));   
 #endif
 
   writelock(flushedLSN_lock, 0);
@@ -531,9 +541,9 @@ int truncateLog(lsn_t LSN) {
   
   fflush(tmpLog);
 #ifdef HAVE_FDATASYNC
-  fdatasync(fileno(tmpLog));
+  //  fdatasync(fileno(tmpLog));
 #else
-  fsync(fileno(tmpLog));
+  //  fsync(fileno(tmpLog));
 #endif
 
   /** Time to shut out the readers */

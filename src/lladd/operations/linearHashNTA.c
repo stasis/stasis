@@ -223,7 +223,6 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
       Tread(xid, bucket, &bucketList);
       
       //    int before = TpagedListSpansPages(xid, bucketList);
-
       ret = TpagedListRemove(xid, bucketList, key, keySize);
       TpagedListInsert(xid, bucketList, key, keySize, value, valueSize);
       
