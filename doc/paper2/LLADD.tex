@@ -1270,8 +1270,7 @@ The following sections describe the design and implementation of
 non-trivial functionality using \yad, and use Berkeley DB for
 comparison where appropriate.  We chose Berkeley DB because, among
 commonly used systems, it provides transactional storage that is most
-similar to \yad.  Also, it is available both in open-source form, and as a
-commercially maintained and supported program.  Finally, it has been 
+similar to \yad, and it was
 designed for high-performance, high-concurrency environments.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
@@ -1286,6 +1285,7 @@ correspond to the mean of multiple runs and represent a 95\%
 confidence interval with a standard deviation of +/- 5\%.
 
 \mjd{Eric: Please reword the above to be accurate}
+\eab{I think Rusty has to do this, as I don't know what the scrips do.  Assuming they intended for 5\% on each side, this is a fine way to say it.}
 
 We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
 branch during March of 2005, with the flags DB\_TXN\_SYNC, and DB\_THREAD
@@ -1293,23 +1293,24 @@ enabled. These flags were chosen to match
 Berkeley DB's configuration to \yad's as closely as possible.  In cases where
 Berkeley DB implements a feature that is not provided by \yad, we
 enable the feature if it improves Berkeley DB's performance, but
-disable the feature if it degrades Berkeley DB's performance.  With 
-the exception of \yad's optimized serialization mechanism in the 
-\oasys test (see Section \ref{OASYS}), 
-the two libraries provide the same set of transactional 
-semantics during each test.  
+disable the feature if it degrades Berkeley DB's performance.
+For each of the tests, the two libraries provide the same transactional semantics.
+%  With 
+%the exception of \yad's optimized serialization mechanism in the 
+%\oasys test (see Section \ref{OASYS}), 
+%the two libraries provide the same set of transactional 
+%semantics during each test.  
 
 Optimizations to Berkeley DB that we performed included disabling the
-lock manager, though we still use ``Free Threaded'' handles for all tests.
-This yielded a significant increase in performance because it removed
-the possiblity of transaction deadlock, abort, and repetition.
-However, after introducing this optimization, highly concurrent Berkeley
-DB benchmarks became unstable, suggesting that we may be calling the
-library incorrectly.  We believe that this problem would only improve
-Berkeley DB's performance in our benchmarks, so we
-disabled the lock manager for all tests.  Without this optimization,
-Berkeley DB's performance for Figure~\ref{fig:TPS} strictly decreased as
-concurrency increased because of lock contention and deadlock resolution.
+lock manager, though we still use ``Free Threaded'' handles for all
+tests.  This yielded a significant increase in performance because it
+removed the possiblity of transaction deadlock, abort, and repetition.
+However, after introducing this optimization, highly concurrent
+Berkeley DB benchmarks became unstable, suggesting either a bug or
+misuse of the feature.  We believe that this problem would only
+improve Berkeley DB's performance in our benchmarks, so we disabled
+the lock manager for all tests.  Without this optimization, Berkeley
+DB's performance for Figure~\ref{fig:TPS} strictly decreases with increased concurrency due to contention and deadlock recovery.
 
 We increased Berkeley DB's buffer cache and log buffer sizes, to match
 \yad's default sizes.  Running with \yad's (larger) default values
@@ -2234,7 +2235,7 @@ and reliable.
 
 \section{Conclusion}
 
-\mjd{need to search and replace for ``lladd'' and ``oasys''}
+%EAB: done, \mjd{need to search and replace for ``lladd'' and ``oasys''}
 
 
 \rcs{write conclusion section}
