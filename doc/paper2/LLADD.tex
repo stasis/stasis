@@ -115,13 +115,13 @@ The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table\footnote{If the object is
-stored in normalized relational format, it may span many rows and tables~\cite{Hibernate}.} 
-and then issuing queries to
-keep the objects and rows consistent  A typical update must confirm
-it has the current version, modify the object, write out a serialized
-version using the SQL {\tt update} command, and commit.  This is an
-awkward and slow mechanism, but it does provide transactional
-consistency. \eab{how slow?}
+stored in normalized relational format, it may span many rows and
+tables~\cite{Hibernate}.}  and then issuing queries to keep the
+objects and rows consistent A typical update must confirm it has the
+current version, modify the object, write out a serialized version
+using the SQL {\tt update} command, and commit.  This is an awkward
+and slow mechanism; we show up 5x speedup over MySQL
+(Section~\ref{OASYS}).
 
 The DBMS actually has a navigational transaction system within it,
 which would be of great use to EJB, but it is not accessible except
@@ -526,7 +526,7 @@ application-level policy (Section~\ref{TransClos}).
 We allow transactions to be interleaved, allowing concurrent access to
 application data and exploiting opportunities for hardware
 parallelism.  Therefore, each action must assume that the
-physical data upon which it relies may contain uncommitted
+data upon which it relies may contain uncommitted
 information that might be undone due to a crash or an abort.
 %and that this information may have been produced by a
 %transaction that will be aborted by a crash or by the application.
@@ -596,7 +596,7 @@ we can use to undo the uncommitted changes in case we crash.  \yad
 ensures that the UNDO record is durable in the log before the
 page is written to disk and that the page LSN reflects this log entry.
 
-Similarly, we do not {\em force} pages out to disk every time a transaction
+Similarly, we do not {\em force} pages out to disk when a transaction
 commits, as this limits performance.  Instead, we log REDO records
 that we can use to redo the operation in case the committed version never
 makes it to disk.  \yad ensures that the REDO entry is durable in the
@@ -952,7 +952,6 @@ span multiple pages, as shown in the next section.
 The operations presented so far work fine for a single page, since
 each update is atomic.  For updates that span multiple pages there 
 are two basic options: full isolation or nested top actions.
-
 By full isolation, we mean that no other transactions see the
 in-progress updates, which can be trivially achieved with a big lock
 around the whole structure.  Usually the application must enforce 
@@ -1072,7 +1071,7 @@ the relevant data.
 \item REDO operations use page numbers and possibly record numbers
 while UNDO operations use these or logical names/keys.
 %\item Acquire latches as needed (typically per page or record)
-\item Use nested top actions (which require a logical UNDO) 
+\item Use nested top actions (with a logical UNDO) 
 or ``big locks'' (which reduce concurrency) for multi-page updates.
 \end{enumerate}
 
@@ -1404,8 +1403,9 @@ the performance of a simple linear hash table that has been implemented as an
 extension to \yad.  We also take the opportunity to describe how we
 implemented a heavily optimized variant of the hash and
 describe how \yad's flexible page and log formats enable interesting
-optimizations.  We also argue that \yad makes it trivial to produce
+optimizations.  We also argue that \yad makes it easy to produce
 concurrent data structure implementations.
+
 %, and provide a set of
 %mechanical steps that will allow a non-concurrent data structure
 %implementation to be used by interleaved transactions.
@@ -1422,8 +1422,8 @@ concurrent data structure implementations.
 %it is easy to understand.
 
 We decided to implement a {\em linear} hash table~\cite{lht}.  Linear
-hash tables are hash tables that are able to extend their bucket list
-incrementally at runtime. They work as follows. Imagine that we want
+hash tables are able to extend their bucket list
+incrementally at runtime. Imagine that we want
 to double the size of a hash table of size $2^{n}$ and that the hash
 table has been constructed with some hash function $h_{n}(x)=h(x)\,
 mod\,2^{n}$.  Choose $h_{n+1}(x)=h(x)\, mod\,2^{n+1}$ as the hash
@@ -1492,7 +1492,6 @@ trivial: they simply log the before or after image of that record.
 \begin{figure}
 \hspace{.25in}
 \includegraphics[width=3.25in]{LHT2.pdf}
-\vspace{-.5in}
 \caption{\sf\label{fig:LHT}Structure of locality preserving ({\em
 page-oriented}) linked lists. By keeping sub-lists within one page,
 \yad improves locality and simplifies most list operations to a single
@@ -1535,8 +1534,8 @@ implementation, and the table can be extended lazily by
 transactionally removing items from one bucket and adding them to
 another.
 
-Given the underlying transactional data structures and a
-single lock around the hashtable, this is actually all that is needed
+The underlying transactional data structures and a
+single lock around the hashtable are all that are needed
 to complete the linear hash table implementation.  Unfortunately, as
 we mentioned in Section~\ref{nested-top-actions}, things become a bit
 more complex if we allow interleaved transactions.  The solution for
@@ -1602,10 +1601,10 @@ We also explore a version with finer-grain latching below.
 %% course, nested top actions are not necessary for read only operations.
 
 This completes our description of \yad's default hashtable
-implementation.  We would like to emphasize that implementing
+implementation.  Implementing
 transactional support and concurrency for this data structure is
-straightforward.  The only complications are a) defining a logical
-UNDO, and b) dealing with fixed-length records.
+straightforward; the only complications are a) defining a logical
+UNDO, and b) dealing with fixed-length records. \yad hides the hard parts of transactions.
 
 %, and (other than requiring the design of a logical
 %logging format, and the restrictions imposed by fixed length pages) is
@@ -1627,7 +1626,7 @@ version of nested top actions.
 Instead of using nested top actions, the optimized implementation
 applies updates in a carefully chosen order that minimizes the extent
 to which the on disk representation of the hash table can be corrupted. 
-\eab{(Figure~\ref{linkedList})} This is essentially ``soft updates''
+This is essentially ``soft updates''
 applied to a multi-page update~\cite{soft-updates}.  Before beginning
 the update, it writes an UNDO entry that will first check and restore the
 consistency of the hashtable during recovery, and then invoke the
@@ -1657,7 +1656,7 @@ ordering.
    width=1\columnwidth]{bulk-load.pdf}
 %\includegraphics[%
 %   width=1\columnwidth]{bulk-load-raw.pdf}
-\vspace{-.5in}
+\vspace{-.4in}
 \caption{\sf\label{fig:BULK_LOAD} This test measures the raw performance
 of the data structures provided by \yad and Berkeley DB.  Since the
 test is run as a single transaction, overheads due to synchronous I/O
@@ -1722,7 +1721,7 @@ than the straightforward implementation.
 %   width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
    width=1\columnwidth]{tps-extended.pdf}
-\vspace{-.5in}
+\vspace{-.4in}
 \caption{\sf\label{fig:TPS} The logging mechanisms of \yad and Berkeley
 DB are able to combine multiple calls to commit() into a single disk 
 force, increasing throughput as the number of concurrent transactions 
