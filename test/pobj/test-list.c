@@ -62,8 +62,8 @@ main (int argc, char **argv)
 	    POBJ_SET_REF (tmp, next, next);
 #endif
 
-	    POBJ_UPDATE (data);
-	    POBJ_UPDATE (tmp);
+	    pobj_update (data);
+	    pobj_update (tmp);
 
 	    pobj_end ();
 	    

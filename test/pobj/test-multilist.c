@@ -40,8 +40,8 @@ Node *createNode(int id, int num) {
   tmp->data = (char *) pobj_malloc(sizeof(char) * MAX_MSG_SIZE);
   sprintf(tmp->data, "%d: This is message #%d", id, num);
   tmp->next = NULL;
-  POBJ_UPDATE(tmp);
-  POBJ_UPDATE(tmp->data);
+  pobj_update(tmp);
+  pobj_update(tmp->data);
   //pobj_end();
   return tmp;
 }
@@ -61,7 +61,7 @@ void *work(void *pid) {
     } else {
       tail->next = tmp;
 /*       tail = tmp; */
-      POBJ_UPDATE(tail);
+      pobj_update(tail);
       pobj_static_set_ref(&tail, tmp);
     }
     //pobj_end();

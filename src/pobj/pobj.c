@@ -550,6 +550,160 @@ pobj_dismiss (void *obj, unsigned char flags)
 
 
 
+int
+pobj_ref_mark_update (void *obj, void *fld_arg, int set)
+{
+    void **fld = (void **) fld_arg;
+    struct pobj *p = OBJ2POBJ (obj);
+    struct pobj_repo_list_item *pobj_slot;
+    int ref_offset;
+    int flags_offset;
+    int bit;
+    unsigned long *flags_ptr;
+    unsigned long flags, mask;
+    int xid = -1;
+    int ret;
+
+    debug_start ();
+
+    /* Bound check. */
+    /* TODO: is this worthwhile? */
+    if ((char *) obj > (char *) fld
+	|| (char *) obj + p->size < (char *) fld + sizeof (void *))
+    {
+	debug ("error: field out of object bounds");
+	debug_end ();
+	return -1;
+    }
+    if (((unsigned long) fld / WORDSIZE) * WORDSIZE != (unsigned long) fld) {
+	debug ("error: reference field is not aligned");
+	debug_end ();
+	return -1;
+    }
+
+    /* Open transaction context (persistent objects only). */
+    if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
+	debug ("error: begin transaction failed");
+	debug_end ();
+	return -1;
+    }
+	
+    /* Update reference flags to allow reference adjustment during recovery. */
+    /* TODO: do we want to protect manipulation of object meta-data? Basically,
+     * it should be protected, although changes are monotonic, but that will
+     * definitely induce some overhead... we could also revert to a single-byte
+     * flag, instead of a bit-grained one, thus ensuring no interference
+     * (is this a correct observation?). */
+    ret = 0;
+    ref_offset = fld - (void **) obj;
+    flags_offset = ref_offset / WORDBITS;
+    bit = ref_offset - flags_offset * WORDBITS;
+    flags_ptr = POBJ2REFS (p) + flags_offset;
+    flags = *flags_ptr;
+    mask = ((unsigned long) 1 << bit);
+    if (set) {
+	if (! (flags & mask))
+	    ret = 1;
+	*flags_ptr = flags | mask;
+    }
+    else {
+	if (flags & mask)
+	    ret = 1;
+	*flags_ptr = flags & ~mask;
+    }
+
+    /* Update corresponding record (persistent objects only). */
+    if (p->repo_index >= 0) {
+	pobj_slot = POBJ2REPOSLOT (p);
+    
+	if (ret)
+	    TsetRange (xid, pobj_slot->rid, (char *) flags_ptr - (char *) p,
+		       sizeof (unsigned long), flags_ptr);
+
+	pobj_end ();
+    }
+
+    debug_end ();
+    return ret;
+}
+
+int
+pobj_ref_typify (void *obj, int *reflist)
+{
+    struct pobj *p = OBJ2POBJ (obj);
+    struct pobj_repo_list_item *pobj_slot;
+    int nrefs;
+    int ref_offset;
+    int flags_offset;
+    int bit;
+    unsigned long *flags_ptr;
+    int xid = -1;
+    int count;
+
+    debug_start ();
+
+    if (! reflist) {
+	debug ("error: null reference list provided");
+	debug_end ();
+	return -1;
+    }
+    
+    /* Open transaction context (persistent objects only). */
+    if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
+	debug ("error: begin transaction failed");
+	debug_end ();
+	return -1;
+    }
+    
+    debug ("unsetting reference flags (%d)", POBJ_NREFS (p->size));
+
+    /* Unset all reference flags. */
+    nrefs = POBJ_NREFS (p->size);
+    flags_ptr = POBJ2REFS (p);
+    while (nrefs > 0) {
+	*flags_ptr++ = 0;
+	nrefs -= WORDBITS;
+    }
+
+    debug ("traversing reference offsets list...");
+
+    /* Traverse offsets list, set per-reference flag. */
+    count = 0;
+    while ((ref_offset = *reflist++) >= 0) {
+	count++;
+	ref_offset /= WORDSIZE;
+	debug ("offset=%d", ref_offset);
+
+	/* Safety check. */
+	if (ref_offset >= p->size) {
+	    debug ("warning: reference offset out-of-bounds, ignored");
+	    continue;
+	}
+
+	flags_offset = ref_offset / WORDBITS;
+	bit = ref_offset - (flags_offset * WORDBITS);
+	flags_ptr = POBJ2REFS (p) + flags_offset;
+	*flags_ptr = *flags_ptr | ((unsigned long) 1 << bit);
+    }
+
+    debug ("...done (%d total)", count);
+
+    /* Update corresponding record (persistent objects only). */
+    if (p->repo_index >= 0) {
+	pobj_slot = POBJ2REPOSLOT (p);
+
+	TsetRange (xid, pobj_slot->rid, POBJ_REFFLAGS_OFFSET (p->size),
+		   POBJ_REFFLAGS_SIZE (p->size), POBJ2REFS (p));
+	
+	pobj_end ();
+    }
+
+    debug_end ();
+    return 0;
+}
+
+
+       
 /* Note: behavior of type enforcement is not symmetrical, in the sense that
  * a type mismatch is treated depending on the mismatch direction -- if
  * a field is claimed to be a reference but is not flagged, then the flag
@@ -584,7 +738,7 @@ pobj_ref_type_enforce (void *obj, void *fld, size_t len, int is_ref)
     if ((char *) obj > (char *) fld
 	|| (char *) obj + p->size < (char *) fld + len)
     {
-	debug ("error: field(s) out of object bounds, aborted");
+	debug ("error: field(s) out of object bounds");
 	debug_end ();
 	return -1;
     }
@@ -639,173 +793,12 @@ pobj_ref_type_enforce (void *obj, void *fld, size_t len, int is_ref)
 #endif /* HAVE_IMPLICIT_TYPES */
 
 
+#define POBJ_SET_F_TYPED  1
+#define POBJ_SET_F_REF    2
+#define POBJ_SET_F_COPY   4
+
 static int
-pobj_ref_flag_update (void *obj, void **fld, int set)
-{
-    struct pobj *p = OBJ2POBJ (obj);
-    struct pobj_repo_list_item *pobj_slot;
-    int ref_offset;
-    int flags_offset;
-    int bit;
-    unsigned long *flags_ptr;
-    unsigned long flags, mask;
-    int xid = -1;
-    int ret;
-
-    debug_start ();
-
-    /* Bound check. */
-    /* TODO: is this worthwhile? */
-    if ((char *) obj > (char *) fld
-	|| (char *) obj + p->size < (char *) fld + sizeof (void *))
-    {
-	debug ("error: field out of object bounds, aborted");
-	debug_end ();
-	return -1;
-    }
-    if (((unsigned long) fld / WORDSIZE) * WORDSIZE != (unsigned long) fld) {
-	debug ("error: reference field is not aligned, aborted");
-	debug_end ();
-	return -1;
-    }
-
-    /* Open transaction context (persistent objects only). */
-    if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
-	debug_end ();
-	return -1;
-    }
-	
-    /* Update reference flags to allow reference adjustment during recovery. */
-    /* TODO: do we want to protect manipulation of object meta-data? Basically,
-     * it should be protected, although changes are monotonic, but that will
-     * definitely induce some overhead... we could also revert to a single-byte
-     * flag, instead of a bit-grained one, thus ensuring no interference
-     * (is this a correct observation?). */
-    ret = 0;
-    ref_offset = fld - (void **) obj;
-    flags_offset = ref_offset / WORDBITS;
-    bit = ref_offset - flags_offset * WORDBITS;
-    flags_ptr = POBJ2REFS (p) + flags_offset;
-    flags = *flags_ptr;
-    mask = ((unsigned long) 1 << bit);
-    if (set) {
-	if (! (flags & mask))
-	    ret = 1;
-	*flags_ptr = flags | mask;
-    }
-    else {
-	if (flags & mask)
-	    ret = 1;
-	*flags_ptr = flags & ~mask;
-    }
-
-    /* Update corresponding record (persistent objects only). */
-    if (p->repo_index >= 0) {
-	pobj_slot = POBJ2REPOSLOT (p);
-    
-	if (ret)
-	    TsetRange (xid, pobj_slot->rid, (char *) flags_ptr - (char *) p,
-		       sizeof (unsigned long), flags_ptr);
-
-	pobj_end ();
-    }
-
-    debug_end ();
-    return ret;
-}
-
-int
-pobj_ref_flag (void *obj, void *fld)
-{
-    return pobj_ref_flag_update (obj, (void **) fld, 1);
-}
-
-int
-pobj_ref_unflag (void *obj, void *fld)
-{
-    return pobj_ref_flag_update (obj, (void **) fld, 0);
-}
-
-int
-pobj_ref_typify (void *obj, int *reflist)
-{
-    struct pobj *p = OBJ2POBJ (obj);
-    struct pobj_repo_list_item *pobj_slot;
-    int nrefs;
-    int ref_offset;
-    int flags_offset;
-    int bit;
-    unsigned long *flags_ptr;
-    int xid = -1;
-    int count;
-
-    debug_start ();
-
-    if (! reflist) {
-	debug ("error: null reference list provided, aborted");
-	debug_end ();
-	return -1;
-    }
-    
-    /* Open transaction context (persistent objects only). */
-    if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
-	debug_end ();
-	return -1;
-    }
-    
-    debug ("unsetting reference flags (%d)", POBJ_NREFS (p->size));
-
-    /* Unset all reference flags. */
-    nrefs = POBJ_NREFS (p->size);
-    flags_ptr = POBJ2REFS (p);
-    while (nrefs > 0) {
-	*flags_ptr++ = 0;
-	nrefs -= WORDBITS;
-    }
-
-    debug ("traversing reference offsets list...");
-
-    /* Traverse offsets list, set per-reference flag. */
-    count = 0;
-    while ((ref_offset = *reflist++) >= 0) {
-	count++;
-	ref_offset /= WORDSIZE;
-	debug ("offset=%d", ref_offset);
-
-	/* Safety check. */
-	if (ref_offset >= p->size) {
-	    debug ("warning: reference offset out-of-bounds, ignored");
-	    continue;
-	}
-
-	flags_offset = ref_offset / WORDBITS;
-	bit = ref_offset - (flags_offset * WORDBITS);
-	flags_ptr = POBJ2REFS (p) + flags_offset;
-	*flags_ptr = *flags_ptr | ((unsigned long) 1 << bit);
-    }
-
-    debug ("...done (%d total)", count);
-
-    /* Update corresponding record (persistent objects only). */
-    if (p->repo_index >= 0) {
-	pobj_slot = POBJ2REPOSLOT (p);
-
-	TsetRange (xid, pobj_slot->rid, POBJ_REFFLAGS_OFFSET (p->size),
-		   POBJ_REFFLAGS_SIZE (p->size), POBJ2REFS (p));
-	
-	pobj_end ();
-    }
-
-    debug_end ();
-    return 0;
-}
-
-       
-static int
-pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
-			  int is_typed, int is_ref, int is_copy)
+pobj_set (void *obj, void *fld, void *data, size_t len, unsigned char flags)
 {
     struct pobj *p = OBJ2POBJ (obj);
     struct pobj_repo_list_item *pobj_slot;
@@ -824,27 +817,29 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
     if ((char *) obj > (char *) fld
 	|| (char *) obj + p->size < (char *) fld + len)
     {
-	debug ("error: field out of object bounds, aborted");
+	debug ("error: field out of object bounds");
 	debug_end ();
 	return -1;
     }
 
     /* Open transaction context (persistent objects only). */
     if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
+	debug ("error: begin transaction failed");
 	debug_end ();
     	return -1;
     }
     
 #ifdef HAVE_IMPLICIT_TYPES
-    if (is_typed) {
-	switch (pobj_ref_type_enforce (obj, fld, len, is_ref)) {
+    if (CHECK_FLAG (flags, POBJ_SET_F_TYPED)) {
+	switch (pobj_ref_type_enforce (obj, fld, len,
+				       CHECK_FLAG (flags, POBJ_SET_F_REF)))
+	{
 	case -1:
 	    debug ("error: type check failed");
 	    debug_end ();
 	    return -1;
 	case 1:
-	    debug ("error: type conflict, aborted");
+	    debug ("error: type conflict");
 	    debug_end ();
 	    return -1;
 	case 2:
@@ -857,10 +852,10 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 #endif /* HAVE_IMPLICIT_TYPES */
 
     /* Update memory object field. */
-    if (is_copy)
+    if (CHECK_FLAG (flags, POBJ_SET_F_COPY))
 	memcpy (fld, data, len);
     else
-	memset (fld, c, len);
+	memset (fld, (int) data, len);
 
     /* Update corresponding record (persistent objects only). */
     if (p->repo_index >= 0) {
@@ -884,22 +879,19 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 void *
 pobj_memcpy (void *obj, void *fld, void *data, size_t len)
 {
-    if (pobj_memcpy_memset_typed (obj, fld, data, 0, len, 0, 0, 1) < 0)
-	return NULL;
-    return obj;
+    return (pobj_set (obj, fld, data, len, POBJ_SET_F_COPY) < 0 ? NULL : obj);
 }
 
 void *
 pobj_memset (void *obj, void *fld, int c, size_t len)
 {
-    if (pobj_memcpy_memset_typed (obj, fld, NULL, c, len, 0, 0, 0) < 0)
-	return NULL;
-    return obj;
+    return (pobj_set (obj, fld, (void *) c, len, 0) < 0 ? NULL : obj);
 }
 
 #define POBJ_SET_NONREF(name,type)  \
     int name (void *obj, type *fld, type data) {  \
-	return pobj_memcpy_memset_typed (obj, fld, &data, 0, sizeof (data), 1, 0, 1);  \
+	return pobj_set (obj, fld, &data, sizeof (data),  \
+			 POBJ_SET_F_TYPED | POBJ_SET_F_COPY);  \
     }
 POBJ_SET_NONREF (pobj_set_int, int)
 POBJ_SET_NONREF (pobj_set_unsigned, unsigned)
@@ -921,13 +913,14 @@ pobj_set_ref (void *obj, void *fld, void *ref)
 
     /* Verify alignment. */
     if (((unsigned long) fld / WORDSIZE) * WORDSIZE != (unsigned long) fld) {
-	debug ("error: reference field not aligned, aborted");
+	debug ("error: reference field not aligned");
 	debug_end ();
 	return -1;
     }
 	
     debug_end ();
-    return pobj_memcpy_memset_typed (obj, fld, &ref, 0, sizeof (ref), 1, 1, 1);
+    return pobj_set (obj, fld, &ref, sizeof (ref),
+		     POBJ_SET_F_TYPED | POBJ_SET_F_REF | POBJ_SET_F_COPY);
 }
 
 
@@ -954,13 +947,13 @@ pobj_update_range (void *obj, void *fld, size_t len)
     if (len && ((char *) obj > (char *) fld
 		|| (char *) obj + p->size < (char *) fld + len))
     {
-	debug ("error: field out of object bounds, aborted");
+	debug ("error: field out of object bounds");
 	debug_end ();
 	return -1;
     }
 
     if ((xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
+	debug ("error: begin transaction failed");
 	debug_end ();
     	return -1;
     }
@@ -1206,7 +1199,7 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
     debug_start ();
 
     if ((xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
+	debug ("error: begin transaction failed");
 	debug_end ();
 	return -1;
     }
@@ -2001,7 +1994,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
     /* TODO: switch to new method (courtesy of Rusty Sears). */
     xid = Tbegin ();
     if (xid < 0) {
-	debug ("begin transaction failed, aborted");
+	debug ("begin transaction failed");
 	pthread_mutex_unlock (&g_pobj_repo_mutex);
 	pthread_mutex_unlock (&g_static_repo_mutex);
 	debug_end ();

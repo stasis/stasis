@@ -17,7 +17,8 @@ struct pobj_memfunc {
 int pobj_start (void);
 int pobj_end (void);
 
-/* Persistency control. */
+
+/* Object persistency. */
 int pobj_persistify (void *);
 int pobj_unpersistify (void *);
 int pobj_is_persistent (void *);
@@ -57,12 +58,16 @@ void pobj_dismiss (void *, unsigned char);
     pobj_dismiss((p), POBJ_DISMISS_F_RAW)
 
 
-int pobj_ref_flag (void *, void *);
-int pobj_ref_unflag (void *, void *);
-#define POBJ_REF_FLAG(obj,fld)         pobj_ref_flag((obj), &((obj)->fld))
-#define POBJ_REF_UNFLAG(obj,fld)       pobj_ref_unflag((obj), &((obj)->fld))
+/* Object typing. */
+int pobj_ref_mark_update (void *, void *, int);
+#define pobj_ref_mark(o,f)        pobj_ref_mark_update(o,f,1)
+#define pobj_ref_unmark(o,f)      pobj_ref_mark_update(o,f,0)
+#define POBJ_REF_MARK(obj,fld)    pobj_ref_mark((obj), &((obj)->fld))
+#define POBJ_REF_UNMARK(obj,fld)  pobj_ref_unmark((obj), &((obj)->fld))
 int pobj_ref_typify (void *, int *);
 
+
+/* Object modification. */
 void *pobj_memcpy (void *, void *, void *, size_t);
 void *pobj_memset (void *, void *, int, size_t);
 int pobj_set_int (void *, int *, int);
@@ -76,33 +81,49 @@ int pobj_set_unsigned_char (void *, unsigned char *, unsigned char);
 int pobj_set_float (void *, float *, float);
 int pobj_set_double (void *, double *, double);
 int pobj_set_ref (void *, void *, void *);
-#define POBJ_MEMCPY(obj,fld,data,len)  pobj_memcpy((obj), &((obj)->fld), data, len)
-#define POBJ_MEMSET(obj,fld,c,len)     pobj_memset((obj), &((obj)->fld), c, len)
-#define POBJ_SET_INT(obj,fld,data)     pobj_set_int((obj), &((obj)->fld), data)
+#define POBJ_MEMCPY(obj,fld,data,len)  \
+    pobj_memcpy((obj), &((obj)->fld), data, len)
+#define POBJ_MEMSET(obj,fld,c,len)  \
+    pobj_memset((obj), &((obj)->fld), c, len)
+#define POBJ_SET_INT(obj,fld,data)  \
+    pobj_set_int((obj), &((obj)->fld), data)
 #define POBJ_SET_UNSIGNED(obj,fld,data)  \
-  pobj_set_unsigned((obj), &((obj)->fld), data)
-#define POBJ_SET_LONG(obj,fld,data)    pobj_set_long((obj), &((obj)->fld), data)
+    pobj_set_unsigned((obj), &((obj)->fld), data)
+#define POBJ_SET_LONG(obj,fld,data)  \
+    pobj_set_long((obj), &((obj)->fld), data)
 #define POBJ_SET_UNSIGNED_LONG(obj,fld,data)  \
-  pobj_set_unsigned_long((obj), &((obj)->fld), data)
-#define POBJ_SET_SHORT(obj,fld,data)   pobj_set_short((obj), &((obj)->fld), data)
+    pobj_set_unsigned_long((obj), &((obj)->fld), data)
+#define POBJ_SET_SHORT(obj,fld,data)  \
+    pobj_set_short((obj), &((obj)->fld), data)
 #define POBJ_SET_UNSIGNED_SHORT(obj,fld,data)  \
-  pobj_set_unsigned_short((obj), &((obj)->fld), data)
-#define POBJ_SET_CHAR(obj,fld,data)    pobj_set_char((obj), &((obj)->fld), data)
+    pobj_set_unsigned_short((obj), &((obj)->fld), data)
+#define POBJ_SET_CHAR(obj,fld,data)  \
+    pobj_set_char((obj), &((obj)->fld), data)
 #define POBJ_SET_UNSIGNED_CHAR(obj,fld,data)  \
-  pobj_set_unsigned_char((obj), &((obj)->fld), data)
-#define POBJ_SET_FLOAT(obj,fld,data)   pobj_set_float((obj), &((obj)->fld), data)
-#define POBJ_SET_DOUBLE(obj,fld,data)  pobj_set_double((obj), &((obj)->fld), data)
-#define POBJ_SET_REF(obj,fld,ref)      pobj_set_ref((obj), &((obj)->fld), ref)
+    pobj_set_unsigned_char((obj), &((obj)->fld), data)
+#define POBJ_SET_FLOAT(obj,fld,data)  \
+    pobj_set_float((obj), &((obj)->fld), data)
+#define POBJ_SET_DOUBLE(obj,fld,data)  \
+    pobj_set_double((obj), &((obj)->fld), data)
+#define POBJ_SET_REF(obj,fld,ref)  \
+    pobj_set_ref((obj), &((obj)->fld), ref)
 
+
+/* Object persistent image update. */
 int pobj_update_range (void *, void *, size_t);
+#define pobj_update(obj)  \
+    pobj_update_range((obj), NULL, 0)
 #define POBJ_UPDATE_FLD(obj,fld)  \
-  pobj_update_range((obj), &((obj)->fld), sizeof((obj)->fld))
-#define POBJ_UPDATE(obj)               pobj_update_range ((obj), NULL, 0)
+    pobj_update_range((obj), &((obj)->fld), sizeof((obj)->fld))
 int pobj_update_recursive (void *, int);
 
+
+/* Static reference update. */
 int pobj_static_set_ref (void *, void *);
 int pobj_static_update_ref (void *);
 
+
+/* Init/shutdown. */
 int pobj_init (struct pobj_memfunc *, struct pobj_memfunc *);
 int pobj_shutdown (void);
 
