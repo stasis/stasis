@@ -379,10 +379,6 @@ the page metadata appropriately.
 
 \subsubsection{Log entries and forward operation (the Tupdate() function)\label{sub:Tupdate}}
 
-[TODO...need to make this clearer... I think we need to say that we define a function to do redo, and then we define an update that use
-it. Recovery uses the same function the same way.]
-
-
 In order to handle crashes correctly, and in order to the undo the
 effects of aborted transactions, LLADD provides operation implementors
 with a mechanism to log undo and redo information for their actions.
@@ -451,33 +447,29 @@ behave correctly even if an arbitrary number of intervening operations
 are performed on the data structure.
 
 [TODO...this next paragraph doesn't make sense; also maybe move this whole subsection to later, since it is complicated]
-The remaining log entries are redo-only, and may perform structural
+Next, the operations writes one or more redo-only log entries that may perform structural
 modifications to the data structure. They should not make any assumptions
 about the consistency of the current version of the database. Finally,
 any prefix of the sequence of the redo-only operations performed by
 this operation must leave the database in a consistent state. The
 $B^{LINK}$ tree {[}...{]} is an example of a B-Tree implementation
-that behaves in this way, as is the linear hash table implementation
-discussed in Section \ref{sub:Linear-Hash-Table}. 
-
-Some of the logging constraints introduced in this section may seem
-strange at this point, but are motivated by the recovery process.
-
-[TODO...need to explain this...]
+that behaves in this way, while the linear hash table implementation
+discussed in Section \ref{sub:Linear-Hash-Table} is a scalable 
+hash table that meets these constraints.
 
 \subsection{Recovery}
 
 
 \subsubsection{ANALYSIS / REDO / UNDO}
 
-Recovery in AIRES consists of three stages, analysis, redo and undo
-. The first, analysis, is
+Recovery in AIRES consists of three stages, analysis, redo and undo. 
+The first, analysis, is
 implemented by LLADD, but will not be discussed in this
 paper. The second, redo, ensures that each redo entry in the log 
 will have been applied each page in the page file exactly once.
 The third phase, undo, rolls back any transactions that were active
 when the crash occured, as though the application manually aborted
-them with the {}``abort()'' call.
+them with the {}``abort'' function call.
   
 After the analysis phase, the on-disk version of the page file
 is in the same state it was in when LLADD crashed. This means that
@@ -496,7 +488,7 @@ page are in an inconsistent state. Therefore, as the redo phase re-applies
 Therefore, the redo information for each operation in the log
 must contain the physical address (page number) of the information
 that it modifies, and the portion of the operation executed by a single
-log entry must only rely upon the contents of the page that the log
+redo log entry must only rely upon the contents of the page that the log
 entry refers to. Since we assume that pages are propagated to disk
 atomically, the REDO phase may rely upon information contained within
 a single page.
@@ -506,7 +498,7 @@ complete entries for all committed transactions.  Therefore, we know that the pa
 a physically consistent state, although it contains portions of the
 results of uncomitted transactions. The final stage of recovery is
 the undo phase, which simply aborts all uncomitted transactions. Since
-the page file is physically consistent, the transactions are aborted
+the page file is physically consistent, the transactions may be aborted
 exactly as they would be during normal operation. 
 
 
@@ -556,7 +548,7 @@ and highly-concurrent data structure using LLADD:
 the page that the redo function sees, then the wrapper should latch
 the relevant data.
 \item Redo operations should address pages by their physical offset,
-while Undo operations should use a more permenant address (such as
+while Undo operations should use a more permanent address (such as
 index key) if the data may move between pages over time.
 \item An undo operation must correctly update a data structure if any
 prefix of its corresponding redo operations are applied to the
@@ -567,12 +559,13 @@ Because undo and redo operations during normal operation and recovery
 are similar, most bugs will be found with conventional testing
 strategies.  It is difficult to verify the final property, although a
 number of tools could be written to simulate various crash scenarios,
-and check the behavior of operations under these scenarios.  
+and check the behavior of operations under these scenarios.  Of course, 
+such a tool could easily be applied to existing LLADD operations.
 
 Note that the ARIES algorithm is extremely complex, and we have left
 out most of the details needed to understand how ARIES works, or to 
 implement it correctly.\footnote{The original ARIES paper was around 70 pages, and the ARIES/IM paper, which covered index implementation is roughly the same length.}  Yet, we believe we have covered everything that a programmer needs
- to know in order to implement new data structures using the basic 
+ to know in order to implement new data structures using the 
 functionality that ARIES provides. This was possible due to the encapsulation
 of the ARIES algorithm inside of LLADD, which is the feature that
 most strongly differentiates LLADD from other, similar libraries.
@@ -596,7 +589,8 @@ it easy to improve and customize LLADD.}
 \end{figure}
 LLADD is a toolkit for building transaction managers.
 It provides user-defined redo and undo behavior, and has an extendible
-logging system with ... types of log entries so far. Most of these
+logging system with 19 types of log entries so far (not counting those
+internal to LLADD, such as ``begin'', ``abort'', and ``clr''). Most of these
 extensions deal with data layout or modification, but some deal with
 other aspects of LLADD, such as extensions to recovery semantics (Section
 \ref{sub:Two-Phase-Commit}). LLADD comes with some default page layout
@@ -609,25 +603,29 @@ Although it ships with basic operations that support variable length
 records, hash tables and other common data types, our goal is to
 decouple all decisions regarding data format from the implementation
 of the logging and recovery systems. Therefore, the preceeding section
-is essentially documentation for potential users of the library, while
+is essentially documentation for users of the library, while
 the purpose of the performance numbers in our evaluation section are
 not to validate our hash table, but to show that the underlying architecture
 is able to efficiently support interesting data structures.
 
-Despite the complexity of the interactions among its modules, the
-basic ARIES algorithm itself is quite simple. Therefore, in order to keep
-LLADD simple, we started with a set of modules, and iteratively refined
-the boundaries among these modules. Figure \ref{cap:LLADD-Architecture} presents the resulting architecture. The core of the LLADD library
-is quite small at ... lines of code, and has been documented extensively.
-We hope that we have exposed most of the subtle interactions between
-internal modules in the online documentation. {[}... doxygen ...{]}
+Despite the complexity of the interactions between its modules, the
+basic ARIES algorithm itself is quite simple. Therefore, in order to
+keep LLADD simple, we started with a set of modules, and iteratively
+refined the boundaries between these modules. Figure
+\ref{cap:LLADD-Architecture} presents the resulting architecture.  The
+core of the LLADD library is quite small at 2218 lines of code, 2155
+lines of implementations of operations and other extensions, and 408
+lines of installable header files.\footnote{generated using David
+A. Wheeler's ``SLOCCount''} The code has been documented extensively,
+and we hope that we have exposed most of the subtle interactions
+between internal modules in the online documentation.
 
 As LLADD has evolved, many of its sub-systems have been incrementally
 improved, and we believe that the current set of modules is amenable
 to the addition of new functionality. For instance, the logging module
 interface encapsulates all of the details regarding its on disk format,
 which would make it straightforward to implement more exotic logging
-techniques such as using log shipping to maintain a 'warm replica'
+techniques such as using log shipping to maintain a ``warm replica''
 for failover purposes, or the use of log replication to avoid physical
 disk access at commit time. Similarly, the interface encodes the dependencies
 between the logger and other subsystems, so, for instance, the requirements
@@ -647,9 +645,10 @@ multiple files on disk, transactional groups of program executions
 or network requests, or even leveraging some of the advances being
 made in the Linux and other modern operating system kernels. For example,
 ReiserFS recently added support for atomic file system operations.
-This could be used to provide atomic variable sized pages
-to LLADD.  Combining some of these ideas should make it easy to 
-implement some interesting applications.
+This could be used to provide variable sized pages
+to LLADD.  Combining these ideas should make it easy to 
+implement some interesting applications, and to improve existing 
+systems such as CVS, IMAP, and a host of ``simple'' desktop applications.
 
 From the testing point of view, the advantage of LLADD's division
 into subsystems with simple interfaces is obvious. We are able to
@@ -659,8 +658,9 @@ making it easy to add new tests and debug old ones. Furthermore, by
 adding a 'simulate crash' operation to a few of the key components,
 we can simulate application level crashes by clearing LLADD's internal
 state, re-initializing the library and verifying that recovery was
-successful. These tests currently cover approximately 90\% of the
-code. We have not yet developed a mechanism that will allow us to
+successful. These tests currently cover approximately 
+90\%\footnote{generated using ``gcov'', which is part of gcc, and ``lcov,'' which interprets gcov's output.}
+of the code. We have not yet developed a mechanism that will allow us to
 accurately model hardware failures, which is an area where futher
 work is needed.  However, the basis for this work will be the development
 of test harnesses that verify operation behavior in exceptional circumstances.
