@@ -54,6 +54,10 @@ terms specified in this license.
 */
 #define DFA_MACHINE_COUNT 100
 
+/** Defined in libdfa.c */
+callback_fcn callback_false;
+callback_fcn callback_true;
+
 typedef struct dfaSet {
   /*  MonoTree monoTree; */
   smash_t * smash;

@@ -1,3 +1,4 @@
+
 #include <libdfa/libdfa.h>
 
 #define CREATE 1
@@ -8,15 +9,14 @@
 /** Unimplemented: Evaluate a function call from a table provided by the library user. */
 #define TSTSET 6
 #define GETXID  7
-/* #define COMMIT 8
-   #define ABORT  9 */
+#define COMMIT 8
+/*   #define ABORT  9 */
 
 typedef struct {
   unsigned short key_length;
   unsigned short value_length;
   unsigned char  request_type;
- // unsigned char  response_type;
-  int hashTable;
+  clusterHashTable_t hashTable;
 } payload_header;
 
 #define __header_ptr(m) ((payload_header*)(&((m)->payload)))

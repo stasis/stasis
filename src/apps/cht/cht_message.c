@@ -1,3 +1,4 @@
+#include "cht.h"
 #include "cht_message.h"
 #include <netinet/in.h>
 void * getKeyAddr(Message *m) {

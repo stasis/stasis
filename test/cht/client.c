@@ -21,10 +21,10 @@ int main(int argc, char ** argv) {
   clusterHashTable_t * new_ht;
   cHtCreate(xid, cht_client, new_ht);
   int i;
-  for(i = 0; i < 100; i++) {
+  for(i = 0; i < 1000; i++) {
     int one = i; int two = i+1;
     cHtInsert(xid, cht_client, new_ht, &one, sizeof(int), &two, sizeof(int));
-    xid++;
+    //    xid++;
  /* int i =0;
   for(i =0; i < 100; i++) {
     printf("\n");
@@ -36,14 +36,14 @@ int main(int argc, char ** argv) {
     newTwo = 0;
     unsigned int newLen = sizeof(int);
     int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
-    xid++;
+    //    xid++;
     //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
     assert(ret);
     assert(newOne == one);
     assert(newTwo == two);
     assert(newLen == sizeof(int));
   }
-  
+  cHtCommit(xid, cht_client);
   /** @todo devise a way to cleanly shut a CHT down. */
   
  // dfa_free(cht_client);

@@ -112,7 +112,6 @@ typedef struct stateMachine {
 
 typedef state_name(callback_fcn)(void * dfaSet, StateMachine * stateMachine, Message * m, char * from); 
 
-
 /* All function pointers follow this prototype: 
 
    TODO
@@ -130,7 +129,8 @@ typedef struct state {
    */
   callback_fcn* retry_fcn;
   /** NULL unless the machine can be aborted while in this state.  If
-      not-null, then it should point to a function that performs a
+      not-null, then 
+it should point to a function that performs a
       No-op or does any house-keeping that should be performed before
       the machine gets nuked.
 

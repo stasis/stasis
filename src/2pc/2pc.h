@@ -95,6 +95,16 @@ gets to reuse the transaction id.
 #define AWAIT_COMMIT_POINT 212
 #define AWAIT_RESULT 213
 
+#define XACT_ACK_RESULT            221
+#define XACT_ACK_ARRIVAL           222
+#define XACT_ACTIVE                223
+#define XACT_ACTION_RUNNING        224
+
+#define XACT_COMMIT                225
+#define XACT_ABORT                 226
+
+#define XACT_SUBORDINATE_ACK       227
+
 /** 
     The callbacks are called whenever the transition 'should' succeed.
     Other than tally_2pc, they are always called when a
@@ -132,6 +142,8 @@ typedef struct {
       two broadcast groups.) */
   char is_coordinator;
   callback_fcn *init_xact_2pc;
+  callback_fcn *continue_xact_2pc;
+  callback_fcn *eval_action_2pc;
   callback_fcn *veto_or_prepare_2pc;
   callback_fcn *abort_2pc;
   callback_fcn *commit_2pc;

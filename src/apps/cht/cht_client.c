@@ -4,6 +4,10 @@
 #include <netinet/in.h>
 #include <assert.h>
 #include <string.h>
+
+
+#define REQUEST_TYPE XACT_ACK_RESULT
+//#define REQUEST_TYPE AWAIT_COMMIT_POINT
 /**
    The client side function that 'does everything'  
 
@@ -103,25 +107,25 @@ static int _chtEval(DfaSet * dfaSet,
 
 int cHtCreate(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * new_ht) {
   size_t zero = 0;
-  return _chtEval(dfaSet, CREATE, AWAIT_COMMIT_POINT, &xid, new_ht, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, CREATE, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, new_ht, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
 }
 
 
 int cHtInsert(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, void * key, size_t keylen, void * dat, size_t datlen) {
-  return _chtEval(dfaSet, INSERT, AWAIT_COMMIT_POINT, &xid, ht, key, &keylen, dat, &datlen) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, INSERT, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, &datlen) != SUBORDINATE_VETO_2PC;
 }
 
 int cHtLookup(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, void * key, size_t keylen, void * dat, size_t * datlen) {
-  return _chtEval(dfaSet, LOOKUP, AWAIT_COMMIT_POINT, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, LOOKUP, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
 }
 
 int cHtRemove(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, void * key, size_t keylen, void * dat, size_t * datlen) {
-  return _chtEval(dfaSet, REMOVE, AWAIT_COMMIT_POINT, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, REMOVE, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
 }
 
 int cHtDelete(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t *ht) {
   size_t zero = 0;
-  return _chtEval(dfaSet, DELETE, AWAIT_COMMIT_POINT, &xid, ht, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, DELETE, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
 }
 
 int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet) {
@@ -132,26 +136,26 @@ int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet) {
 				      be serviced exactly once, but
 				      will not conflict with real
 				      transactions or other begins.*/
- return _chtEval(dfaSet, GETXID, AWAIT_ARRIVAL, xid, NULL, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
+  return _chtEval(dfaSet, GETXID, /*AWAIT_ARRIVAL,*/ REQUEST_TYPE, xid, NULL, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
 }
 
 DfaSet * cHtClientInit(char * configFile) {
   NetworkSetup * config = readNetworkConfig(configFile, 0);
   assert(config->coordinator);
-  printf("config->localhost:%s config->broadcast_lists[0][0]:%s (localport %d)(port %d)\n",
-         config->localhost, config->broadcast_lists[0][0], config->localport, parse_port(config->broadcast_lists[0][0]));
+  //  printf("config->localhost:%s config->broadcast_lists[0][0]:%s (localport %d)(port %d)\n",
+  //      config->localhost, config->broadcast_lists[0][0], config->localport, parse_port(config->broadcast_lists[0][0]));
   DfaSet * ret = cHtInit(CHT_CLIENT, NULL, config);
   assert(config->coordinator);
   free (config);
   return ret;
 }
 
-/*int cHtCommit(state_machine_id xid, DfaSet * dfaSet) {
+int cHtCommit(state_machine_id xid, DfaSet * dfaSet) {
   size_t zero = 0;
-  return _chtEval(dfaSet, COMMIT, AWAIT_COMMIT_POINT, &xid, NULL, NULL, &zero, NULL, &zero);
+  return _chtEval(dfaSet, COMMIT, XACT_COMMIT, &xid, NULL, NULL, &zero, NULL, &zero);
 }
 
-
+/*
 int cHtAbort(state_machine_id xid, DfaSet * dfaSet) {
   size_t zero = 0;
   return _chtEval(dfaSet, ABORT, AWAIT_COMMIT_POINT, &xid, NULL, NULL, &zero, NULL, &zero);

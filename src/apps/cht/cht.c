@@ -101,17 +101,9 @@ short multiplex_interleaved(DfaSet * dfaSet, Message * m) {
 
 state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * m, char * from);
 
-
-
-
 int xid_exists(int ht_xid, recordid xid_ht, StateMachine * stateMachine) {
   int * xid = 0;
-  /*  if (-1 == jbHtLookup(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid)) {
-      return 0;
-  } else {
-      assert(xid);
-      return xid;
-      } */
+
   int size = ThashLookup(ht_xid, xid_ht, 
 			 (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), 
 			 (byte**)&xid);
@@ -155,15 +147,15 @@ DfaSet * cHtInit(int cht_type,
   }
 
   if(cht_type != CHT_CLIENT) {
-    /*    chtApp_state->xid_ht     = jbHtCreate(xid, 79);
-	  chtApp_state->ht_ht      = jbHtCreate(xid, 79); */
     chtApp_state->xid_ht = ThashCreate(xid, sizeof(state_machine_id), sizeof(int));
-    chtApp_state->ht_ht =  ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+    chtApp_state->ht_ht =  ThashCreate(xid, sizeof(clusterHashTable_t), sizeof(recordid));
     chtApp_state->ht_xid = Tbegin(); // !!!!
     chtApp_state->next_hashTableId = 0; 
 
     twoPC_state->is_coordinator = (cht_type == CHT_COORDINATOR);
     twoPC_state->init_xact_2pc = init_xact_cht;
+    twoPC_state->continue_xact_2pc = NULL;
+    twoPC_state->eval_action_2pc = eval_action_cht;
     twoPC_state->veto_or_prepare_2pc = veto_or_prepare_cht;
     twoPC_state->abort_2pc = abort_cht;
     twoPC_state->commit_2pc = commit_cht;

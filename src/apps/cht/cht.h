@@ -140,8 +140,8 @@ DfaSet * cHtClientInit(char * config_file);
 DfaSet * cHtCoordinatorInit(char * config_file, short(*get_broadcast_group)(DfaSet *, Message *));
 DfaSet * cHtSubordinateInit(char * config_file, short(*get_broadcast_group)(DfaSet *, Message *), int subordinate_number);
 int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
-/*int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
-  int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
+int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
+/*  int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
 
 /** The server side state for a CHT. */
 typedef struct {
@@ -155,6 +155,7 @@ typedef struct {
 } CHTAppState;
 
 
+callback_fcn eval_action_cht;
 callback_fcn veto_or_prepare_cht;
 callback_fcn commit_cht;
 callback_fcn tally_cht;

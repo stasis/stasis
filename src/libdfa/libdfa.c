@@ -328,6 +328,15 @@ void* main_loop(DfaSet *dfaSet) {
   }
 }
 
+state_name callback_false(void * dfaSet, StateMachine * stateMachine, 
+		 Message * message, char * message_recipient) {
+  return 0;
+}
+state_name callback_true(void * dfaSet, StateMachine * stateMachine, 
+		 Message * message, char * message_recipient) {
+  return 1;
+}
+
 void * inner_worker_loop(void * arg_void) {
 
   WorkerLoopArgs * arg = arg_void;
@@ -336,7 +345,7 @@ void * inner_worker_loop(void * arg_void) {
 
   int timeout = 0; /* Run through the loop immediately the first time around. */
   int state = 0;
-
+  //  int first = 1;
   StateMachine* stateMachine;
 
   
@@ -416,11 +425,22 @@ void * inner_worker_loop(void * arg_void) {
       if(dfaSet->states[i].name == stateMachine->current_state) {
 	state_idx = i;
       }
-    }
+    } 
 
     DEBUG("Worker loop for state machine: %ld still active\n", machine_id);
 
-    send_message(&(dfaSet->networkSetup), &(stateMachine->message), stateMachine->message_recipient);
+    int send = 1;
+    if(dfaSet->states[state_idx].retry_fcn != NULL) {
+      send = dfaSet->states[state_idx].retry_fcn(dfaSet, stateMachine, &(stateMachine->message), stateMachine->message_recipient);
+    }
+    if(send) {
+      /*      if(first) {
+	first = 0;
+      } else {
+	printf("Resending message. Machine # %ld State # %d\n", stateMachine->machine_id, stateMachine->current_state);
+	} */
+      send_message(&(dfaSet->networkSetup), &(stateMachine->message), stateMachine->message_recipient);
+    }
 
   }
 
@@ -530,7 +550,7 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   asprintf(&initiator, "%s:%d", dfaSet->networkSetup.localhost, dfaSet->networkSetup.localport);
   strcpy(initial_sm->message.initiator, initiator);
   free(initiator);
-  DEBUG("Set message initiator to %s", initial_sm->message.initiator);
+  //  printf("Set message initiator to %s\n", initial_sm->message.initiator); fflush(stdout);
   initial_sm->message.initiator_machine_id = initial_sm->machine_id;
 
   strcpy(initial_sm->message_recipient, recipient_addr);
@@ -538,7 +558,6 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   writeunlock(dfaSet->lock);
 
   ret = (int)run_request(dfaSet, machine_id);
-
 
   writelock(dfaSet->lock, machine_id); 
   assert(initial_sm == getSmash(dfaSet->smash, machine_id));
