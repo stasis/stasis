@@ -485,7 +485,7 @@ normal} operations are defined in terms of redo and undo
 functions. There is no way to modify the page except via the redo
 function.\footnote{Actually, even this can be overridden, but doing so
 complicates recovery semantics, and only should be done as a last
-resort.  Currently, this is only done to implement the OASYS flush()
+resort.  Currently, this is only done to implement the \oasys flush()
 and update() operations described in Section~\ref{OASYS}.}  This has
 the nice property that the REDO code is known to work, since the
 original operation was the exact same ``redo''.  In general, the \yad
@@ -1817,6 +1817,10 @@ There are at least two scenarios that allow \yad to avoid loading the page.
 
 \eab{are you arguing that the client doesn't need to read the record in the page file, or doesn't need to read the object at all?}
 
+\begin{figure}
+\includegraphics[width=1\columnwidth]{mem-pressure.pdf}
+\caption{\label{fig:mem-pressure}Memory pressure...}
+\end{figure}
 
 \eab{I don't get this section either...}
 
