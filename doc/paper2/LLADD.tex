@@ -1326,6 +1326,7 @@ comparison.  We chose Berkeley DB because, among
 commonly used systems, it provides transactional storage that is most
 similar to \yad, and it was
 designed for high performance and high concurrency.
+For all tests, the two libraries provide the same transactional semantics.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
 10K RPM SCSI drive, formatted with reiserfs.\footnote{We found that the
@@ -1341,9 +1342,7 @@ branch during March of 2005, with the flags DB\_TXN\_SYNC, and DB\_THREAD
 enabled. These flags were chosen to match 
 Berkeley DB's configuration to \yad's as closely as possible.  In cases where
 Berkeley DB implements a feature that is not provided by \yad, we
-enable the feature if it improves Berkeley DB's performance, but
-disable it otherwise.
-For each of the tests, the two libraries provide the same transactional semantics.
+enable the feature if it improves Berkeley DB's performance.
 
 Optimizations to Berkeley DB that we performed included disabling the
 lock manager, though we still use ``Free Threaded'' handles for all
@@ -1394,22 +1393,18 @@ overall results on multiple machines and file systems.
 %could support a broader range of features than those that are provided 
 %by BerkeleyDB's monolithic interface.
 
-\yad provides a clean abstraction of transactional pages, allowing for 
-many different types of customization to be performed.  In general, when 
-a monolithic system is replaced with a layered approach there is always
-some concern that levels of indirection and abstraction in the layered 
-approach will degrade performance.  So, before 
-moving on to describe some optimizations that \yad allows, we evaluate 
-the performance of a simple linear hash table that has been implemented as an 
-extension to \yad.  We also take the opportunity to describe how we
-implemented a heavily optimized variant of the hash and
-describe how \yad's flexible page and log formats enable interesting
-optimizations.  We also argue that \yad makes it easy to produce
-concurrent data structure implementations.
+\yad provides a clean abstraction of transactional pages, allowing for
+many different types of customization.  In general, when a monolithic
+system is replaced with a layered approach there is always some
+concern that levels of indirection and abstraction will degrade
+performance.  So, before moving on to describe some optimizations that
+\yad allows, we evaluate the performance of a simple linear hash table
+that has been implemented as an extension to \yad.  We also take the
+opportunity to describe an optimized variant
+of the hash table and describe how \yad's flexible page and log formats
+enable interesting optimizations.  We also argue that \yad makes it
+easy to produce concurrent data structure implementations.
 
-%, and provide a set of
-%mechanical steps that will allow a non-concurrent data structure
-%implementation to be used by interleaved transactions.
 
 %Finally, we describe a number of more complex optimizations and
 %compare the performance of our optimized implementation, the
@@ -1423,17 +1418,18 @@ concurrent data structure implementations.
 %it is easy to understand.
 
 We decided to implement a {\em linear} hash table~\cite{lht}.  Linear
-hash tables are able to extend their bucket list
+hash tables are able to increase the number of buckets
 incrementally at runtime. Imagine that we want
-to double the size of a hash table of size $2^{n}$ and that the hash
-table has been constructed with some hash function $h_{n}(x)=h(x)\,
+to double the size of a hash table of size $2^{n}$ and that we use 
+some hash function $h_{n}(x)=h(x)\,
 mod\,2^{n}$.  Choose $h_{n+1}(x)=h(x)\, mod\,2^{n+1}$ as the hash
 function for the new table. Conceptually, we are simply prepending a
-random bit to the old value of the hash function, so all lower order
-bits remain the same. At this point, we could simply block all
+random bit to the old value of the hash function, so all lower-order
+bits remain the same.
+
+At this point, we could simply block all
 concurrent access and iterate over the entire hash table, reinserting
 values according to the new hash function.
-
 However, 
 %because of the way we chose $h_{n+1}(x),$ 
 we know that the contents of each bucket, $m$, will be split between
@@ -1491,9 +1487,9 @@ trivial: they simply log the before or after image of that record.
 \subsection{Bucket List}
 
 \begin{figure}
-\hspace{.25in}
+%\hspace{.25in}
 \includegraphics[width=3.25in]{LHT2.pdf}
-\vspace{-24pt}
+\vspace{-12pt}
 \caption{\sf\label{fig:LHT}Structure of locality preserving ({\em
 page-oriented}) linked lists. By keeping sub-lists within one page,
 \yad improves locality and simplifies most list operations to a single
@@ -1677,9 +1673,10 @@ mentioned above, and used Berkeley DB for comparison.
 The first test (Figure~\ref{fig:BULK_LOAD}) measures the throughput of
 a single long-running
 transaction that loads a synthetic data set into the
-library.  For comparison, we also provide throughput for many different
-\yad operations, BerkeleyDB's DB\_HASH hashtable implementation,
-and lower level DB\_RECNO record number based interface.  
+library. 
+% For comparison, we also provide throughput for many different
+%\yad operations, BerkeleyDB's DB\_HASH hashtable implementation,
+%and lower level DB\_RECNO record number based interface.  
 
 Both of \yad's hashtable implementations perform well, but the
 optimized implementation is clearly faster.  This is not surprising as
@@ -1719,12 +1716,12 @@ than the straightforward implementation.
 %second chart, but provides better hashtable performance.}
 
 \begin{figure}[t]
-\vspace{10pt}
+\hspace*{18pt}
 %\includegraphics[%
 %   width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
-   width=1\columnwidth]{tps-extended.pdf}
-\vspace{-40pt}
+   width=3.25in]{tps-extended.pdf}
+\vspace{-36pt}
 \caption{\sf\label{fig:TPS} The logging mechanisms of \yad and Berkeley
 DB are able to combine multiple calls to commit() into a single disk 
 force, increasing throughput as the number of concurrent transactions 
@@ -1736,11 +1733,11 @@ grows.  We were unable to get Berkeley DB to work correctly with more than 50 th
 The second test (Figure~\ref{fig:TPS}) measures the two libraries'
 ability to exploit concurrent transactions to reduce logging overhead.
 Both systems can service concurrent calls to commit with a single
-synchronous I/O~\footnote{The multi-threading benchmarks presented
+synchronous I/O.\footnote{The multi-threading benchmarks presented
 here were performed using an ext3 file system, as high thread
 concurrency caused Berkeley DB and \yad to behave unpredictably when
 reiserfs was used.  However, \yad's multithreaded throughput was
-significantly better than Berkeley DB's with both filesystems.}.  Even 
+significantly better than Berkeley DB's with both filesystems.}  Even 
 when using the unoptimized hash table implementation, \yad
 scales very well with higher concurrency, delivering over 6000 
 %(ACID)
@@ -1782,7 +1779,7 @@ This finding suggests that it is appropriate for
 application developers to build custom
 transactional storage mechanisms when application performance is
 important.  Because we are advocating the use of 
-application-provided transactional storage primatives, we only use the 
+application-provided transactional storage primitives, we only use the 
 straightfoward hashtable implementation during our other benchmarks.
 
 We have shown that \yad's implementation provides primatives that perform 
