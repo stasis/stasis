@@ -33,7 +33,7 @@
 \begin{document}
 \title{\vspace*{-36pt}\yad: A Flexible Transactional Storage System\vspace*{-36pt}}
 %\author{}
-
+\date{Paper 198}
 \maketitle
 
 
@@ -42,21 +42,18 @@
 
 {\em Existing transactional systems are designed to handle specific
 workloads well.  Unfortunately, these implementations are generally
-monolithic, and do not generalize to other applications or classes of
-problems.  As a result, many systems are forced to ``work around'' the
-data models provided by a transactional storage layer. Manifestations
-of this problem include ``impedance mismatch'' in the database world,
-and the poor fit of existing transactional storage management systems
-to hierarchical or semi-structured data types such as XML or
-scientific data.  This work proposes a novel set of abstractions for
-transactional storage systems and generalizes an existing
-transactional storage algorithm to provide an implementation of these
-primitives.  Due to the extensibility of our architecture, the
-implementation is competitive with existing systems on conventional
-workloads and outperforms existing systems on specialized
-workloads.  Finally, we discuss characteristics of this new
-architecture that provide opportunities for novel classes of
-optimizations and enhanced usability for application developers.}
+monolithic and hide the transaction support under a SQL interface, which forces many systems to ``work around'' the relational data model.
+Manifestations of this problem include the 
+%``impedance mismatch'' in the database world, and
+the poor fit of existing transactional storage systems to persistent
+objects and hierarchical or semi-structured data, such as XML or
+scientific data.  This work proposes a novel flexible transaction
+framework intended for non-database transactional systems; for
+example, \yad makes it is easy to develop high-performance transactional
+data structures. It generally outperforms Berkeley DB, and its
+extensibility enables optimizations that outperform Berkeley DB by 2x
+and MySQL by up to 5x.  We present novel optimizations for object
+serialization and graph traversal that demonstrate this flexibility.}
 
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
