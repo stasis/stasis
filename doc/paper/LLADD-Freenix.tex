@@ -419,44 +419,6 @@ some care must be taken to ensure that undo operations obtain the
 proper latches.
 
 
-\subsubsection{Concurrency and Aborted Transactions}
-
-[move to later?]
-
-Section \ref{sub:OperationProperties} states that LLADD does not
-allow cascading aborts, implying that operation implementors must
-protect transactions from any structural changes made to data structures
-by uncomitted transactions, but LLADD does not provide any mechanisms
-designed for long-term locking. However, one of LLADD's goals is to
-make it easy to implement custom data structures for use within safe,
-multi-threaded transactions. Clearly, an additional mechanism is needed.
-
-The solution is to allow portions of an operation to 'commit' before
-the operation returns.%
-\footnote{We considered the use of nested top actions, which LLADD could easily
-support. However, we currently use the slightly simpler (and lighter-weight)
-mechanism described here. If the need arises, we will add support
-for nested top actions.%
-} An operation's wrapper is just a normal function, and therefore may
-generate multiple log entries. First, it writes an undo-only entry
-to the log. This entry will cause the \emph{logical} inverse of the
-current operation to be performed at recovery or abort, must be idempotent,
-and must fail gracefully if applied to a version of the database that
-does not contain the results of the current operation. Also, it must
-behave correctly even if an arbitrary number of intervening operations
-are performed on the data structure.
-
-[TODO...this next paragraph doesn't make sense; also maybe move this whole subsection to later, since it is complicated]
-Next, the operations writes one or more redo-only log entries that may perform structural
-modifications to the data structure. They should not make any assumptions
-about the consistency of the current version of the database. Finally,
-any prefix of the sequence of the redo-only operations performed by
-this operation must leave the database in a consistent state. The
-$B^{LINK}$ tree {[}...{]} is an example of a B-Tree implementation
-that behaves in this way, while the linear hash table implementation
-discussed in Section \ref{sub:Linear-Hash-Table} is a scalable 
-hash table that meets these constraints.
-
 \subsection{Recovery}
 
 
@@ -533,6 +495,45 @@ LLADD supports all three types of logging, and allows developers to
 register new operations, which is the key to its extensibility. After
 discussing LLADD's architecture, we will revisit this topic with a
 concrete example.
+
+
+\subsection{Concurrency and Aborted Transactions}
+
+Section \ref{sub:OperationProperties} states that LLADD does not
+allow cascading aborts, implying that operation implementors must
+protect transactions from any structural changes made to data structures
+by uncomitted transactions, but LLADD does not provide any mechanisms
+designed for long-term locking. However, one of LLADD's goals is to
+make it easy to implement custom data structures for use within safe,
+multi-threaded transactions. Clearly, an additional mechanism is needed.
+
+The solution is to allow portions of an operation to 'commit' before
+the operation returns.%
+\footnote{We considered the use of nested top actions, which LLADD could easily
+support. However, we currently use the slightly simpler (and lighter-weight)
+mechanism described here. If the need arises, we will add support
+for nested top actions.%
+} An operation's wrapper is just a normal function, and therefore may
+generate multiple log entries. First, it writes an undo-only entry
+to the log. This entry will cause the \emph{logical} inverse of the
+current operation to be performed at recovery or abort, must be idempotent,
+and must fail gracefully if applied to a version of the database that
+does not contain the results of the current operation. Also, it must
+behave correctly even if an arbitrary number of intervening operations
+are performed on the data structure.
+
+[...Eric:  Is this better?]
+
+Next, the operations writes one or more redo-only log entries that may perform structural
+modifications to the data structure. These redo entries should not make any assumptions
+about the consistency of the current version of the database. Finally,
+any prefix of the sequence of the redo-only operations performed by
+this operation must leave the database in a consistent state. The
+$B^{LINK}$ tree {[}...{]} is an example of a B-Tree implementation
+that behaves in this way, while the linear hash table implementation
+discussed in Section \ref{sub:Linear-Hash-Table} is a scalable 
+hash table that meets these constraints.
+
 
 
 \subsection{Summary}
@@ -746,8 +747,8 @@ concurrent transactions, while threads utilizing the physical-undo
 implementation never hold locks on more than two buckets.%
 \footnote{However, only one thread may expand the hashtable at once.  In order to amortize the overhead of initiating an expansion, and to allow concurrent insertions, the hash table is expanded in increments of a few thousand buckets.}%
 \begin{figure}
-~~~~~~~~\includegraphics[%
-  width=0.80\columnwidth]{LinkedList.pdf}
+~~~~~~~~~~~\includegraphics[%
+  width=0.70\columnwidth]{LinkedList.pdf}
 
 
 \caption{\label{cap:Linear-Hash-Table}Linear Hash Table Bucket operations.}
