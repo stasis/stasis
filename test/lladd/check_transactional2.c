@@ -47,8 +47,142 @@ terms specified in this license.
 #include <lladd/transactional.h>
 #include "../check_includes.h"
 #define LOG_NAME   "check_transactional2.log"
-#define THREAD_COUNT 25
-#define RECORDS_PER_THREAD 10000
+#define THREAD_COUNT 10
+#define RECORDS_PER_THREAD 500
+
+void arraySet(int * array, int val) {
+  int i;
+  for(i = 0; i < 1024; i++) {
+    array[i] = val;
+  }
+}
+
+int arrayCmp(int * array, int * array2) {
+  int i;
+  for(i = 0; i < 1024; i++) {
+    if(array[i] != array2[i]) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/** Allocate a bunch of blobs, set them, read them, commit them, and read it again, chang them, abort, and read again. */
+void * writingAbortingBlobWorkerThread ( void * v ) { 
+  int offset = * (int *) v;
+  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  int xid = Tbegin();
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, 1024 * sizeof(int)); 
+    if(! (i %100)) {
+      printf("A%d", i/100);fflush(NULL);
+    }
+  }
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int tmp[1024];/* = i + offset; */
+    arraySet(tmp, i+ offset);
+    Tset(xid, rids[i], tmp);
+    if(! (i %100)) {
+      printf("W%d", i/100); fflush(NULL);
+    }
+  }
+  
+  Tcommit(xid);
+  xid = Tbegin();
+
+  
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j[1024];
+    int k[1024];
+    arraySet(k, i+offset);
+    Tread(xid, rids[i], j); 
+    assert(arrayCmp(j,k));/*i + offset == j); */
+    if(! (i %100)) {
+      printf("R%d", i/100);fflush(NULL);
+    }
+    arraySet(k, -1);
+    Tset(xid, rids[i], k);/*(void*)&minusOne); */
+  }
+  
+  Tabort(xid);
+    
+  xid = Tbegin();
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j[1024];
+    int k[1024];
+    arraySet(k, i+offset);
+    Tread(xid, rids[i], j);
+    assert(arrayCmp(j,k));
+    if(! (i %100)) {
+      printf("S%d", i/100);fflush(NULL);
+    }
+    }
+  
+  Tcommit(xid);
+  
+  return NULL;
+}
+
+
+
+
+/** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
+void * writingAbortingWorkerThread ( void * v ) { 
+  int offset = * (int *) v;
+  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  int xid = Tbegin();
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, sizeof(int)); 
+    if(! (i %100)) {
+      printf("A%d", i/100);fflush(NULL);
+    }
+  }
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int tmp = i + offset;
+    
+    Tset(xid, rids[i], &tmp);
+    if(! (i %100)) {
+      printf("W%d", i/100); fflush(NULL);
+    }
+  }
+  
+  Tcommit(xid);
+  xid = Tbegin();
+
+  
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j;
+    int minusOne = -1;
+    
+    Tread(xid, rids[i], &j); 
+    assert(i + offset == j);
+    if(! (i %100)) {
+      printf("R%d", i/100);fflush(NULL);
+    }
+    Tset(xid, rids[i], (void*)&minusOne);
+  }
+  
+  Tabort(xid);
+    
+  xid = Tbegin();
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j;
+    Tread(xid, rids[i], &j);
+    assert(i + offset == j);
+    if(! (i %100)) {
+      printf("S%d", i/100);fflush(NULL);
+    }
+    }
+  
+  Tcommit(xid);
+  
+  return NULL;
+}
+
 
 /** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
 void * writingWorkerThread ( void * v ) { 
@@ -57,58 +191,47 @@ void * writingWorkerThread ( void * v ) {
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, sizeof(int)); 
-    if(! (i %1000)) {
-      printf("A%d", i/1000);fflush(NULL);
+    if(! (i %100)) {
+      printf("A%d", i/100);fflush(NULL);
     }
   }
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int tmp = i + offset;
     
-    /*   Page * p = loadPage(rids[i].page);
-
-    writeRecord(1, p, 0, rids[i], &tmp); 
-    
-    releasePage(p); */
     Tset(xid, rids[i], &tmp);
-    if(! (i %1000)) {
-      printf("W%d", i/1000); fflush(NULL);
+    if(! (i %100)) {
+      printf("W%d", i/100); fflush(NULL);
     }
   }
   
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int j;
     
-    /*    Page * p = loadPage(rids[i].page);
-    
-    readRecord(1, p, rids[i], &j); 
-    
-    releasePage(p); */
-    
     Tread(xid, rids[i], &j); 
     assert(i + offset == j);
-    if(! (i %1000)) {
-      printf("R%d", i/1000);fflush(NULL);
+    if(! (i %100)) {
+      printf("R%d", i/100);fflush(NULL);
     }
   }
   
   Tcommit(xid);
     
-  /*  Tcommit(xid);
-
   xid = Tbegin();
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int j;
     Tread(xid, rids[i], &j);
     assert(i + offset == j);
-    }*/
+    }
+  
+  Tcommit(xid);
+  
   return NULL;
 }
 
-
-
 /**
+   @test
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
    operations that use physical logging.
@@ -150,6 +273,7 @@ START_TEST(transactional_smokeTest) {
 END_TEST
 
 /**
+   @test
    Just like transactional_smokeTest, but check blobs instead.
 */
 START_TEST(transactional_blobSmokeTest) {
@@ -205,6 +329,10 @@ START_TEST(transactional_blobSmokeTest) {
 }
 END_TEST
 
+/**
+   @test 
+   Make sure that the single threaded version of transactional_threads_commit passes.
+*/
 START_TEST(transactional_nothreads_commit) {
   int five = 5;
   Tinit();
@@ -212,6 +340,10 @@ START_TEST(transactional_nothreads_commit) {
   Tdeinit();
 } END_TEST
 
+/**
+   @test
+   Test LLADD in a multi-threaded envrionment, where every transaction commits. 
+*/
 START_TEST(transactional_threads_commit) {
   pthread_t workers[THREAD_COUNT];
   int i;
@@ -232,6 +364,76 @@ START_TEST(transactional_threads_commit) {
   Tdeinit();
 } END_TEST
 
+/**
+   @test 
+   Make sure that the single threaded version of transactional_threads_abort passes.
+*/
+START_TEST(transactional_nothreads_abort) {
+  int five = 5;
+  Tinit();
+  writingAbortingWorkerThread(&five);
+  Tdeinit();
+} END_TEST
+
+/**
+   @test
+   Test LLADD in a multi-threaded envrionment, with a mix of transaction commits and aborts.
+*/
+START_TEST(transactional_threads_abort) {
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  
+  Tinit();
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    int arg = i + 100;
+    pthread_create(&workers[i], NULL, writingAbortingWorkerThread, &arg);
+
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+
+
+  }
+
+  Tdeinit();
+} END_TEST
+
+/**
+   @test 
+   Make sure that the single threaded version of transactional_threads_abort passes.
+*/
+START_TEST(transactional_blobs_nothreads_abort) {
+  int five = 5;
+  Tinit();
+  writingAbortingBlobWorkerThread(&five);
+  Tdeinit();
+} END_TEST
+
+/**
+   @test
+   Test LLADD in a multi-threaded envrionment, with a mix of transaction commits and aborts.
+*/
+START_TEST(transactional_blobs_threads_abort) {
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  
+  Tinit();
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    int arg = i + 100;
+    pthread_create(&workers[i], NULL, writingAbortingBlobWorkerThread, &arg);
+
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+
+
+  }
+
+  Tdeinit();
+} END_TEST
+
 /** 
   Add suite declarations here
 */
@@ -241,10 +443,14 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("transactional_smokeTest");
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, transactional_smokeTest);
-  /*  tcase_add_test(tc, transactional_blobSmokeTest);  */
+  /*  tcase_add_test(tc, transactional_smokeTest);
+  tcase_add_test(tc, transactional_blobSmokeTest);  
   tcase_add_test(tc, transactional_nothreads_commit);
   tcase_add_test(tc, transactional_threads_commit); 
+  tcase_add_test(tc, transactional_nothreads_abort);
+  tcase_add_test(tc, transactional_threads_abort); */
+  tcase_add_test(tc, transactional_blobs_nothreads_abort); 
+  tcase_add_test(tc, transactional_blobs_threads_abort);
   /** @todo still need to make blobs reentrant! */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

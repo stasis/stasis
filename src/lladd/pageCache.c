@@ -152,7 +152,11 @@ Page * getPage(int pageid, int locktype) {
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
   if(ret) {
-    readlock(ret->loadlatch, 217);
+    if(locktype == RW) {
+      writelock(ret->loadlatch, 217);
+    } else {
+      readlock(ret->loadlatch, 217);
+    }
     //writelock(ret->loadlatch, 217);
   }
 
@@ -165,7 +169,11 @@ Page * getPage(int pageid, int locktype) {
 
     if(ret) {
       //      writelock(ret->loadlatch, 217);
-      readlock(ret->loadlatch, 217);
+      if(locktype == RW) {
+	writelock(ret->loadlatch, 217);
+      } else {
+	readlock(ret->loadlatch, 217);
+      }
     }
     spin++;
     if(spin > 10000) {
@@ -244,7 +252,11 @@ Page * getPage(int pageid, int locktype) {
     /*    downgradelock(ret->loadlatch); */
 
     //    writelock(ret->loadlatch, 217);
-    readlock(ret->loadlatch, 217);
+    if(locktype == RW) {
+      writelock(ret->loadlatch, 217);
+    } else {
+      readlock(ret->loadlatch, 217);
+    }
     if(ret->id != pageid) {
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n"); 

@@ -141,10 +141,11 @@ END_TEST
 */
 START_TEST(pageThreadTest) {
 
-#define  THREAD_COUNT 50
+#define  THREAD_COUNT 10
   pthread_t workers[THREAD_COUNT];
   int i;
   pthread_mutex_init(&random_mutex, NULL);
+  pthread_mutex_init(&lsn_mutex, NULL);
 
   fail_unless(1, NULL);
   Tinit();

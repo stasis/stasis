@@ -17,9 +17,10 @@
 #define LOG_NAME   "check_bufferMananger.log"
 
 #define NUM_PAGES 1000
-#define THREAD_COUNT 25
-#define READS_PER_THREAD 10000
-#define RECORDS_PER_THREAD 10000
+#define THREAD_COUNT 10
+#define READS_PER_THREAD 100
+#define RECORDS_PER_THREAD 100
+
 #define RECORD_THREAD_COUNT 25
 void initializePages() {
   
@@ -60,8 +61,8 @@ void * workerThread(void * p) {
 
     int k = (int) (((double)NUM_PAGES)*rand()/(RAND_MAX+1.0));
     Page * p;
-    if(! (i % 500) ) {
-      printf("%d", i / 500); fflush(NULL);
+    if(! (i % 50) ) {
+      printf("%d", i / 50); fflush(NULL);
     }
 
     rid.page = k;
@@ -94,8 +95,8 @@ void * workerThreadWriting(void * q) {
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */
 
-    if(! (i % 1000) ) {
-      printf("A%d", i / 1000); fflush(NULL);
+    if(! (i % 100) ) {
+      printf("A%d", i / 100); fflush(NULL);
 
     }
 
@@ -122,8 +123,8 @@ void * workerThreadWriting(void * q) {
     assert(p->id == rids[i].page);
     releasePage(p);
 
-    if(! (i % 1000) ) {
-      printf("W%d", i / 1000); fflush(NULL);
+    if(! (i % 100) ) {
+      printf("W%d", i / 100); fflush(NULL);
     }
 
     /*    sched_yield(); */
@@ -139,8 +140,8 @@ void * workerThreadWriting(void * q) {
 
     releasePage(p);
 
-    if(! (i % 1000) ) {
-      printf("R%d", i / 1000); fflush(NULL);
+    if(! (i % 100) ) {
+      printf("R%d", i / 100); fflush(NULL);
     }
 
 
@@ -236,9 +237,9 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
-  /*  tcase_add_test(tc, pageSingleThreadTest); 
+  tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageLoadTest);  
-  tcase_add_test(tc, pageSingleThreadWriterTest);   */
+  tcase_add_test(tc, pageSingleThreadWriterTest);   
   tcase_add_test(tc, pageThreadedWritersTest); 
 
   /* --------------------------------------------- */

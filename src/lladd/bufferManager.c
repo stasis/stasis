@@ -143,7 +143,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     /*    DEBUG("Writing blob.\n"); */
-    writeBlob(xid, lsn, rid, dat);
+    writeBlob(xid, p, lsn, rid, dat);
 
   } else {
     /*    DEBUG("Writing record.\n"); */
@@ -165,7 +165,7 @@ void readRecord(int xid, Page * p, recordid rid, void *buf) {
     /*    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
 	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
     /* @todo should readblob take a page pointer? */
-    readBlob(xid, rid, buf);
+    readBlob(xid, p, rid, buf);
   } else {
     assert(rid.page == p->id); 
     /*    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 

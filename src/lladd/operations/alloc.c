@@ -32,7 +32,7 @@
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
-    allocBlob(xid, lsn, rid);
+    allocBlob(xid, p, lsn, rid);
   } else {
     /*    Page * loadedPage = loadPage(rid.page); */
     /*    pageSlotRalloc(loadedPage, lsn, rid); */

@@ -8,11 +8,15 @@
 #include <lladd/bufferManager.h>
 #include <lladd/constants.h>
 
+#include "latches.h"
+
 #include "blobManager.h"
 
 #include <pbl/pbl.h>
 
 #include <stdio.h>
+
+pthread_mutex_t blob_hash_mutex;
 
 static FILE * blobf0 = NULL, * blobf1 = NULL;
 /**
@@ -24,148 +28,42 @@ static pblHashTable_t * dirtyBlobs;
 /** Plays a nasty trick on bufferManager to force it to read and write
     blob_record_t items for us.  Relies upon bufferManager (and
     page.c's) trust in the rid.size field... */
-static void readRawRecord(int xid, recordid rid, void * buf, int size) {
+static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
-  /*readRecord(xid, blob_rec_rid, buf);*/
-  Tread(xid, blob_rec_rid, buf);
+  readRecord(xid, p, blob_rec_rid, buf);
+    /*  Tread(xid, blob_rec_rid, buf); */
 }
 
-static void writeRawRecord(int xid, recordid rid, const void * buf, int size) {
+static void writeRawRecord(int xid, Page * p, recordid rid, lsn_t lsn, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
-  Tset(xid, blob_rec_rid, buf);
+  writeRecord(xid, p, lsn, blob_rec_rid, buf);
+  /**  Tset(xid, blob_rec_rid, buf); @todo how should we write the log entry? */
 }
-
-
-
-/* moved verbatim from bufferManger.c, then hacked up to use FILE * instead of ints. */
-void openBlobStore() {
-
-  /* the r+ mode opens an existing file read /write */
-  if( ! (blobf0 = fopen(BLOB0_FILE, "r+"))) { /* file may not exist */
-    /* the w+ mode truncates, creates, and opens read / write */
-   if(!(blobf0 = fopen(BLOB0_FILE, "w+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
-  }
-
-  DEBUG("blobf0 opened.\n");
-
-  if( ! (blobf1 = fopen(BLOB1_FILE, "r+"))) { /* file may not exist */
-    if(!(blobf1 = fopen(BLOB1_FILE, "w+"))) { perror("Couldn't open or create blob 1 file"); abort(); }
-  }
-
-  DEBUG("blobf1 opened.\n");
-
-  dirtyBlobs = pblHtCreate();
-}
-
-/** Discards all changes to dirty blobs, and closes the blob store. 
-    
-    @todo memory leak: Will leak memory if there are any outstanding
-    xacts that have written to blobs.  Should explicitly abort them
-    instead of just invalidating the dirtyBlobs hash.  
-
-    (If the you fix the above todo, don't forget to fix
-    bufferManager's simulateBufferManagerCrash.)
-*/
-void closeBlobStore() {
-  int ret = fclose(blobf0);
-  assert(!ret);
-  ret = fclose(blobf1);
-  assert(!ret);
-  blobf0 = NULL;
-  blobf1 = NULL;
-
-  pblHtDelete(dirtyBlobs);
-}
-
-recordid preAllocBlob(int xid, long blobSize) {
-  long fileSize = myFseek(blobf1, 0, SEEK_END);
-  blob_record_t blob_rec;
-
-  /* Allocate space for the blob entry. */
- 
-  DEBUG("Allocing blob (size %ld)\n", blobSize);
-
-  assert(blobSize > 0); /* Don't support zero length blobs right now... */
-
-  /* First in buffer manager. */
-
-  recordid rid = Talloc(xid, sizeof(blob_record_t));
-
-  Page * p = loadPage(rid.page); /** @todo blob's are almost surely broken! */
-
-  /** Finally, fix up the fields in the record that points to the blob. 
-      The rest of this also should go into alloc.c 
-  */
-
-  blob_rec.fd = 0;
-  blob_rec.size = blobSize;
-  blob_rec.offset = fileSize;
-  
-  pageSetSlotType(p, rid.slot, BLOB_SLOT);
-  rid.size = BLOB_SLOT;
-
-  releasePage(p);
-
-
-  /* Tset() needs to know to 'do the right thing' here, since we've
-     changed the size it has recorded for this record, and
-     writeRawRecord makes sure that that is the case. */
-  writeRawRecord  (xid, rid, &blob_rec, sizeof(blob_record_t));
-
-  rid.size = blob_rec.size;
-
-
-  return rid;
-
-}
-
-void allocBlob(int xid, lsn_t lsn, recordid rid) {  
-  
-  long fileSize = myFseek(blobf1, 0, SEEK_END);
-  blob_record_t blob_rec;
-  char zero = 0;
-
-  /* Allocate space for the blob entry. */
- 
-  DEBUG("post Allocing blob (size %ld)\n", rid.size);
-
-  assert(rid.size > 0); /* Don't support zero length blobs right now... */
-
-  /* First in buffer manager. */
-
-  /* Read in record to get the correct offset, size for the blob*/
-
-  /** @todo blobs deadlock... */
-  readRawRecord(xid, rid, &blob_rec, sizeof(blob_record_t));
-
-  myFseek(blobf0, fileSize + rid.size - 1, SEEK_SET);
-  myFseek(blobf1, fileSize + rid.size - 1, SEEK_SET);
-
-  if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
-  if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
-
-}
-
 static lsn_t * tripleHashLookup(int xid, recordid rid) {
+  lsn_t * ret;
+  pthread_mutex_lock(&blob_hash_mutex);
   pblHashTable_t * xidHash = pblHtLookup(dirtyBlobs, &xid, sizeof(xid));
   if(xidHash == NULL) {
-    return NULL;
+    ret = NULL;
   } else {
     pblHashTable_t * pageXidHash = pblHtLookup(xidHash, &(rid.page), sizeof(int));
     if(pageXidHash == NULL) {
-      return NULL;
+      ret = NULL;
+    } else {
+      ret = pblHtLookup(pageXidHash, &rid, sizeof(recordid));
     }
-    return pblHtLookup(pageXidHash, &rid, sizeof(recordid));
   }
+  pthread_mutex_unlock(&blob_hash_mutex);
+  return ret;
 }
 
 static void tripleHashInsert(int xid, recordid rid, lsn_t newLSN) {
   pblHashTable_t * xidHash;
   pblHashTable_t * pageXidHash;
   lsn_t * copy;
-
+  pthread_mutex_lock(&blob_hash_mutex);
   xidHash = pblHtLookup(dirtyBlobs, &xid, sizeof(int)); /* Freed in doubleHashRemove */
 
   if(xidHash == NULL) {
@@ -184,7 +82,10 @@ static void tripleHashInsert(int xid, recordid rid, lsn_t newLSN) {
   *copy = newLSN;
 
   pblHtInsert(pageXidHash, &rid, sizeof(recordid), copy);
+
+  pthread_mutex_unlock(&blob_hash_mutex);
 }
+
 /* 
 static void tripleHashRemove(int xid, recordid rid) {
   pblHashTable_t * xidHash = pblHtLookup(dirtyBlobs, &xid, sizeof(int));
@@ -214,7 +115,143 @@ static void tripleHashRemove(int xid, recordid rid) {
   }
 }*/
 
-void readBlob(int xid, recordid rid, void * buf) { 
+/* moved verbatim from bufferManger.c, then hacked up to use FILE * instead of ints. */
+void openBlobStore() {
+
+  /* the r+ mode opens an existing file read /write */
+  if( ! (blobf0 = fopen(BLOB0_FILE, "r+"))) { /* file may not exist */
+    /* the w+ mode truncates, creates, and opens read / write */
+   if(!(blobf0 = fopen(BLOB0_FILE, "w+"))) { perror("Couldn't open or create blob 0 file"); abort(); }
+  }
+
+  DEBUG("blobf0 opened.\n");
+
+  if( ! (blobf1 = fopen(BLOB1_FILE, "r+"))) { /* file may not exist */
+    if(!(blobf1 = fopen(BLOB1_FILE, "w+"))) { perror("Couldn't open or create blob 1 file"); abort(); }
+  }
+
+  DEBUG("blobf1 opened.\n");
+
+  dirtyBlobs = pblHtCreate();
+  pthread_mutex_init(&blob_hash_mutex, NULL);
+}
+
+/** Discards all changes to dirty blobs, and closes the blob store. 
+    
+    @todo memory leak: Will leak memory if there are any outstanding
+    xacts that have written to blobs.  Should explicitly abort them
+    instead of just invalidating the dirtyBlobs hash.  
+
+    (If the you fix the above todo, don't forget to fix
+    bufferManager's simulateBufferManagerCrash.)
+*/
+void closeBlobStore() {
+  int ret = fclose(blobf0);
+  assert(!ret);
+  ret = fclose(blobf1);
+  assert(!ret);
+  blobf0 = NULL;
+  blobf1 = NULL;
+  
+  pblHtDelete(dirtyBlobs);
+
+  pthread_mutex_destroy(&blob_hash_mutex);
+}
+
+/** 
+    blob allocation:
+
+    generate rid
+    log rid (+ alloc)
+    alloc space in store
+    log rid write
+    perform rid write
+    write space allocation to store
+
+    (It used to be:)
+    
+    allocate space in store
+    generate rid
+    write space in store
+    log rid
+    write rid alloc
+    log rid
+
+    The trick here is to make sure that the write to the record
+    happens after the record's allocation has been logged.
+
+*/
+
+recordid preAllocBlob(int xid, long blobSize) {
+
+  /* Allocate space for the blob entry. */
+ 
+  DEBUG("Allocing blob (size %ld)\n", blobSize);
+
+  assert(blobSize > 0); /* Don't support zero length blobs right now... */
+
+  /* First in buffer manager. */
+
+  recordid rid = Talloc(xid, sizeof(blob_record_t));
+
+  rid.size = blobSize;
+
+  return rid;
+
+}
+
+void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {  
+  
+  long fileSize;
+  blob_record_t blob_rec;
+
+  char zero = 0;
+
+  DEBUG("post Allocing blob (size %ld)\n", rid.size);
+
+  /** Finally, fix up the fields in the record that points to the blob. 
+      The rest of this also should go into alloc.c 
+  */
+  blob_rec.fd = 0;
+  blob_rec.size = rid.size;
+  flockfile(blobf1);
+  flockfile(blobf0);
+  fileSize = myFseek(blobf1, 0, SEEK_END);
+  blob_rec.offset = fileSize;
+  
+  pageSetSlotType(p, rid.slot, BLOB_SLOT);
+  rid.size = BLOB_SLOT;
+
+  /* Tset() needs to know to 'do the right thing' here, since we've
+     changed the size it has recorded for this record, and
+     writeRawRecord makes sure that that is the case. */
+  writeRawRecord  (xid, p, rid, lsn, &blob_rec, sizeof(blob_record_t));
+  /*    releasePage(p); */
+  rid.size = blob_rec.size;
+
+  /* Allocate space for the blob entry. */
+
+  assert(rid.size > 0); /* Don't support zero length blobs right now... */
+
+  /* First in buffer manager. */
+
+  /* Read in record to get the correct offset, size for the blob*/
+
+  /* * @ todo blobs deadlock... */
+  /*  readRawRecord(xid, p, rid, &blob_rec, sizeof(blob_record_t)); */
+
+  myFseek(blobf0, fileSize + rid.size - 1, SEEK_SET);
+  myFseek(blobf1, fileSize + rid.size - 1, SEEK_SET);
+
+  if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
+  if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
+
+  funlockfile(blobf0);
+  funlockfile(blobf1);
+
+}
+
+void readBlob(int xid, Page * p, recordid rid, void * buf) { 
 
   /* We don't care if the blob is dirty, since the record from the
      buffer manager will reflect that if it is.. */
@@ -225,15 +262,19 @@ void readBlob(int xid, recordid rid, void * buf) {
 
   assert(buf);
 
-  readRawRecord(xid, rid, &rec, sizeof(blob_record_t));
+  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
 
   fd = rec.fd ? blobf1 : blobf0;
 
+
+  DEBUG("reading blob at offset %d, size %ld, buffer %x\n", rec.offset, rec.size, (unsigned int) buf);
+
+  flockfile(fd);
+
   offset = myFseek(fd, (long int) rec.offset, SEEK_SET);
 
-  DEBUG("reading blob at offset %d (%ld), size %ld, buffer %x\n", rec.offset, offset, rec.size, (unsigned int) buf);
-
   assert(rec.offset == offset);
+
   if(1 != fread(buf, rec.size, 1, fd)) { 
 
     if(feof(fd)) { printf("Unexpected eof!\n"); fflush(NULL); abort(); }
@@ -241,12 +282,13 @@ void readBlob(int xid, recordid rid, void * buf) {
 
   }
 
+  funlockfile(fd);
 }
 
 /** @todo dirtyBlobs should contain the highest LSN that wrote to the
     current version of the dirty blob, and the lsn field should be
     checked to be sure that it increases monotonically. */
-void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) { 
+void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) { 
 
   /* First, determine if the blob is dirty. */
   lsn_t * dirty = tripleHashLookup(xid, rid);
@@ -260,7 +302,7 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
 
 
   /* Tread() raw record */
-  readRawRecord(xid, rid, &rec, sizeof(blob_record_t));
+  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
 
   assert(rec.size == rid.size);
 
@@ -278,16 +320,20 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
     rec.fd = rec.fd ? 0 : 1;
 
     /* Tset() raw record */
-    writeRawRecord(xid, rid, &rec, sizeof(blob_record_t));
+    writeRawRecord(xid, p, rid, lsn, &rec, sizeof(blob_record_t));
   }
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
 
+  DEBUG("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
+ 
+  flockfile(fd);
+
   offset = myFseek(fd, rec.offset, SEEK_SET);
 
-  DEBUG("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
   assert(offset == rec.offset);
   readcount = fwrite(buf, rec.size, 1, fd);
+  funlockfile(fd);
   assert(1 == readcount);
 
   /* No need to update the raw blob record. */
@@ -297,9 +343,12 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
     files when it's called (are there any dirty blobs associated with
     this transaction? */
 void commitBlobs(int xid) {
-
+  flockfile(blobf0);
+  flockfile(blobf1);
   fdatasync(fileno(blobf0));
   fdatasync(fileno(blobf1));
+  funlockfile(blobf0);
+  funlockfile(blobf1);
   abortBlobs(xid);
 }
 
@@ -329,27 +378,32 @@ void abortBlobs(int xid) {
     easier.
   */
  
+  pthread_mutex_lock(&blob_hash_mutex);
+
   pblHashTable_t * rid_buckets = pblHtLookup(dirtyBlobs, &xid, sizeof(int));
   pblHashTable_t * this_bucket;
   
-  if(!rid_buckets) { return; } /* No dirty blobs for this xid.. */
-
-  for(this_bucket = pblHtFirst(rid_buckets); this_bucket; this_bucket = pblHtNext(rid_buckets)) {
-    lsn_t * rid_lsn;
-    int page_number;
-
-    /* All right, this_bucket contains all of the rids for this page. */
-
-    for(rid_lsn = pblHtFirst(this_bucket); rid_lsn; rid_lsn = pblHtNext(this_bucket)) {
-      recordid * rid = pblHtCurrentKey(this_bucket);
-      page_number = rid->page;
-      pblHtRemove(this_bucket, rid, sizeof(recordid));
-      free(rid_lsn);
-    }
-
-    pblHtRemove(rid_buckets, &page_number, sizeof(int));
-    pblHtDelete(this_bucket);
-  }
-  pblHtDelete(rid_buckets);
+  if(rid_buckets) {  /* Otherwise, there are no dirty blobs for this xid.. */
     
+    for(this_bucket = pblHtFirst(rid_buckets); this_bucket; this_bucket = pblHtNext(rid_buckets)) {
+      lsn_t * rid_lsn;
+      int page_number;
+      
+      /* All right, this_bucket contains all of the rids for this page. */
+      
+      for(rid_lsn = pblHtFirst(this_bucket); rid_lsn; rid_lsn = pblHtNext(this_bucket)) {
+	recordid * rid = pblHtCurrentKey(this_bucket);
+	page_number = rid->page;
+	pblHtRemove(this_bucket, rid, sizeof(recordid));
+	free(rid_lsn);
+      }
+      
+      pblHtRemove(rid_buckets, &page_number, sizeof(int));
+      pblHtDelete(this_bucket);
+    }
+    pblHtDelete(rid_buckets);
+  }
+
+  pthread_mutex_unlock(&blob_hash_mutex);
+
 }

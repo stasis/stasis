@@ -45,7 +45,7 @@ int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int li
     blockCount ++;
     pthread_yield();
     
-    if(blockCount >= 10000 && ! (blockCount % 10000)) {
+    if(blockCount >= 30000 && ! (blockCount % 30000)) {
       printf("Spinning at %s:%d, %ld times.  Held by: %s\n", file, line, blockCount, mutex->last_acquired_at);
       fflush(NULL);
     }

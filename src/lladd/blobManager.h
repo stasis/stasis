@@ -48,13 +48,13 @@ BEGIN_C_DECLS
 /** 
     Read the blob from the recordid rid into buf.
 */
-void readBlob(int xid, recordid rid, void * buf);
+void readBlob(int xid, Page * p,  recordid rid, void * buf);
 
 
 /** 
     Write the contents of buf to the blob in recordid rid.
 */
-void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf);
+void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf);
 
 
 /**
@@ -88,7 +88,7 @@ recordid preAllocBlob(int xid, long blobsize);
 
 */
 
-void allocBlob(int xid, lsn_t lsn, recordid rid);
+void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid);
 void openBlobStore();
 void closeBlobStore();
 
