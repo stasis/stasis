@@ -652,7 +652,7 @@ during normal operation.
 \begin{figure}
 \includegraphics[%
    width=1\columnwidth]{structure.pdf}
-\caption{\label{fig:BULK_LOAD} Structure of an action...}
+\caption{\label{fig:structure} Structure of an action...}
 \end{figure}
 
 
@@ -1338,6 +1338,7 @@ test is run as a single transaction, overheads due to synchronous I/O
 and logging are minimized.}
 \end{figure*}
 
+
 %\subsection{Conventional workloads}
 
 %Existing database servers and transactional libraries are tuned to
@@ -1403,6 +1404,11 @@ be able index into an expandible set of buckets using the bucket
 number.
 
 \subsection{The Bucket List}
+
+\begin{figure}
+\includegraphics[width=3.25in]{LHT2.pdf}
+\caption{\label{fig:LHT}Structure of linked lists...}
+\end{figure}
 
 \yad provides access to transactional storage with page-level
 granularity and stores all record information in the same page file.
