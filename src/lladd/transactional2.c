@@ -11,10 +11,12 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include "page/indirect.h"
 
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
+
 
 /** 
     Locking for transactional2.c works as follows:
@@ -34,11 +36,15 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_SET]       = getSet();
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
+	operationsTable[OPERATION_ALLOC]     = getAlloc();
 	operationsTable[OPERATION_PREPARE]   = getPrepare();
 	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
-	operationsTable[OPERATION_ALLOC]     = getAlloc();
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
+	operationsTable[OPERATION_PAGE_ALLOC] = getPageAlloc();
+	operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc();
+	operationsTable[OPERATION_PAGE_SET] = getPageSet();
+
 
 }
 
@@ -105,6 +111,12 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   p = loadPage(rid.page);
 
+  if(*page_type_ptr(p) == INDIRECT_PAGE) {
+    releasePage(p);
+    rid = dereferenceRID(rid);
+    p = loadPage(rid.page); 
+  }
+
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
   
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
@@ -120,7 +132,16 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
 void Tread(int xid, recordid rid, void * dat) {
   Page * p = loadPage(rid.page);
-  readRecord(xid, p, rid, dat);
+  if(*page_type_ptr(p) == SLOTTED_PAGE) {
+    readRecord(xid, p, rid, dat);
+  } else if(*page_type_ptr(p) == INDIRECT_PAGE) {
+    releasePage(p);
+    rid = dereferenceRID(rid);
+    p = loadPage(rid.page);
+    readRecord(xid, p, rid, dat);
+  } else {
+    abort();
+  }
   releasePage(p);
 }
 

@@ -88,13 +88,15 @@ START_TEST(indirectCalculateLevelTest)
 }
 END_TEST
 
+
 START_TEST(indirectAlloc) {
   Tinit();
+  int xid = Tbegin();
+  int page;
+  recordid rid = rallocMany(xid, 1, 255);
+
+  page = rid.page;
   
-  int page = pageAllocMultiple(1);
-
-  recordid rid = rallocMany(page, 1, 1, 255);
-
   fail_unless(rid.page == page, NULL);
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
   fail_unless(rid.size == 1, NULL);
@@ -111,9 +113,10 @@ START_TEST(indirectAlloc) {
   
   /* ------------------------------- */
 
-  page = pageAllocMultiple(1);
 
-  rid = rallocMany(page, 1, 2000, 255);
+  rid = rallocMany(xid, 2000, 255);
+
+  page = rid.page;
 
   fail_unless(rid.page == page, NULL);
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
@@ -135,9 +138,9 @@ START_TEST(indirectAlloc) {
 
   /*----------------- */
 
-  page = pageAllocMultiple(1);
+  rid = rallocMany(xid, 2, 1000000);
 
-  rid = rallocMany(page, 1, 2, 1000000);
+  page = rid.page;
 
   fail_unless(rid.page == page, NULL);
   fail_unless(rid.slot == RECORD_ARRAY, NULL);
@@ -149,25 +152,29 @@ START_TEST(indirectAlloc) {
 
   assert(page_type == INDIRECT_PAGE);
 
-  fail_unless(page_type == INDIRECT_PAGE, NULL);
-  
+  fail_unless(page_type == INDIRECT_PAGE, NULL); 
+ 
 
 
   printf("{page = %d, slot = %d, size = %ld}\n", rid.page, rid.slot, rid.size);
 
   releasePage(p);
+  
+  Tcommit(xid);
 
   Tdeinit();
+
+
 } END_TEST
 
 START_TEST(indirectAccessDirect) {
 
   Tinit();
 
-  int page = pageAllocMultiple(1);
-
-  recordid rid = rallocMany(page, 1, sizeof(int), 500);
-
+  int page;
+  int xid = Tbegin();
+  recordid rid = rallocMany(xid, sizeof(int), 500);
+  page = rid.page;
   /* Make sure that it didn't create any indirect pages. */
 
   Page * p = loadPage(page);
@@ -180,7 +187,9 @@ START_TEST(indirectAccessDirect) {
   
   releasePage(p);
 
-  int xid = Tbegin();
+  Tcommit(xid);
+
+  xid = Tbegin();
   
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
@@ -205,10 +214,12 @@ START_TEST(indirectAccessIndirect) {
 
   Tinit();
 
-  int page = pageAllocMultiple(1);
+  int page;
 
-  recordid rid = rallocMany(page, 1, sizeof(int), 500000);
+  int xid = Tbegin();
 
+  recordid rid = rallocMany(xid, sizeof(int), 500000);
+  page = rid.page;
   /* Make sure that it didn't create any indirect pages. */
 
   Page * p = loadPage(page);
@@ -218,11 +229,11 @@ START_TEST(indirectAccessIndirect) {
   assert(page_type == INDIRECT_PAGE);
 
   fail_unless(page_type == INDIRECT_PAGE, NULL);
-  
+ 
+  Tcommit(xid);
+  xid = Tbegin();
   releasePage(p);
 
-  int xid = Tbegin();
-  
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
     Tset(xid, dereferenceRID(rid), &i);
@@ -240,6 +251,31 @@ START_TEST(indirectAccessIndirect) {
   
   Tcommit(xid);
 
+  Tdeinit();
+  
+} END_TEST
+
+/** @test check that the indirectPageRecordCount() function works
+    properly for both INDIRECT_PAGES and for SLOTTED_PAGES. */
+START_TEST(indirectSizeTest) {
+
+  Tinit();
+
+  int xid = Tbegin();
+
+  recordid rid = rallocMany(xid, sizeof(int), 20);
+  int count = indirectPageRecordCount(rid);
+  assert(count == 20);
+
+  recordid rid2 = rallocMany(xid, sizeof(int), 5000);
+  
+  count = indirectPageRecordCount(rid2);
+  assert(count == 5000);
+
+  Tcommit(xid);
+
+  Tdeinit();
+
 } END_TEST
 
 
@@ -254,6 +290,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, indirectAlloc);
   tcase_add_test(tc, indirectAccessDirect);
   tcase_add_test(tc, indirectAccessIndirect);
+  tcase_add_test(tc, indirectSizeTest);
 
   /* --------------------------------------------- */
   

@@ -68,7 +68,8 @@ const byte * getUpdateArgs(const LogEntry * ret) {
 
 const byte * getUpdatePreImage(const LogEntry * ret) {
   assert(ret->type == UPDATELOG);
-  if(operationsTable[ret->contents.update.funcID].undo != NO_INVERSE) {
+  if(operationsTable[ret->contents.update.funcID].undo != NO_INVERSE && 
+     operationsTable[ret->contents.update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
     return NULL;
   } else {
     return ((byte*)ret) + sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + ret->contents.update.argSize;
@@ -79,8 +80,9 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 			       unsigned int funcID, recordid rid, 
 			       const byte * args, unsigned int argSize, const byte * preImage) {
   int invertible = operationsTable[funcID].undo != NO_INVERSE;
-
-  LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize + ((!invertible) ? rid.size : 0));
+  int whole_page_phys = operationsTable[funcID].undo == NO_INVERSE_WHOLE_PAGE;
+  LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize +
+			  ((!invertible) ? rid.size : 0) + (whole_page_phys ? PAGE_SIZE : 0));
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
@@ -94,6 +96,9 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   } 
   if(!invertible) {
     memcpy((void*)getUpdatePreImage(ret), preImage, rid.size);
+  }
+  if(whole_page_phys) {
+    memcpy((void*)getUpdatePreImage(ret), preImage, PAGE_SIZE);
   }
 
   return ret;
@@ -123,7 +128,8 @@ long sizeofLogEntry(const LogEntry * log) {
     return sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry);
   case UPDATELOG: 
     return sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + log->contents.update.argSize + 
-      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? log->contents.update.rid.size : 0);
+      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? log->contents.update.rid.size : 0) +
+      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0) ;
   default:
     return sizeof(struct __raw_log_entry);
   }

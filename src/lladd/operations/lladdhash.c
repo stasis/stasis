@@ -2,72 +2,69 @@
 #include <lladd/common.h>
 
 #include <lladd/operations/lladdhash.h>
+#include <lladd/operations/pageOperations.h>
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 
+#include "../page/indirect.h"
+
 #include <assert.h>
 #include <stdio.h>
-static const recordid ZERO_RECORDID = {0,0,0};
 
-typedef struct {
-  int ht;
-  size_t keylen;
-  size_t datlen;
-}  lladdHashRec_t;
+const recordid ZERO_RID = {0,0,0};
 
-static lladdHash_t * lladdHashes[MAX_LLADDHASHES];
-int next_lladdHash = 0;
+/** All of this information is derived from the hashTables rid at
+    runtime, or is specific to the piece of memory returned by
+    lHtOpen() */
+struct lladdHash_t {
+  recordid hashTable;
+  int iter_next_bucket;
+  recordid iter_next_ptr;
+};
 
-lladdHash_t * lHtCreate(int xid, int size) {
+recordid lHtCreate(int xid, int size) {
+  return rallocMany(xid, sizeof(recordid), size);
 
-	lladdHash_t *ht;
-	
-	ht = lladdHashes[next_lladdHash] = (lladdHash_t*)malloc(sizeof(lladdHash_t));
-
-	
-	if( ht ) {
-	        recordid * hm = malloc(sizeof(recordid) * size);
-		if(hm) {
-		  memset(hm, 0, sizeof(recordid)*size);
-		  
-		  ht->size  = size;
-		  ht->store = next_lladdHash; /*Talloc(xid, sizeof(lladdHash_t));*/
-		  ht->hashmap_record = Talloc(xid, sizeof(recordid) * size);
-		  /*ht->hashmap = NULL;*/ /* Always should be NULL in the store, so that we know if we need to read it in */
-		  /*		  Tset(xid, ht->store, ht); */
-		  ht->hashmap = hm;
-		  Tset(xid, ht->hashmap_record, ht->hashmap);
-		  ht->iterIndex = 0;
-		  ht->iterData = NULL;
-
-		  next_lladdHash++;
-
-		  return ht;
-		} else {
-		  free(ht);
-		  return NULL;
-		}
-	}
-
-	return NULL;
 }
 
+/** @todo lHtDelete is unimplemented.  First need to implement derallocMany() */
+int lHtDelete(int xid, lladdHash_t *ht) {
+  return 1;
+}
+
+
+
+lladdHash_t * lHtOpen(int xid, recordid rid) {
+  lladdHash_t * ret = malloc(sizeof(lladdHash_t));
+  ret->hashTable = rid;
+  ret->iter_next_bucket = 0;
+  ret->iter_next_ptr = ZERO_RID;
+  return ret;
+}
+
+void lHtClose(int xid, lladdHash_t * lht) {
+  free(lht);
+}
+/** @todo lHtValid could be more thorough. In particular, if we used
+    arrays of fixed length pages, then we could cheaply verify that
+    the entire hashbucket set had the correct size. */
 int lHtValid(int xid, lladdHash_t *ht) {
-  /*
-	int ret;
-	lladdHash_t *test ; = (lladdHash_t*)malloc(sizeof(lladdHash_t));
-		Tread(xid, ht->store, test);
-	ret = ( test->store.size == ht->store.size
-			&& test->store.slot == ht->store.slot
-			&& test->store.page == ht->store.page ); */
-	/* TODO:  Check hashmap_record? */
-	/*	free(test); */
-
-	assert(0); /* unimplemented! */
-
-	return 1;
+  Page * p = loadPage(ht->hashTable.page);
+  int ret = 1;
+  if(*page_type_ptr(p) != INDIRECT_PAGE) {
+    ret = 0;
+  }
+  if(ht->hashTable.slot == 0) {
+    ht->hashTable.slot = 1;
+    if(dereferenceRID(ht->hashTable).size != sizeof(recordid)) {
+      ret = 0;
+    }
+    ht->hashTable.slot = 0;
+  } else {
+    ret = 1;
+  }
+  return ret;
 }
-
 /**
  * Hash function generator, taken directly from pblhash
  */
@@ -86,370 +83,200 @@ static int hash( const unsigned char * key, size_t keylen, int size ) {
     return( ret % size );
 }
 
-/** Should be called the first time ht->hashmap is accessed by a library function.  
-    Checks to see if the hashmap record has been read in, reads it if necessary, and then
-    returns a pointer to it. */ 
-static recordid* _getHashMap(int xid, lladdHash_t *ht) {
-  if(! ht->hashmap) { 
-    printf("Reading in hashmap.\n");
-    ht->hashmap = malloc(sizeof(recordid) * ht->size);
-    Tread(xid, ht->hashmap_record, ht->hashmap);
+typedef struct {
+  recordid data;
+  recordid next;
+  int keyLength;
+} lht_entry_record;
+
+static lht_entry_record * follow_overflow(int xid, lht_entry_record * entry) {
+  if(!isNullRecord(entry->next)) {
+    recordid next = entry->next;
+    entry = malloc(next.size);
+    Tread(xid, next, entry);
+    return entry;
+  } else {
+    return NULL;
+  }
+}
+
+static lht_entry_record * getEntry(int xid, recordid * entryRID, lladdHash_t * ht, const void * key, int keySize) {
+  
+  recordid bucket = ht->hashTable;
+  lht_entry_record * entry;
+
+  recordid tmp;
+  
+  bucket.slot = hash(key, keySize, indirectPageRecordCount(bucket));
+
+  if(!entryRID) {
+    entryRID = &tmp;
   }
 
-
-  return ht->hashmap;
-}
-/* TODO:  	Insert and Remove need to bypass Talloc(), so that recovery won't crash.  (Otherwise, we double-free records...This 
-					was not noticed before, since recovery never freed pages.)  */
-int _lHtInsert(int xid, recordid garbage, lladdHashRec_t * arg) {
-
-  /* recordid ht_rec = arg->ht; */
-
-  size_t keylen = arg->keylen;
-  size_t datlen = arg->datlen;
-  void * key = ((void*)arg) + sizeof(lladdHashRec_t);
-  void * dat = ((void*)arg) + sizeof(lladdHashRec_t) + keylen; 
-
-
-  lladdHash_t * ht;
-  int index; 
-  recordid rid; 
-  void *newd;
-  lladdHashItem_t newi;
-
-
-//  printf("Inserting %d -> %d\n", *(int*)key, *(int*)dat); 
-
-  ht = lladdHashes[arg->ht];
-
-  /*  Tread(xid, ht_rec, &ht); */
-
-  index = hash( key, keylen, ht->size);
-  rid = _getHashMap(xid, ht)[index];
+  Tread(xid, bucket, entryRID);
   
-  /*  printf("Inserting %d -> %s %d {%d %d %d}\n", *(int*)key, dat, index, rid.page, rid.slot, rid.size); */
-
-  
-  if( rid.size == 0 ) { /* nothing with this hash has been inserted */
-
-    newi.store = Talloc(xid, sizeof(lladdHashItem_t)+keylen+datlen);
-    newd = malloc(sizeof(lladdHashItem_t)+keylen+datlen);
-    newi.keylen = keylen;
-    newi.datlen = datlen;
-    newi.next = ZERO_RECORDID;
-    memcpy(newd, &newi, sizeof(lladdHashItem_t));
-    memcpy(newd+sizeof(lladdHashItem_t), key, keylen);
-    memcpy(newd+sizeof(lladdHashItem_t)+keylen, dat, datlen);
-    writeRecord(xid, newi.store, newd);
+  if(!isNullRecord(*entryRID)) {
     
-    ht->hashmap[index] = newi.store;
-    /* Tset(xid, ht->store, ht); */
-    /*    printf("Writing hashmap slot {%d %d %d}[%d] = {%d,%d,%d}.\n",
-	   ht.hashmap_record.page,ht.hashmap_record.slot,ht.hashmap_record.size,
-	   index, 
-	   ht.hashmap[index].page,ht.hashmap[index].slot,ht.hashmap[index].size); */
-    writeRecord(xid, ht->hashmap_record, ht->hashmap);
-
-    free(newd);
+    entry = malloc(entryRID->size);
     
+    Tread(xid, *entryRID, entry);
   } else { 
-    
-    void *item = NULL;
-    
-    do {
-      
-      free(item); /* NULL ignored by free */
-      item = malloc(rid.size);
-      Tread(xid, rid, item);
-      if( ((lladdHashItem_t*)item)->keylen == keylen && !memcmp(key, item+sizeof(lladdHashItem_t), keylen)) {
-	memcpy(item+sizeof(lladdHashItem_t)+keylen, dat, ((lladdHashItem_t*)item)->datlen);
-	writeRecord(xid, ((lladdHashItem_t*)item)->store, item);
-	free(item);
-	return 0;
-      }
-      rid = ((lladdHashItem_t*)item)->next; /* could go off end of list */
-    } while( ((lladdHashItem_t*)item)->next.size != 0 );
-    /* now item is the tail */
-    
-    newi.store = Talloc(xid, sizeof(lladdHashItem_t)+keylen+datlen);
-    newd = malloc(sizeof(lladdHashItem_t)+keylen+datlen);
-    newi.keylen = keylen;
-    newi.datlen = datlen;
-    newi.next = ZERO_RECORDID;
-    memcpy(newd, &newi, sizeof(lladdHashItem_t));
-    memcpy(newd+sizeof(lladdHashItem_t), key, keylen);
-    memcpy(newd+sizeof(lladdHashItem_t)+keylen, dat, datlen);
-    writeRecord(xid, newi.store, newd);
-
-    ((lladdHashItem_t*)item)->next = newi.store;
-    writeRecord(xid, ((lladdHashItem_t*)item)->store, item);
-    free(item);
-    free(newd);
+    entry = NULL;
   }
-  return 0;
-}
-/**Todo:  ht->iterData is global to the hash table... seems like a bad idea! */
-int lHtPosition( int xid, lladdHash_t *ht, const void *key, int key_length ) {
-	int index = hash(key, key_length, ht->size);
-	
-	recordid rid = _getHashMap(xid, ht)[index];
-	
-	if(rid.size == 0) {
-		printf("rid,size = 0\n");
-		return -1;
-	} else {
-	  //void * item = NULL;
-	  lladdHashItem_t * item = malloc(rid.size);
-	  
-	  
-	  for(Tread(xid, rid, item) ; 
-	      !(item->keylen == key_length && !memcmp(key, ((void*)item)+sizeof(lladdHashItem_t), key_length)) ;
-	      rid = item->next) {
-	    if(rid.size == 0) {
-	      printf("Found bucket, but item not here!\n");
-	      return -1;  // Not in hash table.
-	    } 
-	    free(item);
-	    item = malloc(rid.size);
-	    Tread(xid, rid, item);					
-	  }
-	  /* item is what we want.. */
-	  ht->iterIndex = index+1; //iterIndex is the index of the next interesting hash bucket.
-	  ht->iterData = item;		//Freed in lHtNext
-	  return 0;
-	}
-		
-}
-int lHtLookup( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf ) {
-
-	int index = hash(key, keylen, ht->size);
-	recordid rid = _getHashMap(xid, ht)[index];
-	/*	printf("lookup: %d -> %d {%d %d %d} \n", *(int*)key, index, rid.page, rid.slot, rid.size); */
-	if( rid.size == 0 ) { /* nothing inserted with this hash */
-		return -1;
-	} else {
-		void *item = NULL;
-		item = malloc(rid.size);
-		Tread(xid, rid, item);
-
-		for( ; !(((lladdHashItem_t*)item)->keylen == keylen && !memcmp(key, item+sizeof(lladdHashItem_t), keylen));
-				rid = ((lladdHashItem_t*)item)->next ) {
-			if( rid.size == 0) { /* at the end of the list and not found */
-				return -1;
-			}
-			free(item);
-			item = malloc(rid.size);
-			Tread(xid, rid, item);
-		}
-		/* rid is what we want */
-
-		memcpy(buf, item+sizeof(lladdHashItem_t)+((lladdHashItem_t*)item)->keylen, ((lladdHashItem_t*)item)->datlen);
-		free(item);
-		return 0;
-	}
-
-	return 0;
-}
-
-int _lHtRemove( int xid, recordid garbage, lladdHashRec_t * arg) {
-
-  size_t keylen = arg->keylen;
-  void * key = ((void*)arg) + sizeof(lladdHashRec_t);
-
-  lladdHash_t * ht = lladdHashes[arg->ht];
-
-  int index; 
-  recordid rid; 
-
-//	printf("Removing %d\n", *(int*)key);
-
-  index = hash(key, keylen, ht->size);
-  rid = _getHashMap(xid, ht)[index];
-	
-	if( rid.size == 0) { /* nothing inserted with this hash */
-		return -1;
-	} else {
-		void *del = malloc(rid.size);
-		Tread(xid, rid, del);
-		if( ((lladdHashItem_t*)del)->keylen == keylen && !memcmp(key, del+sizeof(lladdHashItem_t), keylen) ) {
-			/* the head is the entry to be removed */
-		  /*			if( buf ) {
-				memcpy( buf, del+sizeof(lladdHashItem_t*)+keylen, ((lladdHashItem_t*)del)->datlen);
-				} */
-			ht->hashmap[index] = ((lladdHashItem_t*)del)->next;
-			/* Tset(xid, ht->store, ht); */
-			writeRecord(xid, ht->hashmap_record, ht->hashmap);
-
-			/* TODO: dealloc rid */
-			return 0;
-		} else {
-			void * prevd = NULL;
-			while( ((lladdHashItem_t*)del)->next.size ) {
-				free(prevd); /* free will ignore NULL args */
-				prevd = del;
-				rid = ((lladdHashItem_t*)del)->next;
-				del = malloc(rid.size);
-				Tread(xid, rid, del);
-				if( ((lladdHashItem_t*)del)->keylen == keylen && !memcmp(key, del+sizeof(lladdHashItem_t), keylen) ) {
-				  /*					if( buf ) {
-						memcpy( buf, del+sizeof(lladdHashItem_t)+keylen, ((lladdHashItem_t*)del)->datlen);
-						}  */
-					((lladdHashItem_t*)prevd)->next = ((lladdHashItem_t*)del)->next;
-					writeRecord(xid, ((lladdHashItem_t*)prevd)->store, prevd);
-					/* TODO: dealloc rid */
-					free(prevd);
-					free(del);
-					return 0;
-				}
-			}
-			/* could not find exact key */
-
-			free(prevd);
-			free(del);
-			return -1;
-		}
-	}
-
-	assert( 0 ); /* should not get here */
-	return -1;
-}
-
-int lHtFirst( int xid, lladdHash_t *ht, void *buf ) {
-
-	ht->iterIndex = 0;
-	ht->iterData = NULL;
-	return lHtNext( xid, ht, buf);
-}
-
-int lHtNext( int xid, lladdHash_t *ht, void *buf ) {
-  _getHashMap(xid, ht);
-	if( ht->iterData && (((lladdHashItem_t*)(ht->iterData))->next.size != 0) ) {
-		recordid next = ((lladdHashItem_t*)(ht->iterData))->next;
-		free( ht->iterData );
-		ht->iterData = malloc(next.size);
-		Tread(xid, next, ht->iterData);
-	} else {
-		while(ht->iterIndex < ht->size) {
-			if( ht->hashmap[ht->iterIndex].size ) 
-				break;
-			else
-				ht->iterIndex++;
-		}
-		if( ht->iterIndex == ht->size) /* went through and found no data */
-			return -1;
-
-		free( ht->iterData );
-		ht->iterData = malloc(ht->hashmap[ht->iterIndex].size); /* to account for the last post incr */
-		Tread(xid, ht->hashmap[ht->iterIndex++], ht->iterData); /* increment for next round */
-	}
-	
-	return lHtCurrent(xid, ht, buf);
-}
-
-int lHtCurrent(int xid, lladdHash_t *ht, void *buf) {
-
-	if( ht->iterData ) {
-		if(buf)
-			memcpy(buf, ht->iterData + sizeof(lladdHashItem_t) + ((lladdHashItem_t*)(ht->iterData))->keylen, ((lladdHashItem_t*)(ht->iterData))->datlen);
-		return 0;
-	}
-	return -1;
-}
-
-
-int lHtCurrentKey(int xid, lladdHash_t *ht, void *buf) {
-
-	if( ht->iterData ) {
-		memcpy(buf, ht->iterData + sizeof(lladdHashItem_t), ((lladdHashItem_t*)(ht->iterData))->keylen);
-		return 0;
-	}
-	return -1;
-}
-
-int lHtDelete(int xid, lladdHash_t *ht) {
-
-	/* deralloc ht->store */
-
-        if(ht->hashmap) { free(ht->hashmap); }    
-        free(ht);
-
-	return 0;
-}
-
-
-int lHtInsert(int xid, lladdHash_t *ht, const void *key, int keylen, void *dat, long datlen) {
-  recordid rid;
-  void * log_r;
-  lladdHashRec_t lir;
-  rid.page = 0;
-  rid.slot = 0;
-  rid.size = sizeof(lladdHashRec_t) + keylen + datlen;
-
-  lir.ht = ht->store;
-  lir.keylen = keylen;
-  lir.datlen = datlen;
-
-  log_r = malloc(rid.size);
-  memcpy(log_r, &lir, sizeof(lladdHashRec_t));
-  memcpy(log_r+sizeof(lladdHashRec_t), key, keylen);
-  memcpy(log_r+sizeof(lladdHashRec_t)+keylen, dat, datlen);
-
-  /*  printf("Tupdating: %d -> %s\n", *(int*)key, dat); */
-
-  Tupdate(xid,rid,log_r, OPERATION_LHINSERT);
-  return 0;
+  while(entry && memcmp(entry+1, key, keySize)) {
+    *entryRID = entry->next;
+    if(!isNullRecord(*entryRID)) {
+      lht_entry_record * newEntry = follow_overflow(xid, entry);
+      free(entry);
+      entry=newEntry;
+    } else { 
+      entry=NULL;
+    }
+  }
   
+  return entry;
 }
-int lHtRemove( int xid, lladdHash_t *ht, const void *key, int keylen, void *buf, long buflen ) {
+/** Insert a new entry into the hashtable.  The entry *must not* already exist. */
+static void insert_entry(int xid, lladdHash_t * ht, const void * key, int keySize, recordid dat) {
+  /* First, create the entry in memory. */
 
-  recordid rid;
-  void * log_r;
-  lladdHashRec_t lrr;
-  int ret = lHtLookup(xid, ht, key, keylen, buf);
-	
-/*	printf("Looked up: %d\n", *(int*)buf); */
-	
-  if(ret >= 0) {
-    rid.page = 0;
-    rid.slot = 0;
-    rid.size = sizeof(lladdHashRec_t) + keylen + buflen;
+  recordid bucket = ht->hashTable;
+  lht_entry_record * entry = malloc(sizeof(lht_entry_record) + keySize);
+  bucket.slot = hash(key, keySize, indirectPageRecordCount(bucket));
+
+  entry->data = dat;
+  Tread(xid, bucket, &(entry->next));
+  entry->keyLength = keySize;
+  memcpy(entry+1, key, keySize);
+  
+  /* Now, write the changes to disk. */
+
+  recordid entryRID = Talloc(xid, sizeof(lht_entry_record) + keySize);
+  Tset(xid, entryRID, entry);
+  Tset(xid, bucket, &entryRID);
+
+  free(entry);
+
+}
+/** Assumes that the entry does, in fact, exist. */
+static void delete_entry(int xid, lladdHash_t * ht, const void * key, int keySize) {
+
+  lht_entry_record * entryToDelete;
+  lht_entry_record * prevEntry = NULL;
+  recordid prevEntryRID;
+  recordid currentEntryRID;
+  recordid nextEntryRID;
+
+  recordid bucket = ht->hashTable;
+  bucket.slot = hash(key, keySize, indirectPageRecordCount(bucket));
+
+  Tread(xid, bucket, &currentEntryRID);
+
+  entryToDelete = malloc(currentEntryRID.size);
+  Tread(xid, currentEntryRID, entryToDelete);
+  nextEntryRID = entryToDelete->next;
+
+  while(memcmp(entryToDelete+1, key, keySize)) {
+
+    if(prevEntry) {  
+      free(prevEntry); 
+    } 
+    prevEntry = entryToDelete;
+    prevEntryRID = currentEntryRID;
+
+    entryToDelete = follow_overflow(xid, entryToDelete);
+    assert(entryToDelete);
+    currentEntryRID = nextEntryRID;
     
-    lrr.ht = ht->store;
-    lrr.keylen = keylen;
-	lrr.datlen = buflen;
-	  
-    log_r = malloc(sizeof(lladdHashRec_t) + keylen + buflen);
-    memcpy(log_r, &lrr, sizeof(lladdHashRec_t));
-    memcpy(log_r+sizeof(lladdHashRec_t), key, keylen);
-    memcpy(log_r+sizeof(lladdHashRec_t)+keylen, buf, buflen);
+    nextEntryRID = entryToDelete->next;
+  }
 
-    lrr.datlen = buflen;
+  if(prevEntry) {
+    prevEntry->next = nextEntryRID;
+    Tset(xid, prevEntryRID, prevEntry);
+    free(prevEntry);
+  } else {
+    Tset(xid, bucket, &nextEntryRID);
+  }
+  Tdealloc(xid, currentEntryRID);
+  free(entryToDelete);
 
-    Tupdate(xid,rid,log_r, OPERATION_LHREMOVE);
-	  
-    free (log_r);
+}
+
+recordid lHtLookup( int xid, lladdHash_t *ht, const void *key, int keylen) {
+  recordid ret;
+  lht_entry_record * entry = getEntry(xid, NULL, ht, key, keylen);
+  if(entry) {
+    ret = entry->data;
+    free(entry);
+  } else {
+    ret = ZERO_RID;
   }
   return ret;
 }
 
-Operation getLHInsert() {
-  Operation o = {
-    OPERATION_LHINSERT,
-    SIZEOF_RECORD, /* use the size of the record as size of arg (nasty, ugly evil hack, since we end up passing in record = {0, 0, sizeof() */
-    OPERATION_LHREMOVE,
-    (Function)&_lHtInsert
-  };
-  return o;
 
+
+recordid lHtInsert(int xid, lladdHash_t *ht, const void *key, int keylen, recordid dat) { /*{void *dat, long datlen) { */
+  recordid entryRID;
+  recordid ret;
+  lht_entry_record * entry = getEntry(xid, &entryRID, ht, key, keylen);
+  if(entry){
+    /*     assert(0); */
+    ret = entry->data;
+    entry->data = dat;
+    Tset(xid, entryRID, entry);
+  } else {
+    insert_entry(xid, ht, key, keylen, dat);
+    ret = ZERO_RID;
+  }
+  return ret;
+  
+}
+/** @todo lHtRemove could be more efficient.  Currently, it looks up
+    the hash table entry twice to remove it. */
+recordid lHtRemove( int xid, lladdHash_t *ht, const void *key, int keySize) {
+
+  /* ret = lookup key */
+  lht_entry_record * entry = getEntry(xid, NULL, ht, key, keySize);
+  recordid data;
+
+  if(entry) {
+    data = entry->data;
+    
+    delete_entry(xid, ht, key, keySize); 
+
+  } else {
+    data = ZERO_RID;
+  }
+  return data;
 }
 
-Operation getLHRemove() {
-  Operation o = {
-    OPERATION_LHREMOVE,
-    SIZEOF_RECORD, /* use the size of the record as size of arg (nasty, ugly evil hack.) */
-    OPERATION_LHINSERT,
-    (Function)&_lHtRemove
-  };
-  return o;
+/** @todo hashtable iterators are currently unimplemented... */
+int lHtPosition( int xid, lladdHash_t *ht, const void *key, int key_length ) {
+  abort();
+  return -1;
+}
+int lHtFirst( int xid, lladdHash_t *ht, void *buf ) {
 
+  /*	ht->iterIndex = 0;
+	ht->iterData = NULL;
+	return lHtNext( xid, ht, buf); */
+  abort();
+  return -1;
+}
+int lHtNext( int xid, lladdHash_t *ht, void *buf ) {
+  abort();
+  return -1;
+}
+int lHtCurrent(int xid, lladdHash_t *ht, void *buf) {
+  abort();
+  return -1;
+}
+int lHtCurrentKey(int xid, lladdHash_t *ht, void *buf) {
+  abort();
+  return -1;
+}
+int isNullRecord(recordid x) {
+  return (((x).slot == 0) && ((x).page == 0) && ((x).size==0));
 }

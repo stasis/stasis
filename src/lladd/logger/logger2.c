@@ -100,7 +100,13 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
     if(!preImage) { perror("malloc"); abort(); }
     readRecord(l->xid, p, rid, preImage);
     DEBUG("got preimage");
-  } 
+  } else if (operationsTable[operation].undo == NO_INVERSE_WHOLE_PAGE) {
+    DEBUG("Logging entire page\n");
+    preImage = malloc(PAGE_SIZE);
+    if(!preImage) { perror("malloc"); abort(); }
+    memcpy(preImage, p->memAddr, PAGE_SIZE);
+    DEBUG("got preimage");
+  }
   
 
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);

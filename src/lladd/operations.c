@@ -44,7 +44,7 @@ terms specified in this license.
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 #include <assert.h>
-
+#include <string.h>
 /** @todo questionable include */
 #include "page.h"
 
@@ -120,6 +120,11 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 
       DEBUG("OPERATION Physical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
       writeRecord(e->xid, p, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
+    } else if(undo == NO_INVERSE_WHOLE_PAGE) {
+      DEBUG("OPERATION Whole page physical undo, %ld {%d}\n", e->LSN, rid.page);
+      memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
+      pageWriteLSN(p, clr_lsn);
+
     } else {
       /* @see doUpdate() */
       /*      printf("Logical undo"); fflush(NULL); */

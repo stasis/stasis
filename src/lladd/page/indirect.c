@@ -5,6 +5,9 @@
 #include <assert.h>
 #include "../blobManager.h"
 #include "../page.h"
+
+#include <lladd/operations.h>
+
 void indirectInitialize(Page * p, int height) {
   *level_ptr(p) = height;
   *page_type_ptr(p) = INDIRECT_PAGE;
@@ -53,7 +56,17 @@ unsigned int calculate_level (unsigned int number_of_pages) {
   return level;
 }
 
-recordid rallocMany(int parentPage, lsn_t lsn, int recordSize, int recordCount) {
+recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount);
+/**
+   @todo is there a way to implement rallocMany so that it doesn't
+   have to physically log pre- and post-images of the allocated space?
+*/
+recordid rallocMany(int xid, int recordSize, int recordCount) {
+  int page = TpageAlloc(xid, SLOTTED_PAGE);
+  return __rallocMany(xid, page, recordSize, recordCount);
+}
+
+recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) {
 
   /* How many levels of pages do we need? */
 
@@ -70,7 +83,14 @@ recordid rallocMany(int parentPage, lsn_t lsn, int recordSize, int recordCount) 
                              / (physical_size + SLOTTED_PAGE_OVERHEAD_PER_RECORD);   /* we need to take the floor */
 
   int number_of_pages = (int)ceil( (double)recordCount / (double)records_per_page);  /* need to take ceiling here */
- 
+
+  Page p;
+  byte buffer[PAGE_SIZE];
+  p.memAddr = buffer;
+  p.rwlatch = initlock();
+  p.loadlatch = initlock();
+    
+    
   if(number_of_pages > 1) {
 
     int level = calculate_level(number_of_pages);
@@ -86,13 +106,14 @@ recordid rallocMany(int parentPage, lsn_t lsn, int recordSize, int recordCount) 
     }
     
     int newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
-    int firstChildPage = pageAllocMultiple(newPageCount);
+
+    int firstChildPage = TpageAllocMany(xid, newPageCount, SLOTTED_PAGE);/*pageAllocMultiple(newPageCount); */
     int tmpRecordCount = recordCount;
     int thisChildPage = firstChildPage;    
 
     while(tmpRecordCount > 0) {
       
-      rallocMany(thisChildPage, lsn, recordSize, min(tmpRecordCount, next_level_records_per_page));
+      __rallocMany(xid, thisChildPage, recordSize, min(tmpRecordCount, next_level_records_per_page));
       tmpRecordCount -= next_level_records_per_page;
       thisChildPage ++;
 
@@ -102,60 +123,78 @@ recordid rallocMany(int parentPage, lsn_t lsn, int recordSize, int recordCount) 
 
     tmpRecordCount = recordCount;
 
-    Page * p = loadPage(parentPage);
-
-    writelock(p->rwlatch, 99);
-    
-    indirectInitialize(p, level);
+    indirectInitialize(&p, level);
     
     int i = 0;
 
     for(tmpRecordCount = recordCount; tmpRecordCount > 0; tmpRecordCount -= next_level_records_per_page) {
       
-      *page_ptr(p, i) = firstChildPage + i;
+      *page_ptr(&p, i) = firstChildPage + i;
       if(i) {
-	*maxslot_ptr(p, i) = *maxslot_ptr(p, i-1) + min(tmpRecordCount, next_level_records_per_page);
+	*maxslot_ptr(&p, i) = *maxslot_ptr(&p, i-1) + min(tmpRecordCount+1, next_level_records_per_page);
       } else {
-	*maxslot_ptr(p, i) = min(tmpRecordCount, next_level_records_per_page);
+	*maxslot_ptr(&p, i) = min(tmpRecordCount+1, next_level_records_per_page);
       }
       i++;
     }
 
     assert(i == newPageCount);
 
-    pageWriteLSN(p, lsn);
-
-    unlock(p->rwlatch);
-    releasePage(p);
-    
-    rid.page = parentPage;
-    rid.slot = RECORD_ARRAY;
-    rid.size = recordSize;
-
   } else {
     DEBUG("recordsize = %d, recordCount = %d, level = 0 (don't need indirect pages)\n", recordSize, recordCount);
 
-    Page * p = loadPage(parentPage);
-
-    writelock(p->rwlatch, 127);
-
-    pageInitialize(p);
-
-    unlock(p->rwlatch);
-
+    pageInitialize(&p); 
+    p.id = parentPage;
     for(int i = 0; i < recordCount; i++) {
-      pageRalloc(p, recordSize);
+      /* Normally, we would worry that the page id isn't set, but
+	 we're discarding the recordid returned by page ralloc
+	 anyway. */
+      pageRalloc(&p, recordSize);
     }
-
-    writelock(p->rwlatch, 127);
-    pageWriteLSN(p, lsn);
-    unlock(p->rwlatch);
-
     
-    releasePage(p);
-    rid.page = parentPage;
-    rid.slot = RECORD_ARRAY;
-    rid.size = recordSize;
   }
+
+  TpageSet(xid, parentPage,  &p);
+  
+  rid.page = parentPage;
+  rid.slot = RECORD_ARRAY;
+  rid.size = recordSize;
+
+  deletelock(p.rwlatch);
+  deletelock(p.loadlatch);
+
   return rid;
+}
+
+unsigned int indirectPageRecordCount(recordid rid) {
+  Page * p = loadPage(rid.page);
+  int i = 0;
+  unsigned int ret;
+  if(*page_type_ptr(p) == INDIRECT_PAGE) {
+    
+    while(*maxslot_ptr(p, i) > 0) {
+      i++;
+    }
+    if(!i) {
+      ret = 0;
+    } else {
+      ret = (*maxslot_ptr(p, i-1)) - 1;
+    }
+  } else if (*page_type_ptr(p) == SLOTTED_PAGE) {
+
+    int numslots = *numslots_ptr(p);
+    ret = 0;
+    for(int i = 0; i < numslots; i++) {
+      if(isValidSlot(p, i)) {
+	ret++;
+      }
+    }
+    
+  } else {
+    printf("Unknown page type in indirectPageRecordCount()\n");
+    fflush(NULL);
+    abort();
+  }
+  releasePage(p);
+  return ret;
 }

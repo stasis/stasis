@@ -221,11 +221,18 @@ void pageCommit(int xid) {
 void pageAbort(int xid) {
 }
 
+/**
+   @todo DATA CORRUPTION BUG pageAllocMultiple needs to scan forward in the store file until
+   it finds page(s) with type = UNINITIALIZED_PAGE.  Otherwise, after recovery, it will trash the storefile.
 
+   A better way to implement this is probably to reserve the first
+   slot of the first page in the storefile for metadata, and to keep
+   lastFreepage there, instead of in RAM.
+*/
 int pageAllocMultiple(int newPageCount) {
   pthread_mutex_lock(&lastFreepage_mutex);  
-  int ret = lastFreepage+1;
-  lastFreepage += newPageCount;
+  int ret = lastFreepage+1;  /* Currently, just discard the current page. */
+  lastFreepage += (newPageCount + 1);
   pthread_mutex_unlock(&lastFreepage_mutex);
   return ret;
 }

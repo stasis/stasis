@@ -95,6 +95,9 @@ typedef struct {
   long size;
 } recordid;
 
+extern const recordid ZERO_RID;
+
+
 /**
    If a recordid's slot field is set to this, then the recordid
    represents an array of fixed-length records starting at slot zero

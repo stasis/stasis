@@ -86,15 +86,20 @@ terms specified in this license.
 
 /** Operation types */
 
-#define NO_INVERSE -1
-#define OPERATION_SET 0
-#define OPERATION_INCREMENT 1
-#define OPERATION_DECREMENT 2
-#define OPERATION_ALLOC 3
-#define OPERATION_PREPARE 4
-#define OPERATION_LHINSERT 5
-#define OPERATION_LHREMOVE 6
-#define OPERATION_DEALLOC  7
+#define NO_INVERSE_WHOLE_PAGE -2
+#define NO_INVERSE            -1
+#define OPERATION_SET          0
+#define OPERATION_INCREMENT    1
+#define OPERATION_DECREMENT    2
+#define OPERATION_ALLOC        3
+#define OPERATION_PREPARE      4
+#define OPERATION_LHINSERT     5
+#define OPERATION_LHREMOVE     6
+#define OPERATION_DEALLOC      7
+#define OPERATION_PAGE_ALLOC   8
+#define OPERATION_PAGE_DEALLOC 9
+#define OPERATION_PAGE_SET     10
+
 /* number above should be less than number below */
 #define MAX_OPERATIONS 20
 

@@ -45,7 +45,8 @@ BEGIN_C_DECLS
 */
 recordid dereferenceRID(recordid rid);
 void indirectInitialize(Page * p, int height);
-recordid rallocMany(int parentPage, lsn_t lsn, int recordSize, int recordCount);
+recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);
+unsigned int indirectPageRecordCount(recordid rid);
 
 END_C_DECLS
 

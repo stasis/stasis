@@ -278,6 +278,8 @@ void  pageRealloc(Page * p, int id);
 
 /** Allocates a set of contiguous pages on disk.  Has nothing to do with pageAlloc.
     @todo need a better naming convention for pageAlloc (alloc's memory) and pageAllocMultiple (alloc's disk)
+
+    @todo is there any case where this function can safely be called with newPageCount > 1?
 */
 int pageAllocMultiple(int newPageCount) ;
 

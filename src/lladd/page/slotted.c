@@ -207,6 +207,8 @@ recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid) {
 
 	}
 
+	pageWriteLSN(page, lsn);
+
 	writeunlock(page->rwlatch);
 
 	return rid;
