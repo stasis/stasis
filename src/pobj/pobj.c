@@ -1056,6 +1056,7 @@ pobj_update_recursive (void *obj, int persist)
 		}
 	    }
 	    
+	    debug ("reading persistent image of object %p (%p)", obj, p);
 	    Tread (xid, pobj_slot->rid, tmp);
 	}
 
