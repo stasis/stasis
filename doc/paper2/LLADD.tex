@@ -1135,7 +1135,7 @@ operation, most bugs are easy to find with conventional testing
 strategies.  As future work, there is some hope of verifying these
 invariants statically; for example, it is easy to verify that pages
 are only modified by operations, and it is also possible to verify
-latching for our two page layouts that support records.
+latching for our page layouts that support records.
 
 %% Furthermore, we plan to develop a number of tools that will
 %% automatically verify or test new operation implementations' behavior
@@ -2178,6 +2178,16 @@ of the page number) and log-merging optimizations
 
 \subsection {Performance Evaluation}
 
+\begin{figure}[t]
+\includegraphics[width=3.3in]{oo7.pdf}
+\caption{\sf\label{fig:oo7} oo7...}
+\end{figure}
+
+\begin{figure}[t]
+\includegraphics[width=3.3in]{trans-closure-hotset.pdf}
+\caption{\sf\label{fig:hotGraph} hotset...}
+\end{figure}
+
 We loosely base the graphs for this test on the graphs used by the oo7
 benchmark~\cite{oo7}.  For the test, we hard code the out-degree of
 graph nodes to 3, 6 and 9 and use a directed graph.  The oo7 benchmark
@@ -2197,7 +2207,7 @@ two traversal algorithms we extend the idea of a hot set to graph
 generation.  Each node has a distinct hot set which includes the 10\%
 of the nodes that are closest to it in ring order.  The remaining
 nodes are in the cold set.  We use random edges instead of ring edges
-for this test.  Figure~\ref{hotGraph} suggests that request reordering 
+for this test.  Figure~\ref{fig:hotGraph} suggests that request reordering 
 only helps when the graph has poor locality.  This makes sense, as a 
 depth-first search of a graph with good locality will also have good 
 locality.  Therefore, processing a request via the queue-based multiplexer 
