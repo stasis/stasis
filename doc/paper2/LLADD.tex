@@ -1889,6 +1889,20 @@ most difficult to implement in another storage system.
 
 \subsection{Recovery and Log Truncation}
 
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{mem-pressure.pdf}
+\includegraphics[%
+   width=1\columnwidth]{mem-pressure.pdf}
+\caption{\label{fig:OASYS} \yad optimizations for object
+serialization. The first graph shows the effectiveness of both the
+diff-based log records and the update/flush optimization as a function
+of the portion of each object that is modified. The second graph
+disables the filesystem buffer cache (via O\_DIRECT) and shows the
+benefits of the update/flush optimization when there is memory
+pressure.}
+\end{figure*}
+
 An observant reader may have noticed a subtle problem with this
 scheme.  More than one object may reside on a page, and we do not
 constrain the order in which the cache calls flush() to evict objects.
@@ -1928,23 +1942,9 @@ operations.
 
 \subsection{Evaluation}
 
-\begin{figure*}
-\includegraphics[%
-   width=1\columnwidth]{mem-pressure.pdf}
-\includegraphics[%
-   width=1\columnwidth]{mem-pressure.pdf}
-\caption{\label{fig:OASYS} \yad optimizations for object
-serialization. The first graph shows the effectiveness of both the
-diff-based log records and the update/flush optimization as a function
-of the portion of each object that is modified. The second graph
-disables the filesystem buffer cache (via O\_DIRECT) and shows the
-benefits of the update/flush optimization when there is memory
-pressure.}
-\end{figure*}
-
 We implemented a \yad plugin for \oasys, a C++ object serialization
-library that includes various object serialization backends, including
-one for Berkeley DB. We set up an experiment in which objects are
+library that can use various object serialization backends. 
+We set up an experiment in which objects are
 retrieved from a cache according to a hot-set distribution\footnote{In
 an example hot-set distribution, 10\% of the objects (the hot set) are
 selected 90\% of the time.} and then have certain fields modified. The
@@ -1954,42 +1954,31 @@ both Berkeley DB and the various \yad configurations.
 
 The first graph in Figure \ref{fig:OASYS} shows the time to perform
 100,000 updates to the object as we vary the fraction of the object
-data that is modified in each update. In the most extreme case, when
+data that is modified in each update. In all
+cases, we see that that the savings in log bandwidth and
+buffer-pool overhead by generating diffs and having separate 
+update() and flush() calls outweighs the overhead of the operations.
+In the most extreme case, when
 only one integer field from an ~1KB object is modified, the fully
-optimized \yad shows a threefold speedup over Berkeley DB.
+optimized \yad shows a threefold speedup over Berkeley DB. 
 
-and \ref{fig:oasys-mem} 
+In the second graph, we constrained the \yad buffer pool size to be a
+fraction of the size of the object cache, and bypass the filesystem
+buffer cache via the O\_DIRECT option. This experiment specifically
+focuses on the benefits of the update() and flush() optimizations
+described above. From this graph, we see that as the percentage of
+requests that are serviced by the cache increases, we see that the
+performance increases greatly. Furthermore, even when only 10\% of the
+requests hit the cache, the optimized update() / flush() \yad variant
+achieves almost equivalent performance to the unoptimized \yad.
 
-The \yad plugin makes use of the optimizations
-described in this section, and was used to generate Figure~[TODO].
-For comparison, we also implemented a non-optimized \yad plugin to
-directly measure the effect of our optimizations.
-
-Initially, OASYS did not support an object cache, so this
-functionality was added.  Berkeley DB and \yad's variants were run
-using identical cache settings and random seeds for load generation.
-Even though the serialization requests were serviced out of operating
-system cache, we see that the optimized \yad implemenation has a
-clear advantage under most circumstances, suggesting that the overhead
-incurred by generating diffs and having seperate update() and flush()
-calls is negligible compared to the savings in log bandwidth and
-buffer-pool overhead that the optimizations provide.
+\mjd{something more here?}
 
 Ignoring the checkpointing scheme, the operations required for these
 two optimizations are roughly 150 lines of C code, including
 whitespace, comments and boilerplate function registrations.  Although
 the reasoning required to ensure the correctness of this code was
 complex, the simplicity of the implementation is encouraging.
-
-\rcs{analyse OASYS data.}
-
-test 1: small oasys buffer cache (23 pages), O\_DIRECT turned on
-
-The test used 5000 objects, a cache size of 20\% of the objects, and a
-hot set size of 10\% of the objects. Turns out that ratio is actually
-necessary to achieve the desired effects, otherwise you will evict hot
-objects more than you want. 10000 iterations.
-
 
 This section uses:
 
