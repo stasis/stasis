@@ -1787,6 +1787,21 @@ memory to achieve good performance.
 
 \subsection{\yad Optimizations}
 
+\label{version-pages}
+
+\begin{figure*}[t!]
+\includegraphics[width=3.3in]{object-diff.pdf}
+\hspace{.3in}
+\includegraphics[width=3.3in]{mem-pressure.pdf}
+\caption{\sf \label{fig:OASYS}
+\yad optimizations for object
+serialization. The first graph shows the effect of the two \yad
+optimizations as a function of the portion of the object that is being
+modified. The second graph focuses on the 
+benefits of the update/flush optimization in cases of system
+memory pressure.}
+\end{figure*}
+
 \yad's architecture allows us to apply two interesting optimizations
 to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
@@ -1865,22 +1880,6 @@ not supported by any other general purpose transactional
 storage system that we know of.
 
 \subsection{Recovery and Log Truncation}
-\label{version-pages}
-
-\begin{figure}[t]
-\hspace*{.15in}\includegraphics[%
-   width=3.3in]{object-diff.pdf}
-\\
-\hspace*{.15in}\includegraphics[width=3.3in]{mem-pressure.pdf}
-\vspace*{-.2in}
-\caption{\sf\label{fig:OASYS}
-\yad optimizations for object
-serialization. The first graph shows the effect of the two \yad
-optimizations as a function of the portion of the object that is being
-modified. The second graph focuses on the 
-benefits of the update/flush optimization in cases of system
-memory pressure.}
-\end{figure}
 
 An observant reader may have noticed a subtle problem with this
 scheme.  More than one object may reside on a page, and we do not
@@ -1942,7 +1941,7 @@ retrieved from the cache according to a hot-set distribution\footnote{In
 an example hot-set distribution, 10\% of the objects (the hot set size) are
 selected 90\% of the time (the hot set probability).} 
 and then have certain fields modified and
-updated into the data store. For all experiments, the number of object
+updated into the data store. For all experiments, the number of objects
 is fixed at 5,000, the
 hot set is set to 10\% of the objects, the object cache is set to
 double the size of the hot set, we update 100 objects per
