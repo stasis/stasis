@@ -180,12 +180,12 @@ compensated_function int TpagedListMove(int xid, recordid start_list, recordid e
   try_ret(compensation_error()) {
     int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
     if(valueSize != -1) {
-      int ret = TpagedListRemove(xid, start_list, key, keySize);
+      ret = TpagedListRemove(xid, start_list, key, keySize);
       assert(ret);
       ret = TpagedListInsert(xid, end_list, key, keySize, value, valueSize);
       assert(!ret);
       if(value) { free(value); }
-      ret = 1;
+      //      ret = 1;
     } else { 
       ret = 0;
     }

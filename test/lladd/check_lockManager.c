@@ -44,7 +44,7 @@ void * pageWorkerThread(void * j) {
 	//     } end_ret();
     } else {
       // writelock
-      int locked = 0;
+      //      int locked = 0;
       //      begin_action_ret(NULL, NULL, 0) {
       
       if(LLADD_DEADLOCK == globalLockManager.writeLockPage(xid, m)) {

@@ -1,11 +1,16 @@
+#define __USE_GNU 
+#define _GNU_SOURCE
+#include <pthread.h>
+
 #include <lladd/transactional.h>
 #include <lladd/hash.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
-#define __USE_GNU 
-#include <pthread.h>
+/*#ifndef PTHREAD_MUTEX_RECURSIVE
+#define PTHREAD_MUTEX_RECURSIVE  PTHREAD_MUTEX_RECURSIVE_NP
+#endif*/
 
 /** A quick note on the format of linked lists.  Each entry consists 
      of a struct with some variable length data appended to it.
@@ -394,7 +399,7 @@ compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it
   if(it->next.size == -1)  { free(it); return 0; }
 
   int done = 0;
-  int ret;
+  int ret = 0;
   lladd_linkedList_entry * entry;
   begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&linked_list_mutex);

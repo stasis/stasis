@@ -18,7 +18,7 @@ START_TEST(simpleDeadlockTest) {
   int xid = Tbegin();
   
   recordid rid = Talloc(xid, sizeof(int));
-  recordid rid2 = Talloc(xid, sizeof(int));
+  Talloc(xid, sizeof(int));
   
   Tcommit(xid);
   assert(!compensation_error());
