@@ -9,16 +9,16 @@ lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
 							      size_t valueSize, 
 							      byte ** multiplexKey,
 							      size_t * multiplexKeySize),
-					    lladdConsumer_t * getConsumer(void* getConsumerArg,
+					    lladdConsumer_t * getConsumer(struct lladdFifoPool_t* getConsumerArg,
 									  byte* multiplexKey, 
 									  size_t multiplexKeySize),
-					    void * getConsumerArg) {
+					    lladdFifoPool_t * fifoPool) {
   lladdMultiplexer_t * ret = malloc(sizeof(lladdMultiplexer_t));
   ret->it = it;
   ret->multiplexer = multiplexer;
   ret->consumerHash = pblHtCreate();
   ret->getConsumer  = getConsumer;
-  ret->getConsumerArg = getConsumerArg;
+  ret->getConsumerArg = fifoPool;
   ret->xid = xid;
   return ret;
 }
@@ -73,22 +73,10 @@ void * multiplexer_worker(void * arg) {
 *********************************************************************/
 // @todo remove the code until the //-----, as it just makes up for code that Jimmy needs to commit!
 
-typedef struct {  
-  lladdIterator_t *iterator;
-  lladdConsumer_t *consumer;
-} lladdFifo_t;
 
 lladdFifo_t * logMemory_init(int bufferSize, int initialLSN);
 
 //---------
-
-typedef struct lladdFifoPool_t { 
-  lladdFifo_t ** pool;
-  lladdConsumer_t * (*getConsumer)(struct lladdFifoPool_t * pool, 
-			      byte * multiplexKey, 
-			      size_t multiplexKeySize);
-  int fifoCount;
-} lladdFifoPool_t;
 
 
 
