@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.6  2004/10/20 06:48:27  sears
+    Set some constants to values appropriate for my desktop.
+
     Revision 1.5  2004/10/19 04:45:42  sears
     Speedups, most notably in the logging subsystem.
 
@@ -79,8 +82,10 @@ static int   rcsid_fct() { return( rcsid ? 0 : rcsid_fct() ); }
 /*****************************************************************************/
 /*#define PBL_HASHTABLE_SIZE      1019 */
 /*#define PBL_HASHTABLE_SIZE      2017*/
-#define PBL_HASHTABLE_SIZE      2048
+/*#define PBL_HASHTABLE_SIZE      2048*/
 /* #define PBL_HASHTABLE_SIZE 5003  */
+#define PBL_HASHTABLE_SIZE 16384
+/*#define PBL_HASHTABLE_SIZE 8192*/
 /*#define PBL_HASHTABLE_SIZE   100003 */
 
 /*****************************************************************************/

@@ -33,7 +33,9 @@ for(my $i = 1; $i <= 10; $i += .5) {
     print EVERYTHING         "./naiveHash             1 $insert_count\n";
     print EVERYTHING         "./arrayListSet          1 $insert_count\n";
     print EVERYTHING         "./berkeleyDB/bdbRaw     1 $insert_count\n";
-    print EVERYTHING         "./berkeleyDB/bdbHash    1 $insert_count\n";
+    if($i < 4) {
+	print EVERYTHING         "./berkeleyDB/bdbHash    1 $insert_count\n";
+    }
 
 } 
 

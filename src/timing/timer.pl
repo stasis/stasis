@@ -14,7 +14,7 @@ my $CI99_9 = 7;
 ### How tight should the CI be?
 my $myCI = $CI95;
 
-my $maxRuns = 20;
+my $maxRuns = 10;
 my $plusMinus = 0.05;
 
 
