@@ -546,7 +546,7 @@ synchronization mechanisms that protect the physical consistency of
 \yad's internal data structures and the data store.  We say {\em
 locking} when we refer to mechanisms that provide some level of
 isolation among transactions.  
-For locking, due to the variety of locking protocols available and degrees of isolation available, we leave it to the application via the Lock Manager API (Section~\ref{lock-manager}).
+For locking, due to the variety of locking protocols available and degrees of isolation available, we leave it to the application via the mock manager API (Section~\ref{lock-manager}).
 
 %workloads~\cite{multipleGenericLocking}, we leave it to the
 %application to decide what degree of isolation is
@@ -726,7 +726,7 @@ multithreaded application development.  The lock manager is flexible
 enough to also provide index locks for hashtable implementations and 
 more complex locking protocols such as hierarhical two-phase 
 locking.~\cite{hierarcicalLocking,ariesim}  
-The lock manager api is divided into callback functions that are made 
+The lock manager API is divided into callback functions that are made 
 during normal operation and recovery, and into generic lock mananger 
 implementations that may be used with \yad and its index implementations.
 
@@ -2431,6 +2431,8 @@ benefit from the power of transactions.
 \bibitem[5]{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
 
 \bibitem[5]{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
+
+\bibitem[6]{soft-updates} Greg Ganger.  {\em Soft Updates: A Solution to the Metadata Update Problem in File Systems } ACM Transactions (2000)
 
 \bibitem[6]{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
 
