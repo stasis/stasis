@@ -443,15 +443,14 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("transactional_smokeTest");
 
   /* Sub tests are added, one per line, here */
-  /*  tcase_add_test(tc, transactional_smokeTest);
+  tcase_add_test(tc, transactional_smokeTest);
   tcase_add_test(tc, transactional_blobSmokeTest);  
   tcase_add_test(tc, transactional_nothreads_commit);
   tcase_add_test(tc, transactional_threads_commit); 
   tcase_add_test(tc, transactional_nothreads_abort);
-  tcase_add_test(tc, transactional_threads_abort); */
+  tcase_add_test(tc, transactional_threads_abort);
   tcase_add_test(tc, transactional_blobs_nothreads_abort); 
   tcase_add_test(tc, transactional_blobs_threads_abort);
-  /** @todo still need to make blobs reentrant! */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
