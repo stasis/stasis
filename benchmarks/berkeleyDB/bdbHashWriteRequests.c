@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <db.h>
 
-#define	ENV_DIRECTORY	"TXNAPP"
+#include "genericBerkeleyDBCode.c"
 
 #define MAX_SECONDS 100
 #define COUNTER_RESOLUTION 240
@@ -31,7 +31,7 @@ int max_active = 0;
 pthread_cond_t never;
 pthread_mutex_t mutex;
 
-
+#if 0
 void  run_xact(DB_ENV *, DB *, int, int);
 void *checkpoint_thread(void *);
 void  log_archlist(DB_ENV *);
@@ -43,6 +43,7 @@ void  usage(void);
 
 DB_ENV *dbenv;
 DB *db_cats; /*, *db_color, *db_fruit; */
+#endif
 
 int num_xact;
 int insert_per_xact;
@@ -225,7 +226,7 @@ void * runThread(void * arg) {
   //  printf("%d done\n", offset);
 }
 
-
+#if 0
 void
 env_dir_create()
 {
@@ -488,3 +489,5 @@ usage()
 	(void)fprintf(stderr, "usage: txnapp\n");
 	exit(1);
 }
+#endif // 0
+

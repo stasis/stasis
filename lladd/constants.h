@@ -130,8 +130,13 @@ terms specified in this license.
 #define OPERATION_LINEAR_HASH_INSERT 31
 #define OPERATION_LINEAR_HASH_REMOVE 32
 
-// this operation is specific to OASYS
-#define OPERATION_SET_DIFF           33  
+// these operations are specific to OASYS
+#define OPERATION_OASYS_DIFF_DO           33  
+#define OPERATION_OASYS_DIFF_REDO         34  
+#define OPERATION_OASYS_DIFF_UNDO         35  
+#define OPERATION_OASYS_SEMIDIFF_DO       36
+#define OPERATION_OASYS_SEMIDIFF_REDO     37
+
 
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40

@@ -20,16 +20,18 @@
 
 #define	ENV_DIRECTORY	"TXNAPP"
 
+#include "genericBerkeleyDBCode.c"
+
 int activeThreads = 0;
 int max_active = 0;
 
 pthread_mutex_t mutex;
-
+/*
 
 void  add_cat(DB_ENV *, DB *, char *, ...);
 void  run_xact(DB_ENV *, DB *, int, int);
-/*void  add_color(DB_ENV *, DB *, char *, int);
-  void  add_fruit(DB_ENV *, DB *, char *, char *); */
+//void  add_color(DB_ENV *, DB *, char *, int);
+//  void  add_fruit(DB_ENV *, DB *, char *, char *); 
 void *checkpoint_thread(void *);
 void  log_archlist(DB_ENV *);
 void *logfile_thread(void *);
@@ -38,11 +40,13 @@ void  env_dir_create(void);
 void  env_open(DB_ENV **);
 void  usage(void);
 
-int alwaysCommit;
+
 
 DB_ENV *dbenv;
-DB *db_cats; /*, *db_color, *db_fruit; */
+DB *db_cats; //, *db_color, *db_fruit; 
+*/
 
+int alwaysCommit;
 int num_xact;
 int insert_per_xact;
 void * runThread(void * arg);
@@ -196,7 +200,7 @@ void * runThread(void * arg) {
   //  printf("%d done\n", offset);
 }
 
-
+#if 0
 void
 env_dir_create()
 {
@@ -722,3 +726,4 @@ usage()
 	(void)fprintf(stderr, "usage: txnapp\n");
 	exit(1);
 }
+#endif

@@ -345,7 +345,7 @@ void * inner_worker_loop(void * arg_void) {
 
   int timeout = 0; /* Run through the loop immediately the first time around. */
   int state = 0;
-  //  int first = 1;
+  int first = 1;
   StateMachine* stateMachine;
 
   
@@ -418,6 +418,7 @@ void * inner_worker_loop(void * arg_void) {
       DEBUG("Freeing statemachine\n");
       break;
     }
+    if(state != stateMachine->current_state) { first = 1; }
     state = stateMachine->current_state;
     stateMachine->message.type = stateMachine->current_state;
     timeout = 690000 +(int) (300000.0*rand()/(RAND_MAX+1.0)); 
@@ -434,11 +435,11 @@ void * inner_worker_loop(void * arg_void) {
       send = dfaSet->states[state_idx].retry_fcn(dfaSet, stateMachine, &(stateMachine->message), stateMachine->message_recipient);
     }
     if(send) {
-      /*      if(first) {
+      if(first) {
 	first = 0;
       } else {
 	printf("Resending message. Machine # %ld State # %d\n", stateMachine->machine_id, stateMachine->current_state);
-	} */
+      } 
       send_message(&(dfaSet->networkSetup), &(stateMachine->message), stateMachine->message_recipient);
     }
 
