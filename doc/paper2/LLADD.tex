@@ -1486,6 +1486,7 @@ trivial: they simply log the before or after image of that record.
 \begin{figure}
 \hspace{.25in}
 \includegraphics[width=3.25in]{LHT2.pdf}
+\vspace{-.5in}
 \caption{\sf\label{fig:LHT}Structure of locality preserving ({\em
 page-oriented}) linked lists. By keeping sub-lists within one page,
 \yad improves locality and simplifies most list operations to a single
@@ -1650,6 +1651,7 @@ ordering.
    width=1\columnwidth]{bulk-load.pdf}
 %\includegraphics[%
 %   width=1\columnwidth]{bulk-load-raw.pdf}
+\vspace{-.5in}
 \caption{\sf\label{fig:BULK_LOAD} This test measures the raw performance
 of the data structures provided by \yad and Berkeley DB.  Since the
 test is run as a single transaction, overheads due to synchronous I/O
@@ -1714,6 +1716,7 @@ than the straightforward implementation.
 %   width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
    width=1\columnwidth]{tps-extended.pdf}
+\vspace{-.5in}
 \caption{\sf\label{fig:TPS} The logging mechanisms of \yad and Berkeley
 DB are able to combine multiple calls to commit() into a single disk 
 force, increasing throughput as the number of concurrent transactions 
@@ -1781,8 +1784,6 @@ that suffer from long-standing performance problems with traditional databases.
 %\item{Nested Top Actions for simple implementation.}
 %\item{Bypasses Nested Top Action API to optimize log bandwidth}
 %\end{enumerate}
-
-
 
 
 \section{Object Serialization}
@@ -1981,6 +1982,7 @@ forward, but this is not required.
 \includegraphics[width=3.3in]{object-diff.pdf}
 \hspace{.3in}
 \includegraphics[width=3.3in]{mem-pressure.pdf}
+\vspace{-.15in}
 \caption{\sf \label{fig:OASYS}
 \yad optimizations for object
 serialization. The first graph shows the effect of the two \yad
