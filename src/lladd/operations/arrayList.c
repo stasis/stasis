@@ -340,5 +340,3 @@ static TarrayListParameters pageToTLP(Page * p) {
 
   return tlp;
 }
-
-

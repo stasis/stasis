@@ -131,7 +131,7 @@ START_TEST(simpleLinearHashTest)
     assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
 
   }
-
+	
   printf("Done deleting mod 10.\n");
   fflush(NULL);
 
@@ -202,6 +202,82 @@ START_TEST(simpleLinearHashTest)
 }
 END_TEST
 
+START_TEST(transactionalLinearHashTest)
+{
+  Tinit();
+
+  int xid = Tbegin();
+
+	recordid foo = Talloc(xid, 1);
+
+	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
+	
+  recordid hashRoot =  ThashAlloc(xid, sizeof(int), sizeof(recordid));
+
+	printf("%d %d %ld", hashRoot.page, hashRoot.slot, hashRoot.size);
+	
+// Insert some entries, see if they stick around. 
+	
+  int i;
+
+  for(i = 0; i < 1000; i+=10) {
+		recordid insMe;
+		insMe.page = i;
+		insMe.slot = i+1;
+		insMe.size = i+2;
+		ThashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
+  }	  
+	
+	for(i = 0; i < 1000; i+=10) {
+		recordid theVal;
+		assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+		assert(theVal.page == i);
+		assert(theVal.slot == i+1);
+		assert(theVal.size == i+2);
+	}
+	
+	Tcommit(xid);
+	
+	xid = Tbegin();
+	
+	for(i = 0; i < 1000; i++) {
+		if(!(i%10)) {
+			recordid theVal;
+			assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+			assert(theVal.page == i);
+			assert(theVal.slot == i+1);
+			assert(theVal.size == i+2);
+		} else {
+			recordid insMe;
+			insMe.page = i;
+			insMe.slot = i+1;
+			insMe.size = i+2;
+			ThashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
+		}
+	}
+	
+	Tabort(xid);
+	Tdeinit();
+	Tinit();
+	xid = Tbegin();
+	ThashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
+	for(i = 0; i < 1000; i++) {
+		if(!(i%10)) {
+			recordid theVal;
+			assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+			assert(theVal.page == i);
+			assert(theVal.slot == i+1);
+			assert(theVal.size == i+2);	
+		} else {
+			recordid theVal;
+			assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
+		}
+	}
+	Tabort(xid);
+	Tdeinit();
+	
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHash");
   /* Begin a new test */
@@ -212,6 +288,7 @@ Suite * check_suite(void) {
 
   /*  tcase_add_test(tc, checkHashFcn); */
   tcase_add_test(tc, simpleLinearHashTest);
+  tcase_add_test(tc, transactionalLinearHashTest);
 
   /* --------------------------------------------- */
   

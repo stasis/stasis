@@ -10,26 +10,6 @@ filter.file.unmatch=*.so *.o *.a *.la
 filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
-[filelist]
-0=/home/morph/lladd/recovery.c
-1=/home/morph/lladd/logger/logparser.c
-2=/home/morph/lladd/logger/logstreamer.c
-3=/home/morph/lladd/constants.h
-4=/home/morph/lladd/bufferManager.c
-5=/home/morph/lladd/page.c
-6=/home/morph/lladd/logger/logparser.h
-7=/home/morph/lladd/operations.c
-8=/home/morph/lladd/logger.c
-9=/home/morph/lladd/operations/increment.c
-10=/home/morph/lladd/transactional.c
-11=/home/morph/lladd/operations.h
-12=/home/morph/lladd/test/lhpackingfactor.c
-13=/home/morph/lladd/test/lladdHashTest.c
-14=/home/morph/lladd/operations/lladdhash.c
-15=/home/morph/lladd/pbl/pbl.h
-16=/home/morph/lladd/operations/lladdhash.h
-17=/home/morph/lladd/transactional.h
-
 [filenumbers]
 0=61
 1=21
@@ -69,10 +49,3 @@ filter.dir.ignore.hidden=0
 15=
 16=
 17=
-
-[Project Tree]
-0=0
-
-[File Tree]
-0=0
-1=0:7
