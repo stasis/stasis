@@ -40,6 +40,9 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*#include <sys/types.h> */
+
+#define _GNU_SOURCE
+
 #include <lladd/common.h>
 #include <sys/socket.h>
 #include <sys/poll.h>

@@ -92,6 +92,12 @@ void slottedPageInitialize(Page * p);
  *
  */
 recordid slottedPreRalloc(int xid, long size, Page**p);
+/** 
+  Identical to slottedPreRalloc, but allows the user to specify which page the 
+  record should be allocated in.
+  */
+recordid slottedPreRallocFromPage(int xid, long page, long size, Page**p);
+
 /**
  * The second phase of slot allocation.  Called after the log entry
  * has been produced, and during recovery.  

@@ -164,6 +164,7 @@ typedef struct {
 #include "operations/nestedTopActions.h"
 #include "operations/linkedListNTA.h"
 #include "operations/linearHashNTA.h"
+#include "operations/pageOrientedListNTA.h"
 
 
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */

@@ -30,6 +30,8 @@ Operation getRealloc();
 */
 recordid Talloc(int xid, long size);
 
+recordid TallocFromPage(int xid, long page, long size);
+
 /** 
    Free a record.  
     @todo Currently, we just leak store space on dealloc. 
@@ -37,12 +39,33 @@ recordid Talloc(int xid, long size);
 void Tdealloc(int xid, recordid rid);
 
 /**
-   Return the type of a record, as returned by getRecordType.
+   Obtain the type of a record, as returned by getRecordType.  
+
+   @param xid the transaction id.  
+
+   @param rid the record of interest.  The size field will be ignored,
+   allowing this function to be used to probe for records in pages.
     
-    @todo document TrecordType
-    @see getRecordType
+   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, or FIXED_RECORD.
+
+   @see getRecordType
 
 */
 int TrecordType(int xid, recordid rid);
+
+/**
+   Obtain the length of the data stored in a record.
+
+   @param xid the transaction id.  
+
+   @param rid the record of interest.  The size field will be ignored,
+   allowing this function to be used to probe for records in pages.
+
+   @return -1 if the record does not exist, the size of the record otherwise.
+*/
+int TrecordSize(int xid, recordid rid);
+
+/** Return the number of records stored in page pageid */
+int TrecordsInPage(int xid, int pageid);
 
 #endif

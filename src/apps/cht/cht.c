@@ -46,7 +46,7 @@ terms specified in this license.
 #include <stdlib.h>
 #include "../../2pc/2pc.h"
 #include "../../libdfa/callbacks.h"
-#include <pbl/jbhash.h>
+//#include <pbl/jbhash.h>
 #include "cht_message.h"
 
 

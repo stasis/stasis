@@ -315,31 +315,27 @@ void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
 
 */
 int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
-	assert(rid.page == p->id);
-	
-	int page_type = *page_type_ptr(p);
-	
-	if(page_type == UNINITIALIZED_PAGE) {
-		return UNINITIALIZED_RECORD;	
-		
-	} else if(rid.size > BLOB_THRESHOLD_SIZE) {
-//		printf("%d , %d\n", *numslots_ptr(p), *slot_length_ptr(p, rid.slot));
-		return(*numslots_ptr(p) > rid.slot &&
-		         *slot_length_ptr(p, rid.slot) == BLOB_REC_SIZE) ? 
-							BLOB_RECORD : UNINITIALIZED_RECORD;
-		
-	} else if(page_type == SLOTTED_PAGE) {
-		return (*numslots_ptr(p) > rid.slot && 
-						 *slot_length_ptr(p, rid.slot) != INVALID_SLOT) ?
-							SLOTTED_RECORD : UNINITIALIZED_RECORD;
-		
-	} else if(page_type == FIXED_PAGE || page_type == ARRAY_LIST_PAGE) {
-		return  (fixedPageCount(p) > rid.slot) ? 
-							FIXED_RECORD : UNINITIALIZED_RECORD;
-	} else {
-		abort();
-		return UNINITIALIZED_RECORD;
-	}
+  assert(rid.page == p->id);
+  
+  int page_type = *page_type_ptr(p);
+  if(page_type == UNINITIALIZED_PAGE) {
+    return UNINITIALIZED_RECORD;	
+    
+  } else if(page_type == SLOTTED_PAGE) {
+    if(*numslots_ptr(p) <= rid.slot || *slot_length_ptr(p, rid.slot) == INVALID_SLOT) {
+      return UNINITIALIZED_PAGE;
+    } else if(*slot_length_ptr(p, rid.slot) == BLOB_REC_SIZE) {
+      return BLOB_RECORD; 
+    } else {
+      return SLOTTED_RECORD;
+    }
+  } else if(page_type == FIXED_PAGE || page_type == ARRAY_LIST_PAGE) {
+    return  (fixedPageCount(p) > rid.slot) ? 
+      FIXED_RECORD : UNINITIALIZED_RECORD;
+  } else {
+    abort();
+    return UNINITIALIZED_RECORD;
+  }
 }
 
 int getRecordType(int xid, Page * p, recordid rid) {
@@ -347,6 +343,20 @@ int getRecordType(int xid, Page * p, recordid rid) {
 	int ret = getRecordTypeUnlocked(xid, p, rid);
 	unlock(p->rwlatch);
 	return ret;
+}
+/** @todo implemenet getRecordLength for blobs and fixed length pages. */
+int getRecordSize(int xid, Page * p, recordid rid) {
+  readlock(p->rwlatch, 353);
+  int ret = getRecordTypeUnlocked(xid, p, rid);
+  if(ret == UNINITIALIZED_RECORD) {
+    ret = -1;
+  } else if(ret == SLOTTED_RECORD) {
+    ret = *slot_length_ptr(p, rid.slot);
+  } else { 
+    abort(); // unimplemented for fixed length pages and blobs.
+  }
+  unlock(p->rwlatch);
+  return ret;
 }
 
 void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {

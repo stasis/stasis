@@ -109,6 +109,7 @@ recordid Talloc(int xid, long size) {
   recordid rid;
   Page * p = NULL;
   if(size >= BLOB_THRESHOLD_SIZE) { 
+    /**@todo is it OK that Talloc doesn't pin the page when a blob is alloced?*/
     rid = preAllocBlob(xid, size);
   } else {
     pthread_mutex_lock(&talloc_mutex); 
@@ -133,6 +134,29 @@ recordid Talloc(int xid, long size) {
   
 }
 
+recordid TallocFromPage(int xid, long page, long size) {
+  recordid rid;
+
+  Page * p = NULL;
+  if(size >= BLOB_THRESHOLD_SIZE) { 
+    rid = preAllocBlobFromPage(xid, page, size);
+  } else {
+    pthread_mutex_lock(&talloc_mutex); 
+    rid = slottedPreRallocFromPage(xid, page, size, &p);
+    assert(p != NULL);
+  }
+  Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+  
+  if(p != NULL) {
+    /* release the page that preRallocFromPage pinned for us. */
+    /* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */
+    releasePage(p);
+    pthread_mutex_unlock(&talloc_mutex);  
+  }
+
+  return rid;
+}
+
 void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
   Page * p = loadPage(rid.page);
@@ -146,6 +170,23 @@ void Tdealloc(int xid, recordid rid) {
 int TrecordType(int xid, recordid rid) {
   Page * p = loadPage(rid.page);
   int ret = getRecordType(xid, p, rid);
+  releasePage(p);
+  return ret;
+}
+
+int TrecordSize(int xid, recordid rid) {
+  int ret;
+  Page * p = loadPage(rid.page);
+  ret = getRecordSize(xid, p, rid);
+  releasePage(p);
+  return ret;
+}
+
+int TrecordsInPage(int xid, int pageid) {
+  Page * p = loadPage(pageid);
+  readlock(p->rwlatch, 187);
+  int ret = *numslots_ptr(p);
+  unlock(p->rwlatch);
   releasePage(p);
   return ret;
 }

@@ -399,11 +399,9 @@ START_TEST(pageCheckSlotTypeTest) {
 	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
 	bad.size = 100000;
 	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
-	/** @todo this test could be better... The behavior for getRecordType in this 
-			case (valid slot, invalid size) is a bit ambiguous. Maybe an INVALID_RECORDID
-			would be an appropriate return value... */
+	/** getRecordType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
 	bad.slot = slot.slot;
-	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	assert(getRecordType(xid, p, bad) == SLOTTED_RECORD);
 	
 	releasePage(p);
 	
@@ -447,11 +445,9 @@ START_TEST(pageTrecordTypeTest) {
 	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
 	bad.size = 100000;
 	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
-	/** @todo this test could be better... The behavior for getRecordType in this 
-			case (valid slot, invalid size) is a bit ambiguous. Maybe an INVALID_RECORDID
-			would be an appropriate return value... */
+
 	bad.slot = slot.slot;
-	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	assert(TrecordType(xid, bad) == SLOTTED_RECORD);
 	
 	Tcommit(xid);
 	

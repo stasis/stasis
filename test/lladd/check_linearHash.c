@@ -208,7 +208,7 @@ START_TEST(transactionalLinearHashTest)
 
   int xid = Tbegin();
 
-	recordid foo = Talloc(xid, 1);
+  Talloc(xid, 1); // discard alloced rid...
 
 //	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
 	

@@ -160,17 +160,12 @@ int slottedFreespace(Page * page) {
 recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   recordid ret;
-  /* Page * p; */
-  
-  /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
-  
   assert(size < BLOB_THRESHOLD_SIZE);
   
-  /*  pthread_mutex_lock(&lastFreepage_mutex);   */
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
-  /*printf("lastFreepage %d\n", lastFreepage); fflush(NULL); */
+
   if(lastFreepage == -1) {
-    lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
+    lastFreepage = TpageAlloc(xid);
     *pp = loadPage(lastFreepage);
     assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
@@ -180,23 +175,33 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
-    lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
+    lastFreepage = TpageAlloc(xid);
     *pp = loadPage(lastFreepage);
     slottedPageInitialize(*pp);
   }
   
   ret = slottedRawRalloc(*pp, size);
-    
-  /*  releasePage(p); */  /* This gets called in Talloc() now.  That prevents the page from being prematurely stolen. */
-
-  /*  pthread_mutex_unlock(&lastFreepage_mutex); */
   
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
 
   return ret;
 }
 
-
+recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
+  recordid ret;
+  
+  *pp = loadPage(page);
+  
+  assert(slottedFreespace(*pp) >= size);
+  if(*page_type_ptr(*pp) == UNINITIALIZED_PAGE) {
+    slottedPageInitialize(*pp);
+  }
+  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
+  ret = slottedRawRalloc(*pp, size);
+  
+  return ret;
+  
+}
 
 recordid slottedRawRalloc(Page * page, int size) {
 

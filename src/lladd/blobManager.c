@@ -213,6 +213,24 @@ recordid preAllocBlob(int xid, long blobSize) {
 
 }
 
+recordid preAllocBlobFromPage(int xid, long page, long blobSize) {
+
+  /* Allocate space for the blob entry. */
+ 
+  DEBUG("Allocing blob (size %ld)\n", blobSize);
+
+  assert(blobSize > 0); /* Don't support zero length blobs right now... */
+
+  /* First in buffer manager. */
+
+  recordid rid = TallocFromPage(xid, page, sizeof(blob_record_t));
+
+  rid.size = blobSize;
+
+  return rid;
+
+}
+
 void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {  
   
   long fileSize;

@@ -298,12 +298,26 @@ void  pageRealloc(Page * p, int id);
 /*int pageAlloc() ;*/
 /**
    obtains the type of the record pointed to by rid.  
+
+   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, or FIXED_RECORD.
 */
+
+
 int getRecordType(int xid, Page * p, recordid rid);
+
+int getRecordSize(int xid, Page * p, recordid rid);
 /**
    same as getRecordType(), but does not obtain a lock.
 */
 int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
+/**
+   return the length of the record rid.  (the rid parameter's size field will be ignored)
+
+   @todo implement getRecordLength for blobs and fixed length pages.
+
+   @return -1 if the field does not exist, the size of the field otherwise.
+ */
+int getRecordLength(int xid, Page * p, recordid rid);
 
 END_C_DECLS
 
