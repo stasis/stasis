@@ -1025,16 +1025,18 @@ pobj_update_recursive (void *obj, int persist)
 	/* Persistify / skip object, as necessary. */
 	if (p->rep_index < 1) {
 	    if (persist) {
-		debug ("persistifying %p (%p)", obj, (void *) p);
+		debug (" persistifying %p (%p)", obj, (void *) p);
 
 		if (pobj_persistify (obj) < 0) {
-		    debug ("error: persistification failed");
+		    debug (" error: persistification failed");
 		    break;
 		}
 		fresh = 1;
 	    }
-	    else
+	    else {
+		debug (" skipping non-persistent object");
 		continue;
+	    }
 	}
 	else
 	    fresh = 0;
@@ -1053,13 +1055,13 @@ pobj_update_recursive (void *obj, int persist)
 		
 		tmp = XMALLOC (tmp_size);
 		if (! tmp) {
-		    debug ("error: allocation of temporary buffer failed");
+		    debug (" error: allocation of temporary buffer failed");
 		    ret = -1;
 		    break;
 		}
 	    }
 	    
-	    debug ("reading persistent image of object %p (%p)", obj, (void *) p);
+	    debug (" reading persistent image of object %p (%p)", obj, (void *) p);
 	    Tread (xid, pobj_slot->rid, tmp);
 	}
 
