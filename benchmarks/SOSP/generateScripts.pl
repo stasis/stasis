@@ -59,6 +59,9 @@ open(BDB_HASH,           ">BDB_HASH.script");
 open(BDB_RAW,            ">BDB_RAW.script");
 open(BULK_LOAD,          ">BULK_LOAD.script");
 
+print BDB_RAW    "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
+print BULK_LOAD  "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
+
 for(my $i = 1; $i <= 10; $i ++) {
     my $insert_count = $i * 100000;
 
@@ -71,7 +74,7 @@ for(my $i = 1; $i <= 10; $i ++) {
     print LLADD_LINKED_LIST  "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
     print LLADD_RECORDID     "../rawSet                      1 $insert_count\n"; 
     print BDB_HASH           "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 1\n";
-    print BDB_RAW            "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 0\n";
+    print BDB_RAW            "../berkeleyDB/bdbRawThreaded   1 $insert_count 0 0\n";
 
     print BULK_LOAD          "../linearHashNTAThreaded       1 $insert_count\n";
     print BULK_LOAD          "../logicalHash                 1 $insert_count\n";  # could do ./naiveHash instead...

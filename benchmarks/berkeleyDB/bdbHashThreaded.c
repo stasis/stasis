@@ -126,7 +126,8 @@ void * runThread(void * arg) {
   int r;
 
   for(r = 0; r < num_xact; r ++) {
-    run_xact(dbenv, db_cats, offset*(1+r)*insert_per_xact, insert_per_xact);
+    //    run_xact(dbenv, db_cats, offset*(1+r)*insert_per_xact, insert_per_xact);
+    run_xact(dbenv, db_cats, (offset * num_xact * insert_per_xact) + (r * insert_per_xact), insert_per_xact);
   }
 
   pthread_mutex_lock(&mutex);

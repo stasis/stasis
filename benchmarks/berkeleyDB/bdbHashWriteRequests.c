@@ -170,7 +170,8 @@ void * runThread(void * arg) {
     struct timeval endtime_tv;
     struct timespec endtime;
 
-    run_xact(dbenv, db_cats, offset*(1+r)*insert_per_xact, insert_per_xact);
+    //    run_xact(dbenv, db_cats, offset*(1+r)*insert_per_xact, insert_per_xact);
+    run_xact(dbenv, db_cats, (offset * num_xact * insert_per_xact) + (r * insert_per_xact), insert_per_xact);
 
     gettimeofday(&endtime_tv, NULL);
 

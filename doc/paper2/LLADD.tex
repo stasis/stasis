@@ -2,6 +2,10 @@
 %\documentclass[letterpaper,english]{article}
 
 \documentclass[letterpaper,twocolumn,english]{article}
+
+% This fixes the PDF font, whether or not pdflatex is used to compile the document...
+\usepackage{pslatex} 
+
 \usepackage[T1]{fontenc}
 \usepackage[latin1]{inputenc}
 \usepackage{graphicx}
@@ -976,20 +980,63 @@ than our current implementation, we believe that our architecture
 could support a broader range of features than provided by BerkeleyDB,
 which is a monolithic system.
 
-The first test measures the throughput of a single long running
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{BULK_LOAD.pdf}
+\includegraphics[%
+   width=1\columnwidth]{BULK_LOAD.pdf}
+\caption{\label{fig:BULK_LOAD} This test measures the raw performance
+of the data structures provided by \yad and Berkeley DB.  Since the
+test is run as a single transaction, overheads due to synchronous I/O
+and logging are minimized.
+{\em @todo of course, these aren't the final graphs.  I plan to add points for 1 insertion, fix
+the stair stepping, and split the numbers into 'hashtable' and 'raw
+access' graphs.}}
+\end{figure*}
+
+The first test (Figure~\ref{fig:BULK_LOAD}) measures the throughput of a single long running
 transaction that generates an loads a synthetic data set into the
 library.  For comparison, we provide throughput for many different
 \yad operations, and BerkeleyDB's DB\_HASH hashtable implementation,
 and lower level DB\_RECNO record number based interface.
 
-@todo fill in numbers here.
+The NTA (Nested Top Action) version of \yad's hash table is very
+cleanly implemented by making use of existing \yad data structures,
+and is not fundamentally more complex then normal multithreaded code.
+We expect application developers to write code in this style.  
 
-The second test measures the two library's ability to exploit
+The ``Fast'' \yad hashtable implementation is optimized for log
+bandwidth, only stores fixed length entries, and does not obey normal
+recovery semantics.  It is included in this test as an example of the
+sort of optimizations that are possible (but difficult) to perform
+with \yad.  The slower, more stable NTA hashtable is used exclusively
+in all benchmarks in this paper.  In the future, we hope that improved
+tool support for \yad will allow application developers easily apply
+more optimizations to their operations.
+
+
+The second test (Figure~\ref{fig:TPS}) measures the two library's ability to exploit
 concurrent transactions to reduce logging overhead.  Both systems
 implement a simple optimization that allows multiple calls to commit()
-to be serviced by a single synchronous disk request.  
+to be serviced by a single synchronous disk request.  This test shows
+that both Berkeley DB and \yad's are able to take advantage of
+multiple outstanding requests.
 
-@todo analysis
+
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{TPS.pdf}
+\includegraphics[%
+   width=1\columnwidth]{TPS.pdf}
+\caption{\label{fig:TPS} The logging mechanisms of \yad and Berkeley
+DB are able to combine calls to commit() into a single disk force.
+This graph shows how \yad and Berkeley DB's throughput increases as
+the number of concurrent requests increases.  The Berkeley DB line is
+cut off at 40 concurrent transactions because we were unable to
+reliable scale it past this point, although we believe that this is an
+artifact of our testing environment, and not fundamental to
+BerkeleyDB.} {\em @todo There are two copies of this graph because I intend to make a version that scales \yad up to the point where performance begins to degrade.  Also, I think I can get BDB to do more than 40 threads...}
+\end{figure*}
 
 The final test measures the maximum number of sustainable transactions
 per second for the two libraries.  In these cases, we generate a

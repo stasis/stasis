@@ -3,12 +3,17 @@
 use strict;
 
 
+#my $R_PREAMBLE = qq{
+#    postscript("__PLOT_NAME__.ps", width = 9.75, height = 6.375, 
+#	       horizontal = FALSE, onefile = FALSE, paper = "special",
+#	       family = "ComputerModern")
+#    };
 my $R_PREAMBLE = qq{
-    postscript("__PLOT_NAME__.ps", width = 9.75, height = 6.375, 
-	       horizontal = FALSE, onefile = FALSE, paper = "special",
-	       family = "ComputerModern")
-    };
+    pdf("__PLOT_NAME__.pdf", width = 5.0, height = 4, 
+	       horizontal = FALSE, onefile = FALSE, paper = "special")
 
+    };
+#	       family = "ComputerModern")
 my $R_READ = qq{
     __NAME__<-read.table("__FILE__",header=F,sep="\\t")
     };
@@ -62,6 +67,7 @@ sub filesToLabels {
 	chomp $array[$i];
 	$array[$i] =~ s/^[^\-]+\-//;
 	$array[$i] =~ s/\.dat$//;
+	$array[$i] =~ s/[-_]/ /g;
     }
 
     my $ret = '"' . join ('", "', @array). '"';
