@@ -97,12 +97,14 @@ static int _chtEval(DfaSet * dfaSet,
   if (*value_size != 0) {
     memcpy(key, getKeyAddr(&m), getKeyLength(&m));
   }
-
+  *value_size = getValLength(&m);
+  *key_size = getKeyLength(&m);
   *xid = m.to_machine_id;
 
   DEBUG("+chtEval returning %d\n", m.type);
 
-  return m.type;
+  //  return m.type;
+  return 1;
 }
 
 int cHtCreate(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * new_ht) {
@@ -116,11 +118,16 @@ int cHtInsert(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, vo
 }
 
 int cHtLookup(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, void * key, size_t keylen, void * dat, size_t * datlen) {
-  return _chtEval(dfaSet, LOOKUP, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  assert(keylen != 0);
+  int ret = _chtEval(dfaSet, LOOKUP, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  assert(ret);
+  return (*datlen != 0);
 }
 
 int cHtRemove(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t * ht, void * key, size_t keylen, void * dat, size_t * datlen) {
-  return _chtEval(dfaSet, REMOVE, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  int ret = _chtEval(dfaSet, REMOVE, /*AWAIT_COMMIT_POINT,*/ REQUEST_TYPE, &xid, ht, key, &keylen, dat, datlen) != SUBORDINATE_VETO_2PC;
+  if(!ret) { return -1; }
+  return *datlen;
 }
 
 int cHtDelete(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t *ht) {
@@ -142,8 +149,7 @@ int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet) {
 DfaSet * cHtClientInit(char * configFile) {
   NetworkSetup * config = readNetworkConfig(configFile, 0);
   assert(config->coordinator);
-  //  printf("config->localhost:%s config->broadcast_lists[0][0]:%s (localport %d)(port %d)\n",
-  //      config->localhost, config->broadcast_lists[0][0], config->localport, parse_port(config->broadcast_lists[0][0]));
+
   DfaSet * ret = cHtInit(CHT_CLIENT, NULL, config);
   assert(config->coordinator);
   free (config);
@@ -155,8 +161,9 @@ int cHtCommit(state_machine_id xid, DfaSet * dfaSet) {
   return _chtEval(dfaSet, COMMIT, XACT_COMMIT, &xid, NULL, NULL, &zero, NULL, &zero);
 }
 
-/*
+
 int cHtAbort(state_machine_id xid, DfaSet * dfaSet) {
   size_t zero = 0;
-  return _chtEval(dfaSet, ABORT, AWAIT_COMMIT_POINT, &xid, NULL, NULL, &zero, NULL, &zero);
-  }*/
+  return _chtEval(dfaSet,  ABORT, XACT_COMMIT, &xid, NULL, NULL, &zero, NULL, &zero);
+  abort();
+}

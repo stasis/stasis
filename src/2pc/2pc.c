@@ -64,7 +64,7 @@ callback_fcn coordinator_continue_xact_2pc;
 
 /* Remember to update transition_count_2pc if you add/remove transitions */
 
-const int transition_count_2pc = 26;
+const int transition_count_2pc = 25;
 
 Transition transitions_2pc[] = {
 
@@ -76,7 +76,6 @@ Transition transitions_2pc[] = {
   { XACT_ACK_ARRIVAL,       XACT_ACTIVE,                XACT_ACTION_RUNNING,   coordinator_continue_xact_2pc,   FALSE },
   { XACT_ACK_RESULT,        XACT_ACTIVE,                XACT_ACTION_RUNNING,   coordinator_continue_xact_2pc,   FALSE },
   { XACT_COMMIT,            XACT_ACTIVE,                COORDINATOR_START_2PC, coordinator_continue_xact_2pc,     FALSE },
-  { XACT_ABORT,             XACT_ACTIVE,                COORDINATOR_START_2PC, coordinator_continue_xact_2pc,     FALSE },
   { XACT_SUBORDINATE_ACK,   XACT_ACTION_RUNNING,        XACT_ACTIVE,           &tally_2pc,                        FALSE },
 
   /* Library user must provide callback that init_xact_2pc calls. */
@@ -112,7 +111,7 @@ Transition transitions_2pc[] = {
 
 };
 
-const int client_transition_count_2pc = 8;
+const int client_transition_count_2pc = 7;
 
 Transition client_transitions_2pc[] = {
 
@@ -127,13 +126,12 @@ Transition client_transitions_2pc[] = {
 
   { XACT_ACTION_RUNNING,        XACT_ACK_ARRIVAL,       NULL_STATE,   NULL, FALSE},
   { XACT_ACTIVE,                XACT_ACK_RESULT,        NULL_STATE,   NULL, FALSE},
-  { COORDINATOR_COMMITTING_2PC, XACT_COMMIT,            NULL_STATE,   NULL, FALSE},
-  { COORDINATOR_ABORTING_2PC,   XACT_ABORT,             NULL_STATE,   NULL, FALSE}
+  { COORDINATOR_COMMITTING_2PC, XACT_COMMIT,            NULL_STATE,   NULL, FALSE}
 
 };
 
 
-const int state_count_2pc = 16;
+const int state_count_2pc = 15;
 
 State states_2pc[MAX_STATE_COUNT] = {
 
@@ -167,7 +165,6 @@ State states_2pc[MAX_STATE_COUNT] = {
   { XACT_ACK_ARRIVAL,   NULL, NULL},
 
   { XACT_COMMIT,        NULL, NULL},
-  { XACT_ABORT,         NULL, NULL}
 
 };
 
@@ -336,11 +333,12 @@ state_name commit_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, c
   int ret = app_state->commit_2pc(dfaSet, stateMachine, m, from);
   if(ret) { printf("COMMIT %ld\n", m->to_machine_id); }
   if(ret && m->response_type == AWAIT_RESULT) {
+    printf("responding w/ commit to %s\n", m->initiator); fflush(stdout);
     respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_ACKING_2PC, m, m->initiator);
   }
   return ret;
 }
-
+/** @todo 2pc can't handle replica groups of size one. */
 state_name check_veto_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   /* Clear subordinate_votes array, so that it can be used to
      tally acks after the votes are tallied. */
@@ -355,6 +353,12 @@ state_name check_veto_2pc(void * dfaSet, StateMachine * stateMachine, Message * 
 
   memset(machine_state->subordinate_votes, 0, MAX_SUBORDINATES);
  // sprintf(from, "bc:%d", bc_group);
+  printf("Sending commit message to %s\n", m->initiator);
+  respond_once(&((DfaSet*)dfaSet)->networkSetup, COORDINATOR_COMMITTING_2PC, m, m->initiator);
+
+  if(tally_2pc(dfaSet, stateMachine, m, from)) {
+    printf("YOU FOUND A BUG: 2pc doesn't support size one replication groups!\n");
+  }
 
   return 1;
 }
@@ -384,7 +388,7 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
 		   dfaSet->networkSetup.broadcast_list_host_count[bc_group-1],
 		   (char*)(machine_state->subordinate_votes), from);
     }
-//    fprintf(stderr, "Tally returned: %d", ret);
+    //    fprintf(stderr, "Tally returned: %d", ret);
     if(ret) {
       /* Clear subordinate_votes array, so that it can be used to
 	 tally acks after the votes are tallied. */
@@ -405,14 +409,15 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
      sequence number before flushing... */
 
 
+    //    fprintf(stderr, " response type %d current state %d\n", m->response_type, stateMachine->current_state);
     if(ret && ( 
                 (  
                   (
 		    m->response_type == AWAIT_COMMIT_POINT || 
-		    m->response_type==XACT_COMMIT || 
-		    m->response_type==XACT_ABORT  
+		    m->response_type==XACT_COMMIT
 	          ) && (
-		    stateMachine->current_state == COORDINATOR_START_2PC
+		    stateMachine->current_state == COORDINATOR_START_2PC ||
+		    stateMachine->current_state == COORDINATOR_ABORTING_2PC
 		  )
 		) || ( 
                     m->response_type == XACT_ACK_RESULT && 
@@ -426,9 +431,10 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
 	m->from_machine_id = m->initiator_machine_id;
 //	printf("Coordinator responding: ? ht=? (key length %d) %d -> /*%d*/  to %s:%ld\n",  0/*getKeyLength(m),*/ , 0, 0, /**(int*)getKeyAddr(m), *//**(int*)getValAddr(m),*/ m->initiator, m->initiator_machine_id );
         //debug_print_message(m);
-	if(m->response_type == AWAIT_COMMIT_POINT || m->response_type == XACT_COMMIT || m->response_type == XACT_ABORT) {
+	if((m->response_type == AWAIT_COMMIT_POINT) || (m->response_type == XACT_COMMIT)) {
 	  printf("COMMIT POINT %ld\n", m->to_machine_id); 
 	  fflush(stdout);
+	  printf("Sending commit point message to %s\n", m->initiator); fflush(stdout);
 	  respond_once(&((DfaSet*)dfaSet)->networkSetup, COORDINATOR_COMMITTING_2PC, m, m->initiator);
 	} else {
 	  //	  printf("COMPLETED %ld\n", m->to_machine_id);

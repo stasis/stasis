@@ -10,7 +10,7 @@
 #define TSTSET 6
 #define GETXID  7
 #define COMMIT 8
-/*   #define ABORT  9 */
+#define ABORT  9
 
 typedef struct {
   unsigned short key_length;

@@ -101,9 +101,7 @@ gets to reuse the transaction id.
 #define XACT_ACTION_RUNNING        224
 
 #define XACT_COMMIT                225
-#define XACT_ABORT                 226
-
-#define XACT_SUBORDINATE_ACK       227
+#define XACT_SUBORDINATE_ACK       226
 
 /** 
     The callbacks are called whenever the transition 'should' succeed.

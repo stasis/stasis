@@ -21,16 +21,9 @@ int main(int argc, char ** argv) {
   clusterHashTable_t * new_ht;
   cHtCreate(xid, cht_client, new_ht);
   int i;
-  for(i = 0; i < 1000; i++) {
+  for(i = 0; i < 10000; i++) {
     int one = i; int two = i+1;
     cHtInsert(xid, cht_client, new_ht, &one, sizeof(int), &two, sizeof(int));
-    //    xid++;
- /* int i =0;
-  for(i =0; i < 100; i++) {
-    printf("\n");
-  }
-  fflush(NULL); */
-  
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
@@ -44,6 +37,46 @@ int main(int argc, char ** argv) {
     assert(newLen == sizeof(int));
   }
   cHtCommit(xid, cht_client);
+
+  for(i = 0; i < 10000; i+=10) {
+    int one = i; int two = -1;
+    unsigned int size = sizeof(int);
+    int removed = cHtRemove(xid, cht_client, new_ht, &one, sizeof(int), &two, &size);
+    assert(removed);
+
+    size = sizeof(int);
+    two = -1;
+    removed = cHtRemove(xid, cht_client, new_ht, &one, sizeof(int), &two, &size);
+    assert(!removed);
+
+    int newOne, newTwo;
+    newOne = i;
+    newTwo = 0;
+    unsigned int newLen = sizeof(int);
+    int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
+
+    assert(!ret);
+
+  }
+  cHtAbort(xid, cht_client);
+  exit(0);  // @todo this test case should continue on...
+  for(i = 0; i < 10000; i++) {
+    int one = i; int two = i+1;
+    //    cHtInsert(xid, cht_client, new_ht, &one, sizeof(int), &two, sizeof(int));
+    int newOne, newTwo;
+    newOne = i;
+    newTwo = 0;
+    unsigned int newLen = sizeof(int);
+    int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
+    //    xid++;
+    //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
+    assert(ret);
+    assert(newOne == one);
+    assert(newTwo == two);
+    assert(newLen == sizeof(int));
+  }
+  cHtCommit(xid, cht_client);
+
   /** @todo devise a way to cleanly shut a CHT down. */
   
  // dfa_free(cht_client);

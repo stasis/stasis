@@ -73,7 +73,7 @@ state_name tally(char ** broadcast_list, int host_count, char * bitSet, char * f
   index= get_index(broadcast_list, host_count, from);
 
   if(index < 0) {
-    printf("Received message from unknown recipient: %s\n", from);
+    printf("Received message from unknown recipient: %s\n", from); 
     
     assert(0);
     return FALSE;

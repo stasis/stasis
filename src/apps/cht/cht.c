@@ -91,6 +91,7 @@ short multiplex_interleaved(DfaSet * dfaSet, Message * m) {
   } else {
     /* Need to add one so that no requests are assigned to the coordinator (bc:0) */
     bc_group = hash(getKeyAddr(m), getKeyLength(m), table_length) + 1;  
+    //    printf("group %d: %d (%d)\n", bc_group, *(int*)getKeyAddr(m), getKeyLength(m)); fflush(stdout);
   }
 
  DEBUG("request %d bc group: %d\n", *requestType(m), bc_group);

@@ -96,10 +96,10 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
 	    assert(valueLength <= getValLength(m));
 	    memcpy(getValAddr(m), new, valueLength);
 	    free(new);
+	    setValLength(m, valueLength);
 	  } else {
-	    ret = 0;
+	    setValLength(m, 0);
 	  }
-	  //	  ret = (jbHtLookup(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
 	  DEBUG("Lookup: %d ht=%d (key length %d) %d -> %d\n", ret, 
 		 (__header_ptr(m)->hashTable), getKeyLength(m),
 		 *(int*)getKeyAddr(m), *(int*)getValAddr(m));
@@ -112,7 +112,12 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
 	  printf ("Hash table doesn't exist!\n"); fflush(stdout); ret = 0; 
 	} else {
 	  /** @todo we no longer return old value on remove... */
-	  ret = ThashRemove(xid, ht, getKeyAddr(m), getKeyLength(m));
+	  int remove_ret = ThashRemove(xid, ht, getKeyAddr(m), getKeyLength(m));
+	  if(remove_ret == 0) {
+	    setValLength(m, 0);
+	  } else {
+	    setValLength(m, 1);
+	  }
 	}
       } break;
       
@@ -150,19 +155,15 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
 	  ret = 0;
 	  }  NOOP */
       } break;
-    case COMMIT:  // placeholder (2pc commits for us)
-      break;
-      /*    
-          case COMMIT: 
+    case COMMIT:  
       {
-	ret = (Tcommit(xid) >= 0);
+      // placeholder (2pc commits for us unless there's an error)
       } break;
-      
     case ABORT: 
       { 
-	ret = (Tabort(xid) >= 0);
+	ret = 0; // Insert an 'error' to cause 2pc to abort the transaction.
       } break;
-      */
+      
     default: 
       {
 	printf("Unknown request type: %d\n", *requestType(m));

@@ -218,8 +218,8 @@ void* main_loop(DfaSet *dfaSet) {
     
     if(i == dfaSet->transition_count) {
       
-      fprintf(stderr, "%ld received: %ld-%d:%d->? (bad message)\n",  stateMachine->machine_id, message->from_machine_id, 
-	     message->type, current_state);
+      fprintf(stderr, "%ld received: %ld-%d:%d->? (bad message from %s)\n",  stateMachine->machine_id, message->from_machine_id, 
+	     message->type, current_state, from);
       continue;
       
     } 
