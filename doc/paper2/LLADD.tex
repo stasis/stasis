@@ -25,6 +25,11 @@
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 \newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
+%% for space
+%% \newcommand{\eab}[1]{}
+%% \newcommand{\rcs}[1]{}
+%% \newcommand{\mjd}[1]{}
+
 \begin{document}
 
 \title{\yad Outline }
@@ -35,12 +40,12 @@
 \maketitle
 
 
-%\subsection*{Abstract}
+\subsection*{Abstract}
 
 \rcs{Should we add a
 ``cheat-sheet'' style reference of an idealized version of \yad's
 API?}
-\vspace*{6pt}
+%\vspace*{6pt}
 
 {\em Existing transactional systems are designed to handle specific
 workloads well.  Unfortunately, these implementations are generally
@@ -174,7 +179,7 @@ to improve performance.
 
 These features are enabled by the several mechanisms:
 \begin{description}
-\item[Flexible page layout] provide low level control over 
+\item[Flexible page layouts] provide low level control over 
       transactional data representations (Section~\ref{page-layouts}).
 \item[Extensible log formats] provide high-level control over
       transaction data structures (Section~\ref{op-def}).
@@ -670,7 +675,7 @@ fuzzy snapshot is fine.
 \begin{figure}
 \includegraphics[%
    width=1\columnwidth]{structure.pdf}
-\caption{\label{fig:structure} Structure of an action...}
+\caption{\sf \label{fig:structure} Structure of an action...}
 \end{figure}
 
 
@@ -1486,8 +1491,9 @@ record.
 %are bigger than one bucket?, 3) add caption to figure.}
 
 \begin{figure}
+\hspace{.25in}
 \includegraphics[width=3.25in]{LHT2.pdf}
-\caption{\label{fig:LHT}Structure of locality preserving ({\em page-oriented}) 
+\caption{\sf \label{fig:LHT}Structure of locality preserving ({\em page-oriented}) 
 linked lists.  Hashtable bucket overflow lists tend to be of some small fixed 
 length.  This data structure allows \yad to aggressively maintain page locality 
 for short lists, providing fast overflow bucket traversal for the hash table.}
@@ -1523,7 +1529,7 @@ for short lists, it can also be used on its own.
    width=1\columnwidth]{bulk-load.pdf}
 \includegraphics[%
    width=1\columnwidth]{bulk-load-raw.pdf}
-\caption{\label{fig:BULK_LOAD} This test measures the raw performance
+\caption{\sf \label{fig:BULK_LOAD} This test measures the raw performance
 of the data structures provided by \yad and Berkeley DB.  Since the
 test is run as a single transaction, overheads due to synchronous I/O
 and logging are minimized.}
@@ -1796,7 +1802,7 @@ transactional systems.
    width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
    width=1\columnwidth]{tps-extended.pdf}
-\caption{\label{fig:TPS} The logging mechanisms of \yad and Berkeley
+\caption{\sf \label{fig:TPS} The logging mechanisms of \yad and Berkeley
 DB are able to combine multiple calls to commit() into a single disk 
 force, increasing throughput as the number of concurrent transactions 
 grows.  A problem with our testing environment prevented us from 
