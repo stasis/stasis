@@ -40,6 +40,34 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
+/**
+
+  @file
+
+  Generic page interface.  This file handles updates to the LSN, but
+  leaves finer grained concurrency to the implementor of each of the
+  page types.  This interface's primary purpose is to wrap common
+  functionality together, and to delegate responsibility for page
+  handling to other modules.
+  
+ Latching summary:
+
+   Each page has an associated read/write lock.  This lock only
+   protects the internal layout of the page, and the members of the
+   page struct.  Here is how it is held in various circumstances:
+
+   Record allocation:  Write lock
+   Record read:        Read lock
+   Read LSN            Read lock
+   Record write       *READ LOCK*
+   Write LSN           Write lock
+ 
+ Any circumstance where these locks are held during an I/O operation
+ is a bug.
+ 
+*/
+
+
 /* _XOPEN_SOURCE is needed for posix_memalign */
 #define _XOPEN_SOURCE 600
 #include <stdlib.h>
@@ -72,8 +100,8 @@ static int nextPage = 0;
    only place where pageRalloc is called, pageRalloc does not obtain
    this lock.
 */
-static pthread_mutex_t lastFreepage_mutex;
-static unsigned int lastFreepage = 0;
+pthread_mutex_t lastFreepage_mutex;
+unsigned int lastFreepage = 0;
 
 
 
@@ -90,10 +118,13 @@ Page pool[MAX_BUFFER_SIZE+1];
  *
  * @param page You must have a writelock on page before calling this function.
  */
-void pageWriteLSN(Page * page) {
+void pageWriteLSN(Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
   /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
-  *lsn_ptr(page) = page->LSN;
+  if(page->LSN < lsn) {
+    page->LSN = lsn;
+    *lsn_ptr(page) = page->LSN;
+  } 
 }
 
 /**
@@ -191,7 +222,18 @@ void pageAbort(int xid) {
 }
 
 
-/** @todo ralloc ignores it's xid parameter; change the interface? */
+int pageAllocMultiple(int newPageCount) {
+  pthread_mutex_lock(&lastFreepage_mutex);  
+  int ret = lastFreepage+1;
+  lastFreepage += newPageCount;
+  pthread_mutex_unlock(&lastFreepage_mutex);
+  return ret;
+}
+
+/** @todo ralloc ignores it's xid parameter; change the interface? 
+    @todo ralloc doesn't set the page type, and interacts poorly with other methods that allocate pages.  
+
+*/
 recordid ralloc(int xid, long size) {
   
   recordid ret;
@@ -199,13 +241,16 @@ recordid ralloc(int xid, long size) {
   
   /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
   
-  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
+  assert(size < BLOB_THRESHOLD_SIZE);
   
-
   pthread_mutex_lock(&lastFreepage_mutex);  
-  while(freespace(p = loadPage(lastFreepage)) < size ) { 
+  p = loadPage(lastFreepage);
+  *page_type_ptr(p) = SLOTTED_PAGE;
+  while(freespace(p) < size ) { 
     releasePage(p);
-    lastFreepage++; 
+    lastFreepage++;
+    p = loadPage(lastFreepage);
+    *page_type_ptr(p) = SLOTTED_PAGE;
   }
   
   ret = pageRalloc(p, size);
@@ -272,10 +317,8 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   
   writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
 
-  if(p->LSN < lsn) {
-    p->LSN = lsn;
-    pageWriteLSN(p);
-  } 
+  pageWriteLSN(p, lsn);
+
   unlock(p->rwlatch);    
 
 }

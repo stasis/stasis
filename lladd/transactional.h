@@ -95,6 +95,15 @@ typedef struct {
   long size;
 } recordid;
 
+/**
+   If a recordid's slot field is set to this, then the recordid
+   represents an array of fixed-length records starting at slot zero
+   of the recordid's page.
+
+   @todo Support read-only arrays of variable length records, and then
+   someday read / write / insert / delete arrays...
+*/
+#define RECORD_ARRAY (-1)
 
 
 #include "operations.h"

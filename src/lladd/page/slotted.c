@@ -1,49 +1,6 @@
-/************************************************************************
- * implementation of pages
+/** $Id$ */
 
- STRUCTURE OF A PAGE
 
- +-------------------------------------------+-----------------------+--+
- | DATA SECTION                   +--------->| RID: (PAGE, 0)        |  |
- |          +-----------------+   |          +-----------------------+  |
- |      +-->| RID: (PAGE, 1)  |   |                                     |
- |      |   +-----------------+   |                                     |
- |      |                         |                                     |
- |      +-----------------+       |        +----------------------------+
- |                        |       |   +--->| RID: (PAGE, n)             |
- |                        |       |   |    +----------------------------+
- |======================================================================|
- |^ FREE SPACE            |       |   |                                 |
- |+-----------------------|-------|---|--------------------+            |
- |                        |       |   |                    |            |
- |          +-------------|-------|---+                    |            |
- |          |             |       |                        |            |
- |      +---|---+-----+---|---+---|---+--------------+-----|------+-----+
- |      | slotn | ... | slot1 | slot0 | num of slots | free space | LSN |
- +------+-------+-----+-------+-------+--------------+------------+-----+
-
- NOTE:
-   - slots are zero indexed.
-   - slots are of implemented as (offset, length)
-
- Latching summary:
-
-   Each page has an associated read/write lock.  This lock only
-   protects the internal layout of the page, and the members of the
-   page struct.  Here is how it is held in various circumstances:
-
-   Record allocation:  Write lock
-   Record read:        Read lock
-   Read LSN            Read lock
-   Record write       *READ LOCK*
-   Write LSN           Write lock
- 
- Any circumstance where these locks are held during an I/O operation
- is a bug.
- 
- $Id$
-
-************************************************************************/
 #include "../page.h"
 #include "../blobManager.h"
 #include "slotted.h"
@@ -143,6 +100,7 @@ void pageInitialize(Page * page) {
   /*  printf("Initializing page %d\n", page->id);
       fflush(NULL); */
   memset(page->memAddr, 0, PAGE_SIZE);
+  *page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
   *freelist_ptr(page)  = INVALID_SLOT;

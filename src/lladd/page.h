@@ -55,30 +55,28 @@ terms specified in this license.
  * structure should be seperated, and each page should have a 'type'
  * slot so that we can implement multiple page types on top of LLADD.
 
-Slotted page layout: 
-
- END:
-         lsn (4 bytes)
-	 type (2 bytes)
-	 free space (2 bytes)
-	 num of slots (2 bytes)
-	 freelist head(2 bytes)
-	 slot 0 (2 bytes)
-	 slot 1 (2 bytes)
-	 ...
-	 slot n (2 bytes)
-	 ...
-	 unused
-	 ...
-	 record n (x bytes)
-	 ...
-	 record 0 (y bytes)
-	 record 1 (z bytes)
-
- START
-
-
- **/
+ STRUCTURE OF A GENERIC PAGE
+<pre>
+ +----------------------------------------------------------------------+
+ |                                                                      |
+ |  USABLE SPACE                                                        |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                                      |
+ |                                                    +-----------+-----+
+ |                                                    | page type | LSN |
+ +----------------------------------------------------+-----------+-----+
+</pre>
+  */
 
 #ifndef __PAGE_H__
 #define __PAGE_H__
@@ -94,12 +92,10 @@ Slotted page layout:
 
 
 BEGIN_C_DECLS
-/*
-#define LSN_SIZE sizeof(lsn_t)
-#define START_OF_LSN (PAGE_SIZE - LSN_SIZE)
-#define PAGE_TYPE_SIZE 0
-#define START_OF_PAGE_TYPE (START_OF_LSN - PAGE_TYPE_SIZE)
-#define USABLE_SPACE_SIZE (START_OF_PAGE_TYPE)*/
+
+#define UNINITIALIZED_PAGE  0
+#define SLOTTED_PAGE        1
+#define INDIRECT_PAGE       2
 
 #define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
 #define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
@@ -107,8 +103,9 @@ BEGIN_C_DECLS
 
 #define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
 #define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
+#define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
 
-
+#define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
 
 /*#define invalidateSlot(page, n) (*slot_ptr((page), (n)) =  INVALID_SLOT)*/
 
@@ -207,7 +204,7 @@ void pageDeInit();
  * as a parameter a Page.  The Page struct contains the new LSN and the page
  * number to which the new LSN must be written to.
  */
-/*void pageWriteLSN(Page page);*/
+void pageWriteLSN(Page * page, lsn_t lsn);
 
 /**
  * assumes that the page is already loaded in memory.  It takes
@@ -275,9 +272,14 @@ void pageDeRalloc(Page * page, recordid rid);
 
 void pageCommit(int xid);
 void pageAbort(int xid);
- 
+
 Page* pageAlloc(int id);
 void  pageRealloc(Page * p, int id);
+
+/** Allocates a set of contiguous pages on disk.  Has nothing to do with pageAlloc.
+    @todo need a better naming convention for pageAlloc (alloc's memory) and pageAllocMultiple (alloc's disk)
+*/
+int pageAllocMultiple(int newPageCount) ;
 
 int  pageGetSlotType(Page * p, int slot, int type); 
 void pageSetSlotType(Page * p, int slot, int type);
