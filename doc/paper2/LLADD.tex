@@ -629,9 +629,10 @@ This implies that the redo information for each operation in the log
 must contain the physical address (page number) of the information
 that it modifies, and the portion of the operation executed by a
 single redo log entry must only rely upon the contents of that
-page. (Since we assume that pages are propagated to disk atomically,
-the redo phase can rely upon information contained within a single
-page.)
+page.
+% (Since we assume that pages are propagated to disk atomically,
+%the redo phase can rely upon information contained within a single
+%page.)
 
 Once redo completes, we have essentially repeated history: replaying
 all redo entries to ensure that the page file is in a physically
@@ -704,7 +705,7 @@ multithreaded application development.  The Lock Manager is flexible
 enough to also provide index locks for hashtable implementations and 
 more complex locking protocols.
 
-Also, it would be relatively easy to build a strict two-phase
+For example, it would be relatively easy to build a strict two-phase
 locking hierarchical lock
 manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
 top of \yad.  Such a lock manager would provide isolation guarantees
@@ -870,10 +871,12 @@ passed to the function may utilize application-specific properties in
 order to be significantly smaller than the physical change made to the
 page.
 
+\eab{add versioned records?}
+
 This forms the basis of \yad's flexible page layouts.  We current
-support three layouts: a raw page (RawPage), which is just an array of
-bytes, a record-oriented page with fixed-size records (FixedPage), and
-a slotted-page that support variable-sized records (SlottedPage).
+support three layouts: a raw page, which is just an array of
+bytes, a record-oriented page with fixed-size records, and
+a slotted-page that support variable-sized records.
 Data structures can pick the layout that is most convenient or implement 
 new layouts.
 
@@ -906,9 +909,9 @@ each update is atomic.  For updates that span multiple pages there are two basic
 
 By full isolation, we mean that no other transactions see the
 in-progress updates, which can be trivially acheived with a big lock
-around the whole transaction.  Given isolation, \yad needs nothing else to
+around the whole structure.  Given isolation, \yad needs nothing else to
 make multi-page updates transactional: although many pages might be
-modified they will commit or abort as a group and recovered
+modified they will commit or abort as a group and be recovered
 accordingly.
 
 However, this level of isolation reduces concurrency within a data
@@ -918,8 +921,8 @@ transaction, $A$, rearranged the layout of a data structure, a second
 transaction, $B$, added a value to the rearranged structure, and then
 the first transaction aborted.  (Note that the structure is not
 isolated.)  While applying physical undo information to the altered
-data structure, the $A$ would undo the writes that it performed
-without considering the data values and structural changes introduced
+data structure,  $A$ would undo its writes
+without considering the modifications made by
 $B$, which is likely to cause corruption.  At this point, $B$ would
 have to be aborted as well ({\em cascading aborts}).
 
@@ -935,19 +938,16 @@ action and obtaining appropriate latches at runtime.  This approach
 reduces development of atomic page spanning operations to something
 very similar to conventional multithreaded development that use mutexes
 for synchronization.
-
 In particular, we have found a simple recipe for converting a
 non-concurrent data structure into a concurrent one, which involves
 three steps:
 \begin{enumerate}
 \item Wrap a mutex around each operation.  If full transactional isolation 
   with deadlock detection is required, this can be done with the lock
-  manager.  Alternatively, this can be done using pthread mutexes which 
-  provides fine-grain isolation and allows the application to decide 
-  what sort of isolation scheme to use.
+  manager.  Alternatively, this can be done using mutexes for fine-grain isolation.
 \item Define a logical UNDO for each operation (rather than just using
   a lower-level physical undo).  For example, this is easy for a
-  hashtable; e.g. the undo for an {\em insert} is {\em remove}.
+  hashtable; e.g. the UNDO for an {\em insert} is {\em remove}.
 \item For mutating operations (not read-only), add a ``begin nested
   top action'' right after the mutex acquisition, and a ``commit
   nested top action'' right before the mutex is released.
@@ -956,10 +956,9 @@ This recipe ensures that operations that might span multiple pages
 atomically apply and commit any structural changes and thus avoids 
 cascading aborts.  If the transaction that encloses the operations
 aborts, the logical undo will {\em compensate} for
-its effects, but leave its structural changes intact (or augment
-them). Note that by releasing the mutex before we commit, we are
+its effects, but leave its structural changes intact. Note that by releasing the mutex before we commit, we are
 violating strict two-phase locking in exchange for better performance 
-and support for deadlock avoidance schemes.
+and support for deadlock avoidance.
 We have found the recipe to be easy to follow and very effective, and
 we use it everywhere our concurrent data structures may make structural 
 changes, such as growing a hash table or array.
@@ -1028,7 +1027,7 @@ while Undo operations use these or logical names/keys
 or ``big locks'' (which drastically reduce concurrency) for multi-page updates.
 \end{enumerate}
 
-\subsubsection{Example: Increment/Decrement}
+\noindent{\bf An Example: Increment/Decrement}
 
 A common optimization for TPC benchmarks is to provide hand-built
 operations that support adding/subtracting from an account.  Such
@@ -1046,7 +1045,6 @@ typedef struct {
 \noindent {\normalsize Here is the increment operation; decrement is
 analogous:}
 \begin{verbatim}
-
 // p is the bufferPool's current copy of the page.
 int operateIncrement(int xid, Page* p, lsn_t lsn,
                      recordid rid, const void *d) {
@@ -1075,7 +1073,7 @@ ops[OP_INCREMENT].redoOperation = OP_INCREMENT;
 // set UNDO to be the inverse
 ops[OP_INCREMENT].undoOperation = OP_DECREMENT;
 \end{verbatim}
-\noindent {\normalsize Finally, here is the wrapper that uses the
+{\normalsize Finally, here is the wrapper that uses the
 operation, which is indentified via {\small\tt OP\_INCREMENT};
 applications use the wrapper rather than the operation, as it tends to
 be cleaner.}
@@ -1096,9 +1094,6 @@ int Tincrement(int xid, recordid rid, int amount) {
 }
 \end{verbatim}
 \end{small}
-
-
-\subsubsection{Correctness}
 
 With some examination it is possible to show that this example meets
 the invariants.  In addition, because the redo code is used for normal
@@ -1282,15 +1277,13 @@ similar to \yad, and it was
 designed for high-performance, high-concurrency environments.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
-10K RPM SCSI drive, formatted with reiserfs\footnote{We found that
-the relative performance of Berkeley DB and \yad is highly sensitive
-to filesystem choice, and we plan to investigate the reasons why the
+10K RPM SCSI drive, formatted with reiserfs\footnote{We found that the
+relative performance of Berkeley DB and \yad is highly sensitive to
+filesystem choice, and we plan to investigate the reasons why the
 performance of \yad under ext3 is degraded. However, the results
 relating to the \yad optimizations are consistent across filesystem
-types.}.
-All reported numbers
-correspond to the mean of multiple runs and represent a 95\%
-confidence interval with a standard deviation of +/- 5\%.
+types.}.  All reported numbers correspond to the mean of multiple runs
+with a 95\% confidence interval with a half-width of 5\%.
 
 We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
 branch during March of 2005, with the flags DB\_TXN\_SYNC, and DB\_THREAD
@@ -1356,7 +1349,7 @@ reproduce the trends reported here on multiple systems.
 
 Hash table indices are common in databases and are also applicable to
 a large number of applications.  In this section, we describe how we
-implemented two variants of Linear Hash tables on top of \yad and
+implemented two variants of linear hash tables on top of \yad and
 describe how \yad's flexible page and log formats enable interesting
 optimizations.  We also argue that \yad makes it trivial to produce
 concurrent data structure implementations.
@@ -1374,7 +1367,7 @@ hash table in order to this emphasize that it is easy to implement
 high-performance transactional data structures with \yad and because
 it is easy to understand.
 
-We decided to implement a {\em linear} hash table.  Linear hash tables are
+We decided to implement a {\em linear} hash table~\cite{lht}.  Linear hash tables are
 hash tables that are able to extend their bucket list incrementally at
 runtime. They work as follows. Imagine that we want to double the size
 of a hash table of size $2^{n}$ and that the hash table has been
@@ -1392,11 +1385,11 @@ we know that the
 contents of each bucket, $m$, will be split between bucket $m$ and
 bucket $m+2^{n}$. Therefore, if we keep track of the last bucket that
 was split then we can split a few buckets at a time, resizing the hash
-table without introducing long pauses.~\cite{lht}. 
+table without introducing long pauses~\cite{lht}. 
 
 In order to implement this scheme we need two building blocks.  We
 need a data structure that can handle bucket overflow, and we need to
-be able index into an expandible set of buckets using the bucket
+be able index into an expandable set of buckets using the bucket
 number.
 
 \subsection{The Bucket List}
