@@ -30,8 +30,32 @@ typedef struct {
 
 pblHashTable_t * openHashes = NULL;
 pblHashTable_t * lockedBuckets = NULL;
+pthread_mutex_t linearHashMutex;
+pthread_cond_t bucketUnlocked;
 
+void lockBucket(int bucket) {
+  while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
+    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+  }
+  pblHtInsert(lockedBuckets, &bucket, sizeof(int), (void*)1);
+}
 
+int lockBucketForKey(byte * key, int keySize, recordid * headerRidB) {
+  int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+
+  while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
+    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
+    bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  }
+  
+  pblHtInsert(lockedBuckets, &bucket, sizeof(int), (void *) 1 );
+  return bucket;
+}
+
+void unlockBucket(int bucket) {
+  pblHtRemove(lockedBuckets, &bucket, sizeof(int));
+  pthread_cond_broadcast(&bucketUnlocked);
+}
 
 void rehash(int xid, recordid hash, int next_split, int i, int keySize, int valSize);
 void update_hash_header(int xid, recordid hash, int i, int next_split);
@@ -394,8 +418,6 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
 
 pthread_mutex_t exp_mutex;
 pthread_mutex_t exp_slow_mutex;
-pthread_mutex_t linearHashMutex;
-pthread_cond_t bucketUnlocked;
 
 
 void ThashInit() {
