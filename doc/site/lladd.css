@@ -38,12 +38,13 @@ body {
 .titlebar {
 	position: relative;
 	top: 0%;
-	height: 2em;
+	height: 3.1em;
 	width:  100%;
-	background-color: #AEBED7;
+	background-color: #C4D6F2;
 }
 .pagename {
 	font-weight: bolder;
+	font-size: 14pt;
 	color:  black;
 	position: relative;
    top: 0%;
@@ -68,7 +69,7 @@ h1 {
 .sidebar {
 	text-align: left;
 	position: absolute;
-	top: 2em;	
+	top: 3.1em;	
 	left: 0%;
 	width: 20%;
 }
