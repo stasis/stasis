@@ -1041,12 +1041,32 @@ page layout or the semantics of various types of log entires, they
 are largely orthogonal to the atomicity and durability algorithms
 implemented by LLADD.
 
-By releasing LLADD to the community, we hope that we will be able
-to provide a toolkit that aids in the development of real-world applications,
-and is flexible enough for use as a research platform.
-
-
 \section{Conclusion}
+
+We have outlined the design and implementation of a library for the
+development of transactional storage systems.  By decoupling the
+on-disk format from the transactional storage system, we provide
+applications with customizable, high-performance, transactional
+storage.  By summarizing and documenting the interactions between
+these customizations and the storage system, we make it easy to
+implement such customizations.  
+
+Current applications generally must choose between high-level, general
+purpose libraries which impose severe performance penalties, and
+ad-hoc ``from-scratch'' atomicity and durability mechanisms.  By
+bridging this gap, we hope to make it easier to implement a class of
+applications and algorithms whose implementations are generally
+complex, or fail to provide reliable storage to their users.
+
+By releasing LLADD to the community, we hope that we will be able to
+provide a toolkit that aids in the development of real-world
+applications, and is flexible enough for use as a research platform.
+
+Because of the interface between operation extensions and the
+underlying implementation of the ARIES algorithm, we allow operation
+extensions and the implementation of the library to evolve
+independently, allowing applications to adopt to advanced replication
+techniques as the circumstances in which they are deployed changes.
 
 \section{Acknowledgements}
 
