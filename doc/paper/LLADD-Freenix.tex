@@ -879,12 +879,25 @@ of a 'simple,' general purpose data structure is not without overhead,
 and for applications where performance is important a special purpose
 structure may be appropriate.
 
-Also, the multithreaded LLADD test shows that the lib
+Also, the multithreaded test run shows that the library is capable of
+handling a large number of threads. The performance degradation
+associated with running 200 concurrent threads was negligible.  The
+logical logging version of LLADD's hashtable outperformed the physical
+logging version for two reasons.  First, since it writes fewer undo
+records, it generates a smaller log file.  Second, in order to
+emphasize the performance benefits of our extension mechanism, we use
+lower level primitives for the logical logging version.  The logical
+logging version implements locking at the bucket level, so many
+mutexes that are acquired by LLADD's default mechanisms are redundant.
+The physical logging version of the hashtable serves as a rough proxy
+for an implementation on top of a non-extendible system.  Therefore,
+it uses LLADD's default mechanisms, which include the redundant
+acquisition of locks.
 
 As a final note on our performance graph, we would like to address
 the fact that LLADD's hashtable curve is non-linear. LLADD currently
 uses a fixed-size in-memory hashtable implementation in many areas,
-and it is possible that we exceed the fixed-size of this hashtable
+and it is possible that we exceeded the fixed-size of this hashtable
 on the larger test sets. Also, LLADD's buffer manager is currently
 fixed size. Regardless of the cause of this non-linearity, we do not
 believe that it is fundamental to our implementation.
