@@ -83,6 +83,7 @@ void downgradelock(rwl * lock) {
   assert(lock->writers);
   lock->writers--;
   lock->readers++;
+  pthread_cond_signal (lock->writeOK); 
   pthread_cond_broadcast(lock->readOK);
   pthread_mutex_unlock(lock->mut);
 }

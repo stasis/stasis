@@ -57,8 +57,8 @@ void * writingWorkerThread ( void * v ) {
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     rids[i] = Talloc(xid, sizeof(int));
-    if(! (i %100)) {
-      printf("A%d", i/100);fflush(NULL);
+    if(! (i %1000)) {
+      printf("A%d", i/1000);fflush(NULL);
     }
 
   }
@@ -66,8 +66,8 @@ void * writingWorkerThread ( void * v ) {
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int tmp = i + offset;
     Tset(xid, rids[i], &tmp);
-    if(! (i %100)) {
-      printf("W%d", i/100); fflush(NULL);
+    if(! (i %1000)) {
+      printf("W%d", i/1000); fflush(NULL);
     }
 
 
@@ -77,8 +77,8 @@ void * writingWorkerThread ( void * v ) {
     int j;
     Tread(xid, rids[i], &j);
     assert(i + offset == j);
-    if(! (i %100)) {
-      printf("R%d", i/100);fflush(NULL);
+    if(! (i %1000)) {
+      printf("R%d", i/1000);fflush(NULL);
     }
   }
     

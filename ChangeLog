@@ -1,0 +1,140 @@
+2004-07-20  sears  <sears@Morphix>
+
+	* bufferManager.c, common.c, operations/alloc.c, page.c, page.h, pageCache.c, pageFile.c, transactional2.c:
+	Continuing work on multi-threading.  r/w access to buffer manager getting close, but still buggy.
+
+	* logger/logWriter.c, pageFile.c, pageFile.h, bufferManager.c, common.c, latches.h, page.c, page.h, pageCache.c:
+	pageCache.c is now re-entrant.
+
+2004-07-15  sears  <sears@Morphix>
+
+	* Makefile.am, blobManager.c, bufferManager.c, logger/logWriter.c, page.h, pageCache.c, pageFile.c, pageFile.h:
+	pageCache is now re-entrant, in theory.
+
+2004-07-14  sears  <sears@Morphix>
+
+	* blobManager.c, blobManager.h, bufferManager.c, logger/logHandle.c, logger/logHandle.h, logger/logWriter.c, logger/logWriter.h, logger/logger2.c, operations.c, operations/alloc.c, operations/prepare.c, page.c, page.h, pageCache.c, recovery2.c, transactional2.c:
+	Moved page.h and some of the logging headers out of the public API.
+
+	* blobManager.c, bufferManager.c, latches.h, logger/logEntry.c, logger/logWriter.c, logger/logger2.c, operations.c, operations/alloc.c, page.c, pageCache.c, recovery2.c, transactional2.c:
+	Cleaning up bufferManager / page for locking.  Want to limit access to the Page struct.
+
+2004-07-13  sears  <sears@Morphix>
+
+	* page.c, pageCache.c:
+	page.c is re-entrant (mostly), and now reuses DeRalloced space properly.  (For now, BufferManager still is not re-entrant, and also prevents space from being reused.)
+
+2004-07-09  sears  <sears@Morphix>
+
+	* bufferManager.c, page.c: Made pageWriteLSN static.
+
+2004-07-06  sears  <sears@Morphix>
+
+	* bufferManager.c, page.c: More documentation fixes.
+
+	* blobManager.h: Fixed groupings for LLADD API docs.
+
+	* operations/alloc.c, operations/lladdhash.c, logger/logWriter.c, logger/logger2.c, logger/logEntry.c, operations.c, page.c, pageCache.c, recovery2.c, stats.c, transactional2.c, Makefile.am, blobManager.c, blobManager.h, bufferManager.c, common.c, latches.h, linkedlist.c:
+	Ported LLADD to Fedora, cleaned up autoconf setup, and numerouse #includes that were problematic.
+
+2004-07-04  sears  <sears@Morphix>
+
+	* Makefile.am, blobManager.c, blobManager.h, bufferManager.c, common.c, logger/logHandle.c, logger/logWriter.c, logger/logger2.c, operations.c, operations/alloc.c, page.c, pageCache.c, recovery2.c, stats.c, transactional2.c:
+	Documentation update, added latch profiling tools.
+
+2004-07-01  sears  <sears@Morphix>
+
+	* logger/logHandle.c, logger/logWriter.c, operations.c:
+	Log truncation.  (But no checkpoints, so it doesn't get called... it does pass testing though. :)
+
+2004-06-30  sears  <sears@Morphix>
+
+	* Makefile.am, blobManager.c, blobManager.h, bufferManager.c, logger/logWriter.c, operations/alloc.c, operations/prepare.c, page.c, pageCache.c, transactional2.c:
+	Logwriter can now handler partial log entries correctly (it ignores them)
+	Buffer Mananger no longer steals pages pre-maturely
+	Alloc is an operation, and correct.
+	Caching broken out into a new module
+	Wrote a utility to translate a log file into human-readable ascii.
+
+2004-06-28  sears  <sears@Morphix>
+
+	* logger/logstreamer.h, operations/alloc.c, operations/prepare.c, blobManager.c, blobManager.h, bufferManager.c, logger/logEntry.c, logger/logWriter.c, logger/logger.c, logger/logger2.c, logger/logparser.c, logger/logparser.h, logger/logstreamer.c, page.c, recovery.c, recovery.h, recovery2.c, transactional.c, transactional2.c:
+	Cleaned out old cruft, such as commented out code, dead data structures, and dead files.  sloccount went from $75,000 to $50,000 on src/lladd. ;)
+
+	* blobManager.c, blobManager.h, bufferManager.c, logger/logger2.c, operations.c, operations/alloc.c, operations/decrement.c, operations/increment.c, operations/set.c, page.c, recovery2.c, transactional2.c:
+	Bugfixes ; blobs pass regression.  Next stop:  Delete old cruft.
+
+2004-06-26  sears  <sears@Morphix>
+
+	* blobManager.c: Wrote blobmanager, didn't compile it yet.
+
+2004-06-25  sears  <sears@Morphix>
+
+	* blobManager.c, blobManager.h: blob manager commit.
+
+	* Makefile.am, bufferManager.c, page.c:
+	Preliminary implementation of blobManager
+
+2004-06-24  sears  <sears@Morphix>
+
+	* logger/.deps/logger.Po, logger/.deps/logparser.Po, logger/.deps/logstreamer.Po:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* logger/.deps/logger.Po, logger/.deps/logparser.Po, logger/.deps/logstreamer.Po:
+	New file.
+
+	* logger/logEntry.c, logger/logWriter.c, logger/logger.c, logger/logparser.c, logger/logparser.h:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* logger/logEntry.c, logger/logWriter.c, logger/logger.c, logger/logparser.c, logger/logparser.h:
+	New file.
+
+	* logger/Makefile.am-old, logger/logHandle.c, logger/logger2.c, logger/logstreamer.c, logger/logstreamer.h, operations/.deps/increment.Po, operations/.deps/set.Po:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* logger/Makefile.am-old, logger/logHandle.c, logger/logger2.c, logger/logstreamer.c, logger/logstreamer.h, operations/.deps/increment.Po, operations/.deps/set.Po:
+	New file.
+
+	* operations/.deps/decrement.Po, operations/.deps/lladdhash.Po, operations/.deps/prepare.Po, operations/alloc.c, operations/decrement.c, operations/increment.c, operations/lladdhash.c, operations/prepare.c:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* operations/.deps/decrement.Po, operations/.deps/lladdhash.Po, operations/.deps/prepare.Po, operations/alloc.c, operations/decrement.c, operations/increment.c, operations/lladdhash.c, operations/prepare.c:
+	New file.
+
+	* linkedlist.c, linkedlist.h, operations.c, operations/Makefile.am-old, operations/set.c, transactional.c:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* linkedlist.c, linkedlist.h, operations.c, operations/Makefile.am-old, operations/set.c, transactional.c:
+	New file.
+
+	* page.c, transactional2.c:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* page.c, transactional2.c: New file.
+
+	* Makefile.am, bufferManager.c, recovery.c, recovery.h:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* Makefile.am, bufferManager.c, recovery.c, recovery.h: New file.
+
+	* 1, recovery2.c:
+	Need to send laptop in for warranty service, so it's time to put this code into CVS. :)
+
+	Vs. the paper version of LLADD, this version has a re-written logger + recovery system.  It also includes unit tests and API documentation.
+
+	* 1, recovery2.c: New file.
+

@@ -82,7 +82,7 @@ START_TEST(operation_physical_do_undo) {
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   doUpdate(setToTwo);  /* PAGE LSN= 10, value = 2. */
 
   readRecord(xid, rid, &buf);
@@ -97,7 +97,7 @@ START_TEST(operation_physical_do_undo) {
 
   setToTwo->LSN = 5;
 
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   undoUpdate(setToTwo, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
 
   readRecord(xid, rid, &buf);
@@ -105,7 +105,7 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   DEBUG("E\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);
   
 
@@ -146,7 +146,7 @@ START_TEST(operation_physical_do_undo) {
   setToTwo->LSN = 10;
   
   DEBUG("F\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);
   /*  writeLSN(setToTwo->LSN, rid.page); */
 
@@ -155,7 +155,7 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   undoUpdate(setToTwo, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   readRecord(xid, rid, &buf);
@@ -163,7 +163,7 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   DEBUG("H don't redo set to 2\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);        /* Fails */
 
   readRecord(xid, rid, &buf);
@@ -174,7 +174,7 @@ START_TEST(operation_physical_do_undo) {
   /*  writeLSN(0,rid.page); */
 
   DEBUG("I redo set to 2\n");
-  addPendingEvent(rid.page);
+  /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);        /* Succeeds */
 
   readRecord(xid, rid, &buf);

@@ -201,10 +201,10 @@ int writeLogEntry(LogEntry * e) {
   const long size = sizeofLogEntry(e);
 
   if(e->type == UPDATELOG) {
-    addPendingEvent(e->contents.update.rid.page);
+    /*     addPendingEvent(e->contents.update.rid.page); */
   }
   if(e->type == CLRLOG) {
-    addPendingEvent(e->contents.clr.rid.page);
+    /*    addPendingEvent(e->contents.clr.rid.page); */
   }
 
   if(e->xid == -1) { /* Don't write log entries for recovery xacts. */

@@ -155,9 +155,9 @@ static void Redo() {
 	   don't need to check to see if the page is newer than this
 	   log entry. */
 	if(e->type == UPDATELOG) { 
-	  addPendingEvent(e->contents.update.rid.page); 
+	  /*	  addPendingEvent(e->contents.update.rid.page);  */
 	} else {
-	  addPendingEvent(e->contents.clr.rid.page);
+	  /*	  addPendingEvent(e->contents.clr.rid.page); */
 	}
 	redoUpdate(e);
       }

@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <page.h>
+
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
@@ -47,7 +49,6 @@ int Tinit() {
 
         setupOperationsTable();
 	
-	/* 	pageInit(); */
 	bufInit();
 
 	openLogWriter();
@@ -92,12 +93,14 @@ int Tbegin() {
 
 void Tupdate(int xid, recordid rid, const void *dat, int op) {
   LogEntry * e;
-  
+  Page * p;  
 #ifdef DEBUGGING
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
   pthread_mutex_unlock(&transactional_2_mutex);
 #endif
+
+  p = loadPage(rid.page);
 
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], rid, op, dat);
 
@@ -105,7 +108,9 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
 
-  doUpdate(e);
+  doUpdate(e, p);
+  unlock(p->loadlatch);
+
 }
 
 /* @todo what about locking? */

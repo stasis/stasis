@@ -99,7 +99,7 @@ extern int errno;
 #define lsn_t long
 
 
-/*#define DEBUGGING */
+/*#define DEBUGGING  */
 #define PROFILE_LATCHES
 
 #ifdef DEBUGGING 

@@ -96,7 +96,7 @@ terms specified in this license.
 #include <stdio.h>
 
 #include <lladd/constants.h>
-
+#include <assert.h>
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
 
@@ -144,8 +144,8 @@ static pthread_mutex_t pageAllocMutex;
 Page pool[MAX_BUFFER_SIZE+1];
 
 
-int isValidSlot(byte *memAddr, int slot);
-void invalidateSlot(byte *memAddr, int slot);
+static int isValidSlot(byte *memAddr, int slot);
+static void invalidateSlot(byte *memAddr, int slot);
 void pageDeRalloc(Page * page, recordid rid);
 
 /**
@@ -248,9 +248,9 @@ static const byte *slotMemAddr(const byte *memAddr, int slotNum) {
 lsn_t pageReadLSN(const Page * page) {
   lsn_t ret;
 
-  /*  readlock(page->rwlatch, 259); */
+  readlock(page->rwlatch, 259); 
   ret = *(long *)(page->memAddr + START_OF_LSN);
-  /*  readunlock(page->rwlatch); */
+  readunlock(page->rwlatch); 
 
   return ret;
 }
@@ -263,8 +263,9 @@ lsn_t pageReadLSN(const Page * page) {
  * @param page You must have a writelock on page before calling this function.
  */
 static void pageWriteLSN(Page * page) {
-
+  /* unlocked since we're only called by a function that holds the writelock. */
   *(long *)(page->memAddr + START_OF_LSN) = page->LSN;
+
 }
 
 static int unlocked_freespace(Page * page);
@@ -420,19 +421,19 @@ recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid) {
 	return rid;
 }
 
-int isValidSlot(byte *memAddr, int slot) {
+static int isValidSlot(byte *memAddr, int slot) {
 	return (getSlotOffset(memAddr, slot) != INVALID_SLOT) ? 1 : 0;
 }
 
-void invalidateSlot(byte *memAddr, int slot) {
-	setSlotOffset(memAddr, slot, INVALID_SLOT);
+static void invalidateSlot(byte *memAddr, int slot) {
+  setSlotOffset(memAddr, slot, INVALID_SLOT);
 }
 
 
 void pageDeRalloc(Page * page, recordid rid) {
-  writelock(page->rwlatch, 416);
+  /* Don't need any locking, since we don't support concurrent access to the same slot.. */
   invalidateSlot(page->memAddr, rid.slot);
-  writeunlock(page->rwlatch);
+
 }
 
 /**
@@ -524,10 +525,10 @@ static void setSlotOffset(byte *memAddr, int slot, int offset) {
 static void setSlotLength(byte *memAddr, int slot, int length) {
 	setSecondHalfOfWord((int*)(unsigned int*)slotMemAddr(memAddr, slot), length);
 }
-
-int isBlobSlot(byte *pageMemAddr, int slot) {
+/*
+static int isBlobSlot(byte *pageMemAddr, int slot) {
 	return BLOB_SLOT == getSlotLength(pageMemAddr, slot);
-}
+	}*/
 
 /*
   This needs should trust the rid (since the caller needs to
@@ -551,7 +552,7 @@ void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
 void pageWriteRecord(int xid, Page * page, recordid rid, lsn_t lsn, const byte *data) {
 
   byte *rec; 
-  readlock(page->rwlatch, 529);
+  writelock(page->rwlatch, 529);
   assert(rid.size < PAGE_SIZE);
   
   rec = page->memAddr + getSlotOffset(page->memAddr, rid.slot);
@@ -563,7 +564,7 @@ void pageWriteRecord(int xid, Page * page, recordid rid, lsn_t lsn, const byte *
 
   page->LSN = lsn;
   pageWriteLSN(page);
-  readunlock(page->rwlatch);
+  writeunlock(page->rwlatch);
 
 }
 
@@ -571,8 +572,9 @@ void pageReallocNoLock(Page *p, int id) {
   p->id = id;
   p->LSN = 0;
   p->dirty = 0;
-  p->pending = 0;
-  p->waiting = 0;
+  /*  assert(p->pending == 0);
+  assert(p->waiting == 1);
+  p->waiting = 0;*/
 }
 
 void pageRealloc(Page *p, int id) {
@@ -601,7 +603,7 @@ Page *pageAlloc(int id) {
   page->loadlatch = initlock();
 
   /*  pthread_mutex_init(&page->pending_mutex, NULL);*/
-  pthread_cond_init(&page->noMorePending, NULL);
+  /*  pthread_cond_init(&page->noMorePending, NULL); */
 
   page->memAddr = malloc(PAGE_SIZE);
 
@@ -613,9 +615,9 @@ Page *pageAlloc(int id) {
 
   pthread_mutex_unlock(&pageAllocMutex);
 
-
-  page->pending = 0;
-  page->waiting = 0;
+  /**@todo if re-implement pending event thing, these lines need to be protected by a lock!? */
+  /*  page->pending = 0;
+      page->waiting = 1; */
 
   return page;
 }
@@ -678,16 +680,20 @@ int pageTest() {
 		return 0;
 }
 
+/** @todo:  Should the caller need to obtain the writelock when calling pageSetSlotType? */
 void pageSetSlotType(Page * p, int slot, int type) {
   assert(type > PAGE_SIZE);
-  
-  /* setSlotLength does the locking for us. */
+  writelock(p->rwlatch, 686);
   setSlotLength(p->memAddr, slot, type);
-
+  unlock(p->rwlatch);
 }
 
 int pageGetSlotType(Page *  p, int slot, int type) {
-  int ret = getSlotLength(p->memAddr, slot);
+  int ret; 
+  readlock(p->rwlatch, 693);
+  ret = getSlotLength(p->memAddr, slot);
+  unlock(p->rwlatch);
+
   /* getSlotType does the locking for us. */
   return ret > PAGE_SIZE ? ret : NORMAL_SLOT;
 }

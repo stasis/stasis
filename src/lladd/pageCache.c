@@ -145,45 +145,47 @@ static void qRemove(Page *ret) {
 	assert(ret != repTail);
 	assert(ret != repHead);
 }
-
+/*
 static Page *getFreePage() {
   Page *ret;
-  if( state == FULL ) { /* kick */
+  if( state == FULL ) { / *  kick * /
     
     ret = repTail;
 
-    /** Make sure no one else will try to reuse this page. */
+    / ** Make sure no one else will try to reuse this page. * /
 
     cacheRemovePage(ret);
 
-    /** Temporarily drop the mutex while we wait for outstanding
-	operations on the page to complete. */
+    / ** Temporarily drop the mutex while we wait for outstanding
+	operations on the page to complete. * /
     
-    pthread_mutex_unlock(&loadPagePtr_mutex);
+    pthread_mutex_unlock(&loadPagePtr_mutex); 
 
 
-    /** @ todo getFreePage (finalize) needs to yield the getPage mutex,
+    / ** @ todo getFreePage (finalize) needs to yield the getPage mutex,
 	but also needs to remove a page from the kick list before
 	doing so.  If there is a cache hit on the page that's been
 	removed from the kick list, then the cache eviction policy
-	code needs o know this, and ignore the hit. -- Done. */
+	code needs o know this, and ignore the hit. -- Done. * /
 
-    finalize(ret);  /* This cannot deadlock because each thread can
+    / *    finalize(ret); * /
+    / *    ret->waiting++; * / / * @todo remove waiting / pending fields.. * /
+                    / * This cannot deadlock because each thread can
 		       only have outstanding pending events on the
 		       page that it's accessing, but they can only
 		       hold that lock if the page is in cache.  If the
 		       page is in cache, then the thread surely isn't
 		       here!  Therefore any threads that finalize will
 		       block on can not possibly be blocking on this
-		       thread's latches. */
+		       thread's latches. * /
 
-    /*    writelock(ret->loadlatch, 181);  */ /* Don't need the lock here--No one else has a pointer to this page! */
+    / *    writelock(ret->loadlatch, 181);  * / / * Don't need the lock here--No one else has a pointer to this page! * /
 
-    pthread_mutex_lock(&loadPagePtr_mutex); 
+    pthread_mutex_lock(&loadPagePtr_mutex);  
 
-    /* Now that finalize returned, pull ret out of the cache's lookup table. */
+    / * Now that finalize returned, pull ret out of the cache's lookup table. * /
 
-    /*     pblHtRemove(activePages, &ret->id, sizeof(int)); */
+    / *     pblHtRemove(activePages, &ret->id, sizeof(int)); * /
 
 
   
@@ -194,81 +196,93 @@ static Page *getFreePage() {
 
     ret->id = -1;
     ret->inCache = 0;
-    /*    writelock(ret->loadlatch, 166); */
+    / *    writelock(ret->loadlatch, 166); * /
 
   }
 
   return ret;
 }
-
+*/
 #define RO 0
 #define RW 1
 
 Page * getPage(int pageid, int locktype) {
   Page * ret;
-
-  assert(locktype == RO);
-  
+  int spin  = 0;
   pthread_mutex_lock(&loadPagePtr_mutex);
-
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
-  /* Unfortunately, this is a heuristic, as a race condition exists.
-     (Until we obtain a readlock on ret, we have no way of knowing if
-     we've gotten the correct page.) */
+  if(ret) {
+    readlock(ret->loadlatch, 217);
+  }
+
+  while (ret && ret->id != pageid) {
+    unlock(ret->loadlatch);
+    ret = pblHtLookup(activePages, &pageid, sizeof(int));
+    if(ret) {
+      readlock(ret->loadlatch, 217);
+    }
+    spin++;
+    if(spin > 10000) {
+      printf("GetPage stuck!");
+    }
+  } 
 
   if(ret) { 
     cacheHitOnPage(ret);
     assert(ret->id == -1 || ret->id == pageid);
-  }
-  
-  pthread_mutex_unlock(&loadPagePtr_mutex);
-
-  if(!ret) {
+  } else {
     ret = dummy_page;
+    readlock(ret->loadlatch, 232);
   }
-  
-  readlock(ret->loadlatch, 217);
-  
-  while(ret->id != pageid) {  /* Either we got a stale mapping from the HT, or no mapping at all. */
+
+  if(ret->id != pageid) {
 
     unlock(ret->loadlatch);
 
-    pthread_mutex_lock(&loadPagePtr_mutex);
+    if( state == FULL ) {
 
-    ret = getFreePage();
+      ret = repTail;
+      cacheRemovePage(ret);
+      
+    } else {
 
-    pblHtRemove(activePages, &(ret->id), sizeof(int));
+      ret = pageAlloc(-1);
+      ret->id = -1;
+      ret->inCache = 0;
 
-    pthread_mutex_unlock(&loadPagePtr_mutex);
+    }
 
-    writelock(ret->loadlatch, 231); 
-   
-    if(ret->id != -1) {
+    writelock(ret->loadlatch, 217); 
+    
+    cacheInsertPage(ret);
+    pblHtInsert(activePages, &pageid, sizeof(int), ret); 
+    pblHtRemove(activePages, &(ret->id), sizeof(int)); 
+
+    pthread_mutex_unlock(&loadPagePtr_mutex); 
+
+    /*new*/    /*writelock(ret->loadlatch, 217);*/
+
+    if(ret->id != -1) { 
       assert(ret != dummy_page);
       pageWrite(ret);
     }
 
-    pageRealloc(ret, pageid); /* Do we need any special lock here? */
+    pageRealloc(ret, pageid);
 
     pageRead(ret);
+    /*new*/
+    /*    pthread_mutex_lock(&loadPagePtr_mutex);
+    pblHtRemove(activePages, &(ret->id), sizeof(int));
+    pthread_mutex_unlock(&loadPagePtr_mutex); */
+    /*new*/
+    downgradelock(ret->loadlatch);
 
-    unlock(ret->loadlatch);
-
-    pthread_mutex_lock(&loadPagePtr_mutex);
-
-    /* By inserting ret into the cache, we give up the implicit write lock. */
-
-    cacheInsertPage(ret);
-
-    pblHtInsert(activePages, &pageid, sizeof(int), ret); 
+  } else {
 
     pthread_mutex_unlock(&loadPagePtr_mutex);
-
-    readlock(ret->loadlatch, 217);
-
+  
   }
-
   assert(ret->id == pageid);
 
   return ret;

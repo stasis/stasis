@@ -125,9 +125,9 @@ typedef struct Page_s {
       this properly, and there are no read-only functions for the
       pending field. */
 
-  pthread_cond_t  noMorePending;  /* pthread_cond_t */
+  /*  pthread_cond_t  noMorePending; */ /* pthread_cond_t */
 
-  int waiting; 
+  /* int waiting;  */
   
   /** 
       In the multi-threaded case, before we steal a page, we need to
@@ -149,7 +149,7 @@ typedef struct Page_s {
       carefully.
 
   */
-  int pending;
+  /*  int pending; */
 } Page;
 
 extern pthread_cond_t addPendingOK;

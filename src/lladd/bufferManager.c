@@ -135,13 +135,17 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   
   assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
   
-  pthread_mutex_lock(&lastFreepage_mutex);
-  
-  while(freespace(p = loadPage(lastFreepage)) < size ) { unlock(p->loadlatch); lastFreepage++; }
+
+  pthread_mutex_lock(&lastFreepage_mutex);  
+  while(freespace(p = loadPage(lastFreepage)) < size ) { 
+    unlock(p->loadlatch); 
+    lastFreepage++; 
+  }
   
   ret = pageRalloc(p, size);
     
   unlock(p->loadlatch);
+
   pthread_mutex_unlock(&lastFreepage_mutex);
   
   /*  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); */
@@ -235,7 +239,7 @@ void setSlotType(int pageid, int slot, int type) {
     @see finalize, removePendingEvent
 
 */
-void addPendingEvent(int pageid){
+/*void addPendingEvent(int pageid){
   
   Page * p;
 
@@ -266,7 +270,7 @@ void addPendingEvent(int pageid){
   unlock(p->loadlatch);
 
 
-}
+  }*/
 
 /**
    
@@ -281,7 +285,7 @@ void addPendingEvent(int pageid){
    @todo as implemented, loadPage() ... doOperation is not atomic!
 
 */
-void removePendingEvent(int pageid) {
+/*void removePendingEvent(int pageid) {
   
   Page * p;
 
@@ -303,6 +307,6 @@ void removePendingEvent(int pageid) {
   unlock(p->loadlatch);
 
 
-}
+  }*/
 
 

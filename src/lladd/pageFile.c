@@ -24,7 +24,7 @@ extern pthread_mutex_t add_pending_mutex;
 */
 
 
-void finalize(Page * p) {
+/*void finalize(Page * p) {
   pthread_mutex_lock(&(add_pending_mutex));
   p->waiting++;
 
@@ -32,12 +32,15 @@ void finalize(Page * p) {
     DEBUG("A");
     pthread_cond_wait(&(p->noMorePending), &(add_pending_mutex));
   }
-
-  pthread_mutex_unlock(&(add_pending_mutex)); 
+  
+  assert(p->pending == 0);
+  assert(p->waiting == 1);
   pthread_cond_broadcast(&addPendingOK);
+  pthread_mutex_unlock(&(add_pending_mutex)); 
+
 
   return;
-}
+  }*/
 
 
 
@@ -95,7 +98,7 @@ void pageWrite(Page * ret) {
   long pageoffset = ret->id * PAGE_SIZE;
   long offset ;
 
-  assert(ret->pending == 0);
+  /*  assert(ret->pending == 0); */
   
   if(flushedLSN() < pageReadLSN(ret)) {
     DEBUG("pageWrite is calling syncLog()!\n"); 
