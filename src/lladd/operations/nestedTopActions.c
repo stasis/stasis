@@ -110,7 +110,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
     pblHtInsert(nestedTopActions, &xid, sizeof(int), handle);
   }
   // This action wasn't really undone -- This is a nested top action!
-  lsn_t undoneLSN = XactionTable[xid].prevLSN; 
+  lsn_t undoneLSN = XactionTable[xid % MAX_TRANSACTIONS].prevLSN; 
   recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)
   
   // Write a CLR.
@@ -118,7 +118,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   writeLogEntry(e);
   
   // Ensure that the next action in this transaction points to the CLR. 
-  XactionTable[xid].prevLSN = e->LSN;
+  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = e->LSN;
   
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)undone->LSN, (long int)undone->prevLSN);
