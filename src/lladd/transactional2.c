@@ -68,7 +68,7 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   /*  printf("e->LSN: %ld\n", e->LSN); */
 
-  writeLSN(e->LSN, rid.page);
+  /*  writeLSN(e->LSN, rid.page); <-- Handled by doUpdate now */ 
   doUpdate(e);
 }
 
@@ -78,9 +78,10 @@ void Tread(int xid, recordid rid, void * dat) {
 }
 
 int Tcommit(int xid) {
+  lsn_t lsn;
   assert(numActiveXactions <= MAX_TRANSACTIONS);
-  LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
-  bufTransCommit(xid); /* unlocks pages */
+  lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
+  bufTransCommit(xid, lsn); /* unlocks pages */
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
@@ -88,10 +89,13 @@ int Tcommit(int xid) {
 }
 
 int Tabort(int xid) {
+  lsn_t lsn;
+  lsn = LogTransAbort(&XactionTable[xid%MAX_TRANSACTIONS]);
   /* should call undoTrans after log trans abort.  undoTrans will cause pages to contain CLR values corresponding to  */
+
+  /* @todo is the order of the next two calls important? */
   undoTrans(XactionTable[xid%MAX_TRANSACTIONS]);
-  LogTransAbort(&XactionTable[xid%MAX_TRANSACTIONS]);
-  bufTransAbort(xid);
+  bufTransAbort(xid, lsn);
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );

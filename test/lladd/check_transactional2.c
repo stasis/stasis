@@ -43,7 +43,7 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/transactional.h>
-
+#include "../check_includes.h"
 #define LOG_NAME   "check_transactional2.log"
 /**
    Assuming that the Tset() operation is implemented correctly, checks
@@ -86,6 +86,62 @@ START_TEST(transactional_smokeTest) {
 }
 END_TEST
 
+/**
+   Just like transactional_smokeTest, but check blobs instead.
+*/
+START_TEST(transactional_blobSmokeTest) {
+
+#define ARRAY_SIZE 10000
+  int xid;
+  recordid rid;
+  int foo[ARRAY_SIZE];
+  int bar[ARRAY_SIZE];
+  int i;
+  for(i = 0; i < ARRAY_SIZE; i++) {
+    foo[i] = i;
+    bar[i] = 2 * i;
+  }
+
+  Tinit();
+
+  xid = Tbegin();
+
+  rid = Talloc(xid, ARRAY_SIZE * sizeof(int));
+
+  fail_unless(rid.size == ARRAY_SIZE * sizeof(int), NULL);
+
+  printf("TSet starting.\n"); fflush(NULL);
+  Tset(xid, rid, &foo);
+  printf("TSet returning.\n"); fflush(NULL);
+
+  Tread(xid, rid, &bar);
+
+  for(i = 0 ; i < ARRAY_SIZE; i++) {
+    assert(bar[i] == foo[i]);
+    fail_unless(bar[i] == foo[i], NULL);
+  }
+
+  Tcommit(xid);
+
+  xid = Tbegin();
+
+  for(i = 0; i < ARRAY_SIZE; i++) {
+    bar[i] = 2 * i;
+  }
+
+  Tread(xid, rid, &bar);
+
+
+  for(i = 0 ; i < ARRAY_SIZE; i++) {
+    fail_unless(bar[i] == foo[i], NULL);
+  }
+
+  Tabort(xid);
+
+  Tdeinit();
+}
+END_TEST
+
 /** 
   Add suite declarations here
 */
@@ -96,7 +152,9 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, transactional_smokeTest);
+  tcase_add_test(tc, transactional_blobSmokeTest);
   /* --------------------------------------------- */
+  tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
 
 

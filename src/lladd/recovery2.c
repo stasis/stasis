@@ -204,18 +204,32 @@ static void Undo(int recovery) {
       /*      printf("."); fflush(NULL); */
       switch(e->type) {
       case UPDATELOG:
+	
+
       /* Sanity check.  If this fails, we've already undone this
-	 update, or something is wrong with the redo phase. */
-	this_lsn= readLSN(e->contents.update.rid.page);
+	 update, or something is wrong with the redo phase or normal operation. */
+	this_lsn= readLSN(e->contents.update.rid.page); 
+
+	
 	/*	printf("1"); fflush(NULL); */
-	assert(e->LSN <= this_lsn); 
+
+	/* This check was incorrect.  Since blobManager may lazily
+	   update the pageManager, it is possible for this test to
+	   fail.  In that case, the undo is handled by blob manager
+	   (it removes this page from it's dirty blob list), not
+	   us. (Nope, it is now, again correct--fixed blobManager)*/
+
+	assert(e->LSN <= this_lsn);  
 	/* printf("1a"); fflush(NULL); */
 	
 	/* Need to log a clr here. */
 
 	clr_lsn = LogCLR(e);
-	writeLSN(clr_lsn, e->contents.update.rid.page);
-	undoUpdate(e);
+	/*	writeLSN(clr_lsn, e->contents.update.rid.page); */
+
+	/* Undo update is a no-op if the page does not reflect this
+	   update, but it will write the new clr_lsn.  */
+	undoUpdate(e, clr_lsn);
 	/*	printf("1b"); fflush(NULL); */
       break;
       case CLRLOG:  
@@ -226,6 +240,9 @@ static void Undo(int recovery) {
       /*      case XALLOC: */
       /* Don't use xalloc anymore. */
       /*assert(0);*/
+      break;
+      case XABORT:
+	/* Since XABORT is a no-op, we can safely ignore it. (XABORT records may be passed in by undoTrans.)*/
       break;
       default:
 	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%ld), skipping...\n", e->type, e->xid, e->LSN); 

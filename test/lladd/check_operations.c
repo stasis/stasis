@@ -52,49 +52,64 @@ terms specified in this license.
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
    operations that use physical logging.
+
+   @todo Now that writes + lsn updates are atomic, this test case probably breaks. 
 */
 START_TEST(operation_physical_do_undo) {
   int xid = 1;
   recordid rid;
-  lsn_t lsn = 0;
+  lsn_t lsn = 2;
   int buf;
   int arg;
   LogEntry * setToTwo;
 
   Tinit();
   
-  rid  = ralloc(xid, sizeof(int));
+  rid  = ralloc(xid, 1, sizeof(int));
   buf = 1;
   arg = 2;
+
+  DEBUG("A\n");
   setToTwo = allocUpdateLogEntry(-1, xid, OPERATION_SET, rid, (void*)&arg, sizeof(int), (void*)&buf);
 
   /* Do, undo and redo operation without updating the LSN field of the page. */
 
-  writeLSN(lsn, rid.page);
-  writeRecord(xid, rid, &buf);
+  /*  writeLSN(lsn, rid.page); */
+  DEBUG("B\n");
+  writeRecord(xid, lsn, rid, &buf);
 
-  setToTwo->LSN = 1;
+  setToTwo->LSN = 10;
   
-  doUpdate(setToTwo);
+  DEBUG("C\n");
+  doUpdate(setToTwo);  /* PAGE LSN= 10, value = 2. */
 
   readRecord(xid, rid, &buf);
 
   fail_unless(buf == 2, NULL);
 
-  undoUpdate(setToTwo);  /* Should fail, LSN wasn't updated. */
+
+
+  DEBUG("D\n");
+
+  fail_unless(10 == readLSN(rid.page), "page lsn not set correctly.");
+
+  setToTwo->LSN = 5;
+
+  undoUpdate(setToTwo, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
 
   readRecord(xid, rid, &buf);
 
-  fail_unless(buf == 2, NULL);
+  fail_unless(buf == 1, NULL);
   
+  DEBUG("E\n");
   redoUpdate(setToTwo);
   
 
   readRecord(xid, rid, &buf);
 
-  fail_unless(buf == 2, NULL);
+  fail_unless(buf == 1, NULL);
   
-  writeLSN(3,rid.page);
+  /*  writeLSN(3,rid.page); */
 
   /* Now, simulate scenarios from normal operation:
          do the operation, and update the LSN, (update happens)
@@ -109,32 +124,50 @@ START_TEST(operation_physical_do_undo) {
   lsn = 0;
   buf = 1;
 
-  writeLSN(lsn, rid.page);
-  writeRecord(xid, rid, &buf);
+  /*  writeLSN(lsn, rid.page); */
+  writeRecord(xid, lsn, rid, &buf);
 
-  setToTwo->LSN = 1;
+  /* Trace of test: 
+
+  PAGE LSN     LOG LSN      CLR LSN    TYPE        SUCCEED?
+              
+  2             10          -          do write    YES      (C) 
+  10             5          8          undo write  YES      (D)
+  8              5          -          redo write  NO       (E)
+  8             10          -          redo write  YES      (F)
+ .......  and so on.
+  */
+
+
+  setToTwo->LSN = 10;
   
-  doUpdate(setToTwo);
-  writeLSN(setToTwo->LSN, rid.page);
+  DEBUG("F\n");
+  redoUpdate(setToTwo);
+  /*  writeLSN(setToTwo->LSN, rid.page); */
 
   readRecord(xid, rid, &buf);
 
   fail_unless(buf == 2, NULL);
 
-  undoUpdate(setToTwo);        /* Succeeds */
+  DEBUG("G undo set to 2\n");
+  undoUpdate(setToTwo, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   readRecord(xid, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   
+  DEBUG("H don't redo set to 2\n");
   redoUpdate(setToTwo);        /* Fails */
 
   readRecord(xid, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   
-  writeLSN(0,rid.page);
 
+  writeRecord(xid, 0, rid, &buf); /* reset the page's LSN. */
+  /*  writeLSN(0,rid.page); */
+
+  DEBUG("I redo set to 2\n");
   redoUpdate(setToTwo);        /* Succeeds */
 
   readRecord(xid, rid, &buf);

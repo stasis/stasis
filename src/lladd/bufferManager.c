@@ -68,8 +68,8 @@ static unsigned int bufferSize = 1; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
 
 static int stable = -1;
-int blobfd0 = -1;
-int blobfd1 = -1;
+/*int blobfd0 = -1;
+  int blobfd1 = -1;*/
 
 static void pageMap(Page *ret) {
 
@@ -95,8 +95,8 @@ int bufInit() {
 
 	bufferSize = 1;
 	stable = -1;
-	blobfd0 = -1;
-	blobfd1 = -1;
+	/*	blobfd0 = -1;
+		blobfd1 = -1; */
 
 
 	/* Create STORE_FILE, BLOB0_FILE, BLOB1_FILE if necessary, 
@@ -332,52 +332,73 @@ Page loadPage (int pageid) {
 
 Page * lastRallocPage = 0;
 
-recordid ralloc(int xid, size_t size) {
+recordid ralloc(int xid, lsn_t lsn, size_t size) {
   static unsigned int lastFreepage = 0;
+  recordid ret;
   Page p;
-  int blobSize = 0;
+  /*  int blobSize = 0; */
 
   if (size >= BLOB_THRESHOLD_SIZE) { /* TODO combine this with if below */
-    blobSize = size;
-    size = BLOB_REC_SIZE;
-  }
-
-  while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
-
-  if (blobSize >= BLOB_THRESHOLD_SIZE) {
-    int fileSize = (int) lseek(blobfd1, 0 , SEEK_END);
-    /*    fstat(blobfd1, &sb);
-	  fileSize = (int) sb.st_size;	 */
-    lseek(blobfd0, fileSize+blobSize-1, SEEK_SET);
+    ret = allocBlob(xid, lsn, size);
+    /*    blobSize = size;
+	  size = BLOB_REC_SIZE; */
+  } else {
+  
+    while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
+  
+  /*  if (blobSize >= BLOB_THRESHOLD_SIZE) {
+      int fileSize = (int) lseek(blobfd1, 0 , SEEK_END);
+      / *    fstat(blobfd1, &sb);
+      fileSize = (int) sb.st_size;	 * /
+      lseek(blobfd0, fileSize+blobSize-1, SEEK_SET);
     write(blobfd0, "", 1);
     lseek(blobfd1, fileSize+blobSize-1, SEEK_SET);
     write(blobfd1, "", 1);
 
     return pageBalloc(p, blobSize, fileSize);
-  } else {
-    return pageRalloc(p, size);
-  }
+  } else { */
+    ret = pageRalloc(p, size);
 
+    /* } */
+  }
+  DEBUG("alloced rid = {%d, %d, %d}\n", ret.page, ret.slot, ret.size);
+  return ret;
 }
 long readLSN(int pageid) {
 
 	return pageReadLSN(loadPage(pageid));
 }
 
-void writeLSN(long LSN, int pageid) {
+static void writeLSN(lsn_t LSN, int pageid) {
 	Page *p = loadPagePtr(pageid);
 	p->LSN = LSN;
 	pageWriteLSN(*p);
 }
-void writeRecord(int xid, recordid rid, const void *dat) {
+void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 
-	Page *p = loadPagePtr(rid.page);
-	assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+	Page *p;
 
-        pageWriteRecord(xid, *p, rid, dat);  /* Used to attempt to return this. */
+	if(rid.size > BLOB_THRESHOLD_SIZE) {
+	  DEBUG("Writing blob.\n");
+	  writeBlob(xid, lsn, rid, dat);
+
+	} else {
+	  DEBUG("Writing record.\n");
+	  p = loadPagePtr(rid.page);
+	  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+	  
+	  pageWriteRecord(xid, *p, rid, dat);
+	  writeLSN(lsn, rid.page);
+	}
 }
 void readRecord(int xid, recordid rid, void *buf) {
-	pageReadRecord(xid, loadPage(rid.page), rid, buf); /* Used to attempt to return this. */
+  if(rid.size > BLOB_THRESHOLD_SIZE) {
+    DEBUG("Reading blob. xid = %d rid = { %d %d %d } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    readBlob(xid, rid, buf);
+  } else {
+    DEBUG("Reading record xid = %d rid = { %d %d %d } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    pageReadRecord(xid, loadPage(rid.page), rid, buf);
+  }
 }
 
 int flushPage(Page page) {
@@ -388,21 +409,27 @@ int flushPage(Page page) {
 	return 0;
 }
 
-int bufTransCommit(int xid) {
+int bufTransCommit(int xid, lsn_t lsn) {
 
+  commitBlobs(xid);
+  
+  /** @todo Figure out where the blob files are fsynced() and delete this and the next few lines... */
+
+  /*
   fdatasync(blobfd0);
   fdatasync(blobfd1);
+  */
+  
+  pageCommit(xid);
 
-	pageCommit(xid);
-
-	return 0;
+  return 0;
 }
 
-int bufTransAbort(int xid) {
+int bufTransAbort(int xid, lsn_t lsn) {
+  abortBlobs(xid);  /* abortBlobs doesn't write any log entries, so it doesn't need the lsn. */
+  pageAbort(xid);
 
-	pageAbort(xid);
-
-	return 0;
+  return 0;
 }
 
 void bufDeinit() {

@@ -47,8 +47,8 @@ terms specified in this license.
 
 #include <lladd/operations/set.h>
 #include <lladd/bufferManager.h>
-static int operate(int xid, recordid rid, const void *dat) {
-	writeRecord(xid, rid, dat);
+static int operate(int xid, lsn_t lsn, recordid rid, const void *dat) {
+	writeRecord(xid, lsn, rid, dat);
 	return 0;
 }
 

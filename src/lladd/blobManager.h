@@ -5,10 +5,35 @@
 #include <lladd/page.h>
 BEGIN_C_DECLS
 
-/**    blobManager - Provides blob handling @todo Set range??
+/**    
+       @file
+       blobManager - Provides blob handling @todo Set range??
        Plan for modularity: Exactly one blob manager per storeFile.
        Blob manager interacts with page manger via page manager's
        public api.
+
+       Blob updates work as follows:
+
+       (1) A transaction obtains an exclusive write lock on a blob
+           (not implemented yet.)
+
+       (2) When it requests a write, the blob it writes to is added to
+           a data structure that lists all dirty blobs by transaction,
+           and the page containing the blob entry is updated. (The fd
+           bit in the record is flipped, and the LSN is updated.)  The
+           write to the blob store is not flushed to disk.
+       
+       (3) All subsequent writes to the same blob just update the
+           backing file.
+
+       (4) On commit and rollback, the data structure containing the xid's
+           dirty blobs is destroyed.
+
+       (5) recovery2.c handles the restoration of the fd bits using
+           physical logging (this is automatic, since we use Tset()
+           calls to update the records.)
+       
+       @todo Should the tripleHash be its own little support library? 
 */
 
 
@@ -17,12 +42,14 @@ BEGIN_C_DECLS
     it's dirty (it could have been stolen), an retrieve it from the
     appropriate blob file. 
 */
-void readBlob(recordid rid, void * buf); 
+void readBlob(int xid, recordid rid, void * buf);
+
 
 /** 
     If you write to a blob, call this function to mark it dirty.
 */
-void writeBlob(recordid rid, lsn_t lsn, void * buf);
+void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf);
+
 
 /**
    Atomically (with respect to recovery) make the dirty version of the

@@ -47,12 +47,12 @@ terms specified in this license.
 
 #include <lladd/operations/increment.h>
 #include <lladd/bufferManager.h>
-static int operate(int xid, recordid r, const void *d) {
+static int operate(int xid, lsn_t lsn, recordid r, const void *d) {
 	int i;
 
 	readRecord(xid, r, &i);
 	i++;
-	writeRecord(xid, r, &i);
+	writeRecord(xid, lsn, r, &i);
 	
 	return 0;
 }

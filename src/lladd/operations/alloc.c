@@ -18,7 +18,7 @@
    
 */
 
-static int operate(int xid, recordid rid, const void * dat) {
+static int operate(int xid, lsn_t lsn, recordid rid, const void * dat) {
   Page loadedPage = loadPage(rid.page);
   /** Has no effect during normal operation. */
   pageSlotRalloc(loadedPage, rid);
@@ -26,7 +26,7 @@ static int operate(int xid, recordid rid, const void * dat) {
 }
 
 /** @todo Currently, we just lead store space on dealloc. */
-static int deoperate(int xid, recordid rid, const void * dat) {
+static int deoperate(int xid, lsn_t lsn, recordid rid, const void * dat) {
   Page loadedPage = loadPage(rid.page);
   /** Has no effect during normal operation. */
   pageSlotRalloc(loadedPage, rid);
@@ -43,10 +43,25 @@ Operation getAlloc() {
   return o;
 }
 
+
 recordid Talloc(int xid, size_t size) {
   recordid rid;
 
-  rid = ralloc(xid, size);
+  /** 
+
+  @todo we pass lsn -1 into ralloc here.  This is a kludge, since we
+  need to log ralloc's return value, but can't get that return value
+  until after its executed.  When it comes time to perform recovery,
+  it is possible that this record will be leaked during the undo
+  phase.  We could do a two phase allocation to prevent the leak, but
+  then we'd need to lock the page that we're allocating a record in,
+  and that's a pain.  Plus, this is a small leak.  (There is a similar
+  problem involving blob allocation, which is more serious, as it may
+  result in double allocation...)
+
+  */
+
+  rid = ralloc(xid, -1, size);
 
   Tupdate(xid,rid, NULL, OPERATION_ALLOC);
 

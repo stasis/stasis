@@ -247,22 +247,22 @@ static int touchBlob(int xid, recordid rid) {
 	return 0;
 }
 
-static void rmTouch(int xid) {
+/*static void rmTouch(int xid) {
 
 	touchedBlob_t *t = &touched[xid%touchedLen];
 	if( t ) {
 		free( t->records );
 		t->records = NULL;
-		/* touched[xid%touchedLen].xid = -1; TODO: necessary? */
+		/ * touched[xid%touchedLen].xid = -1; TODO: necessary? * /
 	}
-}
+}*/
 
 void pageCommit(int xid) {
-	 rmTouch(xid);
+  /*	 rmTouch(xid); */
 }
 
 void pageAbort(int xid) {
-	rmTouch(xid);
+  /* rmTouch(xid); */
 }
 
 /*#define getFirstHalfOfWord(memAddr) (((*(int*)memAddr) >> (2*BITS_PER_BYTE)) & MASK_0000FFFF) */
@@ -548,12 +548,14 @@ int isBlobSlot(byte *pageMemAddr, int slot) {
 
    TODO: BufferManager should pass in file descriptors so that this function doesn't have to open and close the file on each call.
 
+   @todo This needs to trust the rid, which is fine, but it could do more to check if the page agrees with the rid... 
+
 */
 void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
 		byte *recAddress = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 
 	/*look at record, if slot offset == blob_slot, then its a blob, else its normal.	*/
-	if(isBlobSlot(page.memAddr, rid.slot)) {
+		/*	if(isBlobSlot(page.memAddr, rid.slot)) {
 		int fd = -1;
 		int version;
 		int offset;
@@ -565,33 +567,34 @@ void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
 
 		fd = version == 0 ? blobfd0 : blobfd1;
 
-		/*		if( (fd = open(version == 0 ? BLOB0_FILE : BLOB1_FILE, O_RDWR, 0)) == -1 ) {
+		/ *		if( (fd = open(version == 0 ? BLOB0_FILE : BLOB1_FILE, O_RDWR, 0)) == -1 ) {
 			printf("page.c:pageReadRecord error and exiting\n");
 			exit(-1);
-			} */
+			} * /
 		lseek(fd, offset, SEEK_SET);
 		read(fd, buff, length);
-		/*  	close(fd); */
-	} else {
-		int size = getSecondHalfOfWord((int*)slotMemAddr(page.memAddr, rid.slot));
+		/ *  	close(fd); * /
+	} else { */
+		/* For now, we need page.c to trust the rid. */
+		/*		int size = getSecondHalfOfWord((int*)slotMemAddr(page.memAddr, rid.slot)); */
 
-		memcpy(buff, recAddress,  size);
-	}
+		memcpy(buff, recAddress,  rid.size);
+		/*}*/
 }
 
 void pageWriteRecord(int xid, Page page, recordid rid, const byte *data) {
   	byte *rec; 
-	int version = -1;
+	/*	int version = -1;
 	int fd = -1;
 	int blobRec[3];
 
 	if (isBlobSlot(page.memAddr, rid.slot)) {
-	  /* TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
+	  / * TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
 	     and allocate it if its not there.  It returns 0 if it's a new blob, 1 otherwise, so I think we 
-	     just ignore its return value...*/
+	     just ignore its return value...* /
 
 	        if( !touchBlob(xid, rid) ) { 
-		  /* record hasn't been touched yet */
+		  / * record hasn't been touched yet * /
 		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 		  version = *(int *)rec;	
 		  blobRec[0] = version == 0 ? 1 : 0;
@@ -612,40 +615,42 @@ void pageWriteRecord(int xid, Page page, recordid rid, const byte *data) {
 		  perror("write");
 		}
 
-		/* Flush kernel buffers to hard drive. TODO: the
+		/ * Flush kernel buffers to hard drive. TODO: the
 		   (standard) fdatasync() call only flushes the data
 		   instead of the data + metadata.  Need to have
 		   makefile figure out if it's available, and do some
 		   macro magic in order to use it, if possible...
 
 		   This is no longer called here, since it is called at commit.
-		*/
-		/*		fsync(fd);  */
-	} else { /* write a record that is not a blob */
+		* /
+		/ *		fsync(fd);  * /
+	} else { / * write a record that is not a blob */
+
+	assert(rid.size < PAGE_SIZE);
 		rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 
 		if(memcpy(rec, data,  rid.size) == NULL ) {
 			printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
 			exit(MEM_WRITE_ERROR);
 		}
-	}
+		/*}*/
 }
 
 
 /* Currently not called any where, or tested. */
-byte * pageMMapRecord(int xid, Page page, recordid rid) {
+/*byte * pageMMapRecord(int xid, Page page, recordid rid) {
   	byte *rec; 
 	int version = -1;
 	int fd = -1;
 	int blobRec[3];
 	byte * ret;
 	if (isBlobSlot(page.memAddr, rid.slot)) {
-	  /* TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
+	  / * TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
 	     and allocate it if its not there.  It returns 0 if it's a new blob, 1 otherwise, so I think we 
-	     just ignore its return value...*/
+	     just ignore its return value...* /
 
 	        if( !touchBlob(xid, rid) ) { 
-		  /* record hasn't been touched yet */
+		  / * record hasn't been touched yet * /
 		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 		  version = *(int *)rec;	
 		  blobRec[0] = version == 0 ? 1 : 0;
@@ -663,32 +668,32 @@ byte * pageMMapRecord(int xid, Page page, recordid rid) {
 		  perror("pageMMapRecord");
 		}
 
-		/*		if(-1 == lseek(fd, *(int *)(rec +4), SEEK_SET)) {
+		/ *		if(-1 == lseek(fd, *(int *)(rec +4), SEEK_SET)) {
 		  perror("lseek");
 		}
 		if(-1 == write(fd, data, *(int *)(rec +8))) {
 		  perror("write");
-		  } */
+		  } * /
 
-		/* Flush kernel buffers to hard drive. TODO: the
+		/ * Flush kernel buffers to hard drive. TODO: the
 		   (standard) fdatasync() call only flushes the data
 		   instead of the data + metadata.  Need to have
 		   makefile figure out if it's available, and do some
-		   macro magic in order to use it, if possible...*/
-		/*		fsync(fd);  */
+		   macro magic in order to use it, if possible...* /
+		/ *		fsync(fd);  * /
 
-	} else { /* write a record that is not a blob */
+	} else { / * write a record that is not a blob * /
 		rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 
 		ret = rec;
-		/*		if(memcpy(rec, data,  rid.size) == NULL ) {
+		/ *		if(memcpy(rec, data,  rid.size) == NULL ) {
 			printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
 			exit(MEM_WRITE_ERROR);
-			}*/
+			}* /
 	}
 	return ret;
 }
-
+*/
 void pageRealloc(Page *p, int id) {
 	p->id = id;
 	p->LSN = 0;

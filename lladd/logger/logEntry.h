@@ -68,7 +68,7 @@ typedef struct {
 typedef struct {
   unsigned int funcID : 8;
   recordid rid;
-  unsigned int argSize : 16;  /*2^16 = 64M*/
+  unsigned int argSize;
   /*  int invertible; */ /* no longer needed */
   /* Implicit members:
      args;     @ ((byte*)ule) + sizeof(UpdateLogEntry)

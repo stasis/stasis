@@ -68,7 +68,7 @@ BEGIN_C_DECLS
 /* @type Function
  * function pointer that the operation will run
  */
-typedef int (*Function)(int xid, recordid r, const void *d);
+typedef int (*Function)(int xid, lsn_t lsn, recordid r, const void *d);
 
 /* @type Operation
 
@@ -153,14 +153,19 @@ extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 void doUpdate(const LogEntry * e);
 /** Undo the update under normal operation, and during recovery. 
 
-    Assumes that the operation's results are reflected in the contents of the buffer manager.
+    Checks to see if the operation's results are reflected in the
+    contents of the buffer manager.  If they are, then it performs the
+    undo.  
 
     Does not write to the log.
 
-    @todo Currently, undos do not result in CLR entries, but they should.  (Should this be done here?)
+    This function does not generate CLR because this would result in
+    extra CLRs being generated during recovery.
 
+    @param e The log entry containing the operation to be undone.  
+    @param clr_lsn The lsn of the clr that corresponds to this undo operation.
 */
-void undoUpdate(const LogEntry * e);
+void undoUpdate(const LogEntry * e, lsn_t clr_lsn);
 /** 
     Redoes an operation during recovery.  This is different than
     doUpdate because it checks to see if the operation needs to be redone

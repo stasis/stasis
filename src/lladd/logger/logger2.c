@@ -44,6 +44,8 @@ terms specified in this license.
 #include <lladd/logger/logger2.h>
 #include <malloc.h>
 
+#include <stdlib.h>
+
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
   tl.xid = xid;
@@ -53,21 +55,29 @@ TransactionLog LogTransBegin(int xid) {
   return tl;
 }
 
-static void LogTransCommon(TransactionLog * l, int type) {
+static lsn_t LogTransCommon(TransactionLog * l, int type) {
   LogEntry * e = allocCommonLogEntry(l->prevLSN, l->xid, type);
+  lsn_t ret;
+
   writeLogEntry(e);
   l->prevLSN = e->LSN;
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
+
+  ret = e->LSN;
+
   free(e);
+
+  return ret;
+
 }
 
-void LogTransCommit(TransactionLog * l) {
-  LogTransCommon(l, XCOMMIT);
+lsn_t LogTransCommit(TransactionLog * l) {
+  return LogTransCommon(l, XCOMMIT);
 }
 
-void LogTransAbort(TransactionLog * l) {
-  LogTransCommon(l, XABORT);
+lsn_t LogTransAbort(TransactionLog * l) {
+  return LogTransCommon(l, XABORT);
 }
 
 LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte * args) {
@@ -82,14 +92,17 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
   }
 
   if(operationsTable[operation].undo == NO_INVERSE) {
+    DEBUG("Creating %d byte physical pre-image.\n", rid.size);
     preImage = malloc(rid.size);
+    if(!preImage) { perror("malloc"); abort(); }
     readRecord(l->xid, rid, preImage);
+    DEBUG("got preimage");
   }
 
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   writeLogEntry(e);
-  DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
+  DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
+	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
 
   if(preImage) {
     free(preImage);

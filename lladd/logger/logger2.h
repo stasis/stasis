@@ -75,16 +75,16 @@ TransactionLog LogTransBegin(int xid);
 /**
   Write a transaction COMMIT to the log tail, then flush the log tail immediately to disk
 
-  @return 0 if the transaction succeeds, an error code otherwise.
+  @return The lsn of the commit log entry.  
 */
-void LogTransCommit(TransactionLog * l);
+lsn_t LogTransCommit(TransactionLog * l);
 
 /**
   Write a transaction ABORT to the log tail
 
-  @return 0 if the transaction was successfully aborted.
+  @return The lsn of the abort log entry.
 */
-void LogTransAbort(TransactionLog * l);
+lsn_t LogTransAbort(TransactionLog * l);
 
 /**
   LogUpdate writes an UPDATE log record to the log tail

@@ -168,7 +168,7 @@ Page loadPage(int pageid);
  * @param size The size of the new record
  * @return allocated record
  */
-recordid ralloc(int xid, size_t size);
+recordid ralloc(int xid, lsn_t lsn, size_t size);
 
 /**
  * Find a page with some free space.
@@ -177,7 +177,9 @@ recordid ralloc(int xid, size_t size);
  
 
 /**
- * This function updates the LSN of a page.  This is needed by the
+ * This function updates the LSN of a page.
+ * 
+ * This is needed by the
  * recovery process to make sure that each action is undone or redone
  * exactly once.
  *
@@ -195,7 +197,7 @@ recordid ralloc(int xid, size_t size);
  * atomically.  (write does not have to write all of the data that was
  * passed to it...)
  */
-void writeLSN(long LSN, int pageid);
+/*void writeLSN(long LSN, int pageid);  */
 
 /**
  * @param pageid ID of page you want to read
@@ -208,7 +210,7 @@ long readLSN(int pageid);
  * @param rid recordid where you want to write
  * @param dat data you wish to write
  */
-void writeRecord(int xid, recordid rid, const void *dat);
+void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat);
 
 /**
  * @param xid transaction ID
@@ -245,7 +247,7 @@ int dropPage(Page page);
  * @return 0 on success
  * @return error code on failure
  */
-int bufTransCommit(int xid);
+int bufTransCommit(int xid, lsn_t lsn);
 
 /**
  * 
@@ -255,7 +257,7 @@ int bufTransCommit(int xid);
  * @return 0 on success
  * @return error code on failure
  */
-int bufTransAbort(int xid);
+int bufTransAbort(int xid, lsn_t lsn);
 
 /**
  * will write out any dirty pages, assumes that there are no running
