@@ -1695,6 +1695,16 @@ application developers to consider the development of custom
 transactional storage mechanisms if application performance is
 important.
 
+This section uses:
+\begin{enumerate}
+\item{Custom page layouts to implement ArrayList}
+\item{Addresses data by page to perserve locality (contrast w/ other systems..)}
+\item{Custom log formats to implement logical undo}
+\item{Varying levels of latching}
+\item{Nested Top Actions for simple implementation.}
+\item{Bypasses Nested Top Action API to optimize log bandwidth}
+\end{enumerate}
+
 \section{Object Serialization}
 \label{OASYS}
 
@@ -1817,7 +1827,6 @@ version of the object in the page file is stale. The idea that the
 current version is available outside of transactional storage, 
 typically in a cache, seems broadly useful.
 
-
 \subsection{Recovery and Log Truncation}
 
 An observant reader may have noticed a subtle problem with this
@@ -1878,10 +1887,27 @@ complex, the simplicity of the implementation is encouraging.
 
 \rcs{analyse OASYS data.}
 
+This section uses:
+
+\begin{enumerate}
+\item{Custom log formats to implement diff based updates}
+\item{Custom log semantics to reduce log bandwidth and page file usage}
+\item{Direct page file access to reduce page file usage}
+\item{Custom recovery and checkpointing semantics to maintain correctness}
+\end{enumerate}
+
 \section{Transitive closure\label{TransClos}}
 
 \rcs{implement transitive closu....}
 
+This section uses:
+
+\begin{enumerate}
+\item{Reusability of operation implementations (borrow's the hashtable's bucket list (the Array List) implementation to store objcets}
+\item{Clean seperation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
+\item{Addressibility of data by page offset provides the information that is necessary to produce locality in workloads}
+\item{The idea of the log as an application primative, which can be generalized to other applications such as log entry merging, more advanced reordering primatives, network replication schemes, etc.} 
+\end{enumerate}
 %\begin{enumerate}
 %
 %  \item {\bf Comparison of transactional primatives (best case for each operator)}
