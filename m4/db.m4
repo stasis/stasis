@@ -54,7 +54,9 @@ AC_DEFUN([AC_CONFIG_DB], [
     dnl Now check if we have a cached value, and if not, find it.
     dnl
     if test ! x$dtn_cv_path_db_h = x ; then
-        echo "checking for Berkeley DB installation... (cached) $dtn_cv_path_db_h/db_cxx.h, $dtn_cv_path_db_lib -l$dtn_cv_lib_db"
+        echo "checking for Berkeley DB installation... (cached) $dtn_cv_path_db_h/db.h, $dtn_cv_path_db_lib -l$dtn_cv_lib_db"
+#        echo "checking for Berkeley DB installation... (cached) $dtn_cv_path_db_h/db_cxx.h, 
+#$dtn_cv_path_db_lib -l$dtn_cv_lib_db"
     else
         AC_FIND_DB
     fi
@@ -122,7 +124,7 @@ AC_DEFUN([AC_FIND_DB], [
 	AC_LINK_IFELSE(
 	  AC_LANG_PROGRAM(
 	    [
-                #include <db_cxx.h>
+                #include <db.h>
            
                 #if (DB_VERSION_MAJOR != ${ac_dbver_major}) || \
                     (DB_VERSION_MINOR != ${ac_dbver_minor})
@@ -141,7 +143,7 @@ AC_DEFUN([AC_FIND_DB], [
           ])
 
       for ac_dblibdir in $ac_dblibdirs; do
-      for ac_dblib    in db_cxx-$ac_dbver; do
+      for ac_dblib    in db-$ac_dbver; do
 
 	LDFLAGS="$ac_save_LDFLAGS -L$ac_dblibdir"
 	LIBS="$ac_save_LIBS -l$ac_dblib"
@@ -150,7 +152,7 @@ AC_DEFUN([AC_FIND_DB], [
 	AC_LINK_IFELSE(
 	  AC_LANG_PROGRAM(
 	    [
-                #include <db_cxx.h>
+                #include <db.h>
             ],
             
             [
