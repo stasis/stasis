@@ -75,7 +75,7 @@ int pobj_update_recursive (void *);
 int pobj_static_set_ref (void *, void *);
 int pobj_static_update_ref (void *);
 
-int pobj_init (struct pobj_memfunc *);
+int pobj_init (struct pobj_memfunc *, struct pobj_memfunc *);
 int pobj_shutdown (void);
 
 #endif /* __POBJ_H */
