@@ -45,9 +45,14 @@ terms specified in this license.
 
 #include <lladd/logger/logEntry.h>
 #include <lladd/logger/logHandle.h>
+#include <lladd/logger/logWriter.h>
 #include <lladd/transactional.h>
 
+#include <pthread.h>
+#include <assert.h>
 #include "../check_includes.h"
+
+
 
 #define LOG_NAME   "check_logWriter.log"
 
@@ -229,6 +234,101 @@ START_TEST(logWriterTruncate) {
 
 } END_TEST
 
+#define ENTRIES_PER_THREAD 1000
+
+pthread_mutex_t random_mutex;
+
+static void* worker_thread(void * arg) {
+  int key = *(int*)arg;
+  int i = 0;
+  int truncated_to = 4;
+
+  LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
+
+  int lsns[ENTRIES_PER_THREAD];
+
+
+  /*  fail_unless(NULL != le, NULL); */
+
+  while(i < ENTRIES_PER_THREAD) {
+    int threshold;
+    int entry;
+
+    pthread_mutex_lock(&random_mutex);
+
+    threshold = (int) (2000.0*random()/(RAND_MAX+1.0));
+    entry = (int) (ENTRIES_PER_THREAD*random()/(RAND_MAX+1.0));
+
+    pthread_mutex_unlock(&random_mutex);
+
+    /*    fail_unless(threshold <= 100, NULL); */
+
+    if(threshold < 3) {
+      if(i > 10) {
+	/* Truncate the log .15% of the time; result in a bit over 100 truncates per test run.*/
+	/*	fail_unless(1, NULL); */
+
+	truncateLog(lsns[i - 10]);
+	truncated_to = i - 10;
+      } 
+      /*      fail_unless(1, NULL); */
+    } else {
+
+      /*      DEBUG("i = %d, le = %x\n", i, (unsigned int)le); */
+      /*      fail_unless(1, NULL); */
+      le->xid = i+key;
+      writeLogEntry(le);
+      lsns[i] = le->LSN;
+      i++;
+    }
+    /*    fail_unless(1, NULL); */
+    if(entry > truncated_to && entry < i) {
+      assert(readLSNEntry(lsns[entry])->xid == entry+key);
+      /*      fail_unless(readLSNEntry(lsns[entry])->xid == entry+key, NULL); */
+    }
+    /*    fail_unless(1, NULL); */
+	
+    /* Try to interleave requests as much as possible */
+    pthread_yield();
+
+  }
+
+  free(le);
+
+  return 0;
+}
+
+START_TEST(logWriterCheckWorker) {
+  int four = 4;
+
+  pthread_mutex_init(&random_mutex, NULL);
+
+  Tinit();
+  worker_thread(&four);
+  Tdeinit();
+
+} END_TEST
+
+START_TEST(logWriterCheckThreaded) {
+  int four = 4;
+#define  THREAD_COUNT 50
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  pthread_mutex_init(&random_mutex, NULL);
+
+  Tinit();
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_create(&workers[i], NULL, worker_thread, &four);
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+  }
+  Tdeinit();
+
+} END_TEST
+
+
 Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
   /* Begin a new test */
@@ -239,6 +339,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, logWriterTest);
   tcase_add_test(tc, logHandleColdReverseIterator);
   tcase_add_test(tc, logWriterTruncate);
+  tcase_add_test(tc, logWriterCheckWorker);
+  tcase_add_test(tc, logWriterCheckThreaded);
 
   /* --------------------------------------------- */
   

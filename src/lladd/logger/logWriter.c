@@ -46,10 +46,9 @@ terms specified in this license.
 #include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
-/** 
-    Invariant: This file stream is at EOF, or positioned so that the
-    next read will pull in the size of the next log entry.
+#include <libdfa/rw.h>
 
+/** 
     @todo Should the log file be global? 
 */
 static FILE * log;
@@ -60,18 +59,54 @@ static FILE * log;
 static lsn_t flushedLSN_val;
 
 /**
+   Invariant: No thread is writing to flushedLSN.  (This lock is not
+   needed if doubles are set atomically by the processeor.)  Since
+   flushedLSN is monotonically increasing, readers can immmediately
+   release their locks after checking the value of flushedLSN.
+*/
+static rwl * flushedLSN_lock;
+
+/**
    
-   Before writeLogEntry is called, this value is the value of the
-   highest LSN encountered so far.  Once writeLogEntry is called, it
-   is the next available LSN.
+   Before writeLogEntry is called, this value is 0. Once writeLogEntry
+   is called, it is the next available LSN.
 
    @see writeLogEntry
 */
 static lsn_t nextAvailableLSN = 0;
-static int writeLogEntryIsReady = 0;
-static lsn_t maxLSNEncountered = sizeof(lsn_t);
 
+/**
+   Invariant: writeLogEntry() must be able to atomicly read
+   nextAvailableLSN, and then update it.  (This lock does not have to
+   be held while we're waiting for fwrite() to return.)
+*/
+static rwl * nextAvailableLSN_lock;
+
+/**
+   The global offset for the current version of the log file.
+ */
 static lsn_t global_offset;
+/**
+   Invariant: Any thread reading from the file must call flockfile()
+   if it needs the file position to be preserved across calls.  (For
+   example, when using fseek(); myFseek() does this, but only
+   internally, so if it is used to position the stream, it should be
+   guarded with flockfile().
+*/
+static rwl * log_read_lock;
+
+/**
+   Invariant: Any thread writing to the file must hold this lock.  The
+   log truncation thread hold this lock from the point where it copies
+   the tail of the old log to the new log, until after the rename call
+   returns.
+*/    
+pthread_mutex_t log_write_mutex;
+
+/**
+   Invariant:  We only want one thread in truncateLog at a time.
+*/
+pthread_mutex_t truncateLog_mutex;
 
 
 /** 
@@ -81,15 +116,25 @@ void myFwrite(const void * dat, size_t size, FILE * f);
 long myFseek(FILE * f, long offset, int whence);
 int openLogWriter() {
   log = fopen(LOG_FILE, "a+");
+
   if (log==NULL) {
     assert(0);
     /*there was an error opening this file */
     return FILE_WRITE_OPEN_ERROR;
   }
 
+  /* Initialize locks. */
+
+  flushedLSN_lock = initlock();
+  nextAvailableLSN_lock = initlock();
+  log_read_lock = initlock();
+  pthread_mutex_init(&log_write_mutex, NULL);
+  pthread_mutex_init(&truncateLog_mutex, NULL);
+
+
   nextAvailableLSN = 0;
-  maxLSNEncountered = sizeof(lsn_t);
-  writeLogEntryIsReady = 0;
+  /*  maxLSNEncountered = sizeof(lsn_t); 
+      writeLogEntryIsReady = 0; */
 
   /* Note that the position of the file between calls to this library
      does not matter, since none of the functions in logWriter.h
@@ -99,9 +144,8 @@ int openLogWriter() {
      However, we need to do this seek to check if the file is empty.
 
   */
-  fseek(log, 0, SEEK_END); 
 
-  if (ftell(log)==0) {
+  if (myFseek(log, 0, SEEK_END)==0) {
     /*if file is empty, write an LSN at the 0th position.  LSN 0 is
       invalid, and this prevents us from using it.  Also, the LSN at
       this position can be used after log truncation to define a
@@ -148,35 +192,35 @@ int writeLogEntry(LogEntry * e) {
   int nmemb;
   const size_t size = sizeofLogEntry(e);
 
+
   if(e->xid == -1) { /* Don't write log entries for recovery xacts. */
     e->LSN = -1;
     return 0;
   }
+
+  /* Need to prevent other writers from messing with nextAvailableLSN.
+     The log_write_mutex only blocks log truncation and writeLogEntry,
+     so it's exactly what we want here. .*/
+  pthread_mutex_lock(&log_write_mutex);  
   
-  if(!writeLogEntryIsReady) {
+  if(!nextAvailableLSN) { 
+    /*  if(!writeLogEntryIsReady) { */
     LogHandle lh;
     LogEntry * le;
-    
-    assert(maxLSNEncountered >= sizeof(lsn_t));
 
-    lh = getLSNHandle(maxLSNEncountered);
-
-    nextAvailableLSN = maxLSNEncountered;
+    nextAvailableLSN = sizeof(lsn_t);
+    lh = getLSNHandle(nextAvailableLSN);
 
     while((le = nextInLog(&lh))) {
       nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(size_t);;
       free(le);
     }
-    writeLogEntryIsReady = 1;
   }
-
-
 
   /* Set the log entry's LSN. */
 
 #ifdef DEBUGGING
-  fseek(log, 0, SEEK_END);
-  e->LSN = ftell(log);
+  e->LSN = myFseek(log, 0, SEEK_END) + global_offset;
   if(nextAvailableLSN != e->LSN) {
     assert(nextAvailableLSN <= e->LSN);
     DEBUG("Detected log truncation:  nextAvailableLSN = %ld, but log length is %ld.\n", (long)nextAvailableLSN, e->LSN);
@@ -184,6 +228,9 @@ int writeLogEntry(LogEntry * e) {
 #endif
 
   e->LSN = nextAvailableLSN;
+
+  flockfile(log);  /* Prevent other threads from calling fseek... */
+
   fseek(log, nextAvailableLSN - global_offset, SEEK_SET); 
       
   nextAvailableLSN += (size + sizeof(size_t));
@@ -205,6 +252,10 @@ int writeLogEntry(LogEntry * e) {
     return FILE_WRITE_ERROR;
   }
   
+  funlockfile(log);
+
+  pthread_mutex_unlock(&log_write_mutex);  
+
   /* We're done. */
   return 0;
 }
@@ -212,10 +263,9 @@ int writeLogEntry(LogEntry * e) {
 void syncLog() {
   lsn_t newFlushedLSN;
   
-  fseek(log, 0, SEEK_END);
-  /* Wait to set the static variable until after the flush returns.
-     (In anticipation of multithreading) */
-  newFlushedLSN = ftell(log);  
+  newFlushedLSN = myFseek(log, 0, SEEK_END);
+
+  /* Wait to set the static variable until after the flush returns. */
   
   fflush(log);
 #ifdef HAVE_FDATASYNC
@@ -226,18 +276,33 @@ void syncLog() {
   fsync(fileno(log));  
 #endif
 
-  flushedLSN_val = newFlushedLSN;
-  
+  writelock(flushedLSN_lock, 0);
+  if(newFlushedLSN > flushedLSN_val) {
+    flushedLSN_val = newFlushedLSN;
+  }
+  writeunlock(flushedLSN_lock);
 }
 
 lsn_t flushedLSN() {
-  return flushedLSN_val;
+  lsn_t ret;
+  readlock(flushedLSN_lock, 0);
+  ret = flushedLSN_val;
+  readunlock(flushedLSN_lock);
+  return ret; 
 }
 
 void closeLogWriter() {
   /* Get the whole thing to the disk before closing it. */
   syncLog();  
   fclose(log);
+
+  /* Free locks. */
+
+  deletelock(flushedLSN_lock);
+  deletelock(nextAvailableLSN_lock);
+  deletelock(log_read_lock);
+  pthread_mutex_destroy(&log_write_mutex);
+
 }
 
 void deleteLogWriter() {
@@ -249,12 +314,17 @@ static LogEntry * readLogEntry() {
   size_t size, entrySize;
   int nmemb;
   
-  if(feof(log)) return NULL;
+
+  if(feof(log)) {
+    return NULL;
+  }
 
   nmemb = fread(&size, sizeof(size_t), 1, log);
   
   if(nmemb != 1) {
-    if(feof(log)) return NULL;
+    if(feof(log)) {
+      return NULL;
+    }
     if(ferror(log)) {
       perror("Error reading log!");
       assert(0);
@@ -268,7 +338,9 @@ static LogEntry * readLogEntry() {
 
   if(nmemb != 1) {
     /* Partial log entry. */
-    if(feof(log)) return NULL;
+    if(feof(log)) {
+      return NULL;
+    }
     if(ferror(log)) {
       perror("Error reading log!");
       assert(0);
@@ -277,6 +349,7 @@ static LogEntry * readLogEntry() {
     assert(0);
     return 0;
   }
+
 
   entrySize = sizeofLogEntry(ret);
 
@@ -295,20 +368,29 @@ static LogEntry * readLogEntry() {
 LogEntry * readLSNEntry(lsn_t LSN) {
   LogEntry * ret;
 
-  if(!writeLogEntryIsReady) {
-    if(LSN > maxLSNEncountered) {
-      maxLSNEncountered = LSN;
-    }
-  }
+  /* We would need a lock to support this operation, and that's not worth it.  
+     if(!writeLogEntryIsReady) {
+     if(LSN > maxLSNEncountered) {
+     maxLSNEncountered = LSN;
+     }
+     } */
 
+  /*  readlock(log_read_lock); */
+
+  flockfile(log);
   fseek(log, LSN - global_offset, SEEK_SET);
   ret = readLogEntry();
+  funlockfile(log);
+  /* readunlock(log_read_lock); */
 
   return ret;
+  
 }
 
+
 int truncateLog(lsn_t LSN) {
-  FILE *tmpLog = fopen(LOG_FILE_SCRATCH, "w+");  /* w+ = truncate, and open for writing. */
+  FILE *tmpLog;
+
 
   LogEntry * le;
   LogHandle lh;
@@ -317,6 +399,16 @@ int truncateLog(lsn_t LSN) {
 
   int count;
 
+  pthread_mutex_lock(&truncateLog_mutex);
+
+  if(global_offset + 4 >= LSN) {
+    /* Another thread beat us to it...the log is already truncated
+       past the point requested, so just return. */
+    pthread_mutex_unlock(&truncateLog_mutex);
+    return 0;
+  }
+
+  tmpLog = fopen(LOG_FILE_SCRATCH, "w+");  /* w+ = truncate, and open for writing. */
 
   if (tmpLog==NULL) {
     assert(0);
@@ -330,12 +422,18 @@ int truncateLog(lsn_t LSN) {
      4, so the file offset is 6. */
   LSN -= sizeof(lsn_t);  
 
-  DEBUG("Truncate(%ld) new file offset = %ld\n", LSN + sizeof(lsn_t), LSN);
+  DEBUG("Truncating log to %ld\n", LSN + sizeof(lsn_t));
 
   myFwrite(&LSN, sizeof(lsn_t), tmpLog);
   
   LSN += sizeof(lsn_t);
-  
+
+  /**
+     @todo We block writers too early.  Instead, read until EOF, then
+     lock, and then finish the truncate.
+  */
+  pthread_mutex_lock(&log_write_mutex);
+
   lh = getLSNHandle(LSN);
   
   while((le = nextInLog(&lh))) {
@@ -351,6 +449,10 @@ int truncateLog(lsn_t LSN) {
 #else
   fsync(fileno(tmpLog));
 #endif
+
+  /** Time to shut out the readers */
+
+  flockfile(log);
 
   fclose(log);  /* closeLogWriter calls sync, but we don't need to. :) */
   fclose(tmpLog); 
@@ -372,6 +474,9 @@ int truncateLog(lsn_t LSN) {
   count = fread(&global_offset, sizeof(lsn_t), 1, log);
   assert(count == 1);
 
+  funlockfile(log);
+  pthread_mutex_unlock(&log_write_mutex);
+  pthread_mutex_unlock(&truncateLog_mutex);
 
   return 0;
 

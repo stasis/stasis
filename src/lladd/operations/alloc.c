@@ -57,25 +57,7 @@ recordid Talloc(int xid, size_t size) {
     rid = preAllocBlob(xid, size);
   } else {
 
-    /** 
-	
-    @todo we pass lsn -1 into ralloc here.  This is a kludge, since we
-    need to log ralloc's return value, but can't get that return value
-    until after its executed.  When it comes time to perform recovery,
-    it is possible that this record will be leaked during the undo
-    phase.  We could do a two phase allocation to prevent the leak, but
-    then we'd need to lock the page that we're allocating a record in,
-    and that's a pain.  Plus, this is a small leak.  (There is a similar
-    problem involving blob allocation, which is more serious, as it may
-    result in double allocation...)
-    
-    @todo If this should be the only call to ralloc in lladd, we may consider
-    removing the lsn parameter someday.  (Is there a good reason to
-    provide users with direct access to ralloc()?)
-
-    */
-    
-    rid = ralloc(xid, -1, size);
+    rid = ralloc(xid, size);
 
   }
 

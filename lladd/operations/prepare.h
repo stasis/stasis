@@ -61,6 +61,8 @@ terms specified in this license.
  (to support savepoints, for example) Right now, recovery uses a
  guarded iterator, transUndo() does not.
  
+ @todo Test Tprepare()
+
  *
  * @ingroup OPERATIONS
  *
@@ -81,9 +83,9 @@ extern recordid prepare_bogus_rec;
     guaranteed that the current transaction will resume exactly where
     it was when Tprepare() was called.
 
+    @todo Tprepare() shouldn't take a record or buffer as arguments... 
+
     @param xid Transaction id.
-    @param rec @todo undocumented.
-    @param dat @todo Ignored for now?
 */
 #define Tprepare(xid, rec, dat) Tupdate(xid, rec, 0, OPERATION_PREPARE)
 

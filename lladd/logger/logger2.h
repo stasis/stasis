@@ -53,9 +53,29 @@ terms specified in this license.
 #ifndef __LOGGER2_H__
 #define __LOGGER2_H__
 
-#include "logEntry.h"
-#include "logHandle.h"
+/*#include "logEntry.h"
+#include "logHandle.h"*/
 #include <lladd/operations.h>
+
+
+/**
+   A callback function that allows logHandle's iterator to stop
+   returning log entries depending on the context in which it was
+   called.
+*/
+typedef int (guard_fcn_t)(LogEntry *, void *);
+
+typedef struct { 
+  /** The LSN of the last log entry returned.*/
+  /*  lsn_t       file_offset; */ /* Unneeded? */
+  /** The LSN of the log entry that we would return if next is called. */
+  lsn_t       next_offset; 
+  /** The LSN of the log entry that we would return if previous is called. */
+  lsn_t       prev_offset;
+  guard_fcn_t * guard;
+  void * guard_state;
+} LogHandle;
+
 /**
    Contains the state needed by the logging layer to perform
    operations on a transaction.
@@ -65,6 +85,7 @@ typedef struct {
   lsn_t prevLSN;
   LogHandle lh;
 } TransactionLog;
+
 
 /**
    Inform the logging layer that a new transaction has begun.
@@ -115,8 +136,9 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
 lsn_t LogCLR (LogEntry * undone); /*TransactionLog * l, long ulLSN, recordid ulRID, long ulPrevLSN); */
 
 /**
-   Write a end transaction record @todo What does this do exactly?  Indicate completion of aborts?
-   @todo Move into recovery-only code?
+   Write a end transaction record @see XEND
+
+   @todo Implement LogEnd
 */
 void LogEnd (TransactionLog * l);
 

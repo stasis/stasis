@@ -7,7 +7,7 @@ BEGIN_C_DECLS
 
 /**    
        @file
-       blobManager - Provides blob handling @todo Set range??
+       blobManager - Provides blob handling 
        Plan for modularity: Exactly one blob manager per storeFile.
        Blob manager interacts with page manger via page manager's
        public api.
@@ -34,6 +34,9 @@ BEGIN_C_DECLS
            calls to update the records.)
        
        @todo Should the tripleHash be its own little support library? 
+       @todo Set range??
+
+       @ingroup LLADD_CORE
 */
 
 
@@ -75,7 +78,9 @@ recordid preAllocBlob(int xid, size_t blobsize);
    Allocate a blob of size blobSize. 
 
    @todo This function does not atomically allocate space in the blob
-   file.
+   file.  Instead of trusting the blob store length, upon recieving a
+   log entry, update a static file length variable in blobManager.
+
 */
 
 void allocBlob(int xid, lsn_t lsn, recordid rid);

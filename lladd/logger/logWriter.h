@@ -58,7 +58,6 @@ terms specified in this license.
  * never hurts to have more flushes to disk, as long as it doesn't hurt
  * performance.
  *
- * @todo CORRECTNESS: We currently assume that there are no partial entries in the log!
  * @todo Everything in this file cores on failure (no error handling yet)
  * @todo All of the logWriter calls should be reentrant.
  *

@@ -52,8 +52,6 @@ terms specified in this license.
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
    operations that use physical logging.
-
-   @todo Now that writes + lsn updates are atomic, this test case probably breaks. 
 */
 START_TEST(operation_physical_do_undo) {
   int xid = 1;
@@ -65,7 +63,7 @@ START_TEST(operation_physical_do_undo) {
 
   Tinit();
   
-  rid  = ralloc(xid, 1, sizeof(int));
+  rid  = ralloc(xid, sizeof(int));
   buf = 1;
   arg = 2;
 

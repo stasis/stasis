@@ -42,6 +42,7 @@ terms specified in this license.
 
 #include <lladd/bufferManager.h>
 #include <lladd/logger/logger2.h>
+#include <lladd/logger/logWriter.h>
 #include <malloc.h>
 
 #include <stdlib.h>

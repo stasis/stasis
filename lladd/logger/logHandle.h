@@ -40,8 +40,9 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include "logEntry.h"
-#include "logWriter.h"
+#include <lladd/logger/logger2.h>
+/*#include "logEntry.h"
+  #include "logWriter.h" */
 
 #ifndef __LOGHANDLE_H
 #define __LOGHANDLE_H
@@ -60,20 +61,9 @@ BEGIN_C_DECLS
    logHandle is useful for read only access to the log.
 
    @see logWriter.h For write access to the log.
+   @see logger2.h for the typedef of the logHandle struct
 */
 
-typedef int (guard_fcn_t)(LogEntry *, void *);
-
-typedef struct { 
-  /** The LSN of the last log entry returned.*/
-  /*  lsn_t       file_offset; */ /* Unneeded? */
-  /** The LSN of the log entry that we would return if next is called. */
-  lsn_t       next_offset; 
-  /** The LSN of the log entry that we would return if previous is called. */
-  lsn_t       prev_offset;
-  guard_fcn_t * guard;
-  void * guard_state;
-} LogHandle;
 
 /** Returns a logHandle pointing at the first log entry in the log.  */
 LogHandle getLogHandle();

@@ -5,6 +5,8 @@
 #include <lladd/recovery.h>
 #include <string.h>
 #include <assert.h>
+#include <lladd/logger/logWriter.h>
+#include <lladd/logger/logHandle.h>
 
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;

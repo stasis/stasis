@@ -103,8 +103,9 @@ terms specified in this license.
 #define INVALID_SLOT PAGE_SIZE
 #define NORMAL_SLOT (PAGE_SIZE + 1)
 #define BLOB_SLOT (PAGE_SIZE + 2)
-/** @todo should be sizeof(blob_record_t) */
-#define BLOB_REC_SIZE 12
+
+/** @deprecated Replace all occurrances with sizeof(blob_record_t) */
+#define BLOB_REC_SIZE sizeof(blob_record_t) /*12*/
 #define BLOB_THRESHOLD_SIZE (PAGE_SIZE-30)
 
 #define BITS_PER_BYTE 8
@@ -121,8 +122,14 @@ terms specified in this license.
 #define XABORT 4
 /* Folded into update log entries */
 /*#define XALLOC 5*/
-/** XEND is used for after a transaction is aborted or commited, and some
- *  additional steps are taken and then the XEND is written */
+/** 
+    XEND is used for after the pages touched by a transaction have
+    been flushed to stable storage.
+    
+    @todo Actually write XEND entries to the log so that log
+    truncation can be implemented!
+
+*/
 #define XEND 6
 #define CLRLOG 7
 

@@ -103,7 +103,6 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
       /* Physical undo */
 
       DEBUG("OPERATION Physical undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
-      /** @todo Why were we passing in RECOVERY_XID? */
       writeRecord(e->xid, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
     } else {
       /* @see doUpdate() */
@@ -113,13 +112,6 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
     }
   } else {
     DEBUG("OPERATION Skipping undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
-    /*    if(page_lsn < clr_lsn) {
-      / * It is possible that we are in the process of lazily
-	 propogating this change to the page.  If this is the case,
-	 simply update the page lsn to the new clr lsn.  (This is no longer true)* /
-      writeLSN(clr_lsn, e->contents.update.rid.page);
-      } */
-
   }
   /*  printf("Undo done."); fflush(NULL); */
 

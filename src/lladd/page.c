@@ -455,10 +455,11 @@ int isBlobSlot(byte *pageMemAddr, int slot) {
 }
 
 /*
-  @todo This needs should trust the rid (since the caller needs to
-  overrid the size in special circumstances, but if the size has been
-  overridden, we should check for the circumstances where doing so is
-  allowed. 
+  This needs should trust the rid (since the caller needs to
+  override the size in special circumstances)
+
+  @todo If the rid size has been overridden, we should check to make
+  sure that this really is a special record.
 */
 void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
 

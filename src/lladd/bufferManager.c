@@ -165,13 +165,13 @@ static void closePageFile() {
   stable = NULL;
 }
 
-void pageMap(Page *ret) {
+/* void pageMap(Page *ret) {
   pageRead(ret);
 }
 int flushPage(Page ret) {
   pageWrite(&ret);
   return 0;
-}
+  } */
 
 /*
 void pageMap(Page *ret) {
@@ -273,7 +273,7 @@ Page loadPage (int pageid) {
 Page * lastRallocPage = 0;
 
 
-recordid ralloc(int xid, lsn_t lsn, size_t size) {
+recordid ralloc(int xid, /*lsn_t lsn,*/ size_t size) {
 
   recordid ret;
   Page p;

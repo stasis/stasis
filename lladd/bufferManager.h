@@ -42,87 +42,44 @@ terms specified in this license.
 /**
  * @file
  * Manages the page buffer
- *
- * @todo Allow error checking!  
- *
- * @todo CORRECTNESS PROBLEM: Recovery assumes that each page is
- * written atomically to disk, and that the LSN field of the page will
- * be in sync with the contents of each record on the page.  Since we
- * use mmap() to read and write the pages, and a page fault could
- * interrupt LLADD between a writeRecord and writeLSN call, it is
- * possible for the operating system to steal dirty pages from the
- * buffer manager.  (We support steal in the normal case, but still
- * need to be sure that the stolen pages are internally consistent!)
- *
- * It looks as though we will need to re-write the buffer manager so
- * that it only uses read or write calls.  Alternatively, we could
- * lock pages as we update them, but that requires root privliges.
- *
- * @todo Refactoring for lock manager / correctness
- *
- * Possible interfaces:
- * 
- 
-
 
     pageManager - Provides cached page handling, delegates to blob
     manager when necessary.  Doesn't implement an eviction policy.
     That is left to a cacheManager.  (Multiple cacheManagers can be
     used with a single page manager.)
 
-    typedef struct {
-       Page * page;
-       / * If this page is pinned, what's the maximum lsn that's dirtied it? * /
-       lsn_t * max_dirty_lsn = 0;
-       / * How many times has this page been pinned using readWriteMap()? * /
-       int pin_count;
-    } page_metadata_t;
+ 
+  @todo Allow error checking!  
+ 
+  @todo Make linux provide a better version of malloc().  We need to
+  directly DMA pages into and out of userland, or setup mmap() so
+  that it takes a flag that makes it page mmapped() pages to swap
+  instead of back to disk. (munmap() and msync() would still hit the
+  on-disk copy)
+ 
+  @todo Refactoring for lock manager
+ 
+  Possible interface for lockManager:
 
+       Define three classes of objects that the lock manager is interested in:
 
-     Calls for user managed memory:
+         Transactions,
+	 Operations,
+	 Predicates.
 
-     Read only access to record:
+       LLADD already has operations and transactions, and these can be
+       relatively unchanged.  Predicates are read only operations that
+       return a set of tuples.  Tread() is the simplest predicate.
+       Index scans provide a motivating example.  
 
-      Cost with cache hit:  memcpy();
+       See http://research.microsoft.com/%7Eadya/pubs/icde00.pdf
+       (Generalized Isolation Level Definitions, Adya, Liskov, O'Neil,
+       2000) for a theoretical discussion of general locking schemes..
 
-      - int readRecord(rid, void *);
+       Locking functions can return errors such as DEADLOCK, etc.
+       When such a value is returned, the transaction aborts, and an
+       error is passed up to the application.
 
-     Write record directly:
-      Cost with cache hit:  memcpy(rid.size), eventual disk flush;
-     
-      - int writeRecord(rid, lsn, void *);
-
-     @todo need alloc + free...
-
-//    @param lsn can be 0 if this is a read-only mapping.  Otherwise,
-//     it should be the LSN of the operation that calls unmapRecord.
-//     @todo What connection between the lock manager and this function
-//     is there?  Presumably, unmap should be called when the locks are
-//     released...
-//     
-//      - void unmapRecord(map_t, lsn);
-
-    cachePolicy
-
-       page_id kickPage();  // Choose a page to kick.  May call logFlush() if necessary.
-       readPage(page);      // Inform the cache that a page was read.
-       writePage(page);     // Inform the cache that a page was written.
-       cacheHint(void *);   // Optional method needed to implement dbmin.
-
-    lockManager 
-
-     - These functions provide a locking implementation based on logical operations:
-
-       lock_t lock(Operation o);
-       unlock(Operation o);
-
-     - These functions provide a locking implementation based on physical operations:
-
-       (Insert bufferManager API here, but make each call take a xid and a lock_t* parameter)
-
-     Locking functions can return errors such as DEADLOCK, etc.
-
- *
  * @ingroup LLADD_CORE
  * $Id$
  */
@@ -153,7 +110,7 @@ Page loadPage(int pageid);
  * @param size The size of the new record
  * @return allocated record
  */
-recordid ralloc(int xid, lsn_t lsn, size_t size);
+recordid ralloc(int xid, size_t size);
 
 /**
  * Find a page with some free space.
@@ -161,17 +118,17 @@ recordid ralloc(int xid, lsn_t lsn, size_t size);
  */
  
 
-/**
+/* *
  * This function updates the LSN of a page.
  * 
  * This is needed by the
  * recovery process to make sure that each action is undone or redone
  * exactly once.
  *
- * @param LSN The new LSN of the page.
- * @param pageid ID of the page you want to write
+ * @ param LSN The new LSN of the page.
+ * @ param pageid ID of the page you want to write
  *
- * @todo This needs to be handled by ralloc and writeRecord for
+ * @ todo This needs to be handled by ralloc and writeRecord for
  * correctness.  Right now, there is no way to atomically update a
  * page(!)  To fix this, we need to change bufferManager's
  * implementation to use read/write (to prevent the OS from stealing
@@ -212,10 +169,9 @@ void readRecord(int xid, recordid rid, void *dat);
  * flush.  
  *
  * @param page  The page to be flushed to disk.
- * @return 0 on success
- * @return error code on failure 
  */
-int flushPage(Page page);
+void pageWrite(const Page * dat);
+
 
 /**
    Read a page from disk.  
@@ -223,7 +179,12 @@ int flushPage(Page page);
    @param A page struct, with id set correctly.  The rest of this
    struct is filled out by pageMap.
 */
-void pageMap(Page * page);
+void pageRead(Page * ret);
+
+
+/* int flushPage(Page page); */
+
+/*void pageMap(Page * page); */
 /*
  * this function does NOT write to disk, just drops the page from the active
  * pages

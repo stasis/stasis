@@ -175,7 +175,9 @@ static void Undo(int recovery) {
       /** @todo probably want guards that are run during normal operation. */
       lh = getLSNHandle(rollback);
     } 
-    e = readLSNEntry(rollback);
+
+
+    /* e = readLSNEntry(rollback);  (THIS STATEMENT HAD NO EFFECT)*/
     /*    printf("#"); fflush(NULL); */
     
 

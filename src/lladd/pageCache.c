@@ -12,6 +12,8 @@
 #include <lladd/page.h>
 #include <stdlib.h>
 
+#include <lladd/bufferManager.h>
+
 static pblHashTable_t *activePages; /* page lookup */
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
@@ -116,8 +118,10 @@ static Page *kickPage(int pageid) {
 	pblHtRemove(activePages, &ret->id, sizeof(int));
 	
 	/* if( munmap(ret->memAddr, PAGE_SIZE) ) */
-	if(pageWrite(ret)) /*flushPage(*ret)) */
-		assert( 0 ); 
+	/*if(pageWrite(ret)) / * flushPage(*ret)) * /
+		assert( 0 ); */
+
+	pageWrite(ret);
 
 	pageRealloc(ret, pageid);
 

@@ -79,7 +79,7 @@ void openBlobStore() {
     xacts that have written to blobs.  Should explicitly abort them
     instead of just invalidating the dirtyBlobs hash.  
 
-    (If the you fix the above @todo, don't forget to fix
+    (If the you fix the above todo, don't forget to fix
     bufferManager's simulateBufferManagerCrash.)
 */
 void closeBlobStore() {
@@ -95,8 +95,10 @@ void closeBlobStore() {
 
 long myFseek(FILE * f, long offset, int whence) {
   long ret;
+  flockfile(f);
   if(0 != fseek(f, offset, whence)) { perror ("fseek"); fflush(NULL); abort(); }
   if(-1 == (ret = ftell(f))) { perror("ftell"); fflush(NULL); abort(); }
+  funlockfile(f);
   return ret;
 }
 
@@ -162,13 +164,6 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
   /* Read in record to get the correct offset, size for the blob*/
   readRawRecord(xid, rid, &blob_rec, sizeof(blob_record_t));
 
-  /** Then in the blob file. @todo: BUG How can we get around doing a
-      force here?  If the user allocates space and we crash, could we
-      double allocate space, since the file won't have grown.  Could
-      we write a log entry with the new size?  Alternatively, is
-      forcing the files before writing a commit to log enough?*/
-
-  /** @todo Should this be -1, not -2?  Aren't we writing one byte after the end of the blob? */
   myFseek(blobf0, fileSize + rid.size - 1, SEEK_SET);
   myFseek(blobf1, fileSize + rid.size - 1, SEEK_SET);
 
@@ -285,12 +280,6 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
   FILE * fd;
   int readcount;
 
-  /** @todo  Dang.  Blob allocation needs to go in three phases:
-       1) Alloc record  (normal Talloc() before blob alloc)
-       2) Grab offset / size from blobManager, Tset() record from 1 with it.
-       3) Log it.
-       4) Upon recieving log entry, update static file length variable in blobManager.  (Will fix double allocation race bug as well, but introduced record leaking on crash... Oh well.)
-  */
   DEBUG("Writing blob (size %d)\n", rid.size);
 
 
@@ -320,7 +309,7 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
 
   offset = myFseek(fd, rec.offset, SEEK_SET);
 
-  printf("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
+  DEBUG("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
   assert(offset == rec.offset);
   readcount = fwrite(buf, rec.size, 1, fd);
   assert(1 == readcount);
@@ -343,9 +332,6 @@ void commitBlobs(int xid) {
     
     (Functionally equivalent to the old rmTouch() function.  Just
     deletes this xid's dirty list.)
-
-    @todo doesn't take lsn_t, since it doesnt write any blobs.  Change
-    the api?
 
     @todo The tripleHash data structure is overkill here.  We only
     need two layers of hash tables, but it works, and it would be a
