@@ -51,25 +51,27 @@ implemented an extensible navigational database system.  We
 believe that this system will support modern development practices and
 allows transactions to be used in a wider range of applications.
 
-*** This paragraph doesn't make sense to me:
+Typically, implementations of general-purpose declarative systems 
+are unable to keep up with the new classes of workloads introduced 
+by rapidly evolving applications.  We believe that our architecture's
+flexibility allows us to address such applications rapidly.  In cases
+where the development of a general-purpose system is not economical, 
+our system seems to be a reasonable long-term solution.  XML storage
+technologies, which are rapidly evolving and still fail to handle 
+many types of applications provide a good example.
 
-In cases where the development of a general-purpose solution is not
-economical, our approach should lead to maintainable and efficient
-long-term solutions.  Semi-structured data stores provide good
-examples of both types of scenarios.  General XML storage technologies
-are improving rapidly, but still fail to handle many types of
-applications.
-
-*** this is risky: there are many people working on XML databases
-For instance, 
-we know of no general-purpose solution that seriously addresses 
-semi-structured scientific information, such as the large repositories 
-typical of bioinformatics research efforts[PDB, NCBI, Gene Ontology].
-Although many scientific projects are moving toward XML for their data 
-representation, we have found that XML is used primarily as a data 
-interchange format, and that existing XML tools fail to address the 
-needs of automated data mining, scientific computing and interactive 
-query systems.
+For instance, most general-purpose solutions for semi-structured
+information have difficulty handling computationally intensive
+workloads posed by the large repositories that are typical of
+bioinformatics research[PDB, NCBI, Gene Ontology].  These sytems are
+slowly transitioning to XML, which currently has clear value as an
+interchange format, but many of the data processing applications that
+use these databases still employ ad-hoc solutions for data managment.
+Whether or not general purpose XML database systems eventually meet
+the unique needs of each of these scientific applications, extensions 
+implemented on top of a more flexible data storage implementation 
+could have avoided the need for ad-hoc solutions, and could serve 
+as a partial prototype for higher level implementations.
 
 LLADD is based upon an extensible version of ARIES but does not
 hard-code details such as page format or data structure
@@ -183,8 +185,8 @@ behavior during recovery is equivalent to the behavior that would
 result if an abort() was issued on each prefix of the log that is
 generated during normal forward operation.
 
-*** below implies that two operations have two latches and can thus run in parallel ***
-By using coarse latching (one latch per logical operation), we can
+By using coarse latches that are held throughout entire logical 
+operation invocations, we can
 drastically reduce the size of this space, allowing conventional
 state-state based search techniques (such as randomized or exhaustive
 state-space searches, or unit testing techniques) to be
@@ -207,11 +209,15 @@ latching/unlatching behavior, but this would greatly complicate the
 API that application developers must work with, and complicate any
 application code that made use of such optimizations.
 
-*** code hoisting might be a better example
-Compiler optimization techniques such as partial common subexpression
-elimination solve an analogous problem to remove redundant algebraic
-computations.  We hope to extend such techniques to reduce the number
-of buffer manager and locking calls made by existing code at runtime.
+Compiler optimization techniques such as code hoisting and partial common 
+subexpression elimination solve analogous problems to remove redundant 
+computations.  Code hoisting moves code outside of loops and conditionals, while
+partial common subexpression elimination inserts checks that decide at runtime
+whether a particular computation is redundant.
+We hope to extend such techniques to reduce the number
+of buffer manager and locking calls made by existing code.  In 
+situations where memory is abundant, these calls are a significant 
+performance bottleneck, especially for read-only operations.
 
 Anecdotal evidence and personal experience suggest that similar
 optimization techniques are applicable to application code.  Because
@@ -222,8 +228,7 @@ implementation.  This class of optimizations would be very difficult
 to implement with existing transactional storage systems but should
 significantly improve application performance.
 
-*** no reason to say this: Our implementation of LLADD is still unstable and inappropriate for use on important data. 
- We hope to validate our ideas about static analysis by incorporating
+We hope to validate our ideas about static analysis by incorporating
 them into the development process as we increase the reliability and
 overall quality of LLADD's implementation and its APIs.
 
