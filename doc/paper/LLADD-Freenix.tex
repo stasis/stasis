@@ -96,7 +96,7 @@ perform set operations.}
 We also believe that LLADD is applicable in
 the context of new, special-purpose database systems such as XML databases,
 streaming databases, and extensible/semantic file systems~\cite{reiser, semantic}.  These form a 
-fruitful area of current research, but existing monolithic database systems tend to be a poor fit for these new areas.
+fruitful area of current research,~\cite{stonebraker} but existing monolithic database systems tend to be a poor fit for these new areas.
 
 The basic approach of LLADD, taken from ARIES~\cite{aries}, is to build
 \emph{transactional pages}, which enables recovery on a page-by-page
@@ -1134,48 +1134,51 @@ LLADD is free software, available at:
 
 \begin{thebibliography}{99}
 
-\bibitem[Lamb]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991) p. 50-63
-
-\bibitem[Lehman]{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
-\bibitem[Mohan92]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
-
-\bibitem[Mohan86]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
-
-\bibitem[Stonebraker]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
-
-\bibitem[Gray]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
-
 \bibitem[Agrawal]{multipleGenericLocking} Agrawal, et al. {\em Concurrency Control Performance Modeling: Alternatives and Implications}. TODS 12(4): (1987) 609-654
 
-\bibitem[Gray75]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, pages 428--431, September 1975. Reprinted in Readings in Database Systems, 3rd edition.
-
-\bibitem[Gifford]{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
-
-\bibitem[Seltzer]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+\bibitem[BDB]{bdb} Berkeley~DB~4.2.52, {\tt http://www.sleepycat.com/}
 
 \bibitem[Behren]{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
 
+\bibitem[Codd]{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
+
 \bibitem[Evangelos]{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
 
-\bibitem[Mohan]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+\bibitem[Gifford]{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
 
-\bibitem[BDB]{bdb} Berkeley~DB~4.2.52, {\tt http://www.sleepycat.com/}
+\bibitem[Gray]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
+
+\bibitem[Gray75]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, pages 428--431, September 1975. Reprinted in Readings in Database Systems, 3rd edition.
+
+\bibitem[Haerder]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) p 287-317 (1983)
+
+\bibitem[Lamb]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991) p. 50-63
+
+\bibitem[Lehman]{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
+
+\bibitem[Litwin]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) p. 212-223
+
+\bibitem[Mohan]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
+
+\bibitem[Mohan86]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
+
+\bibitem[Mohan92]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+
+\bibitem[MySQL]{mysql} {\em MySQL Documentation}, {\tt http://dev.mysql.com/doc }
+
+\bibitem[Reiser]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/v4/v4.html } (2004)
+%
+\bibitem[Seltzer]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+
+\bibitem[Satyanarayanan]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
+
+\bibitem[Stonebraker]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
 
 %\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
 %
 %\bibitem[lcov]{lcov} The~LTP~gcov~extension, {\tt http://ltp.sourceforge.net/coverage/lcov.php }
 %
-\bibitem[Reiser]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/v4/v4.html } (2004)
-%
-\bibitem[Haerder]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) p 287-317 (1983)
 
-\bibitem[Satyanarayanan]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
-
-\bibitem[Codd]{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
-
-\bibitem[MySQL]{mysql} {\em MySQL Documentation}, {\tt http://dev.mysql.com/doc }
-
-\bibitem[Litwin]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) p. 212-223
 
 %\bibitem[Beazley]{beazley} D.~M.~Beazley and P.~S.~Lomdahl, 
 %{\em Message-Passing Multi-Cell Molecular Dynamics on the Connection
