@@ -1,3 +1,4 @@
+
 #include <lladd/operations/linearHash.h>
 #include <lladd/hash.h>
 #include <limits.h>
@@ -70,6 +71,8 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
 
   assert(keySize == sizeof(int));
   assert(valSize == sizeof(recordid));
+
+  rid.size = sizeof(hashEntry) + keySize + valSize;
 
   ThashInstantInsert(xid, rid, argBytes, keySize, 
 		     argBytes + keySize, valSize);
@@ -147,7 +150,7 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
 
     Tupdate(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
     free(arg);
-    hashRid.size = sizeof(recordid);
+    /*    hashRid.size = sizeof(recordid); */
     ThashInstantDelete(xid, hashRid, key, keySize, valSize);
     return 1;
   } else {
@@ -561,6 +564,8 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 
 void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
 		      hashEntry * e, int keySize, int valSize, int skipDelete) {
+
+  assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
   recordid deleteMe; 
   if(!skipDelete) {
     if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, valSize, &deleteMe)) {
@@ -577,7 +582,7 @@ void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hash
   /*@todo consider recovery for insertIntoBucket. */
 
   hashRid.slot = bucket_number;
-  assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
+
   TreadUnlocked(xid, hashRid, bucket_contents);
 
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
