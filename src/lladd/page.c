@@ -147,7 +147,9 @@ void pageInit() {
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     pool[i].rwlatch = initlock();
     pool[i].loadlatch = initlock();
-    assert(!posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE));
+    int ret = posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE);
+
+    assert(!ret);
   }
   pthread_mutex_init(&lastAllocedPage_mutex , NULL);
 	

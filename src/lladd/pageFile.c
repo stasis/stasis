@@ -116,12 +116,12 @@ void pageWrite(Page * ret) {
   }
   pthread_mutex_unlock(&stable_mutex);
 }
-
+/** @todo O_DIRECT is broken on old (pre 2.6.2ish?) linux, so it's disabled until the build script can be improved. :( */
 void openPageFile() {
 
   DEBUG("Opening storefile.\n");
 
-  stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
+  stable = open (STORE_FILE, O_CREAT | O_RDWR /*| O_DIRECT*/, S_IRWXU | S_IRWXG | S_IRWXO);
 
   if(stable == -1) {
     perror("couldn't open storefile");
