@@ -74,6 +74,7 @@ struct pobj_rep_list_item {
     int next_index;
     void *objid;
     size_t size;
+    int type_index;;
     recordid rid;
 };
 /* TODO: switch to growable data structure. */
