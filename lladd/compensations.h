@@ -1,4 +1,9 @@
 #include <pthread.h>
+#include <lladd/common.h>
+#ifndef __COMPENSATIONS_H
+#define __COMPENSATIONS_H
+
+BEGIN_C_DECLS
 
 /** Rants about cpp:
 
@@ -9,7 +14,7 @@ foo() {
  
   // stuff
 
-  compensate(l) {
+  compensate_(l) {
      lock(l);
      // blah blah
   } with {
@@ -94,6 +99,7 @@ void lock_c_line_1231(lock * l) {
   Also, begin_action(NULL, NULL) is supported, and is useful for
   checking the return value of a called function.
 */
+
 void compensations_init();
 void compensations_deinit();
 int compensation_error();
@@ -118,4 +124,29 @@ void compensation_set_error(int code);
   pthread_cleanup_pop((int)_func_);  \
   if(compensation_error()) return;   \
   } while(0)
+
+#define begin_action_ret(func, var, ret)      \
+  if(compensation_error()) return (ret);   \
+  do{                                \
+  void (*_func_)(void*);             \
+  pthread_cleanup_push(_func_=(void(*)(void*))(func), (void*)(var));\
+  do
+
+#define end_action_ret(ret)                   \
+  while(0);                          \
+  pthread_cleanup_pop(_func_ && compensation_error());        \
+  if(compensation_error()) return (ret);   \
+  } while(0)
+
+#define compensate_ret(ret)                   \
+  while(0);                          \
+  pthread_cleanup_pop((int)_func_);  \
+  if(compensation_error()) return (ret);   \
+  } while(0)
+
+#define compensated_function 
+
+#endif
+
+END_C_DECLS
 
