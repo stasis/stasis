@@ -112,7 +112,7 @@ persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table\footnote{If the object is
 stored in normalized relational format it may span many rows and
-tables~\cite{Hibernate}.}  and then issuing queries to keep the
+tables~\cite{hibernate}.}  and then issuing queries to keep the
 objects and rows consistent. A typical update must confirm it has the
 current version, modify the object, write out a serialized version
 using the SQL {\tt update} command, and commit.  This is an awkward
@@ -365,7 +365,7 @@ order to serve these applications, many software systems have been
 developed.  Some are extremely complex, such as semantic file
 systems, where the file system understands the contents of the files
 that it contains, and is able to provide services such as rapid
-search, or file-type specific operations such as thumb nails \cite{Reiser4,WinFS,BeOS,SemanticFSWork,SemanticWeb}.  Others are simpler, such as
+search, or file-type specific operations such as thumb nails \cite{reiser,semantic}.  Others are simpler, such as
 Berkeley~DB~\cite{bdb, berkeleyDB}, which provides transactional
 storage of data in indexed form using a hashtable or tree, or as a queue.  
 % bdb's recno interface seems to be a specialized b-tree implementation - Rusty
@@ -724,7 +724,7 @@ deadlock-avoidance schemes, which are already prevalent in
 multithreaded application development.  The lock manager is flexible
 enough to also provide index locks for hashtable implementations and 
 more complex locking protocols such as hierarhical two-phase 
-locking.~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample}  
+locking.~\cite{hierarcicalLocking,ariesim}  
 The lock manager api is divided into callback functions that are made 
 during normal operation and recovery, and into generic lock mananger 
 implementations that may be used with \yad and its index implementations.
@@ -1850,7 +1850,7 @@ advantage of write-ahead logging, which is to ensure application data
 durability with mostly sequential disk I/O.
 
 In summary, this system architecture (though commonly
-deployed~\cite{ejb,ordbms,jdo,...}) is fundamentally
+deployed~\cite{hibernate,postgres}) is fundamentally
 flawed.  In order to access objects quickly, the application must keep
 its working set in cache.  Yet in order to efficiently service write 
 requests, the
@@ -2198,7 +2198,7 @@ reorders requests in a way that attempts to establish and maintain
 disk locality.  This kind of log manipulation is very powerful, and
 could also be used for parallelism with load balancing (using a hash
 of the page number) and log-merging optimizations such as those in
-LRVM~\cite{LRVM}.
+LRVM~\cite{lrvm}.
 
 %% \rcs{ This belongs in future work....}
 
@@ -2424,7 +2424,11 @@ benefit from the power of transactions.
 
 \bibitem[3]{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
 
+\bibitem[4]{oo7} Carey, Michael J., DeWitt, David J., Naughton, Jeffrey F. {\em The OO7 Benchmark.} SIGMOD (1993)
+
 \bibitem[4]{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
+
+\bibitem[5]{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
 
 \bibitem[5]{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
 
@@ -2433,6 +2437,8 @@ benefit from the power of transactions.
 \bibitem[7]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
 
 \bibitem[8]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, September 1975. Reprinted in Readings in Database Systems, 3rd ed.
+
+\bibitem[9]{cht}  Gribble, Steven D., Brewer, Eric A., Hellerstein, Joseph M., Culler, David.  {\em Scalable, Distributed Data Structures for Internet Service Construction. } OSDI (2000)
 
 \bibitem[9]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) (1983) % p 287-317
 
@@ -2458,7 +2464,9 @@ benefit from the power of transactions.
 
 \bibitem[20]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
 
-\bibitem[21]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
+\bibitem[21]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base. } ICDE (1986) %p. 262-269
+
+\bibitem[22]{postgres} Stonebraker and Kemnitz. {\em The POSTGRES Next-Generation Database Management System. } CACM (1991)
 
 %\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
 %
