@@ -32,8 +32,8 @@ typedef struct {
 
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize);
 
-pthread_mutex_t linearHashMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t bucketUnlocked = PTHREAD_COND_INITIALIZER;
+extern pthread_mutex_t linearHashMutex;// = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_cond_t bucketUnlocked;// = PTHREAD_COND_INITIALIZER;
 
 extern pblHashTable_t * openHashes ;
 /*pblHashTable_t * openHashes = NULL; */
@@ -224,27 +224,29 @@ void instant_expand (int xid, recordid hash, int next_split, int i, int keySize,
   }
 
   }*/
+
+extern pthread_mutex_t exp_mutex, exp_slow_mutex;
+
 /** you must hold linearHashMutex to call this function, which will release, and reaquire the mutex for you, as apprpriate. */
 void instant_expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
   /* Total hack; need to do this better, by storing stuff in the hash table headers.*/
-  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-  static pthread_mutex_t slow_mutex = PTHREAD_MUTEX_INITIALIZER;
+  /*  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+      static pthread_mutex_t slow_mutex = PTHREAD_MUTEX_INITIALIZER; */
 
 
   static int count = 4096 * .25;
 
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&exp_mutex);
 
   count --;
   int mycount = count;
-  pthread_mutex_unlock(&mutex);
-
+  pthread_mutex_unlock(&exp_mutex);
 
 
 #define AMORTIZE 1000
 #define FF_AM    750
   if(mycount <= 0 && !(mycount * -1) % FF_AM) {
-    pthread_mutex_lock(&slow_mutex);
+    pthread_mutex_lock(&exp_slow_mutex);
 
     int j;
     TarrayListInstantExtend(xid, hash, AMORTIZE);
@@ -287,7 +289,7 @@ void instant_expand (int xid, recordid hash, int next_split, int i, int keySize,
     instant_update_hash_header(xid, hash, i, next_split);  
 
     //    pthread_mutex_unlock(&linearHashMutex);
-    pthread_mutex_unlock(&slow_mutex);
+    pthread_mutex_unlock(&exp_slow_mutex);
     pthread_cond_broadcast(&bucketUnlocked);
 			       
 

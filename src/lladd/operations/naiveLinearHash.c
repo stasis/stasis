@@ -2,6 +2,7 @@
 #include <lladd/hash.h>
 #include <limits.h>
 #include <assert.h>
+#include <pthread.h>
 /**
 
    A from-scratch implementation of linear hashing.  Uses the
@@ -488,9 +489,21 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   return rid;
 }
 
+pthread_mutex_t exp_mutex;
+pthread_mutex_t exp_slow_mutex;
+pthread_mutex_t linearHashMutex;
+pthread_cond_t bucketUnlocked;
+
+
 void ThashInit() {
   openHashes = pblHtCreate();
   lockedBuckets = pblHtCreate();
+
+  pthread_mutex_init(&linearHashMutex , NULL);
+  pthread_cond_init(&bucketUnlocked , NULL);
+  pthread_mutex_init(&exp_mutex, NULL);
+  pthread_mutex_init(&exp_slow_mutex, NULL);
+  
 }
 
 void ThashDeinit() {
