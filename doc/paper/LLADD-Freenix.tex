@@ -509,8 +509,7 @@ make it easy to implement custom data structures for use within safe,
 multi-threaded transactions. Clearly, an additional mechanism is needed.
 
 The solution is to allow portions of an operation to ``commit'' before
-the operation returns.
-\footnote{We considered the use of nested top actions, which LLADD could easily
+the operation returns.\footnote{We considered the use of nested top actions, which LLADD could easily
 support. However, we currently use the slightly simpler (and lighter-weight)
 mechanism described here. If the need arises, we will add support
 for nested top actions.}
@@ -565,7 +564,7 @@ such a tool could easily be applied to existing LLADD operations.
 
 Note that the ARIES algorithm is extremely complex, and we have left
 out most of the details needed to understand how ARIES works, or to 
-implement it correctly.\footnote{The original ARIES paper is around 70 pages, and the ARIES/IM paper~\cite{ariesim}, which coversd index implementation is roughly the same length.}  Yet, we believe we have covered everything that a programmer needs
+implement it correctly.\footnote{The original ARIES paper is around 70 pages, and the ARIES/IM paper~\cite{ariesim}, which covers index implementation is roughly the same length.}  Yet, we believe we have covered everything that a programmer needs
  to know in order to implement new data structures using the 
 functionality that ARIES provides. This was possible due to the encapsulation
 of the ARIES algorithm inside of LLADD, which is the feature that
@@ -600,7 +599,7 @@ Currently LLADD imposes two requirements on page layouts. The first
 32 bits must contain an LSN for recovery purposes,
 and the second 32 bits must contain the page type (since we allow multple page formats).
 
-Although it ships with basic operations that support variable length
+Although it ships with basic operations that support variable-length
 records, hash tables and other common data types, our goal is to
 decouple all decisions regarding data format from the implementation
 of the logging and recovery systems. Therefore, the preceeding section
@@ -609,16 +608,16 @@ the purpose of the performance numbers in our evaluation section are
 not to validate our hash table, but to show that the underlying architecture
 is able to efficiently support interesting data structures.
 
-Despite the complexity of the interactions between its modules, the
+Despite the complexity of the interactions among its modules, the
 basic ARIES algorithm itself is quite simple. Therefore, in order to
 keep LLADD simple, we started with a set of modules, and iteratively
-refined the boundaries between these modules. Figure~\ref{cap:LLADD-Architecture} presents the resulting architecture.  The
+refined the boundaries among these modules. Figure~\ref{cap:LLADD-Architecture} presents the resulting architecture.  The
 core of the LLADD library is quite small at 2218 lines of code, 2155
 lines of implementations of operations and other extensions, and 408
 lines of installable header files.\footnote{These counts were generated using David
 A. Wheeler's {\tt SLOCCount}. \cite{sloccount}} The code has been documented extensively,
 and we hope that we have exposed most of the subtle interactions
-between internal modules in the online documentation.
+among internal modules in the online documentation.
 
 As LLADD has evolved, many of its sub-systems have been incrementally
 improved, and we believe that the current set of modules is amenable
@@ -655,7 +654,7 @@ into subsystems with simple interfaces is obvious. We are able to
 use standard unit-testing techniques to test each of LLADD's subsystems
 independently, and have documented both external and internal interfaces,
 making it easy to add new tests and debug old ones. Furthermore, by
-adding a 'simulate crash' operation to a few of the key components,
+adding a ``simulate crash'' operation to a few of the key components,
 we can simulate application level crashes by clearing LLADD's internal
 state, re-initializing the library and verifying that recovery was
 successful. These tests currently cover approximately 
@@ -679,10 +678,10 @@ A more interesting set of performance requirements are imposed by
 multithreaded workloads. Each module of LLADD is reentrant, and a
 C preprocessor directive allows the entire library to be instrumented
 in order to profile latching behavior, which is useful both for perfomance
-tuning and for debugging purposes. A thread that is not involved in
+tuning and for debugging. A thread that is not involved in
 an I/O request never needs to wait for a latch held by a thread that
 is waiting for I/O.%
-\footnote{Strictly speaking, this statement is only true for the LLADD's core.
+\footnote{Strictly speaking, this statement is only true for LLADD's core.
 However, there are variants of most popular data structures that allow
 us to preserve these invariants. LLADD can correctly support operations
 whether or not they have these properties.%
