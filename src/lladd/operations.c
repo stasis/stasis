@@ -45,49 +45,56 @@ terms specified in this license.
 #include <lladd/bufferManager.h>
 #include <assert.h>
 
+/** @todo questionable include */
+#include "page.h"
+
 #include <stdio.h>
 
 Operation operationsTable[MAX_OPERATIONS];
 
-void doUpdate(const LogEntry * e) {
+void doUpdate(const LogEntry * e, Page * p) {
 
 
   DEBUG("OPERATION update arg length %d, lsn = %ld\n", e->contents.update.argSize, e->LSN);
 
-  operationsTable[e->contents.update.funcID].run(e->xid, e->LSN, e->contents.update.rid, getUpdateArgs(e));
-
-  /*  removePendingEvent(e->contents.update.rid.page); */
+  operationsTable[e->contents.update.funcID].run(e->xid, p, e->LSN, e->contents.update.rid, getUpdateArgs(e));
 
 }
 
 void redoUpdate(const LogEntry * e) {
   if(e->type == UPDATELOG) {
-    lsn_t pageLSN = readLSN(e->contents.update.rid.page);
-#ifdef DEBUGGING
+    /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
     recordid rid = e->contents.update.rid;
-#endif
+    Page * p = loadPage(rid.page);
+    lsn_t pageLSN = pageReadLSN(p);
+
     if(e->LSN > pageLSN) {
       DEBUG("OPERATION Redo, %ld > %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
-      doUpdate(e);
+      doUpdate(e, p);
     } else {
       DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
-      /*      removePendingEvent(e->contents.update.rid.page); */
     }
+
+    releasePage(p);
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
-#ifdef DEBUGGING
     recordid rid = f->contents.update.rid;
-#endif
+    Page * p = loadPage(rid.page);
+
+    assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
+
     /* See if the page contains the result of the undo that this CLR is supposed to perform. If it
        doesn't, then undo the original operation. */
-    if(f->LSN > readLSN(e->contents.update.rid.page)) {
+    /*    if(f->LSN > pageReadLSN(e->contents.update.rid.page)) { */
+    if(f->LSN > pageReadLSN(p)) {
 
       DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
-      undoUpdate(f, e->LSN);
+      undoUpdate(f, p, e->LSN);
     } else {
       DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
-      /*      removePendingEvent(e->contents.update.rid.page); */
     }
+
+    releasePage(p);
   } else {
     assert(0);
   }
@@ -95,7 +102,7 @@ void redoUpdate(const LogEntry * e) {
 }
 
 
-void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
+void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 
   int undo = operationsTable[e->contents.update.funcID].undo;
   DEBUG("OPERATION FuncID %d Undo op %d LSN %ld\n",e->contents.update.funcID, undo, clr_lsn);
@@ -103,7 +110,8 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
 #ifdef DEBUGGING
   recordid rid = e->contents.update.rid;
 #endif
-  lsn_t page_lsn = readLSN(e->contents.update.rid.page);
+  /*  lsn_t page_lsn = readLSN(e->contents.update.rid.page); */
+  lsn_t page_lsn = pageReadLSN(p);
   if(e->LSN <= page_lsn) {
 
     /* Actually execute the undo */
@@ -111,18 +119,16 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
       /* Physical undo */
 
       DEBUG("OPERATION Physical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
-      writeRecord(e->xid, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
+      writeRecord(e->xid, p, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
     } else {
       /* @see doUpdate() */
       /*      printf("Logical undo"); fflush(NULL); */
       DEBUG("OPERATION Logical undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
-      operationsTable[undo].run(e->xid, clr_lsn, e->contents.update.rid, getUpdateArgs(e));
+      operationsTable[undo].run(e->xid, p, clr_lsn, e->contents.update.rid, getUpdateArgs(e));
     }
   } else {
     DEBUG("OPERATION Skipping undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
   }
-
-  /*  removePendingEvent(e->contents.update.rid.page); */
 
   /*  printf("Undo done."); fflush(NULL); */
 

@@ -90,6 +90,32 @@ terms specified in this license.
 
 #include <lladd/constants.h>
 #include <lladd/transactional.h>
+
+/**
+   Page is defined in bufferManager.h as an incomplete type to enforce
+   an abstraction barrier between page.h and the rest of the system.
+
+   If you need to muck with page internals, first consider the
+   implications that doing so has on locking.  In particular, rwlatch
+   is currently entirely handled in page.c.
+*/
+typedef struct Page_s Page_s;
+typedef struct Page_s Page;
+
+/**
+ * @param pageid ID of the page you want to load
+ * @return fully formed Page type
+ * @return page with -1 ID if page not found
+ */
+Page * loadPage(int pageid);
+
+/**
+   loadPage aquires a lock when it is called, effectively pinning it
+   in memory.  realeasePage releases this lock.
+*/
+void releasePage(Page * p);
+
+
 /**
  * initialize buffer manager
  * @return 0 on success
@@ -118,13 +144,13 @@ recordid ralloc(int xid, long size);
  * 
  * @see ralloc
  */
-void slotRalloc(int pageid, lsn_t lsn, recordid rid);
+void slotRalloc(Page * page, lsn_t lsn, recordid rid);
 
 /**
  * @param pageid ID of page you want to read
  * @return LSN found on disk
  */
-long readLSN(int pageid);
+/*long readLSN(int pageid); */
 
 /**
  * @param xid transaction id @param lsn the lsn that the updated
@@ -135,14 +161,14 @@ long readLSN(int pageid);
  * @param rid recordid where you want to write @param dat data you
  * wish to write
  */
-void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat);
+void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat);
 
 /**
  * @param xid transaction ID
  * @param rid
  * @param dat buffer for data
  */
-void readRecord(int xid, recordid rid, void *dat);
+void readRecord(int xid, Page * page, recordid rid, void *dat);
 
 /**
  * all actions necessary when committing a transaction. Can assume that the log
@@ -183,9 +209,6 @@ int bufTransAbort(int xid, lsn_t lsn);
  */
 void bufDeinit();
 
-void setSlotType(int pageid, int slot, int type);
-
-void addPendingEvent(int pageid);
-void removePendingEvent(int pageid);
+/*void setSlotType(int pageid, int slot, int type); */
 
 #endif

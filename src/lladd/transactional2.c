@@ -11,8 +11,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <page.h>
-
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
@@ -81,12 +79,13 @@ int Tbegin() {
 	}
 
 	xidCount_tmp = xidCount;
-	/* Don't want to block while we're logging... */
-	pthread_mutex_unlock(&transactional_2_mutex);
+	/** @todo Don't want to block while we're logging... */
 
 	assert( i < MAX_TRANSACTIONS );
 	
 	XactionTable[index] = LogTransBegin(xidCount_tmp);
+
+	pthread_mutex_unlock(&transactional_2_mutex);
 
 	return XactionTable[index].xid;
 }
@@ -102,20 +101,22 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   p = loadPage(rid.page);
 
-  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], rid, op, dat);
-
+  /* KLUDGE re-enable loggging!*/ 
+  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+  
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
 
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
 
   doUpdate(e, p);
-  unlock(p->loadlatch);
+  releasePage(p);
 
 }
 
-/* @todo what about locking? */
 void Tread(int xid, recordid rid, void * dat) {
-  readRecord(xid, rid, dat);
+  Page * p = loadPage(rid.page);
+  readRecord(xid, p, rid, dat);
+  releasePage(p);
 }
 
 int Tcommit(int xid) {
@@ -123,31 +124,36 @@ int Tcommit(int xid) {
 #ifdef DEBUGGING 
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
-  pthread_mutex_unlock(&transactional_2_mutex);
 #endif
 
   lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
   bufTransCommit(xid, lsn); /* unlocks pages */
-  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
+
   pthread_mutex_lock(&transactional_2_mutex);
+  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
   pthread_mutex_unlock(&transactional_2_mutex);
+
+
 
   return 0;
 }
 
 int Tabort(int xid) {
   lsn_t lsn;
-  lsn = LogTransAbort(&XactionTable[xid%MAX_TRANSACTIONS]);
+  
+  TransactionLog * t =&XactionTable[xid%MAX_TRANSACTIONS];
 
-  /* @todo is the order of the next two calls important? */
-  undoTrans(XactionTable[xid%MAX_TRANSACTIONS]);
-  bufTransAbort(xid, lsn);
+  lsn = LogTransAbort(t /*&XactionTable[xid%MAX_TRANSACTIONS]*/);
 
-  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
+  /** @todo is the order of the next two calls important? */
+  undoTrans(*t/*XactionTable[xid%MAX_TRANSACTIONS]*/); 
+  bufTransAbort(xid, lsn); 
 
   pthread_mutex_lock(&transactional_2_mutex);
+  
+  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
   pthread_mutex_unlock(&transactional_2_mutex);
@@ -172,6 +178,7 @@ int Tdeinit() {
 
 void Trevive(int xid, long lsn) {
   int index = xid % MAX_TRANSACTIONS;
+  pthread_mutex_lock(&transactional_2_mutex);
   if(XactionTable[index].xid != INVALID_XTABLE_XID) {
     if(xid != XactionTable[index].xid) {
       printf("Clashing Tprepare()'ed XID's encountered on recovery!!\n");
@@ -182,10 +189,11 @@ void Trevive(int xid, long lsn) {
   } else {
     XactionTable[index].xid = xid;
     XactionTable[index].prevLSN = lsn;
-    pthread_mutex_lock(&transactional_2_mutex);
+
     numActiveXactions++;
-    pthread_mutex_unlock(&transactional_2_mutex);
+
   }
+  pthread_mutex_unlock(&transactional_2_mutex);
 }
 
 void TsetXIDCount(int xid) {

@@ -208,7 +208,7 @@ int writeLogEntry(LogEntry * e) {
   }
 
   if(e->xid == -1) { /* Don't write log entries for recovery xacts. */
-    e->LSN = -1;
+    e->LSN = -1; 
     return 0;
   }
 
@@ -245,7 +245,7 @@ int writeLogEntry(LogEntry * e) {
 
   e->LSN = nextAvailableLSN;
 
-  /* We have the write lock, so no-one else can call fseek behind our back. */
+  /* We have the write lock, so no one else can call fseek behind our back. */
   /*  flockfile(log); */ /* Prevent other threads from calling fseek... */
 
   fseek(log, nextAvailableLSN - global_offset, SEEK_SET); 
@@ -332,9 +332,8 @@ static LogEntry * readLogEntry() {
   long size, entrySize;
   int nmemb;
   
-
   if(feof(log)) {
-    return NULL;
+    return NULL; 
   }
 
   nmemb = fread(&size, sizeof(long), 1, log);

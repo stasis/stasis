@@ -18,6 +18,12 @@
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 
+/** @todo recovery2.c shouldn't include pageCache.h once refactoring is done. */
+#include <lladd/pageCache.h>
+/** @todo questionable include? */
+#include "page.h"
+
+
 #include <lladd/transactional.h>
 
 #include <stdio.h>
@@ -200,30 +206,33 @@ static void Undo(int recovery) {
       /*      printf("."); fflush(NULL); */
       switch(e->type) {
       case UPDATELOG:
-	
-
-      /* Sanity check.  If this fails, we've already undone this
-	 update, or something is wrong with the redo phase or normal operation. */
-	this_lsn= readLSN(e->contents.update.rid.page); 
-
-	
-	/*	printf("1"); fflush(NULL); */
-
-	assert(e->LSN <= this_lsn);  
-
-	/* printf("1a"); fflush(NULL); */
-	
-	/* Need to log a clr here. */
-
-	clr_lsn = LogCLR(e);
-
-	/* Undo update is a no-op if the page does not reflect this
-	   update, but it will write the new clr_lsn if necessary.  */
-
-	undoUpdate(e, clr_lsn);
-
-	/*	printf("1b"); fflush(NULL); */
-      break;
+	{
+	  /* Need write lock for undo.. */
+	  Page * p = getPage(e->contents.update.rid.page, RW); 
+	  /* Sanity check.  If this fails, we've already undone this
+	     update, or something is wrong with the redo phase or normal operation. */
+	  this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
+	  
+	  
+	  /*	printf("1"); fflush(NULL); */
+	  
+	  assert(e->LSN <= this_lsn);  
+	  
+	  /* printf("1a"); fflush(NULL); */
+	  
+	  /* Need to log a clr here. */
+	  
+	  clr_lsn = LogCLR(e);
+	  
+	  /* Undo update is a no-op if the page does not reflect this
+	     update, but it will write the new clr_lsn if necessary.  */
+	  
+	  undoUpdate(e, p, clr_lsn);
+	  
+	  /*	printf("1b"); fflush(NULL); */
+	  releasePage(p);
+	  break;
+	}
       case CLRLOG:  
 	/* Don't need to do anything special to handle CLR's.  
 	   Iterator will correctly jump to clr's previous undo record. */

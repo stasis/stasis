@@ -49,11 +49,13 @@ terms specified in this license.
 #include <lladd/common.h>
 #include <latches.h>
 #include <assert.h>
+
+#include "page.h"
+
 #include <lladd/bufferManager.h>
 #include "blobManager.h"
 #include <lladd/pageCache.h>
 
-#include "page.h"
 #include "pageFile.h"
 
 /**
@@ -68,22 +70,10 @@ terms specified in this license.
 */
 
 static pthread_mutex_t lastFreepage_mutex;
-pthread_mutex_t add_pending_mutex;
-
 static unsigned int lastFreepage = 0;
-
-/**
- * @param pageid ID of the page you want to load
- * @return fully formed Page type
- * @return page with -1 ID if page not found
- */
-Page * loadPage(int pageid);
-
-pthread_cond_t addPendingOK;
 
 int bufInit() {
 
-  /*	stable = NULL; */
 	pageInit();
 	openPageFile();
 	pageCacheInit();
@@ -91,10 +81,6 @@ int bufInit() {
 
 	lastFreepage = 0;
 	pthread_mutex_init(&lastFreepage_mutex , NULL);
-	pthread_cond_init(&addPendingOK, NULL);
-	pthread_mutex_init(&add_pending_mutex, NULL);
-
-
 	return 0;
 }
 
@@ -117,10 +103,8 @@ void simulateBufferManagerCrash() {
 
 /* ** No file I/O below this line. ** */
 
-Page * loadPage (int pageid) {
-  Page * p = loadPagePtr(pageid);
-  assert (p->id == pageid);
-  return  p; 
+void releasePage (Page * p) {
+  unlock(p->loadlatch);
 }
 
 Page * lastRallocPage = 0;
@@ -138,13 +122,13 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
 
   pthread_mutex_lock(&lastFreepage_mutex);  
   while(freespace(p = loadPage(lastFreepage)) < size ) { 
-    unlock(p->loadlatch); 
+    releasePage(p);
     lastFreepage++; 
   }
   
   ret = pageRalloc(p, size);
     
-  unlock(p->loadlatch);
+  releasePage(p);
 
   pthread_mutex_unlock(&lastFreepage_mutex);
   
@@ -153,22 +137,9 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   return ret;
 }
 
-void slotRalloc(int pageid, lsn_t lsn, recordid rid) {
-  Page * loadedPage = loadPage(rid.page);
-  pageSlotRalloc(loadedPage, lsn, rid);
-  unlock(loadedPage->loadlatch);
-}
+void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
-long readLSN(int pageid) {
-  Page *p;
-  lsn_t lsn = pageReadLSN(p = loadPage(pageid));
-  unlock(p->loadlatch);
-  return lsn;
-}
-
-void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
-
-  Page *p;
+  /*  Page *p; */
   
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     /*    DEBUG("Writing blob.\n"); */
@@ -176,31 +147,31 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 
   } else {
     /*    DEBUG("Writing record.\n"); */
-    p = loadPage(rid.page); /* loadPagePtr(rid.page); */
+
     assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+
     /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
     /*assert(pageReadLSN(*p) <= lsn);*/
     
     pageWriteRecord(xid, p, rid, lsn, dat);
-    
-    unlock(p->loadlatch);
+
+    assert( (p->id == rid.page) && (p->memAddr != NULL) );	
     
   }
 }
 
-void readRecord(int xid, recordid rid, void *buf) {
+void readRecord(int xid, Page * p, recordid rid, void *buf) {
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     /*    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
 	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
+    /* @todo should readblob take a page pointer? */
     readBlob(xid, rid, buf);
   } else {
-    Page * p = loadPage(rid.page);
     assert(rid.page == p->id); 
     /*    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 
 	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
     pageReadRecord(xid, p, rid, buf);
     assert(rid.page == p->id); 
-    unlock(p->loadlatch);
   }
 }
 
@@ -219,94 +190,3 @@ int bufTransAbort(int xid, lsn_t lsn) {
 
   return 0;
 }
-
-void setSlotType(int pageid, int slot, int type) {
-  Page * p = loadPage(pageid);
-  pageSetSlotType(p, slot, type);
-  unlock(p->loadlatch);
-}
-
-/** 
-    Inform bufferManager that a new event (such as an update) will be
-    performed on page pageid.  This function may not be called on a
-    page after finalize() has been called on that page, and each call
-    to this function must be followed by a corresponding call to
-    removePendingEvent.
-
-    This function is called by the logger when CLR or UPDATE records
-    are written.
-    
-    @see finalize, removePendingEvent
-
-*/
-/*void addPendingEvent(int pageid){
-  
-  Page * p;
-
-  p = loadPage(pageid);
-
-  pthread_mutex_lock(&add_pending_mutex);
-
-  while(p->waiting) {
-
-    pthread_mutex_unlock(&add_pending_mutex);
-
-    unlock(p->loadlatch);
-    DEBUG("B");
-    pthread_mutex_lock(&add_pending_mutex);
-    pthread_cond_wait(&addPendingOK, &add_pending_mutex);
-    pthread_mutex_unlock(&add_pending_mutex);
-
-    p = loadPage(pageid);
-
-    pthread_mutex_lock(&add_pending_mutex);
-
-  }
-
-  p->pending++;
-
-  pthread_mutex_unlock(&add_pending_mutex);
-
-  unlock(p->loadlatch);
-
-
-  }*/
-
-/**
-   
-   Because updates to a page might not happen in order, we need to
-   make sure that we've applied all updates to a page that we've heard
-   about before we flush that page to disk.
-
-   This method informs bufferManager that an update has been applied.
-   It is called by operations.c every time doUpdate, redoUpdate, or
-   undoUpdate is called.
-
-   @todo as implemented, loadPage() ... doOperation is not atomic!
-
-*/
-/*void removePendingEvent(int pageid) {
-  
-  Page * p;
-
-  p = loadPage(pageid);
-
-  pthread_mutex_lock(&(add_pending_mutex));
-  p->pending--;
-  
-  assert(p->id == pageid);
-  assert(p->pending >= 0);
-
-  if(p->waiting && !p->pending) {
-    assert(p->waiting == 1);
-    pthread_cond_signal(&(p->noMorePending));
-  }
-
-  pthread_mutex_unlock(&(add_pending_mutex));
-
-  unlock(p->loadlatch);
-
-
-  }*/
-
-

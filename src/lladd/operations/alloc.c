@@ -6,6 +6,7 @@
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
 #include "../blobManager.h"
+#include "../page.h"
 /**
    @file
 
@@ -29,7 +30,7 @@
    
 */
 
-static int operate(int xid, lsn_t lsn, recordid rid, const void * dat) {
+static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
     allocBlob(xid, lsn, rid);
   } else {
@@ -37,18 +38,18 @@ static int operate(int xid, lsn_t lsn, recordid rid, const void * dat) {
     /*    pageSlotRalloc(loadedPage, lsn, rid); */
 
     /** Has no effect during normal operation. */
-    slotRalloc(rid.page, lsn, rid);
+    pageSlotRalloc(p, lsn, rid); 
   }
 
   return 0;
 }
 
 /** @todo Currently, we just leak store space on dealloc. */
-static int deoperate(int xid, lsn_t lsn, recordid rid, const void * dat) {
+static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   /*  Page * loadedPage = loadPage(rid.page); */
   /** Has no effect during normal operation, other than updating the LSN. */
   /*  pageSlotRalloc(loadedPage, lsn, rid); */
-  slotRalloc(rid.page, lsn, rid);
+  pageSlotRalloc(p, lsn, rid);
   return 0;
 }
 

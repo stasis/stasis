@@ -75,7 +75,7 @@ static void* worker_thread(void * arg_ptr) {
   int j;
   int first = 1;
   recordid rid;
-  for(i = 0; i < 1000; i++) {
+  for(i = 0; i < 10000; i++) {
     pthread_mutex_lock(&lsn_mutex);
     this_lsn = lsn;
     lsn++;
@@ -146,13 +146,20 @@ START_TEST(pageThreadTest) {
   int i;
   pthread_mutex_init(&random_mutex, NULL);
 
+  fail_unless(1, NULL);
   Tinit();
+  Tdeinit();
+  Tinit();
+  fail_unless(1, NULL);
 
   Page * p = loadPage(1);
+  fail_unless(1, NULL);
 
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&workers[i], NULL, worker_thread, p);
   }
+  fail_unless(1, NULL);
+
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
   }

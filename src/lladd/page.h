@@ -61,7 +61,11 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 
+/*#ifdef __BUFFERMANAGER_H__
+ #error bufferManager.h must be included after page.h
+#endif*/
 
+#include <lladd/bufferManager.h>
 BEGIN_C_DECLS
 
 /** 
@@ -76,7 +80,7 @@ BEGIN_C_DECLS
     pointers).  This is starting to become cumbersome, as the page
     struct is becoming more complex...)
 */
-typedef struct Page_s {
+struct Page_s {
   /** @todo Shouldn't Page.id be a long? */
   int id;
   /** @todo The Page.LSN field seems extraneous.  Why do we need it? */
@@ -180,9 +184,7 @@ typedef struct Page_s {
 
   */
   /*  int pending; */
-} Page;
-
-extern pthread_cond_t addPendingOK;
+};
 
 /**
  * initializes all the important variables needed in all the
@@ -242,13 +244,14 @@ void pageCommit(int xid);
 
 void pageAbort(int xid);
 
-void pageReallocNoLock(Page * p, int id);
+/*void pageReallocNoLock(Page * p, int id); */
 /** @todo Do we need a locking version of pageRealloc? */
 void pageRealloc(Page * p, int id);
 
 Page* pageAlloc(int id);
 
 recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid);
+void pageDeRalloc(Page * page, recordid rid);
 
 /*int pageTest(); */
 

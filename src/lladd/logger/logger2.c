@@ -81,7 +81,7 @@ lsn_t LogTransAbort(TransactionLog * l) {
   return LogTransCommon(l, XABORT);
 }
 
-LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte * args) {
+LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, const byte * args) {
   void * preImage = NULL;
   long argSize  = 0;
   LogEntry * e;
@@ -97,13 +97,13 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
     DEBUG("Creating %ld byte physical pre-image.\n", rid.size);
     preImage = malloc(rid.size);
     if(!preImage) { perror("malloc"); abort(); }
-    readRecord(l->xid, rid, preImage);
+    readRecord(l->xid, p, rid, preImage);
     DEBUG("got preimage");
-  }
+  } 
 
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
-
-  writeLogEntry(e);
+  
+  writeLogEntry(e); 
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
 

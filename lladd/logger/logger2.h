@@ -107,7 +107,7 @@ lsn_t LogTransAbort(TransactionLog * l);
 /**
   LogUpdate writes an UPDATE log record to the log tail
 */
-LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte * args);
+LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, const byte * args);
 /* *
    (Was folded into LogUpdate.)
 

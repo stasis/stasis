@@ -56,6 +56,7 @@ terms specified in this license.
 #include <lladd/constants.h>
 #include <lladd/transactional.h>
 #include <lladd/logger/logEntry.h> 
+#include <lladd/bufferManager.h>
 
 BEGIN_C_DECLS
 
@@ -63,7 +64,7 @@ BEGIN_C_DECLS
 /* @type Function
  * function pointer that the operation will run
  */
-typedef int (*Function)(int xid, lsn_t lsn, recordid r, const void *d);
+typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d);
 
 /* @type Operation
 
@@ -143,7 +144,7 @@ extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
     Does not write to the log, and assumes that the operation's
     results are not already in the buffer manager.
 */
-void doUpdate(const LogEntry * e);
+void doUpdate(const LogEntry * e, Page * p);
 /** Undo the update under normal operation, and during recovery. 
 
     Checks to see if the operation's results are reflected in the
@@ -158,7 +159,7 @@ void doUpdate(const LogEntry * e);
     @param e The log entry containing the operation to be undone.  
     @param clr_lsn The lsn of the clr that corresponds to this undo operation.
 */
-void undoUpdate(const LogEntry * e, lsn_t clr_lsn);
+void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn);
 /** 
     Redoes an operation during recovery.  This is different than
     doUpdate because it checks to see if the operation needs to be redone

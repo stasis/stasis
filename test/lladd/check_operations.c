@@ -46,7 +46,7 @@ terms specified in this license.
 #include <lladd/bufferManager.h>
 
 #include "../check_includes.h"
-
+#include "../../src/lladd/page.h"
 #define LOG_NAME   "check_operations.log"
 
 
@@ -62,7 +62,8 @@ START_TEST(operation_physical_do_undo) {
   int buf;
   int arg;
   LogEntry * setToTwo;
-
+  Page * p;
+  
   Tinit();
   
   rid  = ralloc(xid, sizeof(int));
@@ -76,16 +77,21 @@ START_TEST(operation_physical_do_undo) {
 
   /*  writeLSN(lsn, rid.page); */
   DEBUG("B\n");
-
-  writeRecord(xid, lsn, rid, &buf);
-
+  
+  p = loadPage(rid.page);
+  writeRecord(xid, p, lsn, rid, &buf);
+  releasePage(p);
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
   /*  addPendingEvent(rid.page); */
-  doUpdate(setToTwo);  /* PAGE LSN= 10, value = 2. */
+  p = loadPage(rid.page);
+  doUpdate(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
+  releasePage(p);
 
-  readRecord(xid, rid, &buf);
+  p = loadPage(rid.page);
+  readRecord(xid, p, rid, &buf);
+  releasePage(p);
 
   fail_unless(buf == 2, NULL);
 
@@ -93,14 +99,19 @@ START_TEST(operation_physical_do_undo) {
 
   DEBUG("D\n");
 
-  fail_unless(10 == readLSN(rid.page), "page lsn not set correctly.");
+  p = loadPage(rid.page);
+
+  fail_unless(10 == pageReadLSN(p), "page lsn not set correctly.");
 
   setToTwo->LSN = 5;
 
   /*  addPendingEvent(rid.page); */
-  undoUpdate(setToTwo, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
+  undoUpdate(setToTwo, p, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
+  releasePage(p);
 
-  readRecord(xid, rid, &buf);
+  p = loadPage(rid.page);
+  readRecord(xid, p, rid, &buf);
+  releasePage(p);
 
   fail_unless(buf == 1, NULL);
   
@@ -109,7 +120,9 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);
   
 
-  readRecord(xid, rid, &buf);
+  p = loadPage(rid.page);
+  readRecord(xid, p, rid, &buf);
+  releasePage(p);
 
   fail_unless(buf == 1, NULL);
   
@@ -129,8 +142,9 @@ START_TEST(operation_physical_do_undo) {
   buf = 1;
 
   /*  writeLSN(lsn, rid.page); */
-  writeRecord(xid, lsn, rid, &buf);
-
+  p = loadPage(rid.page);
+  writeRecord(xid, p, lsn, rid, &buf);
+  releasePage(p);
   /* Trace of test: 
 
   PAGE LSN     LOG LSN      CLR LSN    TYPE        SUCCEED?
@@ -150,37 +164,42 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);
   /*  writeLSN(setToTwo->LSN, rid.page); */
 
-  readRecord(xid, rid, &buf);
-
+  p = loadPage(rid.page);
+  readRecord(xid, p, rid, &buf);
   fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
   /*  addPendingEvent(rid.page); */
-  undoUpdate(setToTwo, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
+  undoUpdate(setToTwo, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
-  readRecord(xid, rid, &buf);
+  readRecord(xid, p, rid, &buf);
 
   fail_unless(buf == 1, NULL);
+  releasePage(p);
   
   DEBUG("H don't redo set to 2\n");
   /*  addPendingEvent(rid.page); */
   redoUpdate(setToTwo);        /* Fails */
 
-  readRecord(xid, rid, &buf);
+  p = loadPage(rid.page);
+
+  readRecord(xid, p, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   
-  writeRecord(xid, 0, rid, &buf); /* reset the page's LSN. */
+  writeRecord(xid, p, 0, rid, &buf); /* reset the page's LSN. */
   /*  writeLSN(0,rid.page); */
 
   DEBUG("I redo set to 2\n");
   /*  addPendingEvent(rid.page); */
-  redoUpdate(setToTwo);        /* Succeeds */
 
-  readRecord(xid, rid, &buf);
+  releasePage(p);
+  redoUpdate(setToTwo);        /* Succeeds */
+  p = loadPage(rid.page);
+  readRecord(xid, p, rid, &buf);
 
   fail_unless(buf == 2, NULL);
-
+  releasePage(p);
   Tdeinit();
 }
 END_TEST

@@ -4,9 +4,10 @@
 
 */
 
+#include "page.h"
 #include <lladd/bufferManager.h>
 
-#include "page.h"
+
 #include "pageFile.h"
 #include <assert.h>
 #include "logger/logWriter.h"
@@ -42,9 +43,6 @@ extern pthread_mutex_t add_pending_mutex;
   return;
   }*/
 
-
-
-/* This function is declared in page.h */
 void pageRead(Page *ret) {
   long fileSize;
 
@@ -92,7 +90,6 @@ void pageRead(Page *ret) {
 
 }
 
-/* This function is declared in page.h */
 void pageWrite(Page * ret) {
 
   long pageoffset = ret->id * PAGE_SIZE;

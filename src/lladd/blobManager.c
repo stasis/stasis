@@ -4,11 +4,12 @@
 #include <assert.h>
 
 #include <lladd/transactional.h>
+#include "pageFile.h"
 #include <lladd/bufferManager.h>
 #include <lladd/constants.h>
 
 #include "blobManager.h"
-#include "pageFile.h"
+
 #include <pbl/pbl.h>
 
 #include <stdio.h>
@@ -92,6 +93,8 @@ recordid preAllocBlob(int xid, long blobSize) {
 
   recordid rid = Talloc(xid, sizeof(blob_record_t));
 
+  Page * p = loadPage(rid.page); /** @todo blob's are almost surely broken! */
+
   /** Finally, fix up the fields in the record that points to the blob. 
       The rest of this also should go into alloc.c 
   */
@@ -100,8 +103,11 @@ recordid preAllocBlob(int xid, long blobSize) {
   blob_rec.size = blobSize;
   blob_rec.offset = fileSize;
   
-  setSlotType(rid.page, rid.slot, BLOB_SLOT);
+  pageSetSlotType(p, rid.slot, BLOB_SLOT);
   rid.size = BLOB_SLOT;
+
+  releasePage(p);
+
 
   /* Tset() needs to know to 'do the right thing' here, since we've
      changed the size it has recorded for this record, and
@@ -109,6 +115,7 @@ recordid preAllocBlob(int xid, long blobSize) {
   writeRawRecord  (xid, rid, &blob_rec, sizeof(blob_record_t));
 
   rid.size = blob_rec.size;
+
 
   return rid;
 
@@ -129,6 +136,8 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
   /* First in buffer manager. */
 
   /* Read in record to get the correct offset, size for the blob*/
+
+  /** @todo blobs deadlock... */
   readRawRecord(xid, rid, &blob_rec, sizeof(blob_record_t));
 
   myFseek(blobf0, fileSize + rid.size - 1, SEEK_SET);

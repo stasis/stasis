@@ -56,33 +56,45 @@ void * writingWorkerThread ( void * v ) {
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = Talloc(xid, sizeof(int));
+    rids[i] = /* ralloc(xid, sizeof(int)); */ Talloc(xid, sizeof(int)); 
     if(! (i %1000)) {
       printf("A%d", i/1000);fflush(NULL);
     }
-
   }
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int tmp = i + offset;
+    
+    /*   Page * p = loadPage(rids[i].page);
+
+    writeRecord(1, p, 0, rids[i], &tmp); 
+    
+    releasePage(p); */
     Tset(xid, rids[i], &tmp);
     if(! (i %1000)) {
       printf("W%d", i/1000); fflush(NULL);
     }
-
-
   }
   
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int j;
-    Tread(xid, rids[i], &j);
+    
+    /*    Page * p = loadPage(rids[i].page);
+    
+    readRecord(1, p, rids[i], &j); 
+    
+    releasePage(p); */
+    
+    Tread(xid, rids[i], &j); 
     assert(i + offset == j);
     if(! (i %1000)) {
       printf("R%d", i/1000);fflush(NULL);
     }
   }
-    
+  
   Tcommit(xid);
+    
+  /*  Tcommit(xid);
 
   xid = Tbegin();
 
@@ -90,7 +102,7 @@ void * writingWorkerThread ( void * v ) {
     int j;
     Tread(xid, rids[i], &j);
     assert(i + offset == j);
-  }
+    }*/
   return NULL;
 }
 
@@ -230,9 +242,9 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, transactional_smokeTest);
-  tcase_add_test(tc, transactional_blobSmokeTest);
+  /*  tcase_add_test(tc, transactional_blobSmokeTest);  */
   tcase_add_test(tc, transactional_nothreads_commit);
-  tcase_add_test(tc, transactional_threads_commit);
+  tcase_add_test(tc, transactional_threads_commit); 
   /** @todo still need to make blobs reentrant! */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

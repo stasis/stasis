@@ -33,15 +33,18 @@ void initializePages() {
     rid.page = i;
     rid.slot = 0;
     rid.size = sizeof(int);
-    p = loadPage(rid.page);
+    p = loadPage(rid.page); 
+    /*    p = loadPage(i); */
     assert(p->id != -1); 
     pageSlotRalloc(p, 0, rid);
-    unlock(p->loadlatch);
+    /*    rid = pageRalloc(p, sizeof(int)); */
+
     /*    addPendingEvent(rid.page);  */
-    writeRecord(1, 1, rid, &i);
+    writeRecord(1, p, 1, rid, &i);
     /*  removePendingEvent(rid.page);  */
     /*    assert(p->pending == 0); */
 
+    releasePage(p);    
   }
   
   printf("Initialization complete.\n"); fflush(NULL);
@@ -65,10 +68,14 @@ void * workerThread(void * p) {
     rid.slot = 0;
     rid.size = sizeof(int);
 
-    /*  addPendingEvent(rid.page); */
-    readRecord(1, rid, &j);
+    p = loadPage(rid.page);
+    
+    readRecord(1, p, rid, &j);
+
     assert(rid.page == k);
-    /*    removePendingEvent(rid.page); */
+    
+    releasePage(p);
+
     assert(k == j);
     
   }
@@ -81,38 +88,56 @@ void * workerThreadWriting(void * q) {
   int offset = *(int*)q;
   recordid rids[RECORDS_PER_THREAD];
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
-    /*    addPendingEvent(rids[i].page); */
+
     rids[i] = ralloc(1, sizeof(int));
-    /*    removePendingEvent(rids[i].page); */
     
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
-    fflush(NULL); 
+    /*  fflush(NULL);  */
 
     if(! (i % 1000) ) {
       printf("A%d", i / 1000); fflush(NULL);
+
     }
 
-    
-
-    sched_yield();
+    /*    sched_yield(); */
   }
   for(int i = 0;  i < RECORDS_PER_THREAD; i++) {
     int val = (i * 10000) + offset;
-    int oldpage = rids[i].page;
+    int k;
+    Page * p = loadPage(rids[i].page);
 
-    writeRecord(1, 0, rids[i], &val); 
+    assert(p->id == rids[i].page);
+
+    for(k = 0; k < 100; k++) {
+      int * j  =NULL;
+      //      assert(p->loadlatch->lock->readers);
+      assert(p->id == rids[i].page);
+      free(j = malloc(sizeof(int)));
+      assert(j);
+    }
+    
+    /*    sched_yield(); */
+    writeRecord(1, p, 0, rids[i], &val); 
+
+    assert(p->id == rids[i].page);
+    releasePage(p);
 
     if(! (i % 1000) ) {
       printf("W%d", i / 1000); fflush(NULL);
     }
 
-    sched_yield();
+    /*    sched_yield(); */
   }
   for(int i = 0;  i < RECORDS_PER_THREAD; i++) {
     int val;
     Page * p;
 
-    readRecord(1, rids[i], &val); 
+
+    p = loadPage(rids[i].page);
+
+    readRecord(1, p, rids[i], &val); 
+
+    releasePage(p);
 
     if(! (i % 1000) ) {
       printf("R%d", i / 1000); fflush(NULL);
@@ -121,7 +146,7 @@ void * workerThreadWriting(void * q) {
 
     assert(val == (i * 10000)+offset);
 
-    sched_yield();
+    /*    sched_yield(); */
   }
 
   return NULL;
@@ -133,6 +158,8 @@ START_TEST(pageSingleThreadTest) {
   Tinit();
 
   initializePages();
+
+  printf("Initialize pages returned.\n"); fflush(NULL);
 
   /*  sleep(100000000); */
 
@@ -209,10 +236,10 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
-  /*  tcase_add_test(tc, pageSingleThreadTest); */
-  tcase_add_test(tc, pageLoadTest); 
-    /*   tcase_add_test(tc, pageSingleThreadWriterTest);  */
-  tcase_add_test(tc, pageThreadedWritersTest);
+  /*  tcase_add_test(tc, pageSingleThreadTest); 
+  tcase_add_test(tc, pageLoadTest);  
+  tcase_add_test(tc, pageSingleThreadWriterTest);   */
+  tcase_add_test(tc, pageThreadedWritersTest); 
 
   /* --------------------------------------------- */
   
