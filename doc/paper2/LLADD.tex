@@ -1740,8 +1740,8 @@ serialization is also a convenient way of adding persistent storage to
 an existing application without developing an explicit file format or
 dealing with low-level I/O interfaces.
 
-A simple serialization scheme would bulk-write and bulk-read
-sets of application objects to an OS file.  These
+A simple object serialization scheme would bulk-write and bulk-read
+sets of application objects to an OS file.  These simple
 schemes suffer from high read and write latency, and do not handle
 small updates well.  More sophisticated schemes store each object in a
 seperate, randomly accessible record, such as a database tuple or
@@ -1749,10 +1749,11 @@ a Berkeley DB hashtable entry.  These schemes allow for fast single
 object reads and writes, and are typically the solutions used by
 application servers.
 
-One drawback of many such schemes is that any update typically
-requires a full serialization of the entire object. In many
-application scenarios, this can be highly inefficient, as it may be
-that only a single field of a complex object has been modified.
+However, one drawback of many such schemes is that any update requires
+a full serialization of the entire object. In some application
+scenarios, this can be extremely inefficient, as it may be the case
+that only a single field from a large complex object has been
+modified.
 
 Furthermore, most of these schemes ``double cache'' object
 data.  Typically, the application maintains a set of in-memory
@@ -1760,60 +1761,31 @@ objects in their unserialized form, so they can be accessed with low latency.
 The backing data store also
 maintains a separate in-memory buffer pool with the serialized versions of
 some objects, as a cache of the on-disk data representation.
-Accesses to objects that are only present in this buffer
+Accesses to objects that are only present in the serialized buffers
 pool incur medium latency, as they must be unmarshalled (deserialized)
 before the application may access them.  
+There may even be a third copy of this data resident in the filesystem 
+buffer cache, accesses to which incur latency of both system call overhead and
+the unmarshalling cost.
 
-\rcs{ MIKE FIX THIS }
-Worse, most transactional layers (including ARIES) must read a page into memory to
-service a write request to the page.  If the transactional layer's page cache
-is too small, write requests must be serviced with potentially random disk I/O.
-This removes the primary advantage of write ahead logging, which is to ensure 
-application data durability with sequential disk I/O.  
+However, naively constraining the size of the data store's buffer pool
+causes performance degradation. Most transactional layers 
+(including ARIES) must read a page
+into memory to service a write request to the page; if the buffer pool
+is too small, these operations trigger potentially random disk I/O. 
+This removes the primary
+advantage of write ahead logging, which is to ensure application data
+durability with mostly sequential disk I/O.
 
-In summary, this system architecture (though commonly deployed~\cite{ejb,ordbms,jdo,...}) is fundamentally
+In summary, this system architecture (though commonly
+deployed~\cite{ejb,ordbms,jdo,...}) is fundamentally
 flawed.  In order to access objects quickly, the application must keep
-its working set in cache.  In order to service write requests, the
-transactional layer must store a redundant copy of the entire working
-set in memory or resort to random I/O.  Therefore, roughly half of
-system memory must be wasted by any write intensive application.
-
-%There is often yet a third
-%copy of the serialized data in the filesystem's buffer cache.
-
-
-%Finally, some objects may
-%only reside on disk, and require a disk read.
-
-%Since these applications are typically data-centric, it is important
-%to make efficient use of system memory in order to reduce hardware
-%costs. 
-
-For I/O bound applications, efficient use of in-memory caching is
-well-known to be critical to performance. Note that for these schemes,
-the memory consumed by the buffer pool is basically redundant, since
-it just caches the translated form of the object so it can be read or
-written to disk. However, naively restricting the memory consumed by
-the buffer pool results in poor performance in existing transactional
-storage systems. This is due to the fact that an object update must
-update the current state of the backing store, which typically
-requires reading in the old copy of the page on which the object is
-stored to update the object data.
-
-%% A straightforward solution to this problem would be to bound
-%% the amount of memory the application may consume by preventing it from
-%% caching deserialized objects.  This scheme conserves memory, but it
-%% incurs the cost of an in-memory deserialization to read the object,
-%% and an in-memory deserialization/serialization cycle to write to an
-%% object.
-
-%% Alternatively, the amount of memory consumed by the buffer pool could
-%% be bounded to some small value, and the application could maintain a
-%% large object cache.  This scheme would incur no overhead for a read
-%% request.  However, it would incur the overhead of a disk-based
-%% serialization in order to service a write request.\footnote{In
-%% practice, the transactional backing store would probably fetch the
-%% page that contains the object from disk, causing two disk I/O's.}
+its working set in cache.  Yet in order to efficiently service write 
+requests, the
+transactional layer must store a copy of serialized objects
+in memory or resort to random I/O.  
+Thus, any given working set size requires roughly double the system
+memory to achieve good performance.
 
 \subsection{\yad Optimizations}
 
@@ -1845,29 +1817,32 @@ investigate the overheads of SQL in this context in the future.}
 % @todo WRITE SQL OASYS BENCHMARK!!
 
 The second optimization is a bit more sophisticated, but still easy to
-implement in \yad.  We do not believe that it would be possible to
-achieve using existing relational database systems or with Berkeley
-DB.  This optimization allows us to drastically limit the size of the
+implement in \yad.  This optimization allows us to drastically limit
+the size of the
 \yad buffer cache, yet still achieve good performance.
+We do not believe that it would be possible to
+achieve using existing relational database systems or with Berkeley DB.  
 
 The basic idea of this optimization is to postpone expensive
-operations that update the page file for objects that are frequently
-modified, relying on some support from the application's object cache
-to maintain the transactional semantics.
+operations that update the page file for frequently modified objects,
+relying on some support from the application's object cache
+to maintain transactional semantics.
 
 To implement this, we added two custom \yad operations. The
 {\tt``update()''} operation is called when an object is modified and
 still exists in the object cache. This causes a log entry to be
 written, but does not update the page file. The fact that the modified
-object still resides in the object cache guarantees that the now stale
+object still resides in the object cache guarantees that the (now stale)
 records will not be read from the page file. The {\tt ``flush()''}
 operation is called whenever a modified object is evicted from the
 cache. This operation updates the object in the buffer pool (and
-therefore the page file), likely incurring the cost of a disk {\em
+therefore the page file), likely incurring the cost of both a disk {\em
 read} to pull in the page, and a {\em write} to evict another page
-from the relative small buffer pool. Multiple modifications that
-update an object can then incur relatively inexpensive log additions,
-and are then coalesced into a single update to the page file.
+from the relative small buffer pool.  However, since popular 
+objects tend to remain in the object cache, multiple update
+modifications will incur relatively inexpensive log additions,
+and are only coalesced into a single modification to the page file
+when the object is flushed from cache.
 
 \yad provides a few mechanisms to handle undo records in the context
 of object serialization. The first is to use a single transaction for
@@ -1896,12 +1871,11 @@ most difficult to implement in another storage system.
 \includegraphics[%
    width=1\columnwidth]{mem-pressure.pdf}
 \caption{\label{fig:OASYS} \yad optimizations for object
-serialization. The first graph shows the effectiveness of both the
-diff-based log records and the update/flush optimization as a function
-of the portion of each object that is modified. The second graph
-disables the filesystem buffer cache (via O\_DIRECT) and shows the
-benefits of the update/flush optimization when there is memory
-pressure.}
+serialization. The first graph shows the effect of the two lladd
+optimizations as a function of the portion of the object that is being
+modified. The second graph focuses on the 
+benefits of the update/flush optimization in cases of system
+memory pressure.}
 \end{figure*}
 
 An observant reader may have noticed a subtle problem with this
