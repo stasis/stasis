@@ -87,7 +87,9 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
 		      : parse_addr(cfg_getnstr(cfg, "subordinates", hostnumber));
   ret->socket    = -1; /// @todo where should the socket field be initialized?
   ret->broadcast_lists_count = cfg_size(cfg, "group");
-  printf("broadcast list count = %d\n", ret->broadcast_lists_count);
+  DEBUG("broadcast list count = %d\n", ret->broadcast_lists_count);
+  ret->coordinator = strdup(cfg_getstr(cfg, "coordinator"));
+  DEBUG("Coordinator: %s", ret->coordinator);
   ret->broadcast_list_host_count = malloc(sizeof(int *) * ret->broadcast_lists_count);
   ret->broadcast_lists = malloc(sizeof(int**) * ret->broadcast_lists_count);
   for(i = 0; i < ret->broadcast_lists_count; i++) {
@@ -107,4 +109,21 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
   
   cfg_free(cfg);
   return ret;
+}
+
+int consolidate_bc_groups(char *** list, NetworkSetup * ns) {
+   int count = 0; 
+   int i, j;
+   for(i = 0; i < ns->broadcast_lists_count; i++) {
+     count += ns->broadcast_list_host_count[i];
+   }
+   *list = malloc(sizeof(char *) * count);
+   int k = 0;
+   for(i = 0; i < ns->broadcast_lists_count; i++) {
+     for(j = 0; j < ns->broadcast_list_host_count[i]; j++) {
+       (*list)[k] = ns->broadcast_lists[i][j];
+       k++;
+     }
+   }
+   return count;
 }

@@ -172,27 +172,46 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to);
 int __send_message(const NetworkSetup *ns, Message *message, const char *to) {
 
 
-  DEBUG("Sending %ld-%d: to %s:%ld\n", message->from_machine_id, message->type ,to, message->to_machine_id);
 
   if(strncmp(to, "bc:", 3)==0) {
 
     int i;
     int list_number = parse_port(to);
-
-    if(list_number < 0 || list_number >= ns->broadcast_lists_count) {
+    if(list_number == ALL_BUT_GROUP_ZERO) {
+  //    fprintf(stderr, "Broadcasting to all groups (except group 0).\n");
+      for(int i = 1; i < ns->broadcast_lists_count+1; i++) {
+	char * new_to;
+	asprintf(&new_to, "bc:%d", i);
+	int ret = __send_message(ns, message, new_to);
+        free(new_to);	
+	if(ret < 0) {
+	  return ret;
+	}
+      }
+      return 0;
+    } else if(list_number < 0 || list_number >= ns->broadcast_lists_count+1) {
       fprintf(stderr, "Invalid list number %d passed into send_message: %s\n", list_number, to);
       return -1;
+    }
+    if(list_number == 0) {
+      // send to coordinator 
+ //     fprintf(stderr, "Sending message to coordinator: %s", ns->coordinator);
+      return __send_message(ns, message, ns->coordinator);
     }
     if(ns->broadcast_list_host_count[list_number] == 0) {
       fprintf(stderr, "Sending to empty broadcast list! Address was %s\n", to);
     }
-    for(i =0; i < ns->broadcast_list_host_count[list_number]; i++) {
+    
+    for(i =0; i < ns->broadcast_list_host_count[list_number-1]; i++) {
+ //     fprintf(stderr, "sending to member %d of list %d\n", i, list_number);
       int ret;
-      if((ret = __send_message(ns, message, ns->broadcast_lists[list_number][i])) < 0) {
+      if((ret = __send_message(ns, message, ns->broadcast_lists[list_number-1][i])) < 0) {
 	return ret;
       }
     }
   } else {
+    DEBUG("Sending %ld-%d: to %s:%ld\n", message->from_machine_id, message->type ,to, message->to_machine_id);
+
     return _send_message(ns, message, to);
   }
   return 0;

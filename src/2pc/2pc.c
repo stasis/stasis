@@ -93,9 +93,6 @@ Transition transitions_2pc[] = {
   { COORDINATOR_COMMITTING_2PC, NULL_STATE,               OVERRIDDEN_STATE,           &send_ack_2pc,        TRUE}, 
   { COORDINATOR_ABORTING_2PC,   NULL_STATE,               OVERRIDDEN_STATE,           &send_ack_2pc,        TRUE}, 
 
-  
-
-   
 };
 
 Transition client_transitions_2pc[] = {
@@ -108,8 +105,6 @@ Transition client_transitions_2pc[] = {
   { COORDINATOR_ABORTING_2PC,   AWAIT_COMMIT_POINT,     NULL_STATE,   NULL, FALSE},
   
   { SUBORDINATE_ACKING_2PC,     AWAIT_RESULT,           NULL_STATE,   NULL, FALSE},
-  
-
 
 };
 
@@ -136,9 +131,6 @@ State states_2pc[MAX_STATE_COUNT] = {
 
 };
 
-
-
-
 /* 
 
    - add broadcast to messages.h  (Done)
@@ -164,17 +156,18 @@ state_name coordinator_init_xact_2pc(void * dfaSet, StateMachine * stateMachine,
     return 0;
   }
   
-  printf("bc_group %d\n", bc_group);
-
   /* Need to check for this somewhere... */
   assert(sizeof(TwoPCAppState) <= MAX_APP_STATE_SIZE);
 
   memset(state->subordinate_votes, 0, MAX_SUBORDINATES);
-  /*  state->xid = m->from_machine_id; */
   state->xid = stateMachine->machine_id;
-  printf("From: %s", from);
+  // handled by the client.
   /*strncpy(state->initiator, from, MAX_ADDRESS_LENGTH);*/
 
+  if(strncmp(m->initiator, from, MAX_ADDRESS_LENGTH)) {
+    printf("WARNING:  Mismatch between request source (%s) and initiator field (%s).   Proceeding. (Trusting the client)\n", m->initiator, from);
+  }
+  
   sprintf(from, "bc:%d\n", bc_group);
 
   /* TODO:  (n)ack the client.  (Implies yes / no / already pending return values for callback on last line)
@@ -187,12 +180,15 @@ state_name coordinator_init_xact_2pc(void * dfaSet, StateMachine * stateMachine,
     ret = 1;
   }
 
+  printf("INIT %ld\n", m->initiator_machine_id);
   if(m->type==AWAIT_ARRIVAL && ret) {
     // need to (n)ack the client:
     // Respond using the machine id expected by the client.
     m->from_machine_id = m->initiator_machine_id;
 
-    printf("Responding\n");
+   // printf("Responding\n");
+    
+    printf("ACK %ld (to %s)\n", m->initiator_machine_id, m->initiator);
     
     respond_once(&((DfaSet*)dfaSet)->networkSetup, 
     		 COORDINATOR_START_2PC, m, m->initiator);
@@ -205,6 +201,7 @@ state_name coordinator_init_xact_2pc(void * dfaSet, StateMachine * stateMachine,
 
 }
 state_name send_ack_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
+  printf("ACK %ld\n", m->to_machine_id);
   respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_ACKING_2PC, m, from);
   return OVERRIDDEN_STATE;
 }
@@ -216,7 +213,13 @@ state_name veto_or_prepare_2pc(void * dfaSet, StateMachine * stateMachine, Messa
   TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
 
   int ret = app_state->veto_or_prepare_2pc(dfaSet, stateMachine, m, from);
-  
+ // printf("veto_or_prepare returned: %d", ret);
+  if(ret == SUBORDINATE_VETO_2PC) {
+    printf("VETO %ld\n", m->to_machine_id);
+  } else {
+    assert(ret == SUBORDINATE_PREPARED_2PC);
+    printf("PREPARE %ld\n", m->to_machine_id);
+  }
   return ret;
 }
 
@@ -236,9 +239,11 @@ state_name abort_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, ch
     /* TODO:  Could the chages to from_machine_id be moved into libdfa (it does this anyway, but it does it too late.) */
     m->from_machine_id = m->initiator_machine_id; /*stateMachine->machine_id;*/
 
-    printf("Response being sent to: %s:%ld\n", m->initiator, m->to_machine_id);
+    printf("ABORT SUBORDINATE_VETO being sent to: %s:%ld\n", m->initiator, m->to_machine_id);
     respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_VETO_2PC, m, m->initiator);
     m->from_machine_id = tmp;
+  } else {
+    printf("ABORT %ld\n", m->to_machine_id);
   }
   return ret;
 }
@@ -247,23 +252,28 @@ state_name commit_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, c
   TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
 
   send_ack_2pc(dfaSet, stateMachine, m, from);
-  return app_state->commit_2pc(dfaSet, stateMachine, m, from);
+  int ret = app_state->commit_2pc(dfaSet, stateMachine, m, from);
+  if(ret) { printf("COMMIT %ld\n", m->to_machine_id); }
+  if(ret && m->response_type == AWAIT_RESULT) {
+    respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_ACKING_2PC, m, m->initiator);
+  }
+  return ret;
 }
 
 state_name check_veto_2pc(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   /* Clear subordinate_votes array, so that it can be used to
      tally acks after the votes are tallied. */
 
-  TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
+//  TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
   TwoPCMachineState * machine_state = (TwoPCMachineState*)&(stateMachine->app_state);
 
   /* if (!check_from()) { return 0; } */
-  short bc_group = app_state->get_broadcast_group(dfaSet, m);
+//  short bc_group = app_state->get_broadcast_group(dfaSet, m);
   
-  printf("bc_group:veto %d\n", bc_group);
+//  printf("bc_group:veto %d\n", bc_group);
 
   memset(machine_state->subordinate_votes, 0, MAX_SUBORDINATES);
-  sprintf(from, "bc:%d", bc_group);
+ // sprintf(from, "bc:%d", bc_group);
 
   return 1;
 }
@@ -274,14 +284,27 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
   DfaSet * dfaSet = (DfaSet*) dfaSetPtr;
 
   TwoPCAppState * app_state = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));
-
+  
   /* if (!check_from()) { return 0; } */
   short bc_group = app_state->get_broadcast_group(dfaSet, m);
-
-  if(bc_group < dfaSet->networkSetup.broadcast_lists_count) {
-    state_name ret = tally(dfaSet->networkSetup.broadcast_lists[bc_group],
-		 dfaSet->networkSetup.broadcast_list_host_count[bc_group],
-		 (char*)(machine_state->subordinate_votes), from);
+ // fprintf(stderr, "tally: %s, broadcast group: %d\n", from, bc_group);
+  if(bc_group < dfaSet->networkSetup.broadcast_lists_count+1) {
+    state_name ret;
+    if(bc_group == ALL_BUT_GROUP_ZERO) {
+      char ** list;
+      int count = consolidate_bc_groups(&list, &dfaSet->networkSetup);
+/*      int i;
+      for(i = 0; i < count; i++) {
+	fprintf(stderr, "count = %d tallyhost %d: %s\n", count, i, list[i]);
+      } */
+      ret = tally(list, count, (char*)(machine_state->subordinate_votes), from);
+      free(list);
+    } else {
+      ret = tally(dfaSet->networkSetup.broadcast_lists[bc_group-1],
+		   dfaSet->networkSetup.broadcast_list_host_count[bc_group-1],
+		   (char*)(machine_state->subordinate_votes), from);
+    }
+//    fprintf(stderr, "Tally returned: %d", ret);
     if(ret) {
       /* Clear subordinate_votes array, so that it can be used to
 	 tally acks after the votes are tallied. */
@@ -300,15 +323,21 @@ state_name tally_2pc(void * dfaSetPtr, StateMachine * stateMachine, Message * m,
   /* TODO: CORRECTNESS BUG Make sure this is after tally forces the log. Also, need to
      make sure that it increments the (currently unimplemented)
      sequence number before flushing... */
-
-    if(ret && (m->response_type == AWAIT_COMMIT_POINT && m->response_type == COORDINATOR_START_2PC)) { 
+//    printf("committed ret = %d response_type = %d ");
+    if(ret) {
+      printf("COMMIT POINT %ld\n", m->to_machine_id);
+    }
+    if(ret && (m->response_type == AWAIT_COMMIT_POINT && stateMachine->current_state == COORDINATOR_START_2PC)) { 
+//      printf("sending ack to %s", m->initiator);
 //    if(ret && (*responseType(m) == AWAIT_COMMIT_POINT && stateMachine->current_state==COORDINATOR_START_2PC)) {
 	state_machine_id tmp = m->from_machine_id;
 	m->from_machine_id = m->initiator_machine_id;
-	//printf("Coordinator responding: ? ht=? (key length %d) %d ->   to %s:%ld\n",  getKeyLength(m), *(int*)getKeyAddr(m), /*getValAddr(m),*/ m->initiator, m->initiator_machine_id );
+//	printf("Coordinator responding: ? ht=? (key length %d) %d -> /*%d*/  to %s:%ld\n",  0/*getKeyLength(m),*/ , 0, 0, /**(int*)getKeyAddr(m), *//**(int*)getValAddr(m),*/ m->initiator, m->initiator_machine_id );
+        //debug_print_message(m);
 	respond_once(&((DfaSet*)dfaSet)->networkSetup, COORDINATOR_COMMITTING_2PC, m, m->initiator);
 	m->from_machine_id = tmp;
     }
+ //   printf("\n");
     return ret; 
   } else {
     sprintf(from, "bc:%d", bc_group);

@@ -92,7 +92,7 @@ int main (int argc, char ** argv) {
     assert(argc == 2);
     port = parse_port(broadcast_lists[0][0]);
     app_state->is_coordinator = TRUE;
-    dfaSet = dfa_malloc(DFA_MACHINE_COUNT, port, broadcast_lists, 
+    dfaSet = dfa_malloc_old(DFA_MACHINE_COUNT, port, broadcast_lists, 
 			broadcast_lists_count, broadcast_list_host_count);
 
     localhost = broadcast_lists[0][0];
@@ -103,7 +103,7 @@ int main (int argc, char ** argv) {
     replica = atoi(argv[2]);
     port = parse_port(broadcast_lists[1][replica]);
     app_state->is_coordinator = FALSE;
-      dfaSet = dfa_malloc(DFA_MACHINE_COUNT * 10, port, broadcast_lists, 
+      dfaSet = dfa_malloc_old(DFA_MACHINE_COUNT * 10, port, broadcast_lists, 
 		      broadcast_lists_count, broadcast_list_host_count);
     localhost = broadcast_lists[1][replica];
   }else {

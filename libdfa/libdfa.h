@@ -151,8 +151,9 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
 */
 void* main_loop(DfaSet *dfaSet);
 
-DfaSet * dfa_malloc(int count, short port, 
+DfaSet * dfa_malloc_old(int count, short port, 
 		    char *** broadcast_lists, 
 		    int broadcast_lists_count, 
 		    int * broadcast_list_host_count);
+DfaSet * dfa_malloc(int count, NetworkSetup * ns);
 #endif

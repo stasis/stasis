@@ -473,7 +473,7 @@ void * inner_worker_loop(void * arg_void) {
     /** SIGALRM will make sleep return immediately (I hope!)*/
 
     /*    printf("pending: %ld, %d\n", stateMachine->machine_id, stateMachine->pending); */
-    
+    /** @todo inner worker loop doesn't seem to 'do the right thing' with respect to timing */
     if(1|| !stateMachine->pending) {  /* If no pending messages, go to sleep */
       struct timeval now;
       struct timespec timeout_spec;
@@ -504,6 +504,8 @@ void * inner_worker_loop(void * arg_void) {
 	now.tv_sec++;
 	usec-=1000000;
       }
+      /** @todo ridiculously long timeout in libdfa.c */
+      
       timeout_spec.tv_sec = now.tv_sec;/* + timeout; */
       timeout_spec.tv_nsec = 1000 * usec; /*now.tv_usec * 1000; */
       
@@ -706,7 +708,12 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   initial_sm->message.to_machine_id = recipient_machine_id;
   initial_sm->message.type = start_state;
 
-  strcpy(initial_sm->message.initiator, dfaSet->networkSetup.localhost);
+  //strcpy(initial_sm->message.initiator, dfaSet->networkSetup.localhost);
+  char * initiator;
+  asprintf(&initiator, "%s:%d", dfaSet->networkSetup.localhost, dfaSet->networkSetup.localport);
+  strcpy(initial_sm->message.initiator, initiator);
+  free(initiator);
+  printf("Set message initiator to %s", initial_sm->message.initiator);
   initial_sm->message.initiator_machine_id = initial_sm->machine_id;
 
   strcpy(initial_sm->message_recipient, recipient_addr);
@@ -755,8 +762,7 @@ void * run_request(DfaSet * dfaSet, state_machine_id machine_id) {
   return (void*)ret;
 
 }
-
-DfaSet * dfa_malloc(int count, short port, 
+DfaSet * dfa_malloc_old(int count, short port, 
 		    char *** broadcast_lists, 
 		    int broadcast_lists_count, 
 		    int * broadcast_list_host_count) {
@@ -768,5 +774,13 @@ DfaSet * dfa_malloc(int count, short port,
   dfaSet->networkSetup.broadcast_lists_count = broadcast_lists_count;
   dfaSet->networkSetup.broadcast_list_host_count = broadcast_list_host_count;
 
+  return dfaSet;
+}
+
+DfaSet * dfa_malloc(int count, NetworkSetup * ns) {
+  DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
+  dfa_initialize_new(dfaSet, ns->localport, count);
+  
+  memcpy(&dfaSet->networkSetup, ns, sizeof(NetworkSetup));
   return dfaSet;
 }

@@ -45,7 +45,8 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
       {
 	if(!ht_exists) { printf ("Hash table %d doesn't exist!\n", (__header_ptr(m)->hashTable)); fflush(NULL); ret = 0; } else {
 	  ret = (jbHtInsert(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m), getValLength(m)) >= 0);
-	  printf("Insert: %d ht=%d (key length %d) %d -> %s\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), (char*)getValAddr(m));
+	  printf("Insert: %d ht=%d (key length %d) %d -> %d\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), *(int*)getValAddr(m));
+	  fflush(NULL);
 	  (jbHtInsert(ht_xid, ht_ht, (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), (byte*)&ht, sizeof(jbHashTable_t)));
 	  
 	}
@@ -55,7 +56,8 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
       {
 	if(!ht_exists) { printf ("Hash table doesn't exist!\n"); fflush(NULL); ret = 0; } else {
 	  ret = (jbHtLookup(xid, &ht, getKeyAddr(m), getKeyLength(m), getValAddr(m)) >= 0);
-	  printf("Lookup: %d ht=%d (key length %d) %d -> %s\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), (char*)getValAddr(m));
+	  printf("Lookup: %d ht=%d (key length %d) %d -> %d\n", ret, (__header_ptr(m)->hashTable), getKeyLength(m), *(int*)getKeyAddr(m), *(int*)getValAddr(m));
+	  fflush(NULL);
 	} 
       } break;
       
@@ -223,8 +225,8 @@ state_name commit_cht(void * dfaSet, StateMachine * stateMachine, Message * m, c
   /** @todo why was there an assert(0) in commit_cht?? */
   /** @todo On a commit, should responses of type AWAIT_RESULT ever be done by subordinates? */
 //  if(m->response_type == AWAIT_RESULT) {
-//    printf("commit_cht responding on an AWAIT_RESULT request.\n");
-//    assert(0);
+   // printf("commit_cht responding on an AWAIT_RESULT request.\n");
+   // assert(0);
     /*    respond_once(&((DfaSet*)dfaSet)->networkSetup, SUBORDINATE_ACKING_2PC, m, __header_ptr(m)->initiator); */
 //  }
   /* TODO: Check error codes, and return accordingly... */
@@ -233,4 +235,29 @@ state_name commit_cht(void * dfaSet, StateMachine * stateMachine, Message * m, c
 
 state_name tally_cht(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   return 1;
+}
+
+DfaSet * cHtCoordinatorInit(char * configFile, short (*partition_function)(DfaSet *, Message *)) {
+  NetworkSetup * config = readNetworkConfig(configFile, COORDINATOR);
+ /* DfaSet * ret = cHtInit(CHT_COORDINATOR, config->localhost, partition_function, 
+                       config->localport, config->broadcast_lists, config->broadcast_lists_count,
+		       config->broadcast_list_host_count);
+  free (config);*/
+  DfaSet * ret = cHtInit(CHT_COORDINATOR, partition_function, config);
+  free(config);
+  return ret;
+}
+
+DfaSet * cHtSubordinateInit(char * configFile, short (*partition_function)(DfaSet *, Message *), int subordinate_number) {
+  NetworkSetup * config = readNetworkConfig(configFile, subordinate_number);
+/*  DfaSet * ret = cHtInit(CHT_SERVER, config->localhost, partition_function, 
+                       config->localport, config->broadcast_lists, config->broadcast_lists_count,
+		       config->broadcast_list_host_count);*/
+  DfaSet * ret = cHtInit(CHT_SERVER, partition_function, config);
+  free (config);
+  return ret;
+}
+void debug_print_message(Message * m) {
+  printf("debug: (key length %d) %d -> %d\n", getKeyLength(m), *(int*)getKeyAddr(m), *(int*)getValAddr(m));
+  fflush(NULL);
 }

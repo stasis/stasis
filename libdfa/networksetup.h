@@ -5,6 +5,7 @@
    Currently, everything here can be derived at startup, so this won't
    need to be in transactional storage, with some luck. */
 typedef struct networkSetup {
+  char * coordinator;
   unsigned short localport;
   char * localhost;
   int socket;
@@ -33,4 +34,7 @@ typedef struct networkSetup {
   @return an initialized NetworkSetup struct.
 */
 NetworkSetup * readNetworkConfig(char * name, int hostnumber);
+
+int consolidate_bc_groups(char *** list, NetworkSetup * ns) ;
+
 #endif // __NETWORKSETUP_H

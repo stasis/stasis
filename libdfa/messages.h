@@ -63,7 +63,7 @@ longest valid ip:port string we will ever encounter or produce
 */
 
 #define MAX_ADDRESS_LENGTH 21
-
+#define ALL_BUT_GROUP_ZERO -1
 
 /**
    Message structs are the in-memory representation of network

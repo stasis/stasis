@@ -123,7 +123,7 @@ int main (int argc, char ** argv) {
 
   port = parse_port(broadcast_lists[list_number][node_number]);
 
-  dfaSet = dfa_malloc(DFA_MACHINE_COUNT, port, broadcast_lists, 
+  dfaSet = dfa_malloc_old(DFA_MACHINE_COUNT, port, broadcast_lists, 
 			       broadcast_lists_count, broadcast_list_host_count);
 
   if(list_number == 0) {

@@ -88,17 +88,17 @@ static int hash( const unsigned char * key, size_t keylen , int table_length) {
     group, but may only contain a single operation.
 */
 short multiplex_interleaved(DfaSet * dfaSet, Message * m) {
-  short table_length = dfaSet->networkSetup.broadcast_lists_count-2;
+  short table_length = dfaSet->networkSetup.broadcast_lists_count;
   short bc_group;
   if((*requestType(m) == CREATE) || (*requestType(m) == DELETE)) {
     /* Special case: Send to all replicas...bc_group one should contain all replicas... */
-    bc_group = 1;
+    bc_group = ALL_BUT_GROUP_ZERO;
   } else {
     /* Need to add one so that no requests are assigned to the coordinator (bc:0) */
-    bc_group = hash(getKeyAddr(m), getKeyLength(m), table_length) + 2;  
+    bc_group = hash(getKeyAddr(m), getKeyLength(m), table_length) + 1;  
   }
 
-  printf("request %d bc group: %d\n", *requestType(m), bc_group);
+//  printf("request %d bc group: %d\n", *requestType(m), bc_group);
 
   return bc_group;
 
@@ -119,21 +119,24 @@ int xid_exists(int ht_xid, jbHashTable_t * xid_ht, StateMachine * stateMachine) 
   }
 }
 
-DfaSet * cHtInit(int cht_type, char * localhost,
+DfaSet * cHtInit(int cht_type, /*char * localhost, */
 		 short (* get_broadcast_group)(DfaSet *, Message *),
-		 short port,
+		/* short port,
 		 char *** broadcast_lists,
 		 int  broadcast_lists_count,
-		 int* broadcast_list_host_count) {
+		 int* broadcast_list_host_count */
+		 NetworkSetup * ns) {
   
   DfaSet * dfaSet;
   int xid = Tbegin();
+//		   printf("Init %s port %d\n", ns->localhost, ns->localport);
   TwoPCAppState * twoPC_state; 
   CHTAppState * chtApp_state;
   
   int error; 
 
-  dfaSet = dfa_malloc(DFA_MACHINE_COUNT, port, broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
+ // dfaSet = dfa_malloc(DFA_MACHINE_COUNT, port, broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
+  dfaSet = dfa_malloc(DFA_MACHINE_COUNT, ns);
 
   /* srand(time(NULL)); */
 
@@ -141,9 +144,9 @@ DfaSet * cHtInit(int cht_type, char * localhost,
   chtApp_state = calloc(1, sizeof(CHTAppState));
 
   if(cht_type == CHT_CLIENT) {
-    error = dfa_reinitialize(dfaSet, localhost, client_transitions_2pc, client_transition_count_2pc, states_2pc, state_count_2pc);
+    error = dfa_reinitialize(dfaSet, ns->localhost, client_transitions_2pc, client_transition_count_2pc, states_2pc, state_count_2pc);
   } else {
-    error = dfa_reinitialize(dfaSet, localhost, transitions_2pc, transition_count_2pc, states_2pc, state_count_2pc);
+    error = dfa_reinitialize(dfaSet, ns->localhost, transitions_2pc, transition_count_2pc, states_2pc, state_count_2pc);
   }
 
   if(error < 0) { 

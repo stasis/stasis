@@ -39,10 +39,10 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <string.h>
 #include "../../src/apps/cht/cht.h"
 #include <assert.h>
 
+#include <string.h>
 
 
 /** Thanks, jbhtsimple.c!! */
@@ -102,7 +102,8 @@ int main (int argc, char**argv) {
   broadcast_lists[0] = star_nodes;
   broadcast_lists[1] = point_nodes;
 
-  dfaSet = cHtInit(CHT_CLIENT, argv[2], NULL, atoi(argv[1]), broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
+/*  dfaSet = cHtInit(CHT_CLIENT, argv[2], NULL, atoi(argv[1]), broadcast_lists, broadcast_lists_count, broadcast_list_host_count); */
+  assert(0);
 
   spawn_main_thread(dfaSet);
   
@@ -164,6 +165,3 @@ int main (int argc, char**argv) {
   return 0;
 
 }
-
-
-

@@ -40,7 +40,7 @@ recordid ThashCreate(int xid, int keySize, int valueSize) {
   lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
   TarrayListExtend(xid, lhh.buckets, HASH_INIT_ARRAY_LIST_COUNT);
   int i;
-  byte * entry = calloc(1, sizeof(lhh.buckets));
+  byte * entry = calloc(1, lhh.buckets.size);
   recordid bucket = lhh.buckets;
   for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
     bucket.slot = i;

@@ -129,13 +129,16 @@ int cHtDelete(state_machine_id xid, DfaSet * dfaSet, clusterHashTable_t *ht);
  *
  *
  */
-DfaSet * cHtInit(int cht_type, char * localhost,
+DfaSet * cHtInit(int cht_type,/* char * localhost,*/
 		 short (* get_broadcast_group)(DfaSet *, Message *),
-		 short port,
+		 /*short port,
 		 char *** broadcast_lists,
 		 int  broadcast_lists_count,
-		 int* broadcast_list_host_count);
-
+		 int* broadcast_list_host_count*/
+		 NetworkSetup * ns);
+DfaSet * cHtClientInit(char * config_file);
+DfaSet * cHtCoordinatorInit(char * config_file, short(*get_broadcast_group)(DfaSet *, Message *));
+DfaSet * cHtSubordinateInit(char * config_file, short(*get_broadcast_group)(DfaSet *, Message *), int subordinate_number);
 int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet);
 /*int cHtCommit(state_machine_id xid, DfaSet * dfaSet);
   int cHtAbort(state_machine_id xid, DfaSet * dfaSet);*/
@@ -153,3 +156,5 @@ callback_fcn commit_cht;
 callback_fcn tally_cht;
 callback_fcn abort_cht;
 callback_fcn init_xact_cht;
+
+short multiplex_interleaved(DfaSet * dfaSet, Message * m);

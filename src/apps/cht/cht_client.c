@@ -135,6 +135,20 @@ int cHtGetXid(state_machine_id* xid, DfaSet * dfaSet) {
  return _chtEval(dfaSet, GETXID, AWAIT_ARRIVAL, xid, NULL, NULL, &zero, NULL, &zero) != SUBORDINATE_VETO_2PC;
 }
 
+DfaSet * cHtClientInit(char * configFile) {
+  NetworkSetup * config = readNetworkConfig(configFile, 0);
+  assert(config->coordinator);
+  printf("config->localhost:%s config->broadcast_lists[0][0]:%s (localport %d)(port %d)\n",
+         config->localhost, config->broadcast_lists[0][0], config->localport, parse_port(config->broadcast_lists[0][0]));
+ /* DfaSet * ret = cHtInit(CHT_CLIENT, parse_addr(config->broadcast_lists[0][0]), NULL, 
+                       parse_port(config->broadcast_lists[0][0]), config->broadcast_lists+1, config->broadcast_lists_count-1,
+		       config->broadcast_list_host_count+1); */
+  DfaSet * ret = cHtInit(CHT_CLIENT, NULL, config);
+  assert(config->coordinator);
+ // free (config);
+  return ret;
+}
+
 /*int cHtCommit(state_machine_id xid, DfaSet * dfaSet) {
   size_t zero = 0;
   return _chtEval(dfaSet, COMMIT, AWAIT_COMMIT_POINT, &xid, NULL, NULL, &zero, NULL, &zero);

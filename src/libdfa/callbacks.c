@@ -40,8 +40,8 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include "callbacks.h"
-#include "stdio.h"
-
+#include <stdio.h>
+#include <assert.h>
 #define TRUE 1
 #define FALSE 0
 
@@ -74,6 +74,8 @@ state_name tally(char ** broadcast_list, int host_count, char * bitSet, char * f
 
   if(index < 0) {
     printf("Received message from unknown recipient: %s\n", from);
+    
+    assert(0);
     return FALSE;
   }
   bitSet[index] = TRUE;
@@ -85,4 +87,3 @@ state_name tally(char ** broadcast_list, int host_count, char * bitSet, char * f
   } 
   return TRUE;
 }
-

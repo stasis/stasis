@@ -117,8 +117,8 @@ int main (int argc, char**argv) {
   }
   port = parse_port(localhost);
   Tinit();
-  dfaSet = cHtInit(server_type, localhost,  NULL, port, broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
-
+ // dfaSet = cHtInit(server_type, localhost,  NULL, port, broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
+  assert(0);
   main_loop(dfaSet);
 
   return -1;
