@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <lladd/operations/noop.h>
 
 static pthread_mutex_t linear_hash_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
@@ -60,9 +61,11 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
 	recordid rid = TpagedListAlloc(xid);
 	bucket.slot = i;
 	Tset(xid, bucket, &rid);
+	//	printf("paged list alloced at rid {%d %d %d}\n", rid.page, rid.slot, rid.size);
       } end_ret(NULLRID);
-
+    
     }
+
   } else {
     byte * entry = calloc(1, lhh.buckets.size);
     for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
@@ -108,6 +111,8 @@ compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, reco
   int keySize = args->keySize;
   int valueSize = args->valueSize;
   
+  assert(valueSize >= 0);
+
   byte * key = (byte*)(args+1);
   byte * value = ((byte*)(args+1))+ keySize;
   begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
@@ -131,19 +136,23 @@ compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, reco
 }
 Operation getLinearHashInsert() {
   Operation o = {
-    OPERATION_NOOP, 
+    //    OPERATION_LINEAR_HASH_INSERT, 
+    OPERATION_NOOP,
     SIZEIS_PAGEID,
     OPERATION_LINEAR_HASH_REMOVE,
     &operateInsert
+    //    &noop
   };
   return o;
 }
 Operation getLinearHashRemove() {
   Operation o = {
-    OPERATION_NOOP, 
+    //    OPERATION_LINEAR_HASH_REMOVE, 
+    OPERATION_NOOP,
     SIZEIS_PAGEID,
     OPERATION_LINEAR_HASH_INSERT,
     &operateRemove
+    //&noop
   };
   return o;
 }
@@ -155,7 +164,7 @@ compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* k
   arg->hashHeader = hashHeader;
   arg->keySize = keySize;
   memcpy(arg+1, key, keySize);
-  
+
   int ret;
 
   /** @todo MEMORY LEAK arg, handle on pthread_cancel.. */
@@ -387,9 +396,13 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
     it->bucket.slot = 0;
     it->keySize = keySize;
     it->valueSize = valueSize;
+    assert(keySize == lhh.keySize);
+    assert(valueSize == lhh.valueSize);
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
       it->it = NULL;
-      it->pit= TpagedListIterator(xid, it->bucket);
+      recordid bucketList;
+      Tread(xid, it->bucket, &bucketList);
+      it->pit= TpagedListIterator(xid, bucketList);
     } else {
       it->pit = NULL;
       it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize);

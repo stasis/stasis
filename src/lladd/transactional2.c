@@ -78,7 +78,15 @@ void setupOperationsTable() {
 
 	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
 	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
+	
+	int i;
 
+	/*	for(i = 0; i <= OPERATION_LINEAR_HASH_REMOVE; i++) {
+	  if(operationsTable[i].id != i) {
+	    printf("mismatch %d -> %d\n", i, operationsTable[i].id);
+	  }
+	}
+	*/
 }
 
 

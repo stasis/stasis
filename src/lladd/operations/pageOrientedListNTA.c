@@ -196,6 +196,7 @@ compensated_function int TpagedListMove(int xid, recordid start_list, recordid e
 
 compensated_function lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) { 
   pagedListHeader header;
+  assert(list.size == sizeof(pagedListHeader));
   try_ret(NULL) { 
     Tread(xid, list, &header);
   } end_ret(NULL);
@@ -206,7 +207,7 @@ compensated_function lladd_pagedList_iterator * TpagedListIterator(int xid, reco
   it->entryRid  = list;
   //  printf("slot <- %d\n", header.thisPage);
   it->entryRid.slot = header.thisPage;
-
+  
   return it;
 }
 

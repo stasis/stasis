@@ -73,7 +73,12 @@ void redoUpdate(const LogEntry * e) {
 
     if(e->LSN > pageLSN) {
       DEBUG("OPERATION Redo, %ld > %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
-      doUpdate(e, p);
+      //    doUpdate(e, p);
+      // Need to check the id field to find out what the _REDO_ action is for this log type.
+      // contrast with doUpdate(), which doesn't use the .id field. 
+      operationsTable[operationsTable[e->contents.update.funcID].id]
+	.run(e->xid, p, e->LSN, e->contents.update.rid, getUpdateArgs(e));
+
     } else {
       DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
     }
@@ -82,17 +87,20 @@ void redoUpdate(const LogEntry * e) {
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
-    Page * p;
-    try { 
-      p = loadPage(e->xid, rid.page);
-    } end;
+    Page * p = NULL;
 
-    assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
-
+    int isNullRid = !memcmp(&rid, &NULLRID, sizeof(recordid));
+    if(!isNullRid) {
+      try { 
+	p = loadPage(e->xid, rid.page);
+      } end;
+    }
+    //    assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
+    
     /* See if the page contains the result of the undo that this CLR is supposed to perform. If it
        doesn't, then undo the original operation. */
     /*    if(f->LSN > pageReadLSN(e->contents.update.rid.page)) { */
-    if(f->LSN > pageReadLSN(p)) {
+    if(isNullRid || f->LSN > pageReadLSN(p)) {
 
       DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
       undoUpdate(f, p, e->LSN);

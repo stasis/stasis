@@ -482,6 +482,7 @@ START_TEST (recovery_multiple_xacts) {
   fail_unless(j2 == 2, NULL);
   fail_unless(j3 == 4, NULL);
   fail_unless(j4 == 4, NULL);
+  assert(j4 == 4);
   Tdeinit();
 } END_TEST
 

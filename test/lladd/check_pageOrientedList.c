@@ -51,6 +51,23 @@ terms specified in this license.
 #define LOG_NAME   "check_pageOrientedListNTA.log"
 /** @test */
 #define NUM_ENTRIES 3000
+START_TEST(emptyIterator) {
+  Tinit();
+  int xid = Tbegin();
+  recordid list = TpagedListAlloc(xid);
+  lladd_pagedList_iterator * it = TpagedListIterator(xid, list);
+
+  int keySize;
+  int valueSize;
+  int * key = 0;
+  recordid * value = 0;
+  
+  while(TpagedListNext(xid, it, (byte**)&key, &keySize, (byte**)&value, &valueSize)) {
+    abort();
+  }
+  Tcommit(xid);
+} END_TEST
+
 START_TEST(pagedListCheck) {
   Tinit();
 
@@ -182,6 +199,7 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
+  tcase_add_test(tc, emptyIterator);
   tcase_add_test(tc, pagedListCheck);
   
   /* --------------------------------------------- */

@@ -311,6 +311,53 @@ START_TEST(linearHashNTAIteratortest) {
   Tdeinit();
 } END_TEST
 
+START_TEST(emptyHashIterator) {
+  Tinit();
+  int xid = Tbegin();
+  
+  recordid hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
+  
+  lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
+  
+  byte * key;
+  byte * value;
+  int keySize;
+  int valueSize;
+
+  while(ThashNext(xid, it, &key, &keySize, &value, &valueSize)) {
+    abort();
+  }
+
+  Tabort(xid);
+
+  Tdeinit();
+  
+
+} END_TEST
+START_TEST(emptyHashIterator2) {
+  Tinit();
+  int xid = Tbegin();
+  
+  recordid hash = ThashCreate(xid, sizeof(int), VARIABLE_LENGTH);
+  
+  lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), VARIABLE_LENGTH);
+  
+  byte * key;
+  byte * value;
+  int keySize;
+  int valueSize;
+
+  while(ThashNext(xid, it, &key, &keySize, &value, &valueSize)) {
+    abort();
+  }
+
+  Tabort(xid);
+
+  Tdeinit();
+  
+
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHashNTA");
   /* Begin a new test */
@@ -318,6 +365,8 @@ Suite * check_suite(void) {
 
 
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, emptyHashIterator);
+  tcase_add_test(tc, emptyHashIterator2);
   tcase_add_test(tc, linearHashNTAVariableSizetest);
   tcase_add_test(tc, linearHashNTAIteratortest);
   tcase_add_test(tc, linearHashNTAtest);
