@@ -224,7 +224,7 @@ lsn_t pageReadLSN(Page page) {
  * as a parameter a Page.  The Page struct contains the new LSN and the page
  * number to which the new LSN must be written to.
  */
-void pageWriteLSN(Page page) {
+static void pageWriteLSN(Page page) {
 	*(long *)(page.memAddr + START_OF_LSN) = page.LSN;
 }
 
@@ -445,7 +445,7 @@ void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
 
 }
 
-void pageWriteRecord(int xid, Page page, recordid rid, const byte *data) {
+void pageWriteRecord(int xid, Page page, recordid rid, lsn_t lsn, const byte *data) {
 
   byte *rec; 
   
@@ -457,6 +457,9 @@ void pageWriteRecord(int xid, Page page, recordid rid, const byte *data) {
     printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
     exit(MEM_WRITE_ERROR);
   }
+
+  page.LSN = lsn;
+  pageWriteLSN(page);
 
 }
 
@@ -530,7 +533,7 @@ int pageTest() {
 		memset(page.memAddr, 0, PAGE_SIZE);
 		for (i = 0; i < num; i++) {
 			rid[i] = pageRalloc(page, strlen(str[i]) + 1);
-			pageWriteRecord(0, page, rid[i], (byte*)str[i]);    
+			pageWriteRecord(0, page, rid[i], 1, (byte*)str[i]);    
 		}
 		printPage(page.memAddr);
 

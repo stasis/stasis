@@ -145,73 +145,9 @@ static void closePageFile() {
   stable = NULL;
 }
 
-/* void pageMap(Page *ret) {
-  pageRead(ret);
-}
-int flushPage(Page ret) {
-  pageWrite(&ret);
-  return 0;
-  } */
-
-/*
-void pageMap(Page *ret) {
-
-	int fileSize;
-	/ * this was lseek(stable, SEEK_SET, pageid*PAGE_SIZE), but changed to
-	            lseek(stable, pageid*PAGE_SIZE, SEEK_SET) by jkit (Wed Mar 24 12:59:18 PST 2004)* /
-	fileSize = lseek(stable, 0, SEEK_END);
-
-	if ((ret->id)*PAGE_SIZE >= fileSize) {
-		lseek(stable, (1 + ret->id)*PAGE_SIZE -1 , SEEK_SET);
-		write(stable, "", 1);
-	}
-
-	if((ret->memAddr = mmap((void *) 0, PAGE_SIZE, (PROT_READ | PROT_WRITE), MAP_SHARED, stable, (ret->id)*PAGE_SIZE)) == (void*)-1) {
-		printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-		exit(errno);
-	}
-}
-
-int flushPage(Page page) {
-
-	if( munmap(page.memAddr, PAGE_SIZE) )
-		return MEM_WRITE_ERROR;
-
-	return 0;
-}
-
-*/
-
 int bufInit() {
 
 	stable = NULL;
-
-	/* Create STORE_FILE, if necessary, then open it read/write 
-
-	   If we're creating it, then put one all-zero record at the beginning of it.  
-	   (Need to have at least one record in the PAGE file?)
-
-	   It used to be that there was one file per page, and LSN needed to be set to -1.  
-
-	   Now, zero means uninitialized, so this could probably be replaced 
-	   with a call to open(... O_CREAT|O_RW) or something like that...
-	*/
-	/*	if( (stable = open(STORE_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
-		void *zero = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0); / * zero = /dev/zero * /
-		if( (stable = creat(STORE_FILE, 0666)) == -1 ) { / * cannot even create it * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-		/ * kick off a fresh page * /
-		if( write(stable, zero, PAGE_SIZE) != PAGE_SIZE ) { / * write zeros out * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-		if( close(stable) || ((stable = open(STORE_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-	} */
 
 	openPageFile();
 	pageCacheInit();
@@ -225,10 +161,6 @@ void bufDeinit() {
 	closeBlobStore();
 	pageCacheDeinit();
 	closePageFile();
-	/*	if( close(stable) ) {
-		printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-		exit(errno);
-		}*/
 
 	return;
 }
@@ -254,64 +186,60 @@ Page * lastRallocPage = 0;
 
 
 recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
-
+  
   recordid ret;
   Page p;
-
-  DEBUG("Rallocing blob of size %ld\n", (long int)size);
-
-  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
-
-  /*  if (size >= BLOB_THRESHOLD_SIZE) { 
-    
-    ret = allocBlob(xid, lsn, size);
-
-    } else { */
   
-    while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
-    ret = pageRalloc(p, size);
+  DEBUG("Rallocing record of size %ld\n", (long int)size);
+  
+  assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
+  
+  while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
+  
+  ret = pageRalloc(p, size);
     
-    /*  }  */
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size);
+
   return ret;
 }
+
 long readLSN(int pageid) {
 
 	return pageReadLSN(loadPage(pageid));
 }
-/*
-static void writeLSN(lsn_t LSN, int pageid) {
-	Page *p = loadPagePtr(pageid);
-	p->LSN = LSN;
-	pageWriteLSN(*p);
-	}*/
+
 void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
 
-	Page *p;
+  Page *p;
+  
+  if(rid.size > BLOB_THRESHOLD_SIZE) {
+    DEBUG("Writing blob.\n");
+    writeBlob(xid, lsn, rid, dat);
 
-	if(rid.size > BLOB_THRESHOLD_SIZE) {
-	  DEBUG("Writing blob.\n");
-	  writeBlob(xid, lsn, rid, dat);
-
-	} else {
-	  DEBUG("Writing record.\n");
-	  p = loadPagePtr(rid.page);
-	  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-	  /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
-	  /*assert(pageReadLSN(*p) <= lsn);*/
-	  
-	  pageWriteRecord(xid, *p, rid, dat);
-	  /*	  writeLSN(lsn, rid.page); */
-	  p->LSN = lsn;
-	  pageWriteLSN(*p);
-	}
+  } else {
+    DEBUG("Writing record.\n");
+    p = loadPagePtr(rid.page);
+    assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+    /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
+    /*assert(pageReadLSN(*p) <= lsn);*/
+    
+    /** @todo Should pageWriteRecord take an LSN (so it can do the locking?) */
+    /*    pageWriteRecord(xid, *p, rid, dat);
+    p->LSN = lsn;
+    pageWriteLSN(*p); */
+    pageWriteRecord(xid, *p, rid, lsn, dat);
+    
+  }
 }
+
 void readRecord(int xid, recordid rid, void *buf) {
   if(rid.size > BLOB_THRESHOLD_SIZE) {
-    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
+	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
     readBlob(xid, rid, buf);
   } else {
-    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
+    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 
+	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf);
     pageReadRecord(xid, loadPage(rid.page), rid, buf);
   }
 }
