@@ -383,7 +383,7 @@ static void writeNumSlots(byte *memAddr, int numSlots) {
  *       call memcpy(), this shouldn't be an issue)
  *
  * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
- * amount of freespace exists in this page.  (REF: freespace())
+ * amount of freespace exists in this page.  (@see freespace())
  */
 recordid pageRalloc(Page page, size_t size) {
 	int freeSpace = readFreeSpace(page.memAddr);
@@ -813,7 +813,7 @@ recordid pageBalloc(Page page, int size, int fileOffset) {
 
 	return rid;
 }
-
+/*
 int getBlobOffset(int page, int slot) {
 printf("Error: not yet implemented!!\n");
 exit(-1);
@@ -822,5 +822,18 @@ exit(-1);
 int getBlobSize(int page, int slot) {
 printf("Error: not yet implemented!!\n");
 exit(-1);
+}*/
+
+void setSlotType(Page p, int slot, int type) {
+
+  assert(type > PAGE_SIZE);
+
+  setSlotLength(p.memAddr, slot, type);
+
 }
 
+int getSlotType(Page p, int slot, int type) {
+  int ret = getSlotLength(p.memAddr, slot);
+
+  return ret > PAGE_SIZE ? ret : NORMAL_SLOT;
+}

@@ -145,6 +145,10 @@ recordid pageSlotRalloc(Page page, recordid rid);
 int pageTest();
 recordid pageBalloc(Page page, int size, int offset);
 
+int getSlotType(Page p, int slot, int type);
+void setSlotType(Page p, int slot, int type);
+
+
 END_C_DECLS
 
 #endif

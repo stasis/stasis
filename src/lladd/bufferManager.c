@@ -61,6 +61,8 @@ terms specified in this license.
 #include <lladd/page.h>
 #include <lladd/constants.h>
 
+#include "blobManager.h"
+
 static pblHashTable_t *activePages; /* page lookup */
 static unsigned int bufferSize = 1; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
@@ -136,26 +138,29 @@ int bufInit() {
 
 	repHead = repTail = first;
 	repMiddle = NULL;
-	if( (blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1 ) { /* file may not exist */
-		if( (blobfd0 = creat(BLOB0_FILE, 0666)) == -1 ) { /* cannot even create it */
+
+	openBlobStore();
+
+	/*	if( (blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
+		if( (blobfd0 = creat(BLOB0_FILE, 0666)) == -1 ) { / * cannot even create it * /
 			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
 			exit(errno);
 		}
-		if( close(blobfd0) || ((blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1) ) { /* need to reopen with read perms */
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-	}
-	if( (blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1 ) { /* file may not exist */
-		if( (blobfd1 = creat(BLOB1_FILE, 0666)) == -1 ) { /* cannot even create it */
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-		if( close(blobfd1) || ((blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1) ) { /* need to reopen with read perms */
+		if( close(blobfd0) || ((blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
 			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
 			exit(errno);
 		}
 	}
+	if( (blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
+		if( (blobfd1 = creat(BLOB1_FILE, 0666)) == -1 ) { / * cannot even create it * /
+			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
+			exit(errno);
+		}
+		if( close(blobfd1) || ((blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
+			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
+			exit(errno);
+		}
+	} */
 
 	return 0;
 }
@@ -418,8 +423,9 @@ void bufDeinit() {
 		exit(errno);
 	}
 
-	close(blobfd0);
-	close(blobfd1);
+	/*	close(blobfd0);
+		close(blobfd1); */
+	closeBlobStore();
 
 	return;
 }
@@ -428,11 +434,12 @@ void bufDeinit() {
     testing.)
 */
 void simulateBufferManagerCrash() {
-  close(blobfd0);
-  close(blobfd1);
+  closeBlobStore();
+  /*close(blobfd0);
+    close(blobfd1);*/
   close(stable);
-  blobfd0 = -1;  
-  blobfd1 = -1;  
+  /*  blobfd0 = -1;  
+  blobfd1 = -1;  */
   stable = -1;
 
 

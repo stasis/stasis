@@ -64,28 +64,6 @@ terms specified in this license.
  * 
  
 
-    blobManager - Provides blob handling @todo Set range??
-       Plan for modularity: Exactly one blob manager per storeFile.
-       Blob manager interacts with page manger via page manager's
-       public api.
-
-       - void * readBlob(rid); // if blob is resident, return a pointer to it.
-                               // if blob isn't dirty, read it from its primary location.  
-			       // if it is dirty, but not resident (stolen), read from secondary location.
-
-       - writeBlob(rid);  // if blob isn't dirty, marks blob dirty.
-
-       - kickBlob(rid);   // if blob isn't dirty, free it. 
-                          // Otherwise, steal to blob store, but 
-                          // remember that its dirty.
-
-       - commitBlob(rid); // if blob is resident, flush it to disk, 
-                          // set pointer to new store bit, then
-			  // write new store bit to bufferManager
-
-       - abortBlob(rid);  // kickBlob(), mark it clean.
- 
-
 
     pageManager - Provides cached page handling, delegates to blob
     manager when necessary.  Doesn't implement an eviction policy.
@@ -94,9 +72,9 @@ terms specified in this license.
 
     typedef struct {
        Page * page;
-       /* If this page is pinned, what's the maximum lsn that's dirtied it? * /
+       / * If this page is pinned, what's the maximum lsn that's dirtied it? * /
        lsn_t * max_dirty_lsn = 0;
-       /* How many times has this page been pinned using readWriteMap()? * /
+       / * How many times has this page been pinned using readWriteMap()? * /
        int pin_count;
     } page_metadata_t;
 
@@ -116,28 +94,28 @@ terms specified in this license.
 
      @todo need alloc + free...
 
-     Calls for LLADD managed memory (returns pointers to LLADD's cache.)
+//     Calls for LLADD managed memory (returns pointers to LLADD's cache.)
 
-     Read only access to record (requires an un-pinning)
+//     Read only access to record (requires an un-pinning)
 
-     Cost with cache hit:  pointer arithmetic.      
+//     Cost with cache hit:  pointer arithmetic.      
 
-     - map_t readMapRecord(rid, &((const void *));
+//     - map_t readMapRecord(rid, &((const void *));
       
-     Map a page read / write.  Pins the page, sets its lsn, and provides a pointer to the record: 
-      Cost with cache hit:  pointer arithmetic, eventual disk flush.
+//     Map a page read / write.  Pins the page, sets its lsn, and provides a pointer to the record: 
+//      Cost with cache hit:  pointer arithmetic, eventual disk flush.
 
-      - map_t readWriteMapRecord(rid, &(void *));
+//      - map_t readWriteMapRecord(rid, &(void *));
  
-     Unmap a mapped page so that it can be kicked.
+//     Unmap a mapped page so that it can be kicked.
 
-     @param lsn can be 0 if this is a read-only mapping.  Otherwise,
-     it should be the LSN of the operation that calls unmapRecord.
-     @todo What connection between the lock manager and this function
-     is there?  Presumably, unmap should be called when the locks are
-     released...
-     
-      - void unmapRecord(map_t, lsn);
+//    @param lsn can be 0 if this is a read-only mapping.  Otherwise,
+//     it should be the LSN of the operation that calls unmapRecord.
+//     @todo What connection between the lock manager and this function
+//     is there?  Presumably, unmap should be called when the locks are
+//     released...
+//     
+//      - void unmapRecord(map_t, lsn);
 
     cachePolicy
 
@@ -191,6 +169,12 @@ Page loadPage(int pageid);
  * @return allocated record
  */
 recordid ralloc(int xid, size_t size);
+
+/**
+ * Find a page with some free space.
+ *
+ */
+ 
 
 /**
  * This function updates the LSN of a page.  This is needed by the

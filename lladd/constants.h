@@ -100,8 +100,10 @@ terms specified in this license.
 /** @todo undocumented */
 
 #define INVALID_SLOT PAGE_SIZE
-#define BLOB_SLOT (PAGE_SIZE + 1)
-#define BLOB_REC_SIZE 12 
+#define NORMAL_SLOT (PAGE_SIZE + 1)
+#define BLOB_SLOT (PAGE_SIZE + 2)
+/** @todo should be sizeof(blob_record_t) */
+#define BLOB_REC_SIZE 12
 #define BLOB_THRESHOLD_SIZE (PAGE_SIZE-30)
 
 #define BITS_PER_BYTE 8

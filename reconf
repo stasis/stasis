@@ -3,9 +3,9 @@ rm -f config.cache
 rm -f acconfig.h
 #touch acconfig.h
 #aclocal -I m4
-aclocal
+aclocal-1.8
 autoconf
 autoheader
 #acconfig
-automake -a
+automake-1.8 -a
 exit
