@@ -1118,9 +1118,9 @@ The following sections describe the design and implementation of
 non-trivial functionality using \yad, and use Berkeley DB for
 comparison where appropriate.  We chose Berkeley DB because, among
 commonly used systems, it provides transactional storage that is most
-similar to \yad.  Also, it is available in open source form, and as a
+similar to \yad.  Also, it is available both in open-source form, and as a
 commercially maintained and supported program.  Finally, it has been 
-designed for high performance, high concurrency environments.
+designed for high-performance, high-concurrency environments.
 
 All benchmarks were run on and Intel .... {\em @todo} with the
 following Berkeley DB flags enabled {\em @todo}.  We used the copy
@@ -1151,14 +1151,13 @@ We increased Berkeley DB's buffer cache and log buffer sizes, to match
 roughly doubled Berkeley DB's performance on the bulk loading tests.
 
 Finally, we would like to point out that we expended a considerable
-effort while tuning Berkeley DB, and that our efforts significantly
-improved Berkeley DB's performance on these tests.  While further
-tuning by Berkeley DB experts would probably improve Berkeley DB's
+effort tuning Berkeley DB, and that our efforts significantly
+improved Berkeley DB's performance on these tests.  Although further
+tuning by Berkeley DB experts might improve Berkeley DB's
 numbers, we think that we have produced a reasonbly fair comparison
 between the two systems.  The source code and scripts we used to
 generate this data is publicly available, and we have been able to
 reproduce the trends reported here on multiple systems.
-
 
 
 \section{Linear Hash Table}
@@ -1197,15 +1196,14 @@ access' graphs.}}
 %could support a broader range of features than those that are provided 
 %by BerkeleyDB's monolithic interface.
 
-Hash table indices are common in the OLTP (Online Transsaction
-Processing) world, and are also applicable to a large number of
-applications.  In this section, we describe how we implemented two
-variants of Linear Hash tables using \yad, and describe how \yad's
-flexible page and log formats allow end-users of our library to
-perform similar optimizations.  We also argue that \yad makes it
-trivial to produce concurrent data structure implementations, and
-provide a set of mechanical steps that will allow a non-concurrent
-data structure implementation to be used by interleaved transactions.
+Hash table indices are common in databases, and are also applicable to
+a large number of applications.  In this section, we describe how we
+implemented two variants of Linear Hash tables on top of \yad, and
+describe how \yad's flexible page and log formats enable interesting
+optimizations.  We also argue that \yad makes it trivial to produce
+concurrent data structure implementations, and provide a set of
+mechanical steps that will allow a non-concurrent data structure
+implementation to be used by interleaved transactions.
 
 Finally, we describe a number of more complex optimizations, and
 compare the performance of our optimized implementation, the
@@ -1215,10 +1213,9 @@ presented in this paper, and is \yad's default hashtable
 implementation.  We chose this implmentation over the faster optimized
 hash table in order to this emphasize that it is easy to implement
 high-performance transactional data structures with \yad, and because
-it is easy to understand and convince ourselves that the
-straightforward implementation is correct.
+it is easy to understand.
 
-We decided to implement a linear hash table.  Linear hash tables are
+We decided to implement a {\em linear} hash table.  Linear hash tables are
 hash tables that are able to extend their bucket list incrementally at
 runtime. They work as follows. Imagine that we want to double the size
 of a hash table of size $2^{n}$, and that the hash table has been
@@ -1266,39 +1263,43 @@ look up an aribtrary bucket, we simply need to calculate which chunk
 of allocated pages will contain the bucket, and then the offset the
 appropriate page within that group of allocated pages.  
 
-Since we double the amount of space allocated at each step, we arrange
-to run out of addressable space before the lookup table that we need
-runs out of space. 
+%Since we double the amount of space allocated at each step, we arrange
+%to run out of addressable space before the lookup table that we need
+%runs out of space. 
 
 Normal \yad slotted pages are not without overhead.  Each record has
 an assoiciated size field, and an offset pointer that points to a
 location within the page.  Throughout our bucket list implementation,
-we only deal with fixed length slots.  \yad includes a ``Fixed page''
-interface that implements an on-page format that avoids these
-overheads by only handling fixed length entries.  We use this
-interface directly to store the actual bucket entries.  We override
-the ``page type'' field of the page that holds the lookup table.  
+we only deal with fixed-length slots.  Since \yad supports multiple
+page layouts, we use the ``Fixed Page'' layout, which implements a
+page consisting on an array of fixed-length records.  Each bucket thus
+maps directly to one record, and it is trivial to map bucket numbers
+to record numbers within a page. 
 
-This routes requests to access recordid's that reside in the index
-page to Array List's page handling code which uses the existing
-``Fixed page'' interface to read and write to the lookup table.
-Nothing in \yad's extendible page interface forced us to used the
-existing interface for this purpose, and we could have implemented the
-lookup table using the byte-oriented interface, but we decided to
-reuse existing code in order to simplify our implementation, and the
-Fixed page interface is already quite efficient.  
+In fact, this is essentially identical to the transactional array
+implementation, so we can just use that directly: a range of
+contiguous pages is treated as a large array of buckets. The linear
+hash table is thus a tuple of such arrays that map ranges of IDs to
+each array.  For a table split into $m$ arrays, we thus get $O(lg m)$
+in-memory operations to find the right array, followed by an $O(1)$
+array lookup.  The redo/undo functions for the array are trivial: they
+just log the before or after image of the specific record.
 
-The ArrayList page handling code overrides the recordid ``slot'' field
-to refer to a logical offset within the ArrayList.  Therefore,
-ArrayList provides an interface that can be used as though it were
-backed by an infinitely large page that contains fixed length records.
-This seems to be generally useful, so the ArrayList implementation may
-be used independently of the hashtable.
+\eab{should we cover transactional arrays somewhere?}
 
-For brevity we do not include a description of how the ArrayList
-operations are logged and implemented.
+%% The ArrayList page handling code overrides the recordid ``slot'' field
+%% to refer to a logical offset within the ArrayList.  Therefore,
+%% ArrayList provides an interface that can be used as though it were
+%% backed by an infinitely large page that contains fixed length records.
+%% This seems to be generally useful, so the ArrayList implementation may
+%% be used independently of the hashtable.
+
+%For brevity we do not include a description of how the ArrayList
+%operations are logged and implemented.
 
 \subsection{Bucket Overflow}
+
+\eab{don't get this section, and it sounds really complicated, which is counterproductive at this point}
 
 For simplicity, our buckets are fixed length.  However, we want to
 store variable length objects.  Therefore, we store a header record in
@@ -1327,41 +1328,64 @@ properties, it can also be used on its own.
 
 Given the structures described above, implementation of a linear hash
 table is straightforward.  A linear hash function is used to map keys
-to buckets, insertions and deletions are handled by the linked list
-implementation, and the table can be extended by removing items from
-one linked list and adding them to another list.
+to buckets, insertions and deletions are handled by the array implementation,
+%linked list implementation, 
+and the table can be extended lazily by transactionally removing items
+from one bucket and adding them to another.
 
-Provided the underlying data structures are transactional and there
+Given that the underlying data structures are transactional and there
 are never any concurrent transactions, this is actually all that is
 needed to complete the linear hash table implementation.
-Unfortunately, as we mentioned in section~\ref{todo}, things become a
-bit more complex if we allow interleaved transactions.  To get around
-this, and to allow multithreaded access to the hashtable, we protect
-all of the hashtable operations with pthread mutexes.  Then, we
-implement inverse operations for each operation we want to support
-(this is trivial in the case of the hash table, since ``insert'' is
-the logical inverse of ``remove.''), then we add calls to begin nested
-top actions in each of the places where we added a mutex acquisition,
-and remove the nested top action wherever we release a mutex.  Of
-course, nested top actions are not necessary for read only operations.
+Unfortunately, as we mentioned in Section~\ref{todo}, things become a
+bit more complex if we allow interleaved transactions. 
+
+We have found a simple recipe for converting a non-concurrent data structure into a concurrent one, which involves three steps:
+\begin{enumerate}
+\item Wrap a mutex around each operation, this can be done with a lock
+  manager, or just using pthreads mutexes.  This provides isolation.
+\item Define a logical UNDO for each operation (rather than just using
+  the lower-level undo in the transactional array).  This is easy for a
+  hash table; e.g. the undo for an {\em insert} is {\em remove}.
+\item For mutating operations (not read-only), add a ``begin nested
+  top action'' right after the mutex acquisition, and a ``commit
+  nested top action'' where we release the mutex.
+\end{enumerate}
+
+\eab{need to explain better why this gives us concurrent
+transactions.. is there a mutex for each record? each bucket?  need to
+explain that the logical undo is really a compensation that undoes the
+insert, but not the structural changes.}
+
+%% To get around
+%% this, and to allow multithreaded access to the hashtable, we protect
+%% all of the hashtable operations with pthread mutexes. \eab{is this a lock manager, a latch or neither?}  Then, we
+%% implement inverse operations for each operation we want to support
+%% (this is trivial in the case of the hash table, since ``insert'' is
+%% the logical inverse of ``remove.''), then we add calls to begin nested
+%% top actions in each of the places where we added a mutex acquisition,
+%% and remove the nested top action wherever we release a mutex.  Of
+%% course, nested top actions are not necessary for read only operations.
 
 This completes our description of \yad's default hashtable
 implementation.  We would like to emphasize the fact that implementing
 transactional support and concurrency for this data structure is
-straightforward, and (other than requiring the design of a logical
-logging format, and the restrictions imposed by fixed length pages) is
-not fundamentally more difficult or than the implementation of normal
-data structures).  Also, while implementing the hash table, we also
+straightforward.  The only complications are a) defining a logical undo, and b) dealing with fixed-length records.
+
+%, and (other than requiring the design of a logical
+%logging format, and the restrictions imposed by fixed length pages) is
+%not fundamentally more difficult or than the implementation of normal
+%data structures). 
+
+\eab{this needs updating:} Also, while implementing the hash table, we also
 implemented two generally useful transactional data structures.
 
-Next we describe some additional optimizations that
-we could have performed, and evaluate the performance of our
-implementations.
+Next we describe some additional optimizations and evaluate the
+performance of our implementations.
 
 \subsection{The optimized hashtable}
 
 Our optimized hashtable implementation is optimized for log
-bandwidth, only stores fixed length entries, and does not obey normal
+bandwidth, only stores fixed-length entries, and does not obey normal
 recovery semantics.  
 
 Instead of using nested top actions, the optimized implementation
@@ -1369,9 +1393,9 @@ applies updates in a carefully chosen order that minimizes the extent
 to which the on disk representation of the hash table could be
 corrupted.  (Figure~\ref{linkedList}) Before beginning updates, it
 writes an undo entry that will check and restore the consistency of
-the hashtable during recovery, and then invoke the inverse of the
+the hashtable during recovery, and then invokes the inverse of the
 operation that needs to be undone.  This recovery scheme does not
-require record level undo information.  Therefore, pre-images of
+require record-level undo information.  Therefore, pre-images of
 records do not need to be written to log, saving log bandwidth and
 enhancing performance.
 
@@ -1385,7 +1409,7 @@ header information from the buffer mananger for each request.
 
 The most important component of \yad for this optimization is \yad's
 flexible recovery and logging scheme.  For brevity we only mention
-that this hashtable implementation finer grained latching than the one
+that this hashtable implementation uses finer-grained latching than the one
 mentioned above, but do not describe how this was implemented.  Finer
 grained latching is relatively easy in this case since most changes
 only affect a few buckets.
@@ -1404,7 +1428,7 @@ mentioned above, and used Berkeley BD for comparison.
 %primatives.
 
 The first test (Figure~\ref{fig:BULK_LOAD}) measures the throughput of
-a single long running
+a single long-running
 transaction that loads a synthetic data set into the
 library.  For comparison, we also provide throughput for many different
 \yad operations, BerkeleyDB's DB\_HASH hashtable implementation,
@@ -1416,7 +1440,7 @@ it issues fewer buffer manager requests and writes fewer log entries
 than the straightforward implementation.
 
 We see that \yad's other operation implementations also perform well
-in this test.  The page oriented list implementation is geared toward
+in this test.  The page-oriented list implementation is geared toward
 preserving the locality of short lists, and we see that it has
 quadratic performance in this test.  This is because the list is
 traversed each time a new page must be allocated.  
@@ -1431,10 +1455,10 @@ page oriented list should have the opportunity to allocate space on
 pages that it already occupies.
 
 In a seperate experiment not presented here, we compared the
-implementation of the page oriented linked list to \yad's conventional
-linked list implementation.  While the conventional implementation
+implementation of the page-oriented linked list to \yad's conventional
+linked-list implementation.  Although the conventional implementation
 performs better when bulk loading large amounts of data into a single
-linked list, we have found that a hashtable built with the page oriented list
+linked list, we have found that a hashtable built with the page-oriented list
 outperforms otherwise equivalent hashtables that use conventional linked lists.
 
 
@@ -1451,7 +1475,7 @@ concurrent transactions to reduce logging overhead.  Both systems
 can service concurrent calls to commit with a single 
 synchronous I/O. Because different approaches to this 
 optimization make sense under different circumstances,~\cite{findWorkOnThisOrRemoveTheSentence} this may 
-be another aspect of transasctional storage systems where
+be another aspect of transactional storage systems where
 application control over a transactional storage policy is desirable.  
 
 %\footnote{Although our current implementation does not provide the hooks that 
@@ -1490,14 +1514,15 @@ response times for each case.
 
 The fact that our straightfoward hashtable outperforms Berkeley DB's hashtable shows that
 straightforward implementations of specialized data structures can 
-often outperform highly tuned, general purpose implementations.
+often outperform highly tuned, general-purpose implementations.
 This finding suggests that it is appropriate for
 application developers to consider the development of custom
 transactional storage mechanisms if application performance is
 important.
 
 
-\subsection{Object Serialization}\label{OASYS}
+\section{Object Serialization}
+\label{OASYS}
 
 Object serialization performance is extremely important in modern web
 application systems such as Enterprise Java Beans.  Object serialization is also a
