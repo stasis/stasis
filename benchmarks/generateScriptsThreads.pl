@@ -9,7 +9,7 @@ use strict;
 
 open(LOGICAL_THREADS,     ">LOGICAL_THREADS.script"    );
 
-for(my $i = 1; $i <= 20; $i += .5) {
+for(my $i = 1; $i <= 20; $i += 1) {
     my $total = 100000;
 
     my $thread_count = $i;
