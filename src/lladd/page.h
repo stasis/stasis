@@ -192,6 +192,8 @@ struct Page_s {
  */
 void pageInit();
 
+void pageDeInit();
+
 /**
  * assumes that the page is already loaded in memory.  It takes
  * as a parameter a Page.  The Page struct contains the new LSN and the page
@@ -258,6 +260,8 @@ void pageDeRalloc(Page * page, recordid rid);
 int pageGetSlotType(Page * p, int slot, int type);
 void pageSetSlotType(Page * p, int slot, int type);
 
+Page * loadPage(int page);
+Page * getPage(int page, int mode);
 
 END_C_DECLS
 

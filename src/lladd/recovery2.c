@@ -168,6 +168,7 @@ static void Redo() {
 	redoUpdate(e);
       }
     }
+    free(e);
   }
 }
 
@@ -247,7 +248,9 @@ static void Undo(int recovery) {
 	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%ld), skipping...\n", e->type, e->xid, e->LSN); 
       break;
       }
+      free(e);
     }
+
     /*    printf("$"); fflush(NULL); */
   }
   free(prepare_guard_state);

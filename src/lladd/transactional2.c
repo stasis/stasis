@@ -101,7 +101,6 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   p = loadPage(rid.page);
 
-  /* KLUDGE re-enable loggging!*/ 
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
   
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
@@ -110,6 +109,8 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   doUpdate(e, p);
   releasePage(p);
+
+  free(e);
 
 }
 
@@ -124,6 +125,7 @@ int Tcommit(int xid) {
 #ifdef DEBUGGING 
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
+  pthread_mutex_unlock(&transactional_2_mutex);
 #endif
 
   lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
@@ -166,6 +168,7 @@ int Tdeinit() {
 	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
 		if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
 			Tabort(XactionTable[i].xid);
+			printf("WARNING: Tdeinit() is aborting transaction %d\n", XactionTable[i].xid);
 		}
 	}
 	assert( numActiveXactions == 0 );

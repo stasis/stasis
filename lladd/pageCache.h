@@ -22,11 +22,25 @@ Page * getPage(int pageid, int locktype);
     Note that pageCache does not perform any file I/O of its own.
 
     @todo pageCache should not include page.h at all.  It should treat
-    pages as (int, void*) pairs.
+    pages as (int, void*) pairs.  (But the page struct contains the
+    pointers that pageCache manipulates..)
 
 */
-void pageCacheInit();
+void pageCacheInit(Page * first);
 void pageCacheDeinit();
-/*Page * loadPage(int pageid); */
+
+void cacheHitOnPage(Page * ret);
+void cacheRemovePage(Page * ret);
+void cacheInsertPage (Page * ret);
+/** Return a page that is a reasonable candidate for replacement. This
+    function does not actually remove the page from cache.*/
+Page * cacheStalePage();
+
+#define INITIAL 0
+#define FULL    1
+
+
+
+extern int cache_state;
 
 #endif

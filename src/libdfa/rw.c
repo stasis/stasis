@@ -146,6 +146,9 @@ void deletelock (rwl *lock)
 	pthread_mutex_destroy (lock->mut);
 	pthread_cond_destroy (lock->readOK);
 	pthread_cond_destroy (lock->writeOK);
+	free(lock->mut);
+	free(lock->writeOK);
+	free(lock->readOK);
 	free (lock);
 
 	return;

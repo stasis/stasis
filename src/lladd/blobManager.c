@@ -68,6 +68,7 @@ static void tripleHashInsert(int xid, recordid rid, lsn_t newLSN) {
 
   if(xidHash == NULL) {
     xidHash = pblHtCreate();
+    DEBUG("New blob xact: xid = %d\n", xid);
     pblHtInsert(dirtyBlobs, &xid, sizeof(int), xidHash);
   }
 
@@ -152,7 +153,17 @@ void closeBlobStore() {
   assert(!ret);
   blobf0 = NULL;
   blobf1 = NULL;
-  
+  pblHashTable_t * xidhash;
+  for(xidhash = pblHtFirst(dirtyBlobs); xidhash; xidhash = pblHtNext(dirtyBlobs)) {
+    fflush(NULL);
+    sync();
+    printf("WARNING!: Found list of dirty blobs for transaction: %ld\nIt is possible that these blobs were not synced to disk properly.\n\nThe data has now been flushed to disk, but this warning could indicate a bug that could cause data corruption.", *(lsn_t*)pblHtCurrentKey(dirtyBlobs));
+    fflush(NULL);
+    sync();
+
+    pblHtRemove(dirtyBlobs, 0, 0);
+  }
+
   pblHtDelete(dirtyBlobs);
 
   pthread_mutex_destroy(&blob_hash_mutex);
@@ -383,25 +394,29 @@ void abortBlobs(int xid) {
   pblHashTable_t * rid_buckets = pblHtLookup(dirtyBlobs, &xid, sizeof(int));
   pblHashTable_t * this_bucket;
   
+  DEBUG("Blob cleanup xid=%d\n", xid);
+
   if(rid_buckets) {  /* Otherwise, there are no dirty blobs for this xid.. */
     
     for(this_bucket = pblHtFirst(rid_buckets); this_bucket; this_bucket = pblHtNext(rid_buckets)) {
       lsn_t * rid_lsn;
-      int page_number;
-      
+      int page_number = *(int*)pblHtCurrentKey(rid_buckets);
+
       /* All right, this_bucket contains all of the rids for this page. */
       
       for(rid_lsn = pblHtFirst(this_bucket); rid_lsn; rid_lsn = pblHtNext(this_bucket)) {
 	recordid * rid = pblHtCurrentKey(this_bucket);
-	page_number = rid->page;
-	pblHtRemove(this_bucket, rid, sizeof(recordid));
+	/*	page_number = rid->page; */
+	assert(page_number == rid->page);
+	pblHtRemove(this_bucket, 0, 0);/*rid, sizeof(recordid)); */
 	free(rid_lsn);
       }
       
-      pblHtRemove(rid_buckets, &page_number, sizeof(int));
+      pblHtRemove(rid_buckets, 0, 0);
       pblHtDelete(this_bucket);
     }
     pblHtDelete(rid_buckets);
+    pblHtRemove(dirtyBlobs, &xid, sizeof(int));
   }
 
   pthread_mutex_unlock(&blob_hash_mutex);

@@ -406,6 +406,21 @@ void pageInit() {
 
 	
 	pthread_mutex_init(&pageAllocMutex, NULL);
+	for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+	  pool[i].rwlatch = initlock();
+	  pool[i].loadlatch = initlock();
+	  pool[i].memAddr = malloc(PAGE_SIZE);
+	}
+
+}
+
+void pageDeInit() {
+  for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+
+    deletelock(pool[i].rwlatch);
+    deletelock(pool[i].loadlatch);
+    free(pool[i].memAddr);
+  }
 }
 
 typedef struct {
@@ -690,10 +705,10 @@ Page *pageAlloc(int id) {
   
   /* We have an implicit lock on rwlatch, since we allocated it, but
      haven't returned yet. */
-  page->rwlatch = initlock();
+  /*  page->rwlatch = initlock();
   page->loadlatch = initlock();
 
-  page->memAddr = malloc(PAGE_SIZE);
+  page->memAddr = malloc(PAGE_SIZE); */
 
   nextPage++;
   assert(nextPage <= MAX_BUFFER_SIZE + 1); /* There's a dummy page that we need to keep around, thus the +1 */

@@ -121,7 +121,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
     }
   
   Tcommit(xid);
-  
+  free(rids);
   return NULL;
 }
 
@@ -179,7 +179,9 @@ void * writingAbortingWorkerThread ( void * v ) {
     }
   
   Tcommit(xid);
-  
+
+  free (rids);
+
   return NULL;
 }
 
@@ -226,7 +228,8 @@ void * writingWorkerThread ( void * v ) {
     }
   
   Tcommit(xid);
-  
+  free(rids);
+
   return NULL;
 }
 
@@ -297,9 +300,7 @@ START_TEST(transactional_blobSmokeTest) {
 
   fail_unless(rid.size == ARRAY_SIZE * sizeof(int), NULL);
 
-  printf("TSet starting.\n"); fflush(NULL);
   Tset(xid, rid, &foo);
-  printf("TSet returning.\n"); fflush(NULL);
 
   Tread(xid, rid, &bar);
 
@@ -432,6 +433,17 @@ START_TEST(transactional_blobs_threads_abort) {
   }
 
   Tdeinit();
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+  sleep (10000000);
+
 } END_TEST
 
 /** 

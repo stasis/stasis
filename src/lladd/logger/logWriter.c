@@ -319,7 +319,8 @@ void closeLogWriter() {
   deletelock(flushedLSN_lock);
   deletelock(nextAvailableLSN_lock);
   deletelock(log_read_lock);
-  pthread_mutex_destroy(&log_write_mutex); 
+  pthread_mutex_destroy(&log_write_mutex);
+  pthread_mutex_destroy(&truncateLog_mutex);
 
 }
 
@@ -356,14 +357,17 @@ static LogEntry * readLogEntry() {
   if(nmemb != 1) {
     /* Partial log entry. */
     if(feof(log)) {
+      free(ret);
       return NULL;
     }
     if(ferror(log)) {
       perror("Error reading log!");
+      free(ret);
       assert(0);
       return 0;
     }
     assert(0);
+    free(ret);
     return 0;
   }
 
