@@ -387,7 +387,7 @@ and deployment efforts.
 \rcs{Potential conclusion material after this line in the .tex file..}
 
 %Section~\ref{sub:Linear-Hash-Table}
-%validates the premise that the primatives provided by \yad are
+%validates the premise that the primitives provided by \yad are
 %sufficient to allow application developers to easily develop
 %specialized-data structures that are competitive with, or faster than
 %general purpose primatives implemented by existing systems such as
@@ -1406,7 +1406,7 @@ need a map from bucket number to bucket contents (lists), and we need to handle 
 
 The simplest bucket map would simply use a fixed-size transactional
 array. However, since we want the size of the table to grow, we should
-not assume that it fits in a contiguous range of pages. Insteed, we build
+not assume that it fits in a contiguous range of pages. Instead, we build
 on top of \yad's transactional ArrayList data structure (inspired by
 Java's structure of the same name).
 
@@ -1464,7 +1464,7 @@ for short lists, providing fast overflow bucket traversal for the hash table.}
 \end{figure}
 
 Given the map, which locates the bucket, we need a transactional
-linked list for the contents of the bucket.  The trivial implemention
+linked list for the contents of the bucket.  The trivial implementation
 would just link variable-size records together, where each record
 contains a $(key,value)$ pair and the $next$ pointer, which is just a
 $(page,slot)$ address.
@@ -1476,7 +1476,7 @@ the list on the same page: thus we use a list of lists. The main list
 links pages together, while the smaller lists reside with that
 page. \yad's slotted pages allows the smaller lists to support
 variable-size values, and allow list reordering and value resizing
-with a single log entry (since everthing is on one page).
+with a single log entry (since everything is on one page).
 
 In addition, all of the entries within a page may be traversed without
 unpinning and repinning the page in memory, providing very fast
@@ -1710,7 +1710,7 @@ significantly better than Berkeley DB's with both filesystems.}
 %
 %The final test measures the maximum number of sustainable transactions
 %per second for the two libraries.  In these cases, we generate a
-%uniform number of transactions per second by spawning a fixed nuber of
+%uniform number of transactions per second by spawning a fixed number of
 %threads, and varying the number of requests each thread issues per
 %second, and report the cumulative density of the distribution of
 %response times for each case.
@@ -1718,7 +1718,7 @@ significantly better than Berkeley DB's with both filesystems.}
 %\rcs{analysis / come up with a more sane graph format.}
 
 Finally, we developed a simple load generator which spawns a pool of threads that
-generate a fixed number of requests per second.  We then meaured
+generate a fixed number of requests per second.  We then measured
 response latency, and found that Berkeley DB and \yad behave
 similarly.
 
@@ -1734,7 +1734,7 @@ define custom latching/locking semantics, and make use of, or
 implement a custom variant of nested top actions.
 
 The fact that our straightforward hashtable is competitive 
-with Berkeley BD shows that
+with Berkeley DB shows that
 straightforward implementations of specialized data structures can 
 compete with comparable, highly-tuned, general-purpose implementations.  
 Similarly, it seems as though it is not difficult to implement specialized 
@@ -1753,7 +1753,7 @@ transactional systems.
 %This section uses:
 %\begin{enumerate}
 %\item{Custom page layouts to implement ArrayList}
-%\item{Addresses data by page to perserve locality (contrast w/ other systems..)}
+%\item{Addresses data by page to preserve locality (contrast w/ other systems..)}
 %\item{Custom log formats to implement logical undo}
 %\item{Varying levels of latching}
 %\item{Nested Top Actions for simple implementation.}
@@ -2236,10 +2236,10 @@ is more expensive then making a recursive function call.
 We considered applying some of the optimizations discussed earlier in
 the paper to our graph traversal algorithm, but opted to dedicate this
 section to request reordering.  Diff based log entries would be an
-obvious benifit for this scheme, and there may be a way to use the
+obvious benefit for this scheme, and there may be a way to use the
 OASYS implementation to reduce page file utilization.  The request 
 reordering optimization made use of reusable operation implementations 
-by borrowing ArrayList from the hashtable.  It cleanly seperates wrapper 
+by borrowing ArrayList from the hashtable.  It cleanly separates wrapper 
 functions from implementations and makes use of application-level log 
 manipulation primatives to produce locality in workloads.  We believe 
 these techniques can be generalized to other applications in future work.
