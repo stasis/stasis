@@ -1166,13 +1166,21 @@ can be stretched by sophisticated developers.
 
 \subsection{Summary}
 
-\eab{update}
-The ARIES algorithm is extremely complex, and we have left
-out most of the details needed to understand how ARIES works. Yet, we 
-have covered the information that is needed to implement new
-transactional data structures.  \yad's encapsulation of ARIES makes 
-this possible, and was performed in a way that strongly differentiates
-\yad from existing systems.
+In this section we walked through some of the more important parts of
+the \yad API, including the lock manager, nested top actions and log
+operations.  The majority of the recovery algorithm's complexity is 
+hidden from developers.  We argue that \yad's novel approach toward 
+the encapsulation of transactional primatives makes it easy for 
+developers to use these mechanisms to enhance application performance
+and simplify software design.
+
+%\eab{update}
+%The ARIES algorithm is extremely complex, and we have left
+%out most of the details needed to understand how ARIES works. Yet, we 
+%have covered the information that is needed to implement new
+%transactional data structures.  \yad's encapsulation of ARIES makes 
+%this possible, and was performed in a way that strongly differentiates
+%\yad from existing systems.
 
 
 %We hope that this will increase the availability of transactional
@@ -1306,13 +1314,6 @@ this possible, and was performed in a way that strongly differentiates
 %too much implemented part of DB; need more 'flexible' substrate.
 
 %\end{enumerate}
-
-
-
-
-
-
-
 
 \section{Experimental setup}
 \label{sec:experimental_setup}
