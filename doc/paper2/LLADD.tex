@@ -605,13 +605,20 @@ data primitives to application developers.
 
 \begin{enumerate}
 
-  \item {\bf Atomic file-based transactions. Prototype blob implementation
-  using force, shadow copies (trivial to implement given transactional
-  pages).  File systems that implement atomic operations may allow
+  \item {\bf Atomic file-based transactions. 
+    
+    Prototype blob implementation  using force, shadow copies (it is trivial to implement given transactional
+  pages).  
+
+  File systems that implement atomic operations may allow
   data to be stored durably without calling flush() on the data
-  file. Current implementation useful for blobs that are typically
+  file. 
+
+  Current implementation useful for blobs that are typically
   changed entirely from update to update, but smarter implementations
-  are certainly possible. The blob implementation primarily consists
+  are certainly possible. 
+
+  The blob implementation primarily consists
   of special log operations that cause file system calls to be made at
   appropriate times, and is simple, so it could easily be replaced by
   an application that frequently update small ranges within blobs, for
@@ -674,18 +681,17 @@ LLADD's linear hash table uses linked lists of overflow buckets.
 
   \item {\bf Serialization Benchmarks (Abstract log) }
 
-    % Need to define application semantics workload (write heavy w/ periodic checkpoint?) that allows for optimization.
+    {\bf Need to define application semantics workload (write heavy w/ periodic checkpoint?) that allows for optimization.}
     
-    % All of these graphs need X axis dimensions.  Number of (read/write?) threads, maybe?
+    {\bf All of these graphs need X axis dimensions.  Number of (read/write?) threads, maybe?}
  
-    % Graph 1:  Peak write throughput. Abstract log runs everything else into the ground (no disk i/o, basically, measure
-    % contention on ringbuffer...)
+    {\bf Graph 1:  Peak write throughput. Abstract log wins (no disk i/o, basically, measure contention on ringbuffer, and compare to log I/O + hash table insertions.)}
 
-    % Graph 2:  Measure maximum average write throughput: Write throughput vs. rate of log growth.  Spool abstract log to disk.
-    %           Reads starve, or read stale data.
+    {\bf Graph 2:  Measure maximum average write throughput: Write throughput vs. rate of log growth.  Spool abstract log to disk.
+              Reads starve, or read stale data. }
 
-    % Graph 3:  Latency @ peak steady state write throughput.  Abstract log size remains constant.  Measure read latency vs.
-    %           queue length.
+    {\bf Graph 3:  Latency @ peak steady state write throughput.  Abstract log size remains constant.  Measure read latency vs.
+               queue length.  This will show the system's 'second-order' ability to absorb spikes. }
 
   \item {\bf Graph traversal benchmarks:  Bulk load + hot and cold transitive closure queries}
 
@@ -700,9 +706,11 @@ LLADD's linear hash table uses linked lists of overflow buckets.
 \end{enumerate}
 
 \item {\bf Future work}
+\begin{enumerate}
   \item {\bf PL / Testing stuff}
   \item {\bf Explore async log capabilities further}
-
+  \item {\bf ... from old paper}
+\end{enumerate}
 \item {\bf Conclusion}
 
 \end{enumerate}
