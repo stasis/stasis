@@ -68,6 +68,8 @@ terms specified in this license.
 */
 
 static pthread_mutex_t lastFreepage_mutex;
+pthread_mutex_t add_pending_mutex;
+
 static unsigned int lastFreepage = 0;
 
 /**
@@ -77,7 +79,7 @@ static unsigned int lastFreepage = 0;
  */
 Page * loadPage(int pageid);
 
-
+pthread_cond_t addPendingOK;
 
 int bufInit() {
 
@@ -89,7 +91,9 @@ int bufInit() {
 
 	lastFreepage = 0;
 	pthread_mutex_init(&lastFreepage_mutex , NULL);
-	
+	pthread_cond_init(&addPendingOK, NULL);
+	pthread_mutex_init(&add_pending_mutex, NULL);
+
 
 	return 0;
 }
@@ -121,13 +125,13 @@ Page * loadPage (int pageid) {
 
 Page * lastRallocPage = 0;
 
-
+/** @todo ralloc ignores it's xid parameter; change the interface? */
 recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   
   recordid ret;
   Page * p;
   
-  DEBUG("Rallocing record of size %ld\n", (long int)size);
+  /*  DEBUG("Rallocing record of size %ld\n", (long int)size); */
   
   assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
   
@@ -140,7 +144,7 @@ recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   unlock(p->loadlatch);
   pthread_mutex_unlock(&lastFreepage_mutex);
   
-  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size);
+  /*  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); */
 
   return ret;
 }
@@ -233,17 +237,34 @@ void setSlotType(int pageid, int slot, int type) {
 */
 void addPendingEvent(int pageid){
   
-  Page * p = loadPage(pageid);
+  Page * p;
 
-  pthread_mutex_lock(&(p->pending_mutex));
+  p = loadPage(pageid);
 
-  assert(!(p->waiting));
+  pthread_mutex_lock(&add_pending_mutex);
+
+  while(p->waiting) {
+
+    pthread_mutex_unlock(&add_pending_mutex);
+
+    unlock(p->loadlatch);
+    DEBUG("B");
+    pthread_mutex_lock(&add_pending_mutex);
+    pthread_cond_wait(&addPendingOK, &add_pending_mutex);
+    pthread_mutex_unlock(&add_pending_mutex);
+
+    p = loadPage(pageid);
+
+    pthread_mutex_lock(&add_pending_mutex);
+
+  }
 
   p->pending++;
 
-  pthread_mutex_unlock(&(p->pending_mutex));
+  pthread_mutex_unlock(&add_pending_mutex);
 
   unlock(p->loadlatch);
+
 
 }
 
@@ -262,12 +283,14 @@ void addPendingEvent(int pageid){
 */
 void removePendingEvent(int pageid) {
   
-  Page * p = loadPage(pageid);
+  Page * p;
 
-  pthread_mutex_lock(&(p->pending_mutex));
+  p = loadPage(pageid);
 
+  pthread_mutex_lock(&(add_pending_mutex));
   p->pending--;
   
+  assert(p->id == pageid);
   assert(p->pending >= 0);
 
   if(p->waiting && !p->pending) {
@@ -275,9 +298,11 @@ void removePendingEvent(int pageid) {
     pthread_cond_signal(&(p->noMorePending));
   }
 
-  pthread_mutex_unlock(&(p->pending_mutex));
+  pthread_mutex_unlock(&(add_pending_mutex));
 
   unlock(p->loadlatch);
+
+
 }
 
 

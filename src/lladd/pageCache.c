@@ -213,9 +213,10 @@ Page * getPage(int pageid, int locktype) {
 
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
-  // Unfortunately, this is a heuristic, as a race condition exists.
-  // (Until we obtain a readlock on ret, we have no way of knowing if
-  // we've gotten the correct page.)
+  /* Unfortunately, this is a heuristic, as a race condition exists.
+     (Until we obtain a readlock on ret, we have no way of knowing if
+     we've gotten the correct page.) */
+
   if(ret) { 
     cacheHitOnPage(ret);
     assert(ret->id == -1 || ret->id == pageid);
@@ -227,7 +228,7 @@ Page * getPage(int pageid, int locktype) {
     ret = dummy_page;
   }
   
-  writelock(ret->loadlatch, 217);
+  readlock(ret->loadlatch, 217);
   
   while(ret->id != pageid) {  /* Either we got a stale mapping from the HT, or no mapping at all. */
 
@@ -264,7 +265,7 @@ Page * getPage(int pageid, int locktype) {
 
     pthread_mutex_unlock(&loadPagePtr_mutex);
 
-    writelock(ret->loadlatch, 217);
+    readlock(ret->loadlatch, 217);
 
   }
 

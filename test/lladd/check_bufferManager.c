@@ -17,44 +17,103 @@
 #define LOG_NAME   "check_bufferMananger.log"
 
 #define NUM_PAGES 1000
-#define THREAD_COUNT 5
-#define READS_PER_THREAD 50000
+#define THREAD_COUNT 25
+#define READS_PER_THREAD 10000
+#define RECORDS_PER_THREAD 10000
+#define RECORD_THREAD_COUNT 25
 void initializePages() {
   
   int i; 
 
+  printf("Initialization starting\n"); fflush(NULL);
+
   for(i = 0 ; i < NUM_PAGES; i++) {
+    Page * p;
     recordid rid;
     rid.page = i;
     rid.slot = 0;
     rid.size = sizeof(int);
+    p = loadPage(rid.page);
+    assert(p->id != -1);
+    pageSlotRalloc(p, 0, rid);
+    /*    addPendingEvent(rid.page); */
     writeRecord(1, 1, rid, &i);
+    /*    removePendingEvent(rid.page); */
+    assert(p->pending == 0);
+    unlock(p->loadlatch);
   }
   
+  printf("Initialization complete.\n"); fflush(NULL);
+
 }
 
 void * workerThread(void * p) {
   int i;
+ 
   for(i = 0 ; i < READS_PER_THREAD; i++) {
     recordid rid;
     int j;
 
     int k = (int) (((double)NUM_PAGES)*rand()/(RAND_MAX+1.0));
     
-    if(! (i % 5000) ) {
-      printf("%d", i / 5000); fflush(NULL);
+    if(! (i % 500) ) {
+      printf("%d", i / 500); fflush(NULL);
     }
 
     rid.page = k;
     rid.slot = 0;
     rid.size = sizeof(int);
 
+    addPendingEvent(rid.page);
     readRecord(1, rid, &j);
+    assert(rid.page == k);
+    removePendingEvent(rid.page);
     assert(k == j);
   }
 
   return NULL;
 }
+
+void * workerThreadWriting(void * p) {
+
+  int offset = *(int*)p;
+  recordid rids[RECORDS_PER_THREAD];
+  for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
+    rids[i] = ralloc(1, sizeof(int));
+  }
+  for(int i = 0;  i < RECORDS_PER_THREAD; i++) {
+    int val = i + offset;
+    int oldpage = rids[i].page;
+    addPendingEvent(rids[i].page);
+    writeRecord(1, 0, rids[i], &val); 
+    assert(oldpage == rids[i].page);
+    removePendingEvent(rids[i].page);
+
+    if(! (i % 1000) ) {
+      printf("W%d", i / 1000); fflush(NULL);
+    }
+  }
+  for(int i = 0;  i < RECORDS_PER_THREAD; i++) {
+    int val;
+
+    addPendingEvent(rids[i].page);
+    readRecord(1, rids[i], &val); 
+
+    if(! (i % 1000) ) {
+      printf("R%d", i / 1000); fflush(NULL);
+    }
+
+
+    assert(val == i+offset);
+
+    removePendingEvent(rids[i].page);
+
+  }
+
+  return NULL;
+}
+
+
 
 START_TEST(pageSingleThreadTest) {
   Tinit();
@@ -101,15 +160,43 @@ START_TEST(pageLoadTest) {
   Tdeinit();
 } END_TEST
 
+START_TEST(pageSingleThreadWriterTest) {
+  int i = 100;
+  
+  Tinit();
+  
+  workerThreadWriting(&i);
+
+  Tdeinit();
+}END_TEST
+
+START_TEST(pageThreadedWritersTest) {
+  pthread_t workers[RECORD_THREAD_COUNT];
+  int i;
+
+  Tinit();
+
+  for(i = 0; i < RECORD_THREAD_COUNT; i++) {
+    pthread_create(&workers[i], NULL, workerThreadWriting, &i);
+  }
+  for(i = 0; i < RECORD_THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+  }
+
+  Tdeinit();
+}END_TEST
+
 Suite * check_suite(void) {
-  Suite *s = suite_create("logWriter");
+  Suite *s = suite_create("bufferManager");
   /* Begin a new test */
-  TCase *tc = tcase_create("writeNew");
+  TCase *tc = tcase_create("multithreaded");
 
   /* Sub tests are added, one per line, here */
 
-  /*tcase_add_test(tc, pageSingleThreadTest); */
-  tcase_add_test(tc, pageLoadTest);
+  tcase_add_test(tc, pageSingleThreadTest);
+    tcase_add_test(tc, pageLoadTest); 
+  tcase_add_test(tc, pageSingleThreadWriterTest); 
+  tcase_add_test(tc, pageThreadedWritersTest);
 
   /* --------------------------------------------- */
   

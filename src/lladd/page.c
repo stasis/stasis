@@ -600,7 +600,7 @@ Page *pageAlloc(int id) {
   page->rwlatch = initlock();
   page->loadlatch = initlock();
 
-  pthread_mutex_init(&page->pending_mutex, NULL);
+  /*  pthread_mutex_init(&page->pending_mutex, NULL);*/
   pthread_cond_init(&page->noMorePending, NULL);
 
   page->memAddr = malloc(PAGE_SIZE);
@@ -614,7 +614,8 @@ Page *pageAlloc(int id) {
   pthread_mutex_unlock(&pageAllocMutex);
 
 
-  
+  page->pending = 0;
+  page->waiting = 0;
 
   return page;
 }

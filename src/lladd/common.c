@@ -114,7 +114,38 @@ int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
 */
 int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, 
 			      char * file, int line, char * cond_name, char * mutex_name) {
-  return pthread_cond_wait(cond, &mutex->mutex);
+  int ret;
+  char * location;
+  int location_length; 
+
+  profile_tuple * tup = pblHtLookup(mutex->lockpoints, mutex->last_acquired_at, strlen(mutex->last_acquired_at)+1);
+
+  released_lock(tup);
+  released_lock(&(mutex->tup));
+
+  free(mutex->last_acquired_at);
+
+  ret = pthread_cond_wait(cond, &mutex->mutex);
+
+  location_length = asprintf(&location, "%s %d", file, line);
+
+  tup = pblHtLookup(mutex->lockpoints, location, location_length+1);
+
+  mutex->last_acquired_at = location;
+
+  if(!tup) {
+    tup = malloc(sizeof(profile_tuple));
+    
+    init_tuple(tup);
+    
+    pblHtInsert(mutex->lockpoints, location, location_length+1, tup);
+
+  }
+
+  acquired_lock(&(mutex->tup), 0);
+  acquired_lock(tup, 0);
+
+  return ret;
 }
 
 int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, void *abstime,

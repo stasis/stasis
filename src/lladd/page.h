@@ -125,8 +125,6 @@ typedef struct Page_s {
       this properly, and there are no read-only functions for the
       pending field. */
 
-  pthread_mutex_t pending_mutex;  /* pthread_mutex_t */
-
   pthread_cond_t  noMorePending;  /* pthread_cond_t */
 
   int waiting; 
@@ -153,6 +151,8 @@ typedef struct Page_s {
   */
   int pending;
 } Page;
+
+extern pthread_cond_t addPendingOK;
 
 /**
  * initializes all the important variables needed in all the

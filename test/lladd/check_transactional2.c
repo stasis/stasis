@@ -39,12 +39,63 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 #include <config.h>
+#include <lladd/common.h>
+#include <../../src/lladd/latches.h>
 #include <check.h>
 #include <assert.h>
 
 #include <lladd/transactional.h>
 #include "../check_includes.h"
 #define LOG_NAME   "check_transactional2.log"
+#define THREAD_COUNT 25
+#define RECORDS_PER_THREAD 10000
+
+/** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
+void * writingWorkerThread ( void * v ) { 
+  int offset = * (int *) v;
+  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  int xid = Tbegin();
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    rids[i] = Talloc(xid, sizeof(int));
+    if(! (i %100)) {
+      printf("A%d", i/100);fflush(NULL);
+    }
+
+  }
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int tmp = i + offset;
+    Tset(xid, rids[i], &tmp);
+    if(! (i %100)) {
+      printf("W%d", i/100); fflush(NULL);
+    }
+
+
+  }
+  
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j;
+    Tread(xid, rids[i], &j);
+    assert(i + offset == j);
+    if(! (i %100)) {
+      printf("R%d", i/100);fflush(NULL);
+    }
+  }
+    
+  Tcommit(xid);
+
+  xid = Tbegin();
+
+  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+    int j;
+    Tread(xid, rids[i], &j);
+    assert(i + offset == j);
+  }
+  return NULL;
+}
+
+
+
 /**
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
@@ -142,6 +193,33 @@ START_TEST(transactional_blobSmokeTest) {
 }
 END_TEST
 
+START_TEST(transactional_nothreads_commit) {
+  int five = 5;
+  Tinit();
+  writingWorkerThread(&five);
+  Tdeinit();
+} END_TEST
+
+START_TEST(transactional_threads_commit) {
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  
+  Tinit();
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    int arg = i + 100;
+    pthread_create(&workers[i], NULL, writingWorkerThread, &arg);
+
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+
+
+  }
+
+  Tdeinit();
+} END_TEST
+
 /** 
   Add suite declarations here
 */
@@ -153,6 +231,9 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, transactional_smokeTest);
   tcase_add_test(tc, transactional_blobSmokeTest);
+  tcase_add_test(tc, transactional_nothreads_commit);
+  tcase_add_test(tc, transactional_threads_commit);
+  /** @todo still need to make blobs reentrant! */
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

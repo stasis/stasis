@@ -1,6 +1,6 @@
 #include <config.h>
 #include <lladd/common.h>
-
+#include "latches.h"
 #include <lladd/transactional.h>
 
 #include <lladd/recovery.h>
@@ -14,6 +14,16 @@
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
+
+/** 
+    Locking for transactional2.c works as follows:
+    
+    numActiveXactions, xidCount are protected, XactionTable is not.
+    This implies that we do not support multi-threaded transactions,
+    at least for now.
+*/
+pthread_mutex_t transactional_2_mutex;
+
 #define INVALID_XTABLE_XID -1
 
 /** Needed for debugging -- sometimes we don't want to run all of Tinit() */
@@ -33,6 +43,8 @@ void setupOperationsTable() {
 
 int Tinit() {
          
+        pthread_mutex_init(&transactional_2_mutex, NULL);
+
         setupOperationsTable();
 	
 	/* 	pageInit(); */
@@ -42,6 +54,7 @@ int Tinit() {
 
 	InitiateRecovery();
 
+
 	return 0;
 }
 
@@ -49,6 +62,9 @@ int Tinit() {
 int Tbegin() {
 
 	int i, index = 0;
+	int xidCount_tmp;
+
+	pthread_mutex_lock(&transactional_2_mutex);
 
 	if( numActiveXactions == MAX_TRANSACTIONS )
 		return EXCEED_MAX_TRANSACTIONS;
@@ -63,16 +79,26 @@ int Tbegin() {
 		}
 	}
 
-	assert( i < MAX_TRANSACTIONS );
+	xidCount_tmp = xidCount;
+	/* Don't want to block while we're logging... */
+	pthread_mutex_unlock(&transactional_2_mutex);
 
-	XactionTable[index] = LogTransBegin(xidCount);
+	assert( i < MAX_TRANSACTIONS );
+	
+	XactionTable[index] = LogTransBegin(xidCount_tmp);
 
 	return XactionTable[index].xid;
 }
 
 void Tupdate(int xid, recordid rid, const void *dat, int op) {
   LogEntry * e;
+  
+#ifdef DEBUGGING
+  pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
+  pthread_mutex_unlock(&transactional_2_mutex);
+#endif
+
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], rid, op, dat);
 
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
@@ -89,12 +115,20 @@ void Tread(int xid, recordid rid, void * dat) {
 
 int Tcommit(int xid) {
   lsn_t lsn;
+#ifdef DEBUGGING 
+  pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
+  pthread_mutex_unlock(&transactional_2_mutex);
+#endif
+
   lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
   bufTransCommit(xid, lsn); /* unlocks pages */
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
+  pthread_mutex_lock(&transactional_2_mutex);
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
+  pthread_mutex_unlock(&transactional_2_mutex);
+
   return 0;
 }
 
@@ -107,9 +141,11 @@ int Tabort(int xid) {
   bufTransAbort(xid, lsn);
 
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
-  numActiveXactions--;
 
+  pthread_mutex_lock(&transactional_2_mutex);
+  numActiveXactions--;
   assert( numActiveXactions >= 0 );
+  pthread_mutex_unlock(&transactional_2_mutex);
   return 0;
 }
 
@@ -141,10 +177,14 @@ void Trevive(int xid, long lsn) {
   } else {
     XactionTable[index].xid = xid;
     XactionTable[index].prevLSN = lsn;
+    pthread_mutex_lock(&transactional_2_mutex);
     numActiveXactions++;
+    pthread_mutex_unlock(&transactional_2_mutex);
   }
 }
 
 void TsetXIDCount(int xid) {
+  pthread_mutex_lock(&transactional_2_mutex);
   xidCount = xid;
+  pthread_mutex_unlock(&transactional_2_mutex);
 }

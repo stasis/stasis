@@ -12,6 +12,10 @@
 #include "logger/logWriter.h"
 
 static FILE * stable = NULL;
+/** Defined in bufferManager.c */
+extern pthread_mutex_t add_pending_mutex;
+
+
 
 /** 
     This function blocks until there are no events pending for this page.
@@ -21,15 +25,16 @@ static FILE * stable = NULL;
 
 
 void finalize(Page * p) {
-  pthread_mutex_lock(&(p->pending_mutex));
+  pthread_mutex_lock(&(add_pending_mutex));
   p->waiting++;
 
   while(p->pending) {
-    
-    pthread_cond_wait(&(p->noMorePending), &(p->pending_mutex));
+    DEBUG("A");
+    pthread_cond_wait(&(p->noMorePending), &(add_pending_mutex));
   }
 
-  pthread_mutex_unlock(&(p->pending_mutex)); 
+  pthread_mutex_unlock(&(add_pending_mutex)); 
+  pthread_cond_broadcast(&addPendingOK);
 
   return;
 }
@@ -90,6 +95,8 @@ void pageWrite(Page * ret) {
   long pageoffset = ret->id * PAGE_SIZE;
   long offset ;
 
+  assert(ret->pending == 0);
+  
   if(flushedLSN() < pageReadLSN(ret)) {
     DEBUG("pageWrite is calling syncLog()!\n"); 
     syncLog();

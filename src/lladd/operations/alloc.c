@@ -7,6 +7,8 @@
 #include <lladd/bufferManager.h>
 #include "../blobManager.h"
 /**
+   @file
+
    Implementation of Talloc() as an operation
 
    This is a bit strange compared to other operations, as it happens
@@ -20,6 +22,10 @@
    space alloced during the crash is leaked.  This doesn't seem to be
    too big of a deal, but it should be fixed someday.  A more serious
    problem results from crashes during blob allocation.
+
+   @ingroup OPERATIONS
+
+   $Id$
    
 */
 
