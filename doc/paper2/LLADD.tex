@@ -32,7 +32,7 @@
 
 {\em The sections marked @todo or bolded still need to be written, and
 graphs need to be produced.  Also, I would like to add a
-``cheat-sheet'' style reference of an idealized version of LLADD's
+``cheat-sheet'' style reference of an idealized version of \yad's
 API.}
 \vspace*{6pt}
 
@@ -305,11 +305,11 @@ the environments in which these applications are deployed.
 
 This section describes how existing write ahead logging protocols
 implement the four properties of transactional storage: Atomicity,
-Consistency, Isolation and Durability.  LLADD provides these four
+Consistency, Isolation and Durability.  \yad provides these four
 properties to applications but also allows applications to opt-out of
 certain of properties as appropriate.  This can be useful for
 performance reasons or to simplify the mapping between application
-semantics and the storage layer.  Unlike prior work, LLADD also
+semantics and the storage layer.  Unlike prior work, \yad also
 exposes the primatives described below to application developers,
 allowing unanticipated optimizations to be implemented and allowing
 low level behavior such as recovery semantics to be customized on a
@@ -335,7 +335,7 @@ presents.
 %make these constraints necessary. Because comprehensive discussions of
 %write ahead logging protocols and ARIES are available elsewhere,~\cite{haerder, aries} we
 %only discuss those details relevant to the implementation of new
-%operations in LLADD.
+%operations in \yad.
 
 
 \subsection{Operations\label{sub:OperationProperties}}
@@ -363,7 +363,7 @@ information and that this information may have been produced by a
 transaction that will be aborted by a crash or by the application.
 
 % Furthermore, aborting
-%and committing transactions may be interleaved, and LLADD does not
+%and committing transactions may be interleaved, and \yad does not
 %allow cascading aborts,%
 %\footnote{That is, by aborting, one transaction may not cause other transactions
 %to abort. To understand why operation implementors must worry about
@@ -376,11 +376,11 @@ Therefore, in order to implement an operation we must also implement
 synchronization mechanisms that isolate the effects of transactions
 from each other.  We use the term {\em latching} to refer to
 synchronization mechanisms that protect the physical consistency of
-LLADD's internal data structures and the data store.  We say {\em
+\yad's internal data structures and the data store.  We say {\em
 locking} when we refer to mechanisms that provide some level of
 isolation between transactions.  
 
-LLADD operations that allow concurrent requests must provide a
+\yad operations that allow concurrent requests must provide a
 latching implementation that is guaranteed not to deadlock.  These
 implementations need not ensure consistency of application data.
 Instead, they must maintain the consistency of any underlying data
@@ -389,7 +389,7 @@ structures.
 Due to the variety of locking systems available, and their interaction
 with application workload,~\cite{multipleGenericLocking} we leave it
 to the application to decide what sort of transaction isolation is
-appropriate.  LLADD provides a simple page level lock manager that
+appropriate.  \yad provides a simple page level lock manager that
 performs deadlock detection, although we expect many applications to
 make use of deadlock avoidance schemes, which are prevalent in
 multithreaded application development.
@@ -397,7 +397,7 @@ multithreaded application development.
 For example, would be relatively easy to build a strict two-phase
 locking lock
 manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
-top of LLADD.  Such a lock manager would provide isolation guarantees
+top of \yad.  Such a lock manager would provide isolation guarantees
 for all applications that make use of it.  However, applications that
 make use of such a lock manager must check for (and recover from)
 deadlocked transactions that have been aborted by the lock manager,
@@ -410,7 +410,7 @@ would avoid the complexity of dealing with transactions that abort due
 to deadlock, and also remove the runtime cost of aborted and retried
 transactions.  
 
-Currently, LLADD provides an optional page-level lock manager.  We are
+Currently, \yad provides an optional page-level lock manager.  We are
 unaware of any limitations in our architecture that would prevent us
 from implementing full hierarchical locking and index locking in the
 future.  We will revisit this point in more detail when we describe
@@ -424,7 +424,7 @@ the sample operations that we have implemented.
 
 All actions performed by a committed transaction must be
 restored in the case of a crash, and all actions performed by aborting
-transactions must be undone. In order for LLADD to arrange for this
+transactions must be undone. In order for \yad to arrange for this
 to happen at recovery, operations must produce log entries that contain
 all information necessary for undo and redo.
 
@@ -432,12 +432,12 @@ An important concept in ARIES is the ``log sequence number'' or {\em
 LSN}.  An LSN is essentially a virtual timestamp that goes on every
 page; it marks the last log entry that is reflected on the page and
 implies that all previous log entries are also reflected.  Given the
-LSN, LLADD calculates where to start playing back the log to bring the
+LSN, \yad calculates where to start playing back the log to bring the
 page up to date.  The LSN is stored in the page that it refers to so
 that it is always written to disk atomically with the data on the
 page.
 
-ARIES (and thus LLADD) allows pages to be {\em stolen}, i.e. written
+ARIES (and thus \yad) allows pages to be {\em stolen}, i.e. written
 back to disk while they still contain uncommitted data.  It is
 tempting to disallow this, but to do so has serious consequences such as
 a increased need for buffer memory (to hold all dirty pages). Worse,
@@ -445,19 +445,19 @@ as we allow multiple transactions to run concurrently on the same page
 (but not typically the same item), it may be that a given page {\em
 always} contains some uncommitted data and thus could never be written
 back to disk.  To handle stolen pages, we log UNDO records that
-we can use to undo the uncommitted changes in case we crash.  LLADD
+we can use to undo the uncommitted changes in case we crash.  \yad
 ensures that the UNDO record is durable in the log before the
 page is written to disk and that the page LSN reflects this log entry.
 
 Similarly, we do not force pages out to disk every time a transaction
 commits, as this limits performance.  Instead, we log REDO records
 that we can use to redo the operation in case the committed version never
-makes it to disk.  LLADD ensures that the REDO entry is durable in the
+makes it to disk.  \yad ensures that the REDO entry is durable in the
 log before the transaction commits.  REDO entries are physical changes
 to a single page (``page-oriented redo''), and thus must be redone in
 order.
 
-One unique aspect of LLADD, which is not true for ARIES, is that {\em
+One unique aspect of \yad, which is not true for ARIES, is that {\em
 normal} operations use the REDO function; i.e. there is no way to
 modify the page except via the REDO operation.\footnote{Actually,
 operation implementations may circumvent this restriction, but doing
@@ -465,13 +465,13 @@ so complicates recovery semantics, and only should be done as a last
 resort.  Currently, this is only done to implement the OASYS flush()
 and update() operations described in Section~\ref{OASYS}.}  This has
 the nice property that the REDO code is known to work, since even the
-original update is a ``redo''.  In general, the LLADD philosophy is
+original update is a ``redo''.  In general, the \yad philosophy is
 that you define operations in terms of their REDO/UNDO behavior, and
 then build a user friendly interface around those.
 
 Eventually, the page makes it to disk, but the REDO entry is still
 useful; we can use it to roll forward a single page from an archived
-copy.  Thus one of the nice properties of LLADD, which has been
+copy.  Thus one of the nice properties of \yad, which has been
 tested, is that we can handle media failures very gracefully: lost
 disk blocks or even whole files can be recovered given an old version
 and the log.  
@@ -484,7 +484,7 @@ and the log.
 
 Recovery in ARIES consists of three stages: {\em analysis}, {\em redo} and {\em undo}. 
 The first, analysis, is
-implemented by LLADD, but will not be discussed in this
+implemented by \yad, but will not be discussed in this
 paper. The second, redo, ensures that each redo entry in the log 
 will have been applied to each page in the page file exactly once.
 The third phase, undo, rolls back any transactions that were active
@@ -492,7 +492,7 @@ when the crash occurred, as though the application manually aborted
 them with the {}``abort'' function call.
   
 After the analysis phase, the on-disk version of the page file
-is in the same state it was in when LLADD crashed. This means that
+is in the same state it was in when \yad crashed. This means that
 some subset of the page updates performed during normal operation
 have made it to disk, and that the log contains full redo and undo
 information for the version of each page present in the page file.%
@@ -529,7 +529,7 @@ that should be presented here. {\em Physical logging }
 is the practice of logging physical (byte-level) updates
 and the physical (page number) addresses to which they are applied.
 
-{\em Physiological logging } is what LLADD recommends for its redo 
+{\em Physiological logging } is what \yad recommends for its redo 
 records. The physical address (page number) is stored, but the byte offset
 and the actual difference are stored implicitly in the parameters
 of the redo or undo function. These parameters allow the function to 
@@ -538,20 +538,20 @@ One common use for this is {\em slotted pages}, which use an on-page level of
 indirection to allow records to be rearranged within the page; instead of using the page offset, redo 
 operations use a logical offset to locate the data. This allows data within
 a single page to be re-arranged at runtime to produce contiguous
-regions of free space. LLADD generalizes this model; for example, the parameters passed to the function may utilize application specific properties in order to be significantly smaller than the physical change made to the page.~\cite{physiological}
+regions of free space. \yad generalizes this model; for example, the parameters passed to the function may utilize application specific properties in order to be significantly smaller than the physical change made to the page.~\cite{physiological}
 
-{\em Logical logging } can only be used for undo entries in LLADD, and
+{\em Logical logging } can only be used for undo entries in \yad, and
 stores a logical address (the key of a hash table, for instance)
 instead of a physical address. As we will see later, these operations
 may affect multiple pages.  This allows the location of data in the
 page file to change, even if outstanding transactions may have to roll
-back changes made to that data. Clearly, for LLADD to be able to apply
+back changes made to that data. Clearly, for \yad to be able to apply
 logical log entries, the page file must be physically consistent,
 ruling out use of logical logging for redo operations.
 
-LLADD supports all three types of logging, and allows developers to
+\yad supports all three types of logging, and allows developers to
 register new operations, which is the key to its extensibility. After
-discussing LLADD's architecture, we will revisit this topic with a number of
+discussing \yad's architecture, we will revisit this topic with a number of
 concrete examples.
 
 
@@ -559,16 +559,16 @@ concrete examples.
 
 % @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
 
-Section~\ref{sub:OperationProperties} states that LLADD does not
+Section~\ref{sub:OperationProperties} states that \yad does not
 allow cascading aborts, implying that operation implementors must
 protect transactions from any structural changes made to data structures
-by uncommitted transactions, but LLADD does not provide any mechanisms
-designed for long-term locking. However, one of LLADD's goals is to
+by uncommitted transactions, but \yad does not provide any mechanisms
+designed for long-term locking. However, one of \yad's goals is to
 make it easy to implement custom data structures for use within safe,
 multi-threaded transactions. Clearly, an additional mechanism is needed.
 
 The solution is to allow portions of an operation to ``commit'' before
-the operation returns.\footnote{We considered the use of nested top actions, which LLADD could easily
+the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
 support. However, we currently use the slightly simpler (and lighter-weight)
 mechanism described here. If the need arises, we will add support
 for nested top actions.}
@@ -630,7 +630,7 @@ important performance characteristics that are not available from
 existing systems.
 
 The remainder of this section is devoted to a description of the
-various primatives that LLADD provides to application developers.
+various primatives that \yad provides to application developers.
 
 
 %% @todo where does this text go??
@@ -642,26 +642,26 @@ various primatives that LLADD provides to application developers.
 %
 %Operation implementors follow the pattern in Figure \ref{cap:Tset},
 %and need only implement a wrapper function (``Tset()'' in the figure,
-%and register a pair of redo and undo functions with LLADD.
-%The Tupdate function, which is built into LLADD, handles most of the
-%runtime complexity.  LLADD uses the undo and redo functions
+%and register a pair of redo and undo functions with \yad.
+%The Tupdate function, which is built into \yad, handles most of the
+%runtime complexity.  \yad uses the undo and redo functions
 %during recovery in the same way that they are used during normal
 %processing.  
 %
 %The complexity of the ARIES algorithm lies in determining
-%exactly when the undo and redo operations should be applied.  LLADD 
+%exactly when the undo and redo operations should be applied.  \yad 
 %handles these details for the implementors of operations.
 %
 %
 %\subsubsection{The buffer manager}
 %
-%LLADD manages memory on behalf of the application and prevents pages
-%from being stolen prematurely. Although LLADD uses the STEAL policy
+%\yad manages memory on behalf of the application and prevents pages
+%from being stolen prematurely. Although \yad uses the STEAL policy
 %and may write buffer pages to disk before transaction commit, it still
 %must make sure that the UNDO log entries have been forced to disk
 %before the page is written to disk. Therefore, operations must inform
 %the buffer manager when they write to a page, and update the LSN of
-%the page. This is handled automatically by the write methods that LLADD 
+%the page. This is handled automatically by the write methods that \yad 
 %provides to operation implementors (such as writeRecord()). However,
 %it is also possible to create your own low-level page manipulation
 %routines, in which case these routines must follow the protocol.
@@ -670,15 +670,15 @@ various primatives that LLADD provides to application developers.
 %\subsubsection{Log entries and forward operation\\ (the Tupdate() function)\label{sub:Tupdate}}
 %
 %In order to handle crashes correctly, and in order to undo the
-%effects of aborted transactions, LLADD provides operation implementors
+%effects of aborted transactions, \yad provides operation implementors
 %with a mechanism to log undo and redo information for their actions.
 %This takes the form of the log entry interface, which works as follows.
 %Operations consist of a wrapper function that performs some pre-calculations
 %and perhaps acquires latches. The wrapper function then passes a log
-%entry to LLADD. LLADD passes this entry to the logger, {\em and then processes
+%entry to \yad. \yad passes this entry to the logger, {\em and then processes
 %it as though it were redoing the action during recovery}, calling a function
 %that the operation implementor registered with
-%LLADD. When the function returns, control is passed back to the wrapper
+%\yad. When the function returns, control is passed back to the wrapper
 %function, which performs any post processing (such as generating return
 %values), and releases any latches that it acquired. %
 %\begin{figure}
@@ -689,7 +689,7 @@ various primatives that LLADD provides to application developers.
 %
 %\caption{\label{cap:Tset}Runtime behavior of a simple operation. Tset() and redoSet() are
 %extensions that implement a new operation, while Tupdate() is built in. New operations
-%need not be aware of the complexities of LLADD.}
+%need not be aware of the complexities of \yad.}
 %\end{figure}
 %
 %This way, the operation's behavior during recovery's redo phase (an
@@ -713,9 +713,9 @@ various primatives that LLADD provides to application developers.
 %
 %This section presented a relatively simple set of rules and patterns
 %that a developer must follow in order to implement a durable, transactional
-%and highly-concurrent data structure using LLADD:
+%and highly-concurrent data structure using \yad:
 
-  % rcs:The last paper contained a tutorial on how to use LLADD, which 
+  % rcs:The last paper contained a tutorial on how to use \yad, which 
   % should be shortend or removed from this version, so I didn't paste it 
   % in.  However, it made some points that belong in this section
   % see: ##2##
@@ -729,7 +729,7 @@ various primatives that LLADD provides to application developers.
   %  - operation wrapper
   %  - operation redo fcn
   %
-  % LLADD core:
+  % \yad core:
   % 
   %  - logger
   %  - page file
@@ -739,20 +739,20 @@ various primatives that LLADD provides to application developers.
 
 %  \item {\bf {}``Write ahead logging protocol'' vs {}``Data structure implementation''}
 %
-%A LLADD operation consists of some code that manipulates data that has
+%A \yad operation consists of some code that manipulates data that has
 %been stored in transactional pages.  These operations implement
 %high-level actions that are composed into transactions.  They are
 %implemented at a relatively low level, and have full access to the
 %ARIES algorithm.  Applications are implemented on top of the
 %interfaces provided by an application-specific set of operations.
-%This allows the the application, the operation, and LLADD itself to be
+%This allows the the application, the operation, and \yad itself to be
 %independently improved. 
 
 \subsection{Operation Implementation}
 
 %  \item {\bf  ARIES provides {}``transactional pages'' }
 
-LLADD is designed to allow application developers to easily add new
+\yad is designed to allow application developers to easily add new
 data representations and data structures by defining new operations
 that can be used to provide transactions.  There are a number of
 constraints that these extensions must obey:
@@ -819,8 +819,8 @@ implement it correctly.
 Yet, we believe we have covered everything that a programmer needs
  to know in order to implement new data structures using the 
 functionality that our library provides. This was possible due to the encapsulation
-of the ARIES algorithm inside of LLADD, which is the feature that
-most strongly differentiates LLADD from other, similar libraries.
+of the ARIES algorithm inside of \yad, which is the feature that
+most strongly differentiates \yad from other, similar libraries.
 
 %We hope that this will increase the availability of transactional
 %data primitives to application developers.
@@ -853,7 +853,7 @@ most strongly differentiates LLADD from other, similar libraries.
   record/page level locking and index locks are often a nice trade-off}  @todo We sort of cover this above
 
 %  \item {\bf {}``latching'' vs {}``locking'' - data structures internal to
-%  LLADD are protected by LLADD, allowing applications to reason in
+%  \yad are protected by \yad, allowing applications to reason in
 %  terms of logical data addresses, not physical representation. Since
 %  the application may define a custom representation, this seems to be
 %  a reasonable tradeoff between application complexity and
@@ -926,7 +926,7 @@ bucket $m+2^{n}$. Therefore, if we keep track of the last bucket that
 was split, we can split a few buckets at a time, resizing the hash
 table without introducing long pauses while we reorganize the hash
 table~\cite{lht}. We can handle overflow using standard techniques;
-LLADD's linear hash table simply uses the linked list implementations
+\yad's linear hash table simply uses the linked list implementations
 described above.  The bucket list is implemented by reusing the array
 list implementation described above.
 
@@ -978,7 +978,7 @@ which is a monolithic system.
 The first test measures the throughput of a single long running
 transaction that generates an loads a synthetic data set into the
 library.  For comparison, we provide throughput for many different
-LLADD operations, and BerkeleyDB's DB\_HASH hashtable implementation,
+\yad operations, and BerkeleyDB's DB\_HASH hashtable implementation,
 and lower level DB\_RECNO record number based interface.
 
 @todo fill in numbers here.
@@ -1044,8 +1044,8 @@ practice, the transactional backing store would probably fetch the
 page that contains the object from disk, causing two disk I/O's to be
 issued.}
 
-LLADD's architecture allows us to apply two interesting optimizations
-to such object serialization schemes.  First, since LLADD supports
+\yad's architecture allows us to apply two interesting optimizations
+to such object serialization schemes.  First, since \yad supports
 custom log entries, it is trivial to have it store diffs of objcts to
 the log instead of writing the entire object to log during an update.
 Such an optimization would be difficult to achieve with Berkeley DB,
@@ -1057,29 +1057,29 @@ based interface.
 % @todo WRITE SQL OASYS BENCHMARK!!
 
 The second optimization is a bit more sophisticated, but still easy to
-implement in LLADD.  We do not believe that it would be possible to
+implement in \yad.  We do not believe that it would be possible to
 achieve using existing relational database systems, or with Berkeley
 DB.  
 
-LLADD services a request to write to a record by pinning (and possibly
+\yad services a request to write to a record by pinning (and possibly
 reading in) a page, generating a log entry, writing the
 new record value to the page, and unpinning the page.
 
-If LLADD knows that the client will not ask to read the record, then
+If \yad knows that the client will not ask to read the record, then
 there is no real reason to update the version of the record in the
 page file.  In fact, if no undo or redo information needs to be
 generated, there is no need to bring the page into memory at all.
-There are two scenarios that allow LLADD to avoid loading the page:
+There are two scenarios that allow \yad to avoid loading the page:
 
 First, the application may not be interested in transaction atomicity.
 In this case, by writing no-op undo information instead of real undo
-log entries, LLADD could guarantee that some prefix of the log will be
+log entries, \yad could guarantee that some prefix of the log will be
 applied to the page file after recovery.  The redo information is
 already available; the object is in the application's cache.
 ``Transactions'' could still be durable, as commit() could be used to
 force the log to disk.
 
-Second, the application could provide the undo information to LLADD.
+Second, the application could provide the undo information to \yad.
 This could be implemented in a straightforward manner by adding
 special accessor methods to the object which generate undo information
 as the object is updated in memory.  For our benchmarks, we opted for
@@ -1095,7 +1095,7 @@ cache must evict an object from cache, it performs a special ``flush()''
 operation.  This method writes the object to the buffer pool (and
 probably incurs the cost of disk I/O), using a LSN recorded by the
 most recent update() call that was associated with the object.  Since
-LLADD implements no-force, it does not matter to recovery if the
+\yad implements no-force, it does not matter to recovery if the
 version of the object in the page file is stale.
 
 An observant reader may have noticed a subtle problem with this
@@ -1110,11 +1110,11 @@ implement a cache eviction policy that respects the ordering of object
 updates on a per-page basis and could be implemented using one or
 more priority queues.  Instead of interfering with the eviction policy
 of the cache (and keeping with the theme of this paper), we sought a
-solution that leverages LLADD's interfaces instead.
+solution that leverages \yad's interfaces instead.
 
-We can force LLADD to ignore page LSN values when considering our
+We can force \yad to ignore page LSN values when considering our
 special update() log entries during the REDO phase of recovery.  This
-forces LLADD to re-apply the diffs in the same order the application
+forces \yad to re-apply the diffs in the same order the application
 generated them in.  This works as intended because we use an
 idempotent diff format that will produce the correct result even if we
 start with a copy of the object that is newer than the first diff that
@@ -1128,22 +1128,22 @@ the one used by flush(); it is the lsn of the object's {\em first}
 call to update() after the object was added to the cache.}  At this
 point, we can invoke a normal ARIES checkpoint with the restriction
 that the log is not truncated past the minimum LSN encountered in the
-object pool.\footnote{Because LLADD does not yet implement
+object pool.\footnote{Because \yad does not yet implement
 checkpointing, we have not implemented this checkpointing scheme.}
 
-We implemented a LLADD plugin for OASYS, a C++ object serialization
+We implemented a \yad plugin for OASYS, a C++ object serialization
 library includes various object serialization backends, including one
-for Berkeley DB.  The LLADD plugin makes use of the optimizations
+for Berkeley DB.  The \yad plugin makes use of the optimizations
 described in this section, and was used to generate Figure~[TODO].
-For comparison, we also implemented a non-optimized LLADD plugin to
-factor out performance and implementation differences between LLADD
+For comparison, we also implemented a non-optimized \yad plugin to
+factor out performance and implementation differences between \yad
 and Berkeley DB.
 
 Initially, OASYS did not support an object cache, so this
-functionality was added.  Berkeley DB and LLADD's variants were run
+functionality was added.  Berkeley DB and \yad's variants were run
 using identical cache settings and random seeds for load generation.
 Even though the serialization requests were serviced out of operating
-system cache, we see that the optimized LLADD implemenation has a
+system cache, we see that the optimized \yad implemenation has a
 clear advantage under most circumstances, suggesting that the overhead
 incurred by generating diffs and having seperate update() and flush()
 calls is negligible compared to the savings in log bandwidth and
