@@ -142,8 +142,10 @@ int openLogWriter() {
 #define BUFSIZE (1024*96)
 //#define BUFSIZE (512)
   //char * buffer ;/*= malloc(BUFSIZE);*/
-  int ret = posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE);
-  assert(!ret);
+ /* int ret = posix_memalign((void*)&(buffer), PAGE_SIZE, BUFSIZE);
+  assert(!ret); */
+  char * buffer = malloc(BUFSIZE);
+  
 
   int logFD = open (LOG_FILE, O_CREAT | O_RDWR | O_APPEND /*| O_SYNC*/, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
