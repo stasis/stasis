@@ -88,6 +88,13 @@ int main ()
 
     if test "x$no_check" = x ; then
       AC_MSG_RESULT(yes)
+#      echo "checking for tcase_set_timeout in check"
+#      AC_TRY_LINK([#include <check.h>],
+#	          [ Suite *s = suite_create("foo"); TCase *tc = tcase_create("bar"); tcase_set_timeout(tc, 0) ],
+#                  [ echo tcase_set_timeout found. ],
+#                  [ echo tcase_set_timeout not found.  This is harmless. 
+#                    
+#                  ]              
       ifelse([$2], , :, [$2])
     else
       AC_MSG_RESULT(no)
@@ -130,4 +137,6 @@ int main ()
     rm -f conf.check-test
 
   fi
+
+  
 ])

@@ -24,10 +24,10 @@ AC_PROG_RANLIB
 #  [have_check="no"])
 #AM_CONDITIONAL(HAVE_CHECK, test x"$have_check", "xyes")
 
-AM_PATH_CHECK(,[have_check=true],
-  AC_MSG_WARN([Check not found; cannot run unit tests!])
-  [have_check=false])
-AM_CONDITIONAL(HAVE_CHECK, test x$have_check = xtrue)
+#AM_PATH_CHECK(,[have_check=true],
+#  AC_MSG_WARN([Check not found; cannot run unit tests!])
+#  [have_check=false])
+#AM_CONDITIONAL(HAVE_CHECK, test x$have_check = xtrue)
 
 ## alas, it won't link if this is put in here..  instead, it's linked in manually in the test directory...
 
@@ -67,10 +67,34 @@ if test "$db_cv_open_o_direct" = "yes"; then
 	AH_TEMPLATE(HAVE_O_DIRECT, [Define to 1 if you have the O_DIRECT flag.])
 fi
 
+AC_CONFIG_DB
+
+AC_CHECK_LIB([check], [suite_create], , AC_MSG_WARN([Check not found; cannot run unit tests!]))
+
+## This perl script thing is a total hack, but we need to define HAVE_LIBCHECK
+## inside of an AM_CONDITIONAL to get conditional compilation to work.
+AM_CONDITIONAL(HAVE_LIBCHECK, echo $LIBS | [
+perl -ne 'if($_=~/-lcheck/) 
+   { print qq(Check found, make check will run full test suite.
+); exit 0; } else { print qq(
+--------------------------------
 
 
+Check not found!  Most tests will be skipped by make check!
+
+
+--------------------------------
+); exit 1; }'])
+
+#have_libcheck", "xyes")
+#AC_CHECK_LIB([check], 
+#	     [suite_create], AC_MSG_WARN([Check not found; cannot run unit tests!]
+#	     have_check=yes, 
+#	     AC_MSG_WARN([Check not found; cannot run unit tests!]))
+#AM_CONDITIONAL(HAVE_CHECK, test x"$have_check", "xyes")
+#AC_CHECK_FUNC([tcase_set_timeout])
+#AM_CONDITIONAL(HAVE_CHECK, test xyes, xyes)
 AC_CHECK_LIB([m], [sqrt])
-AC_CHECK_LIB([db], [db_open])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([confuse], [cfg_set_validate_func])
 # Checks for header files.
@@ -92,7 +116,7 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_REALLOC
 AC_FUNC_STAT
-AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir powl posix_memalign socket sqrt strchr strdup strerror strrchr strstr strtoul])
+AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir powl posix_memalign socket sqrt strchr strdup strerror strrchr strstr strtoul tcase_set_timeout])
 
 #AC_CONFIG_LIBMYSQLD
 

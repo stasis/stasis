@@ -102,6 +102,9 @@ static void * go (void * arg_ptr) {
 
     ThashInsert(xid, hash, (byte*)&j, sizeof(int), (byte*)&j, sizeof(int));
 
+    Tcommit(xid); // used to be outside of loop!
+
+
     gettimeofday(&endtime_tv, NULL);
 
     endtime.tv_sec = endtime_tv.tv_sec;
@@ -132,7 +135,6 @@ static void * go (void * arg_ptr) {
   }
 
   
-  Tcommit(xid);
   /*
   for(j = k * count; j < (k+1) *(count) ; j++) {
     int tmp = -100;

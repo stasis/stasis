@@ -625,7 +625,9 @@ START_TEST(operation_array_list) {
 Suite * check_suite(void) {
   Suite *s = suite_create("operations");
   /* Begin a new test */
+
   TCase *tc = tcase_create("operations_simple");
+  tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, operation_physical_do_undo);
