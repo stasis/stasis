@@ -37,6 +37,45 @@ int lladdMultiplexer_join(lladdMultiplexer_t * multiplexer) {
   return pthread_join(multiplexer->worker,NULL);
 }
 
+void * lladdMultiplexer_flush(lladdMultiplexer_t * m) { 
+  //  lladdMultiplexer_t * m = arg;
+  lladdConsumer_t * consumer;
+
+  while(Titerator_tryNext(m->xid, m->it)) {
+    byte * mkey, * key, * value;
+    size_t mkeySize, keySize, valueSize;
+    
+    keySize   = Titerator_key  (m->xid, m->it, &key);
+    valueSize = Titerator_value(m->xid, m->it, &value);
+
+    m->multiplexer(key, keySize, value, valueSize, &mkey, &mkeySize);
+
+    lladdFifo_t * fifo = m->fifoPool->getFifo(m->fifoPool, mkey, mkeySize);
+    consumer = fifo->consumer;
+    Tconsumer_push(m->xid, consumer, key, keySize, value, valueSize);
+    Titerator_tupleDone(m->xid, m->it);
+    lladdFifoPool_markDirty(m->xid, m->fifoPool, fifo);
+  }
+  
+  // iterate over pblhash, closing consumers.
+
+  /*  Titerator_close(m->xid, m->it);
+
+  // @todo Does this belong in its own function in fifo.c? 
+
+  lladdFifoPool_t * pool = m->fifoPool;
+  int i;
+  for(i = 0; i < pool->fifoCount; i++) {
+    Tconsumer_close(m->xid, pool->pool[i]->consumer);
+  }
+
+  if(m->fifoPool->dirtyPoolFifo) {
+    Tconsumer_close(m->xid, m->fifoPool->dirtyPoolFifo->consumer);
+  }
+  */
+  return (void*)compensation_error();
+}
+
 
 void * multiplexer_worker(void * arg) { 
   lladdMultiplexer_t * m = arg;
@@ -120,3 +159,13 @@ void multiplexHashLogByKey(byte * key,
   }
 }
 
+
+void multiplexByValue(byte * key, size_t keySize, byte * value, size_t valueSize, byte **multiplexKey, size_t * multiplexSize) {
+  *multiplexKey = value;
+  *multiplexSize = valueSize;
+}
+
+void multiplexByRidPage(byte * key, size_t keySize, byte * value, size_t valueSize, byte **multiplexKey, size_t * multiplexSize) {
+  *multiplexKey = (byte*)&(((recordid*)value)->page);
+  *multiplexSize = sizeof(((recordid*)value)->page);
+}

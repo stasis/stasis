@@ -16,6 +16,8 @@ lladdFifo_t * lladdFifoPool_getFifoCRC32( lladdFifoPool_t * pool, byte * multipl
 }
 void lladdFifoPool_markDirty(int xid, lladdFifoPool_t * pool, lladdFifo_t * fifo) {
   if(pool->dirtyPoolFifo) {
+    assert(fifo->consumer->type < 10);
+    assert(fifo->iterator->type < 10);
     Tconsumer_push(xid, pool->dirtyPoolFifo->consumer, NULL, 0, (byte*)&fifo, sizeof(lladdFifo_t*));
   }
 }

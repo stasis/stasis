@@ -3,72 +3,120 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "page.h"
-void naiveTraverse(int xid, recordid rid) {
-  nodeHeader_t * node = alloca(rid.size);
+#include <lladd/crc32.h>
+
+extern int transClos_outdegree;
+extern int numOut;
+extern int numTset;
+extern int numShortcutted;
+extern int numSkipped;
+extern int numPushed;
+void naiveTraverse(int xid, recordid rid, int num) {
+
+  int * node = alloca(sizeof(int) * (transClos_outdegree+1));
 
   Tread(xid, rid, node);
-  if(node->flags) { return; }
-  node->flags = 1;
+
+  if(node[transClos_outdegree] == num) { return; }
+
+  assert(node[transClos_outdegree] == (num-1));
+
+  node[transClos_outdegree] = num;
+  numTset++;
   Tset(xid, rid, node);
 
   int i = 0;
-  // do 'local' nodes first.
-  for(i = 0; i < node->inPage; i++) {
-    short next = *(((short*)(((recordid*)(node+1))+node->outPage))+i);
-    rid.slot = next;
-    rid.size = TrecordSize(xid, rid);
-    naiveTraverse(xid, rid);
-  }
 
-  for(i = 0; i < node->outPage; i++) {
-    recordid next = ((recordid*)(node+1))[i];
-    next.size = TrecordSize(xid, next);
-    naiveTraverse(xid, next);
+  for(i = 0; i < transClos_outdegree; i++) {
+    rid.slot = node[i];
+    naiveTraverse(xid, rid, num);
   }
 }
-/** @todo need to load the correct pages, since the local fifo doesn't refer to a single page!!! */
-void multiTraverse(int xid, int page, lladdFifo_t * local, lladdFifo_t * global) {
-  Page * p = loadPage(xid, page);
-  while(Titerator_next(xid, local->iterator)) {
-    recordid * rid_p;
 
-    int rid_len = Titerator_value(xid, local->iterator, (byte**)&rid_p);
-    assert(rid_len == sizeof(recordid));
-    recordid rid = *rid_p;
+pthread_mutex_t counters = PTHREAD_MUTEX_INITIALIZER;
+
+/** @todo need to load the correct pages, since the local fifo doesn't refer to a single page!!! */
+void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t * global, lladdFifoPool_t * pool, int num) {
+  
+  int * node        = alloca(sizeof(int) * (transClos_outdegree+1));
+  int * nodeScratch = alloca(sizeof(int) * (transClos_outdegree+1));
+  
+  int myFifo = -1;
+  
+  
+
+  int deltaNumOut = 0;
+  int deltaNumSkipped = 0;
+  int deltaNumShortcutted = 0;
+  int deltaPushed = 0;
+
+  while(Titerator_tryNext(xid, local->iterator)) { // @nextOrEmprty?
+    recordid * rid;
+    recordid localRid;
+    size_t size = Titerator_value(xid, local->iterator, (byte**)&rid);
+    
+    assert(size == sizeof(recordid));
+    
+    localRid = *rid;
+
+    if(myFifo == -1) {
+      myFifo = crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount;
+      //      printf("Switched locality sets... %d\n", myFifo);
+    } else { 
+      //      assert(myFifo == crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount);
+    }
+
+
     Titerator_tupleDone(xid, local->iterator);
 
-    nodeHeader_t * node = malloc(rid.size);
+    Tread(xid, localRid, node);
 
-    readRecord(xid, p, rid, node); 
+    if(node[transClos_outdegree] != num) {
+      assert(node[transClos_outdegree] == (num-1));
 
-
-    if(!node->flags) {
-      node->flags = 1;
-
-      // @todo logical operation here.
-      Tset(xid, rid, node);
-
-      // do 'local' nodes first.
+      node[transClos_outdegree] = num;
+      numTset++;
+      Tset(xid, localRid, node);  /// @todo TsetRange?
       int i;
-      for(i = 0; i < node->inPage; i++) {
-	short slot = *(((short*)(((recordid*)(node+1))+node->outPage))+i);
-	
-	rid.slot = slot;
-	rid.size = getRecordSize(xid, p, rid);
-	Tconsumer_push(xid, local->consumer, (byte*)&(rid.page), sizeof(rid.page), (byte*)&rid, sizeof(recordid));
+      for(i =0 ; i < transClos_outdegree; i++) { 
+	recordid nextRid = arrayList;
+	nextRid.slot = node[i];
+	Page * p = loadPage(xid, arrayList.page); // just pin it forever and ever
+	nextRid = dereferenceArrayListRid(p, nextRid.slot); 
+	releasePage(p);
 
-      }
-      // now, do non-local nodes
-      for(i = 0; i < node->outPage; i++) {
-	recordid next = ((recordid*)(node+1))[i];
-
-	Tconsumer_push(xid, global->consumer, (byte*)&(rid.page), sizeof(rid.page), (byte*)&next, sizeof(recordid));
-
+	int thisFifo = crc32((byte*)&(nextRid.page), sizeof(nextRid.page), (unsigned long)-1L) % pool->fifoCount;
+	/*	if(nextRid.page == rid->page) {
+	  assert(thisFifo == myFifo);
+	  }*/
+	//	if(nextRid.page == localRid.page) {
+	if(thisFifo == myFifo) {
+	  deltaNumShortcutted++;
+	  Tread(xid, nextRid, nodeScratch);
+	  if(nodeScratch[transClos_outdegree] != num) {
+	    Tconsumer_push(xid, local->consumer, NULL, 0, (byte*)&nextRid, sizeof(recordid));
+	    deltaNumOut++;
+	  } else {
+	    deltaNumSkipped++;
+	  } 
+	} else {
+	  // @todo check nextRid to see if we're the worker that will consume it, or (easier) if it stays on the same page.
+	  Tconsumer_push(xid, global->consumer, NULL, 0, (byte*)&nextRid, sizeof(recordid));
+	  deltaPushed++;
+	  deltaNumOut++;
+	}
       }
     }
-    free(node);
-    Titerator_tupleDone(xid, local->iterator);
+    deltaNumOut--;
+
   }
 
-  releasePage(p);
+  pthread_mutex_lock(&counters);
+  numOut += deltaNumOut;
+  numSkipped += deltaNumSkipped;
+  numShortcutted += deltaNumShortcutted;
+  numPushed += deltaPushed;
+  pthread_mutex_unlock(&counters);
+
+
 }

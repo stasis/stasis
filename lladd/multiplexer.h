@@ -67,3 +67,5 @@ int lladdMultiplexer_start(lladdMultiplexer_t * multiplexer, pthread_attr_t * th
  */
 int lladdMultiplexer_join(lladdMultiplexer_t * multiplexer);
 
+void multiplexByValue(byte * key, size_t keySize, byte * value, size_t valueSize, byte **multiplexKey, size_t * multiplexSize);
+void multiplexByRidPage(byte * key, size_t keySize, byte * value, size_t valueSize, byte **multiplexKey, size_t * multiplexSize);

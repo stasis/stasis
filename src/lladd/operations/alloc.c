@@ -216,6 +216,7 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
       if(rid.size == size) { 
 	Tupdate(xid,rid, NULL, OPERATION_ALLOC);
       } else {
+	//	slottedCompact(p);
 	assert(rid.size < 0);
       }
       if(p) {

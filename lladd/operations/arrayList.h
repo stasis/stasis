@@ -53,7 +53,7 @@ terms specified in this license.
 #ifndef __ARRAY_LIST_H
 #define __ARRAY_LIST_H
 
-compensated_function recordid TarrayListAlloc(int xid, int count, int multiplier, int size);
+compensated_function recordid TarrayListAlloc(int xid, int numPages, int multiplier, int recordSize);
 
 Operation getArrayListAlloc();
 Operation getInitFixed();

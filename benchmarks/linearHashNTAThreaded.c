@@ -84,7 +84,7 @@ static void * go (void * arg_ptr) {
   }
 
   Tcommit(xid);
-  
+  commitCount++;
   /*
   for(j = k * count; j < (k+1) *(count) ; j++) {
     int tmp = -100;
