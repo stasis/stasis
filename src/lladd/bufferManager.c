@@ -68,8 +68,6 @@ static unsigned int bufferSize = 1; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
 
 static int stable = -1;
-/*int blobfd0 = -1;
-  int blobfd1 = -1;*/
 
 static void pageMap(Page *ret) {
 
@@ -95,12 +93,8 @@ int bufInit() {
 
 	bufferSize = 1;
 	stable = -1;
-	/*	blobfd0 = -1;
-		blobfd1 = -1; */
 
-
-	/* Create STORE_FILE, BLOB0_FILE, BLOB1_FILE if necessary, 
-	   then open it read/write 
+	/* Create STORE_FILE, if necessary, then open it read/write 
 
 	   If we're creating it, then put one all-zero record at the beginning of it.  
 	   (Need to have at least one record in the PAGE file?)
@@ -140,27 +134,6 @@ int bufInit() {
 	repMiddle = NULL;
 
 	openBlobStore();
-
-	/*	if( (blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
-		if( (blobfd0 = creat(BLOB0_FILE, 0666)) == -1 ) { / * cannot even create it * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-		if( close(blobfd0) || ((blobfd0 = open(BLOB0_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-	}
-	if( (blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1 ) { / * file may not exist * /
-		if( (blobfd1 = creat(BLOB1_FILE, 0666)) == -1 ) { / * cannot even create it * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-		if( close(blobfd1) || ((blobfd1 = open(BLOB1_FILE, O_RDWR, 0)) == -1) ) { / * need to reopen with read perms * /
-			printf("ERROR: %i on %s line %d", errno, __FILE__, __LINE__);
-			exit(errno);
-		}
-	} */
 
 	return 0;
 }
@@ -219,8 +192,14 @@ static void qRemove(Page *ret) {
 	assert(ret != repHead);
 }
 
+/** 
+    LRU-2S from Markatos "On Caching Searching Engine Results" 
+
+    @todo Should this be its own file?
+
+*/
 static Page *kickPage(int pageid) {
-	/* LRU-2S from Markatos "On Caching Searching Engine Results" */
+
 	Page *ret = repTail;
 
 	assert( bufferSize == MAX_BUFFER_SIZE );
@@ -328,38 +307,22 @@ Page loadPage (int pageid) {
 	return *loadPagePtr(pageid);
 }
 
-/*int lastGoodPageKey = 0; */
-
 Page * lastRallocPage = 0;
 
 recordid ralloc(int xid, lsn_t lsn, size_t size) {
   static unsigned int lastFreepage = 0;
   recordid ret;
   Page p;
-  /*  int blobSize = 0; */
 
   if (size >= BLOB_THRESHOLD_SIZE) { /* TODO combine this with if below */
+    
     ret = allocBlob(xid, lsn, size);
-    /*    blobSize = size;
-	  size = BLOB_REC_SIZE; */
+
   } else {
   
     while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
-  
-  /*  if (blobSize >= BLOB_THRESHOLD_SIZE) {
-      int fileSize = (int) lseek(blobfd1, 0 , SEEK_END);
-      / *    fstat(blobfd1, &sb);
-      fileSize = (int) sb.st_size;	 * /
-      lseek(blobfd0, fileSize+blobSize-1, SEEK_SET);
-    write(blobfd0, "", 1);
-    lseek(blobfd1, fileSize+blobSize-1, SEEK_SET);
-    write(blobfd1, "", 1);
-
-    return pageBalloc(p, blobSize, fileSize);
-  } else { */
     ret = pageRalloc(p, size);
-
-    /* } */
+    
   }
   DEBUG("alloced rid = {%d, %d, %d}\n", ret.page, ret.slot, ret.size);
   return ret;
@@ -441,7 +404,6 @@ void bufDeinit() {
 			printf("ERROR: flushPage on %s line %d", __FILE__, __LINE__);
 			exit(ret);
 		}
-		/*		free(p); */
 	}
 	pblHtDelete(activePages);
 
@@ -450,8 +412,6 @@ void bufDeinit() {
 		exit(errno);
 	}
 
-	/*	close(blobfd0);
-		close(blobfd1); */
 	closeBlobStore();
 
 	return;
@@ -462,12 +422,8 @@ void bufDeinit() {
 */
 void simulateBufferManagerCrash() {
   closeBlobStore();
-  /*close(blobfd0);
-    close(blobfd1);*/
-  close(stable);
-  /*  blobfd0 = -1;  
-  blobfd1 = -1;  */
-  stable = -1;
 
+  close(stable);
+  stable = -1;
 
 }

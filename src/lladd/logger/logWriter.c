@@ -188,16 +188,3 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 
   return ret;
 }
-
-/*lsn_t nextLSN() {
-  lsn_t orig_pos = ftell(log);
-  lsn_t ret; 
-  
-  fseek(log, 0, SEEK_END);
-  
-  ret = ftell(log);
-
-  fseek(log, orig_pos, SEEK_SET);
-
-  return ret;
-  }*/

@@ -2,8 +2,6 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
-/* stdio */
-
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -36,13 +34,12 @@ static void readRawRecord(int xid, recordid rid, void * buf, int size) {
 static void writeRawRecord(int xid, lsn_t lsn, recordid rid, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
-  /*  writeRecord(xid, lsn, blob_rec_rid, buf); */
   Tset(xid, blob_rec_rid, buf);
 }
 
 
 
-/* moved verbatim from bufferManger.c */
+/* moved verbatim from bufferManger.c, then hacked up to use FILE * instead of ints. */
 void openBlobStore() {
   int blobfd0, blobfd1;
   if( ! (blobf0 = fopen(BLOB0_FILE, "w+"))) { /* file may not exist */
@@ -114,7 +111,6 @@ recordid allocBlob(int xid, lsn_t lsn, size_t blobSize) {
   assert(blobSize > 0); /* Don't support zero length blobs right now... */
 
   /* First in buffer manager. */
-  /*  recordid rid = ralloc(xid, lsn, sizeof(blob_record_t)); */
 
   recordid rid = Talloc(xid, sizeof(blob_record_t));
 
@@ -143,9 +139,10 @@ recordid allocBlob(int xid, lsn_t lsn, size_t blobSize) {
 
   setSlotType(p, rid.slot, BLOB_SLOT);
   rid.size = BLOB_SLOT;
-  /* writeRecord needs to know to 'do the right thing' here, since
-     we've changed the size it has recorded for this record. */
-  /* @todo What should writeRawRecord do with the lsn? */
+
+  /* Tset() needs to know to 'do the right thing' here, since we've
+     changed the size it has recorded for this record, and
+     writeRawRecord makes sure that that is the case. */
   writeRawRecord  (xid, lsn, rid, &blob_rec, sizeof(blob_record_t));
 
   rid.size = blob_rec.size;
@@ -220,26 +217,17 @@ static void tripleHashRemove(int xid, recordid rid) {
 }*/
 
 void readBlob(int xid, recordid rid, void * buf) { 
-  /* First, determine if the blob is dirty. */
-  
-  /*  lsn_t * dirty = tripleHashLookup(xid, rid); */
 
+  /* We don't care if the blob is dirty, since the record from the
+     buffer manager will reflect that if it is.. */
+  
   blob_record_t rec;
-  /*  int readcount; */
   FILE * fd;
   long offset;
 
   assert(buf);
 
   readRawRecord(xid, rid, &rec, sizeof(blob_record_t));
-
-  /*  if(dirty) {
-    DEBUG("Reading dirty blob.\n");
-    fd = rec.fd ? blobf0 : blobf1;  / * Read the updated version * /
-  } else {
-    DEBUG("Reading clean blob.\n");
-    fd = rec.fd ? blobf1 : blobf0;  / * Read the clean version * /
-  } */
 
   fd = rec.fd ? blobf1 : blobf0;
 
@@ -261,9 +249,10 @@ void readBlob(int xid, recordid rid, void * buf) {
     current version of the dirty blob, and the lsn field should be
     checked to be sure that it increases monotonically. */
 void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) { 
+
   /* First, determine if the blob is dirty. */
-  
   lsn_t * dirty = tripleHashLookup(xid, rid);
+
   blob_record_t rec;
   long offset;
   FILE * fd;
@@ -274,7 +263,7 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
 
   if(dirty) { 
     assert(lsn > *dirty);
-    *dirty = lsn;  /* Updates value in dirty blobs (works because of pointer aliasing.) */
+    *dirty = lsn;  /* Updates value in triple hash (works because of pointer aliasing.) */
     DEBUG("Blob already dirty.\n");
     
 
@@ -288,12 +277,6 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
     /* Tset() raw record */
     writeRawRecord(xid, lsn, rid, &rec, sizeof(blob_record_t));
   }
-  /*  
-      readRawRecord(xid, rid, &rec, sizeof(blob_record_t));
-
-      fd = rec.fd ? blobf0 : blobf1;  / * Read the slot for the dirty (updated) version. * / 
-
-  */
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
 
@@ -307,83 +290,41 @@ void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf) {
   /* No need to update the raw blob record. */
 
 }
-/** @todo check return values */
-/*
-void commitBlobs(int xid, lsn_t lsn) {
-  / * Because this is a commit, we must update each page atomically.
-  Therefore, we need to re-group the dirtied blobs by page id, and
-  then issue one write per page.  Since we write flip the bits of each
-  dirty blob record on the page, we can't get away with incrementally
-  updating things. * /
 
-  pblHashTable_t * rid_buckets = pblHtLookup(dirtyBlobs, &xid, sizeof(int));
-
-  pblHashTable_t * this_bucket;
-
-  if(!rid_buckets) { return; } / * No blobs for this xid. * /
-
-  for(this_bucket = pblHtFirst(rid_buckets); this_bucket; this_bucket = pblHtNext(rid_buckets)) {
-    blob_record_t buf;
-    recordid * rid_ptr;
-    lsn_t * rid_lsn;
-    int first = 1;
-    int page_number;
-    / * All right, this_bucket contains all of the rids for this page. * /
-
-    for(rid_lsn = pblHtFirst(this_bucket); rid_lsn; rid_lsn = pblHtNext(this_bucket)) {
-      / ** @todo INTERFACE VIOLATION Can only use bufferManager's
-	  read/write record since we're single threaded, and this calling
-	  sequence cannot possibly call kick page. Really, we sould use
-	  pageReadRecord / pageWriteRecord, and bufferManager should let
-	  us write out the whole page atomically... * /
-
-      rid_ptr = pblHtCurrentKey(this_bucket);
-
-      if(first) {
-	page_number = rid_ptr->page;
-	first = 0;
-      } else {
-	assert(page_number == rid_ptr->page);
-      }
-
-      / ** @todo For now, we assume that overlapping transactions (from
-	  the Tbegin() to Tcommit() call) do not access the same
-	  blob.  * /
-
-      readRawRecord(xid, *rid_ptr, &buf, sizeof(blob_record_t));
-      / * This rid is dirty, so swap the fd pointer. * /
-      buf.fd = (buf.fd ? 0 : 1);
-      writeRawRecord(xid, lsn, *rid_ptr, &buf, sizeof(blob_record_t));
-      pblHtRemove(this_bucket, rid_ptr, sizeof(recordid));
-      / *      free(rid_ptr); * /
-      free(rid_lsn);
-    }
-
-    if(!first) {
-      pblHtRemove(rid_buckets, &page_number, sizeof(int));
-    } else {
-      abort();  / * Bucket existed, but was empty?!? * /
-    }
-  
-    pblHtDelete(this_bucket);
-  }  
-}
-*/
 void commitBlobs(int xid) {
   abortBlobs(xid);
 }
+
 /** 
     Just clean up the dirty list for this xid. @todo Check return values. 
     
     (Functionally equivalent to the old rmTouch() function.  Just
     deletes this xid's dirty list.)
 
-    @todo doesn't take lsn_t, since it doesnt write any blobs.  Change the api? 
+    @todo doesn't take lsn_t, since it doesnt write any blobs.  Change
+    the api?
+
+    @todo The tripleHash data structure is overkill here.  We only
+    need two layers of hash tables, but it works, and it would be a
+    pain to change it, unless we need to touch this file for some
+    other reason.
 
 */
 void abortBlobs(int xid) {
+  /*
+    At first glance, it may seem easier to keep track of which blobs
+    are dirty only in blobManager, and then propogate those updates to
+    bufferManager later.  It turns out that it's much easier to
+    propogate the changes to bufferManger, since otherwise, recovery
+    and undo have to reason about lazy propogation of values to the
+    bufferManager, and also have to preserve *write* ordering, even
+    though the writes may be across many transactions, and could be
+    propogated in the wrong order.  If we generate a Tset() (for the
+    blob record in bufferManager) for each write, things become much
+    easier.
+  */
+ 
   pblHashTable_t * rid_buckets = pblHtLookup(dirtyBlobs, &xid, sizeof(int));
-
   pblHashTable_t * this_bucket;
   
   if(!rid_buckets) { return; } /* No dirty blobs for this xid.. */
@@ -391,6 +332,7 @@ void abortBlobs(int xid) {
   for(this_bucket = pblHtFirst(rid_buckets); this_bucket; this_bucket = pblHtNext(rid_buckets)) {
     lsn_t * rid_lsn;
     int page_number;
+
     /* All right, this_bucket contains all of the rids for this page. */
 
     for(rid_lsn = pblHtFirst(this_bucket); rid_lsn; rid_lsn = pblHtNext(this_bucket)) {

@@ -47,6 +47,20 @@ terms specified in this license.
  * It would be nice if the logger API could be simplified by having
  * more of its functionality handled this way.
  *
+ Implementation notes:
+ 
+ - Just a Tupdate, with a log flush as its operationsTable[]
+ function.
+ 
+ - After recovery, all of the xacts pages will have been 'stolen',
+ (if recovery flushes dirty pages)
+ 
+ - Recovery function needs to distinguish between actions before and
+ after the last Tprepare log entry.  This is handle by a guard on
+ the logHandle's iterator, but could be generalized in the future
+ (to support savepoints, for example) Right now, recovery uses a
+ guarded iterator, transUndo() does not.
+ 
  *
  * @ingroup OPERATIONS
  *
@@ -61,11 +75,23 @@ terms specified in this license.
 #include <lladd/operations.h>
 
 extern recordid prepare_bogus_rec;
+/** 
+    Prepare transaction for commit.  Currently, a transaction may be
+    prepared multiple times.  Once Tprepare() returns, the caller is
+    guaranteed that the current transaction will resume exactly where
+    it was when Tprepare() was called.
 
+    @param xid Transaction id.
+    @param rec @todo undocumented.
+    @param dat @todo Ignored for now?
+*/
 #define Tprepare(xid, rec, dat) Tupdate(xid, rec, 0, OPERATION_PREPARE)
 
 Operation getPrepare();
 
+/**
+   Recovery's undo phase uses this logHandle iterator guard to implement Tprepare().
+*/
 int prepareGuard(LogEntry * e, void * state);
 void * getPrepareGuardState();
 #endif

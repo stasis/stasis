@@ -14,7 +14,8 @@
    @todo Currently, if the system crashes during an alloc, (before the
    log is flushed, but after bufferManager returns a rid), then the
    space alloced during the crash is leaked.  This doesn't seem to be
-   too big of a deal, but it should be fixed someday.
+   too big of a deal, but it should be fixed someday.  A more serious
+   problem results from crashes during blob allocation.
    
 */
 
@@ -58,6 +59,10 @@ recordid Talloc(int xid, size_t size) {
   and that's a pain.  Plus, this is a small leak.  (There is a similar
   problem involving blob allocation, which is more serious, as it may
   result in double allocation...)
+
+  @todo If this should be the only call to ralloc in lladd, we may consider
+  removing the lsn parameter someday.  (Is there a good reason to
+  provide users with direct access to ralloc()?)
 
   */
 

@@ -47,7 +47,6 @@ terms specified in this license.
  **********************************************/
 
 #include <lladd/operations/prepare.h>
-/*#include "../logger/logstreamer.h"*/
 #include <lladd/logger/logWriter.h>
 #include <malloc.h>
 
@@ -57,37 +56,17 @@ static int operate(int xid, recordid rid, const void *dat) {
   syncLog();
   return 0;
 }
-/*static int no_op(int xid, recordid rid, const void *dat) {
-  return 0;
-  }*/
-
-/**
-   Tprepare notes:
-
-   - Just a Tupdate, with a log flush as its operationsTable[]
-     function. (done)
-
-   - After recovery, all of the xacts pages will have been 'stolen',
-     (if recovery flushes dirty pages) (done)
-
-   - Recovery function needs to distinguish between actions before and
-     after the last Tprepare log entry.
-     
-   - The switch in recovUndo needs to treat Tprepares as follows:
-
-     - If we're really doing recovery, don't push the prevLSN onto
-       transRecLSN's.  Instead, add it to the active transaction table
-       in transactional.c
-
-     - If not, do nothing, but push the prevLSN onto transRecLSN's
-
-*/
 
 Operation getPrepare() { 
 	Operation o = {
 		OPERATION_PREPARE, /* id */
 		0, /* No extra data. */
-		OPERATION_PREPARE, /*&no_op,*/ /* Otherwise, it will need to store a pre-image of something... */
+		OPERATION_PREPARE, /* If we set this to NO_INVERSE, it
+				      will needlessly store a
+				      pre-image of something... since
+				      OPERATION_PREPARE just performs
+				      a log flush, calling it during
+				      redo is harmless. */
 		&operate /* Function */
 	};
 	return o;

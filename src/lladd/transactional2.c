@@ -2,7 +2,7 @@
 #include <lladd/constants.h>
 #include <lladd/logger/logger2.h>
 #include <lladd/bufferManager.h>
-#include <lladd/recovery2.h>
+#include <lladd/recovery.h>
 #include <string.h>
 #include <assert.h>
 
@@ -29,7 +29,6 @@ int Tinit() {
 	openLogWriter();
 
 	InitiateRecovery();
-	/* 	logInit();  */
 
 	return 0;
 }
@@ -66,9 +65,8 @@ void Tupdate(int xid, recordid rid, const void *dat, int op) {
 
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
 
-  /*  printf("e->LSN: %ld\n", e->LSN); */
+  DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
 
-  /*  writeLSN(e->LSN, rid.page); <-- Handled by doUpdate now */ 
   doUpdate(e);
 }
 
@@ -91,13 +89,14 @@ int Tcommit(int xid) {
 int Tabort(int xid) {
   lsn_t lsn;
   lsn = LogTransAbort(&XactionTable[xid%MAX_TRANSACTIONS]);
-  /* should call undoTrans after log trans abort.  undoTrans will cause pages to contain CLR values corresponding to  */
 
   /* @todo is the order of the next two calls important? */
   undoTrans(XactionTable[xid%MAX_TRANSACTIONS]);
   bufTransAbort(xid, lsn);
+
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
+
   assert( numActiveXactions >= 0 );
   return 0;
 }
@@ -113,7 +112,6 @@ int Tdeinit() {
 	assert( numActiveXactions == 0 );
 
 	bufDeinit();
-	/*	logDeinit(); */
 	closeLogWriter();
 
 	return 0;

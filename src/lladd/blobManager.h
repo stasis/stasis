@@ -38,21 +38,19 @@ BEGIN_C_DECLS
 
 
 /** 
-    If blob is resident, return a pointer to it.  Otherwise, check if
-    it's dirty (it could have been stolen), an retrieve it from the
-    appropriate blob file. 
+    Read the blob from the recordid rid into buf.
 */
 void readBlob(int xid, recordid rid, void * buf);
 
 
 /** 
-    If you write to a blob, call this function to mark it dirty.
+    Write the contents of buf to the blob in recordid rid.
 */
 void writeBlob(int xid, lsn_t lsn, recordid rid, const void * buf);
 
 
 /**
-   Atomically (with respect to recovery) make the dirty version of the
+   Atomicly (with respect to recovery) make the dirty version of the
    blob the primary copy and mark it not-dirty.
 */
 
@@ -70,6 +68,12 @@ typedef struct {
   unsigned fd : 1;
 } blob_record_t;
 
+/**
+   Allocate a blob of size blobSize. 
+
+   @todo This function does not atomically allocate space in the blob
+   file.
+*/
 recordid allocBlob(int xid, lsn_t lsn, size_t blobSize);
 void openBlobStore();
 void closeBlobStore();

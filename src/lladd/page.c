@@ -135,10 +135,6 @@ void pageDeRalloc(Page page, recordid rid);
 
 void pageCompact(Page page);
 
-touchedBlob_t *touched;
-size_t touchedLen;
-
-
 /**
  * pageInit() initializes all the important variables needed in
  * all the functions dealing with pages.
@@ -173,89 +169,7 @@ void pageInit() {
 	MASK_0000FFFF = (1 << (2*BITS_PER_BYTE)) - 1;
 	MASK_FFFF0000 = ~MASK_0000FFFF;
 
-	touchedLen = DEFAULT_TOUCHED;
-	touched = calloc(touchedLen, sizeof(touchedBlob_t));
-	
-	/*	if( (blob_0_fd = open(BLOB0_FILE, O_RDWR, 0)) == -1 ) {
-	  perror("page.c:opening blob file 0");
-	  exit(-1);
-	} 
-	if( (blob_1_fd = open(BLOB1_FILE, O_RDWR, 0)) == -1 ) {
-	  perror("page.c:opening blob file 1");
-	  exit(-1);
-	  } */
-
 }
-
-static void rehashTouch() {
-
-	int i;
-	touchedBlob_t *touched_old = touched;
-	touchedLen *= 2;
-	touched = calloc(touchedLen, sizeof(touchedBlob_t));
-	assert(touched);
-
-	for( i = 0; i < touchedLen/2; i++ ) {
-		if( touched_old[i].records ) {
-			touched[touched_old[i].xid%touchedLen] = touched_old[i];
-		}
-	}
-
-	free(touched_old);
-}
-
-static int touchBlob(int xid, recordid rid) {
-
-	touchedBlob_t *t = &touched[xid%touchedLen];
-	if( t->records ) {
-		if( t->xid == xid ) {
-			recordid ret = t->records[(rid.page+rid.slot)%t->len];
-			if( ret.size ) {
-				if( ret.page == rid.page && ret.slot == rid.slot ) {
-					return 1;
-				} else { /* there's another entry for this space */
-					int i;
-					recordid *old = t->records;
-					t->len *= 2;
-					t->records = calloc(t->len, sizeof(recordid));
-					for( i = 0; i < t->len/2; i++ ) {
-						if( old[i].size ) {
-							t->records[ (old[i].page+old[i].slot) % t->len ] = old[i];
-						}
-					}
-					return touchBlob(xid, rid);
-				}
-			} else { /* space is free, mark it */
-				t->records[(rid.page+rid.slot)%t->len] = rid;
-				return 0;
-			}
-		} else { /* this is not our transaction */
-			do {
-				rehashTouch();
-			} while( touchBlob(xid, rid) );
-			return 0;
-		}
-	} else { /* we haven't allocated for this xid */
-		t->records = calloc(DEFAULT_TOUCHED, sizeof(recordid));
-		t->records[(rid.page+rid.slot)%DEFAULT_TOUCHED] = rid;
-		t->len = DEFAULT_TOUCHED;
-		t->xid = xid;
-		return 0;
-	}
-
-	assert(0);
-	return 0;
-}
-
-/*static void rmTouch(int xid) {
-
-	touchedBlob_t *t = &touched[xid%touchedLen];
-	if( t ) {
-		free( t->records );
-		t->records = NULL;
-		/ * touched[xid%touchedLen].xid = -1; TODO: necessary? * /
-	}
-}*/
 
 void pageCommit(int xid) {
   /*	 rmTouch(xid); */
@@ -265,8 +179,6 @@ void pageAbort(int xid) {
   /* rmTouch(xid); */
 }
 
-/*#define getFirstHalfOfWord(memAddr) (((*(int*)memAddr) >> (2*BITS_PER_BYTE)) & MASK_0000FFFF) */
- 
 static int getFirstHalfOfWord(unsigned int *memAddr) {
   unsigned int word = *memAddr;
   word = (word >> (2*BITS_PER_BYTE)); /* & MASK_0000FFFF; */
@@ -384,6 +296,8 @@ static void writeNumSlots(byte *memAddr, int numSlots) {
  *
  * NOTE: pageRalloc() assumes that the caller already made sure that sufficient
  * amount of freespace exists in this page.  (@see freespace())
+ *
+ * @todo Makes no attempt to reuse old recordid's.
  */
 recordid pageRalloc(Page page, size_t size) {
 	int freeSpace = readFreeSpace(page.memAddr);
@@ -393,12 +307,11 @@ recordid pageRalloc(Page page, size_t size) {
 	rid.page = page.id;
 	rid.slot = numSlots;
 	rid.size = size;
-	/*int i; */
 
 	/* Make sure there's enough free space... */
-	/*	assert (freespace(page) >= (int)size); */
+	/*	assert (freespace(page) >= (int)size); */ /*Expensive, so skipped not done. */
 
-	/* Reuse an old (invalid) slot entry */
+	/* Reuse an old (invalid) slot entry.  Why was this here? */
 	/*	for (i = 0; i < numSlots; i++) { 
 		if (!isValidSlot(page.memAddr, i)) {
 			rid.slot = i;
@@ -468,12 +381,12 @@ void pageCompact(Page page) {
 
 	int i;
 	byte buffer[PAGE_SIZE];
-	  /*	char *buffer = (char *)malloc(PAGE_SIZE); */
 	int freeSpace = 0;
 	int numSlots = readNumSlots(page.memAddr);
 	int meta_size = LSN_SIZE + FREE_SPACE_SIZE + NUMSLOTS_SIZE + (SLOT_SIZE*numSlots);
 	int slot_length;
 	int last_used_slot = 0;
+
 	/* Can't compact in place, slot numbers can come in different orders than 
 	   the physical space allocated to them. */
 	memcpy(buffer + PAGE_SIZE - meta_size, page.memAddr + PAGE_SIZE - meta_size, meta_size);
@@ -537,163 +450,34 @@ int isBlobSlot(byte *pageMemAddr, int slot) {
 	return BLOB_SLOT == getSlotLength(pageMemAddr, slot);
 }
 
-/**
-   Blob format:
-
-	If the slot entry's size is BLOB_SLOT, then the slot points to a blob record instead of data.  The format of this record is:
-
-	Int:   Version number (0/1)
-	Int:   Archive offset
-	Int:   Blob size.
-
-   TODO: BufferManager should pass in file descriptors so that this function doesn't have to open and close the file on each call.
-
-   @todo This needs to trust the rid, which is fine, but it could do more to check if the page agrees with the rid... 
-
+/*
+  @todo This needs should trust the rid (since the caller needs to
+  overrid the size in special circumstances, but if the size has been
+  overridden, we should check for the circumstances where doing so is
+  allowed. 
 */
 void pageReadRecord(int xid, Page page, recordid rid, byte *buff) {
-		byte *recAddress = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
 
-	/*look at record, if slot offset == blob_slot, then its a blob, else its normal.	*/
-		/*	if(isBlobSlot(page.memAddr, rid.slot)) {
-		int fd = -1;
-		int version;
-		int offset;
-		int length;
+  byte *recAddress = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
+  memcpy(buff, recAddress,  rid.size);
 
-		version = *(int *)recAddress;
-		offset = *(int *)(recAddress + 4);
-		length = *(int *)(recAddress + 8);
-
-		fd = version == 0 ? blobfd0 : blobfd1;
-
-		/ *		if( (fd = open(version == 0 ? BLOB0_FILE : BLOB1_FILE, O_RDWR, 0)) == -1 ) {
-			printf("page.c:pageReadRecord error and exiting\n");
-			exit(-1);
-			} * /
-		lseek(fd, offset, SEEK_SET);
-		read(fd, buff, length);
-		/ *  	close(fd); * /
-	} else { */
-		/* For now, we need page.c to trust the rid. */
-		/*		int size = getSecondHalfOfWord((int*)slotMemAddr(page.memAddr, rid.slot)); */
-
-		memcpy(buff, recAddress,  rid.size);
-		/*}*/
 }
 
 void pageWriteRecord(int xid, Page page, recordid rid, const byte *data) {
-  	byte *rec; 
-	/*	int version = -1;
-	int fd = -1;
-	int blobRec[3];
 
-	if (isBlobSlot(page.memAddr, rid.slot)) {
-	  / * TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
-	     and allocate it if its not there.  It returns 0 if it's a new blob, 1 otherwise, so I think we 
-	     just ignore its return value...* /
+  byte *rec; 
+  
+  assert(rid.size < PAGE_SIZE);
+  
+  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
+  
+  if(memcpy(rec, data,  rid.size) == NULL ) {
+    printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
+    exit(MEM_WRITE_ERROR);
+  }
 
-	        if( !touchBlob(xid, rid) ) { 
-		  / * record hasn't been touched yet * /
-		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-		  version = *(int *)rec;	
-		  blobRec[0] = version == 0 ? 1 : 0;
-		  blobRec[1] = *(int *)(rec + 4);
-		  blobRec[2] = *(int *)(rec + 8); 
-		  memcpy(rec, blobRec,  BLOB_REC_SIZE);
-
-		} else {
-		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-		}
-	
-		fd = version == 0 ? blobfd0 : blobfd1;
-
-		if(-1 == lseek(fd, *(int *)(rec +4), SEEK_SET)) {
-		  perror("lseek");
-		}
-		if(-1 == write(fd, data, *(int *)(rec +8))) {
-		  perror("write");
-		}
-
-		/ * Flush kernel buffers to hard drive. TODO: the
-		   (standard) fdatasync() call only flushes the data
-		   instead of the data + metadata.  Need to have
-		   makefile figure out if it's available, and do some
-		   macro magic in order to use it, if possible...
-
-		   This is no longer called here, since it is called at commit.
-		* /
-		/ *		fsync(fd);  * /
-	} else { / * write a record that is not a blob */
-
-	assert(rid.size < PAGE_SIZE);
-		rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-
-		if(memcpy(rec, data,  rid.size) == NULL ) {
-			printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
-			exit(MEM_WRITE_ERROR);
-		}
-		/*}*/
 }
 
-
-/* Currently not called any where, or tested. */
-/*byte * pageMMapRecord(int xid, Page page, recordid rid) {
-  	byte *rec; 
-	int version = -1;
-	int fd = -1;
-	int blobRec[3];
-	byte * ret;
-	if (isBlobSlot(page.memAddr, rid.slot)) {
-	  / * TODO:  Rusty's wild guess as to what's supposed to happen. Touch blob appears to lookup the blob,
-	     and allocate it if its not there.  It returns 0 if it's a new blob, 1 otherwise, so I think we 
-	     just ignore its return value...* /
-
-	        if( !touchBlob(xid, rid) ) { 
-		  / * record hasn't been touched yet * /
-		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-		  version = *(int *)rec;	
-		  blobRec[0] = version == 0 ? 1 : 0;
-		  blobRec[1] = *(int *)(rec + 4);
-		  blobRec[2] = *(int *)(rec + 8); 
-		  memcpy(rec, blobRec,  BLOB_REC_SIZE);
-
-		} else {
-		  rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-		}
-	
-		fd = version == 0 ? blobfd0 : blobfd1;
-
-		if((ret = mmap((byte*) 0, *(int *)(rec +8), (PROT_READ | PROT_WRITE), MAP_SHARED, fd, *(int *)(rec +4))) == (byte*)-1) {
-		  perror("pageMMapRecord");
-		}
-
-		/ *		if(-1 == lseek(fd, *(int *)(rec +4), SEEK_SET)) {
-		  perror("lseek");
-		}
-		if(-1 == write(fd, data, *(int *)(rec +8))) {
-		  perror("write");
-		  } * /
-
-		/ * Flush kernel buffers to hard drive. TODO: the
-		   (standard) fdatasync() call only flushes the data
-		   instead of the data + metadata.  Need to have
-		   makefile figure out if it's available, and do some
-		   macro magic in order to use it, if possible...* /
-		/ *		fsync(fd);  * /
-
-	} else { / * write a record that is not a blob * /
-		rec = page.memAddr + getSlotOffset(page.memAddr, rid.slot);
-
-		ret = rec;
-		/ *		if(memcpy(rec, data,  rid.size) == NULL ) {
-			printf("ERROR: MEM_WRITE_ERROR on %s line %d", __FILE__, __LINE__);
-			exit(MEM_WRITE_ERROR);
-			}* /
-	}
-	return ret;
-}
-*/
 void pageRealloc(Page *p, int id) {
 	p->id = id;
 	p->LSN = 0;
@@ -706,17 +490,17 @@ Page pool[MAX_BUFFER_SIZE];
 	Allocate a new page. 
         @param id The id of the new page.
 	@return A pointer to the new page.  This memory is part of a pool, 
-	        and should not be freed by the application.
+	        and should never be freed by manually.
  */
 Page *pageAlloc(int id) {
   Page *p = &(pool[nextPage]);
+
   nextPage++;
+
   assert(nextPage <= MAX_BUFFER_SIZE);
-  /*
-    Page *p = (Page*)malloc(sizeof(Page));*/ /* freed in bufDeinit */
-  /*	assert(p); */
-	pageRealloc(p, id);
-	return p;
+  pageRealloc(p, id);
+
+  return p;
 }
 
 void printPage(byte *memAddr) {
@@ -776,58 +560,6 @@ int pageTest() {
 		printPage(page.memAddr);
 		return 0;
 }
-
-/**
- * 
- */
-recordid pageBalloc(Page page, int size, int fileOffset) {
-	int freeSpace = readFreeSpace(page.memAddr);
-	int numSlots = readNumSlots(page.memAddr);
-	recordid rid;
-
-	int i;
-
-	rid.page = page.id;
-	rid.slot = numSlots;
-	rid.size = size;
-
-	if (freespace(page) < BLOB_REC_SIZE) {
-		printf("Error in pageRalloc()\n");
-		exit(-1);
-	}
-
-	for (i = 0; i < numSlots; i++) {
-		if (!isValidSlot(page.memAddr, i)) {
-			rid.slot = i;
-			break;
-		}
-	}
-
-	if (rid.slot == numSlots) {
-		writeNumSlots(page.memAddr, numSlots+1);
-	}
-
-	setSlotOffset(page.memAddr, rid.slot, freeSpace);
-	setSlotLength(page.memAddr, rid.slot, BLOB_SLOT);  
-	writeFreeSpace(page.memAddr, freeSpace + BLOB_REC_SIZE);
-
-
-	*(int *)(page.memAddr + freeSpace) = 0;
-	*(int *)(page.memAddr + freeSpace + 4) = fileOffset;
-	*(int *)(page.memAddr + freeSpace + 8) = size;
-
-	return rid;
-}
-/*
-int getBlobOffset(int page, int slot) {
-printf("Error: not yet implemented!!\n");
-exit(-1);
-}
-
-int getBlobSize(int page, int slot) {
-printf("Error: not yet implemented!!\n");
-exit(-1);
-}*/
 
 void setSlotType(Page p, int slot, int type) {
 

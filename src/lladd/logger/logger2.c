@@ -112,7 +112,7 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
   return e;
 }
 
-lsn_t LogCLR(/*TransactionLog * l,*/ LogEntry * undone) {
+lsn_t LogCLR(LogEntry * undone) {
   lsn_t ret;
   LogEntry * e = allocCLRLogEntry(-1, undone->xid, undone->LSN, undone->contents.update.rid, undone->prevLSN);
   writeLogEntry(e);

@@ -84,17 +84,6 @@ typedef struct Page_s {
 } Page;
 
 /**
- * tracks changes to blobs
- */
-typedef struct {
-	int xid;
-	recordid *records;
-	size_t len;
-} touchedBlob_t;
-
-#define DEFAULT_TOUCHED 2
-
-/**
  * initializes all the important variables needed in all the
  * functions dealing with pages.
  */
@@ -143,7 +132,6 @@ Page* pageAlloc(int id);
 recordid pageSlotRalloc(Page page, recordid rid);
 
 int pageTest();
-recordid pageBalloc(Page page, int size, int offset);
 
 int getSlotType(Page p, int slot, int type);
 void setSlotType(Page p, int slot, int type);

@@ -68,7 +68,6 @@ const byte * getUpdateArgs(const LogEntry * ret) {
 const byte * getUpdatePreImage(const LogEntry * ret) {
   assert(ret->type == UPDATELOG);
   if(operationsTable[ret->contents.update.funcID].undo != NO_INVERSE) {
-    /*  if(ret->contents.update.invertible) { */
     return NULL;
   } else {
     return ((byte*)ret) + sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + ret->contents.update.argSize;
@@ -86,7 +85,6 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   ret->xid = xid;
   ret->type = UPDATELOG;
   ret->contents.update.funcID = funcID;
-  /*  ret->contents.update.invertible = invertible; */
   ret->contents.update.rid    = rid;
   ret->contents.update.argSize = argSize;
   

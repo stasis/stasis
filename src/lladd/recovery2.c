@@ -21,19 +21,6 @@
 /** @todo This include is an artifact of our lack of infrastructure to support log iterator guards.  */
 #include <lladd/operations/prepare.h>
 
-/** Maps from xid (int) to status:
-      NULL - Haven't seen XID
-      U    - XID is scheduled for UNDO
-      C    - XID committed, but not ended.  (End records are written once 
-             the XID is flushed to disk.  They are only written during the 
-	     recovery process, and shutdown since LLADD follows a no force 
-	     policy.) @todo Implement end records.
-
-    @todo We don't ever read values out of this hash table... could it
-          be replaced entirely with transactionLSN?
-
-*/
-/*static pblHashTable_t * transactionStatus; */
 static pblHashTable_t * transactionLSN;
 static LinkedListPtr rollbackLSNs = NULL;
 /** 
@@ -116,9 +103,8 @@ static void Analysis () {
 	 not overwrite this transaction's work with stale data.)
 
 	 The redo phase checks for a transaction's presence in
-	 transactionLSN before redoing its actions.  Therefore, if
-	 we remove this transaction from the transactionStatus hash,
-	 it will not be redone.
+	 transactionLSN before redoing its actions.  Therefore, if we
+	 remove this transaction from the hash, it will not be redone.
       */
       pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
       break;
@@ -140,9 +126,6 @@ static void Analysis () {
       /* Don't want this XID in the list of rolled back lsn's since
 	 this XACT will be rolled back during redo. */
       break;      
-
-      /*    case XALLOC: */ /* @todo Don't use XALLOC anymore, dont need it here. */
-      /*  assert (0); */
     default:
       assert (0);
     }
@@ -156,13 +139,13 @@ static void Redo() {
   LogEntry  * e;
   
   while((e = nextInLog(&lh))) {
-    /*    int garbage; */
+
     /* Check to see if this log entry is part of a transaction that needs to be redone. */
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
       /* Check to see if this log entry contains an action that needs to be redone. */
       if(e->type == UPDATELOG || 
 	 e->type == CLRLOG) {
-	/* redoOperation checks the page that contains e->rid, so we
+	/* redoUpdate checks the page that contains e->rid, so we
 	   don't need to check to see if the page is newer than this
 	   log entry. */
 	redoUpdate(e);
@@ -213,36 +196,30 @@ static void Undo(int recovery) {
 	
 	/*	printf("1"); fflush(NULL); */
 
-	/* This check was incorrect.  Since blobManager may lazily
-	   update the pageManager, it is possible for this test to
-	   fail.  In that case, the undo is handled by blob manager
-	   (it removes this page from it's dirty blob list), not
-	   us. (Nope, it is now, again correct--fixed blobManager)*/
-
 	assert(e->LSN <= this_lsn);  
+
 	/* printf("1a"); fflush(NULL); */
 	
 	/* Need to log a clr here. */
 
 	clr_lsn = LogCLR(e);
-	/*	writeLSN(clr_lsn, e->contents.update.rid.page); */
 
 	/* Undo update is a no-op if the page does not reflect this
-	   update, but it will write the new clr_lsn.  */
+	   update, but it will write the new clr_lsn if necessary.  */
+
 	undoUpdate(e, clr_lsn);
+
 	/*	printf("1b"); fflush(NULL); */
       break;
       case CLRLOG:  
-      /* Don't need to do anything special to handle CLR's.  
-	 Iterator will correctly jump to clr's previous undo record. */
+	/* Don't need to do anything special to handle CLR's.  
+	   Iterator will correctly jump to clr's previous undo record. */
+
 	/*	printf("2"); fflush(NULL); */
       break;
-      /*      case XALLOC: */
-      /* Don't use xalloc anymore. */
-      /*assert(0);*/
-      break;
       case XABORT:
-	/* Since XABORT is a no-op, we can safely ignore it. (XABORT records may be passed in by undoTrans.)*/
+	/* Since XABORT is a no-op, we can silentlt ignore it. (XABORT
+	   records may be passed in by undoTrans.)*/
       break;
       default:
 	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%ld), skipping...\n", e->type, e->xid, e->LSN); 
@@ -264,6 +241,7 @@ void InitiateRecovery() {
   DEBUG("Undo started\n");
   Undo(1);
   DEBUG("Recovery complete.\n");
+
   /** @todo Should we manually empty the hash table? */
   pblHtDelete(transactionLSN);
   
@@ -277,10 +255,10 @@ void undoTrans(TransactionLog transaction) {
   }
   rollbackLSNs = 0;
   if(transaction.prevLSN > 0) {
-    /*    printf("scheduling lsn %ld for undo.\n", transaction.prevLSN); */
+    DEBUG("scheduling lsn %ld for undo.\n", transaction.prevLSN);
     addSortedVal(&rollbackLSNs, transaction.prevLSN);
   } else {
-    /* Nothing to undo.  (Happens for read-only xacts. */
+    /* Nothing to undo.  (Happens for read-only xacts.) */
   }
 
   Undo(0);
