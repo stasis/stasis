@@ -86,7 +86,8 @@ int main(int argc, char** argv) {
 
   Tinit();
   int xid = Tbegin();
-  hash = ThashCreate(xid, sizeof(int), sizeof(int));
+  //  hash = ThashCreate(xid, sizeof(int), sizeof(int));
+  hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   
   int k;
 

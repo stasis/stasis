@@ -129,8 +129,8 @@ int main(int argc, char** argv) {
 
   Tinit();
   int xid = Tbegin();
-  hash = ThashCreate(xid, sizeof(int), sizeof(int));
-  //  hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+  //  hash = ThashCreate(xid, sizeof(int), sizeof(int));
+  hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   
   Tcommit(xid);
 
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
   pthread_mutex_init(&mutex, NULL);
 
   pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
-  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+  //  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
   pthread_mutex_lock(&mutex);
 
 
@@ -159,12 +159,6 @@ int main(int argc, char** argv) {
   for(k = 0; k < thread_count; k++) {
     pthread_join(workers[k],NULL);
   }
-
-
-  /*  printf("mean:     (max, avg)  %f, %f\n", max_mean, avg_mean / (double)thread_count);
-
-  printf("variance: (max, avg)  %f, %f\n", max_var, avg_var / (double)thread_count);
-  */
 
   Tdeinit();
 }

@@ -50,6 +50,12 @@ env_open(DB_ENV **dbenvp)
 		exit (1);
 		}*/
 
+	dbenv->set_tx_max(dbenv, 32000);
+	int max;
+	dbenv->get_tx_max(dbenv, &max);
+	printf("Max xact count: %d\n", max);
+
+
 	/*
 	 * Open a transactional environment:
 	 *	create if it doesn't exist
@@ -58,7 +64,7 @@ env_open(DB_ENV **dbenvp)
 	 *	read/write owner only
 	 */
 	if ((ret = dbenv->open(dbenv, ENV_DIRECTORY,
-			       DB_CREATE |/* DB_INIT_LOCK |*/ DB_INIT_LOG |
+			       DB_CREATE |/* DB_INIT_LOCK |*/ DB_INIT_LOG | /*| DB_PRIVATE*/ 
 			       DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
 			       S_IRUSR | S_IWUSR)) != 0) {
 		dbenv->err(dbenv, ret, "dbenv->open: %s", ENV_DIRECTORY);
@@ -151,11 +157,11 @@ log_archlist(DB_ENV *dbenv)
 		free (begin);
 	}
 }
+DB *db;
 
 void
-db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
+db_open(DB_ENV *dbenv, DB **dbp, char *name, int type)
 {
-	DB *db;
 	int ret;
 
 	/* Create the database handle. */
@@ -176,7 +182,7 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	 *	free-threaded handle
 	 *	read/write owner only
 	 */
-	if ((ret = db->open(db, NULL, name, NULL, /*DB_BTREE*//* DB_RECNO */DB_HASH, /*DB_DIRECT_LOG | DB_DIRECT_DB | */
+	if ((ret = db->open(db, NULL, name, NULL, type, /*DB_DIRECT_LOG | DB_DIRECT_DB | */
 			    DB_AUTO_COMMIT | DB_DIRTY_READ | DB_TXN_SYNC | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
 		(void)db->close(db, 0);
 		dbenv->err(dbenv, ret, "db->open: %s", name);
@@ -243,7 +249,7 @@ retry:	/* Begin the transaction. */
 	//	assert(count == 1);
 
 	for(q = offset; q < offset + count; q++) {
-	  keyPtr = q;
+	  keyPtr = q+1;
 	  valPtr = q;
 	  /*	  switch (ret = db->del(db, tid, &key, 0)) {
 	  case 0:
@@ -262,9 +268,8 @@ retry:	/* Begin the transaction. */
 	    abort();
 	    exit (1);
 	    } */
-		
-	  //	  switch (ret = dbc->c_put(dbc, &key, &data, DB_KEYLAST)) {
-	  //switch (ret = dbc->c_put(dbc, &key, &data, DB_KEYLAST)) {
+	  		
+	  //	  pthread_mutex_lock(&hack);
 	  switch (ret = db->put(db, tid, &key, &data, 0)) {
 		case 0:
 		  break;
@@ -283,23 +288,22 @@ retry:	/* Begin the transaction. */
 		  }
 		  goto retry;
 		default:
-		  abort();  // Error invalidates benchmark!
 		  /* Error: run recovery. */
 		  dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
+		  abort();  // Error invalidates benchmark!
 		  exit (1);
 		}
-	}
-	//	DBT getkey, getdata;  @todo, check insertions!
+	  //	  pthread_mutex_unlock(&hack);
 
-	/* Success: commit the change. */
-	/*	if ((ret = dbc->c_close(dbc)) != 0) {
-		dbenv->err(dbenv, ret, "dbc->c_close");
-		exit (1);
-		}*/
+	}
+
 	if ((ret = tid->commit(tid, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_TXN->commit");
 		exit (1);
 	}
+#ifdef DEBUG_BDB
+	printf("Called commit\n");
+#endif
 }
 
 void
@@ -310,7 +314,7 @@ usage()
 }
 
 void 
-initDB(/*DB_ENV ** dbenv, */pthread_attr_t * attr)  
+initDB(/*DB_ENV ** dbenv, */pthread_attr_t * attr, int type)  
 {
 
 	pthread_t ptid;
@@ -337,7 +341,7 @@ initDB(/*DB_ENV ** dbenv, */pthread_attr_t * attr)
 		exit (1);
 	}
 	*/
-	db_open(dbenv, &db_cats, "cats", 1);
+	db_open(dbenv, &db_cats, "cats", type);
 
 
 

@@ -12,6 +12,8 @@
 pthread_cond_t never;
 pthread_mutex_t mutex;
 
+int alwaysCommit;
+
 #define MAX_SECONDS 100
 
 #define COUNTER_RESOLUTION 240
@@ -97,13 +99,13 @@ static void * go (void * arg_ptr) {
     assert(timeout.tv_sec <= start.tv_sec);
     assert(timeout.tv_nsec <= start.tv_nsec || timeout.tv_sec < start.tv_sec);
     */
-  
-    xid = Tbegin();
-
+    if(alwaysCommit) {
+      xid = Tbegin();
+    }
     ThashInsert(xid, hash, (byte*)&j, sizeof(int), (byte*)&j, sizeof(int));
-
-    Tcommit(xid); // used to be outside of loop!
-
+    if(alwaysCommit) {
+      Tcommit(xid);
+    }
 
     gettimeofday(&endtime_tv, NULL);
 
@@ -168,10 +170,12 @@ static void * go (void * arg_ptr) {
 
 int main(int argc, char** argv) {
 
-  assert(argc == 3);
+  assert(argc == 4);
 
   int thread_count = atoi(argv[1]);
   count = atoi(argv[2]);
+  alwaysCommit = atoi(argv[3]);
+  
 
   unlink("storefile.txt");
   unlink("logfile.txt");

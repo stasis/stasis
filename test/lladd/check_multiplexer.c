@@ -212,7 +212,7 @@ START_TEST(multiplexTest) {
   pthread_cond_init(&never, NULL);
 
   pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
-  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+  // pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
   pthread_mutex_lock(&mutex);
 
   lladdMultiplexer_start(mux, &attr);

@@ -9,9 +9,9 @@
 #include <assert.h>
 #include <string.h>
 #include <lladd/operations/noop.h>
-
-
-
+#include <lladd/fifo.h>
+#include <lladd/multiplexer.h>
+#include "../logger/logMemory.h"
 /**
    re-entrant implementation of a linear hash hable, using nensted top actions.
    
@@ -535,4 +535,93 @@ int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
   *value = it->lastValue;
 
   return (it->lastValue == NULL) ? 0 : it->lastValueSize;
+}
+
+
+//---------------------------------  async hash operations happen below here
+
+typedef struct { 
+  //  recordid hash;
+  int value_len;
+  int key_len;
+} asyncHashInsert_t;
+
+void ThashInsertAsync(int xid, lladdConsumer_t * cons, recordid hash, byte * value, int value_len, byte * key, int key_len) {
+  
+  Tconsumer_push(xid, cons, key, key_len, value, value_len);
+
+}
+
+void ThashInsertConsume(int xid, recordid hash, lladdIterator_t * it) {
+
+  while(Titerator_next(xid, it)) {
+    
+    byte * key;
+    byte * value;
+
+    int key_len = Titerator_key(xid, it, &key);
+    int value_len = Titerator_value(xid, it, &value);
+    
+    ThashInsert(xid, hash, key, key_len, value, value_len);
+    
+    Titerator_tupleDone(xid, it);
+  }
+}
+
+typedef struct { 
+  lladdIterator_t * it;
+  recordid hash;
+  int xid;
+} hashAsyncWorker_arg;
+
+void * ThashAsyncWorker(void * argp) {
+  hashAsyncWorker_arg * arg = (hashAsyncWorker_arg*)argp;
+
+
+  //  lladdIterator_t * it = (lladdIterator_t *) arg;
+  //  recordid hash;
+  while(Titerator_next(arg->xid, arg->it)) {
+    lladdFifo_t * fifo;
+    int fifo_size = Titerator_value(arg->xid, arg->it, (byte**)&fifo);
+    assert(fifo_size == sizeof(lladdFifo_t));
+
+    ThashInsertConsume(arg->xid, arg->hash,  fifo->iterator);
+
+    Titerator_tupleDone(arg->xid, arg->it);
+  }
+  return NULL;
+}
+
+/*lladdMultiplexer_t **/
+lladdConsumer_t *  TasyncHashInit(int xid, recordid rid, int numWorkerThreads, 
+				  int mainFifoLen, int numFifos, 
+				  int subFifoLen, int dirtyFifoLen,
+				  lladdIterator_t ** dirtyIterator) {
+  
+  lladdFifo_t * mainFifo   = logMemoryFifo(mainFifoLen, 0);
+  lladdFifo_t * dirtyFifos = logMemoryFifo(dirtyFifoLen, 0);
+  lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(numFifos, subFifoLen, NULL, dirtyFifos);
+  lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, mainFifo->iterator, &multiplexHashLogByKey, fifoPool);
+
+
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
+
+  lladdMultiplexer_start(mux, &attr);
+
+  int i = 0; 
+
+
+  for(i = 0; i < numWorkerThreads; i++) {
+    pthread_t thread;
+    pthread_create(&thread, &attr, ThashAsyncWorker, mux->fifoPool->dirtyPoolFifo->iterator);
+    pthread_detach(thread);
+  }
+  
+  if(dirtyIterator) { 
+    *dirtyIterator = mux->fifoPool->dirtyPoolFifo->iterator;
+  }
+
+  return mainFifo->consumer;
 }
