@@ -44,6 +44,7 @@ AM_CONDITIONAL(HAVE_CHECK, test x$have_check = xtrue)
 #AC_CHECK_LIB(efence,memalign)
 #fi
 
+
 # Linux has a broken O_DIRECT flag, but we allow people to override it from
 # the command line.
 test_host_prw=yes
@@ -92,6 +93,9 @@ AC_FUNC_MEMCMP
 AC_FUNC_REALLOC
 AC_FUNC_STAT
 AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir powl posix_memalign socket sqrt strchr strdup strerror strrchr strstr strtoul])
+
+#AC_CONFIG_LIBMYSQLD
+
 
 AC_CONFIG_FILES([Makefile
                  benchmarks/Makefile

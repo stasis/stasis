@@ -29,6 +29,7 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     Tread(xid, list, &header);
     recordid headerRid = list;
 
+    pagedListHeader firstHeader = header;
     /* byte * garbage;
        ret = (TpagedListFind(xid, list, key, keySize, &garbage) != -1);
     if(ret) {
@@ -46,7 +47,7 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     while(rid.size == -1) {
       if(compensation_error()) { break; }
       if(header.nextPage.size == -1)  {
-	header.nextPage = Talloc(xid, sizeof(pagedListHeader));
+	/*	header.nextPage = Talloc(xid, sizeof(pagedListHeader));
 	DEBUG("allocing on new page %d\n", header.nextPage.page);
 	Tset(xid, headerRid, &header);
 	pagedListHeader newHead;
@@ -54,11 +55,25 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
 	newHead.nextPage.page =0;
 	newHead.nextPage.slot =0;
 	newHead.nextPage.size =-1;
-	Tset(xid, header.nextPage, &newHead);
+	Tset(xid, header.nextPage, &newHead); */
+	// We're at the end of the list
+
+	recordid newHeadRid = Talloc(xid, sizeof(pagedListHeader));
+	pagedListHeader newHead;
+	newHead.thisPage = 0;
+	newHead.nextPage = firstHeader.nextPage;
+
+	firstHeader.nextPage = newHeadRid;
+	
+	Tset(xid, newHeadRid, &newHead);
+	Tset(xid, list, &firstHeader);
+	
+	header = newHead;
+	headerRid = newHeadRid;
+      } else {
+	headerRid = header.nextPage;
+	Tread(xid, header.nextPage, &header);
       }
-      
-      headerRid = header.nextPage;
-      Tread(xid, header.nextPage, &header);
       rid = TallocFromPage(xid, headerRid.page, entrySize);
       DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
     }
@@ -75,6 +90,7 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     DEBUG("Header.thisPage = %d\n", rid.slot);
     Tset(xid, headerRid, &header);
     free(dat);
+
   } end_ret(compensation_error());
   return ret;
 }

@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
    int xid = Tbegin();
    
    recordid hash = ThashCreate(xid, sizeof(int), sizeof(int));
+   //recordid hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
 
    Tcommit(xid);
    

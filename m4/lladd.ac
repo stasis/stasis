@@ -2,7 +2,7 @@ dnl
 dnl Autoconf support for finding LLADD
 dnl
 
-AC_DEFUN(AC_LLADD_HELP, [
+AC_DEFUN([AC_LLADD_HELP], [
 cat <<EOF
 
 Configure error with LLADD...
@@ -17,7 +17,7 @@ EOF
 dnl
 dnl Main macro for finding a usable LLADD installation 
 dnl
-AC_DEFUN(AC_CONFIG_LLADD, [
+AC_DEFUN([AC_CONFIG_LLADD], [
     ac_lladddir='system'
 
     AC_ARG_WITH(lladd,

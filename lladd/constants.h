@@ -82,14 +82,14 @@ terms specified in this license.
 
 /* #define MAX_BUFFER_SIZE 100003 */
 /*#define MAX_BUFFER_SIZE 20029 */
-/*#define MAX_BUFFER_SIZE 10007 */
+#define MAX_BUFFER_SIZE 10007 
 /*#define MAX_BUFFER_SIZE 5003*/
-#define MAX_BUFFER_SIZE 2003 
+/*#define MAX_BUFFER_SIZE 2003 */
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 /*#define BUFFER_ASOOCIATIVE 2 */
 
-#define MAX_TRANSACTIONS 1000
+#define MAX_TRANSACTIONS 100000
 
 /** Operation types */
 
