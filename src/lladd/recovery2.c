@@ -210,13 +210,13 @@ static void Undo(int recovery) {
 	{
 	  /* Need write lock for undo.. */
 	  Page * p = getPage(e->contents.update.rid.page, RW); 
-	  /* Sanity check.  If this fails, we've already undone this
-	     update, or something is wrong with the redo phase or normal operation. */
 	  this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
 	  
 	  
 	  /*	printf("1"); fflush(NULL); */
 	  
+	  /* Sanity check.  If this fails, something is wrong with the
+	     redo phase or normal operation. */
 	  assert(e->LSN <= this_lsn);  
 	  
 	  /* printf("1a"); fflush(NULL); */

@@ -254,7 +254,6 @@ Page *pageAlloc(int id) {
 
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   
-  /*  writelock(p->rwlatch, 225);  *//* Need a writelock so that we can update the lsn. */
 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     /*    DEBUG("Writing blob.\n"); */
@@ -265,18 +264,20 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
     assert( (p->id == rid.page) && (p->memAddr != NULL) );	
 
-    /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
-    /*assert(pageReadLSN(*p) <= lsn);*/
-    
     pageWriteRecord(xid, p, lsn, rid, dat);
 
     assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-    
+
   }
   
-  /*  p->LSN = lsn;
-  pageWriteLSN(p);
-  unlock(p->rwlatch); */
+  writelock(p->rwlatch, 225);  /* Need a writelock so that we can update the lsn. */
+
+  if(p->LSN < lsn) {
+    p->LSN = lsn;
+    pageWriteLSN(p);
+  } 
+  unlock(p->rwlatch);    
+
 }
 
 void readRecord(int xid, Page * p, recordid rid, void *buf) {

@@ -109,6 +109,20 @@ static void pageCompact(Page * page) {
 	  }
 	}
 	
+	/** The freelist could potentially run past the end of the
+	    space that is allocated for slots (this would happen if
+	    the number of slots needed by this page just decreased.
+	    If we let the list run outside of that area, it could
+	    cause inadvertant page corruption.  Therefore, we need to
+	    truncate the list before continuing. */
+
+	short next = *freelist_ptr(page);
+	while(next >= numSlots) {
+	  next = *slot_length_ptr(page, next);
+	}
+
+	*freelist_ptr(page) = next;
+	
 	/* Rebuild the freelist. */
 	
 	/*	*freelist_ptr(&bufPage) = 0;
@@ -157,7 +171,10 @@ int freespace(Page * page) {
 }
 
 
-
+/**
+   @todo pageRalloc's algorithm for reusing slot id's reclaims the
+   highest numbered slots first, which encourages fragmentation.
+*/
 recordid pageRalloc(Page * page, int size) {
 
 	writelock(page->rwlatch, 342);
@@ -168,39 +185,12 @@ recordid pageRalloc(Page * page, int size) {
 	rid.slot = *numslots_ptr(page);
 	rid.size = size;
 
-	/* 
-	   Reuse an old (invalid) slot entry.
-	   
-	   @todo This is terribly slow, but seems to be necessary, or
-	   we will leak slot ids.  Is there a better (non n^2) way?
-	   
-	   Perhaps we could use the empty slots to construct a linked
-	   list of free pages.  (The slot length could be the offset
-	   of the next slot on the list, and we could use the standard
-	   INVALID_SLOT value to distinguish between the types.)
-
-	*/
-	/* Old way  */
-
-	/*	int i;
-	for (i = 0; i < numSlots; i++) { 
-	  if (!isValidSlot(page, i)) {
-	     rid.slot = i;
-	     break;
-	  }
-	  } */
-	
-	
-	/* new way @todo leaks slot zero (until pageCompact is called)*/
+	/* new way */
 	if(*freelist_ptr(page) != INVALID_SLOT) {
 	  rid.slot = *freelist_ptr(page);
-	  /*	  printf("Reusing old slot %d\n", rid.slot); */
 	  *freelist_ptr(page) = *slot_length_ptr(page, rid.slot);
 	  *slot_length_ptr(page, rid.slot) = 0;
-	} else {
-	  /*	  printf("Allocating new slot\n"); */
 	}  
-	fflush(NULL);
 	  
 	__really_do_ralloc(page, rid);
 
@@ -304,7 +294,8 @@ void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
 void pageWriteRecord(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data) {
   int slot_length;
 
-  writelock(page->rwlatch, 529); 
+  readlock(page->rwlatch, 529);  
+  
 
   assert(rid.size < PAGE_SIZE); 
   assert(page->id == rid.page);
@@ -317,10 +308,10 @@ void pageWriteRecord(int xid, Page * page, lsn_t lsn, recordid rid, const byte *
     abort();
   }
 
-  page->LSN = lsn;
-  /*  *lsn_ptr(page) = lsn */
-  pageWriteLSN(page); 
-  unlock(page->rwlatch);
+  /*page->LSN = lsn;
+    *lsn_ptr(page) = lsn * / 
+  pageWriteLSN(page); */
+  unlock(page->rwlatch); 
 
 }
 
