@@ -59,7 +59,7 @@ Although many systems provide transactionally consistent data management,
 existing implementations are generally monolithic and tied to a higher-level DBMS, limiting the scope of their usefulness to a single application,
 or a specific type of problem. As a result, many systems are forced
 to ``work around'' the data models provided by a transactional storage
-layer. Manifestation of this problem include 'impedence mismatch'
+layer. Manifestation of this problem include ``impedence mismatch''
 in the database world and the limited number of data models provided
 by existing libraries such as BerkeleyDB. In this paper, we describe
 a light-weight, easily extensible library, LLADD, that allows application
@@ -85,21 +85,29 @@ For applications that are willing to store all of their data in a
 DBMS, and access it only via SQL, existing databases are just fine and
 LLADD has little to offer.  However, for those applications that need
 more direct management of data, LLADD offers a layered architecture
-that enables simple but robust data management.\footnote{Such
-applications are ``navigational'' in the database vocabulary, as they
-directly navigate data structures rather than perform set operations.}
+that enables simple but robust data management.\footnote{A large class
+of such applications are deemed ``navigational'' in the database
+vocabulary, as they directly navigate data structures rather than
+perform set operations.  We also believe that LLADD is applicable in
+the context of new, special purpose database systems (XML databases,
+streaming databases, database/semantic file systems, etc), which is a
+fruitful area of current work both within the database research
+community and in industry.}
 
 The basic approach of LLADD, taken from ARIES [xx], is to build
 \emph{transactional pages}, which enables recovery on a page-by-page
 basis, despite support for high concurrency and the minimization of
-seeks during commit (by using a log).  We show how to build a variety
+dish seeks during commit (by using a log).  We show how to build a variety
 of useful data managers on top of this layer, including persistent
 hash tables, lightweight recoverable virtual memory, and simple
 databases.  We also cover the details of crash recovery,
 application-level support for transaction abort and commit, and basic
 latching for multithreaded applications.
 
-[more coverage of kinds of apps?  imap, lrvm, cht, file system, database]
+We also discuss the shortcomings of common applications , and explain
+why LLADD provides an appropriate solution to these problems.
+
+%[more coverage of kinds of apps?  imap, lrvm, cht, file system, database]
 
 Many implementations of transactional pages exist in industry and
 in the literature. Unfortunately, these algorithms tend either to
@@ -171,15 +179,15 @@ outlive the software that uses them, and must be able to cope with
 changes in business practices, system architechtures, etc.
 
 Object-oriented databases are more focused on facilitating the
-development of complex applications that require reliable storage, but
-may take advantage of less-flexible, but more efficient data models,
+development of complex applications that require reliable storage, and
+may take advantage of less-flexible, more efficient data models,
 as they often only interact with a single application, or a handful of
 variants of that application.
 
 Databases are designed for circumstances where development time may
 dominate cost, many users must share access to the same data, and
 where security, scalability, and a host of other concerns are
-important.  In many, if not most circumstances, these issues are less
+important.  In many, if not most, circumstances these issues are less
 important, or even irrelevant.  Therefore, applying a database in
 these situations is likely overkill, which may partially explain the
 popularity of MySQL, which allows some of these constraints to be
@@ -203,7 +211,7 @@ scalable storage mechanisms.  Cluster Hash Tables are a good example
 of the type of system that serves these applications well, due to
 their relative simplicity, and extremely good scalability
 characteristics.  Depending on the fault model on which a cluster hash table is
-implemented, it is also quite plasible that key portions of
+implemented, it is also quite plausible that key portions of
 the transactional mechanism, such as forcing log entries to disk, will
 be replaced with other durability schemes, such as in-memory
 replication across many nodes, or multiplexing log entries across
@@ -218,7 +226,19 @@ data store, and we know of no library that provides low level access
 to the primatives of such a durability algorithm.  These algorithms
 have a reputation of being complex, with many intricate interactions,
 which prevent them from being implemented in a modular, easily
-understandable, and extensible way.  In addition to describing such an
+understandable, and extensible way.  
+
+Because of this, many applications that would benefit from
+transactional storage, such as CVS, and many implementations of IMAP
+either ignore the problem, leaving the burden of recovery to system
+administrators or users, or implement ad-hoc solutions that employ
+complex, application specific consistency protocols in order to ensure
+the consistency of their data.  This increases the complexity of such
+applications, and often provides only a partial solution to the
+transactional storage problem, resulting in erratic and unpredictable
+application behavior.
+
+In addition to describing such an
 implementation of ARIES, a popular and well-tested
 ``industrial-strength'' algorithm for transactional storage, this paper
 will outline the most important interactions that we discovered (that
@@ -253,9 +273,15 @@ operations in LLADD.
 
 \subsection{Properties of an Operation\label{sub:OperationProperties}}
 
-A LLADD operation consists of some code that performs some action
-on the developer's behalf. These operations implement the actions
-that are composed into transactions. Since transactions may be aborted,
+A LLADD operation consists of some code that performs some action on
+the developer's behalf. These operations implement the high-level
+actions that are composed into transactions.  They are implemented at
+a relatively low level, and have full access to the ARIES algorithm.
+We expect the majority of an application to reason in terms of the
+interface provided by custom operations, allowing the the application,
+the operation, and LLADD itself to be independently improved.
+
+Since transactions may be aborted,
 the effects of an operation must be reversible. Furthermore, aborting
 and comitting transactions may be interleaved, and LLADD does not
 allow cascading abort,%
@@ -291,7 +317,7 @@ disk atomically with the data of the page.
 
 ARIES (and thus LLADD) allows pages to be {\em stolen}, i.e. written
 back to disk while they still contain uncommitted data.  It is
-tempting to disallow this, but to do has serious consequences such as
+tempting to disallow this, but to do so has serious consequences such as
 a increased need for buffer memory (to hold all dirty pages). Worse,
 as we allow multiple transactions to run concurrently on the same page
 (but not typically the same item), it may be that a given page {\em
@@ -320,12 +346,17 @@ useful: we can use it to roll forward a single page from an archived
 copy.  Thus one of the nice properties of LLADD, which has been
 tested, is that we can handle media failures very gracefully: lost
 disk blocks or even whole files can be recovered given an old version
-and the log.
-
-TODO...need to define operations
-
+and the log.  
 
 \subsection{Normal Processing}
+
+Operation implementors follow the pattern in Figure \ref{cap:Tset},
+and need only implement a wrapper function (``Tset()'' in the figure,
+and a pair of redo and undo functions will be registered with LLADD.
+The Tupdate function, which is built into LLADD, handles most of the
+runtime complexity.  LLADD also uses the undo and redo functions
+during recovery, in the same way that they are used during normal
+processing.
 
 
 \subsubsection{The buffer manager}
@@ -366,7 +397,7 @@ values), and releases any latches that it acquired. %
   width=0.70\columnwidth]{TSetCall.pdf}
 
 
-\caption{Runtime behavior of a simple operation. Tset() and do\_set() are
+\caption{\label{cap:Tset}Runtime behavior of a simple operation. Tset() and do\_set() are
 implemented as extensions, while Tupdate() is built in. New operations
 need not be aware of the complexities of LLADD.}
 \end{figure}
@@ -823,7 +854,7 @@ of its recovery code, it took an afternoon to add a prepare operation
 to LLADD.
 
 
-\section{Evaluation}
+\section{Performance}
 
 We hope that the preceeding sections have given the reader an idea
 of the usefulness and extensibility of the LLADD library. In this
@@ -901,22 +932,6 @@ and it is possible that we exceeded the fixed-size of this hashtable
 on the larger test sets. Also, LLADD's buffer manager is currently
 fixed size. Regardless of the cause of this non-linearity, we do not
 believe that it is fundamental to our implementation.
-
-{[} 
-
-Still need to run the multi-threaded tests. The physical one's performance
-should strictly degrade as the number of threads increases, while
-the logical one's performance should increase for a while, and then
-begin to degrade. Hopefully the logical one's peak performance will
-be better than the physical implementation's peak performance.
-
-I still haven't decided how to run the 2PC performance numbers. Maybe
-I could run a speed-up or scale-up test on it.
-
-I expect this section to be two pages, including graphs.
-
-{]}
-
 
 \section{Future Work}
 
