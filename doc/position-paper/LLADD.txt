@@ -5,9 +5,9 @@ UC Berkeley
 A Flexible, Extensible Transaction Framework
 
 Existing transactional systems are designed to handle specific
-workloads well.  Unfortunately, these systems' implementations are
-mononolithic and hide the transactional infrastructure underneath a
-SQL interface. Lower-level implementations such as Berkeley DB handle
+workloads.  Unfortunately, the implementations of these systems  are
+monolithic and hide the transactional infrastructure underneath a
+SQL interface. Lower-level implementations such as Berkeley DB efficiently serve
 a wider variety of workloads and are built in a more modular fashion.
 However, they do not provide APIs to allow applications to build upon
 and modify low-level policies such as allocation strategies, page
@@ -16,7 +16,7 @@ implementations are typically not broken into separable, public APIs,
 which discourages the implementation of new transactional data
 structures.
 
-Contrast this to the handling of data structures within modern
+Contrast this approach to the handling of data structures within modern
 object-oriented programming languages such as C++ or Java.  Such
 languages typically provide a large number of data storage algorithm
 implementations.  These structures may be used interchangeably with
@@ -38,37 +38,36 @@ Overview of the LLADD Architecture
 ----------------------------------
 
 General-purpose transactional storage systems are extremely complex
-and only handle certain types of workloads efficiently.  However, new
+and only handle specific types of workloads efficiently.  However, new
 types of applications and workloads are introduced on a regular basis.
 This results in the implementation of specialized, ad-hoc data storage
 systems from scratch, wasting resources and preventing code reuse.
 
 Instead of developing a set of general purpose data structures that
-attempt to behave well across many workloads, we have implemented a
+attempt to perform well across many workloads, we have implemented a
 lower-level API that makes it easy for application designers to
 implement specialized data structures.  Essentially, we have
 implemented an extensible navigational database system.  We
 believe that this system will support modern development practices and
 allows transactions to be used in a wider range of applications.
 
-Typically, implementations of general-purpose declarative systems 
-are unable to keep up with the new classes of workloads introduced 
-by rapidly evolving applications.  We believe that our architecture's
-flexibility allows us to address such applications rapidly.  In cases
-where the development of a general-purpose system is not economical, 
-our system seems to be a reasonable long-term solution.  XML storage
-technologies, which are rapidly evolving and still fail to handle 
-many types of applications provide a good example.
+While implementations of general-purpose systems often lag 
+behind the requirements of rapidly evolving applications, we believe that our architecture's
+flexibility allows us to address such applications rapidly.  Our system 
+also seems to be a reasonable long-term solution in cases where 
+the development of a general-purpose system is not economical.  
 
-For instance, most general-purpose solutions for semi-structured
-information have difficulty handling computationally intensive
-workloads posed by the large repositories that are typical of
-bioinformatics research[PDB, NCBI, Gene Ontology].  These sytems are
-slowly transitioning to XML, which currently has clear value as an
-interchange format, but many of the data processing applications that
-use these databases still employ ad-hoc solutions for data managment.
+For example, XML storage systems are rapidly evolving but still fail to handle 
+many types of applications.  Typical bioinformatics data sets [PDB, NCBI, 
+Gene Ontology] must be processed by computationally intensive applications
+with rigid data layout requirements.  The maintainers of these systems are
+slowly transitioning to XML, which is valuable as an interchange format, and 
+supported by many general purpose tools.  However, many of the data processing 
+applications that
+use these databases still must employ ad-hoc solutions for data management.
+
 Whether or not general purpose XML database systems eventually meet
-the unique needs of each of these scientific applications, extensions 
+all of the needs of each of these distinct scientific applications, extensions 
 implemented on top of a more flexible data storage implementation 
 could have avoided the need for ad-hoc solutions, and could serve 
 as a partial prototype for higher level implementations.
@@ -102,7 +101,7 @@ including custom data structure implementations, graph traversal
 algorithms and transactional object persistence workloads.
 
 The transactional object persistence system was based upon the
-observation that most object perstistence schemes cache a second copy
+observation that most object persistence schemes cache a second copy
 of each in-memory object in a page file, and often keep a third copy
 in operating system cache.  By implementing custom operations that
 assume the program maintains a correctly implemented object cache, we
@@ -112,7 +111,7 @@ page file.
 Since LLADD implements no-force, the only reason to update
 the page file is to service future application read requests.
 Therefore, we defer page file updates until the object is evicted from
-the application's object cache, eliminating the need to maintain a large 
+the application's object cache. This eliminates the need to maintain a large 
 page cache in order to efficiently service write requests.  We also 
 leveraged our customizable log format to log differences to objects 
 instead of entire copies of objects.
@@ -129,8 +128,7 @@ bottleneck.
 
 We leave systematic performance tuning of LLADD to future work, and
 believe that further optimizations will improve our performance on
-these benchmarks significantly.  In general, LLADD's customizability
-enables many optimizations that are difficult for other systems.
+these benchmarks significantly.
 
 Because of its natural integration into standard
 system software development practices, we think that LLADD can be
@@ -147,8 +145,8 @@ Current Research Focus
 ----------------------
 
 LLADD's design assumes that application developers will
-implement high-performance transactional data structures.  This is a
-big assumption, as these data structures are notoriously difficult to
+implement high-performance transactional data structures.
+However, these data structures are notoriously difficult to
 implement correctly.  Our current research attempts to address these
 concerns.
 
@@ -165,8 +163,8 @@ understood, performance tuning and verification of implementation
 correctness is extremely difficult.
 
 Recovery-based algorithms must behave correctly during forward
-operation and also under arbitrary recovery scenarios.  The latter
-requirement is particularly difficult to verify due to the large
+operation and also under arbitrary recovery scenarios.  Behavior
+during recovery is particularly difficult to verify due to the large
 number of materialized page file states that could occur after a
 crash.
 
@@ -178,9 +176,9 @@ atomically.
 
 Existing work in the static-analysis community has verified that
 device driver implementations correctly adhere to complex operating
-system kernel locking schemes[SLAM]. If we formalize LLADD's latching
-and logging APIs, we believe that analyses such as these will be
-directly applicable, allowing us to verify that data structure
+system kernel locking schemes[SLAM]. We would like to formalize LLADD's latching
+and logging APIs, so that these analyses will be
+directly applicable to LLADD.  This would allow us to verify that data structure
 behavior during recovery is equivalent to the behavior that would
 result if an abort() was issued on each prefix of the log that is
 generated during normal forward operation.
@@ -197,10 +195,10 @@ applied [ARIES/IM].
 
 A separate approach to the static analysis of LLADD extensions uses
 compiler optimization techniques.  Software built on top of layered
-APIs frequently makes repeated calls to low level functions that result
+APIs frequently makes calls to low level functions that result
 in repeated work.  A common example in LLADD involves loops over data with
 good locality in the page file.  The vast majority of the time, these
-loops result in a series of high level API calls that repeatedly pin
+loops result in a series of high level API calls that continually pin
 and unpin the same underlying data.
 
 The code for each of these high level API calls could be copied into
@@ -219,9 +217,9 @@ of buffer manager and locking calls made by existing code.  In
 situations where memory is abundant, these calls are a significant 
 performance bottleneck, especially for read-only operations.
 
-Anecdotal evidence and personal experience suggest that similar
-optimization techniques are applicable to application code.  Because
-local LLADD calls are simply normal function calls, it may even be
+Similar
+optimization techniques are applicable to application code.
+Local LLADD calls are simply normal function calls.  Therefore it may even be
 possible to apply the transformations that these optimizations perform
 to application code that is unaware of the underlying storage
 implementation.  This class of optimizations would be very difficult
@@ -229,7 +227,7 @@ to implement with existing transactional storage systems but should
 significantly improve application performance.
 
 We hope to validate our ideas about static analysis by incorporating
-them into the development process as we increase the reliability and
+them into our development process as we increase the reliability and
 overall quality of LLADD's implementation and its APIs.
 
 Our architecture provides a set of tools that allow applications to implement
