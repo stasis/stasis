@@ -149,8 +149,8 @@ we also mean support for media recovery, which is the ability to roll
 forward from an archived copy, and support for error-handling,
 clusters, and multithreading.  These requirements are difficult to
 meet and form the {\em raison d'\^{e}tre} for \yad: the framework delivers
-these properties in a way that is reusable, thus providing and easy
-way for systems to provide complete transactions.
+these properties as reusable building blocks for systems to implement 
+complete transactions.
 
 With these trends in mind, we have implemented a modular, extensible
 transaction system based on on ARIES that makes as few assumptions as
@@ -269,16 +269,16 @@ systems.
 
 Relational databases excel in areas
 where performance is important, but where the consistency and
-durability of the data are crucial.  Often, databases significantly
+durability of the data are more important.  Often, databases significantly
 outlive the software that uses them, and must be able to cope with
 changes in business practices, system architectures,
 etc., which leads to the relational model~\cite{relational}.
 
 For simpler applications, such as normal web servers, full DBMS
-solutions are overkill (and expensive).  MySQL~\cite{mysql} has
+solutions are overkill and expensive.  MySQL~\cite{mysql} has
 largely filled this gap by providing a simpler, less concurrent
 database that can work with a variety of storage options including
-Berkeley DB (covered below) and regular files, although these
+Berkeley DB (covered below) and regular files.  However, these
 alternatives affect the semantics of transactions, and sometimes 
 disable or interfere with high-level database features.  MySQL 
 includes multiple storage options for performance reasons.  
@@ -304,7 +304,7 @@ set of monolithic storage engines.
 %% provide a more uniform interface to the DBMS implementation's users.
 
 The Postgres storage system~\cite{postgres} provides conventional
-database functionality, but provides APIs that allow applications to 
+database functionality, but also provides APIs that allow applications to 
 add new index and object types~\cite{newTypes}.  Although some of the methods are
 similar to ours, \yad also implements a lower-level
 interface that can coexist with these methods.  Without \yad's
@@ -410,7 +410,9 @@ the layout of application data, although it does not provide full transactions.
 LRVM's
 approach of keeping a single in-memory copy of data in the application's
 address space is similar to the optimization presented in
-Section~\ref{OASYS}, but our approach can support full transactions as needed.
+Section~\ref{OASYS}, but our approach includes full support for 
+concurrent transactional data structures as well.
+
 
 
 %\begin{enumerate}
@@ -423,12 +425,13 @@ well, due to their relative simplicity and good scalability.
 Depending on the fault model on which a cluster hash table is based,
 it is quite plausible that key portions of the transactional
 mechanism, such as forcing log entries to disk, will be replaced with
-other durability schemes, such as in-memory replication across many
-nodes.  Similarly, atomicity semantics may be relaxed under certain
+other durability schemes.  Possiblities include in-memory replication
+across many nodes, or spooling logical logs to disk on dedicated
+servers.  Similarly, atomicity semantics may be relaxed under certain
 circumstances.  \yad is unique in that it can support the full range
 of semantics, from in-memory replication for commit, to full
-transactions involving multiple nodes and keys, which is not supported
-by any of the current CHT implementations.
+transactions involving multiple entries, which is not supported by any
+of the current CHT implementations.
 %Although
 %existing transactional schemes provide many of these features, we
 %believe that there are a number of interesting optimization and
@@ -445,9 +448,9 @@ and system-independent logical log suggest an alternative approach to
 fault-tolerant storage design, which we hope to explore in future
 work.
 
-We believe that \yad can actually support all of these systems. We will
-demonstrate several of them, but leave implementation of a real DBMS,
-LRVM and Boxwood to future work.
+%We believe that \yad can actually support all of these systems. We will
+%demonstrate several of them, but leave implementation of a real DBMS,
+%LRVM and Boxwood to future work.
 
 
 %\eab{DB Toolkit from Wisconsin?}
@@ -459,27 +462,26 @@ LRVM and Boxwood to future work.
 This section describes how existing write-ahead logging protocols
 implement the four properties of transactional storage: Atomicity,
 Consistency, Isolation and Durability.  \yad provides these
-properties but also allows applications to opt-out of
+properties and also allows applications to opt-out of
 them as appropriate.  This can be useful for
 performance reasons or to simplify the mapping between application
 semantics and the storage layer.  Unlike prior work, \yad also exposes
 the primitives described below to application developers, allowing
-unanticipated optimizations and allowing low-level
-behavior, such as recovery semantics, to be customized on a
-per-application basis.
+unanticipated optimizations and allowing changes to be made to low-level
+behavior such as recovery semantics on a per-application basis.
 
 The write-ahead logging algorithm we use is based upon ARIES, but has been
 modified for extensibility and flexibility. Because comprehensive
 discussions of write-ahead logging protocols and ARIES are available
 elsewhere~\cite{haerder, aries}, we focus on those details that are
-most important for flexibility, which we discuss in Section~\ref{flexibility}.
+most important for flexibility, and provide a concrete example in Section~\ref{flexibility}.
 
 
 \subsection{Operations}
 \label{sub:OperationProperties}
 
 A transaction consists of an arbitrary combination of actions, that
-will be protected according to the ACID properties mentioned above.
+is protected according to the ACID properties mentioned above.
 %Since transactions may be aborted, the effects of an action must be
 %reversible, implying that any information that is needed in order to
 %reverse the action must be stored for future use.  
@@ -493,7 +495,7 @@ independent and can be recovered independently. For now, we simply
 assume that operations do not span pages.  Since single pages are
 written to disk atomically, we have a simple atomic primitive on which
 to build. In Section~\ref{nested-top-actions}, we explain how to
-handle operations that span pages.
+handle operations that span multiple pages.
 
 One unique aspect of \yad, which is not true for ARIES, is that {\em
 normal} operations are defined in terms of REDO and UNDO
@@ -506,7 +508,7 @@ the nice property that the REDO code is known to work, since the
 original operation was the exact same ``redo''.  In general, the \yad
 philosophy is that you define operations in terms of their REDO/UNDO
 behavior, and then build a user-friendly {\em wrapper} interface
-around them.  The value of \yad is that it provides a skeleton that
+around them (Figure~\ref{fig:structure}).  The value of \yad is that it provides a skeleton that
 invokes the REDO/UNDO functions at the {\em right} time, despite
 concurrency, crashes, media failures, and aborted transactions.  Also
 unlike ARIES, \yad refines the concept of the wrapper interface,
