@@ -55,6 +55,173 @@ terms specified in this license.
  *
  */
 /**
+   @mainpage Introduction to LLADD
+   
+   @section compiling Compiling and installation
+   
+   Prerequisites:
+   
+   - automake 1.8+: needed to build from CVS
+   - libconfuse: configuration file parser_range
+   - libcheck: A unit testing framework (optional, needed to run most of the self-tests)
+   - BerkeleyDB: Used by the benchmarking code for purposes of comparison (Should 
+     eventually be made optional)  The benchmarks have been tested with BerkeleyDB 4,2
+   
+   Development is currently performed under Debian's Testing branch.  Unless 
+   noted above, the most recent version is the one used for development.
+   
+   To compile LLADD, first check out a copy with CVS, then:
+   
+   @code
+   
+   $ ./reconf
+   $ ./configure
+   $ make
+   $ make check
+   
+   @endcode
+   
+   'make install' is currently broken.  Look in utilities/ for an example of a 
+   simple program that uses LLADD.  Currently, most generally useful programs 
+   written on top of LLADD belong in lladd/src/apps, while utilities/ contains 
+   programs useful for debugging the library.
+   
+   @section usage Using LLADD in your software
+   
+   Synopsis:
+   
+   @code
+   
+   #include <lladd/transaction.h>
+   
+   ...
+   
+   Tinit();
+   
+   int i = 42;
+   
+   int xid = Tbegin();
+   recordid rid = Talloc(xid, sizeof(int)); 
+   Tset(xid, rid, i);    // the application is responsible for memory management.
+                         // Here, stack-allocated integers are used, although memory
+			 // from malloc() works as well.
+   Tcommit(xid); 
+
+   int j;
+  
+   xid = Tbegin();
+   Tread(xid, rid, &j);  // j is now 42.
+   Tdealloc(xid, rid); 
+   Tabort(xid); 
+   Tdeinit();
+   
+   @endcode
+   
+   Hopefully, Tbegin(), Talloc(), Tset(), Tcommit(), Tabort() and Tdealloc() are 
+   self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and 
+   Tdeinit() initialize the library, and clean up when the program is finished.
+   
+   Other partiularly useful functions are ThashAlloc(), ThashDelete(), 
+   ThashInsert(), ThashRemove(), and ThashLookup() which provide a re-entrant 
+   linear hash implementation.  Currently, the hashtable only supports fixed 
+   length keys and values (the lengths are set when the hashtable is created).  
+   ThashIterator() and ThashNext() provide an iterator over the hashtable's 
+   values.  Also of general use is the Tprepare() function which guarantees that 
+   a transaction's current state will survive a system crash, but does not cause
+   the transaction to commit.
+   
+   @subsection bootstrap Reopening a closed data store
+   
+   LLADD imposes as little structure upon the application's data structures as 
+   possible.  Therefore, it does not maintain any information about the contents
+   or naming of objects within the page file.  This means that the application 
+   must maintain such information manually.
+   
+   In order to facilitate this, LLADD provides the function TgetRecordType() and
+   guarantess that the first recordid returned by any allocation will point to 
+   the same page and slot as the constant ROOT_RECORD.  TgetRecordType 
+   will return NULL_RECORD if the record passed to it does not exist.  
+   
+   Therefore, the following code will safely initialize or reopen a data 
+   store:
+   
+   @code
+   Tinit();
+
+   recordid rootEntry;
+
+   int xid = Tbegin();
+   if(TrecordType(xid, ROOT_RECORD) == UNINITIALIZED_RECORD) {
+     // ThashAlloc() will work here as well.
+     rootEntry = Talloc(xid, sizeof(something)); 
+   
+     assert(ROOT_RECORD.page == rootEntry.page);
+     assert(ROOT_RECORD.slot == rootEntry.slot);
+     // newRoot.size will be sizeof(something) from above.
+     
+     // Continue initialization procedures...
+  
+   } else {
+     
+     // The store already is initialized.  
+     
+     rootEntry = ROOT_RECORD;
+     rootEntry.size = sizeof(something);  // Same as sizeof(something) above.
+     
+     // Perform any application initialization based upon its contents...
+   }
+   
+   @endcode
+
+   @todo Explain how to determine the correct value of rootEntry.size in the case
+         of a hashtable.
+   
+   
+   @see OPERATIONS for more operations that may be useful for your software.
+   
+   @subsection consistency  Using LLADD in multithreaded applications.
+   
+   Unless otherwise noted, LLADD's operations are re-entrant.  This means that 
+   an application may call them concurrently without corrupting LLADD's internal
+   data structures.  However, this does not mean that LLADD provides full
+   transactional consistency or serializable schedules.  Therefore, an application 
+   must manipulate data in a way that ensures logical consistency.  In other words, 
+   if two threads attempt to write to the same data value simultaneously, the result 
+   is undefined.  In database terms, you could say that LLADD only provides latches, 
+   or that all read and write locks are 'short'.  
+   
+   If you are unfamiliar with the terms above, but are familiar with multithreaded
+   software development, don't worry.  These semantics closely match those 
+   provided by typical operating system thread implementations, and we recommend
+   the use of pthread's mutexes, or a similar synchronization mechanism to 
+   protect the logical consistency of application data.
+   
+   Finally, LLADD asumes that each thread has its own transaction; concurrent calls
+   within the same transaction are not supported.  This restriction may be lifted in 
+   the future.
+   
+   @section selfTest The self-test suite
+   
+   LLADD includes an extensive self test suite which may be invoked by running 
+   'make check' in LLADD's root directory.
+   
+   @section archictecture LLADD's architecture 
+   
+   @todo Provide a brief summary of LLADD's architecture.
+   
+   @section extending Implementing you own operations
+   
+   @todo Provide a tutorial that explains howto extend LLADD with new operations.
+   
+   @see increment.h for an example of a very simple logical operation. 
+   @see linearHashNTA.h for a more sophisticated example that makes use of Nested Top Actions.
+   
+   @section roadmap Roadmap
+  
+   @todo Fill out the roadmap section.
+
+*/
+/**
  * @defgroup OPERATIONS  Logical Operations
  *
  * Implementations of logical operations, and the interfaces that allow new operations to be added.

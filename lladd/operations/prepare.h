@@ -84,7 +84,7 @@ extern recordid prepare_bogus_rec;
     Prepare transaction for commit.  Currently, a transaction may be
     prepared multiple times.  Once Tprepare() returns, the caller is
     guaranteed that the current transaction will resume exactly where
-    it was when Tprepare() was called.
+    it was the last time Tprepare() was called.
 
     @todo Tprepare() shouldn't take a record or buffer as arguments... 
 
@@ -103,4 +103,3 @@ int prepareGuard(LogEntry * e, void * state);
 void * getPrepareGuardState();
 int prepareAction(void * state);
 #endif
-

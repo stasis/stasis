@@ -22,9 +22,9 @@ Operation getRealloc();
 /** 
     Allocate a record.  
 
-    @param The transaction responsible for the allocation @param The
-    size of the new record to be allocated.  (Talloc may allocate a
-    blob if the record will not easily fit on a page.)
+    @param xid The transaction responsible for the allocation 
+    @param size The size of the new record to be allocated.  Talloc will allocate a
+    blob if the record will not easily fit on a page.
 
     @return the recordid of the new record.
 */
@@ -46,5 +46,3 @@ void Tdealloc(int xid, recordid rid);
 int TrecordType(int xid, recordid rid);
 
 #endif
-
-

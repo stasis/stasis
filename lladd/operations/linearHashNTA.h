@@ -43,7 +43,36 @@ int ThashRemove(int xid, recordid hash, const byte* key, int keySize);
                    (a return value of zero means the key is associated with an
 		   empty value.) */
 int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
+/** 
+  Allocate a new hash iterator.  This API is designed to eventually be 
+  overloaded, and is subject to change.  If the iterator is run to completion, 
+  it is automatically freed.  Otherwise, it should be manually freed with free(). 
+  @param xid transaction id
+  @param hash the recordid returned by ThashAlloc
+  @param keySize the same as the value passed into ThashAlloc.  
+  @param valueSize the same as the value passed into ThashAlloc
+*/
 lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int valueSize);
+/**
+  Obtain the next value in the hash table.  
+  
+  @return 1 if another value exists; 0 if the iterator is done, and has been deallocated.
+  @param keySize Currently, keySize and valueSize must
+  be set to the correct sizes when ThashNext is called.  Once hashtables with 
+  variable sized entries are supported, this restriction will be relaxed or removed
+  entirely.
+  @param key a pointer to an uninitialized pointer value.  If another entry is 
+         encountered, then the uninitialized pointer value will be set to point 
+         to a malloc()'ed region of memory that contains the value's key.  This 
+         region of memory should be manually free()'ed by the application.  LLADD
+         normally leaves memory management to the application.  However, once 
+         hashes with variable size entries are supported, it would be extremely 
+         difficult for the application to malloc an appropriate buffer for the 
+	 iterator, so this function call does not obey normal LLADD calling 
+	 semantics.
+  @param value analagous to value.
+  @param valueSize analagous to keySize
+*/
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize);
 
 Operation getLinearHashInsert();
