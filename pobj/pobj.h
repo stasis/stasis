@@ -4,6 +4,26 @@
 #define member_sizeof(s,x)  (sizeof(((s *)NULL)->x))
 #define member_offset(s,x)  ((int)&(((s *)NULL)->x))
 
+
+/* Note: the alignment and pobj header info was placed here in order
+ * to allow fast IS_PERSISTENT check. */
+
+/* Architecture specific word size and alignment. */
+#define WORDSIZE  sizeof(int)
+#define WORDBITS  (WORDSIZE * 8)
+#define ALIGN(s)  ((size_t) (((s) + (WORDSIZE - 1)) / WORDSIZE) * WORDSIZE)
+
+/* Persistent object control block (header). */
+struct pobj {
+    size_t size;
+    int type_index;
+    int rep_index;
+};
+#define POBJ_HEADER_SIZE  sizeof(struct pobj)
+#define IS_PERSISTENT(p)  \
+  (((struct pobj *)(((char *) p) - ALIGN(POBJ_HEADER_SIZE)))->rep_index >= 0)
+
+
 struct pobj_memfunc {
     void *(*malloc) (size_t);
     void *(*calloc) (size_t, size_t);
@@ -15,6 +35,10 @@ struct pobj_memfunc {
 /* Transactional markers. */
 int pobj_start (void);
 int pobj_end (void);
+
+/* Persistency control. */
+int pobj_persistify (void *);
+int pobj_unpersistify (void *);
 
 /* Memory management calls. */
 void *pobj_malloc (size_t);
@@ -41,6 +65,7 @@ int pobj_ref_unflag (void *, void *);
 int pobj_ref_typify (void *, int *);
 
 void *pobj_memcpy (void *, void *, void *, size_t);
+void *pobj_memset (void *, void *, int, size_t);
 int pobj_set_int (void *, int *, int);
 int pobj_set_unsigned (void *, unsigned *, unsigned);
 int pobj_set_long (void *, long *, long);
@@ -53,6 +78,7 @@ int pobj_set_float (void *, float *, float);
 int pobj_set_double (void *, double *, double);
 int pobj_set_ref (void *, void *, void *);
 #define POBJ_MEMCPY(obj,fld,data,len)  pobj_memcpy((obj), &((obj)->fld), data, len)
+#define POBJ_MEMSET(obj,fld,c,len)     pobj_memset((obj), &((obj)->fld), c, len)
 #define POBJ_SET_INT(obj,fld,data)     pobj_set_int((obj), &((obj)->fld), data)
 #define POBJ_SET_UNSIGNED(obj,fld,data)  \
   pobj_set_unsigned((obj), &((obj)->fld), data)
@@ -69,7 +95,10 @@ int pobj_set_ref (void *, void *, void *);
 #define POBJ_SET_DOUBLE(obj,fld,data)  pobj_set_double((obj), &((obj)->fld), data)
 #define POBJ_SET_REF(obj,fld,ref)      pobj_set_ref((obj), &((obj)->fld), ref)
 
-int pobj_update (void *);
+int pobj_update_range (void *, void *, size_t);
+#define POBJ_UPDATE_FLD(obj,fld)  \
+  pobj_update_range((obj), &((obj)->fld), sizeof((obj)->fld))
+#define pobj_UPDATE(obj)               pobj_update_range ((obj), NULL, 0)
 int pobj_update_recursive (void *);
 
 int pobj_static_set_ref (void *, void *);
