@@ -925,35 +925,34 @@ allows application developers to incorporate transactional recovery
 into a wide range of systems. We have a few ideas along these lines,
 and also have some ideas for extensions to LLADD itself.
 
-LLADD currently relies upon its buffer manager for page oriented storage.
+LLADD currently relies upon its buffer manager for page-oriented storage.
 Although we did not have space to discuss it in this paper, we have
 a blob implementation that stores large data outside of the page file.
-This concept could be extended to arbitrary primatives, such as transactional
-updates to file system directory trees, integration of networking,
+This concept could be extended to arbitrary primitives, such as transactional
+updates to file system directory trees, or integration of networking
 or other operations directly into LLADD transactions. Doing this would
-allow LLADD to act as a sort of 'glue-code' between various systems,
+allow LLADD to act as a sort of ``glue code'' among various systems,
 ensuring data integrity and adding database-style functionality, such
 as continuous backup to systems that currently do not provide such
 mechanisms. We believe that there is quite a bit of room for the developement
 of new software systems in the space between the high-level, but sometimes
 inappropriate interfaces exported by database servers, and the low-level,
-general purpose primatives supported by current file systems.
+general-purpose primitives supported by current file systems.
 
-Currently, while we have implemented a two phase commit algorithm,
+Currently, although we have implemented a two-phase commit algorithm,
 LLADD really is not very network aware. If we provided a clean abstraction
 that allowed LLADD extensions and operations to cross network boundaries,
 then we could provide a wider range of network consistency algorithms,
 and cleanly support the implementation of operations that perform
 well in networked and in local environments.
 
-While LLADD is re-entrant, its latching mechanisms only provide physical
-consistency. Traditionally, lock-managers, which provide higher levels
-of consistency have been tightly coupled with transactional page implementations.
+Although LLADD is re-entrant, its latching mechanisms only provide physical
+consistency. Traditionally, lock managers, which provide higher levels
+of consistency, have been tightly coupled with transactional page implementations.
 Generally, the semantics of undo and redo operations provided by the
 transactional page layer and its associated data structures determine
 the level of concurrency that is possible. Since prior systems provide
-a set of primitives to their users, these systems encapsulated the
-interactions between the lock manager, on-disk formats and the transactional
+a monolithic set of primitives to their users, these systems typically had complex interactions among the lock manager, on-disk formats and the transactional
 page layer. Finally, at recovery time it is often desirable to reacquire
 locks on behalf of a transaction. Without extensible logging and without
 modifying the recovery code, it is impossible to ensure that such
@@ -966,7 +965,7 @@ either module seems to outweigh the extra complexity that will be
 added to LLADD's interface. In particular, most difficulties related
 to locking seem to be data-structure dependent, suggesting that, like
 page layout or the semantics of various types of log entires, they
-are largely orthagonal to the atomicity and durability algorithms
+are largely orthogonal to the atomicity and durability algorithms
 implemented by LLADD.
 
 By releasing LLADD to the community, we hope that we will be able
