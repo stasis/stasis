@@ -61,21 +61,25 @@ terms specified in this license.
 BEGIN_C_DECLS
 
 
-/* @type Function
+/** 
  * function pointer that the operation will run
  */
 typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d);
 
-/* @type Operation
+/**
 
- * @param sizeofData size of the data that function accepts (as void*)
- * @param undo index into operations table of undo function (takes same args)
- * @param run what function to actually run
- */
+*/
 
-/* @type Special cases
+/**
+   If the Operation struct's sizeofData is set to this value, then the
+   size field of the recordid is used to determine the size of the
+   argument passed into the operation.
  */
 #define SIZEOF_RECORD -1
+/** If the Operation struct's undo field is set to this value, then
+    physical logging is used in lieu of logical logging.
+ */
+
 #define NO_INVERSE -1
 typedef struct {
   /**
@@ -88,12 +92,6 @@ typedef struct {
       that the operation affects will be used instead.
   */
 	long sizeofData;
-  /**
-      Does this operation supply an undo operation?
-
-      --Unneeded; just set undo to the special value NO_INVERSE.  
-  */
-  /*        int invertible; */
   /**
      Implementing operations that may span records is subtle.
      Recovery assumes that page writes (and therefore logical
@@ -123,8 +121,11 @@ typedef struct {
 	We chose the second option for now.
 	
    */
-	int undo;
-	Function run;
+  /**
+     index into operations table of undo function
+  */
+  int undo;
+  Function run;
 } Operation;
 
 /* These need to be installed, since they are required by applications that use LLADD. */

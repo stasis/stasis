@@ -45,7 +45,8 @@ terms specified in this license.
 
 #include <lladd/logger/logger2.h>
 #include "logWriter.h"
-#include <lladd/bufferManager.h>
+#include "page.h"
+/*#include <lladd/bufferManager.h>*/
 #include <stdio.h>
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
@@ -100,6 +101,7 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
     readRecord(l->xid, p, rid, preImage);
     DEBUG("got preimage");
   } 
+  
 
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   

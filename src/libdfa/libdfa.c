@@ -140,14 +140,14 @@ void recover(DfaSet * dfaSet) {
   StateMachine sm_stack; 
   StateMachine * sm = &sm_stack;
   StateMachine * this;
-  int ret = (jbHtFirst(dfaSet->smash->xid, dfaSet->smash->hash, sm) != -1);
+  int ret = (jbHtFirst(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
 
 
   while(ret) {
     this = getSmash(dfaSet->smash, sm->machine_id);
     printf("StateMachine %ld\n", sm->machine_id);
     this->worker_thread = spawn_worker_thread(dfaSet, sm->machine_id);
-    ret = (jbHtNext(dfaSet->smash->xid, dfaSet->smash->hash, sm) != -1);
+    ret = (jbHtNext(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
   }
 
 }

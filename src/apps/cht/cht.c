@@ -285,7 +285,7 @@ int _chtEval(DfaSet * dfaSet,
 state_name init_xact_cht(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
 
 
-  TwoPCMachineState * state = (TwoPCMachineState*) &(stateMachine->app_state);
+  /*  TwoPCMachineState * state = (TwoPCMachineState*) &(stateMachine->app_state);*/
   TwoPCAppState * app_state_2pc = ((TwoPCAppState*)(((DfaSet*)dfaSet)->app_setup));           
   CHTAppState * app_state_cht = app_state_2pc->app_state;                                     
 

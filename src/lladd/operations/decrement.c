@@ -46,7 +46,8 @@ terms specified in this license.
  *********************************************/
 
 #include <lladd/operations/decrement.h>
-#include <lladd/bufferManager.h>
+/*#include <lladd/bufferManager.h>*/
+#include "../page.h"
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid r, const void *d) {
 	int i;

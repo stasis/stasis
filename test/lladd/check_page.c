@@ -45,6 +45,7 @@ terms specified in this license.
 #include <check.h>
 
 #include "../../src/lladd/page.h"
+#include "../../src/lladd/page/slotted.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 
@@ -52,7 +53,6 @@ terms specified in this license.
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"
-
 
 
 #define LOG_NAME   "check_page.log"
@@ -65,9 +65,58 @@ terms specified in this license.
 Page * loadPage(int pageid);
 
 pthread_mutex_t random_mutex;
-
 static lsn_t lsn;
 static pthread_mutex_t lsn_mutex;
+
+static void * multiple_simultaneous_pages ( void * arg_ptr) {
+  Page * p = (Page*)arg_ptr;
+  int i;
+  lsn_t this_lsn;
+  int j;
+  int first = 1;
+  int k;
+  recordid rid[100];
+
+  for(i = 0; i < 10000; i++) {
+    pthread_mutex_lock(&lsn_mutex);
+    this_lsn = lsn;
+    lsn++;
+    pthread_mutex_unlock(&lsn_mutex);
+
+    if(! first ) {
+      /*      addPendingEvent(p); */
+      /*pageReadRecord(1, p, rid, (byte*)&j);*/
+      for(k = 0; k < 100; k++) {
+	readRecord(1, p, rid[k], (byte*)&j);
+
+	assert((j + 1) ==  i + k);
+	pageDeRalloc(p, rid[k]);
+	sched_yield();
+      }
+    } 
+    
+    first = 0;
+    
+    for(k = 0; k < 100; k++) {
+    
+      rid[k] = pageRalloc(p, sizeof(short));
+      i +=k;
+      /*       printf("Slot = %d\n", rid[k].slot); */
+      writeRecord(1, p, lsn, rid[k], (byte*)&i);
+      i -=k;
+      sched_yield();
+      
+
+
+    }
+      
+    assert(pageReadLSN(p) <= lsn);
+  }
+  
+  return NULL;
+}
+
+
 static void* worker_thread(void * arg_ptr) {
   Page * p = (Page*)arg_ptr;
   int i;
@@ -83,7 +132,8 @@ static void* worker_thread(void * arg_ptr) {
 
     if(! first ) {
       /*      addPendingEvent(p); */
-      pageReadRecord(1, p, rid, (byte*)&j);
+      /*pageReadRecord(1, p, rid, (byte*)&j);*/
+      readRecord(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
       pageDeRalloc(p, rid);
       sched_yield();
@@ -92,8 +142,7 @@ static void* worker_thread(void * arg_ptr) {
     first = 0;
     
     rid = pageRalloc(p, sizeof(int));
-    /*    addPendingEvent(p); */
-    pageWriteRecord(1, p, rid, lsn, (byte*)&i);
+    writeRecord(1, p, lsn, rid, (byte*)&i);
     sched_yield();
 
     assert(pageReadLSN(p) <= lsn);
@@ -122,12 +171,101 @@ START_TEST(pageNoThreadTest)
 
 
   pthread_mutex_init(&lsn_mutex, NULL);
-
+  
   Tinit();
 
   p = loadPage(0);
 
   worker_thread(p);
+
+  unlock(p->loadlatch);
+
+  Tdeinit();
+
+}
+END_TEST
+
+/**
+   @test
+*/
+
+START_TEST(pageCheckMacros) {
+  Page p;
+  byte buffer[PAGE_SIZE];
+  memset(buffer, -1, PAGE_SIZE);
+
+  p.memAddr = buffer;
+
+  lsn_t lsn = 5;
+  
+  *lsn_ptr(&p) = lsn;
+  *page_type_ptr(&p) = 10;
+  *freespace_ptr(&p) = 15;
+  *numslots_ptr(&p)  = 20;
+  *slot_ptr(&p, 0)   = 30;
+  *slot_ptr(&p, 1)   = 35;
+  *slot_ptr(&p, 40)   = 40;
+  *slot_length_ptr(&p, 0)   = 31;
+  *slot_length_ptr(&p, 1)   = 36;
+  *slot_length_ptr(&p, 40)   = 41;
+
+  *bytes_from_start(&p, 0) = 50;
+  *bytes_from_start(&p, 1) = 51;
+  *bytes_from_start(&p, 2) = 52;
+  *bytes_from_start(&p, 3) = 53;
+  *bytes_from_start(&p, 4) = 54;
+
+  assert(*lsn_ptr(&p) == lsn);
+  assert(*page_type_ptr(&p) == 10);
+  assert(*end_of_usable_space_ptr(&p) == 10);
+  assert(*freespace_ptr(&p) == 15);
+  assert(*numslots_ptr(&p)  == 20);
+  assert(*slot_ptr(&p, 0) == 30);
+  assert(*slot_ptr(&p, 1) == 35);
+  assert(*slot_ptr(&p, 40) == 40);
+  assert(*slot_length_ptr(&p, 0) == 31);
+  assert(*slot_length_ptr(&p, 1) == 36);
+  assert(*slot_length_ptr(&p, 40) == 41);
+  
+  assert(*bytes_from_start(&p, 0) == 50);
+  assert(*bytes_from_start(&p, 1) == 51);
+  assert(*bytes_from_start(&p, 2) == 52);
+  assert(*bytes_from_start(&p, 3) == 53);
+  assert(*bytes_from_start(&p, 4) == 54);
+
+  assert(isValidSlot(&p, 0));
+  assert(isValidSlot(&p, 1));
+  assert(isValidSlot(&p, 40));
+
+  /*  invalidateSlot(&p, 0);
+  invalidateSlot(&p, 1);
+  invalidateSlot(&p, 40);
+  
+  assert(!isValidSlot(&p, 0));
+  assert(!isValidSlot(&p, 1));
+  assert(!isValidSlot(&p, 40));*/
+
+
+} END_TEST
+/**
+   @test 
+   
+   Page test that allocates multiple records
+   
+*/
+START_TEST(pageNoThreadMultPageTest)
+{
+  Page * p;
+  /*    p->id = 0;*/
+
+
+  pthread_mutex_init(&lsn_mutex, NULL);
+
+  Tinit();
+
+  p = loadPage(1);
+
+  multiple_simultaneous_pages(p);
 
   unlock(p->loadlatch);
 
@@ -153,7 +291,7 @@ START_TEST(pageThreadTest) {
   Tinit();
   fail_unless(1, NULL);
 
-  Page * p = loadPage(1);
+  Page * p = loadPage(2);
   fail_unless(1, NULL);
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -179,8 +317,13 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
+  tcase_add_test(tc, pageCheckMacros);
+
+  
+
+  tcase_add_test(tc, pageNoThreadMultPageTest);
   tcase_add_test(tc, pageNoThreadTest);
-  tcase_add_test(tc, pageThreadTest); 
+  tcase_add_test(tc, pageThreadTest);
 
   /* --------------------------------------------- */
   

@@ -6,6 +6,7 @@
 #include <lladd/recovery.h>
 #include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
+#include "page.h"
 #include <lladd/logger/logger2.h>
 
 #include <stdio.h>

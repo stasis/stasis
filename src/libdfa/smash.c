@@ -93,7 +93,7 @@ StateMachine *  _insertSmash(smash_t * smash, state_machine_id id) {
   
   new->current_state = START_STATE;
   /*  printf("Insert %ld\n", id);  */
-  ret = (-1 != jbHtInsert(smash->xid, smash->hash, &id, sizeof(state_machine_id), new, sizeof(StateMachine)));
+  ret = (-1 != jbHtInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine)));
   pblHtInsert(smash->memHash, &id, sizeof(state_machine_id), new);
   /*  Tcommit(smash->xid);
       smash->xid = Tbegin(); */
@@ -136,7 +136,7 @@ StateMachine *  insertSmash(smash_t * smash, state_machine_id id) {
   pthread_mutex_lock(smash->lock);
 
 
-  if(jbHtLookup(smash->xid, smash->hash, &(smash->next_sm_id), sizeof(state_machine_id), &junk) != -1) {
+  if(jbHtLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte*)&junk) != -1) {
     pthread_mutex_unlock(smash->lock);
     return NULL;
   }
@@ -167,7 +167,7 @@ int  freeSmash  (smash_t * smash, state_machine_id id) {
   free(old->sleepCond); 
   
   pblHtRemove(smash->memHash, &(id), sizeof(state_machine_id));
-  ret = jbHtRemove(smash->xid, smash->hash, &(id), sizeof(state_machine_id), NULL) != -1;
+  ret = jbHtRemove(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id), NULL) != -1;
   
   free(old);
   
@@ -194,7 +194,7 @@ int _setSmash(smash_t * smash, state_machine_id id) {
   
   StateMachine * machine;
   machine = _getSmash(smash, id);
-  return (-1 != jbHtInsert(smash->xid, smash->hash, &id, sizeof(state_machine_id), machine, sizeof(StateMachine)));
+  return (-1 != jbHtInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id),(byte*) machine, sizeof(StateMachine)));
 
 }
 

@@ -45,10 +45,39 @@ terms specified in this license.
  *
  * interface for dealing with slotted pages
  *
+ * This file provides a re-entrant interface for pages that contain
+ * variable-size records.
+ *
  * @ingroup LLADD_CORE
  * $Id$
  * 
- * @todo update docs in this file.
+ * @todo The slotted pages implementation, and the rest of the page
+ * structure should be seperated, and each page should have a 'type'
+ * slot so that we can implement multiple page types on top of LLADD.
+
+Slotted page layout: 
+
+ END:
+         lsn (4 bytes)
+	 type (2 bytes)
+	 free space (2 bytes)
+	 num of slots (2 bytes)
+	 freelist head(2 bytes)
+	 slot 0 (2 bytes)
+	 slot 1 (2 bytes)
+	 ...
+	 slot n (2 bytes)
+	 ...
+	 unused
+	 ...
+	 record n (x bytes)
+	 ...
+	 record 0 (y bytes)
+	 record 1 (z bytes)
+
+ START
+
+
  **/
 
 #ifndef __PAGE_H__
@@ -57,16 +86,31 @@ terms specified in this license.
 #include <config.h>
 #include <lladd/common.h>
 #include "latches.h"
-/** @todo page.h includes things that it shouldn't!  (Or, page.h shouldn't be an installed header.) */
+/** @todo page.h includes things that it shouldn't, and page.h should eventually be an installed header. */
 
 #include <lladd/transactional.h>
-
-/*#ifdef __BUFFERMANAGER_H__
- #error bufferManager.h must be included after page.h
-#endif*/
-
 #include <lladd/bufferManager.h>
+
+
+
 BEGIN_C_DECLS
+/*
+#define LSN_SIZE sizeof(lsn_t)
+#define START_OF_LSN (PAGE_SIZE - LSN_SIZE)
+#define PAGE_TYPE_SIZE 0
+#define START_OF_PAGE_TYPE (START_OF_LSN - PAGE_TYPE_SIZE)
+#define USABLE_SPACE_SIZE (START_OF_PAGE_TYPE)*/
+
+#define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
+#define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
+#define end_of_usable_space_ptr(page)   page_type_ptr((page))
+
+#define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
+#define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
+
+
+
+/*#define invalidateSlot(page, n) (*slot_ptr((page), (n)) =  INVALID_SLOT)*/
 
 /** 
     The page type contains in-memory information about pages.  This
@@ -76,9 +120,7 @@ BEGIN_C_DECLS
     In particular, our current page replacement policy requires two doubly
     linked lists, 
 
-    @todo In general, we pass around page structs (as opposed to page
-    pointers).  This is starting to become cumbersome, as the page
-    struct is becoming more complex...)
+    @todo The Page struct should be tuned for better memory utilization.
 */
 struct Page_s {
   /** @todo Shouldn't Page.id be a long? */
@@ -148,42 +190,9 @@ struct Page_s {
 
 
       @see rwlatch, getPage(), pageRalloc(), pageRead()
-
-
       
   */
   rwl * loadlatch;
-
-  /** This mutex protects the pending field.  We don't use rwlatch for
-      this, since we also need to use a condition variable to update
-      this properly, and there are no read-only functions for the
-      pending field. */
-
-  /*  pthread_cond_t  noMorePending; */ /* pthread_cond_t */
-
-  /* int waiting;  */
-  
-  /** 
-      In the multi-threaded case, before we steal a page, we need to
-      know that all pending actions have been completed.  Here, we
-      track that on a per-resident page basis, by incrementing the
-      pending field each time we generate a log entry that will result
-      in a write to the corresponding page.
-
-      (For a concrete example of why this is needed, imagine two
-      threads write to different records on the same page, and get
-      LSN's 1 and 2.  If 2 happens to write first, then the page is
-      stolen, and then we crash, recovery will not know that the page
-      does not reflect LSN 1.)
-
-      "Pending events" are calls to functions that take lsn's.
-      Currently, those functions are writeRecord and pageSlotRalloc.
-
-      @todo work out what happens with kickPage() and loadPage() more
-      carefully.
-
-  */
-  /*  int pending; */
 };
 
 /**
@@ -191,7 +200,6 @@ struct Page_s {
  * functions dealing with pages.
  */
 void pageInit();
-
 void pageDeInit();
 
 /**
@@ -209,11 +217,22 @@ void pageDeInit();
 lsn_t pageReadLSN(const Page * page);
 
 /**
- * assumes that the page is already loaded in memory.  It takes as a
- * parameter a Page, and returns an estimate of the amount of free space on this
- * page.  This is either exact, or an underestimate.
+ * @param xid transaction id @param lsn the lsn that the updated
+ * record will reflect.  This is needed by recovery, and undo.  (The
+ * lsn of a page must always increase.  Undos are handled by passing
+ * in the LSN of the CLR that records the undo.)
+ *
+ * @param rid recordid where you want to write @param dat data you
+ * wish to write
  */
-int freespace(Page * page);
+void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+
+/**
+ * @param xid transaction ID
+ * @param rid
+ * @param dat buffer for data
+ */
+void readRecord(int xid, Page * page, recordid rid, void *dat);
 
 /**
  * allocate a record.  This must be done in two phases.  The first
@@ -229,7 +248,6 @@ int freespace(Page * page);
  * @see slotRalloc the implementation of the second phase.
  */
 recordid ralloc(int xid, long size);
-
 
 
 /**
@@ -252,33 +270,17 @@ recordid ralloc(int xid, long size);
  * @todo Makes no attempt to reuse old recordid's.
  */
 recordid pageRalloc(Page * page, int size);
-
-void pageDeRalloc(Page * page, recordid rid);
-
-void pageWriteRecord(int xid, Page * page, recordid rid, lsn_t lsn, const byte *data);
-
-void pageReadRecord(int xid, Page * page, recordid rid, byte *buff);
-
-void pageCommit(int xid);
-
-void pageAbort(int xid);
-
-/*void pageReallocNoLock(Page * p, int id); */
-/** @todo Do we need a locking version of pageRealloc? */
-void pageRealloc(Page * p, int id);
-
-Page* pageAlloc(int id);
-
 recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid);
 void pageDeRalloc(Page * page, recordid rid);
 
-/*int pageTest(); */
+void pageCommit(int xid);
+void pageAbort(int xid);
+ 
+Page* pageAlloc(int id);
+void  pageRealloc(Page * p, int id);
 
-int pageGetSlotType(Page * p, int slot, int type);
+int  pageGetSlotType(Page * p, int slot, int type); 
 void pageSetSlotType(Page * p, int slot, int type);
-
-Page * loadPage(int page);
-Page * getPage(int page, int mode);
 
 END_C_DECLS
 

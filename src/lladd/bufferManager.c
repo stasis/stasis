@@ -50,13 +50,13 @@ terms specified in this license.
 #include <latches.h>
 #include <assert.h>
 
-#include "page.h"
-
 #include <lladd/bufferManager.h>
+
+#include "page.h"
 #include "blobManager.h"
 #include <lladd/pageCache.h>
-
 #include "pageFile.h"
+
 #include <pbl/pbl.h>
 
 
@@ -136,44 +136,6 @@ void simulateBufferManagerCrash() {
 
 void releasePage (Page * p) {
   unlock(p->loadlatch);
-}
-
-void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-
-  /*  Page *p; */
-  
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
-    /*    DEBUG("Writing blob.\n"); */
-    writeBlob(xid, p, lsn, rid, dat);
-
-  } else {
-    /*    DEBUG("Writing record.\n"); */
-
-    assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-
-    /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
-    /*assert(pageReadLSN(*p) <= lsn);*/
-    
-    pageWriteRecord(xid, p, rid, lsn, dat);
-
-    assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-    
-  }
-}
-
-void readRecord(int xid, Page * p, recordid rid, void *buf) {
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
-    /*    DEBUG("Reading blob. xid = %d rid = { %d %d %ld } buf = %x\n", 
-	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
-    /* @todo should readblob take a page pointer? */
-    readBlob(xid, p, rid, buf);
-  } else {
-    assert(rid.page == p->id); 
-    /*    DEBUG("Reading record xid = %d rid = { %d %d %ld } buf = %x\n", 
-	  xid, rid.page, rid.slot, rid.size, (unsigned int)buf); */
-    pageReadRecord(xid, p, rid, buf);
-    assert(rid.page == p->id); 
-  }
 }
 
 int bufTransCommit(int xid, lsn_t lsn) {
@@ -316,6 +278,6 @@ Page * getPage(int pageid, int locktype) {
 }
 
 Page *loadPage(int pageid) {
-  Page * ret = getPage(pageid, RW);
+  Page * ret = getPage(pageid, RO);
   return ret;
 }

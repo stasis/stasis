@@ -4,6 +4,7 @@
 
 */
 #include "page.h"
+#include "page/slotted.h"
 #include <lladd/bufferManager.h>
 
 
@@ -20,48 +21,19 @@
 #include <unistd.h>
 
 static int stable = -1;
-/** Defined in bufferManager.c */
-extern pthread_mutex_t add_pending_mutex;
 static pthread_mutex_t stable_mutex;
 
 static long myLseek(int f, long offset, int whence);
 static long myLseekNoLock(int f, long offset, int whence);
 
-
 void pageRead(Page *ret) {
-  /*  long fileSize; */
 
   long pageoffset;
   long offset;
 
-
   /** @todo pageRead() is using fseek to calculate the file size on each read, which is inefficient. */
   pageoffset = ret->id * PAGE_SIZE;
-  /*  flockfile(stable); */
   pthread_mutex_lock(&stable_mutex);
-  /*  fileSize = myLseekNoLock(stable, 0, SEEK_END);  */
-
-  /*  DEBUG("Reading page %d\n", ret->id); */
-
-  /* if(!ret->memAddr) {
-    ret->memAddr = malloc(PAGE_SIZE);
-  }
-  if(!ret->memAddr) {
-    perror("pageFile.c");
-    fflush(NULL);
-  }
-  assert(ret->memAddr); */
-
-  /** @todo was manual extension of the storefile really necessary? */
-  
-  /*  if ((ret->id)*PAGE_SIZE >= fileSize) {
-    myLseekNoLock(stable, (ret->id - 1) * PAGE_SIZE -1, SEEK_SET);
-    if(1 != fwrite("", 1, 1, stable)) {
-      if(feof(stable)) { printf("Unexpected eof extending storefile!\n"); fflush(NULL); abort(); }
-      if(ferror(stable)) { printf("Error extending storefile! %d", ferror(stable)); fflush(NULL); abort(); }
-      }
-      }*/
-
 
   offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
   assert(offset == pageoffset);
@@ -73,7 +45,7 @@ void pageRead(Page *ret) {
       offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
       assert(offset == pageoffset);
       if(fileSize <= pageoffset) { 
-	memset(ret->memAddr, 0, PAGE_SIZE);
+	pageInitialize(ret);
 	write(stable, ret->memAddr, PAGE_SIZE);
       }
     } else if(read_size == -1) { 
@@ -129,20 +101,6 @@ void pageWrite(Page * ret) {
 void openPageFile() {
 
   DEBUG("Opening storefile.\n");
-  /*  if( ! (stable = fopen(STORE_FILE, "r+"))) { / * file may not exist * /
-    byte* zero = calloc(1, PAGE_SIZE);
-
-    if(!(stable = fopen(STORE_FILE, "w+"))) { perror("Couldn't open or create store file"); abort(); }
-
-    / * Write out one page worth of zeros to get started. * /
-    
-    / *    if(1 != fwrite(zero, PAGE_SIZE, 1, stable)) { assert (0); } * /
-
-    free(zero);
-  }
-  
-  DEBUG("storefile opened.\n");
-  */
 
   stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
 

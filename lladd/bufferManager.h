@@ -45,17 +45,10 @@ terms specified in this license.
 
     pageManager - Provides cached page handling, delegates to blob
     manager when necessary.  Doesn't implement an eviction policy.
-    That is left to a cacheManager.  (Multiple cacheManagers can be
+    That is left to a cacheManager.  (Multiple cacheManagers could be
     used with a single page manager.)
 
- 
   @todo Allow error checking!  
- 
-  @todo Make linux provide a better version of malloc().  We need to
-  directly DMA pages into and out of userland, or setup mmap() so
-  that it takes a flag that makes it page mmapped() pages to swap
-  instead of back to disk. (munmap() and msync() would still hit the
-  on-disk copy)
  
   @todo Refactoring for lock manager
  
@@ -84,12 +77,13 @@ terms specified in this license.
  * $Id$
  */
 
+#include <lladd/constants.h>
+#include <lladd/transactional.h>
+
 #ifndef __BUFFERMANAGER_H__
 #define __BUFFERMANAGER_H__
 
-
-#include <lladd/constants.h>
-#include <lladd/transactional.h>
+BEGIN_C_DECLS
 
 /**
    Page is defined in bufferManager.h as an incomplete type to enforce
@@ -114,7 +108,6 @@ Page * loadPage(int pageid);
 */
 void releasePage(Page * p);
 
-
 /**
  * initialize buffer manager
  * @return 0 on success
@@ -122,38 +115,16 @@ void releasePage(Page * p);
  */
 int bufInit();
 
-
 /**
- * @param pageid ID of page you want to read
- * @return LSN found on disk
+ * will write out any dirty pages, assumes that there are no running
+ * transactions
  */
-/*long readLSN(int pageid); */
-
-/**
- * @param xid transaction id @param lsn the lsn that the updated
- * record will reflect.  This is needed by recovery, and undo.  (The
- * lsn of a page must always increase.  Undos are handled by passing
- * in the LSN of the CLR that records the undo.)
- *
- * @param rid recordid where you want to write @param dat data you
- * wish to write
- */
-void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat);
-
-/**
- * @param xid transaction ID
- * @param rid
- * @param dat buffer for data
- */
-void readRecord(int xid, Page * page, recordid rid, void *dat);
+void bufDeinit();
 
 /**
  * all actions necessary when committing a transaction. Can assume that the log
- * has been written as well as any other actions that do not depend on the
+ * has been written as well as any other udpates that do not depend on the
  * buffer manager
- *
- * Basicly, this call is here because we used to do copy on write, and
- * it might be useful when locking is implemented.
  *
  * @param xid transaction ID
  * @param lsn the lsn at which the transaction aborted.  (Currently
@@ -175,17 +146,10 @@ int bufTransCommit(int xid, lsn_t lsn);
  * manager.)
  *
  * @return 0 on success
- *  
  * @return error code on failure
  */
 int bufTransAbort(int xid, lsn_t lsn);
 
-/**
- * will write out any dirty pages, assumes that there are no running
- * transactions
- */
-void bufDeinit();
-
-/*void setSlotType(int pageid, int slot, int type); */
+END_C_DECLS
 
 #endif
