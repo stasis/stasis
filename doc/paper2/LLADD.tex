@@ -95,7 +95,7 @@ systems.
 Other systems that could benefit from transactions include file
 systems, version-control systems, bioinformatics, workflow
 applications, search engines, recoverable virtual memory, and
-programming languages with persistent objects (or structures).
+programming languages with persistent objects.
 
 In essence, there is an {\em impedance mismatch} between the data
 model provided by a DBMS and that required by these applications. This is
@@ -109,7 +109,7 @@ The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table\footnote{If the object is
-stored in normalized relational format, it may span many rows and tables.~\cite{Hibernate}} 
+stored in normalized relational format, it may span many rows and tables~\cite{Hibernate}.} 
 and then issuing queries to
 keep the objects and rows consistent  A typical update must confirm
 it has the current version, modify the object, write out a serialized
@@ -121,7 +121,7 @@ The DBMS actually has a navigational transaction system within it,
 which would be of great use to EJB, but it is not accessible except
 via the query language.  In general, this occurs because the internal
 transaction system is complex and highly optimized for
-high-performance update-in-place transactions (mostly financial).
+high-performance update-in-place transactions.
 
 In this paper, we introduce a flexible framework for ACID
 transactions, \yad, that is intended to support a broader range of
@@ -154,21 +154,20 @@ way for systems to provide complete transactions.
 
 With these trends in mind, we have implemented a modular, extensible
 transaction system based on on ARIES that makes as few assumptions as
-possible about application data structures or workload. Where such
+possible about application data or workloads. Where such
 assumptions are inevitable, we have produced narrow APIs that allow
-the application developer to plug in alternative implementations or
+the developer to plug in alternative implementations or
 define custom operations. Rather than hiding the underlying complexity
 of the library from developers, we have produced narrow, simple APIs
 and a set of invariants that must be maintained in order to ensure
-transactional consistency, allowing application developers to produce
+transactional consistency, which allows developers to produce
 high-performance extensions with only a little effort.  
 
 Specifically, application developers using \yad can control: 1)
-on-disk representations, 2) access-method implementations (including
+on-disk representations, 2) data structure implementations (including
 adding new transactional access methods), 3) the granularity of
 concurrency, 4) the precise semantics of atomicity, isolation and
-durability, 5) request scheduling policies, and 6) the style of
-synchronization (e.g. deadlock detection or avoidance).  Developers
+durability, 5) request scheduling policies, and 6) choose deadlock detection or avoidance.  Developers
 can also exploit application-specific or workload-specific assumptions
 to improve performance.
 
@@ -178,12 +177,12 @@ These features are enabled by the several mechanisms:
       transactional data representations (Section~\ref{page-layouts}).
 \item[Extensible log formats] provide high-level control over
       transaction data structures (Section~\ref{op-def}).
-\item [High and low level control over the log] such as calls to ``log this
+\item [High- and low-level control over the log] such as calls to ``log this
       operation'' or ``write a compensation record'' (Section~\ref{log-manager}).
 \item [In memory logical logging] provides a data store independent
       record of application requests, allowing ``in flight'' log
       reordering, manipulation and durability primitives to be
-      developed (Section~\ref{graph-traversal}).
+      developed (Section~\ref{TransClos}).
 \item[Extensible locking API] provides registration of custom lock managers
       and a generic lock manager implementation (Section~\ref{lock-manager}).
 \item[Custom durability operations] such as two phase commit's
@@ -191,10 +190,8 @@ These features are enabled by the several mechanisms:
 \end{description}
 
 We have produced a high-concurrency, high performance and reusable
-open-source implementation of these concepts.  Portions of our
-implementation's API are still changing, but the interfaces to low
-level primitives, and implementations of basic functionality have
-stabilized.  
+open-source implementation of these mechanisms.  Portions of our
+implementation's API are still changing, but the interfaces to low-level primitives, and most implementations have stabilized.  
 
 To validate these claims, we walk
 through a sequence of optimizations for a transactional hash
@@ -202,10 +199,9 @@ table in Section~\ref{sub:Linear-Hash-Table}, an object serialization
 scheme in Section~\ref{OASYS}, and a graph traversal algorithm in 
 Section~\ref{TransClos}.  Benchmarking figures are provided for each 
 application.  \yad also includes a cluster hash table 
-built upon two-phase commit which will not be described in detail 
-in this paper.  Similarly we did not have space to discuss \yad's 
+built upon two-phase commit, which will not be described.  Similarly we did not have space to discuss \yad's 
 blob implementation, which demonstrates how \yad can
-add transactional primitives to data stored in the file system.
+add transactional primitives to data stored in a file system.
 
 %To validate these claims, we developed a number of applications such
 %as an efficient persistent object layer, {\em @todo locality preserving
@@ -284,12 +280,12 @@ largely filled this gap by providing a simpler, less concurrent
 database that can work with a variety of storage options including
 Berkeley DB (covered below) and regular files, although these
 alternatives affect the semantics of transactions, and sometimes 
-disable or interfere with high level database features.  MySQL 
-includes these multiple storage engines for performance reasons.  
+disable or interfere with high-level database features.  MySQL 
+includes these multiple storage options for performance reasons.  
 We argue that by reusing code, and providing for a greater amount 
 of customization, a modular storage engine can provide better 
-performance, increased transparency and more flexibility then a 
-set of monolithic storage engines.\eab{need to discuss other flaws! clusters? what else?}
+performance, transparency and flexibility than a 
+set of monolithic storage engines.
 
 %% Databases are designed for circumstances where development time often
 %% dominates cost, many users must share access to the same data, and
@@ -313,11 +309,10 @@ add new index and object types.~\cite{newTypes}  Although some of the methods ar
 similar to ours, \yad also implements a lower-level
 interface that can coexist with these methods.  Without these
 low-level APIs, Postgres suffers from many of the limitations inherent
-to the database systems mentioned above.  This is because Postgres was
-designed to provide these extensions within the context of the
-relational model.  Therefore, these extensions focused upon improving
-query language and indexing support.  Instead of focusing upon this,
-\yad is more interested in lower-level systems. Therefore, although we
+to the database systems mentioned above, as its extensions focus on
+improving
+query language and indexing support.
+Although we
 believe that many of the high-level Postgres interfaces could be built
 on top of \yad, we have not yet tried to implement them.
 % seems to provide
@@ -326,15 +321,13 @@ on top of \yad, we have not yet tried to implement them.
 %writes correctly) and those that refer to relations or application
 %data types, since \yad does not have a built-in concept of a relation.
 However, \yad does provide an iterator interface which we hope to
-extend to provide support for relational algebra, and common
-programming paradigms.
+extend to provide support for query processing.
 
 Object-oriented and XML database systems provide models tied closely
 to programming language abstractions or hierarchical data formats.
 Like the relational model, these models are extremely general, and are
 often inappropriate for applications with stringent performance
-demands, or that use these models in a way that was not anticipated by
-the database vendor.  Furthermore, data stored in these databases
+demands, or those that use  these models in unusual ways.  Furthermore, data stored in these databases
 often is formatted in a way that ties it to a specific application or
 class of algorithms~\cite{lamb}.  We will show that \yad can provide 
 specialized support for both classes of applications, via a persistent 
@@ -368,32 +361,28 @@ order to serve these applications, many software systems have been
 developed.  Some are extremely complex, such as semantic file
 systems, where the file system understands the contents of the files
 that it contains, and is able to provide services such as rapid
-search, or file-type specific operations such as thumb-nailing,
-automatic content updates, and so on \cite{Reiser4,WinFS,BeOS,SemanticFSWork,SemanticWeb}.  Others are simpler, such as
+search, or file-type specific operations such as thumb nails \cite{Reiser4,WinFS,BeOS,SemanticFSWork,SemanticWeb}.  Others are simpler, such as
 Berkeley~DB~\cite{bdb, berkeleyDB}, which provides transactional
-% bdb's recno interface seems to be a specialized b-tree implementation - Rusty
 storage of data in indexed form using a hashtable or tree, or as a queue.  
+% bdb's recno interface seems to be a specialized b-tree implementation - Rusty
 
-\rcs{Eric, Mike:   How's this?}
-\eab{need a (careful) dedicated paragraph on Berkeley DB}
-
-While Berkeley DB's feature set is similar to the features provided by
+Although Berkeley DB's feature set is similar to the features provided by
 \yad's implementation, there is an important distinction.  Berkeley DB
 provides general implementations of a handful of transactional
 structures and provides flags to enable or tweak certain pieces of
-functionality such as lock managers, log forces, and so on.  While
-\yad provides some of the high level calls that Berkeley DB supports
+functionality such as lock management, log forces, and so on. Although
+\yad provides some of the high-level calls that Berkeley DB supports
 (and could probably be extended to provide most or all of these calls), \yad
-also provides lower level access to transactional primatives.  For
+also provides lower-level access to transactional primitives.  For
 instance, Berkeley DB does not allow data to be accessed by physical
 (page) offset, and does not let applications implement new types of
-log entries for recovery.  It only supports builtin page layout types,
+log entries for recovery.  It only supports built-in page layout types,
 and does not allow applications to directly access the functionality
-provided by these layouts.  While the usefulness of providing such
+provided by these layouts.  Although the usefulness of providing such
 low-level functionality to applications may not be immediately
 obvious, the focus of this paper is to describe how these limitations
 impact application performance, and ultimately complicate development
-and system deployment efforts.  
+and deployment efforts.  
 
 \rcs{Potential conclusion material after this line in the .tex file..}
 
@@ -405,40 +394,37 @@ and system deployment efforts.
 %Berkeley DB, while Sections~\ref{OASYS} and~\ref{TransClos} show that
 %such optimizations have practical value.
 
-\eab{this paragraph needs work...}
 LRVM is a version of malloc() that provides
 transactional memory, and is similar to an object-oriented database
 but is much lighter weight, and lower level~\cite{lrvm}.  Unlike 
 the solutions mentioned above, it does not impose limitations upon 
-the layout of application data.
-However, its approach does not handle concurrent
-transactions well because the addition of concurrency support to transactional
-data structures typically requires control over log formats (Section~\ref{nested-top-actions}).  
+the layout of application data, although it does not provide full transactions.
+%However, its approach does not handle concurrent
+%transactions well because the addition of concurrency support to transactional
+%data structures typically requires control over log formats (Section~\ref{nested-top-actions}).  
 %However, LRVM's use of virtual memory to implement the buffer pool 
 %does not seem to be incompatible with our work, and it would be 
 %interesting to consider potential combinations of our approach 
 %with that of LRVM.  In particular, the recovery algorithm that is used to 
 %implement LRVM could be changed, and \yad's logging interface could 
 %replace the narrow interface that LRVM provides.  Also, 
-
-LRVM's inter- 
-and intra-transactional log optimizations collapse multiple updates 
-into a single log entry.  In the past, we have implemented such 
-optimizations in an ad-hoc fashion in \yad.  However, we believe 
-that we have developed the necessary API hooks 
-to allow extensions to \yad to transparently coalesce log entries in the future (Section~\ref{TransClos}).
+%LRVM's inter- 
+%and intra-transactional log optimizations collapse multiple updates 
+%into a single log entry.  In the past, we have implemented such 
+%optimizations in an ad-hoc fashion in \yad.  However, we believe 
+%that we have developed the necessary API hooks 
+%to allow extensions to \yad to transparently coalesce log entries in the future (Section~\ref{TransClos}).
 LRVM's
 approach of keeping a single in-memory copy of data in the applications
 address space is similar to the optimization presented in
-Section~\ref{OASYS}, but our approach circumvents the limitations of
-LRVM that were mentioned above, providing the full flexibility of the 
-ARIES algorithm.
+Section~\ref{OASYS}, but our approach circumvents can support full transactions as needed.
+
 
 %\begin{enumerate}
 %  \item {\bf Incredibly scalable, simple servers CHT's, google fs?, ...}
 
 Finally, some applications require incredibly simple but extremely
-scalable storage mechanisms.  Cluster hash tables are a good example
+scalable storage mechanisms.  Cluster hash tables~\cite{cht} are a good example
 of the type of system that serves these applications well, due to
 their relative simplicity and good scalability.  Depending
 on the fault model on which a cluster hash table is based, it is
@@ -457,14 +443,13 @@ atomicity semantics may be relaxed under certain circumstances.  \yad is unique 
 \rcs{compare and contrast with boxwood!!}
 
 
-We believe that \yad can support all of these
-applications. We will demonstrate several of them, but leave
-implementation of a real DBMS, LRVM and Boxwood to future work.
-However, in each case it is relatively easy to see how they would map
-onto \yad.
+We believe that \yad can support all of these systems. We will
+demonstrate several of them, but leave implementation of a real DBMS,
+LRVM and Boxwood to future work.  However, in each case it is
+relatively easy to see how they would map onto \yad.
 
 
-\eab{DB Toolkit from Wisconsin?}
+%\eab{DB Toolkit from Wisconsin?}
 
 
 
