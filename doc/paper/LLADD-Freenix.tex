@@ -388,9 +388,10 @@ LLADD. When the function returns, control is passed back to the wrapper
 function, which performs any post processing (such as generating return
 values), and releases any latches that it acquired. %
 \begin{figure}
-~~~~~~~~\includegraphics[%
+\begin{center}
+\includegraphics[%
   width=0.70\columnwidth]{TSetCall.pdf}
-
+\end{center}
 
 \caption{\label{cap:Tset}Runtime behavior of a simple operation. Tset() and do\_set() are
 implemented as extensions, while Tupdate() is built in. New operations
@@ -741,9 +742,10 @@ concurrent transactions, while threads utilizing the physical-undo
 implementation never hold locks on more than two buckets.%
 \footnote{However, only one thread may expand the hashtable at once.  In order to amortize the overhead of initiating an expansion, and to allow concurrent insertions, the hash table is expanded in increments of a few thousand buckets.}%
 \begin{figure}
-~~~~~~~~~~~\includegraphics[%
+\begin{center}
+\includegraphics[%
   width=0.70\columnwidth]{LinkedList.pdf}
-
+\end{center}
 
 \caption{\label{cap:Linear-Hash-Table}Linear Hash Table Bucket operations.}
 \end{figure}
@@ -930,9 +932,10 @@ lowest level primitive supported by Berkeley DB, and the corresponding LLADD ext
 
 %
 \begin{figure*}
+\begin{center}
 \includegraphics[%
-  width=1.0\textwidth]{INSERT.pdf}
-
+  width=0.75\textwidth]{INSERT.pdf}
+\end{center}
 
 \caption{\label{cap:INSERTS}The final data points for LLADD's and Berkeley
 DB's record number based storage are 7.4 and 9.5 seconds, respectively.
@@ -942,6 +945,22 @@ the logical logging version of LLADD's hash table is faster than the
 physical version, and handles the multi-threaded test well. The threaded
 test spawned 200 threads and split its workload into 200 separate transactions.}
 \end{figure*}
+
+%
+\begin{figure*}
+\begin{center}
+\includegraphics[%
+  width=0.75\textwidth]{THREADS-sparse.pdf}
+\end{center}
+\caption{\label{cap:THREADS}The time required to perform a fixed
+amount of processing, split across various numbers of threads.  This
+test was run agains the highly concurrent Logical Logging version of
+the linear hash table.  No significant performance degradation was
+seen within the range measured.  The inserts were done in serial, and
+the lookups were performed in parallel.}
+\end{figure*}
+
+
 The times included in Figure \ref{cap:INSERTS} include page file
 and log creation, insertion of the tuples as a single transaction,
 and a clean program shutdown. We used the ``transapp.cs'' program from
@@ -994,9 +1013,9 @@ believe that it is fundamental to our implementation.
 The multithreaded test run in the first figure shows that the library
 is capable of handling a large number of threads. The performance
 degradation associated with running 200 concurrent threads was
-negligible.  Figure TODO expands upon this point by plotting the time
+negligible.  Figure~\ref{cap:THREADS} expands upon this point by plotting the time
 taken for various numbers of threads to perform a total of 500,000
-(TODO-CHECK) read operations.  The performance of LLADD in this figure
+ read operations.  The performance of LLADD in this figure
 is essentially flat, showing only a negligable slowdown up to 250
 threads.  (Our test system prevented us from spawning more than 250
 simultaneous threads, and we suspect that the ``true'' limit of
@@ -1107,29 +1126,55 @@ LLADD is free software, available at:
 
 \begin{thebibliography}{99}
 
-\bibitem[Beazley]{beazley} D.~M.~Beazley and P.~S.~Lomdahl, 
-{\em Message-Passing Multi-Cell Molecular Dynamics on the Connection
-Machine 5}, Parall.~Comp.~ 20 (1994) p. 173-195.
+\bibitem[Lamb]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991) p. 50-63
 
-\bibitem[RealName]{CitePetName} A.~N.~Author and A.~N.~Other, 
-{\em Title of Riveting Article}, JournalName VolNum (Year) p. Start-End
+\bibitem[Lehman]{lehman} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
+\bibitem[Mohan92]{aires} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
 
-\bibitem[ET]{embed} Embedded Tk, \\
-{\tt ftp://ftp.vnet.net/pub/users/drh/ET.html}
+\bibitem[Mohan86]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
 
-\bibitem[Expect]{expect} Don Libes, {\em Exploring Expect}, O'Reilly \& Associates, Inc. (1995).
+\bibitem[Stonebraker]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
 
-\bibitem[Heidrich]{heidrich} Wolfgang Heidrich and Philipp Slusallek, {\em
-Automatic Generation of Tcl Bindings for C and C++ Libraries.},
-USENIX 3rd Annual Tcl/Tk Workshop (1995).
+\bibitem[Gray]{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (199) San Mateo, CA
 
-\bibitem[Ousterhout]{ousterhout} John K. Ousterhout, {\em Tcl and the Tk Toolkit}, Addison-Wesley Publishers (1994).
+\bibitem[Agrawal]{multipleGenericLocking} Agrawal, et al. {\em Concurrency Control Performance Modeling: Alternatives and Implications}. TODS 12(4): (1987) 609-654
 
-\bibitem[Perl5]{perl5} Perl5 Programmers reference,\\
-{\tt http://www.metronet.com/perlinfo/doc}, (1996).
+\bibitem[Gray75]{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, pages 428--431, September 1975. Reprinted in Readings in Database Systems, 3rd edition.
 
-\bibitem[Wetherall]{otcl} D. Wetherall, C. J. Lindblad, ``Extending Tcl for
-Dynamic Object-Oriented Programming'', Proceedings of the USENIX 3rd Annual Tcl/Tk Workshop (1995).
+\bibitem[Gifford]{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
+
+\bibitem[Seltzer]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+
+\bibitem[Behren]{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
+
+\bibitem[Evangelos]{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
+
+\bibitem[Moan]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+
+
+%\bibitem[Beazley]{beazley} D.~M.~Beazley and P.~S.~Lomdahl, 
+%{\em Message-Passing Multi-Cell Molecular Dynamics on the Connection
+%Machine 5}, Parall.~Comp.~ 20 (1994) p. 173-195.
+%
+%\bibitem[RealName]{CitePetName} A.~N.~Author and A.~N.~Other, 
+%{\em Title of Riveting Article}, JournalName VolNum (Year) p. Start-End
+%
+%\bibitem[ET]{embed} Embedded Tk, \\
+%{\tt ftp://ftp.vnet.net/pub/users/drh/ET.html}
+%
+%\bibitem[Expect]{expect} Don Libes, {\em Exploring Expect}, O'Reilly \& Associates, Inc. (1995).
+%
+%\bibitem[Heidrich]{heidrich} Wolfgang Heidrich and Philipp Slusallek, {\em
+%Automatic Generation of Tcl Bindings for C and C++ Libraries.},
+%USENIX 3rd Annual Tcl/Tk Workshop (1995).
+%
+%\bibitem[Ousterhout]{ousterhout} John K. Ousterhout, {\em Tcl and the Tk Toolkit}, Addison-Wesley Publishers (1994).
+%
+%\bibitem[Perl5]{perl5} Perl5 Programmers reference,\\
+%{\tt http://www.metronet.com/perlinfo/doc}, (1996).
+%
+%\bibitem[Wetherall]{otcl} D. Wetherall, C. J. Lindblad, ``Extending Tcl for
+%Dynamic Object-Oriented Programming'', Proceedings of the USENIX 3rd Annual Tcl/Tk Workshop (1995).
 
 \end{thebibliography}
 
