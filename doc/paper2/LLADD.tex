@@ -84,7 +84,7 @@ optimizations and enhanced usability for application developers.}
 \section{Introduction}
 
 Transactions are at the core of databases and thus form the basis of many
-important systems. However, the mechanisms for transactions are
+important systems. However, the mechanisms that provide transactions are
 typically hidden within monolithic database implementations (DBMSs) that make
 it hard to benefit from transactions without inheriting the rest of
 the database machinery and design decisions, including the use of a
@@ -102,8 +102,9 @@ model provided by a DBMS and that required by these applications. This is
 not an accident: the purpose of the relational model is exactly to
 move to a higher-level set-based data model that avoids the kind of
 ``navigational'' interactions required by these lower-level systems.
-Thus in some sense, we are arguing for the return of navigational
-transaction systems to compliment not replace relational systems.
+Thus in some sense, we are arguing for the development of modern
+navigational transaction systems that can compliment relational systems 
+and that naturally support current system designs and development methodolgies.
 
 The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
@@ -712,37 +713,52 @@ various primitives that \yad provides to application developers.
 
 \subsection{Lock Manager}
 \label{lock-manager}
-\eab{present the API?}
+%\eab{present the API?}
 
  \yad provides a default page-level lock manager that performs deadlock
 detection, although we expect many applications to make use of
 deadlock-avoidance schemes, which are already prevalent in
 multithreaded application development.  The Lock Manager is flexible
 enough to also provide index locks for hashtable implementations and 
-more complex locking protocols.
+more complex locking protocols such as hierarhical two-phase 
+locking.~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample}  
+The lock manager api is divided into callback functions that are made 
+during normal operation and recovery, and into generic lock mananger 
+implementations that may be used with \yad and its index implementations.
 
-For example, it would be relatively easy to build a strict two-phase
-locking hierarchical lock
-manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
-top of \yad.  Such a lock manager would provide isolation guarantees
-for all applications that make use of it.  However, applications that
-make use of such a lock manager must handle deadlocked transactions
+%For example, it would be relatively easy to build a strict two-phase
+%locking hierarchical lock
+%manager
+% on
+%top of \yad.  Such a lock manager would provide isolation guarantees
+%for all applications that make use of it.  
+
+However, applications that
+make use of a lock manager must handle deadlocked transactions
 that have been aborted by the lock manager.  This is easy if all of
 the state is managed by \yad, but other state such as thread stacks
-must be handled by the application, much like exception handling.
+must be handled by the application, much like exception handling.  
+\yad currently uses a custom wrapper around the pthread cancellation 
+mechanism to provide partial stack unwinding and pthread's thread
+cancellation mechanism.  Applications may use this error handling 
+technique, or write simple wrappers to handle errors with the 
+error handling scheme of their choice.
 
 Conversely, many applications do not require such a general scheme.
-For instance, an IMAP server can employ a simple lock-per-folder
-approach and use lock-ordering techniques to avoid deadlock.  This
-avoids the complexity of dealing with transactions that abort due
-to deadlock, and also removes the runtime cost of restarting 
-transactions.
+If deadlock avoidance (``normal'' thread synchronization) can be used,
+the application does not have to abort partial transactions, repeat
+work, or deal with the corner cases that aborted transactions create.
+%For instance, an IMAP server can employ a simple lock-per-folder
+%approach and use lock-ordering techniques to avoid deadlock.  This
+%avoids the complexity of dealing with transactions that abort due
+%to deadlock, and also removes the runtime cost of restarting 
+%transactions.
 
-\yad provides a lock manager API that allows all three variations
-(among others). In particular, it provides upcalls on commit/abort so
-that the lock manager can release locks at the right time. We will
-revisit this point in more detail when we describe some of the example
-operations.
+%\yad provides a lock manager API that allows all three variations
+%(among others). In particular, it provides upcalls on commit/abort so
+%that the lock manager can release locks at the right time. We will
+%revisit this point in more detail when we describe some of the example
+%operations.
 
 
 %% @todo where does this text go??
@@ -865,34 +881,43 @@ operations.
 \label{flex-logging}
 \label{page-layouts}
 
-The overview discussion avoided the use of some common terminology 
-that should be presented here. {\em Physical logging } 
+\yad supports three types of logging, and allows applications to create
+{\em custom log entries} of each type.
+
+%The overview discussion avoided the use of some common terminology 
+%that should be presented here. 
+{\em Physical logging } 
 is the practice of logging physical (byte-level) updates
 and the physical (page-number) addresses to which they are applied.
 
-\rcs{Do we really need to differentiate between types of diffs applied to pages?  The concept of physical REDO/logical UNDO is probably more important...}
+{\em Physiological logging } extends this idea, and is generally used 
+for \yad's REDO entries.  The physical address (page number) is
+stored, along with the arguments of an arbitrary function that 
+is associated with the log entry.
 
-{\em Physiological logging } is what \yad recommends for its REDO
-records~\cite{physiological}. The physical address (page number) is
-stored, but the byte offset and the actual delta are stored implicitly
-in the parameters of the REDO or UNDO function. These parameters allow
-the function to update the page in a way that preserves application
-semantics.  One common use for this is {\em slotted pages}, which use
+This is used to implement many primatives, including {\em slotted pages}, which use
 an on-page level of indirection to allow records to be rearranged
 within the page; instead of using the page offset, REDO operations use
 the index to locate the data within the page. This allows data within a single
-page to be re-arranged at runtime to produce contiguous regions of
-free space. \yad generalizes this model; for example, the parameters
-passed to the function may utilize application-specific properties in
-order to be significantly smaller than the physical change made to the
-page.
+page to be re-arranged easily, producing contiguous regions of
+free space.  Since the log entry is associated with an arbitrary function
+more sophisticated log entries can be implemented.  In turn, this can improve 
+performance by conserving log space, or be used to build match recovery to application
+semantics.
+%\yad generalizes this model, allowing the parameters of a 
+%custom log entry to invoke arbitrary application-specific code.  
+%In 
+%Section~\ref{OASYS} this is used to significantly improve performance by 
+%storing difference records in an application specfic format.
 
-This forms the basis of \yad's flexible page layouts.  We current
-support four layouts: a raw page, which is just an array of
-bytes, a record-oriented page with fixed-size records,
-a slotted-page that support variable-sized records, and a page of records with version numbers (Section~\ref{version-pages}).
-Data structures can pick the layout that is most convenient or implement 
-new layouts.
+%In addition to supporting custom log entries, this mechanism 
+%is the basis of \yad's {\em flexible page layouts}.  
+\yad also uses this mechanism to support four {\em page layouts}: 
+{\em raw-page}, which is just an array of
+bytes, {\em fixed-page}, a record-oriented page with fixed-length records,
+{\em slotted-page}, which supports variable-sized records, and 
+{\em versioned-page},  a slotted-page with a seperate version number for 
+each record. (Section~\ref{version-pages}).  
 
 {\em Logical logging} uses a higher-level key to specify the
 UNDO/REDO.  Since these higher-level keys may affect multiple pages,
@@ -911,25 +936,29 @@ span multiple pages, as shown in the next section.
 %% logical log entries, the page file must be physically consistent,
 %% ruling out use of logical logging for redo operations.
 
-\yad supports all three types of logging, and allows developers to
-register new operations, which we cover below.
+%\yad supports all three types of logging, and allows developers to
+%register new operations, which we cover below.
 
 
 \subsection{Nested Top Actions}
 \label{nested-top-actions}
 
 The operations presented so far work fine for a single page, since
-each update is atomic.  For updates that span multiple pages there are two basic options: full isolation or nested top actions.
+each update is atomic.  For updates that span multiple pages there 
+are two basic options: full isolation or nested top actions.
 
 By full isolation, we mean that no other transactions see the
 in-progress updates, which can be trivially achieved with a big lock
-around the whole structure.  Given isolation, \yad needs nothing else to
+around the whole structure.  Usually the application must enforce 
+such a locking policy or decide to use a lock manager and deal with 
+deadlock.  Given isolation, \yad needs nothing else to
 make multi-page updates transactional: although many pages might be
 modified they will commit or abort as a group and be recovered
 accordingly.
 
-However, this level of isolation reduces concurrency within a data
-structure.  ARIES introduced the notion of nested top actions to
+However, this level of isolation disallows all concurrency between 
+transactions that use the same data structure.  ARIES introduced the 
+notion of nested top actions to
 address this problem.  For example, consider what would happen if one
 transaction, $A$, rearranged the layout of a data structure, a second
 transaction, $B$, added a value to the rearranged structure, and then
@@ -937,7 +966,7 @@ the first transaction aborted.  (Note that the structure is not
 isolated.)  While applying physical undo information to the altered
 data structure,  $A$ would UNDO its writes
 without considering the modifications made by
-$B$, which is likely to cause corruption.  At this point, $B$ would
+$B$, which is likely to cause corruption.  Therefore, $B$ would 
 have to be aborted as well ({\em cascading aborts}).
 
 With nested top actions, ARIES defines the structural changes as a
@@ -956,9 +985,8 @@ In particular, we have found a simple recipe for converting a
 non-concurrent data structure into a concurrent one, which involves
 three steps:
 \begin{enumerate}
-\item Wrap a mutex around each operation.  If full transactional isolation 
-  with deadlock detection is required, this can be done with the lock
-  manager.  Alternatively, this can be done using mutexes for fine-grain isolation.
+\item Wrap a mutex around each operation.  If this is done with care,
+  it may be possible to use finer grained mutexes.
 \item Define a logical UNDO for each operation (rather than just using
   a lower-level physical UNDO).  For example, this is easy for a
   hashtable; e.g. the UNDO for an {\em insert} is {\em remove}.
@@ -969,10 +997,12 @@ three steps:
 This recipe ensures that operations that might span multiple pages
 atomically apply and commit any structural changes and thus avoids 
 cascading aborts.  If the transaction that encloses the operations
-aborts, the logical UNDO will {\em compensate} for
-its effects, but leave its structural changes intact. Note that by releasing the mutex before we commit, we are
-violating strict two-phase locking in exchange for better performance 
-and support for deadlock avoidance.
+aborts, the logical undo will {\em compensate} for
+its effects, but leave its structural changes intact. Because this 
+recipe does not ensure transactional consistency and is largely 
+orthoganol to the use of a lock mananger, we call this class of 
+concurrenct control {\em latching} throughout this paper.
+
 We have found the recipe to be easy to follow and very effective, and
 we use it everywhere our concurrent data structures may make structural 
 changes, such as growing a hash table or array.
@@ -1404,7 +1434,7 @@ need a map from bucket number to bucket contents (lists), and we need to handle 
 
 \subsection{The Bucket Map}
 
-The simplest bucket map would simply use a fixed-size transactional
+The simplest bucket map would simply use a fixed-length transactional
 array. However, since we want the size of the table to grow, we should
 not assume that it fits in a contiguous range of pages. Instead, we build
 on top of \yad's transactional ArrayList data structure (inspired by
@@ -1417,7 +1447,7 @@ per enlargement typically), this leads to an efficient map. We use a
 single ``header'' page to store the list of intervals and their sizes.
 
 For space efficiency, the array elements themselves are stored using
-the fixed-size record page layout. Thus, we use the header page to
+the fixed-length record page layout. Thus, we use the header page to
 find the right interval, and then index into it to get the $(page,
 slot)$ address.  Once we have this address, the REDO/UNDO entries are
 trivial: they simply log the before and after image of the that
@@ -2081,10 +2111,10 @@ requests by reordering invocations of wrapper functions.
 \subsection {Data Representation}
 
 For simplicity, we represent graph nodes as
-fixed length records.  The Array List from our linear hash table
+fixed-length records.  The Array List from our linear hash table
 implementation (Section~\ref{sub:Linear-Hash-Table}) provides access to an
 array of such records with performance that is competitive with native
-recordid accesses, so we use an Array List to store the records.  We
+recordid accesses, so we use an ArrayList to store the records.  We
 could have opted for a slightly more efficient representation by
 implementing a fixed length array structure, but doing so seems to be
 overkill for our purposes.  The nodes themselves are stored as an
