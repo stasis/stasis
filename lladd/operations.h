@@ -46,6 +46,7 @@ terms specified in this license.
  * Interface for defining new logical operations.
  *
  * @ingroup LLADD_CORE OPERATIONS
+ * @todo The functions in operations.h don't belong in the API, but it defines some constants and typedefs that should be there.
  * $Id$
  */
 

@@ -148,9 +148,13 @@ recordid ralloc(int xid, long size);
 long readLSN(int pageid);
 
 /**
- * @param xid transaction id
- * @param rid recordid where you want to write
- * @param dat data you wish to write
+ * @param xid transaction id @param lsn the lsn that the updated
+ * record will reflect.  This is needed by recovery, and undo.  (The
+ * lsn of a page must always increase.  Undos are handled by passing
+ * in the LSN of the CLR that records the undo.)
+ *
+ * @param rid recordid where you want to write @param dat data you
+ * wish to write
  */
 void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat);
 
@@ -168,7 +172,7 @@ void readRecord(int xid, recordid rid, void *dat);
  * to see if some other page can be kicked, in order to avoid the log
  * flush.  
  *
- * @param page  The page to be flushed to disk.
+ * @param dat  The page to be flushed to disk.
  */
 void pageWrite(const Page * dat);
 
@@ -176,8 +180,8 @@ void pageWrite(const Page * dat);
 /**
    Read a page from disk.  
 
-   @param A page struct, with id set correctly.  The rest of this
-   struct is filled out by pageMap.
+   @param ret A page struct, with id set correctly.  The rest of this
+   struct will be overwritten by pageMap.
 */
 void pageRead(Page * ret);
 
@@ -203,6 +207,9 @@ int dropPage(Page page);
  * it might be useful when locking is implemented.
  *
  * @param xid transaction ID
+ * @param lsn the lsn at which the transaction aborted.  (Currently
+ * unused, but may be useful for other implementations of the buffer
+ * manager.)
  * @return 0 on success
  * @return error code on failure
  */
@@ -212,8 +219,14 @@ int bufTransCommit(int xid, lsn_t lsn);
  * 
  * Currently identical to bufTransCommit.
  * 
- * @param xid transaction ID
+ * @param xid transaction ID 
+ * 
+ * @param lsn the lsn at which the transaction aborted.  (Currently
+ * unused, but may be useful for other implementations of the buffer
+ * manager.)
+ *
  * @return 0 on success
+ *  
  * @return error code on failure
  */
 int bufTransAbort(int xid, lsn_t lsn);
@@ -223,11 +236,5 @@ int bufTransAbort(int xid, lsn_t lsn);
  * transactions
  */
 void bufDeinit();
-
-/** @todo Global file descriptors are nasty. */
-
-extern int blobfd0;
-extern int blobfd1;
-
 
 #endif

@@ -215,7 +215,7 @@ static const byte *slotMemAddr(const byte *memAddr, int slotNum) {
  * as a parameter a Page and returns the LSN that is currently written on that
  * page in memory.
  */
-long pageReadLSN(Page page) {
+lsn_t pageReadLSN(Page page) {
 	return *(long *)(page.memAddr + START_OF_LSN);
 }
 

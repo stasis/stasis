@@ -59,6 +59,8 @@ BEGIN_C_DECLS
    
    @todo Is there a better way to deal with sizeof() and log entries?
    
+   @todo Other than some typedefs, is there anything in logEntry that belongs in the API?
+
    @ingroup LLADD_CORE
    
    $Id$
