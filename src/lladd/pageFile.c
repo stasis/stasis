@@ -16,33 +16,6 @@ static FILE * stable = NULL;
 /** Defined in bufferManager.c */
 extern pthread_mutex_t add_pending_mutex;
 
-
-
-/** 
-    This function blocks until there are no events pending for this page.
-
-    @see addPendingEvent(), removePendingEvent()
-*/
-
-
-/*void finalize(Page * p) {
-  pthread_mutex_lock(&(add_pending_mutex));
-  p->waiting++;
-
-  while(p->pending) {
-    DEBUG("A");
-    pthread_cond_wait(&(p->noMorePending), &(add_pending_mutex));
-  }
-  
-  assert(p->pending == 0);
-  assert(p->waiting == 1);
-  pthread_cond_broadcast(&addPendingOK);
-  pthread_mutex_unlock(&(add_pending_mutex)); 
-
-
-  return;
-  }*/
-
 void pageRead(Page *ret) {
   long fileSize;
 
@@ -170,4 +143,9 @@ void myFwrite(const void * dat, long size, FILE * f) {
   
 }
 
+long pageCount() {
+  long fileSize = myFseek(stable, 0, SEEK_END);
 
+  assert(! (fileSize % PAGE_SIZE));
+  return fileSize / PAGE_SIZE;
+}

@@ -38,6 +38,10 @@ void pageWrite(Page * dat);
    to call them.
 */
 void pageRead(Page * ret);
+/** 
+    @return the number of pages in the store file.
+*/
+long pageCount();
 
 void openPageFile();
 void closePageFile();

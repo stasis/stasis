@@ -97,6 +97,9 @@ terms specified in this license.
 
 #include <lladd/constants.h>
 #include <assert.h>
+#include "blobManager.h"
+#include "pageFile.h"
+
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
 
@@ -405,6 +408,69 @@ void pageInit() {
 	pthread_mutex_init(&pageAllocMutex, NULL);
 }
 
+typedef struct {
+  int page;
+  int slot;
+  /** If pageptr is not null, then it is used by the iterator methods.
+      Otherwise, they re-load the pages and obtain short latches for
+      each call. */
+  Page * pageptr;  
+} page_iterator_t;
+
+void pageIteratorInit(recordid rid, page_iterator_t * pit, Page * p) {
+  pit->page = rid.page;
+  pit->slot = rid.slot;
+  pit->pageptr = p;
+  assert((!p) || (p->id == pit->page));
+}
+
+int nextSlot(page_iterator_t * pit, recordid * rid) {
+  Page * p;
+  int numSlots;
+  int done = 0;
+  int ret;
+  if(pit->pageptr) {
+    p = pit->pageptr;
+  } else {
+    p = loadPage(pit->page);
+  }
+
+  numSlots = readNumSlots(p->memAddr);
+  while(pit->slot < numSlots && !done) {
+    
+    if(isValidSlot(p->memAddr, pit->slot)) {
+      done = 1;
+    } else {
+      pit->slot ++;
+    }
+
+  }
+  if(!done) {
+    ret = 0;
+  } else {
+    ret = 1;
+    rid->page = pit->page;
+    rid->slot = pit->slot;
+    rid->size = getSlotLength(p->memAddr, rid->slot);
+    if(rid->size >= PAGE_SIZE) {
+
+      if(rid->size == BLOB_SLOT) {
+	blob_record_t br;
+	pageReadRecord(-1, p, *rid, (byte*)&br);
+	rid->size = br.size;
+      }
+    }
+  }
+
+  if(!pit->pageptr) {
+    releasePage(p);
+  }
+
+  return ret;
+  
+}
+
+
 void pageCommit(int xid) {
   /*	 rmTouch(xid); */
 }
@@ -574,18 +640,8 @@ void pageReadRecord(int xid, Page * page, recordid rid, byte *buff) {
 
   slot_length = getSlotLength(page->memAddr, rid.slot);
 
-  /** @todo these assertions really *should* work... is slot length storage broken? */
-  
-  /*  assert((slot_length > 0) || (rid.size >= PAGE_SIZE)); */
-  /*  assert(slot_length); */
-  /*assert */
-  
   assert((rid.size == slot_length) || (slot_length >= PAGE_SIZE));
-  /*  if((rid.size == slot_length) || (slot_length >= PAGE_SIZE)) {
-    printf ("1");
-  } else {
-    printf ("2")
-    }*/
+
   memcpy(buff, recAddress,  rid.size);
   unlock(page->rwlatch);
   
