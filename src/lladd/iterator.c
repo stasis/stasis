@@ -39,7 +39,8 @@ void iterator_init() {
     logMemory_Iterator_tryNext,    
     logMemory_Iterator_key,   
     logMemory_Iterator_value,    
-    logMemory_Iterator_releaseTuple 
+    logMemory_Iterator_releaseTuple,
+    logMemory_Iterator_releaseLock,
   };
   lladdIterator_register(LOG_MEMORY_ITERATOR, logMemory_def);
 }
@@ -52,3 +53,4 @@ int  Titerator_tryNext(int xid, lladdIterator_t * it)             { return itera
 int  Titerator_key    (int xid, lladdIterator_t * it, byte ** key){ return iterators[it->type].key  (xid, it->impl, key);      }
 int  Titerator_value(int xid, lladdIterator_t * it, byte ** value){ return iterators[it->type].value(xid, it->impl, value);    }
 void Titerator_tupleDone(int xid, lladdIterator_t * it)           {        iterators[it->type].tupleDone(xid, it->impl);       }
+void Titerator_releaseLock(int xid, lladdIterator_t * it)         {        iterators[it->type].releaseLock(xid, it->impl);     }

@@ -82,9 +82,9 @@ terms specified in this license.
 
 /* #define MAX_BUFFER_SIZE 100003 */
 /*#define MAX_BUFFER_SIZE 20029 */
-#define MAX_BUFFER_SIZE 10007 
+//#define MAX_BUFFER_SIZE 10007 
 /*#define MAX_BUFFER_SIZE 5003*/
-/*#define MAX_BUFFER_SIZE 2003 */
+#define MAX_BUFFER_SIZE 2003 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 /*#define BUFFER_ASOOCIATIVE 2 */
@@ -129,6 +129,9 @@ terms specified in this license.
 #define OPERATION_LINKED_LIST_REMOVE 30
 #define OPERATION_LINEAR_HASH_INSERT 31
 #define OPERATION_LINEAR_HASH_REMOVE 32
+
+// this operation is specific to OASYS
+#define OPERATION_SET_DIFF           33  
 
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40

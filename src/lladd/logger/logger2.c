@@ -75,9 +75,59 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 
 }
 
+extern int numActiveXactions;
 lsn_t LogTransCommit(TransactionLog * l) {
-  syncLog();
-  return LogTransCommon(l, XCOMMIT);
+  static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
+  static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
+  static int pendingCommits = 0;
+  static int syncLogCount;
+
+  lsn_t ret = LogTransCommon(l, XCOMMIT);
+
+  struct timeval now;
+  struct timespec timeout;
+  //  int retcode;
+  
+  pthread_mutex_lock(&check_commit);
+  if(flushedLSN() >= ret) {
+    pthread_mutex_unlock(&check_commit);
+    return ret;
+  }
+  gettimeofday(&now, NULL);
+  timeout.tv_sec = now.tv_sec;
+  timeout.tv_nsec = now.tv_usec * 1000;
+  //                   0123456789  <- number of zeros on the next three lines...
+  timeout.tv_nsec +=   100000000; // wait ten msec.
+  if(timeout.tv_nsec > 1000000000) {
+    timeout.tv_nsec -= 1000000000;
+    timeout.tv_sec++;
+  }
+
+  pendingCommits++;
+  //  if(pendingCommits <= (numActiveXactions / 2)) {
+  if((numActiveXactions > 1 && pendingCommits < numActiveXactions) ||
+     (numActiveXactions > 20 && pendingCommits < (int)((double)numActiveXactions * 0.95))) {
+    while(ETIMEDOUT != (pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) {
+      if(flushedLSN() >= ret) {
+	pendingCommits--;
+	pthread_mutex_unlock(&check_commit);
+	return ret;
+      }
+    }
+    //    printf("Timed out");
+  } else {
+    //     printf("Didn't wait %d < %d\n", (numActiveXactions / 2), pendingCommits);
+  } 
+  if(flushedLSN() < ret) {
+    syncLog();
+    syncLogCount++;
+    //    printf(" %d ", syncLogCount);
+    pthread_cond_broadcast(&tooFewXacts);
+  }
+  assert(flushedLSN() >= ret);
+  pendingCommits--;
+  pthread_mutex_unlock(&check_commit);
+  return ret;
 }
 
 lsn_t LogTransAbort(TransactionLog * l) {

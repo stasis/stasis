@@ -1,7 +1,10 @@
 #include <lladd/transactional.h>
 
+
 #ifndef __ITERATOR_H
 #define __ITERATOR_H
+
+BEGIN_C_DECLS
 
 #define MAX_ITERATOR_TYPES 10
 #define LINEAR_HASH_NTA_ITERATOR 0
@@ -16,6 +19,7 @@ typedef struct {
   int  (*key)  (int xid, void * it, byte ** key);
   int  (*value)(int xid, void * it, byte ** value);
   void (*tupleDone)(int xid, void * it);
+  void (*releaseLock)(int xid, void *it);
 } lladdIterator_def_t;
 
 typedef struct { 
@@ -59,7 +63,7 @@ int Titerator_tryNext(int xid, lladdIterator_t * it);
        provides , allows iterator to clean up if necessary
                                                  > such as release lock
 */
-int  (*releaseTuple)(int xid, void * it);
+//int  (*releaseTuple)(int xid, void * it);
 
 /** 
     This function allows the caller to access the current iterator
@@ -98,6 +102,9 @@ int Titerator_value(int xid, lladdIterator_t * it, byte ** value);
     all iterators are reentrant.)
 */
 void Titerator_tupleDone(int xid, lladdIterator_t * it);
+void Titerator_releaseLock(int xid, lladdIterator_t * it);
+
+END_C_DECLS
 
 #endif
 

@@ -38,6 +38,8 @@ void  env_dir_create(void);
 void  env_open(DB_ENV **);
 void  usage(void);
 
+int alwaysCommit;
+
 DB_ENV *dbenv;
 DB *db_cats; /*, *db_color, *db_fruit; */
 
@@ -61,8 +63,10 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind; */
 
-	assert(argc == 3);
+	assert(argc == 3 || argc == 4);
 	/* threads have static thread sizes.  Ughh. */
+
+	alwaysCommit = (argc == 4);
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	
@@ -122,8 +126,15 @@ main(int argc, char *argv[])
 		NULL);*/
 	int r;
 	int num_threads         = atoi(argv[1]);
-	/*int */num_xact        = 1; //atoi(argv[2]); //100;
-	/*int */insert_per_xact = atoi(argv[2]); //1000;
+	if(alwaysCommit) {
+	  num_xact        = atoi(argv[2]); //100;
+	  insert_per_xact = 1;
+	} else { 
+	  num_xact        = 1;
+	  insert_per_xact = atoi(argv[2]);
+	}
+	/*int *///insert_per_xact = //atoi(argv[2]); //1000;
+	  //	insert_per_xact = 1;
 	//	int num_threads = 100;
 
 
@@ -225,10 +236,10 @@ env_open(DB_ENV **dbenvp)
 	dbenv->set_errfile(dbenv, stderr);
 
 	/* Do deadlock detection internally. */
-	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
+	/*	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
 		dbenv->err(dbenv, ret, "set_lk_detect: DB_LOCK_DEFAULT");
 		exit (1);
-	}
+		} */
 
 	/*
 	 * Open a transactional environment:
@@ -238,7 +249,7 @@ env_open(DB_ENV **dbenvp)
 	 *	read/write owner only
 	 */
 	if ((ret = dbenv->open(dbenv, ENV_DIRECTORY,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+			       DB_CREATE /*| DB_INIT_LOCK */| DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
 	    S_IRUSR | S_IWUSR)) != 0) {
 		dbenv->err(dbenv, ret, "dbenv->open: %s", ENV_DIRECTORY);
@@ -514,12 +525,12 @@ retry:	/* Begin the transaction. */
 	}
 
 	/* Delete any previously existing item -- LLADD always does this during insert.*/
-	switch (ret = db->del(db, tid, &key, 0)) {
+	/*	switch (ret = db->del(db, tid, &key, 0)) {
 	case 0:
 	case DB_NOTFOUND:
 		break;
 	case DB_LOCK_DEADLOCK:
-		/* Deadlock: retry the operation. */
+		// Deadlock: retry the operation. 
 		if ((ret = tid->abort(tid)) != 0) {
 			dbenv->err(dbenv, ret, "DB_TXN->abort");
 			exit (1);
@@ -528,7 +539,7 @@ retry:	/* Begin the transaction. */
 	default:
 		dbenv->err(dbenv, ret, "db->del: %s", name);
 		exit (1);
-	}
+	}*/
 
 	/* Create a cursor. */
 	if ((ret = db->cursor(db, tid, &dbc, 0)) != 0) {
@@ -546,7 +557,7 @@ retry:	/* Begin the transaction. */
 			break;
 		case DB_LOCK_DEADLOCK:
 			va_end(ap);
-
+			abort();
 			/* Deadlock: retry the operation. */
 			if ((ret = dbc->c_close(dbc)) != 0) {
 				dbenv->err(
@@ -600,30 +611,34 @@ run_xact(DB_ENV *dbenv, DB *db, int offset, int count)
 retry:	/* Begin the transaction. */
 	if ((ret = dbenv->txn_begin(dbenv, NULL, &tid, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->txn_begin");
-		exit (1);
+		//		exit (1);
+		abort();
 	}
 
 	/* Delete any previously existing item. */
-	/*	switch (ret = db->del(db, tid, &key, 0)) {
+	switch (ret = db->del(db, tid, &key, 0)) {
 	case 0:
 	case DB_NOTFOUND:
-		break;
+	  break;
 	case DB_LOCK_DEADLOCK:
-		/ * Deadlock: retry the operation. * /
-		if ((ret = tid->abort(tid)) != 0) {
-			dbenv->err(dbenv, ret, "DB_TXN->abort");
-			exit (1);
-		}
-		goto retry;
+	  abort();
+	  /* Deadlock: retry the operation. */
+			  if ((ret = tid->abort(tid)) != 0) {
+			    dbenv->err(dbenv, ret, "DB_TXN->abort");
+			    exit (1);
+			  }
+			  goto retry;
 	default:
-		dbenv->err(dbenv, ret, "db->del: %s", name);
-		exit (1);
-		} */
+	  //	  dbenv->err(dbenv, ret, "db->del: %s", name);
+	  abort();
+	  exit (1);
+	}
  
 	/* Create a cursor. */
 	if ((ret = db->cursor(db, tid, &dbc, 0)) != 0) {
 		dbenv->err(dbenv, ret, "db->cursor");
-		exit (1);
+		abort();
+		//		exit (1);
 	}
 
 	/* Append the items, in order. */
@@ -636,22 +651,24 @@ retry:	/* Begin the transaction. */
 
 	  switch (ret = db->del(db, tid, &key, 0)) {
 	  case 0:
-	    abort();  // we dont insert dups in this test!
+	    //	    abort();  // we dont insert dups in this test!
 	  case DB_NOTFOUND:
 	    break;
 	  case DB_LOCK_DEADLOCK:
-	    /* Deadlock: retry the operation. */
+	    /// Deadlock: retry the operation. 
 	    abort();  // the lock manager should be disabled for this test... 
 			    if ((ret = tid->abort(tid)) != 0) {
 			      dbenv->err(dbenv, ret, "DB_TXN->abort");
-			      exit (1);
+			      //			      exit (1);
+			      abort();
 			    }
 	  goto retry;
 	  default:
 	    dbenv->err(dbenv, ret, "db->del: %d", q);
-	    exit (1);
+	    //	    exit (1);
+	    abort();
 	  }
-
+	  
 	  /*		data.data = s;
 			data.size = strlen(s); */
 	  //	  printf("A"); fflush(NULL);
@@ -662,22 +679,25 @@ retry:	/* Begin the transaction. */
 	    break;
 	  case DB_LOCK_DEADLOCK:
 	    //	    va_end(ap);
-	    
+	    abort(); // no locking!
 	    /* Deadlock: retry the operation. */
 	    if ((ret = dbc->c_close(dbc)) != 0) {
 	      dbenv->err(
 			 dbenv, ret, "dbc->c_close");
-	      exit (1);
+	      //	      exit (1);
+	      abort();
 	    }
 	    if ((ret = tid->abort(tid)) != 0) {
 	      dbenv->err(dbenv, ret, "DB_TXN->abort");
-	      exit (1);
+	      //	      exit (1);
+	      abort();
 	    }
 	    goto retry;
 	  default:
 	    /* Error: run recovery. */
 	    dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
-	    exit (1);
+	    //	    exit (1);
+	    abort();
 	  }
 	}
 	//	va_end(ap);
@@ -685,12 +705,15 @@ retry:	/* Begin the transaction. */
 	/* Success: commit the change. */
 	if ((ret = dbc->c_close(dbc)) != 0) {
 		dbenv->err(dbenv, ret, "dbc->c_close");
-		exit (1);
+		//		exit (1);
+		abort();
 	}
 	if ((ret = tid->commit(tid, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_TXN->commit");
-		exit (1);
+		//		exit (1);
+		abort();
 	}
+	//	printf("commit");
 }
 
 void

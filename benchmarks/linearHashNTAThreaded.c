@@ -20,6 +20,7 @@
 
 int activeThreads = 0;
 int max_active = 0;
+int alwaysCommit;
 /*
 double avg_var = 0;
 double max_var = 0;
@@ -68,10 +69,17 @@ static void * go (void * arg_ptr) {
 
     */
     //    printf("(%d)", k);
+
+    if(alwaysCommit) {
+      //      printf("Commit");
+      Tcommit(xid);
+      xid = Tbegin();
+      
+    }
   }
 
-  
   Tcommit(xid);
+  
   /*
   for(j = k * count; j < (k+1) *(count) ; j++) {
     int tmp = -100;
@@ -105,10 +113,12 @@ static void * go (void * arg_ptr) {
 
 int main(int argc, char** argv) {
 
-  assert(argc == 3);
+  assert(argc == 3 || argc == 4);
 
   int thread_count = atoi(argv[1]);
   count = atoi(argv[2]);
+
+  alwaysCommit = (argc==4);
 
   unlink("storefile.txt");
   unlink("logfile.txt");
@@ -120,6 +130,7 @@ int main(int argc, char** argv) {
   Tinit();
   int xid = Tbegin();
   hash = ThashCreate(xid, sizeof(int), sizeof(int));
+  //  hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   
   Tcommit(xid);
 

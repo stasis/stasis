@@ -265,10 +265,10 @@ env_open(DB_ENV **dbenvp)
 	dbenv->set_errfile(dbenv, stderr);
 
 	/* Do deadlock detection internally. */
-	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
+	/*	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
 		dbenv->err(dbenv, ret, "set_lk_detect: DB_LOCK_DEFAULT");
 		exit (1);
-	}
+		}*/
 
 	/*
 	 * Open a transactional environment:
