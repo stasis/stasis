@@ -2267,14 +2267,15 @@ is more expensive then making a recursive function call.
 
 We considered applying some of the optimizations discussed earlier in
 the paper to our graph traversal algorithm, but opted to dedicate this
-section to request reordering.  Delta-based log entries would be an
-obvious benefit for this scheme, and there may be a way to use the
-\oasys implementation to reduce page file utilization.  The request 
-reordering optimization made use of reusable operation implementations 
-by borrowing ArrayList from the hashtable.  It cleanly separates wrapper 
-functions from implementations and makes use of application-level log 
-manipulation primitives to produce locality in workloads.  We believe 
-these techniques can be generalized to other applications quite easily.
+section to request reordering.  
+%Delta-based log entries would be an
+%obvious benefit for this scheme, and there may be a way to use the
+%\oasys implementation to reduce page file utilization.  The request 
+%%reordering optimization made use of reusable operation implementations 
+%by borrowing ArrayList from the hashtable.  It cleanly separates wrapper 
+%functions from implementations and makes use of application-level log 
+%manipulation primitives to produce locality in workloads.  We believe 
+%these techniques can be generalized to other applications quite easily.
 
 %This section uses:
 %
