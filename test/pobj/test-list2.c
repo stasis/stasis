@@ -74,5 +74,35 @@ main (int argc, char **argv)
 
     pobj_shutdown ();
 
+
+    /* Open again, see what happens... */
+    switch (pobj_init (NULL, NULL)) {
+    case 0:
+	printf ("first-time init (error)\n");
+	break;
+
+    case 1:
+	printf ("subsequent init\n");
+	break;
+
+    case -1:
+	printf ("init error\n");
+	break;
+
+    default:
+	printf ("unknown return value\n");
+    }
+
+    /* Print list. */
+    printf ("printing list...\n");
+    for (tmp = list; tmp; tmp = tmp->next)
+	printf ("%p: val=%d next=%p data=%p data->val=%d\n",
+		(void *) tmp, tmp->val, (void *) tmp->next,
+		(void *) tmp->data, (tmp->data ? tmp->data->val : 0));
+    printf ("...done\n");
+
+    pobj_shutdown ();
+
+
     return 0;
 }
