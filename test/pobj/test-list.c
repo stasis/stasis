@@ -25,7 +25,7 @@ main (int argc, char **argv)
 	printf ("first-time init\n");
 	/* Build list. */
 	next = NULL;
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < 15000; i++) {
 	    pobj_start ();
 	    tmp = (struct item *) pobj_malloc (sizeof (struct item));
 	    if (! tmp) {

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* FIXME: send that to the make system. */
-#define HAVE_DEBUG
+/* #define HAVE_DEBUG */
 
 #ifdef HAVE_DEBUG
 #define debug(format,...)  \
