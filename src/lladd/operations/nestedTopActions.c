@@ -53,7 +53,7 @@ terms specified in this license.
 #include <string.h>
 #include <malloc.h>
 #include <pthread.h>
-
+#include <assert.h>
 /** @todo Remove extern declaration of transactional_2_mutex from nestedTopActions.c */
 extern pthread_mutex_t transactional_2_mutex;
 
@@ -72,13 +72,21 @@ void initNestedTopActions() {
   NULLRID.slot = 0;
   NULLRID.size = -1;
 }
-
-void TbeginNestedTopAction(int xid) {
+/** @todo TbeginNestedTopAction's API might not be quite right.  
+    Are there cases where we need to pass a recordid in?
+*/
+void TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
+  recordid rid = NULLRID;
+  rid.page = datSize;
+  LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, rid, op, dat);
+  DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
   lsn_t * prevLSN = malloc(sizeof(lsn_t));
+  *prevLSN = e->LSN;
   pthread_mutex_lock(&transactional_2_mutex);
-  *prevLSN = XactionTable[xid].prevLSN;
+  assert(!pblHtLookup(nestedTopActions, &xid, sizeof(int)));
   pblHtInsert(nestedTopActions, &xid, sizeof(int), prevLSN);
   pthread_mutex_unlock(&transactional_2_mutex);
+  free(e);
 }
 
 /** 
@@ -94,7 +102,7 @@ lsn_t TendNestedTopAction(int xid) {
   pthread_mutex_lock(&transactional_2_mutex);
   
   lsn_t * prevLSN = pblHtLookup(nestedTopActions, &xid, sizeof(int));
-  
+  pblHtRemove(nestedTopActions, &xid, sizeof(int));
   // This action wasn't really undone -- This is a nested top action!
   lsn_t undoneLSN = XactionTable[xid].prevLSN; 
   recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)
@@ -111,6 +119,7 @@ lsn_t TendNestedTopAction(int xid) {
 
   lsn_t ret = e->LSN;
   free(e);
+  free(prevLSN);
   pthread_mutex_unlock(&transactional_2_mutex);
   
   return ret;

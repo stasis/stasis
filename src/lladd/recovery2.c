@@ -210,29 +210,37 @@ static void Undo(int recovery) {
       case UPDATELOG:
 	{
 	  /* Need write lock for undo.. (Why??) */
-	  Page * p = getPage(e->contents.update.rid.page, RO); 
-	  this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
-	  
-	  
-	  /*	printf("1"); fflush(NULL); */
-	  
-	  /* Sanity check.  If this fails, something is wrong with the
-	     redo phase or normal operation. */
-	  assert(e->LSN <= this_lsn);  
-	  
-	  /* printf("1a"); fflush(NULL); */
-	  
-	  /* Need to log a clr here. */
-	  
-	  clr_lsn = LogCLR(e);
-	  
-	  /* Undo update is a no-op if the page does not reflect this
-	     update, but it will write the new clr_lsn if necessary.  */
-	  
-	  undoUpdate(e, p, clr_lsn);
-	  
-	  /*	printf("1b"); fflush(NULL); */
-	  releasePage(p);
+	  if(e->contents.update.rid.size != -1) {
+
+	    Page * p = getPage(e->contents.update.rid.page, RO); 
+	    this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
+	    
+	    
+	    /*	printf("1"); fflush(NULL); */
+	    
+	    /* Sanity check.  If this fails, something is wrong with the
+	       redo phase or normal operation. */
+	    assert(e->LSN <= this_lsn);  
+	    
+	    /* printf("1a"); fflush(NULL); */
+	  	  
+	    /* Need to log a clr here. */
+	    
+	    clr_lsn = LogCLR(e);
+	    
+	    /* Undo update is a no-op if the page does not reflect this
+	       update, but it will write the new clr_lsn if necessary.  */
+	    
+	    undoUpdate(e, p, clr_lsn);
+	    
+	    /*	printf("1b"); fflush(NULL); */
+	    releasePage(p);
+	  } else {
+	    // The log entry is not associated with a particular page.
+	    // (Therefore, it must be an idempotent logical log entry.)
+	    clr_lsn = LogCLR(e);
+	    undoUpdate(e, NULL, clr_lsn);
+	  }
 	  break;
 	}
       case CLRLOG:  

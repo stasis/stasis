@@ -78,8 +78,8 @@ terms specified in this license.
 /* #define MAX_BUFFER_SIZE 100003 */
 /*#define MAX_BUFFER_SIZE 20029 */
 /*#define MAX_BUFFER_SIZE 10007 */
-#define MAX_BUFFER_SIZE 5003
-/*#define MAX_BUFFER_SIZE 2003 */
+/*#define MAX_BUFFER_SIZE 5003*/
+#define MAX_BUFFER_SIZE 2003 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 /*#define BUFFER_ASOOCIATIVE 2 */
@@ -120,6 +120,8 @@ terms specified in this license.
 #define OPERATION_UNDO_LINEAR_DELETE 26
 #define OPERATION_SET_RANGE 27
 #define OPERATION_SET_RANGE_INVERSE 28
+#define OPERATION_LINKED_LIST_INSERT 29
+#define OPERATION_LINKED_LIST_REMOVE 30
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 

@@ -111,16 +111,20 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
   recordid rid = e->contents.update.rid;
 #endif
   /*  lsn_t page_lsn = readLSN(e->contents.update.rid.page); */
-  lsn_t page_lsn = pageReadLSN(p);
-  if(e->LSN <= page_lsn) {
+  lsn_t page_lsn = -1;
+  if(p) {
+    page_lsn = pageReadLSN(p);
+  }
+  if(e->LSN <= page_lsn || !p) {
 
     /* Actually execute the undo */
     if(undo == NO_INVERSE) {
       /* Physical undo */
-
+      assert(p);  // Must be provided wiht a page in order to perform a physical undo!
       DEBUG("OPERATION %d Physical undo, %ld {%d %d %ld}\n", undo, e->LSN, e->contents.update.rid.page, e->contents.update.rid.slot, e->contents.update.rid.size);
       writeRecord(e->xid, p, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
     } else if(undo == NO_INVERSE_WHOLE_PAGE) {
+      assert(p);
       DEBUG("OPERATION %d Whole page physical undo, %ld {%d}\n", undo, e->LSN, e->contents.update.rid.page);
       memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
       pageWriteLSN(p, clr_lsn);

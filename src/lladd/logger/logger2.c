@@ -48,6 +48,7 @@ terms specified in this license.
 #include "page.h"
 /*#include <lladd/bufferManager.h>*/
 #include <stdio.h>
+#include <assert.h>
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
   tl.xid = xid;
@@ -91,6 +92,9 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
 
   if(operationsTable[operation].sizeofData == SIZEOF_RECORD) {
     argSize = rid.size;
+  } else if(operationsTable[operation].sizeofData == SIZEIS_PAGEID) {
+    argSize = rid.page;
+ //   printf("argsize (page) %d, %d\n", argSize, sizeof(recordid) * 2 + sizeof(int) * 3);
   } else {
     argSize = operationsTable[operation].sizeofData;
   }
@@ -109,11 +113,6 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
     DEBUG("got preimage");
   }
   
-
-
-
-
-
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   
   writeLogEntry(e); 

@@ -28,8 +28,94 @@
   
 	@file
 */
+static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
+
+typedef struct {
+  recordid list;
+  int keySize;  
+} lladd_linkedListInsert_log;
+typedef struct {
+  recordid list;
+  int keySize;
+  int valueSize;
+} lladd_linkedListRemove_log;
+
+static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+  assert(!p);
+  lladd_linkedListRemove_log * log = (lladd_linkedListRemove_log*)dat;
+  
+  byte * key;
+  byte * value;
+  int keySize, valueSize;
+  
+  keySize = log->keySize;
+  valueSize = log->valueSize;
+  key = (byte*)(log+1);
+  value = ((byte*)(log+1))+keySize;
+  
+//  printf("Operate insert called: rid.page = %d keysize = %d valuesize = %d %d {%d %d %d}\n", rid.page, log->keySize, log->valueSize, *(int*)key, value->page, value->slot, value->size);
+  // Skip writing the undo!  Recovery will write a CLR after we're done, effectively
+  // wrapping this in a nested top action, so we needn't worry about that either.
+  __TlinkedListInsert(xid, log->list, key, keySize, value, valueSize);
+  
+  return 0;
+}
+static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+  assert(!p);
+  lladd_linkedListRemove_log * log = (lladd_linkedListRemove_log*)dat;
+  
+  byte * key;
+  int keySize;
+  
+  keySize = log->keySize;
+  key = (byte*)(log+1);
+  
+//  printf("Operate remove called: %d\n", *(int*)key);
+  // Don't call the version that writes an undo entry!
+  __TlinkedListRemove(xid, log->list, key, keySize);
+  
+  return 0;
+}
+
 int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   int ret = TlinkedListRemove(xid, list, key, keySize);
+
+  lladd_linkedListInsert_log * undoLog = malloc(sizeof(lladd_linkedListInsert_log) + keySize);
+
+  undoLog->list = list;
+  undoLog->keySize = keySize;
+  memcpy(undoLog+1, key, keySize);
+
+  TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT, 
+                    (byte*)undoLog, sizeof(lladd_linkedListInsert_log) + keySize);
+  
+  __TlinkedListInsert(xid, list, key, keySize, value, valueSize);
+
+  TendNestedTopAction(xid);
+  
+  return ret;  
+}
+
+Operation getLinkedListInsert() {
+  Operation o = { 
+    OPERATION_NOOP, 
+    SIZEIS_PAGEID,
+    OPERATION_LINKED_LIST_REMOVE,
+    &operateInsert
+  };
+  return o;
+}
+Operation getLinkedListRemove() {
+  Operation o = { 
+    OPERATION_NOOP, 
+    SIZEIS_PAGEID,
+    OPERATION_LINKED_LIST_INSERT,
+    &operateRemove
+  };
+  return o;
+}
+static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+  //int ret = TlinkedListRemove(xid, list, key, keySize);
   lladd_linkedList_entry * entry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
   Tread(xid, list, entry);
   if(!entry->next.size) {
@@ -51,7 +137,7 @@ int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, con
     free(newEntry);
   }
   free(entry);
-  return ret;
+  //return ret;
 }
 
 int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
@@ -81,7 +167,42 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
   free(entry);
   return -1;
 }
+
+static int __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
+
+
 int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
+  byte * value;
+  int valueSize;
+  int ret = TlinkedListFind(xid, list, key, keySize, &value);
+  if(ret != -1) {
+    valueSize = ret;
+  } else {
+    return 0;
+  }
+  int entrySize = sizeof(lladd_linkedListRemove_log) + keySize + valueSize;
+  lladd_linkedListRemove_log * undoLog = malloc(entrySize);
+
+  undoLog->list = list;
+  undoLog->keySize = keySize;
+  undoLog->valueSize = valueSize;
+  
+  memcpy(undoLog+1, key, keySize);
+  memcpy(((byte*)(undoLog+1))+keySize, value, valueSize);
+ // printf("entry size %d sizeof(remove_log)%d keysize %d valuesize %d sizeof(rid) %d key %d value {%d %d %ld}\n",
+ //       entrySize, sizeof(lladd_linkedListRemove_log), keySize, valueSize, sizeof(recordid), key, value->page, value->slot, value->size);
+  TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_REMOVE, 
+  			(byte*)undoLog, entrySize);
+  free(value);
+  
+  __TlinkedListRemove(xid, list, key, keySize);
+
+  TendNestedTopAction(xid);
+  
+  return 1;  
+}
+
+static int __TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   lladd_linkedList_entry * entry = malloc(list.size);
 
   Tread(xid, list, entry);

@@ -32,5 +32,6 @@ lladd_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keyS
 int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
 recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
 void TlinkedListDelete(int xid, recordid list);
-
+Operation getLinkedListInsert();
+Operation getLinkedListRemove();
 #endif //__LINKED_LIST_NTA_H

@@ -76,6 +76,17 @@ typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d)
    argument passed into the operation.
  */
 #define SIZEOF_RECORD -1
+/** 
+    Logical log entries (such as those used by nested top actions
+    have a null recordid, as they are not assoicated with a specific page
+    
+    If a log entry is not associated with a specific page, the page id can 
+    be overloaded to hold the size of the associated log entry.  Contrast
+    this with the description of SIZEOF_RECORD, which is used when the
+    operation uses a variable length argument, but is associated with 
+    a specfic page.
+*/
+#define SIZEIS_PAGEID -2
 /** If the Operation struct's undo field is set to this value, then
     physical logging is used in lieu of logical logging.
  */

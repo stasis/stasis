@@ -49,7 +49,10 @@ terms specified in this license.
 #include "../page.h"
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  pageWriteLSN(p, lsn);
+  /* If p is null, then this is a logical no-op that spans pages, so do nothing.
+     Otherwise, write the LSN to the appropriate page (to keep recovery happy) 
+     and return  */
+  if(p) pageWriteLSN(p, lsn);
   return 0;
 }
 

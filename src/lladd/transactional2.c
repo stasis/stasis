@@ -67,6 +67,9 @@ void setupOperationsTable() {
 	
 	operationsTable[OPERATION_SET_RANGE] = getSetRange();
 	operationsTable[OPERATION_SET_RANGE_INVERSE] = getSetRangeInverse();
+	
+	operationsTable[OPERATION_LINKED_LIST_INSERT] = getLinkedListInsert();
+	operationsTable[OPERATION_LINKED_LIST_REMOVE] = getLinkedListRemove();
 
 }
 

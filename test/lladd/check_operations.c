@@ -368,7 +368,7 @@ START_TEST(operation_nestedTopAction) {
   *dat = 10;
   Tset(xid, rid1, dat);
   
-  TbeginNestedTopAction(xid);
+  TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
   
   *dat = 20;
   Tset(xid, rid2, dat);
