@@ -4,8 +4,9 @@
 #include <lladd/transactional.h>
 #include <pobj/pobj.h>
 #include "common.h"
-#include "hash.h"
 #include "debug.h"
+#include "hash.h"
+#include "queue.h"
 #include "xmem.h"
 
 
@@ -28,8 +29,8 @@
 
 #define CONVERT_HASH_NBUCKEXP     10
 #define UPDATE_HASH_NBUCKEXP      10
-#define UPDATE_QUEUE_MAX_EXP      10
-#define UPDATE_QUEUE_MAX          (1 << UPDATE_QUEUE_MAX_EXP)
+#define UPDATE_QUEUE_SEG_MAX_EXP  10
+#define UPDATE_QUEUE_SEG_MAX      (1 << UPDATE_QUEUE_SEG_MAX_EXP)
 
 #define TMPBUF_INIT_SIZE          1024
 #define TMPBUF_GROW_FACTOR        2
@@ -119,7 +120,7 @@ static struct repo g_static_repo;
 
 /* Persistent static references fast lookup table. */
 /* TODO: switch to a growable data structure. */
-static struct hash_table *g_static_repo_hash;
+static struct hash *g_static_repo_hash;
 
 
 /* Boot record. */
@@ -220,12 +221,17 @@ pobj_persistify (void *obj)
     if (! g_is_init)
 	return -1;
 
-    if (p->repo_index >= 0)
+    debug_start ();
+
+    if (p->repo_index >= 0) {
+	debug_end ();
 	return 0;  /* already persistent. */
+    }
     pobj_size = POBJ_SIZE (p->size);
 
     if ((xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed");
+	debug_end ();
 	return -1;
     }
 
@@ -239,7 +245,7 @@ pobj_persistify (void *obj)
     if (i == g_pobj_repo_list_max) {
 	debug ("allocating new segment of persistent objects repository...");
 
-	debug (" allocating memory");
+	debug ("allocating memory");
 	tmp_pobj_repo_list = (struct pobj_repo_list *)
 	    XREALLOC (g_pobj_repo_list,
 		      sizeof (struct pobj_repo_list) * (g_pobj_repo.nseg + 1));
@@ -250,13 +256,14 @@ pobj_persistify (void *obj)
 		XMALLOC (sizeof (struct pobj_repo_list_item) * POBJ_REPO_SEG_MAX);
 	}
 	if (! (tmp_pobj_repo_list && g_pobj_repo_list[g_pobj_repo.nseg].list)) {
-	    debug (" error: allocation failed");
+	    debug ("error: allocation failed");
 	    pthread_mutex_unlock (&g_pobj_repo_mutex);
 	    pobj_end ();
+	    debug_end ();
 	    return -1;
 	}
 
-	debug (" initializing new segment list");
+	debug ("initializing new segment list");
 	/* Note: don't care for back pointers in vacant list. */
 	pobj_slot = g_pobj_repo_list[g_pobj_repo.nseg].list;
 	next_index = POBJ_REPO_SEG_MAX * g_pobj_repo.nseg + 1;
@@ -265,21 +272,21 @@ pobj_persistify (void *obj)
 	    pobj_slot++;
 	}
 
-	debug (" allocating new segment record");
+	debug ("allocating new segment record");
 	g_pobj_last_seg.next_seg_rid =
 	    Talloc (xid, sizeof (struct repo_seg));
 	Tset (xid, g_pobj_last_seg_rid, &g_pobj_last_seg);
 	g_pobj_last_seg_rid = g_pobj_last_seg.next_seg_rid;
 	memset (&g_pobj_last_seg, 0, sizeof (struct repo_seg));
 
-	debug (" allocating new segment list record");
+	debug ("allocating new segment list record");
 	g_pobj_last_seg.list_rid =
 	    g_pobj_repo_list[g_pobj_repo.nseg].rid =
 	    TarrayListAlloc (xid, POBJ_REPO_SEG_MAX, 2,
 			     sizeof (struct pobj_repo_list_item));
 	TarrayListExtend (xid, g_pobj_last_seg.list_rid, POBJ_REPO_SEG_MAX);
 
-	debug (" dumping new segment and list to persistent storage");
+	debug ("dumping new segment and list to persistent storage");
 	/* Note: don't write first element as it's being written due to
 	 * update anyway. */
 	Tset (xid, g_pobj_last_seg_rid, &g_pobj_last_seg);
@@ -340,6 +347,7 @@ pobj_persistify (void *obj)
 
     pobj_end ();
     
+    debug_end ();
     return 0;
 }
 
@@ -356,12 +364,17 @@ pobj_unpersistify (void *obj)
     if (! g_is_init)
 	return -1;
 
-    if ((i = p->repo_index) < 0)
+    debug_start ();
+
+    if ((i = p->repo_index) < 0) {
+	debug_end ();
 	return 0;  /* already transient */
+    }
     pobj_slot = POBJ2REPOSLOT (p);
 
     if ((xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed");
+	debug_end ();
 	return -1;
     }
     
@@ -430,6 +443,7 @@ pobj_unpersistify (void *obj)
 
     pobj_end ();
 
+    debug_end ();
     return 0;
 }
 
@@ -452,6 +466,8 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
     if (! g_is_init)
 	return NULL;
 
+    debug_start ();
+
     if (! alloc)
 	alloc = g_memfunc.malloc;
     if (! dealloc)
@@ -462,6 +478,7 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
     p = (struct pobj *) alloc (pobj_size);
     if (! p) {
 	debug ("error: memory allocation failed");
+	debug_end ();
 	return NULL;
     }
     obj = POBJ2OBJ (p);
@@ -483,9 +500,11 @@ pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
     if (persist && pobj_persistify (obj) < 0) {
 	debug ("error: persistification failed");
 	dealloc (p);
+	debug_end ();
        	return NULL;
     }
 
+    debug_end ();
     return obj;
 }
 
@@ -550,12 +569,15 @@ pobj_free_finalize (void *obj, int deallocate, int raw)
     if (! g_is_init)
 	return;
 
+    debug_start ();
+
     if (raw)
 	obj = POBJ2OBJ (p);
 
     /* Destruct persistent image. */
     if (pobj_unpersistify (obj) < 0) {
 	debug ("error: unpersistification failed");
+	debug_end ();
 	return;
     }
 
@@ -564,6 +586,8 @@ pobj_free_finalize (void *obj, int deallocate, int raw)
 	debug ("deallocating memory");
 	g_memfunc.free (p);
     }
+
+    debug_end ();
 }
 
 void
@@ -618,12 +642,15 @@ pobj_ref_type_enforce (void *obj, void *fld, size_t len, int is_ref)
     size_t len_aligned;
     int ret;
 
+    debug_start ();
+
     /* Safety check. */
     /* TODO: is this worthwhile? */
     if ((char *) obj > (char *) fld
 	|| (char *) obj + p->size < (char *) fld + len)
     {
 	debug ("error: field(s) out of object bounds, aborted");
+	debug_end ();
 	return -1;
     }
     
@@ -649,8 +676,10 @@ pobj_ref_type_enforce (void *obj, void *fld, size_t len, int is_ref)
      * of a word bounds) are all checked/updated together. */
     while (nrefs > 0) {
 	if (flags & mask) {
-	    if (! is_ref)
+	    if (! is_ref) {
+		debug_end ();
 		return 1;  /* Flagged but non-ref, mismatch. */
+	    }
 	}
 	else {
 	    if (is_ref) {
@@ -669,6 +698,7 @@ pobj_ref_type_enforce (void *obj, void *fld, size_t len, int is_ref)
 	    mask <<= 1;
     }
 
+    debug_end ();
     return ret;
 }
 #endif /* HAVE_IMPLICIT_TYPES */
@@ -687,22 +717,27 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
     int xid = -1;
     int ret;
 
+    debug_start ();
+
     /* Bound check. */
     /* TODO: is this worthwhile? */
     if ((char *) obj > (char *) fld
 	|| (char *) obj + p->size < (char *) fld + sizeof (void *))
     {
 	debug ("error: field out of object bounds, aborted");
+	debug_end ();
 	return -1;
     }
     if (((unsigned long) fld / WORDSIZE) * WORDSIZE != (unsigned long) fld) {
 	debug ("error: reference field is not aligned, aborted");
+	debug_end ();
 	return -1;
     }
 
     /* Open transaction context (persistent objects only). */
     if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
+	debug_end ();
 	return -1;
     }
 	
@@ -741,6 +776,7 @@ pobj_ref_flag_update (void *obj, void **fld, int set)
 	pobj_end ();
     }
 
+    debug_end ();
     return ret;
 }
 
@@ -769,14 +805,18 @@ pobj_ref_typify (void *obj, int *reflist)
     int xid = -1;
     int count;
 
+    debug_start ();
+
     if (! reflist) {
 	debug ("error: null reference list provided, aborted");
+	debug_end ();
 	return -1;
     }
     
     /* Open transaction context (persistent objects only). */
     if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
+	debug_end ();
 	return -1;
     }
     
@@ -797,7 +837,7 @@ pobj_ref_typify (void *obj, int *reflist)
     while ((ref_offset = *reflist++) >= 0) {
 	count++;
 	ref_offset /= WORDSIZE;
-	debug (" offset=%d", ref_offset);
+	debug ("offset=%d", ref_offset);
 
 	/* Safety check. */
 	if (ref_offset >= p->size) {
@@ -823,6 +863,7 @@ pobj_ref_typify (void *obj, int *reflist)
 	pobj_end ();
     }
 
+    debug_end ();
     return 0;
 }
 
@@ -838,18 +879,22 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 #endif /* HAVE_IMPLICIT_TYPES */
     int xid = -1;
 
+    debug_start ();
+
     /* Safety check. */
     /* TODO: is this worthwhile? */
     if ((char *) obj > (char *) fld
 	|| (char *) obj + p->size < (char *) fld + len)
     {
 	debug ("error: field out of object bounds, aborted");
+	debug_end ();
 	return -1;
     }
 
     /* Open transaction context (persistent objects only). */
     if (p->repo_index >= 0 && (xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
+	debug_end ();
     	return -1;
     }
     
@@ -858,9 +903,11 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 	switch (pobj_ref_type_enforce (obj, fld, len, is_ref)) {
 	case -1:
 	    debug ("error: type check failed");
+	    debug_end ();
 	    return -1;
 	case 1:
 	    debug ("error: type conflict, aborted");
+	    debug_end ();
 	    return -1;
 	case 2:
 	    /* Flags have been adjusted, don't forget to reflect
@@ -891,6 +938,7 @@ pobj_memcpy_memset_typed (void *obj, void *fld, void *data, int c, size_t len,
 	pobj_end ();
     }
 
+    debug_end ();
     return 0;
 }
 
@@ -931,12 +979,16 @@ POBJ_SET_NONREF (pobj_set_double, double)
 int
 pobj_set_ref (void *obj, void *fld, void *ref)
 {
+    debug_start ();
+
     /* Verify alignment. */
     if (((unsigned long) fld / WORDSIZE) * WORDSIZE != (unsigned long) fld) {
 	debug ("error: reference field not aligned, aborted");
+	debug_end ();
 	return -1;
     }
 	
+    debug_end ();
     return pobj_memcpy_memset_typed (obj, fld, &ref, 0, sizeof (ref), 1, 1, 1);
 }
 
@@ -952,6 +1004,8 @@ pobj_update_range (void *obj, void *fld, size_t len)
     if (p->repo_index < 0)
 	return 0;  /* transient mode. */
 
+    debug_start ();
+
     pobj_slot = POBJ2REPOSLOT (p);
 
     /* Safety check (only if len is non-zero). */
@@ -960,11 +1014,13 @@ pobj_update_range (void *obj, void *fld, size_t len)
 		|| (char *) obj + p->size < (char *) fld + len))
     {
 	debug ("error: field out of object bounds, aborted");
+	debug_end ();
 	return -1;
     }
 
     if ((xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
+	debug_end ();
     	return -1;
     }
     
@@ -976,6 +1032,7 @@ pobj_update_range (void *obj, void *fld, size_t len)
 
     pobj_end ();
 
+    debug_end ();
     return 0;
 }
 
@@ -983,9 +1040,8 @@ pobj_update_range (void *obj, void *fld, size_t len)
 int
 pobj_update_recursive (void *obj, int persist)
 {
-    void *pobj_update_queue[UPDATE_QUEUE_MAX];
-    struct hash_table *pobj_update_hash;
-    int q_head, q_tail;
+    struct queue *pobj_update_queue = NULL;
+    struct hash *pobj_update_hash = NULL;
     void *tmp;
     size_t tmp_size = TMPBUF_INIT_SIZE;
     struct pobj *p;
@@ -1001,42 +1057,63 @@ pobj_update_recursive (void *obj, int persist)
     void *next;
     int fresh;
     int ret;
+    int init_ok = 1;
+    char *debug_msg = NULL;
+
+
+    debug_start ();
 
     /* Allocate temporary (growable) buffer. */
-    tmp = XMALLOC (tmp_size);
-    if (! tmp) {
-	debug ("error: allocation of temporary buffer failed");
-	return -1;
+    if (! (tmp = XMALLOC (tmp_size))) {
+	debug_msg = "allocation of temporary buffer failed";
+	init_ok = 0;
     }
 
-    if ((xid = pobj_start ()) < 0) {
-	debug ("error: begin transaction failed, aborted");
-	XFREE (tmp);
-	return -1;
+    /* Initialize recursive update queue / hash table. */
+    if (init_ok && ! (pobj_update_hash = hash_new (UPDATE_HASH_NBUCKEXP))) {
+	debug_msg = "hash allocation failed";
+	init_ok = 0;
     }
-
-    /* Initialize visited objects table. */
-    pobj_update_hash = hash_new (UPDATE_HASH_NBUCKEXP);
+    
+    if (init_ok && ! (pobj_update_queue = queue_new (UPDATE_QUEUE_SEG_MAX))) {
+	debug_msg = "queue allocation failed";
+	init_ok = 0;
+    }
 
     /* Enqueue root object. */
-    pobj_update_queue[0] = obj;
-    q_head = 0;
-    q_tail = 1;
+    if (init_ok && (queue_enq (pobj_update_queue, (unsigned long) obj) < 0)) {
+	debug_msg = "enqueue of root object failed";
+	init_ok = 0;
+    }
+
+    if (init_ok && ((xid = pobj_start ()) < 0)) {
+	debug_msg = "begin transaction failed";
+	init_ok = 0;
+    }
+
+    if (! init_ok) {
+	debug ("error: %s", debug_msg);
+	if (pobj_update_queue)
+	    queue_free (pobj_update_queue);
+	if (pobj_update_hash)
+	    hash_free (pobj_update_hash);
+	if (tmp)
+	    XFREE (tmp);
+	debug_end ();
+	return -1;
+    }
 
     debug ("traversing reachable objects...");
 
     /* Iterate on objects in work queue. */
     processed = 0;
     ret = 0;
-    while (q_head != q_tail) {
-	obj = pobj_update_queue[q_head++];
-	if (q_head == UPDATE_QUEUE_MAX)
-	    q_head = 0;
+    while ((obj = (void *) queue_deq (pobj_update_queue))) {
 	p = OBJ2POBJ (obj);
 	
 	/* Mark visited. */
 	if (hash_insert (pobj_update_hash, OBJ2KEY (obj), 1) < 0) {
-	    debug (" error: hash insertion failed");
+	    debug ("error: hash insertion failed");
 	    ret = -1;
 	    break;
 	}
@@ -1044,17 +1121,17 @@ pobj_update_recursive (void *obj, int persist)
 	/* Persistify / skip object, as necessary. */
 	if (p->repo_index < 0) {
 	    if (persist) {
-		debug (" persistifying %p (%p)", obj, (void *) p);
+		debug ("persistifying %p (%p)", obj, (void *) p);
 
 		if (pobj_persistify (obj) < 0) {
-		    debug (" error: persistification failed");
+		    debug ("error: persistification failed");
 		    ret = -1;
 		    break;
 		}
 		fresh = 1;
 	    }
 	    else {
-		debug (" skipping non-persistent object");
+		debug ("skipping non-persistent object");
 		continue;
 	    }
 	}
@@ -1075,18 +1152,18 @@ pobj_update_recursive (void *obj, int persist)
 		
 		tmp = XMALLOC (tmp_size);
 		if (! tmp) {
-		    debug (" error: allocation of temporary buffer failed");
+		    debug ("error: allocation of temporary buffer failed");
 		    ret = -1;
 		    break;
 		}
 	    }
 	    
-	    debug (" reading persistent image of object %p (%p)", obj, (void *) p);
+	    debug ("reading persistent image of object %p (%p)", obj, (void *) p);
 	    Tread (xid, pobj_slot->rid, tmp);
 	}
 
 	if (fresh || memcmp (p, tmp, POBJ_SIZE (p->size))) {
-	    debug (" processing %p (%p): object changed, updating...",
+	    debug ("processing %p (%p): object changed, updating...",
 		   obj, (void *) p);
 
 	    /* Update persistent image (stale only). */
@@ -1108,11 +1185,12 @@ pobj_update_recursive (void *obj, int persist)
 		    if (next
 			&& ! hash_lookup (pobj_update_hash, OBJ2KEY (next)))
 		    {
-			debug ("  enqueuing %p (%p)", next, (void *) OBJ2POBJ (next));
-
-			pobj_update_queue[q_tail++] = next;
-			if (q_tail == UPDATE_QUEUE_MAX)
-			    q_tail = 0;
+			debug ("enqueuing %p (%p)", next, (void *) OBJ2POBJ (next));
+			if (queue_enq (pobj_update_queue, (unsigned long) next) < 0) {
+			    debug ("enqueue failed");
+			    ret = -1;
+			    break;
+			}
 			enqueued++;
 		    }
 		}
@@ -1142,10 +1220,15 @@ pobj_update_recursive (void *obj, int persist)
 		}
 	    }
 
-	    debug (" ...done (%d enqueued)", enqueued);
+	    if (ret < 0) {
+		debug ("...interrupted");
+		break;
+	    }
+
+	    debug ("...done (%d enqueued)", enqueued);
 	}
 	else
-	    debug (" processing %p (%p): object unchanged", obj, (void *) p);
+	    debug ("processing %p (%p): object unchanged", obj, (void *) p);
     }
 
     pobj_end ();
@@ -1155,10 +1238,12 @@ pobj_update_recursive (void *obj, int persist)
     else
 	debug ("...done");
 
+    queue_free (pobj_update_queue);
     hash_free (pobj_update_hash);
     if (tmp)
 	XFREE (tmp);
 
+    debug_end ();
     return ret;
 }
 
@@ -1174,13 +1259,16 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
     struct static_repo_list_item *static_slot;
     struct static_repo_list *tmp_static_repo_list;
 
+    debug_start ();
+
     if ((xid = pobj_start ()) < 0) {
 	debug ("error: begin transaction failed, aborted");
+	debug_end ();
 	return -1;
     }
     
     /* Don't use given object pointer, read static pointer instead
-     * (this implies the "update" behavior). */
+     * (this implies the "update"behavior). */
     if (! is_set)
 	obj = *static_ptr;
 
@@ -1202,7 +1290,7 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 	if (i == g_static_repo_list_max) {
 	    debug ("allocating new segment of static references repository...");
 	    
-	    debug (" allocating memory");
+	    debug ("allocating memory");
 	    tmp_static_repo_list = (struct static_repo_list *)
 		XREALLOC (g_static_repo_list,
 			  sizeof (struct static_repo_list) * (g_static_repo.nseg + 1));
@@ -1213,13 +1301,14 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 		    XMALLOC (sizeof (struct static_repo_list_item) * STATIC_REPO_SEG_MAX);
 	    }
 	    if (! (tmp_static_repo_list && g_static_repo_list[g_static_repo.nseg].list)) {
-		debug (" error: allocation failed");
+		debug ("error: allocation failed");
 		pthread_mutex_unlock (&g_static_repo_mutex);
 		pobj_end ();
+		debug_end ();
 		return -1;
 	    }
 
-	    debug (" initializing new segment list");
+	    debug ("initializing new segment list");
 	    /* Note: don't care for back pointers in vacant list. */
 	    static_slot = g_static_repo_list[g_static_repo.nseg].list;
 	    next_index = STATIC_REPO_SEG_MAX * g_static_repo.nseg + 1;
@@ -1228,21 +1317,21 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 		static_slot++;
 	    }
 
-	    debug (" allocating new segment record");
+	    debug ("allocating new segment record");
 	    g_static_last_seg.next_seg_rid =
 		Talloc (xid, sizeof (struct repo_seg));
 	    Tset (xid, g_static_last_seg_rid, &g_static_last_seg);
 	    g_static_last_seg_rid = g_static_last_seg.next_seg_rid;
 	    memset (&g_static_last_seg, 0, sizeof (struct repo_seg));
 
-	    debug (" allocating new segment list record");
+	    debug ("allocating new segment list record");
 	    g_static_last_seg.list_rid =
 		g_static_repo_list[g_static_repo.nseg].rid =
 		TarrayListAlloc (xid, STATIC_REPO_SEG_MAX, 2,
 				 sizeof (struct static_repo_list_item));
 	    TarrayListExtend (xid, g_static_last_seg.list_rid, STATIC_REPO_SEG_MAX);
 
-	    debug (" dumping new segment and list to persistent storage");
+	    debug ("dumping new segment and list to persistent storage");
 	    /* Note: don't write first element as it's written due to update
 	     * anyway. */
 	    Tset (xid, g_static_last_seg_rid, &g_static_last_seg);
@@ -1265,11 +1354,12 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 
 	/* Insert index to fast lookup table.
 	 * Note: we use a hard-coded offset of 1, to distinguish 0 lookup
-	 * return value for "no element found" value. */
+	 * return value for "no element found"value. */
 	if (hash_insert (g_static_repo_hash, OBJ2KEY (static_ptr), i + 1) < 0) {
-	    debug (" error: hash insertion failed");
+	    debug ("error: hash insertion failed");
 	    pthread_mutex_unlock (&g_static_repo_mutex);
 	    pobj_end ();
+	    debug_end ();
 	    return -1;
 	}
 
@@ -1314,6 +1404,7 @@ pobj_static_set_update_ref (void *static_tmp_ptr, void *obj, int is_set)
 
     pobj_end ();
 
+    debug_end ();
     return 0;
 }
 
@@ -1333,11 +1424,13 @@ pobj_static_update_ref (void *static_tmp_ptr)
 
 static void
 pobj_restore (void *objid, size_t size, recordid *rid,
-	      struct hash_table *pobj_convert_hash, int xid)
+	      struct hash *pobj_convert_hash, int xid)
 {
     struct pobj *p;
     void *obj;
     
+    debug_start ();
+
     debug ("restoring objid=%p size=%d (%d) rid={%d,%d,%ld}",
 	   objid, size, POBJ_SIZE (size), rid->page, rid->slot, rid->size);
 
@@ -1355,10 +1448,12 @@ pobj_restore (void *objid, size_t size, recordid *rid,
 
     /* Insert old/new objid pair to conversion table. */
     hash_insert (pobj_convert_hash, OBJ2KEY (objid), (unsigned long) obj);
+
+    debug_end ();
 }
 
 static void *
-pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
+pobj_adjust (void *old_objid, struct hash *pobj_convert_hash, int xid)
 {
     void *new_objid;
     struct pobj *p;
@@ -1374,6 +1469,8 @@ pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
     recordid tmp_rid;
     struct pobj_repo_list_item *pobj_slot;
     
+    debug_start ();
+
     new_objid =	(void *) hash_lookup (pobj_convert_hash, OBJ2KEY (old_objid));
     debug ("adjusting objid at object's repository entry: %p->%p",
 	   old_objid, new_objid);
@@ -1405,7 +1502,7 @@ pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
 	if (flags & mask) {
 	    newref = (void *) hash_lookup (pobj_convert_hash, OBJ2KEY (*ref));
 
-	    debug (" offset %d: %p->%p",
+	    debug ("offset %d: %p->%p",
 		   (char *) ref - (char *) new_objid,
 		   *ref, newref);
 
@@ -1445,6 +1542,7 @@ pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
     /* TODO: use delta updates, via set_range method -- is that beneficial? */
     Tset (xid, pobj_slot->rid, p);
 
+    debug_end ();
     return new_objid;
 }
 
@@ -1454,7 +1552,7 @@ pobj_adjust (void *old_objid, struct hash_table *pobj_convert_hash, int xid)
 static int
 pobj_boot_restore (int xid)
 {
-    struct hash_table *pobj_convert_hash;
+    struct hash *pobj_convert_hash;
     recordid tmp_rid;
     void *new_objid;
     int i = 0, j;
@@ -1464,6 +1562,8 @@ pobj_boot_restore (int xid)
     struct static_repo_list_item *static_slot;
 
 
+    debug_start ();
+
     debug ("reading boot record");
     Tread (xid, g_boot_rid, &g_boot);
 
@@ -1472,10 +1572,10 @@ pobj_boot_restore (int xid)
      */
     debug ("restoring persistent object repository...");
 
-    debug (" restoring repository control block");
+    debug ("restoring repository control block");
     Tread (xid, g_boot.pobj_repo_rid, &g_pobj_repo);
     
-    debug (" allocating memory for %d segments", g_pobj_repo.nseg);
+    debug ("allocating memory for %d segments", g_pobj_repo.nseg);
     g_pobj_repo_list = (struct pobj_repo_list *)
 	XMALLOC (sizeof (struct pobj_repo_list) * g_pobj_repo.nseg);
     if (g_pobj_repo_list)
@@ -1486,16 +1586,17 @@ pobj_boot_restore (int xid)
 		break;
 	}
     if (! (g_pobj_repo_list && i == g_pobj_repo.nseg)) {
-	debug (" error: allocation failed");
+	debug ("error: allocation failed");
 	if (g_pobj_repo_list) {
 	    while (i-- > 0)
 		XFREE (g_pobj_repo_list[i].list);
 	    XFREE (g_pobj_repo_list);
 	}
+	debug_end ();
 	return -1;
     }
 
-    debug (" reading list segments...");
+    debug ("reading list segments...");
     g_pobj_last_seg_rid = g_pobj_repo.first_seg_rid;
     g_pobj_repo_list_max = 0;
     for (i = 0; i < g_pobj_repo.nseg; i++) {
@@ -1513,7 +1614,7 @@ pobj_boot_restore (int xid)
 	if (g_pobj_last_seg.next_seg_rid.size > 0)
 	    g_pobj_last_seg_rid = g_pobj_last_seg.next_seg_rid;
     }
-    debug (" ...done (%d segments read)", i);
+    debug ("...done (%d segments read)", i);
     
     debug ("...done");
     
@@ -1536,10 +1637,10 @@ pobj_boot_restore (int xid)
      */
     debug ("restoring static references repository...");
     
-    debug (" restoring repository control block");
+    debug ("restoring repository control block");
     Tread (xid, g_boot.static_repo_rid, &g_static_repo);
 
-    debug (" allocating memory for %d segments", g_static_repo.nseg);
+    debug ("allocating memory for %d segments", g_static_repo.nseg);
     g_static_repo_list = (struct static_repo_list *)
 	XMALLOC (sizeof (struct static_repo_list) * g_static_repo.nseg);
     if (g_static_repo_list)
@@ -1550,16 +1651,17 @@ pobj_boot_restore (int xid)
 		break;
 	}
     if (! (g_static_repo_list && i == g_static_repo.nseg)) {
-	debug (" error: allocation failed");
+	debug ("error: allocation failed");
 	if (g_static_repo_list) {
 	    while (i-- > 0)
 		XFREE (g_static_repo_list[i].list);
 	    XFREE (g_static_repo_list);
 	}
+	debug_end ();
 	return -1;
     }
 
-    debug (" reading list segments...");
+    debug ("reading list segments...");
     g_static_last_seg_rid = g_static_repo.first_seg_rid;
     g_static_repo_list_max = 0;
     for (i = 0; i < g_static_repo.nseg; i++) {
@@ -1577,7 +1679,7 @@ pobj_boot_restore (int xid)
 	if (g_static_last_seg.next_seg_rid.size > 0)
 	    g_static_last_seg_rid = g_static_last_seg.next_seg_rid;
     }
-    debug (" ...done (%d segments read)", i);
+    debug ("...done (%d segments read)", i);
     
     debug ("...done");
 
@@ -1604,7 +1706,7 @@ pobj_boot_restore (int xid)
 	new_objid = (void *) hash_lookup (pobj_convert_hash,
 					  OBJ2KEY (static_slot->objid));
 	
-	debug (" adjusting %p: %p->%p",
+	debug ("adjusting %p: %p->%p",
 	       (void *) static_slot->static_ptr, static_slot->objid, new_objid);
 	*static_slot->static_ptr = new_objid;
 	static_slot->objid = new_objid;
@@ -1622,6 +1724,7 @@ pobj_boot_restore (int xid)
     debug ("...done (%d tied)", changed);
 
     hash_free (pobj_convert_hash);
+    debug_end ();
     return 0;
 }
 
@@ -1634,25 +1737,28 @@ pobj_boot_init (int xid)
     struct pobj_repo_list_item *pobj_slot;
     struct static_repo_list_item *static_slot;
 
+    debug_start ();
+
     /*
      * Create a single-segment persistent object repository.
      */
     debug ("creating persistent object repository...");
 
-    debug (" allocating memory");
+    debug ("allocating memory");
     g_pobj_repo_list = (struct pobj_repo_list *)
 	XMALLOC (sizeof (struct pobj_repo_list));
     if (g_pobj_repo_list)
 	g_pobj_repo_list[0].list = (struct pobj_repo_list_item *)
 	    XMALLOC (sizeof (struct pobj_repo_list_item) * POBJ_REPO_SEG_MAX);
     if (! (g_pobj_repo_list && g_pobj_repo_list[0].list)) {
-	debug (" error: allocation failed");
+	debug ("error: allocation failed");
 	if (g_pobj_repo_list)
 	    XFREE (g_pobj_repo_list);
+	debug_end ();
 	return -1;
     }
 
-    debug (" initializing in-memory single-segment object list");
+    debug ("initializing in-memory single-segment object list");
     /* Note: don't care for back pointers in vacant list. */
     pobj_slot = g_pobj_repo_list[0].list;
     next_index = 1;
@@ -1662,17 +1768,17 @@ pobj_boot_init (int xid)
     }
     g_pobj_repo_list_max = POBJ_REPO_SEG_MAX;
 
-    debug (" allocating first segment record");
+    debug ("allocating first segment record");
     g_pobj_last_seg_rid = Talloc (xid, sizeof (struct repo_seg));
     memset (&g_pobj_last_seg, 0, sizeof (struct repo_seg));
 
-    debug (" allocating first segment object list record");
+    debug ("allocating first segment object list record");
     g_pobj_last_seg.list_rid = g_pobj_repo_list[0].rid =
 	TarrayListAlloc (xid, POBJ_REPO_SEG_MAX, 2,
 			 sizeof (struct pobj_repo_list_item));
     TarrayListExtend (xid, g_pobj_last_seg.list_rid, POBJ_REPO_SEG_MAX);
 
-    debug (" dumping first segment and object list");
+    debug ("dumping first segment and object list");
     Tset (xid, g_pobj_last_seg_rid, &g_pobj_last_seg);
     tmp_rid.page = g_pobj_last_seg.list_rid.page;
     tmp_rid.size = sizeof (struct pobj_repo_list_item);
@@ -1681,7 +1787,7 @@ pobj_boot_init (int xid)
 	Tset (xid, tmp_rid, g_pobj_repo_list[0].list + i);
     }
 
-    debug (" initializing repository control block");
+    debug ("initializing repository control block");
     g_pobj_repo.first_seg_rid = g_pobj_last_seg_rid;
     g_pobj_repo.nseg = 1;
     g_pobj_repo.vacant_head = 0;
@@ -1696,20 +1802,21 @@ pobj_boot_init (int xid)
      */
     debug ("creating static reference repository...");
 
-    debug (" allocating memory");
+    debug ("allocating memory");
     g_static_repo_list = (struct static_repo_list *)
 	XMALLOC (sizeof (struct static_repo_list));
     if (g_static_repo_list)
 	g_static_repo_list[0].list = (struct static_repo_list_item *)
 	    XMALLOC (sizeof (struct static_repo_list_item) * STATIC_REPO_SEG_MAX);
     if (! (g_static_repo_list && g_static_repo_list[0].list)) {
-	debug (" error: allocation failed");
+	debug ("error: allocation failed");
 	if (g_static_repo_list)
 	    XFREE (g_static_repo_list);
+	debug_end ();
 	return -1;
     }
 
-    debug (" initializing in-memory single-segment static reference list");
+    debug ("initializing in-memory single-segment static reference list");
     /* Note: don't care for back pointers in vacant list. */
     static_slot = g_static_repo_list[0].list;
     next_index = 1;
@@ -1719,17 +1826,17 @@ pobj_boot_init (int xid)
     }
     g_static_repo_list_max = STATIC_REPO_SEG_MAX;
 
-    debug (" allocating first segment record");
+    debug ("allocating first segment record");
     g_static_last_seg_rid = Talloc (xid, sizeof (struct repo_seg));
     memset (&g_static_last_seg, 0, sizeof (struct repo_seg));
 
-    debug (" allocating first segment static list record");
+    debug ("allocating first segment static list record");
     g_static_last_seg.list_rid = g_static_repo_list[0].rid =
 	TarrayListAlloc (xid, STATIC_REPO_SEG_MAX, 2,
 			 sizeof (struct static_repo_list_item));
     TarrayListExtend (xid, g_static_last_seg.list_rid, STATIC_REPO_SEG_MAX);
 
-    debug (" dumping first segment and static list");
+    debug ("dumping first segment and static list");
     Tset (xid, g_static_last_seg_rid, &g_static_last_seg);
     tmp_rid.page = g_static_last_seg.list_rid.page;
     tmp_rid.size = sizeof (struct static_repo_list_item);
@@ -1738,7 +1845,7 @@ pobj_boot_init (int xid)
 	Tset (xid, tmp_rid, g_static_repo_list[0].list + i);
     }
 
-    debug (" initializing repository control block");
+    debug ("initializing repository control block");
     g_static_repo.first_seg_rid = g_static_last_seg_rid;
     g_static_repo.nseg = 1;
     g_static_repo.vacant_head = 0;
@@ -1755,6 +1862,7 @@ pobj_boot_init (int xid)
     Tset (xid, g_boot_rid, &g_boot);
     debug ("...done");
 
+    debug_end ();
     return 0;
 }
 
@@ -1768,6 +1876,8 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
     int ret;
     int lock_ret = 0;
 
+    debug_start ();
+
     debug ("locking");
     if ((lock_ret = pthread_mutex_trylock (&g_pobj_repo_mutex))
 	|| pthread_mutex_trylock (&g_static_repo_mutex))
@@ -1775,6 +1885,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	debug ("error: cannot lock repositories for construction");
 	if (lock_ret == 0)
 	    pthread_mutex_unlock (&g_pobj_repo_mutex);
+	debug_end ();
 	return -1;
     }
     
@@ -1782,6 +1893,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	debug ("error: already initialized");
 	pthread_mutex_unlock (&g_pobj_repo_mutex);
 	pthread_mutex_unlock (&g_static_repo_mutex);
+	debug_end ();
 	return -1;
     }
 
@@ -1814,6 +1926,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	debug ("begin transaction failed, aborted");
 	pthread_mutex_unlock (&g_pobj_repo_mutex);
 	pthread_mutex_unlock (&g_static_repo_mutex);
+	debug_end ();
 	return -1;
     }
 
@@ -1844,6 +1957,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 	Tabort (xid);
 	pthread_mutex_unlock (&g_pobj_repo_mutex);
 	pthread_mutex_unlock (&g_static_repo_mutex);
+	debug_end ();
 	return -1;
     }
 
@@ -1861,6 +1975,7 @@ pobj_init (struct pobj_memfunc *ext_memfunc, struct pobj_memfunc *int_memfunc)
 
     debug ("init complete");
 
+    debug_end ();
     return ret;
 }
 
@@ -1870,6 +1985,8 @@ pobj_shutdown (void)
 {
     int lock_ret;
 
+    debug_start ();
+
     debug ("locking");
     if ((lock_ret = pthread_mutex_trylock (&g_pobj_repo_mutex))
 	|| pthread_mutex_trylock (&g_static_repo_mutex))
@@ -1877,6 +1994,7 @@ pobj_shutdown (void)
 	debug ("error: cannot lock repositories for destruction");
 	if (lock_ret == 0)
 	    pthread_mutex_unlock (&g_pobj_repo_mutex);
+	debug_end ();
 	return -1;
     }
 
@@ -1884,6 +2002,7 @@ pobj_shutdown (void)
 	debug ("error: already shutdown");
 	pthread_mutex_unlock (&g_pobj_repo_mutex);
 	pthread_mutex_unlock (&g_static_repo_mutex);
+	debug_end ();
 	return -1;
     }
     
@@ -1897,5 +2016,6 @@ pobj_shutdown (void)
 
     debug ("shutdown complete");
 
+    debug_end ();
     return 0;
 }

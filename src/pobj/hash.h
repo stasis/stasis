@@ -1,13 +1,13 @@
 #ifndef __HASH_H
 #define __HASH_H
 
-struct hash_table;
+struct hash;
 
-struct hash_table *hash_new (int);
-void hash_free (struct hash_table *);
-unsigned long hash_lookup (struct hash_table *, unsigned long);
-int hash_insert (struct hash_table *, unsigned long, unsigned long);
-unsigned long hash_delete (struct hash_table *, unsigned long);
+struct hash *hash_new (int);
+void hash_free (struct hash *);
+unsigned long hash_lookup (struct hash *, unsigned long);
+int hash_insert (struct hash *, unsigned long, unsigned long);
+unsigned long hash_delete (struct hash *, unsigned long);
 
 #endif /* __HASH_H */
 

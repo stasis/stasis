@@ -9,21 +9,21 @@ struct hash_item {
     unsigned long val;
 };
 
-struct hash_table {
+struct hash {
     int bucket_max;
     unsigned long bucket_mask;
     struct hash_item **table;
 };
 
 
-struct hash_table *
+struct hash *
 hash_new (int nbuckexp)
 {
     int bucket_max = (int) ((unsigned long) 1 << nbuckexp);
     unsigned long bucket_mask = (unsigned long) bucket_max - 1;
-    struct hash_table *h;
+    struct hash *h;
 
-    h = (struct hash_table *) XMALLOC (sizeof (struct hash_table));
+    h = (struct hash *) XMALLOC (sizeof (struct hash));
     if (h)
 	h->table =
 	    (struct hash_item **) XMALLOC (sizeof (struct hash_item *) * bucket_max);
@@ -41,7 +41,7 @@ hash_new (int nbuckexp)
 }
 
 void
-hash_free (struct hash_table *h)
+hash_free (struct hash *h)
 {
     int bucket_max = h->bucket_max;
     struct hash_item *bucket, *next;
@@ -58,12 +58,14 @@ hash_free (struct hash_table *h)
 }
 
 unsigned long
-hash_lookup (struct hash_table *h, unsigned long key)
+hash_lookup (struct hash *h, unsigned long key)
 {
     unsigned long bucket_mask = h->bucket_mask;
     int bucket_index = (int) (key & bucket_mask);
     struct hash_item *bucket;
     unsigned long val;
+
+    debug_start ();
 
     debug ("tracing bucket %d for key %lu (%p)",
 	   bucket_index, key, (void *) key);
@@ -73,24 +75,29 @@ hash_lookup (struct hash_table *h, unsigned long key)
 	    val = bucket->val;
 	    debug ("found %lu->%lu (%p->%p)",
 		   key, val, (void *) key, (void *) val);
+	    debug_end ();
 	    return val;
 	}
 
     debug ("not found");
 
+    debug_end ();
     return 0;
 }
 
 int
-hash_insert (struct hash_table *h, unsigned long key, unsigned long val)
+hash_insert (struct hash *h, unsigned long key, unsigned long val)
 {
     unsigned long bucket_mask = h->bucket_mask;
     int bucket_index = (int) (key & bucket_mask);
     struct hash_item *new;
 
+    debug_start ();
+
     new = (struct hash_item *) XMALLOC (sizeof (struct hash_item));
     if (! new) {
 	debug ("allocation failed");
+	debug_end ();
 	return -1;
     }
 
@@ -102,17 +109,19 @@ hash_insert (struct hash_table *h, unsigned long key, unsigned long val)
     new->next = h->table[bucket_index];
     h->table[bucket_index] = new;
 
+    debug_end ();
     return 0;
 }
 
 unsigned long
-hash_delete (struct hash_table *h, unsigned long key)
+hash_delete (struct hash *h, unsigned long key)
 {
     unsigned long bucket_mask = h->bucket_mask;
     int bucket_index = (int) (key & bucket_mask);
     struct hash_item *bucket, *prev;
     unsigned long val;
 
+    debug_start ();
     debug ("tracing bucket %d for key %lu (%p)",
 	   bucket_index, key, (void *) key);
 
@@ -129,10 +138,12 @@ hash_delete (struct hash_table *h, unsigned long key)
 		h->table[bucket_index] = bucket->next;
 
 	    XFREE (bucket);
+	    debug_end ();
 	    return val;
 	}
 
     debug ("not found");
 
+    debug_end ();
     return 0;
 }
