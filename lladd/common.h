@@ -44,6 +44,8 @@ terms specified in this license.
  *
  * A standard header file, adopted from Autobook. 
  *
+ * http://sources.redhat.com/autobook/
+ *
  * The idea behind this file is twofold.  First, we want to keep as
  * much of the #ifdef portability nonsense in here as possible.
  * Second, we allow users to #include headers that in turn #include
@@ -51,10 +53,8 @@ terms specified in this license.
  * the right thing' and build, even though they do not #include the
  * config.h file that all of the LLADD stuff uses.
  *
- * @todo: Need to make sure everyone actually includes this thing, and
- * also includes constants.h
- *
- * @ingroup LLADD_CORE
+ * @todo Need to make sure every .c file actually includes this thing, and
+ * also includes constants.h, and that no .h files include config.h
  *
  * $Id$
  */

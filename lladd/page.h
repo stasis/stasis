@@ -43,7 +43,7 @@ terms specified in this license.
 /**
  * @file
  *
- * interface for dealing with pages
+ * interface for dealing with slotted pages
  *
  * @ingroup LLADD_CORE
  * $Id$

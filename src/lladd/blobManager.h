@@ -7,8 +7,14 @@ BEGIN_C_DECLS
 
 /**    
        @file
-       blobManager - Provides blob handling 
+       blobManager - Provides blob handling.
+ 
        Plan for modularity: Exactly one blob manager per storeFile.
+       Alternatively, we could use the bufferManager's record length
+       field to allow for more than one blob manager per buffer
+       manager.  (Right now, this field is set to a special value for
+       blobs; thie could be extended for other types of records.)
+
        Blob manager interacts with page manger via page manager's
        public api.
 

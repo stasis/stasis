@@ -55,8 +55,13 @@ BEGIN_C_DECLS
 
    @todo Was getting some memory over-runs from the fact that I didn't
    know the exact length of a raw log entry.  This seems to be fixed
-   now.  (Need to run through electric fence / determine the 'right
-   way' to do this...)
+   now. 
+   
+   @todo Is there a better way to deal with sizeof() and log entries?
+   
+   @ingroup LLADD_CORE
+   
+   $Id$
 */
 
 typedef struct {

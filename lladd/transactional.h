@@ -45,7 +45,13 @@ terms specified in this license.
  *
  * The minimal subset of LLADD necessary to implement transactional consistency.
  *
- * This module includes the standard API (excluding operations), the logger, the buffer mananger, and recovery code.
+ * This module includes the standard API (excluding operations), the
+ * logger, the buffer mananger, and recovery code.
+ *
+ * In theory, the other .h files that are installed in /usr/include
+ * aren't needed for application developers.
+ *
+ * @todo Move as much of the stuff in lladd/ to src/lladd/ as possible.
  *
  */
 /**

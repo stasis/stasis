@@ -20,6 +20,8 @@
    result in poor performance when the bucket size is large, and
    transactions are short.
 
+   @ingroup OPERATIONS
+
    $Id$
 
 */

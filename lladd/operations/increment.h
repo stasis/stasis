@@ -50,6 +50,8 @@ terms specified in this license.
  *
  * @see decrement.h
  *
+ * @ingroup OPERATIONS
+ *
  * $Id$
  */ 
 
