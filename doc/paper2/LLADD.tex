@@ -2012,21 +2012,20 @@ array of integers of length one greater than their outdegree. The
 extra int is used to hold information about the node.  (In our case,
 it is simply a set to a constant value by a graph traversal.)
 
-We implement a ``naive'' graph traversal algorithm that uses depth
-first search to find all nodes that are reachable from node zero.
+We implement a ``naive'' graph traversal algorithm that uses depth-first search to find all nodes that are reachable from node zero.
 This algorithm (predictably) consumes a large amount of memory, as
-nothing stops it from placing the entire graph upon its stack.  
+nothing stops it from placing the entire graph on its stack.  
 
 For the purposes of this section, which focuses on page access
 locality, we ignore the amount of memory utilization used to store
 stacks and worklists, as they can vary greatly from application to
 application, but we note that the memory utilization of the simple
-depth first search algorithm is certainly no better than the algorithm
+depth-first search algorithm is certainly no better than the algorithm
 presented in the next section.
 
 Also, for simplicity, we do not apply any of the optimizations in
 Section~\ref{OASYS}.  This allows our performance comparison to
-cleanly measure the the optimization presented here.
+ measure only the optimization presented here.
 
 \subsection {Request Reordering for Locality}
 
@@ -2035,80 +2034,80 @@ graph is too large to fit into memory, basic graph operations such as
 edge traversal become very expensive, which makes many algorithms over
 these structures intractible in practice.  In this section, we
 describe how \yad's primatives provide a natural way to introduce
-physical locality into a sequence of such requests.  These primatives
-are general and support a wide class of optimizations which we discuss
-before presenting benchmarking results for a sample graph traversal
-algorithm.
+physical locality into a sequence of such requests.  These primitives
+are general and support a wide class of optimizations, which we discuss
+before presenting an evaluation.
 
-\yad's wrapper functions translate high level (logical) application
+\yad's wrapper functions translate high-level (logical) application
 requests into lower level (physiological) log entries.  These
 physiological log entries generally include a logical undo,
-(Section~\ref{nested-top-actions}) which simply invokes the logical
+(Section~\ref{nested-top-actions}) that invokes the logical
 inverse of the application request.  Since the logical inverse of most
 application request is another application request, we can {\em reuse} our
 logging format and wrapper functions to implement a purely logical log.
 
 \begin{figure}
 \includegraphics[width=1\columnwidth]{graph-traversal.pdf}
-\caption{\label{fig:multiplexor} Multiplexer...}
+\caption{\sf\label{fig:multiplexor} Because pages are independent, we can reorder requests among different pages. Using a log demultiplexer, we can partition requests into indepedent queues that can then be handled in any order, which can improve locality and simplify log merging.}
 \end{figure}
 
-For our graph traversal algorithm we use a {\em log multiplexer} to
-route entries from a single log into many sub-logs according to the
-page that each entry refers to.  This is easy to do with the Array
-List reperesentation that we chose for our graph, since Array List
-provides a publicly accessible function that maps from array offset to
-a $(page, slot, size)$ triple.
+For our graph traversal algorithm we use a {\em log demultiplexer},
+shown in Figure~\ref{fig:multiplexor} to route entries from a single
+log into many sub-logs according to page number.  This is easy to do
+with the Array List representation that we chose for our graph, since
+it provides a function that maps from
+array index to a $(page, slot, size)$ triple.
 
 The logical log allows us to insert log entries that are independent
-of the phyisical location of the data they refer to.  However, we are
+of the physical location of their data.  However, we are
 interested in exploiting the commutivity of the graph traversal
 operation, and saving the logical offset would not provide us with any
-obvious benefit.  Therefore, we place physical node addresses into the
-in-memory log.
+obvious benefit.  Therefore, we place use page numbers for partitioning.
 
 We considered a number of multiplexing policies and present two
 particularly interesting ones here.  The first divides the page file
-up into equally sized contiguous regions.  The second takes the hash
-of the page's offset in the file.  The second policy is interesting
-because it reduces the effect of locality (or lack thereof) between
-the pages that store the graph, while the first better exploits any
-locality intrinsic to the graph's layout on disk.
+up into equally sized contiguous regions, which enables locality.  The second takes the hash
+of the page's offset in the file, which enables load balancing.
+%  The second policy is interesting
+%because it reduces the effect of locality (or lack thereof) between
+%the pages that store the graph, while the first better exploits any
+%locality intrinsic to the graph's layout on disk.
 
 Requests are continuously consumed by a process that empties each of
 the multiplexer's output queues one at a time.  Instead of following
 graph edges immediately, the targets of edges leaving each node are
 simply pushed into the multiplexer's input queue.  The number of
 multiplexer output queues is chosen so that each queue addresses a
-subset of the page file that can fit into cache.  Therefore, if the
-queue contains enough entries then its locality set will be swapped
-in, allowing requests to be serviced from cache.  When the
+subset of the page file that can fit into cache, ensuring locality.  When the
 multiplexer's queues contain no more entries, the traversal is
 complete.  
 
 Although this algorithm may seem complex, it is essentially just a
-queue based breadth first search implementations, except that the 
-queue reorders requests in a way that attempts to establish and 
-maintain disk locality.
+queue-based breadth-first search implementation, except that the queue
+reorders requests in a way that attempts to establish and maintain
+disk locality.  This kind of log manipulation is very powerful, and
+could also be used for parallelism with load balancing (using a hash
+of the page number) and log-merging optimizations
+(e.g. LRVM~\cite{LRVM}),
 
-\rcs{ This belongs in future work....}
+%% \rcs{ This belongs in future work....}
 
-The purely logical log has some interesting properties.  It can be
-{\em page file independent} as all information expresed within it is
-expressed in application terms instead of in terms of internal
-representations.  This means the log entry could be sent over the
-network and applied on a different system, providing a simple
-generalization of log based replication schemes.
+%% The purely logical log has some interesting properties.  It can be
+%% {\em page file independent} as all information expresed within it is
+%% expressed in application terms instead of in terms of internal
+%% representations.  This means the log entry could be sent over the
+%% network and applied on a different system, providing a simple
+%% generalization of log based replication schemes.
 
-While in transit, various transformations could be applied.  LRVM's
-log merging optimizations~\cite{LRVM} are one such possibility.
-Replication and partitioning schemes are another possibility.  If a
-lock manager is not in use and a consistent order is imposed upon
-requests,\footnote{and we assume all failures are recoverable or
-masked with redundancy} then we can remove replicas' ability to
-unilaterally abort transactions, allowing requests to commit as they
-propagate through the network, but before actually being applied to
-page files.
+%% While in transit, various transformations could be applied.  LRVM's
+%% log merging optimizations~\cite{LRVM} are one such possibility.
+%% Replication and partitioning schemes are another possibility.  If a
+%% lock manager is not in use and a consistent order is imposed upon
+%% requests,\footnote{and we assume all failures are recoverable or
+%% masked with redundancy} then we can remove replicas' ability to
+%% unilaterally abort transactions, allowing requests to commit as they
+%% propagate through the network, but before actually being applied to
+%% page files.
 
 %However, most of \yad's current functionality focuses upon the single
 %node case, so we decided to choose a single node optimization for this
@@ -2119,7 +2118,7 @@ page files.
 
 \subsection {Performance Evaluation}
 
-We loosly base the graphs for this test on the graphs used by the oo7
+We loosely base the graphs for this test on the graphs used by the oo7
 benchmark~\cite{oo7}.  For the test, we hardcode the outdegree of
 graph nodes to 3, 6 and 9 and use a directed graph.  The oo7 benchmark
 constructs graphs by first connecting nodes together into a ring.  It
@@ -2140,7 +2139,7 @@ of the nodes that are closest to it in ring order.  The remaining
 nodes are in the cold set.  We use random edges instead of ring edges
 for this test.  Figure~\ref{hotGraph} suggests that request reordering 
 only helps when the graph has poor locality.  This makes sense, as a 
-depth first search of a graph with good locality will also have good 
+depth-first search of a graph with good locality will also have good 
 locality.  Therefore, processing a request via the queue-based multiplexer 
 is more expensive then making a recursive function call.
 
