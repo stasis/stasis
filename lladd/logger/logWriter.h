@@ -109,6 +109,41 @@ void syncLog();
 lsn_t flushedLSN();
 
 /**
+   Truncates the log file.  In the single-threaded case, this works as
+   follows:
+
+   First, the LSN passed to this function, minus sizeof(lsn_t) is
+   written to a new file, called logfile.txt~.  (If logfile.txt~
+   already exists, then it is truncated.)
+
+   Next, the contents of the log, starting with the LSN passed into
+   this function are copied to logfile.txt~
+
+   Finally, logfile.txt~ is moved on top of logfile.txt
+
+   As long as the move system call is atomic, this function should
+   maintain the system's durability.
+
+   The multithreaded case is a bit more complicated, as we need
+   to deal with latching:
+
+   With no lock, copy the log.  Upon completion, if the log has grown,
+   then copy the part that remains.  Next, obtain a read/write latch
+   on the logfile, and copy any remaining portions of the log.
+   Perform the move, and release the latch.
+
+*/
+
+int truncateLog(lsn_t);
+
+
+/** 
+    @return The LSN of the first entry in the log file.  (If the file
+    is empty, this returns the LSN of the log entry that would be
+    created if writeLogEntry were called.)
+*/
+lsn_t firstLogEntry();
+/**
   Close the log stream
 */
 void closeLogWriter();

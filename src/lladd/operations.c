@@ -13,7 +13,7 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+                                                                                                                                 
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
@@ -45,13 +45,13 @@ terms specified in this license.
 #include <lladd/bufferManager.h>
 #include <assert.h>
 
-Operation operationsTable[MAX_OPERATIONS];  
+Operation operationsTable[MAX_OPERATIONS];
 
 void doUpdate(const LogEntry * e) {
 
   DEBUG("OPERATION update arg length %d, lsn = %ld\n", e->contents.update.argSize, e->LSN);
 
-  operationsTable[e->contents.update.funcID].run(e->xid, e->LSN, e->contents.update.rid, getUpdateArgs(e));  
+  operationsTable[e->contents.update.funcID].run(e->xid, e->LSN, e->contents.update.rid, getUpdateArgs(e));
 }
 
 void redoUpdate(const LogEntry * e) {
@@ -68,7 +68,7 @@ void redoUpdate(const LogEntry * e) {
     }
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
-#ifdef DEBUGGING    
+#ifdef DEBUGGING
     recordid rid = f->contents.update.rid;
 #endif
     /* See if the page contains the result of the undo that this CLR is supposed to perform. If it
@@ -100,8 +100,8 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
 
     /* Actually execute the undo */
     if(undo == NO_INVERSE) {
-      /* Physical undo */ 
-      
+      /* Physical undo */
+
       DEBUG("OPERATION Physical undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
       /** @todo Why were we passing in RECOVERY_XID? */
       writeRecord(e->xid, clr_lsn, e->contents.update.rid, getUpdatePreImage(e));
@@ -109,7 +109,7 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
       /* @see doUpdate() */
       /*      printf("Logical undo"); fflush(NULL); */
       DEBUG("OPERATION Logical undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
-      operationsTable[undo].run(e->xid, clr_lsn, e->contents.update.rid, getUpdateArgs(e));  
+      operationsTable[undo].run(e->xid, clr_lsn, e->contents.update.rid, getUpdateArgs(e));
     }
   } else {
     DEBUG("OPERATION Skipping undo, %ld {%d %d %d}\n", e->LSN, rid.page, rid.slot, rid.size);
@@ -119,7 +119,7 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
 	 simply update the page lsn to the new clr lsn.  (This is no longer true)* /
       writeLSN(clr_lsn, e->contents.update.rid.page);
       } */
-    
+
   }
   /*  printf("Undo done."); fflush(NULL); */
 

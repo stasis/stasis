@@ -59,6 +59,7 @@ terms specified in this license.
 /*#define DEBUG 1*/
 
 #define LOG_FILE "logfile.txt"
+#define LOG_FILE_SCRATCH "logfile.txt~"
 #define STORE_FILE "storefile.txt"
 #define BLOB0_FILE "blob0_file.txt"
 #define BLOB1_FILE "blob1_file.txt"

@@ -54,7 +54,10 @@ static void set_offsets(LogHandle * h, LogEntry * e, lsn_t lastRead);
 /*-------------------------------------------------------*/
 
 LogHandle getLogHandle() {
-  return getGuardedHandle(sizeof(lsn_t), NULL, NULL);
+
+  lsn_t lsn = firstLogEntry();
+
+  return getGuardedHandle(lsn, NULL, NULL);
 }
 
 LogHandle getLSNHandle(lsn_t lsn) {

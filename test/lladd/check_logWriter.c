@@ -47,6 +47,8 @@ terms specified in this license.
 #include <lladd/logger/logHandle.h>
 #include <lladd/transactional.h>
 
+#include "../check_includes.h"
+
 #define LOG_NAME   "check_logWriter.log"
 
 static void setup_log() {
@@ -167,6 +169,66 @@ START_TEST(logHandleColdReverseIterator) {
 }
 END_TEST
 
+/** 
+    @test
+
+    Build a simple log, truncate it, and then test the logWriter routines against it.
+*/
+START_TEST(logWriterTruncate) {
+  LogEntry * le;
+  LogEntry * le2;
+  LogEntry * le3 = NULL;
+  LogEntry * tmp;
+
+  LogHandle lh = getLogHandle();
+  int i = 0;
+  setup_log();
+
+  while(i < 234) {
+    i++;
+    le = nextInLog(&lh);
+  }
+ 
+  le2 = nextInLog(&lh);
+  i = 0;
+  while(i < 23) {
+    i++;
+    le3 = nextInLog(&lh);
+  }
+  
+
+  truncateLog(le->LSN);
+  
+  tmp = readLSNEntry(le->LSN);
+
+  fail_unless(NULL != tmp, NULL);
+  fail_unless(tmp->LSN == le->LSN, NULL);
+  
+  tmp = readLSNEntry(le2->LSN);
+
+  fail_unless(NULL != tmp, NULL);
+  fail_unless(tmp->LSN == le2->LSN, NULL);
+
+  tmp = readLSNEntry(le3->LSN);
+
+  fail_unless(NULL != tmp, NULL);
+  fail_unless(tmp->LSN == le3->LSN, NULL);
+
+
+  lh = getLogHandle();
+  
+  i = 0;
+
+  while((le = nextInLog(&lh))) {
+    i++;
+  }
+
+
+  fail_unless(i == (3000 - 234 + 1), NULL);
+  
+
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
   /* Begin a new test */
@@ -176,8 +238,12 @@ Suite * check_suite(void) {
 
   tcase_add_test(tc, logWriterTest);
   tcase_add_test(tc, logHandleColdReverseIterator);
+  tcase_add_test(tc, logWriterTruncate);
 
   /* --------------------------------------------- */
+  
+  tcase_add_checked_fixture(tc, setup, teardown);
+
 
   suite_add_tcase(s, tc);
   return s;

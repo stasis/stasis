@@ -43,7 +43,7 @@ terms specified in this license.
 #include <lladd/logger/logHandle.h>
 #include <assert.h>
 #include <config.h>
-
+#include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
 /** 
@@ -71,10 +71,14 @@ static lsn_t nextAvailableLSN = 0;
 static int writeLogEntryIsReady = 0;
 static lsn_t maxLSNEncountered = sizeof(lsn_t);
 
+static lsn_t global_offset;
 
 
+/** 
+    @todo Put myFseek, myFwrite in their own file, and make a header for it... */
 
-
+void myFwrite(const void * dat, size_t size, FILE * f);
+long myFseek(FILE * f, long offset, int whence);
 int openLogWriter() {
   log = fopen(LOG_FILE, "a+");
   if (log==NULL) {
@@ -110,6 +114,12 @@ int openLogWriter() {
       assert(0);
       return FILE_WRITE_OPEN_ERROR;
     }
+    global_offset = 0;
+  } else {
+    int count;
+    myFseek(log, 0, SEEK_SET);
+    count = fread(&global_offset, sizeof(lsn_t), 1, log);
+    assert(count == 1);
   }
 
   return 0;
@@ -130,7 +140,7 @@ int openLogWriter() {
     the highest LSN that we've seen so far.  (If writeLogEntry has not
     been called yet.)
 
-    The first time writeLogEntry is called, we seek from the highest
+    The first time writeLogEntry is called, we seekfrom the highest
     LSN encountered so far to the end of the log.
     
 */
@@ -142,13 +152,20 @@ int writeLogEntry(LogEntry * e) {
     e->LSN = -1;
     return 0;
   }
-
+  
   if(!writeLogEntryIsReady) {
-    LogHandle lh = getLSNHandle(maxLSNEncountered);
+    LogHandle lh;
     LogEntry * le;
+    
+    assert(maxLSNEncountered >= sizeof(lsn_t));
+
+    lh = getLSNHandle(maxLSNEncountered);
+
+    nextAvailableLSN = maxLSNEncountered;
 
     while((le = nextInLog(&lh))) {
-      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);
+      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(size_t);;
+      free(le);
     }
     writeLogEntryIsReady = 1;
   }
@@ -156,9 +173,21 @@ int writeLogEntry(LogEntry * e) {
 
 
   /* Set the log entry's LSN. */
+
+#ifdef DEBUGGING
   fseek(log, 0, SEEK_END);
   e->LSN = ftell(log);
- 
+  if(nextAvailableLSN != e->LSN) {
+    assert(nextAvailableLSN <= e->LSN);
+    DEBUG("Detected log truncation:  nextAvailableLSN = %ld, but log length is %ld.\n", (long)nextAvailableLSN, e->LSN);
+  }
+#endif
+
+  e->LSN = nextAvailableLSN;
+  fseek(log, nextAvailableLSN - global_offset, SEEK_SET); 
+      
+  nextAvailableLSN += (size + sizeof(size_t));
+
   /* Print out the size of this log entry.  (not including this item.) */
   nmemb = fwrite(&size, sizeof(size_t), 1, log);
 
@@ -272,8 +301,93 @@ LogEntry * readLSNEntry(lsn_t LSN) {
     }
   }
 
-  fseek(log, LSN, SEEK_SET);
+  fseek(log, LSN - global_offset, SEEK_SET);
   ret = readLogEntry();
 
   return ret;
+}
+
+int truncateLog(lsn_t LSN) {
+  FILE *tmpLog = fopen(LOG_FILE_SCRATCH, "w+");  /* w+ = truncate, and open for writing. */
+
+  LogEntry * le;
+  LogHandle lh;
+
+  long size;
+
+  int count;
+
+
+  if (tmpLog==NULL) {
+    assert(0);
+    /*there was an error opening this file */
+    perror("logTruncate() couldn't create scratch log file!");
+    return FILE_WRITE_OPEN_ERROR;
+  }
+
+  /* Need to write LSN - sizeof(lsn_t) to make room for the offset in
+     the file.  If we truncate to lsn 10, we'll put lsn 10 in position
+     4, so the file offset is 6. */
+  LSN -= sizeof(lsn_t);  
+
+  DEBUG("Truncate(%ld) new file offset = %ld\n", LSN + sizeof(lsn_t), LSN);
+
+  myFwrite(&LSN, sizeof(lsn_t), tmpLog);
+  
+  LSN += sizeof(lsn_t);
+  
+  lh = getLSNHandle(LSN);
+  
+  while((le = nextInLog(&lh))) {
+    size = sizeofLogEntry(le);
+    myFwrite(&size, sizeof(lsn_t), tmpLog);
+    myFwrite(le, size, tmpLog);
+    free (le);
+  } 
+  
+  fflush(tmpLog);
+#ifdef HAVE_FDATASYNC
+  fdatasync(fileno(tmpLog));
+#else
+  fsync(fileno(tmpLog));
+#endif
+
+  fclose(log);  /* closeLogWriter calls sync, but we don't need to. :) */
+  fclose(tmpLog); 
+ 
+  if(rename(LOG_FILE_SCRATCH, LOG_FILE)) {
+    perror("Log truncation failed!");
+    abort();
+  }
+
+
+  log = fopen(LOG_FILE, "a+");
+  if (log==NULL) {
+    abort();
+    /*there was an error opening this file */
+    return FILE_WRITE_OPEN_ERROR;
+  }
+
+  myFseek(log, 0, SEEK_SET);
+  count = fread(&global_offset, sizeof(lsn_t), 1, log);
+  assert(count == 1);
+
+
+  return 0;
+
+}
+
+lsn_t firstLogEntry() {
+  return global_offset + sizeof(lsn_t);
+}
+
+void myFwrite(const void * dat, size_t size, FILE * f) {
+  int nmemb = fwrite(dat, size, 1, f);
+  /* test */
+  if(nmemb != 1) {
+    perror("myFwrite");
+    abort();
+    /*    return FILE_WRITE_OPEN_ERROR; */
+  }
+  
 }
