@@ -1517,7 +1517,7 @@ traversal over lists that have good locality.  This optimization would
 not be possible if it were not for the low-level interfaces provided
 by the buffer manager.  In particular, we need to control space
 allocation, and be able to read and write multiple records with a
-single call to pin/unpin.  Due to this data structure's nice locality
+single call to pin and unpin.  Due to this data structure's nice locality
 properties and good performance for short lists, it can also be used
 on its own.
 
@@ -1838,7 +1838,7 @@ There may even be a third copy of this data resident in the filesystem
 buffer cache, accesses to which incur latency of both system call overhead and
 the unmarshalling cost.
 
-To maximize performance we want to maximize the size of the in-memory object cache.
+To maximize performance, we want to maximize the size of the in-memory object cache.
 However, naively constraining the size of the data store's buffer pool
 causes performance degradation. Most transactional layers 
 (including ARIES) must read a page
@@ -1894,9 +1894,8 @@ the log instead of writing the entire object during an update.
 The second optimization is a bit more sophisticated, but still easy to
 implement in \yad.  This optimization allows us to drastically limit
 the size of the
-\yad buffer cache, yet still achieve good performance.
-We do not believe that it would be possible to
-achieve using existing relational database systems or with Berkeley DB.  
+\yad buffer cache, and still achieve good performance.
+We do not believe that existing relational database systems or Berkeley DB could support this optimization.
 
 The basic idea of this optimization is to postpone expensive
 operations that update the page file for frequently modified objects,
@@ -1919,7 +1918,7 @@ modifications will incur relatively inexpensive log additions,
 and are only coalesced into a single modification to the page file
 when the object is flushed.
 
-\yad provides a several options  to handle UNDO records in the context
+\yad provides several options  to handle UNDO records in the context
 of object serialization. The first is to use a single transaction for
 each object modification, avoiding the cost of generating or logging
 any UNDO records. The second option is to assume that the
@@ -1950,7 +1949,7 @@ Recall that the version of the LSN on the page implies that all
 updates {\em up to} and including the page LSN have been applied.
 Nothing stops our current scheme from breaking this invariant.  
 
-This where we use the versioned-record page layout. This layout adds a
+This is where we use the versioned-record page layout. This layout adds a
 ``record sequence number'' (RSN) for each record, which subsumes the
 page LSN.  Instead of the invariant that the page LSN implies that all
 earlier {\em page} updates have been applied, we enforce that all
