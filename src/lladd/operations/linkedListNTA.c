@@ -106,10 +106,10 @@ compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, reco
 }
 
 compensated_function int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
-  int ret;
-  try_ret(compensation_error()) {
+  int ret = 0;
+  /*  try_ret(compensation_error()) {
     ret = TlinkedListRemove(xid, list, key, keySize);
-  } end_ret(compensation_error());
+    } end_ret(compensation_error()); */
   
   lladd_linkedListInsert_log * undoLog = malloc(sizeof(lladd_linkedListInsert_log) + keySize);
 

@@ -29,12 +29,13 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     Tread(xid, list, &header);
     recordid headerRid = list;
 
-    byte * garbage;
-    ret = (TpagedListFind(xid, list, key, keySize, &garbage) != -1);
+    /* byte * garbage;
+       ret = (TpagedListFind(xid, list, key, keySize, &garbage) != -1);
     if(ret) {
       free(garbage);
       TpagedListRemove(xid, list, key, keySize);
-    }
+      } */
+    ret = 0;
     int entrySize = sizeof(pagedListEntry) + keySize + valueSize;
     
     recordid rid = TallocFromPage(xid, headerRid.page, entrySize);

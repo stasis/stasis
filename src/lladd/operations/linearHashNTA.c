@@ -223,7 +223,8 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
       
       //    int before = TpagedListSpansPages(xid, bucketList);
 
-      ret = TpagedListInsert(xid, bucketList, key, keySize, value, valueSize);
+      ret = TpagedListRemove(xid, bucketList, key, keySize);
+      TpagedListInsert(xid, bucketList, key, keySize, value, valueSize);
       
       //    int after = TpagedListSpansPages(xid, bucketList);
       //    if(before != after) {  // Page overflowed...
@@ -233,7 +234,8 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
 
     } else {
       assert(lhh.keySize == keySize); assert(lhh.valueSize == valueSize);
-      ret = TlinkedListInsert(xid, bucket, key, keySize, value, valueSize);
+      ret = TlinkedListRemove(xid, bucket, key, keySize);
+      TlinkedListInsert(xid, bucket, key, keySize, value, valueSize);
     }
     if(ret) { lhh.numEntries--; }
     Tset(xid, hashHeader, &lhh);
