@@ -42,7 +42,9 @@ terms specified in this license.
 
 /**
  * @file 
- * function definitions for increment
+ *
+ * sample logical operation that increments the contents of a record
+ * by one.  The record should contain a 32-bit integer.
  *
  * Increment provides an example of a logical operation that does not
  * require any extra logging information, and (could someday) support
@@ -58,8 +60,6 @@ terms specified in this license.
 
 #ifndef __INCREMENT_H__
 #define __INCREMENT_H__
-
-#include <lladd/operations.h>
 
 #define Tincrement(xid,rid) Tupdate(xid,rid,0, OPERATION_INCREMENT)
 

@@ -42,7 +42,8 @@ terms specified in this license.
 /**
  * @file
  *
- * function definitions for set
+ * Methods that change the contents of a record.  An entire record can
+ * be updated at once, or portions of the record can be updated.
  *
  * @ingroup OPERATIONS
  *
@@ -53,8 +54,12 @@ terms specified in this license.
 #ifndef __SET_H__
 #define __SET_H__
 
-#include <lladd/operations.h>
-
+/**
+    Changes the value of a record.
+    @param xid the transaction id
+    @param rid the recordid of the record to be changed.
+    @param dat the new value of the record.
+*/ 
 #define Tset(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_SET)
 
 Operation getSet();
@@ -62,8 +67,12 @@ Operation getSet();
 Operation getSetRangeInverse();
 Operation getSetRange();
 /**
-  @todo TsetRange is slow as implemented; although it is efficient with log 
-  space, it performs a number of extra memcpy() calls over the entire record.
+
+  Change an interval of bytes within a record.
+
+  @todo TsetRange could be faster.  Although it uses log space
+  efficiently, it performs a number of extra memcpy() calls over the
+  entire record.
 */
 void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
 

@@ -1,3 +1,25 @@
+/** 
+    @file
+
+    A reliable hashtable implementation.  The implementation makes
+    use of nested top actions, and is reentrant.  Currently, all keys
+    and values must be of the same length, although this restriction
+    will eventually be removed.
+
+    The implementation uses a linear hash function, allowing the
+    bucket list to be resized dynamically.  Because the bucket list is
+    built on top of arrayList, all operations are O(1), assuming the
+    hash function behaves correctly.  Currently, linkedListNTA
+    implements the bucket lists.
+
+    @see nestedTopAction.h, linkedListNTA.h, arrayList.h
+
+    @ingroup OPERATIONS
+
+    $id$
+
+*/
+
 #ifndef __LINEAR_HASH_NTA_H
 #define __LINEAR_HASH_NTA_H
 
@@ -9,8 +31,6 @@ typedef struct {
   int valueSize;
   lladd_linkedList_iterator * it;
 } lladd_hash_iterator;
-
-/** Implementation of a linear hash table that makes use of nested top actions. */
 
 recordid ThashCreate(int xid, int keySize, int valSize);
 void ThashDelete(int xid, recordid hash);

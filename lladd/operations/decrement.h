@@ -42,7 +42,8 @@ terms specified in this license.
 /**
  * @file
  *
- * function definitions for decrement
+ * sample logical operation that decrements a the contents of a record
+ * by one.  The record should contain a 32-bit integer.
  *
  * @ingroup OPERATIONS
  * 
@@ -53,8 +54,6 @@ terms specified in this license.
 
 #ifndef __DECREMENT_H__
 #define __DECREMENT_H__
-
-#include <lladd/operations.h>
 
 #define Tdecrement(xid,rid) Tupdate(xid,rid,0, OPERATION_DECREMENT)
 

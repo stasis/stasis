@@ -1,16 +1,21 @@
-#include <lladd/operations.h>
-
-#ifndef __LINEAR_HASH_H
-#define __LINEAR_HASH_H
 
 /**
    @file 
+
+   Experimental (unreliable) hashtable implementation.
+
+   Instead of using Nested top actions, this hashtable implementation
+   uses carefully ordered redo-operations, and simple recovery code.
+   This reduces the amount of information written to the log, but
+   provides concurrency comparable to that provided by linearHashNTA.
 
    @ingroup OPERATIONS
 
    $Id$
 */
 
+#ifndef __LINEAR_HASH_H
+#define __LINEAR_HASH_H
 
 
 recordid ThashInstantAlloc(int xid, int keySize, int valSize) ;

@@ -42,15 +42,16 @@ terms specified in this license.
 
 /**
  * @file 
- * function definitions for increment
  *
- * Increment provides an example of a logical operation that does not
- * require any extra logging information, and (could someday) support
- * reordering.
+ * Provides raw access to entire pages.
  *
- * @see decrement.h
+ * LLADD's pages are PAGE_SIZE bytes long.  Currently, two integers are 
+ * reserved for the LSN and the page type. providing PAGE_SIZE-8 bytes 
+ * of usable space.
  *
  * @ingroup OPERATIONS
+ *
+ * @see page.h
  *
  * $Id$
  */ 
@@ -58,8 +59,6 @@ terms specified in this license.
 
 #ifndef __PAGE_OPERATIONS_H__
 #define __PAGE_OPERATIONS_H__
-
-#include <lladd/operations.h>
 
 /** If defined, then pageOperations.h will reuse freed pages.
     Unfortunately, the current support is not safe for programs with

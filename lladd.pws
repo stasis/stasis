@@ -11,7 +11,7 @@ filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
 [filenumbers]
-0=1
+0=22
 1=1
 2=12
 3=2
@@ -78,8 +78,6 @@ filter.dir.ignore.hidden=0
 3=0:9
 4=0:10
 5=0:11
-6=0:11:4
-7=0:11:5
 
 [executer args]
 0=check_linearHash

@@ -42,7 +42,9 @@ terms specified in this license.
 /**
  * @file
  *
- * function definitions for set
+ * sets the contents of the record without producing an undo log
+ * entry; effectively, the set operation 'commits' instantly.
+ * However, the log is not flushed to disk by this operation.
  *
  * @ingroup OPERATIONS
  *
@@ -52,8 +54,6 @@ terms specified in this license.
 
 #ifndef __INSTANT_SET_H__
 #define __INSTANT_SET_H__
-
-#include <lladd/operations.h>
 
 #define TinstantSet(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_INSTANT_SET)
 

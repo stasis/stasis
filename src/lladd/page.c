@@ -304,7 +304,7 @@ void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
   }
   assert(rid.page == p->id); 
 }
-/** @TODO getRecordType is a hack.  Instead, each record type should
+/** @todo getRecordType is a hack.  Instead, each record type should
     implement code that decides whether a record exists, and returns its size
     or -1.  Then, getRecordType coudl call that function directly depending on 
 	  page type, etc.

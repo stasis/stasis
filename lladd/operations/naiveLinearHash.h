@@ -1,15 +1,18 @@
-#include <lladd/operations.h>
-
-#ifndef __NAIVE_LINEAR_HASH_H
-#define __NAIVE_LINEAR_HASH_H
-
 /**
    @file 
+
+   A non-reentrant, experimental hashtable implementation.  This hash
+   implementation provides the base of linearHash.h, and probably
+   is only of interest to LLADD's developers.
 
    @ingroup OPERATIONS
 
    $Id$
 */
+
+#ifndef __NAIVE_LINEAR_HASH_H
+#define __NAIVE_LINEAR_HASH_H
+
 
 
 recordid ThashAlloc(int xid, int keySize, int valSize) ;

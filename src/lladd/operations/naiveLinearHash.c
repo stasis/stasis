@@ -1,4 +1,4 @@
-#include <lladd/operations/linearHash.h>
+#include <lladd/operations.h>
 #include <lladd/hash.h>
 #include <limits.h>
 #include <assert.h>

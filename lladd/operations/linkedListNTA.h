@@ -1,3 +1,17 @@
+/**
+   @file 
+
+   Implements a linked list using nested top actions.  Linked list
+   entries are key, value pairs, where the keys and values are of
+   fixed length.
+
+   @see nestedTopAction.h
+
+   @ingroup OPERATIONS
+
+   $id$
+*/
+
 #ifndef __LINKED_LIST_NTA_H
 #define __LINKED_LIST_NTA_H
 typedef struct {

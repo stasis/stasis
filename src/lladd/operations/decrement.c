@@ -45,8 +45,7 @@ terms specified in this license.
  * Decrements the given reference by one
  *********************************************/
 
-#include <lladd/operations/decrement.h>
-/*#include <lladd/bufferManager.h>*/
+#include <lladd/operations.h>
 #include "../page.h"
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid r, const void *d) {

@@ -254,19 +254,36 @@ lsn_t pageReadLSN(const Page * page);
  * lsn of a page must always increase.  Undos are handled by passing
  * in the LSN of the CLR that records the undo.)
  *
- * @param rid recordid where you want to write @param dat data you
- * wish to write
+ * @param page a pointer to an in-memory copy of the page as it
+ * currently exists.  This copy will be updated by writeRecord.
+ *
+ * @param rid recordid where you want to write 
+ *
+ * @param dat the new value of the record.
+ *
  */
 void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+/**
+ *  The same as writeRecord, but does not obtain a latch on the page.
+ */
 void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
  * @param xid transaction ID
+ * @param rid the record to be written
  * @param dat buffer for data
  */
 void readRecord(int xid, Page * page, recordid rid, void *dat);
+/**
+ *  The same as readRecord, but does not obtain a latch.
+ */
 void readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
-
+/**
+   Should be called when transaction xid commits.
+*/
 void pageCommit(int xid);
+/**
+   Should be called when transaction xid aborts.
+*/
 void pageAbort(int xid);
 
 Page* pageMalloc();
@@ -279,8 +296,13 @@ void  pageRealloc(Page * p, int id);
     offset of the page in the file, divided by the page size.
 */
 /*int pageAlloc() ;*/
-
+/**
+   obtains the type of the record pointed to by rid.  
+*/
 int getRecordType(int xid, Page * p, recordid rid);
+/**
+   same as getRecordType(), but does not obtain a lock.
+*/
 int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
 
 END_C_DECLS

@@ -42,7 +42,8 @@ terms specified in this license.
 /**
  * @file
  *
- * function definitions for set
+ * A logical operation that does nothing.  Mainly useful when
+ * undo-only or redo-only log entries should be generated.
  *
  * @ingroup OPERATIONS
  *
@@ -52,8 +53,6 @@ terms specified in this license.
 
 #ifndef __NOOP_H__
 #define __NOOP_H__
-
-#include <lladd/operations.h>
 
 Operation getNoop();
 

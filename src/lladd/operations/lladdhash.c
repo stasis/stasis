@@ -1,8 +1,7 @@
 #include <config.h>
 #include <lladd/common.h>
 
-#include <lladd/operations/lladdhash.h>
-#include <lladd/operations/pageOperations.h>
+#include <lladd/operations.h>
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 

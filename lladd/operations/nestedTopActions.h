@@ -42,13 +42,10 @@ terms specified in this license.
 
 /**
  * @file 
- * function definitions for increment
- *
- * Increment provides an example of a logical operation that does not
- * require any extra logging information, and (could someday) support
- * reordering.
- *
- * @see decrement.h
+ * 
+ * Nested top actions provide atomic updates to multiple pages within
+ * a single transaction.  LLADD's nested top actions may be nested
+ * within each other.
  *
  * @ingroup OPERATIONS
  *
@@ -59,7 +56,6 @@ terms specified in this license.
 #ifndef __NESTED_TOP_ACTIONS_H__
 #define __NESTED_TOP_ACTIONS_H__
 
-#include <lladd/operations.h>
 void initNestedTopActions();
 void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments, int log_arguments_length);
 lsn_t TendNestedTopAction(int xid, void * handle);

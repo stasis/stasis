@@ -40,8 +40,11 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**
- * @file
- * Prepare pseudo-operation
+ * @file 
+ *
+ * Prepare a transaction to commit so that it will persist
+ * across system crashes.  After recovery, the transaction will be in 
+ * the same state it was in when Tprepare() was called.
  *
  * Tprepare() uses the operation interface to abstract away log handling.
  * It would be nice if the logger API could be simplified by having
@@ -74,8 +77,7 @@ terms specified in this license.
 #ifndef __PREPARE_H__
 #define __PREPARE_H__
 
-#include <lladd/operations.h>
-#include <lladd/logger/logEntry.h>
+//#include <lladd/logger/logEntry.h>
 
 extern recordid prepare_bogus_rec;
 /** 
@@ -88,7 +90,7 @@ extern recordid prepare_bogus_rec;
 
     @param xid Transaction id.
     @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
-    @param dat unused.
+
 */
 #define Tprepare(xid, rec) Tupdate(xid, rec, 0, OPERATION_PREPARE)
 

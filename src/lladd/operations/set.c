@@ -45,8 +45,7 @@ terms specified in this license.
  * sets the given reference to dat
  **********************************************/
 
-#include <lladd/operations/set.h>
-/*#include <lladd/bufferManager.h>*/
+#include <lladd/operations.h>
 #include "../page.h"
 #include <string.h>
 #include <assert.h>

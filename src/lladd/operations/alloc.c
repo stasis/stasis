@@ -1,7 +1,7 @@
 #include <config.h>
 #include <lladd/common.h>
 
-#include <lladd/operations/alloc.h>
+#include <lladd/operations.h>
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
 #include "../blobManager.h"

@@ -10,6 +10,11 @@
 /**
    @file
 
+   Do not use this hashtable.  Instead, use the one provided by
+   linearHashNTA.h
+
+   @deprecated This hash implementation is fundamentally flawed.
+
    A persistant hash, based on logical operations.
 
    lladdhash:  /yad-hash/ n.  LLADD's hash table, based on logical operations.
@@ -25,8 +30,6 @@
    $Id$
 
 */
-
-#include <lladd/operations.h>
 
 #ifndef __LLADDHASH_H__
 #define __LLADDHASH_H__

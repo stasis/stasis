@@ -45,8 +45,7 @@ terms specified in this license.
  * sets the given reference to dat
  **********************************************/
 
-#include <lladd/operations/instantSet.h>
-#include <lladd/operations/set.h>
+#include <lladd/operations.h>
 #include "../page.h"
 #include "../page/fixed.h"
 
