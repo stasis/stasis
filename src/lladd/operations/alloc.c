@@ -26,6 +26,49 @@
    too big of a deal, but it should be fixed someday.  A more serious
    problem results from crashes during blob allocation.
 
+   @todo The entire allocaction system needs to be redone.  
+
+   Here are some requirements for the next version of alloc:
+
+   Space Reuse: There are many ways to implement this.  One method
+   (that I'm not particularly attached to) is to maintain seperate
+   linked lists for each type of page, seperated by an estimate of the
+   amount of space free (actually 'un-reserved'; see below) on the
+   page.  Allocation would move pages between linked lists, and search
+   in the appropriate linked list before expanding the page file.
+    
+   Treserve: Hashtables, linked lists, and other graph-like structures
+   can be optimized by exploiting physical locality.  A call such as
+   this allows page-level locality to be established / maintained:
+
+   int page = Treserve(int xid, int size)
+
+   This would tell Talloc to treat the page as though 'size' bytes had
+   already been reserved.  The 'free space' that Talloc() reasons
+   about would be: max(reservedSpace, usedSpace).  A seperate call,
+   TallocFromPage(xid, page, size) already exists, and should ignore
+   the presence of the 'reserved space' field.
+
+   Track level locality is another problem that Talloc should address, 
+   especially for the blob implementation.
+
+   Better support for locking.  Consider this sequence of events:
+
+   recordid rid1 = Talloc(xid1, 1);
+   recordid rid2 = Talloc(xid2, 1);  // May deadlock if page level  
+                                     // locking is used.
+
+   The lock manager needs a 'try lock' operation that allows
+   transactions to attempt to read multiple pages.  When the current
+   lock manager returns "LLADD_DEADLOCK", it pretends the lock request
+   never happened (ie; it's externally visible state is left unchanged
+   by the call), effectively providing 'try lock' by default.  Talloc
+   should make use of this by trying to alloc from a different page
+   whenever deadlock is encountered.  Better, the system should
+   provide a list of 'cold' pages that are in memory, but haven't been
+   accessed recently.  This requires integration with the page reuse
+   policy.
+
    @ingroup OPERATIONS
 
    $Id$
