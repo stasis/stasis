@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "pobj.h"
-#include "common.h"
+#include <pobj/pobj.h>
 
 
 struct item {

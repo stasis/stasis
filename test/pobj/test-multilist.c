@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "pobj.h"
-#include "common.h"
+#include <pobj/pobj.h>
 
 #define MAX_MSG_SIZE 128
 
