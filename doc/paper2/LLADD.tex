@@ -1483,7 +1483,7 @@ record.
 %We then calculate the $(page,slot)$ offset within that region.  
 
 
-\subsection{Bucket Overflow}
+\subsection{Bucket List}
 
 %\eab{don't get this section, and it sounds really complicated, which is counterproductive at this point  -- Is this better now? -- Rusty}
 %
@@ -1831,7 +1831,7 @@ application servers.
 
 However, one drawback of many such schemes is that any update requires
 a full serialization of the entire object. In some application
-scenarios, this can be extremely inefficient, as it may be the case
+scenarios this can be extremely inefficient as it may be the case
 that only a single field from a large complex object has been
 modified.
 
@@ -1842,12 +1842,13 @@ The backing store also
 maintains a separate in-memory buffer pool with the serialized versions of
 some objects, as a cache of the on-disk data representation.
 Accesses to objects that are only present in the serialized buffers
-pool incur medium latency, as they must be unmarshalled (deserialized)
+pool incur significant latency, as they must be unmarshalled (deserialized)
 before the application may access them.  
 There may even be a third copy of this data resident in the filesystem 
 buffer cache, accesses to which incur latency of both system call overhead and
 the unmarshalling cost.
 
+To maximize performance we want to maximize the size of the in-memory object cache.
 However, naively constraining the size of the data store's buffer pool
 causes performance degradation. Most transactional layers 
 (including ARIES) must read a page
@@ -1877,14 +1878,21 @@ custom log entries, it is trivial to have it store deltas to
 the log instead of writing the entire object during an update.
 Such an optimization would be difficult to achieve with Berkeley DB 
 since the only diff-based mechanism it supports requires changes to 
-span contiguous, which is not necessarily the case for arbitrary
+span contiguous regions of a record, which is not necessarily the case for arbitrary
 object updates.
 In a database server context, this type of optimization can be
 supported if the fields of the object are broken into database table
 columns. and a SQL update query only modifies a subset of the fields. 
 However, as we have seen in some preliminary evaluation, 
 the overheads associated with a SQL based interface outweigh the
-advantages of this optimization.
+advantages of this optimization.  To avoid RPC costs, we ran the 
+benchmark using libmysqld, which bypasses RPC costs by linking MySQL 
+into an application binary.  We used an InnoDB table, which seemed 
+to perform better than tables backed by Berkeley DB.  Still, MySQL 
+was significantly slower then native Berkeley DB.  If we do not link 
+MySQL the MySQL server into the application binary then the cost of local 
+interprocess communication dominates the test, causing the benchmark to 
+take too long to be reported here.
 
 %% \footnote{It is unclear if
 %% this optimization would outweigh the overheads associated with an SQL
