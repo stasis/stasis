@@ -61,11 +61,26 @@ terms specified in this license.
 
 #include <lladd/operations.h>
 
-int TpageAlloc(int xid, int type);
-int TpageAllocMany(int xid, int count, int type);
+/** If defined, then pageOperations.h will reuse freed pages.
+    Unfortunately, the current support is not safe for programs with
+    multiple concurrent transactions. */
+/*#define REUSE_PAGES */
+
+int TpageAlloc(int xid/*, int type*/);
+int TpageAllocMany(int xid, int count/*, int type*/);
 int TpageDealloc(int xid, int pageid);
-int TpageSet(int xid, int pageid, Page* dat);
-Operation getPageAlloc();
-Operation getPageDealloc();
+int TpageSet(int xid, int pageid, byte* dat);
+int TpageGet(int xid, int pageid, byte* buf);
+/*Operation getPageAlloc();
+  Operation getPageDealloc(); */
 Operation getPageSet();
+
+Operation getUpdateFreespace();
+Operation getUpdateFreespaceInverse();
+Operation getUpdateFreelist();
+Operation getUpdateFreelistInverse();
+Operation getFreePageOperation();
+Operation getAllocFreedPage();
+Operation getUnallocFreedPage();
+void pageOperationsInit();
 #endif

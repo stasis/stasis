@@ -96,18 +96,27 @@ terms specified in this license.
 #define OPERATION_LHINSERT     5
 #define OPERATION_LHREMOVE     6
 #define OPERATION_DEALLOC      7
-#define OPERATION_PAGE_ALLOC   8
-#define OPERATION_PAGE_DEALLOC 9
+/*#define OPERATION_PAGE_ALLOC   8
+  #define OPERATION_PAGE_DEALLOC 9 */
 #define OPERATION_PAGE_SET     10
+#define OPERATION_UPDATE_FREESPACE 11
+#define OPERATION_UPDATE_FREESPACE_INVERSE 12
+#define OPERATION_UPDATE_FREELIST 13
+#define OPERATION_UPDATE_FREELIST_INVERSE 14
+#define OPERATION_FREE_PAGE   15
+#define OPERATION_ALLOC_FREED 16
+#define OPERATION_UNALLOC_FREED 17
 
 /* number above should be less than number below */
 #define MAX_OPERATIONS 20
 
-/** @todo undocumented */
-
+/** This constant is used as a placeholder to mark slot locations that are invalid.
+    @see slotted.c, indirect.c
+*/
 #define INVALID_SLOT PAGE_SIZE
-#define NORMAL_SLOT (PAGE_SIZE + 1)
-#define BLOB_SLOT (PAGE_SIZE + 2)
+
+/*  #define NORMAL_SLOT (PAGE_SIZE + 1)
+  #define BLOB_SLOT (PAGE_SIZE + 2)*/
 
 /** @deprecated Replace all occurrances with sizeof(blob_record_t) */
 #define BLOB_REC_SIZE sizeof(blob_record_t) /*12*/

@@ -41,10 +41,19 @@ void setupOperationsTable() {
 	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
-	operationsTable[OPERATION_PAGE_ALLOC] = getPageAlloc();
-	operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc();
+	/*	operationsTable[OPERATION_PAGE_ALLOC] = getPageAlloc();
+		operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc(); */
 	operationsTable[OPERATION_PAGE_SET] = getPageSet();
 
+	operationsTable[OPERATION_UPDATE_FREESPACE]         = getUpdateFreespace();
+	operationsTable[OPERATION_UPDATE_FREESPACE_INVERSE] = getUpdateFreespaceInverse();
+	operationsTable[OPERATION_UPDATE_FREELIST]          = getUpdateFreelist();
+	operationsTable[OPERATION_UPDATE_FREELIST_INVERSE] = getUpdateFreelistInverse();
+	
+	operationsTable[OPERATION_FREE_PAGE] = getFreePageOperation();
+	operationsTable[OPERATION_ALLOC_FREED] = getAllocFreedPage();
+	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage();
+	
 
 }
 
@@ -57,6 +66,8 @@ int Tinit() {
 	bufInit();
 
 	openLogWriter();
+
+	pageOperationsInit();
 
 	InitiateRecovery();
 

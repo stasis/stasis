@@ -9,7 +9,7 @@
 #include "../../src/lladd/logger/logWriter.h"
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"
-#include "../../src/lladd/page/slotted.h"
+#include "../../src/lladd/page/slotted.h" 
 #include <lladd/bufferManager.h>
 #include <sched.h>
 #include <assert.h>

@@ -1,5 +1,5 @@
 #include "indirect.h"
-#include "slotted.h"
+#include "slotted.h"  
 #include <math.h>
 #include <string.h>
 #include <assert.h>
@@ -62,7 +62,7 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount);
    have to physically log pre- and post-images of the allocated space?
 */
 recordid rallocMany(int xid, int recordSize, int recordCount) {
-  int page = TpageAlloc(xid, SLOTTED_PAGE);
+  int page = TpageAlloc(xid/*, SLOTTED_PAGE*/);
   return __rallocMany(xid, page, recordSize, recordCount);
 }
 
@@ -107,7 +107,7 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
     
     int newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
 
-    int firstChildPage = TpageAllocMany(xid, newPageCount, SLOTTED_PAGE);/*pageAllocMultiple(newPageCount); */
+    int firstChildPage = TpageAllocMany(xid, newPageCount/*, SLOTTED_PAGE*/);/*pageAllocMultiple(newPageCount); */
     int tmpRecordCount = recordCount;
     int thisChildPage = firstChildPage;    
 
@@ -156,7 +156,7 @@ recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) 
     
   }
 
-  TpageSet(xid, parentPage,  &p);
+  TpageSet(xid, parentPage, p.memAddr);
   
   rid.page = parentPage;
   rid.slot = RECORD_ARRAY;

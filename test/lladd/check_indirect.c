@@ -278,7 +278,6 @@ START_TEST(indirectSizeTest) {
 
 } END_TEST
 
-
 Suite * check_suite(void) {
   Suite *s = suite_create("indirect");
   /* Begin a new test */

@@ -96,6 +96,8 @@ BEGIN_C_DECLS
 #define UNINITIALIZED_PAGE  0
 #define SLOTTED_PAGE        1
 #define INDIRECT_PAGE       2
+#define LLADD_HEADER_PAGE   3
+#define LLADD_FREE_PAGE     4
 
 #define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
 #define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
@@ -104,6 +106,7 @@ BEGIN_C_DECLS
 #define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
 #define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
 #define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
+#define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
 
 #define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
 
@@ -220,6 +223,24 @@ void pageWriteLSN(Page * page, lsn_t lsn);
 lsn_t pageReadLSN(const Page * page);
 
 /**
+   Sets the record type, if applicable.  Right now, this is only
+   really meaningful in the case of slotted pages that store
+   information about blobs, but the intention of this function is to
+   allow a level of indirection so that the blob implementation and
+   slotted page implementation are independent of each other.
+
+   The record type is meant to be a hint to the page implementation,
+   so no getRecordType function is provided.  (If the type of record
+   does not matter to the page implementation, then it is free to
+   ignore this call.)
+
+   @param page A pointer to the page containing the record of interest.
+   @param rid The record's id.
+   @param slot_type The new type of the record.  (Must be > PAGE_SIZE).
+*/
+/*void setRecordType(Page * page, recordid rid, int slot_type); */
+
+/**
  * @param xid transaction id @param lsn the lsn that the updated
  * record will reflect.  This is needed by recovery, and undo.  (The
  * lsn of a page must always increase.  Undos are handled by passing
@@ -248,7 +269,7 @@ void  pageRealloc(Page * p, int id);
     @return the pageid of the newly allocated page, which is the
     offset of the page in the file, divided by the page size.
 */
-int pageAlloc() ;
+/*int pageAlloc() ;*/
 
 END_C_DECLS
 

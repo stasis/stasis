@@ -14,7 +14,6 @@
 #include "io.h"
 #include <pbl/pbl.h>
 #include "page.h"
-#include "page/slotted.h"
 #include <stdio.h>
 
 pthread_mutex_t blob_hash_mutex;
@@ -39,8 +38,10 @@ static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size)
 static void writeRawRecord(int xid, Page * p, recordid rid, lsn_t lsn, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
-  writeRecord(xid, p, lsn, blob_rec_rid, buf);
-  /**  Tset(xid, blob_rec_rid, buf); @todo how should we write the log entry? */
+  writeRecord(xid, p, lsn, blob_rec_rid, buf); 
+  /*  Tset(xid, blob_rec_rid, buf); - We no longer need to write a log
+      record out here, since we're called by something that is the
+      result of a log record.*/ 
 }
 static lsn_t * tripleHashLookup(int xid, recordid rid) {
   lsn_t * ret;
@@ -231,13 +232,9 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_rec.offset = fileSize;
   
-  slottedSetType(p, rid.slot, BLOB_SLOT);
-  rid.size = BLOB_SLOT;
+  /*  setRecordType(p, rid, BLOB_SLOT); */
+  /*  rid.size = BLOB_SLOT; */
 
-  /* Tset() needs to know to 'do the right thing' here, since we've
-     changed the size it has recorded for this record, and
-     writeRawRecord makes sure that that is the case. */
-  writeRawRecord  (xid, p, rid, lsn, &blob_rec, sizeof(blob_record_t));
   /*    releasePage(p); */
   rid.size = blob_rec.size;
 
@@ -258,8 +255,21 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   if(1 != fwrite(&zero, sizeof(char), 1, blobf0)) { perror(NULL); abort(); }
   if(1 != fwrite(&zero, sizeof(char), 1, blobf1)) { perror(NULL); abort(); }
 
+  fdatasync(fileno(blobf0));
+  fdatasync(fileno(blobf1));
+
+
   funlockfile(blobf0);
   funlockfile(blobf1);
+
+  /* Tset() needs to know to 'do the right thing' here, since we've
+     changed the size it has recorded for this record, and
+     writeRawRecord makes sure that that is the case. 
+
+     (This call must be after the files have been extended, and synced to disk, since it marks completion of the blob allocation.)
+  */
+  writeRawRecord  (xid, p, rid, lsn, &blob_rec, sizeof(blob_record_t));
+
 
 }
 
@@ -332,7 +342,11 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
 
   return fd;
 }
-
+/*  This function cannot be safely implemented on top of the current
+    blob implementation since at recovery, we have no way of knowing
+    whether or not a future write to the blob was performed.  (This is
+    the same reason why we cannot steal pages whose LSN's may be too
+    low.
 void setRangeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf, long offset, long length) {
   FILE * fd;
   int readcount;
@@ -346,11 +360,22 @@ void setRangeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf, 
   assert(offset == rec.offset);
   readcount = fwrite(buf, length, 1, fd);
   assert(1 == readcount);
+  fdatasync(fileno(fd));
   funlockfile(fd);
-}
+  } */
 /** @todo dirtyBlobs should contain the highest LSN that wrote to the
     current version of the dirty blob, and the lsn field should be
-    checked to be sure that it increases monotonically. */
+    checked to be sure that it increases monotonically. 
+
+    @todo Correctness / performance problem: Currently, we cannot
+    manually pin pages in memory, so the record pointing to the blob
+    may be stolen.  Therefore, we must fdatasync() the blob file's
+    updates to disk each time writeBlob is called.
+
+    If we could pin the page, this problem would be solved, and
+    writeblob would not have to call fdatasync().  The same problem
+    applies to setRangeBlob.
+*/
 void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) { 
 
   long offset;
@@ -373,18 +398,23 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
   readcount = fwrite(buf, rec.size, 1, fd);
   assert(1 == readcount);
 
+  fdatasync(fileno(fd));
+
   funlockfile(fd);
 
   /* No need to update the raw blob record. */
 }
 /** @todo check to see if commitBlobs actually needs to flush blob
     files when it's called (are there any dirty blobs associated with
-    this transaction? */
+    this transaction? 
+
+    @todo when writeBlob is fixed, add the fdatasync calls back into commitBlobs().
+*/
 void commitBlobs(int xid) {
   flockfile(blobf0);
   flockfile(blobf1);
-  fdatasync(fileno(blobf0));
-  fdatasync(fileno(blobf1));
+  /*  fdatasync(fileno(blobf0));
+      fdatasync(fileno(blobf1)); */
   funlockfile(blobf0);
   funlockfile(blobf1);
   abortBlobs(xid);

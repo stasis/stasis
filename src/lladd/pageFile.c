@@ -19,6 +19,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/** Allows boostrapping of the header page. */
+#include <lladd/operations/pageOperations.h>
+
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
 

@@ -150,8 +150,7 @@ void pageInit() {
   }
   pthread_mutex_init(&lastAllocedPage_mutex , NULL);
 	
-  lastAllocedPage = 0;
-
+  lastAllocedPage = 0; 
   slottedPageInit();
 
 }
@@ -171,7 +170,7 @@ void pageCommit(int xid) {
 void pageAbort(int xid) {
 }
 
-int pageAllocUnlocked() {
+static int pageAllocUnlocked() {
   int ret = lastAllocedPage;
   Page * p;
 
@@ -197,12 +196,12 @@ int pageAllocUnlocked() {
    slot of the first page in the storefile for metadata, and to keep
    lastFreepage there, instead of in RAM.
 */
-int pageAlloc() {
+/*int pageAlloc() {
   pthread_mutex_lock(&lastAllocedPage_mutex);  
   int ret = pageAllocUnlocked();
   pthread_mutex_unlock(&lastAllocedPage_mutex);
   return ret;
-}
+  }*/
 
 
 
@@ -236,6 +235,12 @@ Page *pageMalloc() {
 
   return page;
 }
+
+/*void setRecordType(Page * page, recordid rid, int slot_type) {
+  if(*page_type_ptr(page) == SLOTTED_PAGE) {
+    slottedSetType(page, rid.slot, slot_type);
+  }
+  }*/
 
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 

@@ -58,11 +58,6 @@ terms specified in this license.
 #define LOG_NAME   "check_page.log"
 
 #define RECORD_SIZE sizeof(int)
-/** @todo check_page needs to use loadPage, so it contains its own
-    delcaration of loadPage. (Otherwise, loadPage would clutter the
-    interface, which is especially bad, since we hide the Page struct
-    ffrom the user for locking purposes.)*/
-Page * loadPage(int pageid);
 
 pthread_mutex_t random_mutex;
 static lsn_t lsn;

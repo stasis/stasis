@@ -2,7 +2,7 @@
 
 
 #include "../page.h"
-#include "../blobManager.h"
+/*#include "../blobManager.h" */
 #include "slotted.h"
 #include <assert.h>
 
@@ -168,16 +168,18 @@ recordid slottedPreRalloc(int xid, long size) {
   pthread_mutex_lock(&lastFreepage_mutex);  
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
   if(lastFreepage == -1) {
-    lastFreepage = TpageAlloc(xid, SLOTTED_PAGE);
+    lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
     p = loadPage(lastFreepage);
+    slottedPageInitialize(p);
   } else {
     p = loadPage(lastFreepage);
   }
 
   if(slottedFreespace(p) < size ) { 
     releasePage(p);
-    lastFreepage = TpageAlloc(xid, SLOTTED_PAGE);
+    lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
     p = loadPage(lastFreepage);
+    slottedPageInitialize(p);
   }
   
   ret = slottedRawRalloc(p, size);
@@ -253,6 +255,33 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 recordid slottedPostRalloc(Page * page, lsn_t lsn, recordid rid) {
 
 	writelock(page->rwlatch, 376);
+
+	if(*page_type_ptr(page) != SLOTTED_PAGE) {
+	  /* slottedPreRalloc calls this when necessary.  However, in
+	     the case of a crash, it is possible that
+	     slottedPreRalloc's updates were lost, so we need to check
+	     for that here.  
+
+	     If slottedPreRalloc didn't call slottedPageInitialize,
+	     then there would be a race condition:
+	
+	     Thread 1             Thread 2
+	     preAlloc(big record)
+
+	                          preAlloc(big record) // Should check the freespace of the page and fail
+	                          postAlloc(big record)
+
+             postAlloc(big record)  // Thread 2 stole my space! => Crash?
+
+	     Note that this _will_ cause trouble if recovery is
+	     multi-threaded, and allows the application to begin
+	     updating the storefile without first locking any pages
+	     that suffer from this problem.
+
+	  */
+
+	  slottedPageInitialize(page);  
+	}
 
 	if(*slot_length_ptr(page, rid.slot) == 0 /*|| *slot_length_ptr(page, rid.slot) == -1*/) {
 
@@ -333,7 +362,7 @@ void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat
 
 }
 
-void slottedSetType(Page * p, int slot, int type) {
+/*void slottedSetType(Page * p, int slot, int type) {
   assert(type > PAGE_SIZE);
   writelock(p->rwlatch, 686);
   *slot_length_ptr(p, slot) = type;
@@ -346,74 +375,6 @@ int slottedGetType(Page *  p, int slot) {
   ret = *slot_length_ptr(p, slot);
   unlock(p->rwlatch);
 
-  /* getSlotType does the locking for us. */
+  / * getSlotType does the locking for us. * /
   return ret > PAGE_SIZE ? ret : NORMAL_SLOT;
-}
-
-
-/*
-typedef struct {
-  int page;
-  int slot;
-  / ** If pageptr is not null, then it is used by the iterator methods.
-      Otherwise, they re-load the pages and obtain short latches for
-      each call. * /
-  Page * pageptr;  
-} page_iterator_t;
-
-
-
-void pageIteratorInit(recordid rid, page_iterator_t * pit, Page * p) {
-  pit->page = rid.page;
-  pit->slot = rid.slot;
-  pit->pageptr = p;
-  assert((!p) || (p->id == pit->page));
-}
-
-int nextSlot(page_iterator_t * pit, recordid * rid) {
-  Page * p;
-  int numSlots;
-  int done = 0;
-  int ret;
-  if(pit->pageptr) {
-    p = pit->pageptr;
-  } else {
-    p = loadPage(pit->page);
-  }
-
-  numSlots = readNumSlots(p->memAddr);
-  while(pit->slot < numSlots && !done) {
-    
-    if(isValidSlot(p->memAddr, pit->slot)) {
-      done = 1;
-    } else {
-      pit->slot ++;
-    }
-
-  }
-  if(!done) {
-    ret = 0;
-  } else {
-    ret = 1;
-    rid->page = pit->page;
-    rid->slot = pit->slot;
-    rid->size = getSlotLength(p->memAddr, rid->slot);
-    if(rid->size >= PAGE_SIZE) {
-
-      if(rid->size == BLOB_SLOT) {
-	blob_record_t br;
-	pageReadRecord(-1, p, *rid, (byte*)&br);
-	rid->size = br.size;
-      }
-    }
-  }
-
-  if(!pit->pageptr) {
-    releasePage(p);
-  }
-
-  return ret;
-  
-}
-*/
-
+  }*/
