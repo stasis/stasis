@@ -11,6 +11,8 @@ extern int numTset;
 extern int numShortcutted;
 extern int numSkipped;
 extern int numPushed;
+extern int useCRC;
+
 void naiveTraverse(int xid, recordid rid, int num) {
 
   int * node = alloca(sizeof(int) * (transClos_outdegree+1));
@@ -58,7 +60,11 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
     localRid = *rid;
 
     if(myFifo == -1) {
-      myFifo = crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount;
+      if(useCRC) {
+	myFifo = crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount;
+      } else { 
+	myFifo = rid->page % pool->fifoCount;
+      }
       //      printf("Switched locality sets... %d\n", myFifo);
     } else { 
       //      assert(myFifo == crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount);
