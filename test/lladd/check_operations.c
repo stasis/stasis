@@ -339,21 +339,30 @@ START_TEST(operation_nestedTopAction) {
   
   int xid= Tbegin();
   int *dat;
-  dat == malloc(sizeof(int));
+  //printf("W"); fflush(NULL);
+  dat = malloc(sizeof(int));
   recordid rid1 = Talloc(xid, sizeof(int));
+ // printf("{%d,%d,%d}\n", rid1.page, rid1.slot, rid1.size); fflush(NULL);
   recordid rid2 = Talloc(xid, sizeof(int));
+ // printf("{%d,%d,%d}\n", rid2.page, rid2.slot, rid2.size); fflush(NULL);
   recordid rid3 = Talloc(xid, sizeof(int));
+//  printf("{%d,%d,%d}\n", rid3.page, rid3.slot, rid3.size); fflush(NULL);
   recordid rid4 = Talloc(xid, sizeof(int));
+  //printf("{%d,%d,%d}\n", rid4.page, rid4.slot, rid4.size); fflush(NULL);
+ // printf("E"); fflush(NULL);
   *dat = 1;
   Tset(xid, rid1, dat);
   *dat = 2;
   Tset(xid, rid2, dat);
+ // printf("F"); fflush(NULL);
   *dat = 3;
   Tset(xid, rid3, dat);
+ // printf("G"); fflush(NULL);
   *dat = 4;
   Tset(xid, rid4, dat);
+ // printf("H"); fflush(NULL);
   Tcommit(xid);
-  
+ // printf("A"); fflush(NULL);
   xid = Tbegin(); // Loser xact.
   
   *dat = 10;
@@ -367,7 +376,7 @@ START_TEST(operation_nestedTopAction) {
   Tset(xid, rid3, dat);
   
   TendNestedTopAction(xid);
-  
+ // printf("B"); fflush(NULL);
   *dat = 40;
 
   Tset(xid, rid4, dat);
@@ -379,7 +388,7 @@ START_TEST(operation_nestedTopAction) {
   int dat2;
   int dat3;
   int dat4;
-  
+ // printf("C"); fflush(NULL);
   Tread(xid, rid1, &dat1);
   Tread(xid, rid2, &dat2);
   Tread(xid, rid3, &dat3);
@@ -505,6 +514,26 @@ START_TEST(operation_set_range) {
   Tcommit(xid);
   
 } END_TEST
+
+START_TEST(operation_alloc_test) {
+  Tinit();
+  
+  int xid = Tbegin();
+  recordid rid1 = Talloc(xid, 100);
+  Tcommit(xid);
+  xid = Tbegin();
+  recordid rid2 = Talloc(xid, 100);
+  Tcommit(xid);
+  
+  printf("rid1={%d,%d,%d} rid2={%d,%d,%d}\n", 
+	 rid1.page, rid1.slot, rid1.size,
+	 rid2.page, rid2.slot, rid2.size);  
+  
+  
+  
+  Tdeinit();
+} END_TEST
+
 #define ARRAY_LIST_CHECK_ITER 10000
 START_TEST(operation_array_list) {
 
@@ -602,6 +631,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_set_range);
   tcase_add_test(tc, operation_prepare);
+  tcase_add_test(tc, operation_alloc_test);
   tcase_add_test(tc, operation_array_list);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

@@ -35,12 +35,12 @@
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   /* * @ todo Currently, Talloc() needs to clean up the page type (for recovery).  Should this be elsewhere? */
 
-  /*  if(*page_type_ptr(p) == UNINITIALIZED_PAGE) {
+ /* if(*page_type_ptr(p) == UNINITIALIZED_PAGE) {
     *page_type_ptr(p) = SLOTTED_PAGE;
-    } */
+  }
 
-  /*  assert(*page_type_ptr(p) == SLOTTED_PAGE); */
-
+  assert(*page_type_ptr(p) == SLOTTED_PAGE); */
+  
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
     allocBlob(xid, p, lsn, rid);
   } else {

@@ -44,7 +44,7 @@ static void slottedCompact(Page * page) {
 
 	numSlots = *numslots_ptr(page);
 	for (i = 0; i < numSlots; i++) {
-	  /*	  printf("i = %d\n", i);   */
+	  /*	  ("i = %d\n", i);   */
 	  if (isValidSlot(page, i)) {
 	    /*	    printf("copying %d\n", i); 
 		    fflush(NULL); */
@@ -115,7 +115,7 @@ static void slottedCompact(Page * page) {
 
 
 /*static pthread_mutex_t lastFreepage_mutex; */
-  static unsigned int lastFreepage = -1; 
+  static unsigned int lastFreepage = -10; 
 
 void slottedPageInit() {
   /*pthread_mutex_init(&lastFreepage_mutex , NULL);  */
@@ -128,8 +128,8 @@ void slottedPageDeinit() {
 
 
 void slottedPageInitialize(Page * page) {
-  /*  printf("Initializing page %d\n", page->id);
-      fflush(NULL); */
+  /*printf("Initializing page %d\n", page->id);
+  fflush(NULL);  */
   memset(page->memAddr, 0, PAGE_SIZE);
   *page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
@@ -168,9 +168,11 @@ recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   /*  pthread_mutex_lock(&lastFreepage_mutex);   */
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
+  /*printf("lastFreepage %d\n", lastFreepage); fflush(NULL); */
   if(lastFreepage == -1) {
     lastFreepage = TpageAlloc(xid/*, SLOTTED_PAGE*/);
     *pp = loadPage(lastFreepage);
+    assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
   } else {
     *pp = loadPage(lastFreepage);
@@ -206,7 +208,8 @@ recordid slottedRawRalloc(Page * page, int size) {
 	rid.slot = *numslots_ptr(page);
 	rid.size = size;
 
-	/* new way */
+	/* new way - The freelist_ptr points to the first free slot number, which 
+	   is the head of a linked list of free slot numbers.*/
 	if(*freelist_ptr(page) != INVALID_SLOT) {
 	  rid.slot = *freelist_ptr(page);
 	  *freelist_ptr(page) = *slot_length_ptr(page, rid.slot);

@@ -8,7 +8,9 @@
 #include "../page/header.h"
 #include "../pageFile.h"
 
+#ifdef REUSE_PAGES 
 static int freelist;
+#endif
 static int freepage;
 static pthread_mutex_t pageAllocMutex;
 
@@ -41,11 +43,11 @@ typedef struct {
   int after;
 } update_tuple;
 
-int __update_freespace(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
+int __update_freepage(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   assert(r.page == 0);
   const update_tuple * t = d;
-  /*  printf("freespace %d -> %d\n", t->before, t->after); 
-      fflush(NULL); */
+  /*  printf("freepage %d -> %d\n", t->before, t->after); 
+      fflush(NULL);  */
   * headerFreepage_ptr(p) = t->after;
   freepage = t->after;
   pageWriteLSN(p, lsn);
@@ -56,8 +58,8 @@ int __update_freespace_inverse(int xid, Page * p, lsn_t lsn, recordid r, const v
 #ifdef REUSE_PAGES
   assert(r.page == 0);
   const update_tuple * t = d;
-  /*  printf("freespace %d <- %d\n", t->before, t->after);
-      fflush(NULL); */
+/*    ("freespace %d <- %d\n", t->before, t->after);
+      fflush(NULL);  */
 
   * headerFreepage_ptr(p) = t->before;
   freepage = t->before;
@@ -65,6 +67,7 @@ int __update_freespace_inverse(int xid, Page * p, lsn_t lsn, recordid r, const v
   pageWriteLSN(p, lsn);
   return 0;
 }
+#ifdef REUSE_PAGES
 /** @todo need to hold mutex here... */
 int __update_freelist(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   assert(r.page == 0);
@@ -72,7 +75,7 @@ int __update_freelist(int xid, Page * p, lsn_t lsn, recordid r, const void * d) 
   const update_tuple * t = d;
 
   /*  printf("freelist %d -> %d\n", t->before, t->after);
-      fflush(NULL); */
+      fflush(NULL);  */
 
   * headerFreepagelist_ptr(p) = t->after;
   freelist = t->after;
@@ -83,19 +86,19 @@ int __update_freelist_inverse(int xid, Page * p, lsn_t lsn, recordid r, const vo
   assert(r.page == 0);
   const update_tuple * t = d;
 
-  /*  printf("freelist %d <- %d\n", t->before, t->after); 
-      fflush(NULL); */
+/*      printf("freelist %d <- %d\n", t->before, t->after); 
+      fflush(NULL);  */
 
   * headerFreepagelist_ptr(p) = t->before;
   freelist = t->before;
   pageWriteLSN(p, lsn);
   return 0;
 }
-
+#endif
 int __free_page(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   const int * successor = d;
-  /*  printf("Unallocing page %d\n", r.page); 
-      fflush(NULL); */
+      /*printf("Unallocing page %d\n", r.page); 
+      fflush(NULL);  */
   memset(p->memAddr, 0, PAGE_SIZE);
   *page_type_ptr(p) = LLADD_FREE_PAGE;
   *nextfreepage_ptr(p) = *successor;
@@ -130,28 +133,35 @@ int TpageSet(int xid, int pageid, byte * memAddr) {
     since it needs to perform raw, synchronous I/O on the pagefile for
     bootstrapping purposes. */
 void pageOperationsInit() {
-  Page p;
+/*  Page p;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
   assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
-  p.id = 0;
+  p.id = 0;*/
 
-  pageRead(&p);
+  Page * p = loadPage(0);
+  
+ // pageRead(&p);
 
-  if(*page_type_ptr(&p) != LLADD_HEADER_PAGE) {
-    headerPageInitialize(&p);
-    pageWrite(&p);
+  if(*page_type_ptr(p) != LLADD_HEADER_PAGE) {
+    /*printf("Writing new LLADD header\n"); fflush(NULL); */
+    headerPageInitialize(p);
+ //   pageWrite(p);
+  } else {
+    /*printf("Found LLADD header.\n"); fflush(NULL);*/
   }
-
-  freelist = *headerFreepagelist_ptr(&p);
-  freepage = *headerFreepage_ptr(&p);
+#ifdef REUSE_PAGES
+  freelist = *headerFreepagelist_ptr(p);
+#endif
+  freepage = *headerFreepage_ptr(p);
 
   assert(freepage);
 
   /*  free(p.memAddr); */
   
-  deletelock(p.loadlatch);
-  deletelock(p.rwlatch);
+  //deletelock(p.loadlatch);
+  //deletelock(p.rwlatch);
+  releasePage(p);
 
   pthread_mutex_init(&pageAllocMutex, NULL);
 
@@ -208,12 +218,12 @@ int TpageDealloc(int xid, int pageid) {
 
   t.before = freelist;  
 
-#endif
+//#endif
   
 
   Tupdate(xid, rid, &freelist, OPERATION_FREE_PAGE);
   
-#ifdef REUSE_PAGES
+//#ifdef REUSE_PAGES
   t.after = pageid;
   freelist = pageid;
   
@@ -238,6 +248,7 @@ int TpageAlloc(int xid /*, int type */) {
   
   pthread_mutex_lock(&pageAllocMutex);
   int newpage;
+  /*printf("TpageAlloc\n"); fflush(NULL); */
 #ifdef REUSE_PAGES
   if(freelist) {
     
@@ -267,14 +278,16 @@ int TpageAlloc(int xid /*, int type */) {
     
     } else {
 #endif
-    /*     printf("Allocing new page: %d\n", freepage);
-	   fflush(NULL); */
+         /*printf("Allocing new page: %d\n", freepage);
+	   fflush(NULL);  */
     
     t.before = freepage;
     newpage = freepage;
     freepage++;
     t.after = freepage;
-    /* Don't need to touch the new page. */
+
+    /*printf("next freepage: %d\n", freepage); */
+      /* Don't need to touch the new page. */
     
     rid.page = 0;
     Tupdate(xid, rid, &t,        OPERATION_UPDATE_FREESPACE);
@@ -285,7 +298,7 @@ int TpageAlloc(int xid /*, int type */) {
 #endif
 
   pthread_mutex_unlock(&pageAllocMutex);
-
+  /*printf("TpageAlloc alloced page %d\n", newpage); fflush(NULL); */
   return newpage;
 }
 
@@ -344,7 +357,7 @@ Operation getUpdateFreespace() {
     OPERATION_UPDATE_FREESPACE,
     sizeof(update_tuple),
     /*    OPERATION_UPDATE_FREESPACE_INVERSE, */ OPERATION_NOOP,
-    &__update_freespace
+    &__update_freepage
   };
   return o;
 }
@@ -359,14 +372,17 @@ Operation getUpdateFreespaceInverse() {
   return o;
 }
 
-
 Operation getUpdateFreelist() {
   Operation o = {
     OPERATION_UPDATE_FREELIST,
     sizeof(update_tuple),
     OPERATION_NOOP,
+#ifdef REUSE_PAGES
     &__update_freelist
-  };
+#else
+    NULL
+#endif
+    };
   return o;
 }
 
@@ -375,8 +391,12 @@ Operation getUpdateFreelistInverse() {
     OPERATION_UPDATE_FREELIST_INVERSE,
     sizeof(update_tuple),
     OPERATION_UPDATE_FREELIST,
+#ifdef REUSE_PAGES
     &__update_freelist_inverse
-  };
+#else
+    NULL
+#endif
+    };
   return o;
 }
 
@@ -447,5 +467,3 @@ Operation getPageSet() {
   };
   return o;
 }
-
-
