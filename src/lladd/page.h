@@ -88,7 +88,7 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
-
+#include "../../src/lladd/page.h"
 
 
 BEGIN_C_DECLS
@@ -110,6 +110,13 @@ BEGIN_C_DECLS
 #define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
 
 #define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
+
+#define UNINITIALIZED_RECORD 0
+#define BLOB_RECORD          1
+#define SLOTTED_RECORD       2
+#define FIXED_RECORD         3
+
+
 
 /*#define invalidateSlot(page, n) (*slot_ptr((page), (n)) =  INVALID_SLOT)*/
 
@@ -272,6 +279,9 @@ void  pageRealloc(Page * p, int id);
     offset of the page in the file, divided by the page size.
 */
 /*int pageAlloc() ;*/
+
+int getRecordType(int xid, Page * p, recordid rid);
+int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
 
 END_C_DECLS
 

@@ -8,6 +8,7 @@
 #define fixed_record_ptr(page, n)   bytes_from_start((page), *recordsize_ptr((page)) * (n))
 int recordsPerPage(size_t size);
 void fixedPageInitialize(Page * page, size_t size, int count);
+/** Return the number of records in a fixed length page */
 short fixedPageCount(Page * page);
 short fixedPageRecordSize(Page * page);
 recordid fixedRawRallocMany(Page * page, int count);
