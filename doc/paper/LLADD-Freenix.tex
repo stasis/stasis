@@ -29,7 +29,8 @@
 
 \date{}
 
-\title{\Large \bf LLADD: Extensible Transactional Storage FIXME}
+\title{\Large \bf LLADD: An Extensible Transactional Storage Layer\\
+  \normalsize{(yaahd)}}
 
 \author{
 Russell Sears  and  Eric Brewer\\
@@ -95,13 +96,12 @@ fruitful area of current research, but existing monolithic database systems tend
 The basic approach of LLADD, taken from ARIES~\cite{aries}, is to build
 \emph{transactional pages}, which enables recovery on a page-by-page
 basis, despite support for high concurrency and the minimization of
-dish seeks during commit (by using a log).  We show how to build a variety
+disk seeks during commit (by using a log).  We show how to build a variety
 of useful data managers on top of this layer, including persistent
 hash tables, lightweight recoverable virtual memory~\cite{lrvm}, and simple
 databases.  We also cover the details of crash recovery,
-application-level support for transaction abort and commit, and basic
-latching for multithreaded applications.
-Finally, we also discuss the shortcomings of common applications, and explain
+application-level support for transaction abort and commit, and latching for multithreaded applications.
+Finally, we discuss the shortcomings of common applications, and explain
 why LLADD provides an appropriate solution to these problems.
 
 %[more coverage of kinds of apps?  imap, lrvm, cht, file system, database]
@@ -115,11 +115,11 @@ ARIES algorithm falls into the second category, and has been extremely
 sucessful as part of the IBM DB2 database system.
 It provides performance and reliability that is comparable to that of current
 commercial and open-source products. Unfortunately, while the algorithm
-is conceptually simple, many subtlties arise in its implementation.
+is conceptually simple, many subtleties arise in its implementation.
 We chose ARIES as the basis of LLADD, and have made a significant
 effort to document these interactions. Although  a complete discussion
 of the ARIES algorithm is beyond the scope of this paper, we will
-provide a breif overview, and explain the details that are relevant
+provide a brief overview, and explain the details that are relevant
 to developers that wish to extend LLADD. 
 
 By documenting the interface between ARIES and higher-level primitives
@@ -156,10 +156,10 @@ modules.  Figure~\ref{cap:DB-Architecture} presents a high-level overview of a t
 
 
 \caption{\label{cap:DB-Architecture}Conceptual view of a modern
-transactional application.  Current systems include high level
+transactional application.  Current systems include high-level
 functionality, such as indices and locking, but are not designed to
-allow developers to replace this functionality with application
-specific modules.}
+allow developers to replace this functionality with
+application-specific modules.}
 \end{figure}
 
 Many applications make use of transactional storage, and each is
@@ -170,11 +170,11 @@ the applications for which these systems are designed.
 
 On the database side of things, relational databases excel in areas
 where performance is important, but where the consistency and
-durability of the data is crucial.  Often, databases significantly
+durability of the data are crucial.  Often, databases significantly
 outlive the software that uses them, and must be able to cope with
-changes in business practices, system architechtures, etc.
+changes in business practices, system architectures, etc.
 
-Object-oriented databases are more focused on facilitating the
+Object-oriented databases \cite{xx} are more focused on facilitating the
 development of complex applications that require reliable storage, and
 may take advantage of less-flexible, more efficient data models,
 as they often only interact with a single application, or a handful of
@@ -186,7 +186,7 @@ where security, scalability, and a host of other concerns are
 important.  In many, if not most, circumstances these issues are less
 important, or even irrelevant.  Therefore, applying a database in
 these situations is likely overkill, which may partially explain the
-popularity of MySQL, which allows some of these constraints to be
+popularity of MySQL \cite{mysql}, which allows some of these constraints to be
 relaxed at the discretion of a developer or end user.
 
 Still, there are many applications where MySQL is still too
@@ -196,11 +196,11 @@ semantic file systems, where the file system understands the contents
 of the files that it contains, and is able to provide services such as
 rapid search, or file-type specific operations such as thumbnailing,
 automatic content updates, and so on.  Others are simpler, such as
-Berkeley DB, which provides transactional storage of data in unindexed
+Berkeley~DB~\cite{bdb}, which provides transactional storage of data in unindexed
 form, in indexed form using a hash table, or a tree.  LRVM is a version
 of malloc() that provides transacational memory, and is similar to an
 object-oriented database, but is much lighter weight, and more
-flexible.
+flexible~\cite{lrvm}.
 
 Finally, some applications require incredibly simple, but extremely
 scalable storage mechanisms.  Cluster Hash Tables are a good example
@@ -218,17 +218,17 @@ in many environments.
 We have only provided a small sampling of the many applications that
 make use of transactional storage.  Unfortunately, it is extremely
 difficult to implement a correct, efficient and scalable transactional
-data store, and we know of no library that provides low level access
+data store, and we know of no library that provides low-level access
 to the primitives of such a durability algorithm.  These algorithms
 have a reputation of being complex, with many intricate interactions,
 which prevent them from being implemented in a modular, easily
 understandable, and extensible way.  
 
 Because of this, many applications that would benefit from
-transactional storage, such as CVS, and many implementations of IMAP
+transactional storage, such as CVS and many implementations of IMAP,
 either ignore the problem, leaving the burden of recovery to system
 administrators or users, or implement ad-hoc solutions that employ
-complex, application specific consistency protocols in order to ensure
+complex, application-specific consistency protocols in order to ensure
 the consistency of their data.  This increases the complexity of such
 applications, and often provides only a partial solution to the
 transactional storage problem, resulting in erratic and unpredictable
@@ -262,7 +262,7 @@ be rolled back at runtime.
 We first sketch the constraints placed upon operation implementations,
 and then describe the properties of our implementation of ARIES that
 make these constraints necessary. Because comprehensive discussions of
-write ahead logging protocols and ARIES are available elsewhere, we
+write-ahead logging protocols and ARIES are available elsewhere, we
 only discuss those details relevant to the implementation of new
 operations in LLADD.
 
