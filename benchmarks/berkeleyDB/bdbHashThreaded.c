@@ -107,6 +107,8 @@ main(int argc, char *argv[])
 	db->close(db, 0);
 	dbenv->close(dbenv, 0);
 
+	printf("committed %d times, put %d times\n", commitCount, putCount);
+
 	return (0);
 }
 

@@ -21,6 +21,10 @@
 int activeThreads = 0;
 int max_active = 0;
 int alwaysCommit;
+
+int commitCount = 0;
+int putCount = 0;
+
 /*
 double avg_var = 0;
 double max_var = 0;
@@ -57,7 +61,7 @@ static void * go (void * arg_ptr) {
     //    gettimeofday(&start, NULL);
 
     ThashInsert(xid, hash, (byte*)&j, sizeof(int), (byte*)&j, sizeof(int));
-
+    putCount++;
     /*    gettimeofday(&endtime, NULL);
 
     double microSecondsPassed = 1000000 * (endtime.tv_sec - start.tv_sec);
@@ -72,6 +76,7 @@ static void * go (void * arg_ptr) {
 
     if(alwaysCommit) {
       //      printf("Commit");
+      commitCount++;
       Tcommit(xid);
       xid = Tbegin();
       
@@ -161,4 +166,6 @@ int main(int argc, char** argv) {
   }
 
   Tdeinit();
+
+  printf("Committed %d times, put %d times.\n", commitCount, putCount);
 }

@@ -11,7 +11,7 @@
 
 pthread_cond_t never;
 pthread_mutex_t mutex;
-double thread_requests_per_sec = 1.0;
+double thread_requests_per_sec = 10.0;
 int alwaysCommit;
 
 #define MAX_SECONDS 100
@@ -190,15 +190,19 @@ int main(int argc, char** argv) {
 
   assert(argc == 4);
 
-  int thread_count = atoi(argv[1]);
-  count = atoi(argv[2]);
+  int thread_count = atoi(argv[1]) ;
+  //  count = atoi(argv[2]);
+  thread_requests_per_sec = (double)(atoi(argv[2]));
+  count = 10.0 * thread_requests_per_sec;
   alwaysCommit = atoi(argv[3]);
   
 
-  unlink("storefile.txt");
+  printf("%d %f\n", thread_count, thread_requests_per_sec);
+
+  /*  unlink("storefile.txt");
   unlink("logfile.txt");
   unlink("blob0_file.txt");
-  unlink("blob1_file.txt");
+  unlink("blob1_file.txt"); */
 
   int l;
 
@@ -243,12 +247,14 @@ int main(int argc, char** argv) {
 
   double log_multiplier = (COUNTER_RESOLUTION / log(MAX_SECONDS * 1000000000.0));
 
-
+  int total = 0;
 
   for(k = 0; k < COUNTER_RESOLUTION; k++) {
     printf("%3.4f\t%d\n", exp(((double)k)/log_multiplier)/1000000000.0, buckets[k]);
+    total += buckets[k];
   }
-
+  
+  printf("Total requests %d\n", total);
   /*  printf("mean:     (max, avg)  %f, %f\n", max_mean, avg_mean / (double)thread_count);
 
   printf("variance: (max, avg)  %f, %f\n", max_var, avg_var / (double)thread_count); */

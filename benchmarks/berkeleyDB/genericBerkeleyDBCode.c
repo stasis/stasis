@@ -2,6 +2,8 @@
 DB_ENV *dbenv;
 DB *db_cats;
 
+int commitCount = 0;
+int putCount = 0;
 void
 env_dir_create()
 {
@@ -271,36 +273,38 @@ retry:	/* Begin the transaction. */
 	  		
 	  //	  pthread_mutex_lock(&hack);
 	  switch (ret = db->put(db, tid, &key, &data, 0)) {
-		case 0:
-		  break;
-		case DB_LOCK_DEADLOCK:
-		  //		  va_end(ap);
-		  abort();  // Locking should be disabled!
-		  /* Deadlock: retry the operation. */
-		  if ((ret = dbc->c_close(dbc)) != 0) {
-		    dbenv->err(
-			       dbenv, ret, "dbc->c_close");
-		    exit (1);
+	  case 0:
+	    break;
+	  case DB_LOCK_DEADLOCK:
+	    //		  va_end(ap);
+	    abort();  // Locking should be disabled!
+	    /* Deadlock: retry the operation. */
+	    if ((ret = dbc->c_close(dbc)) != 0) {
+	      dbenv->err(
+			 dbenv, ret, "dbc->c_close");
+	      exit (1);
+	    }
+	    if ((ret = tid->abort(tid)) != 0) {
+	      dbenv->err(dbenv, ret, "DB_TXN->abort");
+	      exit (1);
 		  }
-		  if ((ret = tid->abort(tid)) != 0) {
-		    dbenv->err(dbenv, ret, "DB_TXN->abort");
-		    exit (1);
-		  }
-		  goto retry;
-		default:
-		  /* Error: run recovery. */
-		  dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
-		  abort();  // Error invalidates benchmark!
-		  exit (1);
-		}
+	    goto retry;
+	  default:
+	    /* Error: run recovery. */
+	    dbenv->err(dbenv, ret, "dbc->put: %d/%d", q, q);
+	    abort();  // Error invalidates benchmark!
+	    exit (1);
+	  }
 	  //	  pthread_mutex_unlock(&hack);
-
+	  putCount++;
 	}
+	
 
 	if ((ret = tid->commit(tid, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_TXN->commit");
 		exit (1);
 	}
+	commitCount++;
 #ifdef DEBUG_BDB
 	printf("Called commit\n");
 #endif
