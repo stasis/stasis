@@ -52,7 +52,8 @@ smash_t *  init_Smash(int size) {
   ret->contents = 0;
   ret->next_sm_id = 0;
   ret->store = store;
-  ret->hash = jbHtCreate(xid, 3499);
+//  ret->hash = jbHtCreate(xid, 3499);
+  ret->hash = lHtCreate(xid, 7);
   ret->xid = xid;
   ret->lock = malloc(sizeof(pthread_mutex_t));
   ret->memHash = pblHtCreate();
@@ -74,8 +75,6 @@ void * _getSmash (smash_t * smash, state_machine_id id) {
 }
 
 StateMachine *  _insertSmash(smash_t * smash, state_machine_id id) {
-  int ret;
-
   StateMachine * new;
 
   if(smash->contents+1 == smash->size) {
@@ -93,7 +92,7 @@ StateMachine *  _insertSmash(smash_t * smash, state_machine_id id) {
   
   new->current_state = START_STATE;
   /*  printf("Insert %ld\n", id);  */
-  ret = (-1 != jbHtInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine)));
+  TlogicalHashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine));
   pblHtInsert(smash->memHash, &id, sizeof(state_machine_id), new);
   /*  Tcommit(smash->xid);
       smash->xid = Tbegin(); */
@@ -134,9 +133,8 @@ StateMachine *  insertSmash(smash_t * smash, state_machine_id id) {
   StateMachine junk;
 
   pthread_mutex_lock(smash->lock);
-
-
-  if(jbHtLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte*)&junk) != -1) {
+   
+  if(TlogicalHashLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte*)&junk, sizeof(state_machine_id)) != -1) {
     pthread_mutex_unlock(smash->lock);
     return NULL;
   }
@@ -167,7 +165,7 @@ int  freeSmash  (smash_t * smash, state_machine_id id) {
   free(old->sleepCond); 
   
   pblHtRemove(smash->memHash, &(id), sizeof(state_machine_id));
-  ret = jbHtRemove(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id), NULL) != -1;
+  ret = TlogicalHashDelete(smash->xid, smash->hash, (byte*)&(id), sizeof(state_machine_id), NULL, sizeof(state_machine_id)) != -1;
   
   free(old);
   
@@ -190,25 +188,26 @@ void *  getSmash   (smash_t * smash, state_machine_id id) {
   return ret;
 }
 
-int _setSmash(smash_t * smash, state_machine_id id) {
+void _setSmash(smash_t * smash, state_machine_id id) {
   
   StateMachine * machine;
   machine = _getSmash(smash, id);
-  return (-1 != jbHtInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id),(byte*) machine, sizeof(StateMachine)));
+  TlogicalHashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id),(byte*) machine, sizeof(StateMachine));
 
 }
 
 
-int setSmash (smash_t * smash, state_machine_id id) {
-  int ret;
+void setSmash (smash_t * smash, state_machine_id id) {
+ // int ret;
   /*  printf("Set smash: %ld\n", machine->machine_id); */
   pthread_mutex_lock(smash->lock);
 
-  ret = _setSmash(smash, id);
+  //ret = 
+  _setSmash(smash, id);
 
   pthread_mutex_unlock(smash->lock); 
 
-  return ret;
+ // return ret;
 }
 
 int forceSmash (smash_t * smash) {

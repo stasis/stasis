@@ -40,6 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*#include <sys/types.h> */
+#include <lladd/common.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netinet/in.h>
@@ -66,7 +67,7 @@ char * parse_addr(const char * address) {
   addr_s = strtok_r(addr_copy, ":", &strtok_buf);
 
   if(addr_s == NULL) {
-    printf("Invalid address (%s) passed into parse_addr", address);
+    fprintf(stderr, "Invalid address (%s) passed into parse_addr", address);
     return NULL;
   }
   
@@ -171,7 +172,7 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to);
 int __send_message(const NetworkSetup *ns, Message *message, const char *to) {
 
 
-  printf("Sending %ld-%d: to %s:%ld\n", message->from_machine_id, message->type ,to, message->to_machine_id);
+  DEBUG("Sending %ld-%d: to %s:%ld\n", message->from_machine_id, message->type ,to, message->to_machine_id);
 
   if(strncmp(to, "bc:", 3)==0) {
 
@@ -179,11 +180,11 @@ int __send_message(const NetworkSetup *ns, Message *message, const char *to) {
     int list_number = parse_port(to);
 
     if(list_number < 0 || list_number >= ns->broadcast_lists_count) {
-      printf("Invalid list number %d passed into send_message: %s\n", list_number, to);
+      fprintf(stderr, "Invalid list number %d passed into send_message: %s\n", list_number, to);
       return -1;
     }
     if(ns->broadcast_list_host_count[list_number] == 0) {
-      printf("Sending to empty broadcast list! Address was %s\n", to);
+      fprintf(stderr, "Sending to empty broadcast list! Address was %s\n", to);
     }
     for(i =0; i < ns->broadcast_list_host_count[list_number]; i++) {
       int ret;
@@ -213,12 +214,12 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to) {
   port = parse_port(to);
 
   if(addr == NULL) {
-    printf("Send failed.  Could not parse addr.\n");
+    fprintf(stderr, "Send failed.  Could not parse addr.\n");
     return -1;
   }
 
   if(port == -1) {
-    printf("Send failed.  Could not parse port.\n");
+    fprintf(stderr, "Send failed.  Could not parse port.\n");
     free(addr);
     return -1;
   }
@@ -244,7 +245,7 @@ int _send_message(const NetworkSetup *ns, Message *message, const char *to) {
     perror("send_message");
   }
   if(ret != sizeof(Message)) {
-    printf("send_message sent partial message!\n");
+    fprintf(stderr, "send_message sent partial message!\n");
 
     return -1;
   }
@@ -297,7 +298,7 @@ int receive_message(NetworkSetup *ns, Message *message, char *from) {
 
   if(message_size != sizeof(Message)) { 
     /* drop packet */
-    printf("Size mismatch: %d, %d\n", message_size, sizeof(Message)); 
+    fprintf(stderr, "Size mismatch: %d, %d\n", message_size, sizeof(Message)); 
     return 0;
   } else {
     /* TODO: Callback to security stuff / crypto here? */

@@ -41,7 +41,8 @@ terms specified in this license.
 ---*/
 
 #include <pbl/pbl.h>
-#include <pbl/jbhash.h>
+//#include <pbl/jbhash.h>
+#include <lladd/operations/linearHash.h>
 #include <libdfa/statemachine.h>
 /** State machine hash library. */
 
@@ -52,7 +53,8 @@ typedef struct  {
   recordid store;
   /* Need to save the recordid of the hash if we want to recover... (???)*/
   recordid hash_store;
-  jbHashTable_t * hash;
+  //jbHashTable_t * hash;
+  recordid hash;
   pthread_mutex_t * lock;
   int xid;
   pblHashTable_t * memHash;
@@ -78,7 +80,7 @@ StateMachine*       insertSmash(smash_t * smash, state_machine_id id);
 int       freeSmash  (smash_t * smash,  state_machine_id id);
 
 void *       getSmash   (smash_t * smash, state_machine_id id);
-int       setSmash   (smash_t * smash, state_machine_id id);
+void         setSmash   (smash_t * smash, state_machine_id id);
 
 int       forceSmash (smash_t * smash);
 /*StateMachine *   enumerateSmash(smash_t * rb, int * count);*/

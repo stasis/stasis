@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   for(k = 0; k < xact_count; k++) {
     xid = Tbegin();
     for(; i < (count*(k+1)) ; i++) {
-      ThashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
+      TnaiveHashInsert(xid, hash, &i, sizeof(int), &i, sizeof(int));
     }
     Tcommit(xid);
 

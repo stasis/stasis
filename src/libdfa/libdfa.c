@@ -140,12 +140,14 @@ void recover(DfaSet * dfaSet) {
   StateMachine sm_stack; 
   StateMachine * sm = &sm_stack;
   StateMachine * this;
+  // Need to write iterator...
   int ret = (jbHtFirst(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
 
+  assert(0);  // need to call linear hash iterator here. 
 
   while(ret) {
     this = getSmash(dfaSet->smash, sm->machine_id);
-    printf("StateMachine %ld\n", sm->machine_id);
+    DEBUG("StateMachine %ld\n", sm->machine_id);
     this->worker_thread = spawn_worker_thread(dfaSet, sm->machine_id);
     ret = (jbHtNext(dfaSet->smash->xid, dfaSet->smash->hash, (byte*)sm) != -1);
   }
@@ -217,7 +219,7 @@ void* main_loop(DfaSet *dfaSet) {
     
       /*writelock(dfaSet->lock, 600);*/
       
-      printf("Allocate machine %ld->", message->to_machine_id); fflush(NULL); 
+      DEBUG("Allocate machine %ld->", message->to_machine_id); fflush(NULL); 
       
       if(message->to_machine_id == NULL_MACHINE) {
 	
@@ -238,7 +240,7 @@ void* main_loop(DfaSet *dfaSet) {
 	
 	/*writeunlock(dfaSet->lock);*/
 	
-	printf("Too many state machines.  Dropping request for new one.\n");
+	fprintf(stderr, "Too many state machines.  Dropping request for new one.\n");
 	continue;
 	
       } else {
@@ -288,7 +290,7 @@ void* main_loop(DfaSet *dfaSet) {
     
     if(i == dfaSet->transition_count) {
       
-      printf("%ld received: %ld-%d:%d->? (bad message)\n",  stateMachine->machine_id, message->from_machine_id, 
+      fprintf(stderr, "%ld received: %ld-%d:%d->? (bad message)\n",  stateMachine->machine_id, message->from_machine_id, 
 	     message->type, current_state);
       /*pthread_mutex_unlock(&(stateMachine->mutex));*/
       continue;
@@ -354,9 +356,9 @@ void* main_loop(DfaSet *dfaSet) {
 
     if(new_state != current_state) {
       
-      printf("%ld transitioned on: %ld-%d:%d->%d from %s\n", stateMachine->machine_id, message->from_machine_id, 
+      DEBUG("%ld transitioned on: %ld-%d:%d->%d from %s\n", stateMachine->machine_id, message->from_machine_id, 
 	     dfaSet->transitions[i].remote_state, dfaSet->transitions[i].pre_state, dfaSet->transitions[i].post_state, from); 
-      printf(" -> %d %ld\n", new_state, message->from_machine_id);
+      DEBUG(" -> %d %ld\n", new_state, message->from_machine_id);
 
       assert(new_state != NULL_STATE);
       stateMachine->current_state = new_state;	
@@ -613,7 +615,7 @@ void * worker_loop(void * arg_void) {
   /*  fflush(NULL); */
 
   writelock(dfaSet->lock, machine_id); 
-  printf("Freeing machine %ld\n", machine_id);
+  DEBUG("Freeing machine %ld\n", machine_id);
 
   /*  pthread_mutex_lock(&(stateMachine->mutex));   */
   /*freeMachine(&(dfaSet->monoTree), machine_id); */
@@ -654,7 +656,7 @@ pthread_t spawn_worker_thread(DfaSet * dfaSet, state_machine_id machine_id) {
   *worker_loop_args = malloc(sizeof(WorkerLoopArgs));
 
 
-  printf("spawn_worker_thread(state_machine_id=%ld)\n", machine_id);
+  DEBUG("spawn_worker_thread(state_machine_id=%ld)\n", machine_id);
 
   (*worker_loop_args)->dfaSet = dfaSet;
   (*worker_loop_args)->machine_id = machine_id; 
@@ -762,4 +764,3 @@ DfaSet * dfa_malloc(int count, short port,
 
   return dfaSet;
 }
-

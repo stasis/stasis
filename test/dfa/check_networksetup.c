@@ -48,13 +48,32 @@ terms specified in this license.
 #include "../check_includes.h"
 #include <assert.h>
 #include <libdfa/networksetup.h>
+#include <libdfa/messages.h>
 #define LOG_NAME   "check_networksetup.log"
 
 /** 
     @test
 */
 START_TEST (networksetup_check) {
-  assert(readNetworkConfig("../../libdfa/networksetup.sample", COORDINATOR));
+  NetworkSetup * ns = readNetworkConfig("../../libdfa/networksetup.sample", COORDINATOR);
+  assert(ns);
+  
+  assert(ns->localport == 20000);
+  assert(!strcmp(ns->localhost, "127.0.0.1"));
+  assert(ns->broadcast_lists);
+  assert(ns->broadcast_lists_count == 2);
+  int i;
+  for(i = 0; i < ns->broadcast_lists_count; i++) {
+    assert(ns->broadcast_list_host_count[i] == 2);
+    int j;
+    for(j = 0; j < ns->broadcast_list_host_count[i]; j++) {
+	assert(!strcmp("127.0.0.1", parse_addr(ns->broadcast_lists[i][j])));
+	assert(20000 + i + 2*j + 1 == parse_port(ns->broadcast_lists[i][j]));
+    }
+  }
+  
+  // check contents of broadcast_lists 
+  
 }
 END_TEST
 /** 

@@ -3,6 +3,11 @@
 /*static int  thomasWangs32BitMixFunction(int key);
   static unsigned long thomasWangs64BitMixFunction(unsigned long key);*/
 
+unsigned int max_bucket(unsigned char tableBits, unsigned long nextExtension) {
+  unsigned int oldTableLength = twoToThe(tableBits - 1);
+  return oldTableLength + nextExtension - 1;
+}
+
 /** @todo replace powl in hash with something more efficient, if hash() becomes a bottleneck. */
 
 unsigned int hash(const void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {

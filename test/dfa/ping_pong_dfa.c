@@ -39,10 +39,23 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+
+#include <config.h>
+#include <check.h>
+/*#include <assert.h> */
+
+//#include <lladd/transactional.h>
+//#include "../../src/lladd/logger/logWriter.h"
+#include "../check_includes.h"
+#include <assert.h>
+#include <libdfa/networksetup.h>
+#include <libdfa/messages.h>
+#define LOG_NAME   "check_networksetup.log"
+
 #include "../../libdfa/libdfa.h"
 #include <stdio.h>
 #include <malloc.h>
-#include <assert.h>
+//#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 callback_fcn recv_ping, recv_pong;
@@ -51,7 +64,18 @@ callback_fcn recv_ping, recv_pong;
 #define PING2 4
 #define PONG1 1
 #define PONG2 2
-int main (int argc, char** argv) {
+
+int global_kill = 100000;
+
+
+/** 
+    @todo the dfa implementation uses jbhash!
+    @test
+*/
+START_TEST (pingpong_check) {
+
+
+//int main (int argc, char** argv) {
   DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
       
@@ -80,7 +104,7 @@ int main (int argc, char** argv) {
     initial_sm2->message.from_machine_id = initial_sm2->machine_id;
     initial_sm2->message.to_machine_id = initial_sm1->machine_id;
     
-    printf("sm1 %ld, sm2 %ld\n", initial_sm1->machine_id, initial_sm2->machine_id);
+    DEBUG("sm1 %ld, sm2 %ld\n", initial_sm1->machine_id, initial_sm2->machine_id);
     
     initial_sm1->current_state = PING1;
     initial_sm2->current_state = PONG1;
@@ -112,25 +136,25 @@ int main (int argc, char** argv) {
   transitions[0].pre_state = PING1;
   transitions[0].post_state= PING2;
   transitions[0].fcn_ptr   = &recv_ping;
-  transitions[0].force     = 1;
+  transitions[0].force     = 0;
   
   transitions[1].remote_state   = PONG2;
   transitions[1].pre_state = PING2;
   transitions[1].post_state= PING1;
   transitions[1].fcn_ptr   = &recv_ping;
-  transitions[1].force     = 1;
+  transitions[1].force     = 0;
 
   transitions[2].remote_state   = PING1;
   transitions[2].pre_state = PONG2;
   transitions[2].post_state= PONG1;
   transitions[2].fcn_ptr   = &recv_pong;
-  transitions[2].force     = 1;
+  transitions[2].force     = 0;
 
   transitions[3].remote_state   = PING2;
   transitions[3].pre_state = PONG1;
   transitions[3].post_state= PONG2;
   transitions[3].fcn_ptr   = &recv_pong;
-  transitions[3].force     = 1;
+  transitions[3].force     = 0;
 
   if(dfa_reinitialize(dfaSet, "127.0.0.1:10000", transitions, 4, states, 4) < 0) {
     printf("Error.  Exiting.\n");
@@ -138,25 +162,52 @@ int main (int argc, char** argv) {
 
   main_loop(dfaSet);
   /* Can't get here. */
-  return 0;
+//  return 0;
 }
+END_TEST
 
 state_name recv_ping(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
-  if(stateMachine != NULL) {
-    printf("%ld(%d): Got a ping from %s Machine %ld\n", stateMachine->machine_id, stateMachine->current_state, from, m->from_machine_id);
+  if((global_kill--) <= 0) {
+    printf("Done: %d\n", stateMachine->machine_id);
+    exit(0);
+  } else if(stateMachine != NULL) {
+    DEBUG("%ld(%d): Got a ping from %s Machine %ld\n", stateMachine->machine_id, stateMachine->current_state, from, m->from_machine_id);
     return 1;
   } else {
-    printf("Got message from %s for non-existant machine.\n", from);
+    fprintf(stderr, "Got message from %s for non-existant machine.\n", from);
     return 0;
   }
 }
 
 state_name recv_pong(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
-  if(stateMachine != NULL) {
-    printf("%ld(%d): Got a pong from %s Machine %ld\n", stateMachine->machine_id, stateMachine->current_state, from, m->from_machine_id);
+  if((global_kill--) <= 0) {
+    printf("Done: %d\n", stateMachine->machine_id);
+    exit(0);
+  } else if(stateMachine != NULL) {
+    DEBUG("%ld(%d): Got a pong from %s Machine %ld\n", stateMachine->machine_id, stateMachine->current_state, from, m->from_machine_id);
     return 1;
   } else {
-    printf("Got message from %s for non-existant machine.\n", from);
+    fprintf(stderr, "Got message from %s for non-existant machine.\n", from);
     return 0;
   }
 }
+
+/** 
+  Add suite declarations here
+*/
+Suite * check_suite(void) {
+  Suite *s = suite_create("pingpong");
+  /* Begin a new test */
+  TCase *tc = tcase_create("pingpong");
+  /* void * foobar; */  /* used to supress warnings. */
+  /* Sub tests are added, one per line, here */
+  
+  tcase_add_test(tc, pingpong_check);
+  /* --------------------------------------------- */
+  tcase_add_checked_fixture(tc, setup, teardown);
+  suite_add_tcase(s, tc);
+
+  return s;
+}
+
+#include "../check_setup.h"

@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
     for(i = 0; i < count ; i++) {
       int j;
-      assert(ThashLookup(xid, hash, &i, sizeof(int), &j, sizeof(int)));
+      assert(TlogicalHashLookup(xid, hash, &i, sizeof(int), &j, sizeof(int)));
       assert(i == j);
       
     }

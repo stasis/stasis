@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "../page.h"
+
 /**
 
    A from-scratch implementation of linear hashing.  Uses the
@@ -147,7 +148,7 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
 
 }
 int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
-  if(ThashLookup(xid, hashRid, key, keySize, val, valSize)) {
+  if(TnaiveHashLookup(xid, hashRid, key, keySize, val, valSize)) {
     undoDeleteArg * arg = malloc(sizeof(undoDeleteArg) + keySize+valSize);
     arg->keySize = keySize;
     arg->valSize = valSize;
@@ -321,6 +322,7 @@ static void recover_split(int xid, recordid hashRid, int i, int next_split, int 
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
   recordid NULLRID; NULLRID.page = 0; NULLRID.slot=0; NULLRID.size = -1;
+
   
   if(headerHashBits <= i && headerNextSplit <= next_split) {
   
@@ -809,4 +811,58 @@ int TlogicalHashLookup(int xid, recordid hashRid, void * key, int keySize, void 
   unlockBucket(bucket_number);
   pthread_mutex_unlock(&linearHashMutex);
   return ret;
+}
+
+typedef struct {
+  long current_hashBucket;
+  recordid current_rid;
+} linearHash_iterator;
+typedef struct {
+  byte * key;
+  byte * value;
+} linearHash_iteratorPair;
+
+linearHash_iterator * TlogicalHashIterator(int xid, recordid hashRid) {
+  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=2; NULLRID.size = -1;
+  linearHash_iterator * ret = malloc(sizeof(linearHash_iterator));
+  ret->current_hashBucket = 0;
+  ret->current_rid = NULLRID;
+  return ret;
+}
+void TlogicalHashIteratorFree(linearHash_iterator * it) {
+  free(it);
+}
+linearHash_iteratorPair TlogicalHashIteratorNext(int xid, recordid hashRid, linearHash_iterator * it, int keySize, int valSize) {
+  recordid NULLRID; NULLRID.page = 0; NULLRID.slot=2; NULLRID.size = -1;
+  recordid  * headerRidB = pblHtLookup(openHashes, &hashRid.page, sizeof(int));
+  hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
+  
+  
+  linearHash_iteratorPair p;// = malloc(sizeof(linearHash_iteratorPair));
+    
+  //next.size == 0 -> empty bucket.  == -1 -> end of list.
+  int inBucket = 0;
+  //while(!memcmp(&(it->current_rid), &(NULLRID), sizeof(recordid)) 
+  while(it->current_rid.size == -1
+	&& it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
+    hashRid.slot = it->current_hashBucket;
+    Tread(xid, hashRid, e);
+    if(e->next.size == -1) {
+      it->current_rid = hashRid;
+      inBucket = 1;
+    } // else, it stays NULLRID.
+    it->current_hashBucket++;
+  }
+  if(! it->current_hashBucket <= max_bucket(headerHashBits, headerNextSplit)) {
+      p.key   = NULL;
+      p.value = NULL;
+      memcpy(&(it->current_rid), &(NULLRID), sizeof(recordid));
+      it->current_hashBucket = 0;
+  } else {
+      p.key   = memcpy(malloc(keySize), (e+1), keySize);
+      p.value = memcpy(malloc(valSize), ((byte*)(e+1))+keySize, valSize);
+      it->current_rid = e->next;
+  }
+  free(e);
+  return p;
 }

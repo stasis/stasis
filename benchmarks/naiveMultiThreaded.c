@@ -16,7 +16,7 @@ static void * go (void * arg_ptr) {
   int xid = Tbegin();
 
   for(j = k * count; j < (k+1) *(count) ; j++) {
-    ThashInsert(xid, hash, &j, sizeof(int), &j, sizeof(int));
+    TnaiveHashInsert(xid, hash, &j, sizeof(int), &j, sizeof(int));
     //    printf("(%d)", k);
   }
   

@@ -2,7 +2,7 @@ LDADD= @CHECK_LIBS@ $(top_builddir)/src/libdfa/libdfa.a $(top_builddir)/src/llad
 bin_PROGRAMS=ping_pong_dfa fork_bomb star
 AM_FLAGS= -g -Wall -pedantic -std=c99
 if HAVE_CHECK
-TESTS = check_networksetup
+TESTS = check_networksetup ping_pong_dfa
 else
 TESTS = 
 endif

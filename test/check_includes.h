@@ -10,4 +10,3 @@ void setup (void) {
 void teardown(void) {
   setup();
 }
-

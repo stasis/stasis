@@ -23,7 +23,10 @@
 #include <string.h>
 #include <lladd/operations/linearHash.h>
 #include <pbl/pbl.h>
-
+/**
+  next.size == 0 implies empty bucket
+  next.size == -1 implies end of list
+*/
 typedef struct {
   recordid next;
 } hashEntry;
@@ -436,7 +439,7 @@ void ThashDeinit() {
   pblHtDelete(lockedBuckets);
 }
 
-void ThashInsert(int xid, recordid hashRid, 
+void TnaiveHashInsert(int xid, recordid hashRid, 
 	    void * key, int keySize, 
 	    void * val, int valSize) {
 
@@ -463,7 +466,7 @@ void ThashInsert(int xid, recordid hashRid,
 }
 /** @todo hash hable probably should track the number of items in it,
     so that expand can be selectively called. */
-int ThashDelete(int xid, recordid hashRid, 
+int TnaiveHashDelete(int xid, recordid hashRid, 
 	    void * key, int keySize, int valSize) {
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
 
@@ -496,9 +499,9 @@ int ThashOpen(int xid, recordid hashRid, int keySize, int valSize) {
   return 0;
 }
 
-void ThashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
-  ThashDelete(xid, hashRid, key, keySize, valSize);
-  ThashInsert(xid, hashRid, key, keySize, val, valSize);
+void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
+  TnaiveHashDelete(xid, hashRid, key, keySize, valSize);
+  TnaiveHashInsert(xid, hashRid, key, keySize, val, valSize);
 
 }
 
@@ -510,7 +513,7 @@ int ThashClose(int xid, recordid hashRid) {
   return 0;
 }
 
-int ThashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
+int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
   /*  printf("lookup header: %d %d\n", headerHashBits, headerNextSplit); */

@@ -103,7 +103,7 @@ START_TEST(simpleLinearHashTest)
 	  assert(!isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid))); */
 
     TlogicalHashInsert(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
-    assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+    assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
 
     assert(rid.page == i+1);
     assert(rid.slot == i+2);
@@ -122,7 +122,7 @@ START_TEST(simpleLinearHashTest)
   for(int i = 0; i < NUM_ENTRIES; i+=10) {
     /*recordid rid = lHtRemove(xid, hash, &i, sizeof(int)); */
     recordid rid;
-    assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+    assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
     assert(rid.page == (i+1));
     assert(rid.slot == (i+2));
     assert(rid.size == (i+3));
@@ -137,12 +137,12 @@ START_TEST(simpleLinearHashTest)
   for(int i = 0; i < NUM_ENTRIES; i++) {
     recordid rid;
     if(i % 10) {
-      assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
       assert(rid.page == (i+1));
       assert(rid.slot == (i+2));
       assert(rid.size == (i+3));
     } else {
-      assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
     }
   }
 
@@ -154,13 +154,13 @@ START_TEST(simpleLinearHashTest)
   for(int i = 0; i < NUM_ENTRIES; i++) {
 
     if(i % 10) {
-      assert(ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
       TlogicalHashDelete(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
       assert(rid.page == (i+1));
       assert(rid.slot == (i+2));
       assert(rid.size == (i+3));
     } else {
-      assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
       TlogicalHashDelete(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
     }
   }
@@ -169,7 +169,7 @@ START_TEST(simpleLinearHashTest)
   /*  fflush(NULL);*/
 
   for(int i = 0; i < NUM_ENTRIES; i++) {
-    assert(!ThashLookup(xid, hashRoot, &i, sizeof(int),  &rid, sizeof(recordid)));
+    assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int),  &rid, sizeof(recordid)));
   }
 
 
@@ -183,12 +183,12 @@ START_TEST(simpleLinearHashTest)
 
   for(int i = 0; i < NUM_ENTRIES; i++) {
     if(i % 10) {
-      assert( ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert( TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
       assert(rid.page == (i+1));
       assert(rid.slot == (i+2));
       assert(rid.size == (i+3));
     } else {
-      assert(!ThashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
+      assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
     }
   }
   printf("done checking..\n");

@@ -1,3 +1,4 @@
+#include <lladd/common.h>
 #include <libdfa/networksetup.h>
 #include <confuse.h>
 #include <stdlib.h>
@@ -64,17 +65,17 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
     fflush(NULL);
     return NULL;
   }
-  printf("coordinator: %s\n", cfg_getstr(cfg, "coordinator"));
-  printf("subordinate count: %d\n", cfg_size(cfg, "subordinates"));
+  DEBUG("coordinator: %s\n", cfg_getstr(cfg, "coordinator"));
+  DEBUG("subordinate count: %d\n", cfg_size(cfg, "subordinates"));
   int i;
   for(i = 0; i < cfg_size(cfg, "subordinates"); i++) {
-    printf("\t%s\n", cfg_getnstr(cfg, "subordinates", i));
+    DEBUG("\t%s\n", cfg_getnstr(cfg, "subordinates", i));
   }
   
   if(hostnumber == COORDINATOR) {
-    printf("I am coordinator\n");
+    DEBUG("I am coordinator\n");
   } else {
-    printf("I am subordinate # %d\n", hostnumber);
+    DEBUG("I am subordinate # %d\n", hostnumber);
   }
   NetworkSetup * ret = calloc(1, sizeof(NetworkSetup));
   
@@ -95,10 +96,12 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
     int j;
     ret->broadcast_list_host_count[i] = cfg_size(group_cfg, "members");
     ret->broadcast_lists[i] = malloc(sizeof (int *) * ret->broadcast_list_host_count[i]);
-    printf("Group %d size %d\n", atoi(cfg_title(group_cfg)), ret->broadcast_list_host_count[i]);
+    DEBUG("Group %d size %d\n", atoi(cfg_title(group_cfg)), ret->broadcast_list_host_count[i]);
     for(j = 0; j < ret->broadcast_list_host_count[i]; j++) {
-       (*ret->broadcast_lists)[i][j] = cfg_getnint(group_cfg, "members", j);
-       printf("\t->%d\n", (*ret->broadcast_lists)[i][j]);
+       ret->broadcast_lists[i][j] = 
+	  strdup(cfg_getnstr(cfg, "subordinates", cfg_getnint(group_cfg, "members", j)-1));
+      
+       DEBUG("\t->%s\n", ret->broadcast_lists[i][j]);
     }
   }
   
