@@ -1,7 +1,7 @@
 INCLUDES = @CHECK_CFLAGS@
 if HAVE_CHECK
 ## Had to disable check_lht because lht needs to be rewritten.
-TESTS = check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery 
+TESTS = check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery check_bufferManager
 else
 TESTS = 
 endif

@@ -9,12 +9,14 @@
 #include <lladd/common.h>
 #include <lladd/pageCache.h>
 #include <lladd/bufferManager.h>
+#include "latches.h"
 
 #include <assert.h>
 #include <pbl/pbl.h>
 
 #include <stdio.h>
 #include "page.h" 
+#include "pageFile.h"
 static pblHashTable_t *activePages; /* page lookup */
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
@@ -52,6 +54,7 @@ void pageCacheDeinit() {
       abort();
       / *      exit(ret); * /
       }*/
+
     pageWrite(p);
   }
   pblHtDelete(activePages);
@@ -115,21 +118,38 @@ static Page *kickPage(int pageid) {
 
 	Page *ret = repTail;
 
+
 	assert( bufferSize == MAX_BUFFER_SIZE );
 
 	qRemove(ret);
 	pblHtRemove(activePages, &ret->id, sizeof(int));
+
+	/* It's almost safe to release the mutex here.  The LRU-2
+	   linked lists are in a consistent (but under-populated)
+	   state, and there is no reference to the page that we're
+	   holding in the hash table, so the data structures are
+	   internally consistent.  
+
+	   The problem is that that loadPagePtr could be called
+	   multiple times with the same pageid, so we need to check
+	   for that, or we might load the same page into multiple
+	   cache slots, which would cause consistency problems.
+
+	   @todo Don't block while holding the loadPagePtr mutex!
+	*/
 	
-	/* if( munmap(ret->memAddr, PAGE_SIZE) ) */
-	/*if(pageWrite(ret)) / * flushPage(*ret)) * /
-		assert( 0 ); */
+	/*pthread_mutex_unlock(loadPagePtr_mutex);*/
 
 	pageWrite(ret);
+
+	/*pthread_mutex_lock(loadPagePtr_mutex);*/
+
+	writelock(ret->rwlatch, 121);
 
 	pageRealloc(ret, pageid);
 
 	middleInsert(ret);
-	pblHtInsert(activePages, &pageid, sizeof(int), ret);
+	/*  pblHtInsert(activePages, &pageid, sizeof(int), ret); */
 
 	return ret;
 }
@@ -137,23 +157,32 @@ static Page *kickPage(int pageid) {
 int lastPageId = -1;
 Page * lastPage = 0;
 
+static pthread_mutex_t loadPagePtr_mutex;
+
 void *loadPagePtr(int pageid) {
 	/* lock activePages, bufferSize */
 	Page *ret;
 
+	pthread_mutex_lock(&(loadPagePtr_mutex));
+
 	if(lastPage && lastPageId == pageid) {
-	  return lastPage;
+	  void * ret = lastPage;
+	  pthread_mutex_unlock(&(loadPagePtr_mutex));
+	  
+	  return ret;
 	} else {
 	  ret = pblHtLookup(activePages, &pageid, sizeof(int));
 	}
 
 	if( ret ) {
+	  /** Don't need write lock for linked list manipulations.  The loadPagePtr_mutex protects those operations. */
+
 		if( bufferSize == MAX_BUFFER_SIZE ) { /* we need to worry about page sorting */
 			/* move to head */
 			if( ret != repHead ) {
 				qRemove(ret);
 				headInsert(ret);
-		assert(ret->next != ret && ret->prev != ret);
+				assert(ret->next != ret && ret->prev != ret);
 
 				if( ret->queue == 2 ) {
 					/* keep first queue same size */
@@ -169,6 +198,7 @@ void *loadPagePtr(int pageid) {
 		lastPageId = pageid;
 
 		/* DEBUG("Loaded page %d => %x\n", pageid, (unsigned int) ret->memAddr); */
+		pthread_mutex_unlock(&(loadPagePtr_mutex));
 
 		return ret;
 	} else if( bufferSize == MAX_BUFFER_SIZE ) { /* we need to kick */
@@ -178,10 +208,12 @@ void *loadPagePtr(int pageid) {
 		Page *iter;
 
 		ret = pageAlloc(pageid);
+		writelock(ret->rwlatch, 224);
+
 		headInsert(ret);
 		assert(ret->next != ret && ret->prev != ret);
 
-		pblHtInsert( activePages, &pageid, sizeof(int), ret );
+		/*		pblHtInsert( activePages, &pageid, sizeof(int), ret ); */
 
 		bufferSize++;
 
@@ -204,21 +236,37 @@ void *loadPagePtr(int pageid) {
 		bufferSize++;
 
 		ret = pageAlloc(pageid);
+		writelock(ret->rwlatch, 224);
 		headInsert(ret);
 		assert(ret->next != ret && ret->prev != ret);
 		assert(ret->next != ret && ret->prev != ret);
-		pblHtInsert( activePages, &pageid, sizeof(int), ret );
+		/*		pblHtInsert( activePages, &pageid, sizeof(int), ret ); */
 	}
+	
 
 	/* we now have a page we can dump info into */
+	
+	
+
 	assert( ret->id == pageid );
 
-	/*pageMap(ret); */
-	pageRead(ret);
+
+	pblHtInsert( activePages, &pageid, sizeof(int), ret );
 
 	lastPage = ret;
 	lastPageId = pageid;
 
+
+	/* release mutex for this function */
+
+	pthread_mutex_unlock(&(loadPagePtr_mutex));
+
+	pageRead(ret);
+
+	/* release write lock on the page. */
+
+	writeunlock(ret->rwlatch);
+	
 	DEBUG("Loaded page %d => %x\n", pageid, (unsigned int) ret->memAddr);
 	
 	return ret;

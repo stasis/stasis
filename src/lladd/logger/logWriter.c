@@ -47,7 +47,7 @@ terms specified in this license.
 #include "logHandle.h"
 
 #include "../latches.h"
-
+#include "../pageFile.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -123,11 +123,6 @@ pthread_mutex_t truncateLog_mutex;
 
 
 
-/** 
-    @todo Put myFseek, myFwrite in their own file, and make a header for it... */
-
-void myFwrite(const void * dat, long size, FILE * f);
-long myFseek(FILE * f, long offset, int whence);
 int openLogWriter() {
   log = fopen(LOG_FILE, "a+");
 
@@ -519,13 +514,3 @@ lsn_t firstLogEntry() {
   return global_offset + sizeof(lsn_t);
 }
 
-void myFwrite(const void * dat, long size, FILE * f) {
-  int nmemb = fwrite(dat, size, 1, f);
-  /* test */
-  if(nmemb != 1) {
-    perror("myFwrite");
-    abort();
-    /*    return FILE_WRITE_OPEN_ERROR; */
-  }
-  
-}

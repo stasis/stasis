@@ -98,47 +98,27 @@ terms specified in this license.
 int bufInit();
 
 /**
- * allocate a record
+ * allocate a record.  This must be done in two phases.  The first
+ * phase reserves a slot, and produces a log entry.  The second phase
+ * sets up the slot according to the contents of the log entry.
+ *
+ * Ralloc implements the first phase.
+ *
  * @param xid The active transaction.
  * @param size The size of the new record
  * @return allocated record
+ *
+ * @see slotRalloc the implementation of the second phase.
  */
 recordid ralloc(int xid, long size);
 
 
 /**
  * allocate a record at a given slot.  (Useful for recovery.)
+ * 
+ * @see ralloc
  */
 void slotRalloc(int pageid, lsn_t lsn, recordid rid);
-
-/**
- * Find a page with some free space.
- *
- */
- 
-
-/* *
- * This function updates the LSN of a page.
- * 
- * This is needed by the
- * recovery process to make sure that each action is undone or redone
- * exactly once.
- *
- * @ param LSN The new LSN of the page.
- * @ param pageid ID of the page you want to write
- *
- * @ todo This needs to be handled by ralloc and writeRecord for
- * correctness.  Right now, there is no way to atomically update a
- * page(!)  To fix this, we need to change bufferManager's
- * implementation to use read/write (to prevent the OS from stealing
- * pages in the middle of updates), and alter kickPage to see what the
- * last LSN synced to disk was.  If the log is too far behind, it will
- * need to either choose a different page, or call flushLog().  We may
- * need to implement a special version of fwrite() to do this
- * atomically.  (write does not have to write all of the data that was
- * passed to it...)
- */
-/*void writeLSN(long LSN, int pageid);  */
 
 /**
  * @param pageid ID of page you want to read
@@ -163,39 +143,6 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat);
  * @param dat buffer for data
  */
 void readRecord(int xid, recordid rid, void *dat);
-
-/**
- * Write page to disk, including correct LSN.  Doing so may require a
- * call to logSync().  There is not much that can be done to avoid
- * this call right now.  In the future, it might make sense to check
- * to see if some other page can be kicked, in order to avoid the log
- * flush.  
- *
- * @param dat  The page to be flushed to disk.
- */
-/* void pageWrite(Page * dat); */
-
-
-/**
-   Read a page from disk.  
-
-   @param ret A page struct, with id set correctly.  The rest of this
-   struct will be overwritten by pageMap.
-*/
-/* void pageRead(Page * ret); */
-
-
-/* int flushPage(Page page); */
-
-/*void pageMap(Page * page); */
-/*
- * this function does NOT write to disk, just drops the page from the active
- * pages
- * @param page to take out of buffer manager
- * @return 0 on success
- * @return error code on failure
-int dropPage(Page page);
- */
 
 /**
  * all actions necessary when committing a transaction. Can assume that the log
@@ -236,8 +183,9 @@ int bufTransAbort(int xid, lsn_t lsn);
  */
 void bufDeinit();
 
+void setSlotType(int pageid, int slot, int type);
+
 void addPendingEvent(int pageid);
 void removePendingEvent(int pageid);
-void setSlotType(int pageid, int slot, int type);
 
 #endif

@@ -102,11 +102,15 @@ typedef struct Page_s {
       Record write       *READ LOCK*
       Write LSN           Write lock
 
-      kickPage() does not require a lock, since it may not be called
-      if any threads could still be manipulating the page.
+      Since the bufferManager re-uses page structs, this lock is also
+      held when the page is being read or written to disk:
+
+      Write page to disk    Write lock
+      Read page from disk   Write lock
       
-      Any circumstance where these locks are held during an I/O operation
-      is a bug.
+      Any circumstance where one these locks are held during an I/O
+      operation is a bug.  (Unless the I/O operation is reading or
+      writing the locked page to disk)
   */
   
   void * rwlatch;
@@ -213,7 +217,6 @@ recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid);
 
 int pageGetSlotType(Page * p, int slot, int type);
 void pageSetSlotType(Page * p, int slot, int type);
-
 
 
 END_C_DECLS

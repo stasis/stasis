@@ -47,23 +47,14 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
-
 #include <assert.h>
-#include <stdio.h>
-
 #include <lladd/bufferManager.h>
 #include "blobManager.h"
 #include <lladd/pageCache.h>
-#include "logger/logWriter.h"
+/*#include "logger/logWriter.h" */
 
 #include "page.h"
-
-static FILE * stable = NULL;
-
-/** 
-    This function blocks until there are no events pending for this page.
-*/
-static void finalize(Page * page);
+#include "pageFile.h"
 
 
 
@@ -90,103 +81,17 @@ Page * loadPage(int pageid);
 
 
 
-/* ** File I/O functions ** */
-/* Defined in blobManager.c, but don't want to export this in any public .h files... */
-long myFseek(FILE * f, long offset, int whence);
-
-void pageRead(Page *ret) {
-  long fileSize = myFseek(stable, 0, SEEK_END);
-  long pageoffset = ret->id * PAGE_SIZE;
-  long offset;
-
-  DEBUG("Reading page %d\n", ret->id);
-
-  if(!ret->memAddr) {
-    ret->memAddr = malloc(PAGE_SIZE);
-  }
-  assert(ret->memAddr);
-  
-  if ((ret->id)*PAGE_SIZE >= fileSize) {
-    myFseek(stable, (1+ ret->id) * PAGE_SIZE -1, SEEK_SET);
-    if(1 != fwrite("", 1, 1, stable)) {
-      if(feof(stable)) { printf("Unexpected eof extending storefile!\n"); fflush(NULL); abort(); }
-      if(ferror(stable)) { printf("Error extending storefile! %d", ferror(stable)); fflush(NULL); abort(); }
-    }
-
-  }
-  offset = myFseek(stable, pageoffset, SEEK_SET);
-  assert(offset == pageoffset);
-
-  if(1 != fread(ret->memAddr, PAGE_SIZE, 1, stable)) {
-                                                                                                                 
-    if(feof(stable)) { printf("Unexpected eof reading!\n"); fflush(NULL); abort(); }
-    if(ferror(stable)) { printf("Error reading stream! %d", ferror(stable)); fflush(NULL); abort(); }
-                                                                                                                 
-  }
-
-}
-
-void pageWrite(Page * ret) {
-
-  long pageoffset = ret->id * PAGE_SIZE;
-  long offset = myFseek(stable, pageoffset, SEEK_SET);
-  assert(offset == pageoffset);
-  assert(ret->memAddr);
-
-  DEBUG("Writing page %d\n", ret->id);
-
-  if(flushedLSN() < pageReadLSN(ret)) {
-    DEBUG("pageWrite is calling syncLog()!\n");
-    syncLog();
-  }
-
-  finalize(ret);
-
-  if(1 != fwrite(ret->memAddr, PAGE_SIZE, 1, stable)) {
-                                                                                                                 
-    if(feof(stable)) { printf("Unexpected eof writing!\n"); fflush(NULL); abort(); }
-    if(ferror(stable)) { printf("Error writing stream! %d", ferror(stable)); fflush(NULL); abort(); }
-                                                                                                                 
-  }
-
-
-}
-
-static void openPageFile() {
-
-  DEBUG("Opening storefile.\n");
-  if( ! (stable = fopen(STORE_FILE, "r+"))) { /* file may not exist */
-    byte* zero = calloc(1, PAGE_SIZE);
-
-    if(!(stable = fopen(STORE_FILE, "w+"))) { perror("Couldn't open or create store file"); abort(); }
-
-    /* Write out one page worth of zeros to get started. */
-    
-    if(1 != fwrite(zero, PAGE_SIZE, 1, stable)) { assert (0); }
-
-    free(zero);
-  }
-  
-  lastFreepage = 0;
-  pthread_mutex_init(&lastFreepage_mutex , NULL);
-
-  DEBUG("storefile opened.\n");
-
-}
-static void closePageFile() {
-
-  int ret = fclose(stable);
-  assert(!ret);
-  stable = NULL;
-}
-
 int bufInit() {
 
-	stable = NULL;
+  /*	stable = NULL; */
 	pageInit();
 	openPageFile();
 	pageCacheInit();
 	openBlobStore();
+
+	lastFreepage = 0;
+	pthread_mutex_init(&lastFreepage_mutex , NULL);
+	
 
 	return 0;
 }
@@ -206,9 +111,6 @@ void bufDeinit() {
 void simulateBufferManagerCrash() {
   closeBlobStore();
   closePageFile();
-  /*  close(stable);
-      stable = -1;*/
-
 }
 
 /* ** No file I/O below this line. ** */
@@ -267,10 +169,6 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
     /** @todo This assert should be here, but the tests are broken, so it causes bogus failures. */
     /*assert(pageReadLSN(*p) <= lsn);*/
     
-    /** @todo Should pageWriteRecord take an LSN (so it can do the locking?) */
-    /*    pageWriteRecord(xid, *p, rid, dat);
-    p->LSN = lsn;
-    pageWriteLSN(*p); */
     pageWriteRecord(xid, p, rid, lsn, dat);
     
   }
@@ -304,6 +202,24 @@ int bufTransAbort(int xid, lsn_t lsn) {
   return 0;
 }
 
+void setSlotType(int pageid, int slot, int type) {
+  Page * p = loadPage(pageid);
+  pageSetSlotType(p, slot, type);
+}
+
+/** 
+    Inform bufferManager that a new event (such as an update) will be
+    performed on page pageid.  This function may not be called on a
+    page after finalize() has been called on that page, and each call
+    to this function must be followed by a corresponding call to
+    removePendingEvent.
+
+    This function is called by the logger when CLR or UPDATE records
+    are written.
+    
+    @see finalize, removePendingEvent
+
+*/
 void addPendingEvent(int pageid){
   
   Page * p = loadPage(pageid);
@@ -318,7 +234,19 @@ void addPendingEvent(int pageid){
 
 }
 
-/** @todo as implemented, loadPage() ... doOperation is not atomic!*/
+/**
+   
+   Because updates to a page might not happen in order, we need to
+   make sure that we've applied all updates to a page that we've heard
+   about before we flush that page to disk.
+
+   This method informs bufferManager that an update has been applied.
+   It is called by operations.c every time doUpdate, redoUpdate, or
+   undoUpdate is called.
+
+   @todo as implemented, loadPage() ... doOperation is not atomic!
+
+*/
 void removePendingEvent(int pageid) {
   
   Page * p = loadPage(pageid);
@@ -337,24 +265,4 @@ void removePendingEvent(int pageid) {
   pthread_mutex_unlock(&(p->pending_mutex));
 }
 
-
-static void finalize(Page * p) {
-  pthread_mutex_lock(&(p->pending_mutex));
-  p->waiting++;
-
-  while(p->pending) {
-    
-    pthread_cond_wait(&(p->noMorePending), &(p->pending_mutex));
-  }
-
-  pthread_mutex_unlock(&(p->pending_mutex)); 
-
-  return;
-}
-
-
-void setSlotType(int pageid, int slot, int type) {
-  Page * p = loadPage(pageid);
-  pageSetSlotType(p, slot, type);
-}
 

@@ -8,6 +8,7 @@
 #include <lladd/constants.h>
 
 #include "blobManager.h"
+#include "pageFile.h"
 #include <pbl/pbl.h>
 
 #include <stdio.h>
@@ -75,15 +76,6 @@ void closeBlobStore() {
   blobf1 = NULL;
 
   pblHtDelete(dirtyBlobs);
-}
-
-long myFseek(FILE * f, long offset, int whence) {
-  long ret;
-  flockfile(f);
-  if(0 != fseek(f, offset, whence)) { perror ("fseek"); fflush(NULL); abort(); }
-  if(-1 == (ret = ftell(f))) { perror("ftell"); fflush(NULL); abort(); }
-  funlockfile(f);
-  return ret;
 }
 
 recordid preAllocBlob(int xid, long blobSize) {
