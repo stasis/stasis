@@ -3,7 +3,6 @@
     This file handles all of the file I/O for pages.
 
 */
-
 #include "page.h"
 #include <lladd/bufferManager.h>
 
@@ -103,6 +102,7 @@ void pageWrite(Page * ret) {
   }
 
   pthread_mutex_lock(&stable_mutex);
+
   offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
   assert(offset == pageoffset);
   assert(ret->memAddr);

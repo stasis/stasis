@@ -86,6 +86,9 @@ terms specified in this license.
  $Id$
 
 ************************************************************************/
+/* _XOPEN_SOURCE is needed for posix_memalign */
+#define _XOPEN_SOURCE 600
+#include <stdlib.h>
 
 #include <config.h>
 #include <lladd/common.h>
@@ -425,7 +428,7 @@ void pageInit() {
 	for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
 	  pool[i].rwlatch = initlock();
 	  pool[i].loadlatch = initlock();
-	  pool[i].memAddr = malloc(PAGE_SIZE);
+	  assert(!posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE));
 	}
 
 	pthread_mutex_init(&lastFreepage_mutex , NULL);
