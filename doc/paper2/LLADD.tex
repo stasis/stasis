@@ -1838,19 +1838,24 @@ to object serialization.  First, since \yad supports
 custom log entries, it is trivial to have it store deltas to
 the log instead of writing the entire object during an update.
 Such an optimization would be difficult to achieve with Berkeley DB 
-since its record diffing mechanism assumes that changes span contiguous 
-byte ranges, and this may not be the case for arbitrary object updates.
-\rcs { MIKE IMPLEMENTED THIS!  FIXME }
-but could be performed by a database server if the fields of the
-objects were broken into database table columns. 
-\footnote{It is unclear if
-this optimization would outweigh the overheads associated with an SQL
-based interface.  Depending on the database server, it may be
-necessary to issue a SQL update query that only updates a subset of a
-tuple's fields in order to generate a diff-based log entry.  Doing so
-would preclude the use of prepared statements, or would require a large
-number of prepared statements to be maintained by the DBMS. We plan to
-investigate the overheads of SQL in this context in the future.}
+since the only diff-based mechanism it supports requires changes to 
+span contiguous, which is not necessarily the case for arbitrary
+object updates.
+In a database server context, this type of optimization can be
+supported if the fields of the object are broken into database table
+columns. and a SQL update query only modifies a subset of the fields. 
+However, as we have seen in some preliminary evaluation, 
+the overheads associated with a SQL based interface outweigh the
+advantages of this optimization.
+
+%% \footnote{It is unclear if
+%% this optimization would outweigh the overheads associated with an SQL
+%% based interface.  Depending on the database server, it may be
+%% necessary to issue a SQL update query that only updates a subset of a
+%% tuple's fields in order to generate a diff-based log entry.  Doing so
+%% would preclude the use of prepared statements, or would require a large
+%% number of prepared statements to be maintained by the DBMS. We plan to
+%% investigate the overheads of SQL in this context in the future.}
 
 %  If IPC or 
 %the network is being used to communicate with the DBMS, then it is very
@@ -2009,14 +2014,26 @@ only one integer field from a ~1KB object is modified, the fully
 optimized \yad correspond to a twofold speedup over the unoptimized
 \yad.
 
-In the second graph, we constrained the \yad buffer pool size to be a
-fraction of the size of the object cache, and bypass the filesystem
+In all cases, the update rate for mysql\footnote{We ran mysql using
+InnoDB for the table engine, as it is the fastest engine that provides
+similar durability to \yad. For this test, we also linked directly
+with the mysqld daemon library, bypassing the RPC layer. In
+experiments that used the RPC layer, test completion times were orders
+of magnitude slower.} is slower than Berkeley DB,
+which is slower than any of the \yad variants. This performance
+difference is in line with those observed in Section
+\ref{sub:Linear-Hash-Table}. We also see the increased overhead due to
+the SQL processing for the mysql implementation, although we note that
+a SQL variant of the diff-based optimization also provides performance
+benefits.
 
+In the second graph, we constrained the \yad buffer pool size to be a
+small fraction of the size of the object cache, and bypass the filesystem
 buffer cache via the O\_DIRECT option. The goal of this experiment is to
 focus on the benefits of the update/flush optimization in a simulated
 scenario of memory pressure. From this graph, we see that as the percentage of
 requests that are serviced by the cache increases, the
-performance of the optimized \yad also greatly increases.
+performance of the optimized \yad dramatically increases.
 This result supports the hypothesis of the optimization, and
 shows that by leveraging the object cache, we can reduce the load on
 the page file and therefore the size of the buffer pool.
@@ -2027,18 +2044,18 @@ whitespace, comments and boilerplate function registrations.  Although
 the reasoning required to ensure the correctness of this code is
 complex, the simplicity of the implementation is encouraging.
 
-In addition to the hashtable, which is required by OASYS's API, this
-section made use of custom log formace and semantics to reduce log
+In addition to the hashtable, which is required by \oasys's API, this
+section made use of custom log formats and semantics to reduce log
 bandwidth and page file usage.  Berkeley DB supports a similar
-mechanism that is designed to reduce log bandwidth, but it only
-supports range updates and does not map naturally to OASYS's data
-model.  Contrast the to our \yad extension which simply makes upcalls
+partial update mechanism, but it only
+supports range updates and does not map naturally to \oasys's data
+model.  In contrast, our \yad extension simply makes upcalls
 into the object serialization layer during recovery to ensure that the
-compact, object specific diffs that OASYS produces are correctly
+compact, object-specific diffs that \oasys produces are correctly
 applied.  The custom log format, when combined with direct access to
-the page file and buffer pool drastcally reduced disk and memory usage
-for write intensive loads, and a simple extension to our recovery algorithm makes it
-easy to implement similar optimizations in the future.
+the page file and buffer pool, drastically reduces disk and memory usage
+for write intensive loads. A simple extension to our recovery algorithm makes it
+easy to implement other similar optimizations in the future.
 
 %This section uses:
 %
