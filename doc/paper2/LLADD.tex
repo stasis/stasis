@@ -105,7 +105,7 @@ move to a higher-level set-based data model that avoids the kind of
 ``navigational'' interactions required by these lower-level systems.
 Thus in some sense, we are arguing for the development of modern
 navigational transaction systems that can compliment relational systems 
-and that naturally support current system designs and development methodolgies.
+and that naturally support current system designs and development methodologies.
 
 The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
@@ -425,7 +425,7 @@ well, due to their relative simplicity and good scalability.
 Depending on the fault model on which a cluster hash table is based,
 it is quite plausible that key portions of the transactional
 mechanism, such as forcing log entries to disk, will be replaced with
-other durability schemes.  Possiblities include in-memory replication
+other durability schemes.  Possibilities include in-memory replication
 across many nodes, or spooling logical logs to disk on dedicated
 servers.  Similarly, atomicity semantics may be relaxed under certain
 circumstances.  \yad is unique in that it can support the full range
@@ -573,7 +573,7 @@ to happen at recovery, operations must produce log entries that contain
 all information necessary for REDO and UNDO.
 
 An important concept in ARIES is the ``log sequence number'' or {\em
-LSN}.  An LSN is essentially a virtual timestamp that goes on every
+LSN}.  An LSN is essentially a virtual time stamp that goes on every
 page; it marks the last log entry that is reflected on the page and
 implies that {\em all previous log entries} are also reflected.  Given the
 LSN, \yad calculates where to start playing back the log to bring the
@@ -724,7 +724,7 @@ detection, although we expect many applications to make use of
 deadlock-avoidance schemes, which are already prevalent in
 multithreaded application development.  The lock manager is flexible
 enough to also provide index locks for hashtable implementations and 
-more complex locking protocols such as hierarhical two-phase 
+more complex locking protocols such as hierarchical two-phase 
 locking~\cite{hierarcicalLocking,ariesim}.  
 The lock manager API is divided into callback functions that are made 
 during normal operation and recovery, and into generic lock manager 
@@ -922,7 +922,7 @@ semantics.
 {\em raw-page}, which is just an array of
 bytes, {\em fixed-page}, a record-oriented page with fixed-length records,
 {\em slotted-page}, which supports variable-sized records, and 
-{\em versioned-page},  a slotted-page with a seperate version number for 
+{\em versioned-page},  a slotted-page with a separate version number for 
 each record (Section~\ref{version-pages}).  
 
 {\em Logical logging} uses a higher-level key to specify the
@@ -1005,8 +1005,8 @@ cascading aborts.  If the transaction that encloses the operations
 aborts, the logical undo will {\em compensate} for
 its effects, but leave its structural changes intact. Because this 
 recipe does not ensure transactional consistency and is largely 
-orthogonal to the use of a lock mananger, we call this class of 
-concurrenct control {\em latching} throughout this paper.
+orthogonal to the use of a lock manager, we call this class of 
+concurrency control {\em latching} throughout this paper.
 
 We have found the recipe to be easy to follow and very effective, and
 we use it everywhere our concurrent data structures may make structural 
@@ -1768,7 +1768,7 @@ two data structures, and needs to generate custom log
 entries, define custom latching/locking semantics, and make use of, or
 even customize, nested top actions.
 
-The fact that our straightforward hashtable is competitive with Berkeley BD
+The fact that our straightforward hashtable is competitive with Berkeley DB
 shows that simple \yad implementations of transactional data structures
 can compete with comparable, highly tuned, general-purpose
 implementations.  Similarly, this example shows that \yad's flexibility 
@@ -1780,9 +1780,10 @@ application developers to build custom
 transactional storage mechanisms when application performance is
 important.  Because we are advocating the use of 
 application-provided transactional storage primitives, we only use the 
-straightfoward hashtable implementation during our other benchmarks.
+straightforward hashtable implementation during our other benchmarks.
 
-We have shown that \yad's implementation provides primatives that perform 
+
+We have shown that \yad's implementation provides primitives that perform 
 well enough to allow application-specific extensions to compete with highly 
 tuned general purpose systems.  The next two sections validate the 
 practicality of such mechanisms by applying them to applications 
