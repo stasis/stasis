@@ -95,17 +95,17 @@ short parse_port(const char * address) {
   port_s = strtok_r(addr_copy, ":", &strtok_buf);
 
   if(port_s == NULL) {
-    printf("Invalid address (%s) passed into parse_port", address);
-    assert(0);
-    return -1;
+//    printf("Invalid address (%s) passed into parse_port", address);
+//   assert(0);
+    return 0;
   }
 
   port_s = strtok_r(NULL, ":", &strtok_buf);
 
   if(port_s == NULL) {
-    printf("Invalid address (%s) passed into parse_port", address);
-    assert(0);
-    return -1;
+//    printf("Invalid address (%s) passed into parse_port", address);
+//    assert(0);
+    return 0;
   }
   
   port = atoi(port_s);

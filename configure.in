@@ -46,6 +46,7 @@ AM_CONDITIONAL(HAVE_CHECK, test x$have_check = xtrue)
 #fi
 
 AC_CHECK_LIB([m], [sqrt])
+AC_CHECK_LIB([db], [db_open])
 AC_CHECK_LIB([pthread], [pthread_create])
 
 # Checks for header files.
@@ -59,14 +60,19 @@ AC_C_CONST
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
+AC_STRUCT_TM
 
 # Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
 AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
+AC_FUNC_REALLOC
 AC_FUNC_STAT
-AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa memmove memset mkdir socket sqrt strchr strdup strerror strrchr strstr strtoul])
+AC_CHECK_FUNCS([bzero fdatasync getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir socket sqrt strchr strdup strerror strrchr strstr strtoul])
 
 AC_CONFIG_FILES([Makefile
+                 benchmarks/Makefile
+                 benchmarks/berkeleyDB/Makefile
                  libdfa/Makefile
                  lladd/Makefile
                  pbl/Makefile
@@ -78,8 +84,8 @@ AC_CONFIG_FILES([Makefile
                  src/libdfa/Makefile
                  src/lladd/Makefile
                  src/pbl/Makefile
+                 src/pobj/Makefile
                  src/timing/Makefile
-		 src/pobj/Makefile
                  test/2pc/Makefile
                  test/Makefile
                  test/cht/Makefile
@@ -88,9 +94,7 @@ AC_CONFIG_FILES([Makefile
                  test/lladd/Makefile
                  test/messages/Makefile
                  test/monotree/Makefile
-		 test/pobj/Makefile
+                 test/pobj/Makefile
                  utilities/Makefile
-                 benchmarks/Makefile
-                 benchmarks/berkeleyDB/Makefile
 ])
 AC_OUTPUT

@@ -11,14 +11,14 @@ filter.file.ignore.hidden=0
 filter.dir.ignore.hidden=0
 
 [filenumbers]
-0=135
+0=1
 1=1
-2=1
-3=113
-4=51
-5=439
-6=545
-7=122
+2=12
+3=2
+4=50
+5=3
+6=25
+7=24
 8=30
 9=1
 10=67
@@ -51,15 +51,14 @@ filter.dir.ignore.hidden=0
 17=
 
 [filelist]
-0=/home/sears/lladd/lladd/constants.h
-1=/home/sears/lladd/lladd/operations.h
-2=/home/sears/lladd/src/lladd/page.c
-3=/home/sears/lladd/src/lladd/operations/set.c
-4=/home/sears/lladd/src/lladd/operations/arrayList.c
-5=/home/sears/lladd/test/lladd/check_page.c
-6=/home/sears/lladd/test/lladd/check_operations.c
-7=/home/sears/lladd/src/lladd/operations/alloc.c
-8=/home/sears/lladd/lladd/operations/alloc.h
+0=/home/sears/lladd/libdfa/messages.h
+1=/home/sears/lladd/test/dfa/Makefile.am
+2=/home/sears/lladd/test/lladd/Makefile.am
+3=/home/sears/lladd/test/lladd/check_blobRecovery.c
+4=/home/sears/lladd/test/dfa/check_networksetup.c
+5=/home/sears/lladd/libdfa/networksetup.sample
+6=/home/sears/lladd/src/libdfa/networksetup.c
+7=/home/sears/lladd/libdfa/networksetup.h
 
 [Project Tree]
 0=0
@@ -74,14 +73,17 @@ filter.dir.ignore.hidden=0
 
 [File Tree]
 0=0
-1=0:6
-2=0:6:2
-3=0:9
-4=0:9:4
-5=0:9:4:3
-6=0:9:4:4
-7=0:10
-8=0:10:5
+1=0:5
+2=0:6
+3=0:6:2
+4=0:9
+5=0:10
+6=0:10:0
+7=0:10:2
+8=0:10:3
+9=0:11
+10=0:11:4
+11=0:11:5
 
 [executer args]
 0=check_linearHash

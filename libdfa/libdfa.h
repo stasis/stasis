@@ -54,8 +54,6 @@ terms specified in this license.
 */
 #define DFA_MACHINE_COUNT 100
 
-
-/** TODO:  Add transitions and states to dfaSet? */
 typedef struct dfaSet {
   /*  MonoTree monoTree; */
   smash_t * smash;
