@@ -58,32 +58,43 @@ open(LLADD_RECORDID,     ">LLADD_RECORDID.script");
 open(BDB_HASH,           ">BDB_HASH.script");
 open(BDB_RAW,            ">BDB_RAW.script");
 open(BULK_LOAD,          ">BULK_LOAD.script");
+open(BULK_LOAD_RAW,          ">BULK_LOAD_RAW.script");
 
-print BDB_RAW    "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
-print BULK_LOAD  "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
+warn    "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
+#print BULK_LOAD  "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
+#print BULK_LOAD_RAW  "cp ../berkeleyDB/bdbHashThreaded ../berkeleyDB/bdbRawThreaded";
 
-for(my $i = 1; $i <= 10; $i ++) {
+for(my $i = 0; $i <= 2.5; $i +=0.25) {
     my $insert_count = $i * 100000;
+
+    if($insert_count == 0) { $insert_count = 1; }
 
     my $thread_count = 200;
     my $threaded_insert_count = $insert_count / 200;
     
     print LLADD_NTA_HASH     "../linearHashNTAThreaded       1 $insert_count\n";
     print LLADD_FAST_HASH    "../logicalHash                 1 $insert_count\n";  # could do ./naiveHash instead...
-    print LLADD_ARRAY_LIST   "../arrayListSet                1 $insert_count\n";
-    print LLADD_LINKED_LIST  "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
-    print LLADD_RECORDID     "../rawSet                      1 $insert_count\n"; 
     print BDB_HASH           "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 1\n";
-    print BDB_RAW            "../berkeleyDB/bdbRawThreaded   1 $insert_count 0 0\n";
 
     print BULK_LOAD          "../linearHashNTAThreaded       1 $insert_count\n";
     print BULK_LOAD          "../logicalHash                 1 $insert_count\n";  # could do ./naiveHash instead...
-    print BULK_LOAD          "../arrayListSet                1 $insert_count\n";
-    print BULK_LOAD          "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
-    print BULK_LOAD          "../rawSet                      1 $insert_count\n"; 
     print BULK_LOAD          "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 1\n";
-    print BULK_LOAD          "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 0\n";
+}
+for(my $i = 0; $i <= 10; $i++) {
+ 
+    my $insert_count = $i * 200000;
 
+    if($insert_count == 0) { $insert_count = 1; }
+
+    print LLADD_ARRAY_LIST   "../arrayListSet                1 $insert_count\n";
+    print LLADD_LINKED_LIST  "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
+    print LLADD_RECORDID     "../rawSet                      1 $insert_count\n"; 
+    print BDB_RAW            "../berkeleyDB/bdbRawThreaded   1 $insert_count 0 0\n";
+
+    print BULK_LOAD_RAW          "../arrayListSet                1 $insert_count\n";
+    print BULK_LOAD_RAW          "../pageOrientedListNTA         1 $insert_count\n";  # could do ./linkedList instead...
+    print BULK_LOAD_RAW          "../rawSet                      1 $insert_count\n"; 
+    print BULK_LOAD_RAW          "../berkeleyDB/bdbHashThreaded  1 $insert_count 0 0\n";
 }
 
 close(LLADD_NTA_HASH);
@@ -94,6 +105,7 @@ close(LLADD_RECORDID);
 close(BDB_HASH);
 close(BDB_RAW);
 close(BULK_LOAD);
+close(BULK_LOAD_RAW);
 
 ## Throughput vs. number of transactions
 
@@ -105,21 +117,39 @@ open(BDB_RECNO_TPS,           ">BDB_RECNO_TPS.script");
 
 open(TPS,   ">TPS.script");
 
-for(my $i = 0; $i <= 200; $i ++ ) {
+for(my $i = 0; $i <= 50; $i ++ ) {
     my $insert_threads = $i * 10;
     if($insert_threads == 0) {
 	$insert_threads = 1;
     }
 
-    my $insert_per_thread = 1000; # / $insert_threads;
+    my $insert_per_thread = 500; # / $insert_threads;
 
-    print LLADD_HASH_TPS     "../linearHashNTAThreaded        $insert_threads   $insert_per_thread 1\n";
+#    print LLADD_HASH_TPS     "../linearHashNTAThreaded        $insert_threads   $insert_per_thread 1\n";
     print BDB_HASH_TPS      "../berkeleyDB/bdbHashThreaded        $insert_threads   $insert_per_thread 1 1\n";
 
     print TPS     "../linearHashNTAThreaded        $insert_threads   $insert_per_thread 1\n";
     print TPS      "../berkeleyDB/bdbHashThreaded        $insert_threads   $insert_per_thread 1 1\n";
 
 }
+
+for(my $i = 0; $i <= 800; $i += 50 ) {
+    my $insert_threads = $i;
+    if($insert_threads == 0) {
+	$insert_threads = 1;
+    }
+
+    my $insert_per_thread = 50; # / $insert_threads;
+
+    print LLADD_HASH_TPS     "../linearHashNTAThreaded        $insert_threads   $insert_per_thread 1\n";
+#    print BDB_HASH_TPS      "../berkeleyDB/bdbHashThreaded        $insert_threads   $insert_per_thread 1 1\n";
+
+#    print TPS     "../linearHashNTAThreaded        $insert_threads   $insert_per_thread 1\n";
+#    print TPS      "../berkeleyDB/bdbHashThreaded        $insert_threads   $insert_per_thread 1 1\n";
+
+}
+
+
 
 close(TPS);
 
