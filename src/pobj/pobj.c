@@ -959,7 +959,7 @@ pobj_update_range (void *obj, void *fld, size_t len)
 
 
 int
-pobj_update_recursive (void *obj)
+pobj_update_recursive (void *obj, int persist)
 {
     void *pobj_update_queue[UPDATE_QUEUE_MAX];
     struct hash_table *pobj_update_hash;
@@ -977,6 +977,7 @@ pobj_update_recursive (void *obj)
     int bit, complement;
     void **ref;
     void *next;
+    int fresh;
     int ret;
 
     /* Allocate temporary (growable) buffer. */
@@ -1010,37 +1011,54 @@ pobj_update_recursive (void *obj)
 	if (q_head == UPDATE_QUEUE_MAX)
 	    q_head = 0;
 	p = OBJ2POBJ (obj);
-	pobj_slot = POBJ2REPSLOT (p);
 	
 	/* Mark visited. */
 	hash_insert (pobj_update_hash, OBJ2KEY (obj), 1);
 	
-	/* Don't process a non-persistent object. */
-	if (p->rep_index < 1)
-	    continue;
+	/* Persistify / skip object, as necessary. */
+	if (p->rep_index < 1) {
+	    if (persist) {
+		debug ("persistifying %p (%p)", obj, (void *) p);
+
+		if (pobj_persistify (obj) < 0) {
+		    debug ("error: persistification failed");
+		    break;
+		}
+		fresh = 1;
+	    }
+	    else
+		continue;
+	}
+	else
+	    fresh = 0;
 	    
 	processed++;
+	pobj_slot = POBJ2REPSLOT (p);
 
-	/* Grow temporary buffer as necessary. */
-	if (POBJ_SIZE (p->size) > tmp_size) {
-	    XFREE (tmp);
-	    tmp_size *= TMPBUF_GROW_FACTOR;
-	    tmp = XMALLOC (tmp_size);
-	    if (! tmp) {
-		debug ("error: allocation of temporary buffer failed");
-		ret = -1;
-		break;
+	/* Read persistent copy into temporary buffer (stale objects only). */
+	if (! fresh) {
+	    /* Grow temporary buffer as necessary. */
+	    if (POBJ_SIZE (p->size) > tmp_size) {
+		XFREE (tmp);
+		tmp_size *= TMPBUF_GROW_FACTOR;
+		tmp = XMALLOC (tmp_size);
+		if (! tmp) {
+		    debug ("error: allocation of temporary buffer failed");
+		    ret = -1;
+		    break;
+		}
 	    }
+	    
+	    Tread (xid, pobj_slot->rid, tmp);
 	}
-	
-	/* Read persistent copy into temporary buffer and compare. */
-	Tread (xid, pobj_slot->rid, tmp);
-	if (memcmp (p, tmp, p->size)) {
+
+	if (fresh || memcmp (p, tmp, p->size)) {
 	    debug (" processing %p (%p): object changed, updating...",
 		   obj, (void *) p);
 
-	    /* Update persistent image. */
-	    Tset (xid, pobj_slot->rid, p);
+	    /* Update persistent image (stale only). */
+	    if (! fresh)
+		Tset (xid, pobj_slot->rid, p);
 
 	    /* Enqueue successors, if not yet processed. */
 	    ref = (void **) obj;
