@@ -126,10 +126,10 @@ via the query language.  In general, this occurs because the internal
 transaction system is complex and highly optimized for
 high-performance update-in-place transactions.
 
-In this paper we introduce a flexible framework for ACID
-transactions, \yad, that is intended to support a broader range of
-applications.  Although we believe it could also be the basis of a
-DBMS, there are clearly excellent existing solutions, and we thus
+In this paper we introduce \yad, a flexible framework for ACID
+transactions that is intended to support a broader range of
+applications.  Although we believe \yad could also be the basis of a
+DBMS, there are already many excellent DBMS solutions, and we thus
 focus on the rest of the applications.  The primary goal of \yad is to
 provide flexible and complete transactions.
 
@@ -380,7 +380,7 @@ functionality such as lock management, log forces, and so on. Although
 provides lower-level access to transactional primitives and provides a rich 
 set of mechanisms that make it easy to use these primitives.  For
 instance, Berkeley DB does not provide access methods to access data by 
-page offset, and does not provide applications with primative 
+page offset, and does not provide applications with primitive 
 access methods to facilitate the development of higher level structures.
 It also seems to be difficult to specialize existing Berkeley DB functionality 
 (for example page layouts) for new extensions.  
@@ -655,7 +655,7 @@ aborts all uncommitted transactions. Since the page file is physically
 consistent, the transactions may be aborted exactly as they would be
 during normal operation.
 
-One of the nice properties of ARIES, which has been tested with \yad,
+One of the nice properties of ARIES, which is supported by \yad,
 is that we can handle media failures very gracefully: lost disk blocks
 or even whole files can be recovered given an old version and the log.
 Because pages can be recovered independently from each other, there is
@@ -670,13 +670,12 @@ fuzzy snapshot is fine.
 
 
 As long as operation implementations obey the atomicity constraints
-outlined above and the algorithms they use correctly manipulate
-on-disk data structures, the write-ahead logging protocol will provide
-the application with the ACID transactional semantics, and provide
-high performance, highly concurrent and scalable access to the
-application data that is stored in the system.  This suggests a
+outlined above and correctly manipulate
+on-disk data structures, the write-ahead logging protocol will provide 
+correct ACID transactional semantics, and high performance, concurrent and scalable access to
+application data.  This suggests a
 natural partitioning of transactional storage mechanisms into two
-parts.
+parts. (Figure \ref{fig:structure})
 
 The lower layer implements the write-ahead logging component,
 including a buffer pool, logger, and (optionally) a lock manager.  
@@ -709,7 +708,9 @@ various primitives that \yad provides to application developers.
 \includegraphics[%
    width=1\columnwidth]{structure.pdf}
 \vspace{-30pt}
-\caption{\sf\label{fig:structure} \eab{not ref'd} Structure of an action...}
+\caption{\sf\label{fig:structure} \yad architecture.  The shaded 
+region covers extensions which we call {\em operations}. The other modules implement the 
+transactional storage mechanism.  Operations can be composed of other operations or written from scratch.}
 \end{figure}
 
 
@@ -2435,27 +2436,29 @@ benefit from the power of transactions.
 
 \bibitem[9]{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) (1983) % p 287-317
 
-\bibitem[10]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991)
+\bibitem[10]{hibernate} Hibernate, {\tt http://www.hibernate.org/}
 
-\bibitem[11]{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
+\bibitem[11]{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991)
+
+\bibitem[12]{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
 
 \bibitem[12]{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) % p. 212-223
 
-\bibitem[13]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
+\bibitem[14]{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
 
-\bibitem[14]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
+\bibitem[15]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
 
-\bibitem[15]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+\bibitem[16]{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
 
-\bibitem[16]{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
+\bibitem[17]{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
 
-\bibitem[17]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
+\bibitem[18]{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
 %
-\bibitem[18]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+\bibitem[19]{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
 
-\bibitem[19]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
+\bibitem[20]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
 
-\bibitem[20]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
+\bibitem[21]{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base } ICDE (1986) p. 262-269
 
 %\bibitem[SLOCCount]{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
 %
