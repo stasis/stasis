@@ -28,15 +28,15 @@ Operation getRealloc();
 
     @return the recordid of the new record.
 */
-recordid Talloc(int xid, long size);
+compensated_function recordid Talloc(int xid, long size);
 
-recordid TallocFromPage(int xid, long page, long size);
+compensated_function recordid TallocFromPage(int xid, long page, long size);
 
 /** 
    Free a record.  
     @todo Currently, we just leak store space on dealloc. 
 */
-void Tdealloc(int xid, recordid rid);
+compensated_function void Tdealloc(int xid, recordid rid);
 
 /**
    Obtain the type of a record, as returned by getRecordType.  
@@ -51,7 +51,7 @@ void Tdealloc(int xid, recordid rid);
    @see getRecordType
 
 */
-int TrecordType(int xid, recordid rid);
+compensated_function int TrecordType(int xid, recordid rid);
 
 /**
    Obtain the length of the data stored in a record.
@@ -63,9 +63,9 @@ int TrecordType(int xid, recordid rid);
 
    @return -1 if the record does not exist, the size of the record otherwise.
 */
-int TrecordSize(int xid, recordid rid);
+compensated_function int TrecordSize(int xid, recordid rid);
 
 /** Return the number of records stored in page pageid */
-int TrecordsInPage(int xid, int pageid);
+compensated_function int TrecordsInPage(int xid, int pageid);
 
 #endif

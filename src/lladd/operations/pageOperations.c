@@ -191,7 +191,7 @@ compensated_function void pageOperationsInit() {
   commit / abort.  If other transactions need to allocate when the
   lock is held, then they simply do not reuse pages.  Since locking is
   not yet implemented, we require applications to manually serialize
-  transactions that call Talloc() or TdeAlloc
+  transactions that call Talloc or Tdealloc
 
   A better solution: defer the addition of 100 to the freelist until
   commit, and use a 'real' data structure, like a concurrent B-Tree.

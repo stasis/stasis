@@ -19,17 +19,17 @@ int main(int argc, char ** argv) {
   // cht_evals go here...
   
   int xid = 1;//NULL_MACHINE;  // What's the deal with this? ;)
-  clusterHashTable_t * new_ht;
-  cHtCreate(xid, cht_client, new_ht);
+  clusterHashTable_t new_ht;
+  cHtCreate(xid, cht_client, &new_ht);
   int i;
   for(i = 0; i < 10000; i++) {
     int one = i; int two = i+1;
-    cHtInsert(xid, cht_client, new_ht, &one, sizeof(int), &two, sizeof(int));
+    cHtInsert(xid, cht_client, &new_ht, &one, sizeof(int), &two, sizeof(int));
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
     unsigned int newLen = sizeof(int);
-    int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
+    int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
     //    xid++;
     //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
     assert(ret);
@@ -42,19 +42,19 @@ int main(int argc, char ** argv) {
   for(i = 0; i < 10000; i+=10) {
     int one = i; int two = -1;
     unsigned int size = sizeof(int);
-    int removed = cHtRemove(xid, cht_client, new_ht, &one, sizeof(int), &two, &size);
+    int removed = cHtRemove(xid, cht_client, &new_ht, &one, sizeof(int), &two, &size);
     assert(removed);
 
     size = sizeof(int);
     two = -1;
-    removed = cHtRemove(xid, cht_client, new_ht, &one, sizeof(int), &two, &size);
+    removed = cHtRemove(xid, cht_client, &new_ht, &one, sizeof(int), &two, &size);
     assert(!removed);
 
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
     unsigned int newLen = sizeof(int);
-    int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
+    int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
 
     assert(!ret);
 
@@ -68,7 +68,7 @@ int main(int argc, char ** argv) {
     newOne = i;
     newTwo = 0;
     unsigned int newLen = sizeof(int);
-    int ret = cHtLookup(xid, cht_client, new_ht, &newOne, sizeof(int), &newTwo, &newLen);
+    int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
     //    xid++;
     //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
     assert(ret);

@@ -65,7 +65,10 @@ void redoUpdate(const LogEntry * e) {
   if(e->type == UPDATELOG) {
     /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
     recordid rid = e->contents.update.rid;
-    Page * p = loadPage(e->xid, rid.page);
+    Page * p;
+    try {
+      p = loadPage(e->xid, rid.page);
+    } end;
     lsn_t pageLSN = pageReadLSN(p);
 
     if(e->LSN > pageLSN) {
@@ -79,7 +82,10 @@ void redoUpdate(const LogEntry * e) {
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
-    Page * p = loadPage(e->xid, rid.page);
+    Page * p;
+    try { 
+      p = loadPage(e->xid, rid.page);
+    } end;
 
     assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
 

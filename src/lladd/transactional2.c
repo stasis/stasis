@@ -92,17 +92,19 @@ int Tinit() {
 
 	openLogWriter();
 
-	pageOperationsInit();
+	try_ret(compensation_error()) { 
+	  pageOperationsInit();
+	} end_ret(compensation_error());
 	initNestedTopActions();
 	ThashInit();
 	
 	compensations_init();
-
+	
 	setupLockManagerCallbacksNil();
 	//setupLockManagerCallbacksPage();
-
+	
 	InitiateRecovery();
-
+	
 	return 0;
 }
 
@@ -144,20 +146,43 @@ int Tbegin() {
 	return XactionTable[index].xid;
 }
 
-compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
+static compensated_function void TupdateHelper(int xid, recordid rid, const void * dat, int op, Page * p) {
   LogEntry * e;
+
+  try { 
+    if(globalLockManager.writeLockPage) {
+      globalLockManager.writeLockPage(xid, rid.page);
+    }
+  } end;
+
+    
+  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+  
+  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+  
+  DEBUG("T update() e->LSN: %ld\n", e->LSN);
+  
+  doUpdate(e, p);
+
+  free(e);
+}
+
+compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
   Page * p;  
 #ifdef DEBUGGING
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
   pthread_mutex_unlock(&transactional_2_mutex);
 #endif
-  p = loadPage(xid, rid.page);
-
+  try { 
+    p = loadPage(xid, rid.page);
+  } end;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRID(xid, rid);
-    p = loadPage(xid, rid.page); 
+    try { 
+      rid = dereferenceRID(xid, rid);
+      p = loadPage(xid, rid.page); 
+    } end;
     /** @todo Kludge! Shouldn't special case operations in transactional2. */
   } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
 	    op != OPERATION_LINEAR_INSERT && 
@@ -166,85 +191,66 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 	    op != OPERATION_UNDO_LINEAR_DELETE  ) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    p = loadPage(xid, rid.page); 
+    try { 
+      p = loadPage(xid, rid.page); 
+    } end;
   } 
 
   /** @todo For logical undo logs, grabbing a lock makes no sense! */
-  try { 
-    if(globalLockManager.writeLockPage) {
+  begin_action(releasePage, p) { 
+    TupdateHelper(xid, rid, dat, op, p);
+    /*    if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, rid.page);
-    }
-  } end;
-
-  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-  
-  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
-
-  DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-
-  doUpdate(e, p);
-  releasePage(p);
-
-  free(e);
+      }
+      
+      e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+      
+      } en d_action;
+      
+      assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+      
+      DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
+      
+      doUpdate(e, p); 
+      releasePage(p);*/
+  } compensate;
 
 }
 
 compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
-  LogEntry * e;
-  Page * p;  
-
-  try { 
-    if(globalLockManager.writeLockPage) {
-      globalLockManager.writeLockPage(xid, rid.page);
-    }
-  } end;
-
+  Page * p ;
+  try {
     p = loadPage(xid, rid.page);
-    
+  } end;
+  
+  begin_action(releasePage, p) {
+    TupdateHelper(xid, rid, dat, op, p);
+  } compensate;
 
-
-    /*    if(*page_type_ptr(p) == INDIRECT_PAGE) {
-      releasePage(p);
-      rid = dereferenceRID(rid);
-      p = loadPage(rid.page); 
-      / ** @todo Kludge! Shouldn't special case operations in transactional2. * /
-    } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
-	      op != OPERATION_LINEAR_INSERT && 
-	      op != OPERATION_UNDO_LINEAR_INSERT &&
-	      op != OPERATION_LINEAR_DELETE && 
-	      op != OPERATION_UNDO_LINEAR_DELETE  ) {
-      rid = dereferenceArrayListRid(p, rid.slot);
-      releasePage(p);
-      p = loadPage(rid.page); 
-      }  */
-    
-  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-  
-  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
-  
-  DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-  
-  doUpdate(e, p);
-  releasePage(p);
-  /* end Tupdate() */
-  free(e);
 }
 
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {
-  Page * p = loadPage(xid, rid.page);
+  Page * p;
+  try { 
+    p = loadPage(xid, rid.page);
+  } end;
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    rid = dereferenceRIDUnlocked(xid, rid);
-    p = loadPage(xid, rid.page);
 
+    try {
+      rid = dereferenceRIDUnlocked(xid, rid);
+      p = loadPage(xid, rid.page);
+    } end;
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRidUnlocked(p, rid.slot);
     releasePage(p);
-    p = loadPage(xid, rid.page);
+    try { 
+      p = loadPage(xid, rid.page);
+    } end;
 
   } else {
     abort();

@@ -120,149 +120,68 @@ Operation getArrayListAlloc() {
 }
 /*----------------------------------------------------------------------------*/
 
-compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
+/** @todo locking for arrayList... this isn't pressing since currently
+    the only thing that calls arraylist (the hashtable
+    implementations) serialize bucket list operations anyway... */
+
+static compensated_function int TarrayListExtendInternal(int xid, recordid rid, int slots, int op) {
   Page * p;
   try_ret(compensation_error()) {
     p = loadPage(xid, rid.page);
   } end_ret(compensation_error());
   TarrayListParameters tlp = pageToTLP(p);
-
-  int lastCurrentBlock;
-  if(tlp.maxOffset == -1) {
-    lastCurrentBlock = -1;
-  } else{
-    lastCurrentBlock = getBlockContainingOffset(tlp, tlp.maxOffset, NULL);
-  } 
-  int lastNewBlock = getBlockContainingOffset(tlp, tlp.maxOffset+slots, NULL);
-
-  DEBUG("lastCurrentBlock = %d, lastNewBlock = %d\n", lastCurrentBlock, lastNewBlock);
-
-  recordid tmp;   /* recordid of slot in base page that holds new block. */
-  tmp.page = rid.page;
-  tmp.size = sizeof(int);
-  
-  recordid tmp2;  /* recordid of newly created pages. */
-  tmp2.slot = 0;
-  tmp2.size = tlp.size;
-  /* Iterate over the (small number) of indirection blocks that need to be updated */
-  for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
-    /* Alloc block i */
-    int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
-    int newFirstPage;
-    begin_action_ret(releasePage, p, compensation_error()) {
-      newFirstPage = TpageAllocMany(xid, blockSize);
-    } end_action_ret(compensation_error());
-    DEBUG("block %d\n", i);
-    /* Iterate over the storage blocks that are pointed to by our current indirection block. */
-    //    for(int j = 0; j < blockSize; j++) {
-      //      DEBUG("page %d (%d)\n", j, j + newFirstPage);
-      //     tmp2.page = j + newFirstPage;
-      /** @todo If we were a little smarter about this, and fixed.c
-	  could handle uninitialized blocks correctly, then we
-	  wouldn't have to iterate over the datapages in
-	  TarrayListExtend() (Fixed?)*/
-      //      T update(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
-      //    }
-    
-    tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-    /** @todo what does this do to recovery?? */
-    /** @todo locking for arrayList... */
-    /*    *page_type_ptr(p) = FIXED_PAGE;
-    Tset(xid, tmp, &newFirstPage);
-    *page_type_ptr(p) = ARRAY_LIST_PAGE; */
-    /* @todo This is a copy of Tupdate!! Replace it.*/
-    begin_action_ret(releasePage, p, compensation_error()) {
-      alTupdate(xid, tmp, &newFirstPage, OPERATION_SET);
-    } end_action_ret(compensation_error());
-
-    DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
-  }
-
-  tmp.slot = MAX_OFFSET_POSITION;
-
-  int newMaxOffset = tlp.maxOffset+slots;
-  //  *page_type_ptr(p) = FIXED_PAGE;
-  //  Tset(xid, tmp, &newMaxOffset);
-  //  *page_type_ptr(p) = ARRAY_LIST_PAGE;
-  //  releasePage(p);
-    /* @todo This is a copy of Tupdate!! Replace it.*/
-  begin_action_ret(releasePage, p, compensation_error()) {
-    alTupdate(xid, tmp, &newMaxOffset, OPERATION_SET);
-  } compensate_ret(compensation_error());
-  
-  return 0;
-
-}
-/** @todo:  TarrayListInstantExtend, is a hacked-up cut and paste version of TarrayListExtend */
-compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots) {
-  Page * p = loadPage(xid, rid.page);
-  TarrayListParameters tlp = pageToTLP(p);
-
-  int lastCurrentBlock;
-  if(tlp.maxOffset == -1) {
-    lastCurrentBlock = -1;
-  } else{
-    lastCurrentBlock = getBlockContainingOffset(tlp, tlp.maxOffset, NULL);
-  } 
-  int lastNewBlock = getBlockContainingOffset(tlp, tlp.maxOffset+slots, NULL);
-
-  DEBUG("lastCurrentBlock = %d, lastNewBlock = %d\n", lastCurrentBlock, lastNewBlock);
-
-  recordid tmp;   /* recordid of slot in base page that holds new block. */
-  tmp.page = rid.page;
-  tmp.size = sizeof(int);
-  
-  recordid tmp2;  /* recordid of newly created pages. */
-  tmp2.slot = 0;
-  tmp2.size = tlp.size;
-  /* Iterate over the (small number) of indirection blocks that need to be updated */
-  for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
-    /* Alloc block i */
-    int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
-    int newFirstPage = TpageAllocMany(xid, blockSize);
-    DEBUG("block %d\n", i);
-    /* Iterate over the storage blocks that are pointed to by our current indirection block. */
-    /* for(int j = 0; j < blockSize; j++) {
-      DEBUG("page %d (%d)\n", j, j + newFirstPage);
-      tmp2.page = j + newFirstPage;
-      / ** @todo If we were a little smarter about this, and fixed.c
-	  coulds handle uninitialized blocks correctly, then we
-	  wouldn't have to iterate over the datapages in
-	  TarrayListExtend()  * /
-      // Tupdate(xid, tmp2, NULL, OPERATION_INITIALIZE_FIXED_PAGE);
-    } */
-    
-    tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-    /** @todo what does this do to recovery?? */
-    /** @todo locking for arrayList... */
-    *page_type_ptr(p) = FIXED_PAGE;
-    TinstantSet(xid, tmp, &newFirstPage);
-    *page_type_ptr(p) = ARRAY_LIST_PAGE;
-
-    DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
-  }
-
-  tmp.slot = MAX_OFFSET_POSITION;
-
-  int newMaxOffset = tlp.maxOffset+slots;
-  /** @todo CORRECTNESS BUG: From recovery's point of view, arrayList is totally wrong! The
-      only reason we mess with p is beacuse TinstantSet doesn't handle
-      ARRAY_LIST_PAGES the way we need it to, so this won't be hard to
-      fix... */
-  *page_type_ptr(p) = FIXED_PAGE;
-  TinstantSet(xid, tmp, &newMaxOffset);
-  *page_type_ptr(p) = ARRAY_LIST_PAGE;
   releasePage(p);
+  p = NULL;
 
+  int lastCurrentBlock;
+  if(tlp.maxOffset == -1) {
+    lastCurrentBlock = -1;
+  } else{
+    lastCurrentBlock = getBlockContainingOffset(tlp, tlp.maxOffset, NULL);
+  } 
+  int lastNewBlock = getBlockContainingOffset(tlp, tlp.maxOffset+slots, NULL);
+
+  DEBUG("lastCurrentBlock = %d, lastNewBlock = %d\n", lastCurrentBlock, lastNewBlock);
+
+  recordid tmp;   /* recordid of slot in base page that holds new block. */
+  tmp.page = rid.page;
+  tmp.size = sizeof(int);
+  
+  recordid tmp2;  /* recordid of newly created pages. */
+  tmp2.slot = 0;
+  tmp2.size = tlp.size;
+  /* Iterate over the (small number) of indirection blocks that need to be updated */
+  try_ret(compensation_error()) {
+    for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
+      /* Alloc block i */
+      int blockSize = tlp.initialSize * powl(tlp.multiplier, i);
+      int newFirstPage = TpageAllocMany(xid, blockSize);
+      DEBUG("block %d\n", i);
+      /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */
+      tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
+      alTupdate(xid, tmp, &newFirstPage, op);
+      DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
+    }
+    
+    tmp.slot = MAX_OFFSET_POSITION;
+    
+    int newMaxOffset = tlp.maxOffset+slots;
+    alTupdate(xid, tmp, &newMaxOffset, op);
+  } end_ret(compensation_error());
   return 0;
 
 }
 
+compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots) {
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_INSTANT_SET);
+}
+compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET);
+}
 
 static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   
   fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
-
   pageWriteLSN(xid, p, lsn);
   return 0;
 }

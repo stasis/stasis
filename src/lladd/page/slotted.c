@@ -216,7 +216,6 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 }
 
 compensated_function recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
-  recordid ret;
   int isBlob = 0;
   if(size == BLOB_SLOT) {
     isBlob = 1;
@@ -235,7 +234,8 @@ compensated_function recordid slottedPreRallocFromPage(int xid, long page, long 
     slottedPageInitialize(*pp);
   }
   assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
-  ret = slottedRawRalloc(*pp, size);
+  recordid ret = slottedRawRalloc(*pp, size);
+  assert(ret.size == size);
   if(isBlob) {
     *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
   }

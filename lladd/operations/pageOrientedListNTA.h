@@ -103,10 +103,10 @@ lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/
-int TpagedListNext(int xid, lladd_pagedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
-recordid TpagedListAlloc(int xid);
-void TpagedListDelete(int xid, recordid list);
-int TpagedListSpansPages(int xid, recordid list);
+compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
+compensated_function recordid TpagedListAlloc(int xid);
+compensated_function void TpagedListDelete(int xid, recordid list);
+compensated_function int TpagedListSpansPages(int xid, recordid list);
 Operation getPagedListInsert();
 Operation getPagedListRemove();
 #endif

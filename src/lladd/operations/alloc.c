@@ -9,6 +9,7 @@
 #include "../page/slotted.h"
 
 #include <assert.h>
+//try{
 /**
    @file
 
@@ -44,9 +45,9 @@
    int page = Treserve(int xid, int size)
 
    This would tell Talloc to treat the page as though 'size' bytes had
-   already been reserved.  The 'free space' that Talloc() reasons
+   already been reserved.  The 'free space' that Talloc () reasons
    about would be: max(reservedSpace, usedSpace).  A seperate call,
-   TallocFromPage(xid, page, size) already exists, and should ignore
+   TallocFromPage (xid, page, size) already exists, and should ignore
    the presence of the 'reserved space' field.
 
    Track level locality is another problem that Talloc should address, 
@@ -54,8 +55,8 @@
 
    Better support for locking.  Consider this sequence of events:
 
-   recordid rid1 = Talloc(xid1, 1);
-   recordid rid2 = Talloc(xid2, 1);  // May deadlock if page level  
+   recordid rid1 = Talloc (xid1, 1);
+   recordid rid2 = Talloc (xid2, 1);  // May deadlock if page level  
                                      // locking is used.
 
    The lock manager needs a 'try lock' operation that allows
@@ -74,9 +75,9 @@
    $Id$
    
 */
-
+//}end
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  /* * @ todo Currently, Talloc() needs to clean up the page type (for recovery).  Should this be elsewhere? */
+  /* * @ todo Currently, T alloc () needs to clean up the page type (for recovery).  Should this be elsewhere? */
 
  /* if(*page_type_ptr(p) == UNINITIALIZED_PAGE) {
     *page_type_ptr(p) = SLOTTED_PAGE;
@@ -149,87 +150,125 @@ Operation getRealloc() {
   return o;
 }
 
-recordid Talloc(int xid, long size) {
+compensated_function recordid Talloc(int xid, long size) {
   recordid rid;
-  Page * p = NULL;
-  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-    /**@todo is it OK that Talloc doesn't pin the page when a blob is alloced?*/
-    rid = preAllocBlob(xid, size);
+
+  int isBlob = size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT;
+
+  if(isBlob) {
+    try_ret(NULLRID) {
+      rid = preAllocBlob(xid, size);
+      Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+    } end_ret(NULLRID);
   } else {
-    pthread_mutex_lock(&talloc_mutex); 
-    rid = slottedPreRalloc(xid, size, &p);
-    assert(p != NULL);
-  }
 
-  Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-  
-  if(p != NULL) {
-    /* release the page that preAllocBlob pinned for us. */
+    Page * p = NULL;
 
-    /* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */
-    releasePage(p);
-    pthread_mutex_unlock(&talloc_mutex);  
+    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+      pthread_mutex_lock(&talloc_mutex);
+      rid = slottedPreRalloc(xid, size, &p);
+      Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+      /** @todo does releasePage do the correct error checking? */
+      releasePage(p);
+    } compensate_ret(NULLRID);
 
   }
-
   return rid;
-  
-}
 
-recordid TallocFromPage(int xid, long page, long size) {
-  recordid rid;
-
-  Page * p = NULL;
-  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-    rid = preAllocBlobFromPage(xid, page, size);
-  } else {
-    pthread_mutex_lock(&talloc_mutex); 
-    rid = slottedPreRallocFromPage(xid, page, size, &p);
-    if(p == NULL) {
-      assert(rid.size == -1);
-      pthread_mutex_unlock(&talloc_mutex);
-      return rid;
+  /*  try_ret(NULL_RID) {
+    if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
+      ///@todo is it OK that Talloc doesn't pin the page when a blob is alloced?
+      rid = pr eAllocBlob(xid, size);
+    } else {
+      pthread_mutex_lock(&talloc_mutex); 
+      rid = slottedPreRalloc(xid, size, &p);
+      assert(p != NULL);
     }
-  }
-  Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+    
+    Tupdate(xid,rid, NULL, OPERATION_ALLOC);
   
-  if(p != NULL) {
-    /* release the page that preRallocFromPage pinned for us. */
-    /* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */
-    releasePage(p);
-    pthread_mutex_unlock(&talloc_mutex);  
-  }
+    if(p != NULL) {
+      /// release the page that preAllocBlob pinned for us. 
+      
+      /// @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes..
+      releasePage(p);
+      pthread_mutex_unlock(&talloc_mutex);  
+      
+    }
+  } end_ret(NULLRID);
+  return rid;*/
+  
+}
 
+compensated_function recordid TallocFromPage(int xid, long page, long size) {
+  recordid rid;
+
+  Page * p = NULL;
+  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
+    try_ret(NULLRID) { 
+      rid = preAllocBlobFromPage(xid, page, size);
+      Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+    } end_ret(NULLRID);
+  } else {
+    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+      pthread_mutex_lock(&talloc_mutex); 
+      rid = slottedPreRallocFromPage(xid, page, size, &p);
+      if(rid.size == size) { 
+	Tupdate(xid,rid, NULL, OPERATION_ALLOC);
+      } else {
+	assert(rid.size < 0);
+      }
+      if(p) {
+	/* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */      
+	releasePage(p);
+      }
+    } compensate_ret(NULLRID);
+  }
+  
   return rid;
 }
 
-void Tdealloc(int xid, recordid rid) {
+compensated_function void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
-  Page * p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, preimage);
-  /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
-  Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
-  releasePage(p);  
+  Page * p;
+  try {
+    p = loadPage(xid, rid.page);
+  } end;
+  begin_action(releasePage, p) {
+    readRecord(xid, p, rid, preimage);
+    /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
+    Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
+  } compensate;
   free(preimage);
 }
 
-int TrecordType(int xid, recordid rid) {
-  Page * p = loadPage(xid, rid.page);
-  int ret = getRecordType(xid, p, rid);
+compensated_function int TrecordType(int xid, recordid rid) {
+  Page * p;
+  try_ret(compensation_error()) {
+    p = loadPage(xid, rid.page);
+  } end_ret(compensation_error());
+  int ret;
+  ret = getRecordType(xid, p, rid);
   releasePage(p);
   return ret;
 }
 
-int TrecordSize(int xid, recordid rid) {
+compensated_function int TrecordSize(int xid, recordid rid) {
   int ret;
-  Page * p = loadPage(xid, rid.page);
+  Page * p;
+  try_ret(compensation_error()) { 
+    p = loadPage(xid, rid.page);
+  } end_ret(compensation_error());
   ret = getRecordSize(xid, p, rid);
   releasePage(p);
   return ret;
 }
 
-int TrecordsInPage(int xid, int pageid) {
-  Page * p = loadPage(xid, pageid);
+compensated_function int TrecordsInPage(int xid, int pageid) {
+  Page * p;
+  try_ret(compensation_error()) {
+    p = loadPage(xid, pageid);
+  } end_ret(compensation_error());
   readlock(p->rwlatch, 187);
   int ret = *numslots_ptr(p);
   unlock(p->rwlatch);

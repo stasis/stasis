@@ -77,8 +77,8 @@ typedef struct {
 } blob_record_t;
 
 
-recordid preAllocBlob(int xid, long blobsize);
-recordid preAllocBlobFromPage(int xid, long page, long blobsize);
+compensated_function recordid preAllocBlob(int xid, long blobsize);
+compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobsize);
 
 /**
    Allocate a blob of size blobSize. 

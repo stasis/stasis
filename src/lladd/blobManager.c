@@ -32,14 +32,14 @@ static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size)
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
   readRecord(xid, p, blob_rec_rid, buf);
-    /*  Tread(xid, blob_rec_rid, buf); */
+    /*  T read(xid, blob_rec_rid, buf); */
 }
 
 static void writeRawRecord(int xid, Page * p, recordid rid, lsn_t lsn, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
   writeRecord(xid, p, lsn, blob_rec_rid, buf); 
-  /*  Tset(xid, blob_rec_rid, buf); - We no longer need to write a log
+  /*  T set(xid, blob_rec_rid, buf); - We no longer need to write a log
       record out here, since we're called by something that is the
       result of a log record.*/ 
 }
@@ -195,37 +195,47 @@ void closeBlobStore() {
 
 */
 
-recordid preAllocBlob(int xid, long blobSize) {
+compensated_function recordid preAllocBlob(int xid, long blobSize) {
 
   /* Allocate space for the blob entry. */
+  
+  recordid rid;
  
-  DEBUG("Allocing blob (size %ld)\n", blobSize);
+  try_ret(NULLRID) {
+    
+    DEBUG("Allocing blob (size %ld)\n", blobSize);
+    
+    assert(blobSize > 0); /* Don't support zero length blobs right now... */
 
-  assert(blobSize > 0); /* Don't support zero length blobs right now... */
+    /* First in buffer manager. */
+    
+    rid = Talloc(xid, BLOB_SLOT); //sizeof(blob_record_t));
+    
+    rid.size = blobSize;
 
-  /* First in buffer manager. */
-
-  recordid rid = Talloc(xid, BLOB_SLOT); //sizeof(blob_record_t));
-
-  rid.size = blobSize;
+  } end_ret(NULLRID);
 
   return rid;
 
 }
 
-recordid preAllocBlobFromPage(int xid, long page, long blobSize) {
+compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobSize) {
 
+  recordid rid;
+  
   /* Allocate space for the blob entry. */
- 
-  DEBUG("Allocing blob (size %ld)\n", blobSize);
+  try_ret(NULLRID) {
+    DEBUG("Allocing blob (size %ld)\n", blobSize);
+    
+    assert(blobSize > 0); /* Don't support zero length blobs right now... */
+    
+    /* First in buffer manager. */
+    
+    rid = TallocFromPage(xid, page, BLOB_SLOT); //sizeof(blob_record_t));
 
-  assert(blobSize > 0); /* Don't support zero length blobs right now... */
+    rid.size = blobSize;
 
-  /* First in buffer manager. */
-
-  recordid rid = TallocFromPage(xid, page, BLOB_SLOT); //sizeof(blob_record_t));
-
-  rid.size = blobSize;
+  } end_ret(NULLRID);
 
   return rid;
 
@@ -280,7 +290,7 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   funlockfile(blobf0);
   funlockfile(blobf1);
 
-  /* Tset() needs to know to 'do the right thing' here, since we've
+  /* T set() needs to know to 'do the right thing' here, since we've
      changed the size it has recorded for this record, and
      writeRawRecord makes sure that that is the case. 
 
@@ -337,7 +347,7 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
 
   /* First, determine if the blob is dirty. */
 
-  /* Tread() raw record */
+  /* T read() raw record */
   readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
 
   assert(rec.size == rid.size);
@@ -352,7 +362,7 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
     /* Flip the fd bit on the record. */
     rec.fd = rec.fd ? 0 : 1;
 
-    /* Tset() raw record */
+    /* T set() raw record */
     writeRawRecord(xid, p, rid, lsn, &rec, sizeof(blob_record_t));
   }
 
@@ -459,7 +469,7 @@ void abortBlobs(int xid) {
     and undo have to reason about lazy propogation of values to the
     bufferManager, and also have to preserve *write* ordering, even
     though the writes may be across many transactions, and could be
-    propogated in the wrong order.  If we generate a Tset() (for the
+    propogated in the wrong order.  If we generate a T set() (for the
     blob record in bufferManager) for each write, things become much
     easier.
   */

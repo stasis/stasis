@@ -71,7 +71,10 @@ static int _chtEval(DfaSet * dfaSet,
   }
   if(ht != NULL) {
     memcpy(&(__header_ptr(&m)->hashTable), ht, sizeof(clusterHashTable_t));
-  }
+  } else { 
+
+    //memset(&(__header_ptr(&m)->hashTable), 0, sizeof(clusterHashTable_t));
+  } 
 
   /*  printf("%s <- %s\n", __header_ptr(&m)->initiator, dfaSet->networkSetup.localhost); */
 

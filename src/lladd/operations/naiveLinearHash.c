@@ -70,27 +70,31 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
 
 
 int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
-
-  hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
-
-  recordid nextEntry;
-
-  hashRid.slot = bucket_number;
-  nextEntry = hashRid;
-
-  int found = 0;
-
-  while(nextEntry.size != -1 && nextEntry.size != 0) {
-    assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
-    Tread(xid, nextEntry, e);
-    if(!memcmp(key, e+1, keySize) && e->next.size != 0) {
-      memcpy(val, ((byte*)(e+1))+keySize, valSize);
-      found = 1;
-      break;
-    }
-    nextEntry = e->next;
-  } 
-  free(e);
+  int found;
+  try_ret(compensation_error()) { 
+    hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
+    
+    recordid nextEntry;
+    
+    hashRid.slot = bucket_number;
+    nextEntry = hashRid;
+    
+    found = 0;
+    
+    while(nextEntry.size != -1 && nextEntry.size != 0) {
+      if(compensation_error()) { break; }
+      assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
+      Tread(xid, nextEntry, e);
+      if(!memcmp(key, e+1, keySize) && e->next.size != 0) {
+	memcpy(val, ((byte*)(e+1))+keySize, valSize);
+	found = 1;
+	break;
+      }
+      nextEntry = e->next;
+    } 
+    free(e);
+  } end_ret(compensation_error());
+  
   return found;
 }
 
@@ -102,177 +106,183 @@ void expand (int xid, recordid hash, int next_split, int i, int keySize, int val
 #define AMORTIZE 1000
 #define FF_AM    750
   if(count <= 0 && !(count * -1) % FF_AM) {
-    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
-    int j;
-    TarrayListExtend(xid, hash, AMORTIZE);
-    for(j = 0; j < AMORTIZE; j++) {
-
-      if(next_split >= twoToThe(i-1)+2) {
-	i++;
-	next_split = 2;
-      } 
-      rehash(xid, hash, next_split, i, keySize, valSize); 
-      next_split++;
-      headerNextSplit = next_split;
-      headerHashBits = i; 
-    }
-    update_hash_header(xid, hash, i, next_split);  
+    try {
+      recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+      int j;
+      TarrayListExtend(xid, hash, AMORTIZE);
+      for(j = 0; j < AMORTIZE; j++) {
+	if(compensation_error()) { break; }
+	if(next_split >= twoToThe(i-1)+2) {
+	  i++;
+	  next_split = 2;
+	} 
+	rehash(xid, hash, next_split, i, keySize, valSize); 
+	next_split++;
+	headerNextSplit = next_split;
+	headerHashBits = i; 
+      }
+      update_hash_header(xid, hash, i, next_split);  
+    } end;
   }
 }
 
 void update_hash_header(int xid, recordid hash, int i, int next_split) {
-  hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(int));
-  assert(he);
-  recordid  * headerRidB = &he->next;
-
-  assert(headerRidB);
-
-  headerHashBits = i;
-  headerNextSplit = next_split;
-  hash.slot = 1;
-  Tset(xid, hash, headerRidB);
+  try { 
+    hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+    assert(he);
+    recordid  * headerRidB = &he->next;
+    
+    assert(headerRidB);
+    
+    headerHashBits = i;
+    headerNextSplit = next_split;
+    hash.slot = 1;
+  
+    Tset(xid, hash, headerRidB);
+  } end;
 }
 
 void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
-  int firstA = 1;  // Is 'A' the recordid of a bucket? 
-  int firstD = 1;  // What about 'D'? 
-
-  assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
-  recordid ba = hashRid; ba.slot = next_split;
-  recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
-  
-  hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-  hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-  hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-
-  Tread(xid, ba, A_contents);
-  Tread(xid, bb, D_contents);
-  recordid A = ba; //ba_contents; 
-  recordid D = bb; //bb_contents; 
-  recordid B = A_contents->next;
-  recordid C; 
-  
-  if(!A_contents->next.size) { 
-    /* Bucket A is empty, so we're done. */
-    free(D_contents);
-    free(A_contents);
-    free(B_contents);
-    /*    printf("Expand was a noop.\n");
-	  fflush(NULL); */
-    return; 
-  }
-
-  int old_hash;
-  int new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
-
-  while(new_hash != next_split) {
-    // Need a record in A that belongs in the first bucket... 
+  try { 
+    int firstA = 1;  // Is 'A' the recordid of a bucket? 
+    int firstD = 1;  // What about 'D'? 
     
-    recordid oldANext = A_contents->next;
-
-    A_contents->next = NULLRID;
-
-    if(firstD) {
-      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
-      Tset(xid, D, A_contents);
-      firstD = 0;
-    } else {
-      /* D at end of list => can overwrite next. */
-      D_contents->next = Talloc(xid, sizeof(hashEntry) + keySize + valSize); /* @todo
-										unfortunate
-										to
-										dealloc
-										A's
-										successor,
-										then
-										alloc.. */
-      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
-      Tset(xid, D_contents->next, A_contents);
-      //      assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
-      Tset(xid, D, D_contents);
-      D = A;
-    }
-    hashEntry * swap = D_contents;
-    D_contents = A_contents;
-    A_contents = swap;
-
-    /* A_contents is now garbage. */
-
-    assert(A.size == sizeof(hashEntry) + keySize + valSize);
-    if(oldANext.size == -1) {
-      memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
-      //      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
-      Tset(xid, A, A_contents);
+    assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
+    recordid ba = hashRid; ba.slot = next_split;
+    recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
+    
+    hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+    hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+    hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+    
+    Tread(xid, ba, A_contents);
+    Tread(xid, bb, D_contents);
+    recordid A = ba; //ba_contents; 
+    recordid D = bb; //bb_contents; 
+    recordid B = A_contents->next;
+    recordid C; 
+    
+    if(!A_contents->next.size) { 
+      /* Bucket A is empty, so we're done. */
       free(D_contents);
       free(A_contents);
       free(B_contents);
-      /*      printf("Loop 1 returning.\n");
-	      fflush(NULL); */
-      return;
-    } 
-    assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
-    Tread(xid, oldANext, A_contents);
-    //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
-    Tset(xid, A, A_contents);
-    Tdealloc(xid, oldANext);
+      /*    printf("Expand was a noop.\n");
+	  fflush(NULL); */
+      return; 
+    }
     
-    new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
-  }
-  /*  printf("Got past loop 1\n");
-      fflush(NULL); */
+    int old_hash;
+    int new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
 
-  B = A_contents->next;
-
-  while(B.size != -1) {
-    assert(B.size == sizeof(hashEntry) + keySize + valSize);
-    Tread(xid, B, B_contents);
-    C = B_contents->next;
-
-    old_hash = hash(B_contents+1, keySize, i-1, ULONG_MAX) + 2;
-    new_hash = hash(B_contents+1, keySize, i,   ULONG_MAX) + 2;
-
-    assert(next_split == old_hash); 
-    assert(new_hash   == old_hash || new_hash == old_hash + twoToThe(i-1));
- 
-    if(new_hash == old_hash) {
-      A = B;
-      B = C;
-      C.size = -1;
-      firstA = 0;
-    } else {
-			assert(D.size == sizeof(hashEntry) + keySize + valSize);
-			assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
-			Tread(xid, D, D_contents); 
-			D_contents->next = B;
-			assert(B.size != 0);
-			Tset(xid, D, D_contents);
-
-			// A is somewhere in the first list. 
-			assert(A.size == sizeof(hashEntry) + keySize + valSize);
-			assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
-			Tread(xid, A, A_contents);
-			A_contents->next = C;
-			assert(C.size != 0);
-	
-			Tset(xid, A, A_contents);
-	
-      // B _can't_ be a bucket.
+    while(new_hash != next_split) {
+      // Need a record in A that belongs in the first bucket... 
+      
+      recordid oldANext = A_contents->next;
+      
+      A_contents->next = NULLRID;
+      
+      if(firstD) {
+	//      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+	Tset(xid, D, A_contents);
+	firstD = 0;
+      } else {
+	/* D at end of list => can overwrite next. */
+	D_contents->next = Talloc(xid, sizeof(hashEntry) + keySize + valSize); /* @todo
+										  unfortunate
+										  to
+										  dealloc
+										  A's
+										  successor,
+										  then
+										  alloc.. */
+	//      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+	Tset(xid, D_contents->next, A_contents);
+	//      assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
+	Tset(xid, D, D_contents);
+	D = A;
+      }
+      hashEntry * swap = D_contents;
+      D_contents = A_contents;
+      A_contents = swap;
+      
+      /* A_contents is now garbage. */
+      
+      assert(A.size == sizeof(hashEntry) + keySize + valSize);
+      if(oldANext.size == -1) {
+	memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
+	//      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+	Tset(xid, A, A_contents);
+	free(D_contents);
+	free(A_contents);
+	free(B_contents);
+	/*      printf("Loop 1 returning.\n");
+		fflush(NULL); */
+	return;
+      } 
+      assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
+      Tread(xid, oldANext, A_contents);
+      //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+      Tset(xid, A, A_contents);
+      Tdealloc(xid, oldANext);
+      
+      new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
+    }
+    /*  printf("Got past loop 1\n");
+	fflush(NULL); */
+    
+    B = A_contents->next;
+    
+    while(B.size != -1) {
       assert(B.size == sizeof(hashEntry) + keySize + valSize);
       Tread(xid, B, B_contents);
-      B_contents->next = NULLRID;
-      Tset(xid, B, B_contents);
-
-      // Update Loop State 
-      D = B;
-      B = C;
-      C.size = -1;
-      firstD = 0;
+      C = B_contents->next;
+      
+      old_hash = hash(B_contents+1, keySize, i-1, ULONG_MAX) + 2;
+      new_hash = hash(B_contents+1, keySize, i,   ULONG_MAX) + 2;
+      
+      assert(next_split == old_hash); 
+      assert(new_hash   == old_hash || new_hash == old_hash + twoToThe(i-1));
+      
+      if(new_hash == old_hash) {
+	A = B;
+	B = C;
+	C.size = -1;
+	firstA = 0;
+      } else {
+	assert(D.size == sizeof(hashEntry) + keySize + valSize);
+	assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
+	Tread(xid, D, D_contents); 
+	D_contents->next = B;
+	assert(B.size != 0);
+	Tset(xid, D, D_contents);
+	
+	// A is somewhere in the first list. 
+	assert(A.size == sizeof(hashEntry) + keySize + valSize);
+	assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
+	Tread(xid, A, A_contents);
+	A_contents->next = C;
+	assert(C.size != 0);
+	
+	Tset(xid, A, A_contents);
+	
+	// B _can't_ be a bucket.
+	assert(B.size == sizeof(hashEntry) + keySize + valSize);
+	Tread(xid, B, B_contents);
+	B_contents->next = NULLRID;
+	Tset(xid, B, B_contents);
+	
+	// Update Loop State 
+	D = B;
+	B = C;
+	C.size = -1;
+	firstD = 0;
+      }
     }
-  }
-  free(D_contents);
-  free(A_contents);
-  free(B_contents);
-
+    free(D_contents);
+    free(A_contents);
+    free(B_contents);
+  } end;
 }
 void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
 		      hashEntry * e, int keySize, int valSize, int skipDelete) {
@@ -344,6 +354,7 @@ int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * buck
   memcpy(B, bucket_contents, sizeof(hashEntry) + keySize + valSize);
   Baddr = this;
   while(B->next.size != -1) {
+    if(compensation_error()) { break; } // guard the asserts below.
     hashEntry * tmp = A;
     A = B;
     Aaddr = Baddr;
