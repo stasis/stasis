@@ -8,10 +8,10 @@ sub jfdi {
     my $complete_output = shift;
     my $eval_x = shift;
     my $eval_y = shift;
-    if(-e $complete_output) { 
-	warn "$complete_output exists--skipping\n";
-	return;
-    }
+#    if(-e $complete_output) { 
+#	warn "$complete_output exists--skipping\n";
+#	return;
+#    }
 
     my @baseNames = @{$bn_ref};
     my @exeNames = @{$exe_ref};
