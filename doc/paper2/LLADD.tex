@@ -11,7 +11,7 @@
 \usepackage{graphicx}
 \usepackage{xspace}
 
-\usepackage{geometry}
+\usepackage{geometry,color}
 \geometry{verbose,letterpaper,tmargin=1in,bmargin=1in,lmargin=0.75in,rmargin=0.75in}
 
 \makeatletter
@@ -19,7 +19,8 @@
 \usepackage{babel}
 
 \newcommand{\yad}{Lemon\xspace}
-\newcommand{\eab}[1]{{\bf EAB: #1}}
+\newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
+\newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 
 \begin{document}
 
@@ -58,7 +59,8 @@ workloads.  Finally, we discuss characteristics of this new
 architecture which provide opportunities for novel classes of
 optimizations and enhanced usability for application developers.}
 
-% todo/rcs Need to talk about collection api stuff / generalization of ARIES / new approach to application development
+\rcs{Need to talk about collection api stuff / generalization of ARIES
+/ new approach to application development}
 
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
@@ -188,7 +190,7 @@ These features are enabled by the several mechanisms:
       prepare call, and savepoints.
 \item[Extensible locking API] provides registration of custom lock managers
       and a generic lock manager implementation.
-\item[2PC?]
+\item[\eab{2PC?}]
 \end{description}
 
 We have produced a high-concurrency, high performance and reusable
@@ -339,7 +341,7 @@ efforts.  Therefore, while we believe that many of the high level
 Postgres interfaces could be built using \yad, we have not yet tried 
 to implement them.
 
-{\em In the above paragrap, is imperative too strong a word?}
+\rcs{In the above paragrap, is imperative too strong a word?}
 
 % seems to provide
 %equivalents to most of the calls proposed in~\cite{newTypes} except
@@ -392,7 +394,7 @@ systems, where the file system understands the contents of the files
 that it contains, and is able to provide services such as rapid
 search, or file-type specific operations such as thumb-nailing,
 automatic content updates, and so on \cite{Reiser4,WinFS,BeOS,SemanticFSWork,SemanticWeb}.  Others are simpler, such as
-Berkeley~DB~\cite{berkeleyDB, bdb}, which provides transactional
+Berkeley~DB~\cite{bdb, berkeleyDB}, which provides transactional
 % bdb's recno interface seems to be a specialized b-tree implementation - Rusty
 storage of data in indexed form using a hashtable or tree, or as a queue.  
 
@@ -440,13 +442,14 @@ atomicity semantics may be relaxed under certain circumstances.  \yad is unique 
 %the recovery log.  \yad's host independent logical log format will
 %allow applications to implement such optimizations.
 
-{\em compare and contrast with boxwood!!}
+\rcs{compare and contrast with boxwood!!}
 
 
-We believe, but cannot prove, that \yad can support all of these
-applications. We will demonstrate several of them, but leave implementation of a real
-DBMS, LRVM and Boxwood to future work.  However, in each case it is
-relatively easy to see how they would map onto \yad.
+We believe that \yad can support all of these
+applications. We will demonstrate several of them, but leave
+implementation of a real DBMS, LRVM and Boxwood to future work.
+However, in each case it is relatively easy to see how they would map
+onto \yad.
 
 
 %  \item {\bf Implementations of ARIES and other transactional storage
@@ -480,22 +483,9 @@ discussions of write-ahead logging protocols and ARIES are available
 elsewhere~\cite{haerder, aries}, we focus on those details that are
 most important for flexibility.
 
-%Instead of providing a comprehensive discussion of ARIES, we will
-%focus upon those features of the algorithm that are most relevant
-%to a developer attempting to add a new set of operations. Correctly
-%implementing such extensions is complicated by concerns regarding
-%concurrency, recovery, and the possibility that any operation may
-%be rolled back at runtime.
-%
-%We first sketch the constraints placed upon operation implementations,
-%and then describe the properties of our implementation that
-%make these constraints necessary. Because comprehensive discussions of
-%write ahead logging protocols and ARIES are available elsewhere,~\cite{haerder, aries} we
-%only discuss those details relevant to the implementation of new
-%operations in \yad.
 
-
-\subsection{Operations\label{sub:OperationProperties}}
+\subsection{Operations}
+\label{sub:OperationProperties}
 
 A transaction consists of an arbitrary combination of actions, that
 will be protected according to the ACID properties mentioned above.
@@ -505,10 +495,14 @@ will be protected according to the ACID properties mentioned above.
 Typically, the
 information necessary to redo and undo each action is stored in the
 log.  We refine this concept and explicitly discuss {\em operations},
-which must be atomically applicable to the page file.  For now, we
-simply assume that operations do not span pages, and that pages are
-atomically written to disk.  In Section~\ref{nested-top-actions}, we 
-explain how operations can be nested, allowing them to span pages.
+which must be atomically applicable to the page file.  
+
+\yad is essentially a framework for transactional pages: each page is
+independent and can be recovered independently. For now, we simply
+assume that operations do not span pages.  Since single pages are
+written to disk atomically, we have a simple atomic primitive on which
+to build. In Section~\ref{nested-top-actions}, we explain how to
+handle operations that span pages.
 
 One unique aspect of \yad, which is not true for ARIES, is that {\em
 normal} operations are defined in terms of redo and undo
@@ -520,94 +514,18 @@ and update() operations described in Section~\ref{OASYS}.}  This has
 the nice property that the REDO code is known to work, since the
 original operation was the exact same ``redo''.  In general, the \yad
 philosophy is that you define operations in terms of their REDO/UNDO
-behavior, and then build a user friendly {\em wrapper} interface around them.  The
-value of \yad is that it provides a skeleton that invokes the
-redo/undo functions at the {\em right} time, despite concurrency, crashes,
-media failures, and aborted transactions.  Also unlike ARIES, \yad refines
-the concept of the wrapper interface, making it possible to 
-reschedule operations according to an application-level (or built-in) 
-policy. (Section~\ref{TransClos})
+behavior, and then build a user friendly {\em wrapper} interface
+around them.  The value of \yad is that it provides a skeleton that
+invokes the redo/undo functions at the {\em right} time, despite
+concurrency, crashes, media failures, and aborted transactions.  Also
+unlike ARIES, \yad refines the concept of the wrapper interface,
+making it possible to reschedule operations according to an
+application-level policy (Section~\ref{TransClos}).
 
 
-\subsection{Isolation\label{Isolation}}
-
-We allow transactions to be interleaved, allowing concurrent access to
-application data and exploiting opportunities for hardware
-parallelism.  Therefore, each action must assume that the
-physical data upon which it relies may contain uncommitted
-information and that this information may have been produced by a
-transaction that will be aborted by a crash or by the application.
-(The latter is actually harder, since there is no ``fate sharing''.)
-
-% Furthermore, aborting
-%and committing transactions may be interleaved, and \yad does not
-%allow cascading aborts,%
-%\footnote{That is, by aborting, one transaction may not cause other transactions
-%to abort. To understand why operation implementors must worry about
-%this, imagine that transaction A split a node in a tree, transaction
-%B added some data to the node that A just created, and then A aborted.
-%When A was undone, what would become of the data that B inserted?%
-%} so 
-
-Therefore, in order to implement an operation we must also implement
-synchronization mechanisms that isolate the effects of transactions
-from each other.  We use the term {\em latching} to refer to
-synchronization mechanisms that protect the physical consistency of
-\yad's internal data structures and the data store.  We say {\em
-locking} when we refer to mechanisms that provide some level of
-isolation among transactions.  
-
-\yad operations that allow concurrent requests must provide a
-latching implementation that is guaranteed not to deadlock.  These
-implementations need not ensure consistency of application data.
-Instead, they must maintain the consistency of any underlying data
-structures.  Generally, latches do not persist across calls performed 
-by high-level code.
-
-For locking, due to the variety of locking protocols available, and
-their interaction with application
-workloads~\cite{multipleGenericLocking}, we leave it to the
-application to decide what sort of transaction isolation is
-appropriate.  \yad provides a default page-level lock manager that
-performs deadlock detection, although we expect many applications to
-make use of deadlock avoidance schemes, which are already prevalent in
-multithreaded application development.  The Lock Manager is designed 
-to be generic enough to also provide index locks for hashtable 
-implementations.  We leave the implementation of hierarchical locking 
-to future work.
-
-For example, it would be relatively easy to build a strict two-phase
-locking hierarchical lock
-manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
-top of \yad.  Such a lock manager would provide isolation guarantees
-for all applications that make use of it.  However, applications that
-make use of such a lock manager must check for (and recover from)
-deadlocked transactions that have been aborted by the lock manager,
-complicating application code, and possibly violating application semantics.
-
-Conversely, many applications do not require such a general scheme.
-For instance, an IMAP server can employ a simple lock-per-folder
-approach and use lock-ordering techniques to avoid deadlock.  This
-avoids the complexity of dealing with transactions that abort due
-to deadlock, and also removes the runtime cost of restarting 
-transactions.
-
-\yad provides a lock manager API that allows all three variations
-(among others). In particular, it provides upcalls on commit/abort so
-that the lock manager can release locks at the right time. We will
-revisit this point in more detail when we describe the sample
-operations that we have implemented.
-
-%Currently, \yad provides an optional page-level lock manager.  We are
-%unaware of any limitations in our architecture that would prevent us
-%from implementing full hierarchical locking and index locking in the
-%future. 
-
-%Thus, data dependencies among
-%transactions are allowed, but we still must ensure the physical
-%consistency of our data structures, such as operations on pages or locks.
 
 \subsection{The Log Manager}
+\label{log-manager}
 
 All actions performed by a committed transaction must be
 restored in the case of a crash, and all actions performed by aborting
@@ -645,18 +563,6 @@ to a single page (``page-oriented redo''), and thus must be redone in
 order.  Therefore, they are produced after any rescheduling or computation
 specfic to the current state of the page file is performed.
 
-%% One unique aspect of \yad, which is not true for ARIES, is that {\em
-%% normal} operations use the REDO function; i.e. there is no way to
-%% modify the page except via the REDO operation.\footnote{Actually,
-%% operation implementations may circumvent this restriction, but doing
-%% so complicates recovery semantics, and only should be done as a last
-%% resort.  Currently, this is only done to implement the OASYS flush()
-%% and update() operations described in Section~\ref{OASYS}.}  This has
-%% the nice property that the REDO code is known to work, since even the
-%% original update is a ``redo''.  In general, the \yad philosophy is
-%% that you define operations in terms of their REDO/UNDO behavior, and
-%% then build a user friendly interface around those.
-
 Eventually, the page makes it to disk, but the REDO entry is still
 useful: we can use it to roll forward a single page from an archived
 copy.  Thus one of the nice properties of \yad, which has been tested,
@@ -666,7 +572,182 @@ Because pages can be recovered independently from each other, there is
 no need to stop transactions to make a snapshot for archiving: any
 fuzzy snapshot is fine.
 
+\subsection{Flexible Logging}
+\label{flex-logging}
+
+The above discussion avoided the use of some common terminology 
+that should be presented here. {\em Physical logging } 
+is the practice of logging physical (byte-level) updates
+and the physical (page-number) addresses to which they are applied.
+
+{\em Physiological logging } is what \yad recommends for its redo
+records~\cite{physiological}. The physical address (page number) is
+stored, but the byte offset and the actual delta are stored implicitly
+in the parameters of the redo or undo function. These parameters allow
+the function to update the page in a way that preserves application
+semantics.  One common use for this is {\em slotted pages}, which use
+an on-page level of indirection to allow records to be rearranged
+within the page; instead of using the page offset, redo operations use
+the index to locate the data within the page. This allows data within a single
+page to be re-arranged at runtime to produce contiguous regions of
+free space. \yad generalizes this model; for example, the parameters
+passed to the function may utilize application-specific properties in
+order to be significantly smaller than the physical change made to the
+page.
+
+{\em Logical logging} uses a higher-level key to specify the
+UNDO/REDO.  Since these higher-level keys may affect multiple pages,
+they are prohibited for REDO functions, since our REDO is specific to
+a single page.  However, logical logging does make sense for UNDO,
+since we can assume that the pages are physically consistent when we
+apply an UNDO.  We thus use logical logging to undo operations that
+span multiple pages, as shown below.
+
+%% can only be used for undo entries in \yad, and
+%% stores a logical address (the key of a hash table, for instance)
+%% instead of a physical address. As we will see later, these operations
+%% may affect multiple pages.  This allows the location of data in the
+%% page file to change, even if outstanding transactions may have to roll
+%% back changes made to that data. Clearly, for \yad to be able to apply
+%% logical log entries, the page file must be physically consistent,
+%% ruling out use of logical logging for redo operations.
+
+\yad supports all three types of logging, and allows developers to
+register new operations, which is the key to its extensibility. After
+discussing \yad's architecture, we will revisit this topic with a number of
+concrete examples.
+
+
+
+\subsection{Isolation}
+\label{Isolation}
+
+We allow transactions to be interleaved, allowing concurrent access to
+application data and exploiting opportunities for hardware
+parallelism.  Therefore, each action must assume that the
+physical data upon which it relies may contain uncommitted
+information and that this information may have been produced by a
+transaction that will be aborted by a crash or by the application.
+%(The latter is actually harder, since there is no ``fate sharing''.)
+
+% Furthermore, aborting
+%and committing transactions may be interleaved, and \yad does not
+%allow cascading aborts,%
+%\footnote{That is, by aborting, one transaction may not cause other transactions
+%to abort. To understand why operation implementors must worry about
+%this, imagine that transaction A split a node in a tree, transaction
+%B added some data to the node that A just created, and then A aborted.
+%When A was undone, what would become of the data that B inserted?%
+%} so 
+
+Therefore, in order to implement an operation we must also implement
+synchronization mechanisms that isolate the effects of transactions
+from each other.  We use the term {\em latching} to refer to
+synchronization mechanisms that protect the physical consistency of
+\yad's internal data structures and the data store.  We say {\em
+locking} when we refer to mechanisms that provide some level of
+isolation among transactions.  
+
+\yad operations that allow concurrent requests must provide a latching
+(but not locking) implementation that is guaranteed not to deadlock.
+These implementations need not ensure consistency of application data.
+Instead, they must maintain the consistency of any underlying data
+structures.  Generally, latches do not persist across calls performed
+by high-level code, as that could lead to deadlock.
+
+For locking, due to the variety of locking protocols available, and
+their interaction with application
+workloads~\cite{multipleGenericLocking}, we leave it to the
+application to decide what degree of isolation is appropriate.  \yad
+provides a default page-level lock manager that performs deadlock
+detection, although we expect many applications to make use of
+deadlock-avoidance schemes, which are already prevalent in
+multithreaded application development.  The Lock Manager is flexible
+enough to also provide index locks for hashtable implementations, and more complex locking protocols.
+
+For example, it would be relatively easy to build a strict two-phase
+locking hierarchical lock
+manager~\cite{hierarcicalLocking,hierarchicalLockingOnAriesExample} on
+top of \yad.  Such a lock manager would provide isolation guarantees
+for all applications that make use of it.  However, applications that
+make use of such a lock manager must handle deadlocked transactions
+that have been aborted by the lock manager.  This is easy if all of
+the state is managed by \yad, but other state such as thread stacks
+must be handled by the application, much like exception handling.
+
+Conversely, many applications do not require such a general scheme.
+For instance, an IMAP server can employ a simple lock-per-folder
+approach and use lock-ordering techniques to avoid deadlock.  This
+avoids the complexity of dealing with transactions that abort due
+to deadlock, and also removes the runtime cost of restarting 
+transactions.
+
+\yad provides a lock manager API that allows all three variations
+(among others). In particular, it provides upcalls on commit/abort so
+that the lock manager can release locks at the right time. We will
+revisit this point in more detail when we describe some of the example
+operations.
+
+
+
+\subsection{Nested Top Actions}
+\label{nested-top-actions}
+
+
+\eab{here is the new location for this section}
+
+explain that with a ``big lock'' it is easy to write transactional data structure. (trivial example?)
+
+but we want more concurrency, which means 2 problems: 1) finer grain locking and 2) weaker isolation since interleaved transactions seeing the same structure
+
+cascading aborts problem
+
+solution: don't undo structural changes, just commit them even if the causeing xact fails. then logical undo to fix the aborted xact.
+
+% @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
+
+\textcolor{red}{OLD TEXT:} Section~\ref{sub:OperationProperties} states that \yad does not allow
+cascading aborts, implying that operation implementors must protect
+transactions from any structural changes made to data structures by
+uncommitted transactions, but \yad does not provide any mechanisms
+designed for long-term locking. However, one of \yad's goals is to
+make it easy to implement custom data structures for use within safe,
+multi-threaded transactions. Clearly, an additional mechanism is
+needed.
+
+The solution is to allow portions of an operation to ``commit'' before
+the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
+support. However, we currently use the slightly simpler (and lighter-weight)
+mechanism described here. If the need arises, we will add support
+for nested top actions.}
+An operation's wrapper is just a normal function, and therefore may
+generate multiple log entries. First, it writes an undo-only entry
+to the log. This entry will cause the \emph{logical} inverse of the
+current operation to be performed at recovery or abort, must be idempotent,
+and must fail gracefully if applied to a version of the database that
+does not contain the results of the current operation. Also, it must
+behave correctly even if an arbitrary number of intervening operations
+are performed on the data structure.
+
+Next, the operation writes one or more redo-only log entries that may
+perform structural modifications to the data structure. These redo
+entries have the constraint that any prefix of them must leave the
+database in a consistent state, since only a prefix might execute
+before a crash.  This is not as hard as it sounds, and in fact the
+$B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
+that behaves in this way, while the linear hash table implementation
+discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable hash
+table that meets these constraints.
+
+%[EAB: I still think there must be a way to log all of the redoes
+%before any of the actions take place, thus ensuring that you can redo
+%the whole thing if needed. Alternatively, we could pin a page until
+%the set completes, in which case we know that that all of the records
+%are in the log before any page is stolen.]
+
+
 \subsection{Recovery}
+\label{recovery}
 
 %In this section, we present the details of crash recovery, user-defined logging, and atomic actions that commit even if their enclosing transaction aborts.
 %
@@ -675,10 +756,11 @@ fuzzy snapshot is fine.
 We use the same basic recovery strategy as ARIES, which consists of
 three phases: {\em analysis}, {\em redo} and {\em undo}.  The first,
 analysis, is implemented by \yad, but will not be discussed in this
-paper. The second, redo, ensures that each redo entry is applied to its corresponding page exactly once.  The
-third phase, undo, rolls back any transactions that were active when
-the crash occurred, as though the application manually aborted them
-with the ``abort'' function call.
+paper. The second, redo, ensures that each redo entry is applied to
+its corresponding page exactly once.  The third phase, undo, rolls
+back any transactions that were active when the crash occurred, as
+though the application manually aborted them with the ``abort''
+function call.
   
 After the analysis phase, the on-disk version of the page file is in
 the same state it was in when \yad crashed. This means that some
@@ -712,84 +794,7 @@ consistent, the transactions may be aborted exactly as they would be
 during normal operation.
 
 
-\subsection{Physical, Logical and Physiological Logging}
 
-The above discussion avoided the use of some common terminology 
-that should be presented here. {\em Physical logging } 
-is the practice of logging physical (byte-level) updates
-and the physical (page number) addresses to which they are applied.
-
-{\em Physiological logging } is what \yad recommends for its redo
-records~\cite{physiological}. The physical address (page number) is
-stored, but the byte offset and the actual delta are stored implicitly
-in the parameters of the redo or undo function. These parameters allow
-the function to update the page in a way that preserves application
-semantics.  One common use for this is {\em slotted pages}, which use
-an on-page level of indirection to allow records to be rearranged
-within the page; instead of using the page offset, redo operations use
-a logical offset to locate the data. This allows data within a single
-page to be re-arranged at runtime to produce contiguous regions of
-free space. \yad generalizes this model; for example, the parameters
-passed to the function may utilize application specific properties in
-order to be significantly smaller than the physical change made to the
-page.
-
-{\em Logical logging } can only be used for undo entries in \yad, and
-stores a logical address (the key of a hash table, for instance)
-instead of a physical address. As we will see later, these operations
-may affect multiple pages.  This allows the location of data in the
-page file to change, even if outstanding transactions may have to roll
-back changes made to that data. Clearly, for \yad to be able to apply
-logical log entries, the page file must be physically consistent,
-ruling out use of logical logging for redo operations.
-
-\yad supports all three types of logging, and allows developers to
-register new operations, which is the key to its extensibility. After
-discussing \yad's architecture, we will revisit this topic with a number of
-concrete examples.
-
-
-\subsection{Concurrency and Aborted Transactions}
-\label{nested-top-actions}
-
-\eab{Can't tell if you rewrote this section or not...  do we support nested top actions?  I thought we did. -- This section is horribly out of date (and confuses me when I try to read it!)  We do support nested top actions. Where does this belong w.r.t. the isolation section? Really, we should just explain how NTA's work so we don't have to explain why the hashtable is concurrent...-- Rusty}
-
-% @todo this section is confusing.  Re-write it in light of page spanning operations, and the fact that we assumed opeartions don't span pages above.  A nested top action (or recoverable, carefully ordered operation) is simply a way of causing a page spanning operation to be applied atomically.  (And must be used in conjunction with latches...)  Note that the combination of latching and NTAs makes the implementation of a page spanning operation no harder than normal multithreaded software development.
-
-Section~\ref{sub:OperationProperties} states that \yad does not
-allow cascading aborts, implying that operation implementors must
-protect transactions from any structural changes made to data structures
-by uncommitted transactions, but \yad does not provide any mechanisms
-designed for long-term locking. However, one of \yad's goals is to
-make it easy to implement custom data structures for use within safe,
-multi-threaded transactions. Clearly, an additional mechanism is needed.
-
-The solution is to allow portions of an operation to ``commit'' before
-the operation returns.\footnote{We considered the use of nested top actions, which \yad could easily
-support. However, we currently use the slightly simpler (and lighter-weight)
-mechanism described here. If the need arises, we will add support
-for nested top actions.}
-An operation's wrapper is just a normal function, and therefore may
-generate multiple log entries. First, it writes an undo-only entry
-to the log. This entry will cause the \emph{logical} inverse of the
-current operation to be performed at recovery or abort, must be idempotent,
-and must fail gracefully if applied to a version of the database that
-does not contain the results of the current operation. Also, it must
-behave correctly even if an arbitrary number of intervening operations
-are performed on the data structure.
-
-Next, the operation writes one or more redo-only log entries that may perform structural
-modifications to the data structure. These redo entries have the constraint that any prefix of them must leave the database in a consistent state, since only a prefix might execute before a crash.  This is not as hard as it sounds, and in fact the
-$B^{LINK}$ tree~\cite{blink} is an example of a B-Tree implementation
-that behaves in this way, while the linear hash table implementation
-discussed in Section~\ref{sub:Linear-Hash-Table} is a scalable 
-hash table that meets these constraints.
-
-%[EAB: I still think there must be a way to log all of the redoes
-%before any of the actions take place, thus ensuring that you can redo
-%the whole thing if needed. Alternatively, we could pin a page until
-%the set completes, in which case we know that that all of the records
-%are in the log before any page is stolen.]
 
 \section{Extendible transaction architecture}
 
