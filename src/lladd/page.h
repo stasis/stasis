@@ -54,14 +54,14 @@ terms specified in this license.
 #ifndef __PAGE_H__
 #define __PAGE_H__
 
-#include "common.h"
+#include <lladd/common.h>
 
 /** @todo page.h includes things that it shouldn't!  (Or, page.h shouldn't be an installed header.) */
 
 #include <lladd/transactional.h>
 
-#include "../config.h"
-#include "../src/lladd/latches.h"
+#include <config.h>
+#include "latches.h"
 BEGIN_C_DECLS
 
 /** 

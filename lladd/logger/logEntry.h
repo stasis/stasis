@@ -44,8 +44,6 @@ terms specified in this license.
 #define __LLADD_LOGGING_LOGENTRY_H
 
 #include <lladd/common.h>
-/*#include <lladd/page.h>*/
-/*#include <lladd/transactional.h> */
 
 BEGIN_C_DECLS
 

@@ -88,8 +88,6 @@ terms specified in this license.
 #define __BUFFERMANAGER_H__
 
 
-
-/*#include <lladd/page.h>*/
 #include <lladd/constants.h>
 #include <lladd/transactional.h>
 /**

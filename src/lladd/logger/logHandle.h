@@ -62,8 +62,9 @@ BEGIN_C_DECLS
 
    @see logWriter.h For write access to the log.
    @see logger2.h for the typedef of the logHandle struct
-*/
 
+   $Id$
+*/
 
 /** Returns a logHandle pointing at the first log entry in the log.  */
 LogHandle getLogHandle();

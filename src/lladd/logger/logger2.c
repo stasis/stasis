@@ -44,7 +44,7 @@ terms specified in this license.
 #include <lladd/common.h>
 
 #include <lladd/logger/logger2.h>
-#include <lladd/logger/logWriter.h>
+#include "logWriter.h"
 #include <lladd/bufferManager.h>
 #include <stdio.h>
 TransactionLog LogTransBegin(int xid) {

@@ -44,7 +44,7 @@ terms specified in this license.
 #include <config.h>
 #include <check.h>
 
-#include <lladd/page.h>
+#include "../../src/lladd/page.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 

@@ -68,7 +68,7 @@ terms specified in this license.
 #ifndef __LOGWRITER_H__
 #define __LOGWRITER_H__
 
-#include "logEntry.h"
+/*#include "logEntry.h"*/
 #include <lladd/constants.h>
 #include <lladd/common.h>
 

@@ -15,10 +15,12 @@
     the three functions below.  They are relatively straightforward.
     Note that pageCache does not perform any file I/O of its own.
 
+    @todo pageCache should not include page.h at all.  It should treat
+    pages as (int, void*) pairs.
+
 */
-#include <lladd/page.h>
 void pageCacheInit();
 void pageCacheDeinit();
-Page * loadPagePtr(int pageid);
+void * loadPagePtr(int pageid);
 
 #endif

@@ -45,8 +45,8 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 /*#include <lladd/logger/logEntry.h> */
-#include <lladd/logger/logHandle.h>
-#include <lladd/logger/logWriter.h>
+#include "../../src/lladd/logger/logHandle.h"
+#include "../../src/lladd/logger/logWriter.h"
 
 #include "../../src/lladd/latches.h"
 #include <sched.h>

@@ -14,7 +14,7 @@
 #include <pbl/pbl.h>
 
 #include <stdio.h>
-
+#include "page.h" 
 static pblHashTable_t *activePages; /* page lookup */
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
@@ -137,7 +137,7 @@ static Page *kickPage(int pageid) {
 int lastPageId = -1;
 Page * lastPage = 0;
 
-Page *loadPagePtr(int pageid) {
+void *loadPagePtr(int pageid) {
 	/* lock activePages, bufferSize */
 	Page *ret;
 

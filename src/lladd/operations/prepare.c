@@ -47,7 +47,7 @@ terms specified in this license.
  **********************************************/
 
 #include <lladd/operations/prepare.h>
-#include <lladd/logger/logWriter.h>
+#include "../logger/logWriter.h"
 #include <malloc.h>
 
 recordid prepare_bogus_rec  = { 0, 0, 0};

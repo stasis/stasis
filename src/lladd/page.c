@@ -89,7 +89,7 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
-#include <lladd/page.h>
+#include "page.h"
 
 #include <assert.h>
 #include <stdio.h>

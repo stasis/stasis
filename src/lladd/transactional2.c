@@ -4,7 +4,7 @@
 #include <lladd/transactional.h>
 
 #include <lladd/recovery.h>
-#include <lladd/logger/logWriter.h>
+#include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 #include <lladd/logger/logger2.h>
 

@@ -40,8 +40,8 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <lladd/logger/logHandle.h>
-#include <lladd/logger/logWriter.h>
+#include "logHandle.h"
+#include "logWriter.h" 
 #include <config.h> 
 #include <malloc.h>
 

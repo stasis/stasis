@@ -2,7 +2,6 @@
 #define __BLOB_MANAGER_H
 
 #include <lladd/common.h>
-#include <lladd/page.h>
 BEGIN_C_DECLS
 
 /**    

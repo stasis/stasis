@@ -54,9 +54,9 @@ terms specified in this license.
 #include <lladd/bufferManager.h>
 #include "blobManager.h"
 #include <lladd/pageCache.h>
-#include <lladd/logger/logWriter.h>
+#include "logger/logWriter.h"
 
-#include <lladd/page.h>
+#include "page.h"
 
 static FILE * stable = NULL;
 

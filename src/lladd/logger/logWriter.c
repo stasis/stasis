@@ -43,15 +43,14 @@ terms specified in this license.
 #include <lladd/common.h>
 
 #include <lladd/transactional.h>
-#include <lladd/logger/logWriter.h>
-#include <lladd/logger/logHandle.h>
+#include "logWriter.h"
+#include "logHandle.h"
 
 #include "../latches.h"
 
 #include <assert.h>
 #include <stdio.h>
 
-#include <lladd/page.h> /* For addPendingEvent() */
 #include <lladd/bufferManager.h>
 /** 
     @todo Should the log file be global? 

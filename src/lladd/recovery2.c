@@ -10,13 +10,12 @@
 
 #include <config.h>
 #include <lladd/common.h>
-#include <lladd/page.h>
 #include <lladd/recovery.h>
 
 #include <pbl/pbl.h>
 #include "linkedlist.h"
-#include <lladd/logger/logHandle.h>
-#include <lladd/logger/logWriter.h>
+#include "logger/logHandle.h"
+#include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 
 #include <lladd/transactional.h>

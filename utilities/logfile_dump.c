@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <lladd/logger/logHandle.h>
-#include <lladd/logger/logWriter.h>
+#include "../src/lladd/logger/logHandle.h"
+#include "../src/lladd/logger/logWriter.h"
 
 
 static char * logEntryToString(LogEntry * le) {

@@ -41,9 +41,8 @@ terms specified in this license.
 ---*/
 #include <lladd/operations.h>
 
-#include <lladd/logger/logWriter.h>
+#include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
-#include <lladd/page.h>
 #include <assert.h>
 
 #include <stdio.h>
