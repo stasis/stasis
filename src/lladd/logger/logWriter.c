@@ -42,6 +42,7 @@ terms specified in this license.
 #include <config.h>
 #include <lladd/common.h>
 
+#include <lladd/transactional.h>
 #include <lladd/logger/logWriter.h>
 #include <lladd/logger/logHandle.h>
 
@@ -49,6 +50,9 @@ terms specified in this license.
 
 #include <assert.h>
 #include <stdio.h>
+
+#include <lladd/page.h> /* For addPendingEvent() */
+#include <lladd/bufferManager.h>
 /** 
     @todo Should the log file be global? 
 */
@@ -195,7 +199,7 @@ int openLogWriter() {
     the highest LSN that we've seen so far.  (If writeLogEntry has not
     been called yet.)
 
-    The first time writeLogEntry is called, we seekfrom the highest
+    The first time writeLogEntry is called, we seek from the highest
     LSN encountered so far to the end of the log.
     
 */
@@ -203,6 +207,12 @@ int writeLogEntry(LogEntry * e) {
   int nmemb;
   const long size = sizeofLogEntry(e);
 
+  if(e->type == UPDATELOG) {
+    addPendingEvent(e->contents.update.rid.page);
+  }
+  if(e->type == CLRLOG) {
+    addPendingEvent(e->contents.clr.rid.page);
+  }
 
   if(e->xid == -1) { /* Don't write log entries for recovery xacts. */
     e->LSN = -1;

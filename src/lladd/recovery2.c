@@ -10,7 +10,7 @@
 
 #include <config.h>
 #include <lladd/common.h>
-
+#include <lladd/page.h>
 #include <lladd/recovery.h>
 
 #include <pbl/pbl.h>
@@ -155,6 +155,11 @@ static void Redo() {
 	/* redoUpdate checks the page that contains e->rid, so we
 	   don't need to check to see if the page is newer than this
 	   log entry. */
+	if(e->type == UPDATELOG) { 
+	  addPendingEvent(e->contents.update.rid.page); 
+	} else {
+	  addPendingEvent(e->contents.clr.rid.page);
+	}
 	redoUpdate(e);
       }
     }

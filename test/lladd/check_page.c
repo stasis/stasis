@@ -58,13 +58,18 @@ terms specified in this license.
 #define LOG_NAME   "check_page.log"
 
 #define RECORD_SIZE sizeof(int)
+/** @todo check_page needs to use loadPage, so it contains its own
+    delcaration of loadPage. (Otherwise, loadPage would clutter the
+    interface, which is especially bad, since we hide the Page struct
+    ffrom the user for locking purposes.)*/
+Page * loadPage(int pageid);
 
 pthread_mutex_t random_mutex;
 
 static lsn_t lsn;
 static pthread_mutex_t lsn_mutex;
 static void* worker_thread(void * arg_ptr) {
-  Page p = *(Page*)arg_ptr;
+  Page * p = (Page*)arg_ptr;
   int i;
   lsn_t this_lsn;
   int j;
@@ -87,6 +92,7 @@ static void* worker_thread(void * arg_ptr) {
     first = 0;
     
     rid = pageRalloc(p, sizeof(int));
+    /*    addPendingEvent(p); */
     pageWriteRecord(1, p, rid, lsn, (byte*)&i);
     sched_yield();
 
@@ -111,8 +117,8 @@ static void* worker_thread(void * arg_ptr) {
 */
 START_TEST(pageNoThreadTest)
 {
-  Page p;
-  p.id = 0;
+  Page * p;
+  /*    p->id = 0;*/
 
 
   pthread_mutex_init(&lsn_mutex, NULL);
@@ -121,7 +127,7 @@ START_TEST(pageNoThreadTest)
 
   p = loadPage(0);
 
-  worker_thread(&p);
+  worker_thread(p);
 
   Tdeinit();
 
@@ -140,10 +146,10 @@ START_TEST(pageThreadTest) {
 
   Tinit();
 
-  Page p = loadPage(1);
+  Page * p = loadPage(1);
 
   for(i = 0; i < THREAD_COUNT; i++) {
-    pthread_create(&workers[i], NULL, worker_thread, &p);
+    pthread_create(&workers[i], NULL, worker_thread, p);
   }
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);

@@ -75,6 +75,7 @@ terms specified in this license.
 #define __PREPARE_H__
 
 #include <lladd/operations.h>
+#include <lladd/logger/logEntry.h>
 
 extern recordid prepare_bogus_rec;
 /** 

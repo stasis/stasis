@@ -28,9 +28,11 @@ static int operate(int xid, lsn_t lsn, recordid rid, const void * dat) {
   if(rid.size >= BLOB_THRESHOLD_SIZE) {
     allocBlob(xid, lsn, rid);
   } else {
-    Page loadedPage = loadPage(rid.page);
+    /*    Page * loadedPage = loadPage(rid.page); */
+    /*    pageSlotRalloc(loadedPage, lsn, rid); */
+
     /** Has no effect during normal operation. */
-    pageSlotRalloc(loadedPage, lsn, rid);
+    slotRalloc(rid.page, lsn, rid);
   }
 
   return 0;
@@ -38,9 +40,10 @@ static int operate(int xid, lsn_t lsn, recordid rid, const void * dat) {
 
 /** @todo Currently, we just leak store space on dealloc. */
 static int deoperate(int xid, lsn_t lsn, recordid rid, const void * dat) {
-  Page loadedPage = loadPage(rid.page);
+  /*  Page * loadedPage = loadPage(rid.page); */
   /** Has no effect during normal operation, other than updating the LSN. */
-  pageSlotRalloc(loadedPage, lsn, rid);
+  /*  pageSlotRalloc(loadedPage, lsn, rid); */
+  slotRalloc(rid.page, lsn, rid);
   return 0;
 }
 

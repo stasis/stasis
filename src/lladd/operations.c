@@ -43,6 +43,7 @@ terms specified in this license.
 
 #include <lladd/logger/logWriter.h>
 #include <lladd/bufferManager.h>
+#include <lladd/page.h>
 #include <assert.h>
 
 #include <stdio.h>
@@ -54,6 +55,9 @@ void doUpdate(const LogEntry * e) {
   DEBUG("OPERATION update arg length %d, lsn = %ld\n", e->contents.update.argSize, e->LSN);
 
   operationsTable[e->contents.update.funcID].run(e->xid, e->LSN, e->contents.update.rid, getUpdateArgs(e));
+
+  removePendingEvent(e->contents.update.rid.page);
+
 }
 
 void redoUpdate(const LogEntry * e) {
@@ -67,6 +71,7 @@ void redoUpdate(const LogEntry * e) {
       doUpdate(e);
     } else {
       DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
+      removePendingEvent(e->contents.update.rid.page);
     }
   } else if(e->type == CLRLOG) {
     LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
@@ -81,6 +86,7 @@ void redoUpdate(const LogEntry * e) {
       undoUpdate(f, e->LSN);
     } else {
       DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
+      removePendingEvent(e->contents.update.rid.page);
     }
   } else {
     assert(0);
@@ -115,6 +121,9 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn) {
   } else {
     DEBUG("OPERATION Skipping undo, %ld {%d %d %ld}\n", e->LSN, rid.page, rid.slot, rid.size);
   }
+
+  removePendingEvent(e->contents.update.rid.page);
+
   /*  printf("Undo done."); fflush(NULL); */
 
 }

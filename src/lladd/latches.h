@@ -7,6 +7,9 @@
 /*#include <pbl/pbl.h> -- Don't want everything that touches threading to include pbl... */
 #include <lladd/stats.h>
 
+#ifndef __LATCHES_H
+#define __LATCHES_H
+
 /**
    A data structure for profiling latching behavior.
    All time values recorded in this struct are in microseconds.
@@ -72,3 +75,4 @@ void __profile_deletelock (rwl *lock);
 
 #endif  
 
+#endif /* __LATCHES_H */

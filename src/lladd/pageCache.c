@@ -142,7 +142,6 @@ Page *loadPagePtr(int pageid) {
 	Page *ret;
 
 	if(lastPage && lastPageId == pageid) {
-	  DEBUG("Loaded page %d => %x\n", pageid, (unsigned int) lastPage->memAddr);
 	  return lastPage;
 	} else {
 	  ret = pblHtLookup(activePages, &pageid, sizeof(int));
@@ -169,7 +168,7 @@ Page *loadPagePtr(int pageid) {
 		lastPage = ret;
 		lastPageId = pageid;
 
-		DEBUG("Loaded page %d => %x\n", pageid, (unsigned int) ret->memAddr);
+		/* DEBUG("Loaded page %d => %x\n", pageid, (unsigned int) ret->memAddr); */
 
 		return ret;
 	} else if( bufferSize == MAX_BUFFER_SIZE ) { /* we need to kick */

@@ -86,6 +86,7 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
   long argSize  = 0;
   LogEntry * e;
 
+
   if(operationsTable[operation].sizeofData == SIZEOF_RECORD) {
     argSize = rid.size;
   } else {
@@ -101,6 +102,7 @@ LogEntry * LogUpdate(TransactionLog * l, recordid rid, int operation, const byte
   }
 
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
+
   writeLogEntry(e);
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
@@ -117,6 +119,7 @@ lsn_t LogCLR(LogEntry * undone) {
   lsn_t ret;
   LogEntry * e = allocCLRLogEntry(-1, undone->xid, undone->LSN, undone->contents.update.rid, undone->prevLSN);
   writeLogEntry(e);
+
   DEBUG("Log CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)undone->LSN, (long int)undone->prevLSN);
 

@@ -43,7 +43,7 @@ terms specified in this license.
 #include <config.h>
 #include <lladd/common.h>
 
-#include <lladd/logger/logEntry.h>
+#include <lladd/transactional.h>
 
 #include <assert.h>
 #include <lladd/operations.h>

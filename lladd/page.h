@@ -56,16 +56,13 @@ terms specified in this license.
 
 #include "common.h"
 
-BEGIN_C_DECLS
+/** @todo page.h includes things that it shouldn't!  (Or, page.h shouldn't be an installed header.) */
 
-/**
- * represents how to look up a record on a page
- */
-typedef struct {
-  int page;
-  int slot;
-  long size;
-} recordid;
+#include <lladd/transactional.h>
+
+#include "../config.h"
+#include "../src/lladd/latches.h"
+BEGIN_C_DECLS
 
 /** 
     The page type contains in-memory information about pages.  This
@@ -114,6 +111,17 @@ typedef struct Page_s {
   
   void * rwlatch;
 
+  /** This mutex protects the pending field.  We don't use rwlatch for
+      this, since we also need to use a condition variable to update
+      this properly, and there are no read-only functions for the
+      pending field. */
+
+  pthread_mutex_t pending_mutex;  /* pthread_mutex_t */
+
+  pthread_cond_t  noMorePending;  /* pthread_cond_t */
+
+  int waiting; 
+  
   /** 
       In the multi-threaded case, before we steal a page, we need to
       know that all pending actions have been completed.  Here, we
@@ -134,17 +142,8 @@ typedef struct Page_s {
       carefully.
 
   */
-  int * pending;
+  int pending;
 } Page;
-
-void addPendingEvent(Page p);
-
-/** 
-    This function blocks until there are no events pending for this page.
-    
-    @todo implement addPendingEvent and unload for real!
-*/
-void acquireUnloadLock(Page p);
 
 /**
  * initializes all the important variables needed in all the
@@ -164,19 +163,23 @@ void pageInit();
  * as a parameter a Page and returns the LSN that is currently written on that
  * page in memory.
  */
-lsn_t pageReadLSN(const Page page);
+lsn_t pageReadLSN(const Page * page);
 
 /**
  * assumes that the page is already loaded in memory.  It takes as a
  * parameter a Page, and returns an estimate of the amount of free space on this
  * page.  This is either exact, or an underestimate.
  */
-int freespace(Page page);
+int freespace(Page * page);
 
 /**
  * assumes that the page is already loaded in memory.  It takes as
  * parameters a Page and the size in bytes of the new record.  pageRalloc()
  * returns a recordid representing the newly allocated record.
+ *
+ * If you call this function, you probably need to be holding lastFreepage_mutex.
+ *
+ * @see lastFreepage_mutex
  *
  * NOTE: might want to pad records to be multiple of words in length, or, simply
  *       make sure all records start word aligned, but not necessarily having 
@@ -188,13 +191,13 @@ int freespace(Page page);
  *
  * @todo Makes no attempt to reuse old recordid's.
  */
-recordid pageRalloc(Page page, int size);
+recordid pageRalloc(Page * page, int size);
 
-void pageDeRalloc(Page page, recordid rid);
+void pageDeRalloc(Page * page, recordid rid);
 
-void pageWriteRecord(int xid, Page page, recordid rid, lsn_t lsn, const byte *data);
+void pageWriteRecord(int xid, Page * page, recordid rid, lsn_t lsn, const byte *data);
 
-void pageReadRecord(int xid, Page page, recordid rid, byte *buff);
+void pageReadRecord(int xid, Page * page, recordid rid, byte *buff);
 
 void pageCommit(int xid);
 
@@ -204,12 +207,13 @@ void pageRealloc(Page * p, int id);
 
 Page* pageAlloc(int id);
 
-recordid pageSlotRalloc(Page page, lsn_t lsn, recordid rid);
+recordid pageSlotRalloc(Page * page, lsn_t lsn, recordid rid);
 
-int pageTest();
+/*int pageTest(); */
 
-int getSlotType(Page p, int slot, int type);
-void setSlotType(Page p, int slot, int type);
+int pageGetSlotType(Page * p, int slot, int type);
+void pageSetSlotType(Page * p, int slot, int type);
+
 
 
 END_C_DECLS

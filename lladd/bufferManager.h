@@ -87,9 +87,11 @@ terms specified in this license.
 #ifndef __BUFFERMANAGER_H__
 #define __BUFFERMANAGER_H__
 
-#include <lladd/page.h>
-#include <lladd/constants.h>
 
+
+/*#include <lladd/page.h>*/
+#include <lladd/constants.h>
+#include <lladd/transactional.h>
 /**
  * initialize buffer manager
  * @return 0 on success
@@ -98,19 +100,18 @@ terms specified in this license.
 int bufInit();
 
 /**
- * @param pageid ID of the page you want to load
- * @return fully formed Page type
- * @return page with -1 ID if page not found
- */
-Page loadPage(int pageid); 
-
-/**
  * allocate a record
  * @param xid The active transaction.
  * @param size The size of the new record
  * @return allocated record
  */
 recordid ralloc(int xid, long size);
+
+
+/**
+ * allocate a record at a given slot.  (Useful for recovery.)
+ */
+void slotRalloc(int pageid, lsn_t lsn, recordid rid);
 
 /**
  * Find a page with some free space.
@@ -174,7 +175,7 @@ void readRecord(int xid, recordid rid, void *dat);
  *
  * @param dat  The page to be flushed to disk.
  */
-void pageWrite(const Page * dat);
+/* void pageWrite(Page * dat); */
 
 
 /**
@@ -183,7 +184,7 @@ void pageWrite(const Page * dat);
    @param ret A page struct, with id set correctly.  The rest of this
    struct will be overwritten by pageMap.
 */
-void pageRead(Page * ret);
+/* void pageRead(Page * ret); */
 
 
 /* int flushPage(Page page); */
@@ -236,5 +237,9 @@ int bufTransAbort(int xid, lsn_t lsn);
  * transactions
  */
 void bufDeinit();
+
+void addPendingEvent(int pageid);
+void removePendingEvent(int pageid);
+void setSlotType(int pageid, int slot, int type);
 
 #endif

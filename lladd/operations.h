@@ -54,8 +54,8 @@ terms specified in this license.
 #define __OPERATIONS_H__
 
 #include <lladd/constants.h>
-/*#include <lladd/transactional.h>*/
-#include <lladd/logger/logEntry.h>
+#include <lladd/transactional.h>
+#include <lladd/logger/logEntry.h> 
 
 BEGIN_C_DECLS
 
@@ -127,10 +127,6 @@ typedef struct {
 } Operation;
 
 /* These need to be installed, since they are required by applications that use LLADD. */
-/*#include "constants.h"*/
-
-/*#include <lladd/bufferManager.h>*/
-/*#include "logger/logEntry.h"*/
 
 #include "operations/increment.h"
 #include "operations/decrement.h"

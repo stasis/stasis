@@ -86,7 +86,17 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-#include "page.h"
+/**
+ * represents how to look up a record on a page
+ */
+typedef struct {
+  int page;
+  int slot;
+  long size;
+} recordid;
+
+
+
 #include "operations.h"
 
 /**
@@ -106,6 +116,8 @@ typedef struct {
 	long LSN;
   /*	int status; */
 } Transaction;
+
+
 
 /**
  * initialize the transactional system, including running recover (if

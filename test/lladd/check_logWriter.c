@@ -43,10 +43,10 @@ terms specified in this license.
 #include <config.h>
 #include <check.h>
 
-#include <lladd/logger/logEntry.h>
+#include <lladd/transactional.h>
+/*#include <lladd/logger/logEntry.h> */
 #include <lladd/logger/logHandle.h>
 #include <lladd/logger/logWriter.h>
-#include <lladd/transactional.h>
 
 #include "../../src/lladd/latches.h"
 #include <sched.h>
@@ -61,6 +61,9 @@ static void setup_log() {
   int i;
   lsn_t prevLSN = -1;
   int xid = 100;
+
+  Tinit();
+
   deleteLogWriter();
   openLogWriter();
   
@@ -121,6 +124,8 @@ START_TEST(logWriterTest)
   LogEntry * e;
   LogHandle h;
   int i = 0;
+
+
   setup_log();
   syncLog();
   closeLogWriter();

@@ -48,6 +48,8 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #define LOG_NAME   "check_operations.log"
+
+
 /**
    Assuming that the Tset() operation is implemented correctly, checks
    that doUpdate, redoUpdate and undoUpdate are working correctly, for
@@ -74,11 +76,13 @@ START_TEST(operation_physical_do_undo) {
 
   /*  writeLSN(lsn, rid.page); */
   DEBUG("B\n");
+
   writeRecord(xid, lsn, rid, &buf);
 
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
+  addPendingEvent(rid.page);
   doUpdate(setToTwo);  /* PAGE LSN= 10, value = 2. */
 
   readRecord(xid, rid, &buf);
@@ -93,6 +97,7 @@ START_TEST(operation_physical_do_undo) {
 
   setToTwo->LSN = 5;
 
+  addPendingEvent(rid.page);
   undoUpdate(setToTwo, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
 
   readRecord(xid, rid, &buf);
@@ -100,6 +105,7 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   DEBUG("E\n");
+  addPendingEvent(rid.page);
   redoUpdate(setToTwo);
   
 
@@ -140,6 +146,7 @@ START_TEST(operation_physical_do_undo) {
   setToTwo->LSN = 10;
   
   DEBUG("F\n");
+  addPendingEvent(rid.page);
   redoUpdate(setToTwo);
   /*  writeLSN(setToTwo->LSN, rid.page); */
 
@@ -148,6 +155,7 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
+  addPendingEvent(rid.page);
   undoUpdate(setToTwo, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   readRecord(xid, rid, &buf);
@@ -155,17 +163,18 @@ START_TEST(operation_physical_do_undo) {
   fail_unless(buf == 1, NULL);
   
   DEBUG("H don't redo set to 2\n");
+  addPendingEvent(rid.page);
   redoUpdate(setToTwo);        /* Fails */
 
   readRecord(xid, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   
-
   writeRecord(xid, 0, rid, &buf); /* reset the page's LSN. */
   /*  writeLSN(0,rid.page); */
 
   DEBUG("I redo set to 2\n");
+  addPendingEvent(rid.page);
   redoUpdate(setToTwo);        /* Succeeds */
 
   readRecord(xid, rid, &buf);

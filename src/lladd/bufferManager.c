@@ -56,8 +56,39 @@ terms specified in this license.
 #include <lladd/pageCache.h>
 #include <lladd/logger/logWriter.h>
 
+#include <lladd/page.h>
+
 static FILE * stable = NULL;
+
+/** 
+    This function blocks until there are no events pending for this page.
+*/
+static void finalize(Page * page);
+
+
+
+/**
+   Invariant: This lock should be held while updating lastFreepage, or
+   while performing any operation that may decrease the amount of
+   freespace in the page that lastFreepage refers to.  
+
+   Since pageCompact and pageDeRalloc may only increase this value,
+   they do not need to hold this lock.  Since bufferManager is the
+   only place where pageRalloc is called, pageRalloc does not obtain
+   this lock.
+*/
+
+static pthread_mutex_t lastFreepage_mutex;
 static unsigned int lastFreepage = 0;
+
+/**
+ * @param pageid ID of the page you want to load
+ * @return fully formed Page type
+ * @return page with -1 ID if page not found
+ */
+Page * loadPage(int pageid); 
+
+
 
 /* ** File I/O functions ** */
 /* Defined in blobManager.c, but don't want to export this in any public .h files... */
@@ -95,7 +126,7 @@ void pageRead(Page *ret) {
 
 }
 
-void pageWrite(const Page * ret) {
+void pageWrite(Page * ret) {
 
   long pageoffset = ret->id * PAGE_SIZE;
   long offset = myFseek(stable, pageoffset, SEEK_SET);
@@ -104,10 +135,12 @@ void pageWrite(const Page * ret) {
 
   DEBUG("Writing page %d\n", ret->id);
 
-  if(flushedLSN() < pageReadLSN(*ret)) {
+  if(flushedLSN() < pageReadLSN(ret)) {
     DEBUG("pageWrite is calling syncLog()!\n");
     syncLog();
   }
+
+  finalize(ret);
 
   if(1 != fwrite(ret->memAddr, PAGE_SIZE, 1, stable)) {
                                                                                                                  
@@ -135,6 +168,8 @@ static void openPageFile() {
   }
   
   lastFreepage = 0;
+  pthread_mutex_init(&lastFreepage_mutex , NULL);
+
   DEBUG("storefile opened.\n");
 
 }
@@ -148,11 +183,11 @@ static void closePageFile() {
 int bufInit() {
 
 	stable = NULL;
-
+	pageInit();
 	openPageFile();
 	pageCacheInit();
 	openBlobStore();
-	
+
 	return 0;
 }
 
@@ -178,8 +213,8 @@ void simulateBufferManagerCrash() {
 
 /* ** No file I/O below this line. ** */
 
-Page loadPage (int pageid) {
-	return *loadPagePtr(pageid);
+Page * loadPage (int pageid) {
+	return loadPagePtr(pageid);
 }
 
 Page * lastRallocPage = 0;
@@ -188,19 +223,28 @@ Page * lastRallocPage = 0;
 recordid ralloc(int xid, /*lsn_t lsn,*/ long size) {
   
   recordid ret;
-  Page p;
+  Page * p;
   
   DEBUG("Rallocing record of size %ld\n", (long int)size);
   
   assert(size < BLOB_THRESHOLD_SIZE || size == BLOB_SLOT);
   
+  pthread_mutex_lock(&lastFreepage_mutex);
+  
   while(freespace(p = loadPage(lastFreepage)) < size ) { lastFreepage++; }
   
   ret = pageRalloc(p, size);
     
+  pthread_mutex_unlock(&lastFreepage_mutex);
+  
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size);
 
   return ret;
+}
+
+void slotRalloc(int pageid, lsn_t lsn, recordid rid) {
+  Page * loadedPage = loadPage(rid.page);
+  pageSlotRalloc(loadedPage, lsn, rid);
 }
 
 long readLSN(int pageid) {
@@ -227,7 +271,7 @@ void writeRecord(int xid, lsn_t lsn, recordid rid, const void *dat) {
     /*    pageWriteRecord(xid, *p, rid, dat);
     p->LSN = lsn;
     pageWriteLSN(*p); */
-    pageWriteRecord(xid, *p, rid, lsn, dat);
+    pageWriteRecord(xid, p, rid, lsn, dat);
     
   }
 }
@@ -258,5 +302,59 @@ int bufTransAbort(int xid, lsn_t lsn) {
   pageAbort(xid);
 
   return 0;
+}
+
+void addPendingEvent(int pageid){
+  
+  Page * p = loadPage(pageid);
+
+  pthread_mutex_lock(&(p->pending_mutex));
+
+  assert(!(p->waiting));
+
+  p->pending++;
+
+  pthread_mutex_unlock(&(p->pending_mutex));
+
+}
+
+/** @todo as implemented, loadPage() ... doOperation is not atomic!*/
+void removePendingEvent(int pageid) {
+  
+  Page * p = loadPage(pageid);
+
+  pthread_mutex_lock(&(p->pending_mutex));
+
+  p->pending--;
+  
+  assert(p->pending >= 0);
+
+  if(p->waiting && !p->pending) {
+    assert(p->waiting == 1);
+    pthread_cond_signal(&(p->noMorePending));
+  }
+
+  pthread_mutex_unlock(&(p->pending_mutex));
+}
+
+
+static void finalize(Page * p) {
+  pthread_mutex_lock(&(p->pending_mutex));
+  p->waiting++;
+
+  while(p->pending) {
+    
+    pthread_cond_wait(&(p->noMorePending), &(p->pending_mutex));
+  }
+
+  pthread_mutex_unlock(&(p->pending_mutex)); 
+
+  return;
+}
+
+
+void setSlotType(int pageid, int slot, int type) {
+  Page * p = loadPage(pageid);
+  pageSetSlotType(p, slot, type);
 }
 

@@ -35,7 +35,7 @@ int Tinit() {
          
         setupOperationsTable();
 	
-	pageInit();
+	/* 	pageInit(); */
 	bufInit();
 
 	openLogWriter();

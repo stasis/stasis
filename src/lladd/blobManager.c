@@ -5,6 +5,7 @@
 
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
+#include <lladd/page.h>
 #include <lladd/constants.h>
 
 #include "blobManager.h"
@@ -89,8 +90,7 @@ long myFseek(FILE * f, long offset, int whence) {
 recordid preAllocBlob(int xid, long blobSize) {
   long fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_record_t blob_rec;
-  Page p;
-  /*  char zero = 0; */
+
   /* Allocate space for the blob entry. */
  
   DEBUG("Allocing blob (size %ld)\n", blobSize);
@@ -99,10 +99,7 @@ recordid preAllocBlob(int xid, long blobSize) {
 
   /* First in buffer manager. */
 
-  /** Needs to be in alloc.c */
-
   recordid rid = Talloc(xid, sizeof(blob_record_t));
-
 
   /** Finally, fix up the fields in the record that points to the blob. 
       The rest of this also should go into alloc.c 
@@ -111,10 +108,8 @@ recordid preAllocBlob(int xid, long blobSize) {
   blob_rec.fd = 0;
   blob_rec.size = blobSize;
   blob_rec.offset = fileSize;
-	
-  p = loadPage(rid.page);
-
-  setSlotType(p, rid.slot, BLOB_SLOT);
+  
+  setSlotType(rid.page, rid.slot, BLOB_SLOT);
   rid.size = BLOB_SLOT;
 
   /* Tset() needs to know to 'do the right thing' here, since we've
@@ -132,9 +127,8 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
   
   long fileSize = myFseek(blobf1, 0, SEEK_END);
   blob_record_t blob_rec;
-  Page p;
   char zero = 0;
-  /*  recordid rid = preAllocBlob(xid, blobSize); */
+
   /* Allocate space for the blob entry. */
  
   DEBUG("post Allocing blob (size %ld)\n", rid.size);
@@ -142,8 +136,6 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
   assert(rid.size > 0); /* Don't support zero length blobs right now... */
 
   /* First in buffer manager. */
-
-  p = loadPage(rid.page);
 
   /* Read in record to get the correct offset, size for the blob*/
   readRawRecord(xid, rid, &blob_rec, sizeof(blob_record_t));
@@ -156,7 +148,7 @@ void allocBlob(int xid, lsn_t lsn, recordid rid) {
 
 }
 
- static lsn_t * tripleHashLookup(int xid, recordid rid) {
+static lsn_t * tripleHashLookup(int xid, recordid rid) {
   pblHashTable_t * xidHash = pblHtLookup(dirtyBlobs, &xid, sizeof(xid));
   if(xidHash == NULL) {
     return NULL;

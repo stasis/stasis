@@ -44,7 +44,6 @@ terms specified in this license.
 #include <check.h>
 #include <assert.h>
 
-#include <lladd/logger/logEntry.h>
 #include <lladd/transactional.h>
 
 #include "../check_includes.h"
