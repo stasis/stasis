@@ -5,25 +5,6 @@
 #define member_offset(s,x)  ((int)&(((s *)NULL)->x))
 
 
-/* Note: the alignment and pobj header info was placed here in order
- * to allow fast IS_PERSISTENT check. */
-
-/* Architecture specific word size and alignment. */
-#define WORDSIZE  sizeof(int)
-#define WORDBITS  (WORDSIZE * 8)
-#define ALIGN(s)  ((size_t) (((s) + (WORDSIZE - 1)) / WORDSIZE) * WORDSIZE)
-
-/* Persistent object control block (header). */
-struct pobj {
-    size_t size;
-    int type_index;
-    int rep_index;
-};
-#define POBJ_HEADER_SIZE  sizeof(struct pobj)
-#define IS_PERSISTENT(p)  \
-  (((struct pobj *)(((char *) p) - ALIGN(POBJ_HEADER_SIZE)))->rep_index >= 0)
-
-
 struct pobj_memfunc {
     void *(*malloc) (size_t);
     void *(*calloc) (size_t, size_t);
@@ -39,6 +20,7 @@ int pobj_end (void);
 /* Persistency control. */
 int pobj_persistify (void *);
 int pobj_unpersistify (void *);
+int pobj_is_persistent (void *);
 
 /* Memory management calls. */
 void *pobj_malloc (size_t);

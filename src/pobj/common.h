@@ -1,8 +1,10 @@
 #ifndef __COMMON_H
 #define __COMMON_H
 
-#define member_sizeof(s,x)  (sizeof(((s *)NULL)->x))
-#define member_offset(s,x)  ((int)&(((s *)NULL)->x))
+/* Architecture specific word size and alignment. */
+#define WORDSIZE  sizeof(int)
+#define WORDBITS  (WORDSIZE * 8)
+#define ALIGN(s)  ((size_t) (((s) + (WORDSIZE - 1)) / WORDSIZE) * WORDSIZE)
 
 #endif /* __COMMON_H */
 

@@ -1,5 +1,4 @@
 #include <string.h>
-#include "hash.h"
 #include "debug.h"
 #include "xmem.h"
 

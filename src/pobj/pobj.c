@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <lladd/transactional.h>
 #include <pobj/pobj.h>
+#include "common.h"
 #include "hash.h"
 #include "debug.h"
 #include "xmem.h"
@@ -34,8 +35,14 @@
 #define TMPBUF_GROW_FACTOR        2
 
 
-/* Note: persistent object header has been moved to pobj.h in order to
- * allow fast IS_PERSISTENT check. */
+/* Persistent object control block (header). */
+struct pobj {
+    size_t size;
+    int type_index;
+    int repo_index;
+};
+
+#define POBJ_HEADER_SIZE  sizeof(struct pobj)
 #define POBJ_NREFS(s)            ((s) / WORDSIZE)
 #define POBJ_REFFLAGS_OFFSET(s)  (ALIGN(POBJ_HEADER_SIZE) + ALIGN(s))
 #define POBJ_REFFLAGS_SIZE(s)    ((size_t) ALIGN((POBJ_NREFS(s) + 7) / 8))
@@ -425,6 +432,14 @@ pobj_unpersistify (void *obj)
 
     return 0;
 }
+
+int
+pobj_is_persistent (void *obj)
+{
+    struct pobj *p = OBJ2POBJ (obj);
+    return (p->repo_index >= 0);
+}
+
 
 static void *
 pobj_allocate (size_t size, void *(*alloc) (size_t), void (*dealloc) (void *),
