@@ -12,6 +12,7 @@ typedef struct {
   //  void * new(void * arg);
   void (*close)(int xid, void * it);
   int  (*next) (int xid, void * it);
+  int  (*tryNext) (int xid, void * it);
   int  (*key)  (int xid, void * it, byte ** key);
   int  (*value)(int xid, void * it, byte ** value);
   void (*tupleDone)(int xid, void * it);
@@ -39,6 +40,18 @@ void Titerator_close(int xid, lladdIterator_t * it);
 
 */
 int Titerator_next(int xid, lladdIterator_t * it);
+
+/**
+   @param it the iterator 
+
+   @return 1 if the iterator position advanced, and releaseTuple must be called,
+           0 if the iterator has been locked by another reader, no tuples are ready, or the iterator has been closed. 
+
+   @todo think more carefully about the return value of Titerator_tryNext().  I'm not convinced that a 0/1
+         return value is adequate.
+*/
+
+int Titerator_tryNext(int xid, lladdIterator_t * it);
 
 /**
  NOTE: next  acquires a mutex, releaseTuple releases mutex,

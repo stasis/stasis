@@ -5,9 +5,9 @@ lib_LIBRARIES=liblladd.a
 # removed: recovery.c transactional.c logger.c logger/logparser.c logger/logstreamer.c
 liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
                    pageFile.c pageCache.c page.c blobManager.c recovery2.c transactional2.c \
-		   lockManager.c iterator.c arrayCollection.c ringbuffer.c \
+		   lockManager.c iterator.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c\
 	           logger/logEntry.c logger/logWriter.c logger/logHandle.c logger/logger2.c \
-		   logger/logMemory.c multiplexer.c\
+		   logger/logMemory.c \
 		   page/slotted.c page/header.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \

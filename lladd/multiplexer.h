@@ -4,9 +4,6 @@
 
 #include <pbl/pbl.h>
 
-
-
-
 void multiplexHashLogByKey(byte * key,
 			   size_t keySize, 
 			   byte * value, 
@@ -26,10 +23,10 @@ typedef struct  {
   /** A hash of consumer implementations, keyed on the output of the multiplexKey parameter of *multiplex */
   pblHashTable_t * consumerHash;
   /** The next two fields are used to create new consumers on demand. */
-  lladdConsumer_t * (*getConsumer)(struct lladdFifoPool_t *  newConsumerArg,
+  /*  lladdConsumer_t * (*getConsumer)(struct lladdFifoPool_t *  newConsumerArg,
 				   byte*  multiplexKey, 
-				   size_t multiplexKeySize);
-  lladdFifoPool_t * getConsumerArg;
+				   size_t multiplexKeySize); */
+  lladdFifoPool_t * fifoPool;
   pthread_t worker;
   int xid;
 } lladdMultiplexer_t;
@@ -42,9 +39,9 @@ lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
 							      size_t valueSize, 
 							      byte ** multiplexKey,
 							      size_t * multiplexKeySize),
-					    lladdConsumer_t * getConsumer(lladdFifoPool_t * getConsumerArg,
+					    /*					    lladdConsumer_t * getConsumer(lladdFifoPool_t * fifoPool,
 									  byte* multiplexKey, 
-									  size_t multiplexKeySize),
+									  size_t multiplexKeySize), */
 					    lladdFifoPool_t * fifoPool);
 
 /** 
@@ -70,5 +67,3 @@ int lladdMultiplexer_start(lladdMultiplexer_t * multiplexer, pthread_attr_t * th
  */
 int lladdMultiplexer_join(lladdMultiplexer_t * multiplexer);
 
-lladdConsumer_t * fifoPool_getConsumerCRC32( lladdFifoPool_t * pool, byte * multiplexKey, size_t multiplexKeySize);
-lladdFifoPool_t * fifoPool_ringBufferInit (int consumerCount, int bufferSize);

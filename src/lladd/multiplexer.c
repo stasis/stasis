@@ -12,16 +12,16 @@ lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
 							      size_t valueSize, 
 							      byte ** multiplexKey,
 							      size_t * multiplexKeySize),
-					    lladdConsumer_t * getConsumer(struct lladdFifoPool_t* getConsumerArg,
+					    /*		    lladdConsumer_t * getConsumer(struct lladdFifoPool_t* fifoPool,
 									  byte* multiplexKey, 
-									  size_t multiplexKeySize),
+									  size_t multiplexKeySize), */
 					    lladdFifoPool_t * fifoPool) {
   lladdMultiplexer_t * ret = malloc(sizeof(lladdMultiplexer_t));
   ret->it = it;
   ret->multiplexer = multiplexer;
   ret->consumerHash = pblHtCreate();
-  ret->getConsumer  = getConsumer;
-  ret->getConsumerArg = fifoPool;
+  //  ret->getConsumer  = getConsumer;
+  ret->fifoPool = fifoPool;
   ret->xid = xid;
   return ret;
 }
@@ -51,27 +51,26 @@ void * multiplexer_worker(void * arg) {
 
     m->multiplexer(key, keySize, value, valueSize, &mkey, &mkeySize);
 
-    
-    consumer = m->getConsumer(m->getConsumerArg, mkey, mkeySize);
-
-    /*   lladdConsumer_t * consumer = pblHtLookup(m->consumerHash);
-    if(consumer == NULL) {
-      consumer = m->newConsumer(m->newConsumerArg, mkey, mkeySize);
-      pblHtInsert(m->consumerHash, mkey, mkeySize, consumer);
-      } */
-    
+    lladdFifo_t * fifo = m->fifoPool->getFifo(m->fifoPool, mkey, mkeySize);
+    consumer = fifo->consumer;
     Tconsumer_push(m->xid, consumer, key, keySize, value, valueSize);
-    
+    lladdFifoPool_markDirty(m->xid, m->fifoPool, fifo);
   }
   
   // iterate over pblhash, closing consumers.
 
   Titerator_close(m->xid, m->it);
 
-  lladdFifoPool_t * pool = m->getConsumerArg;
+  /** @todo Does this belong in its own function in fifo.c? */
+
+  lladdFifoPool_t * pool = m->fifoPool;
   int i;
   for(i = 0; i < pool->fifoCount; i++) {
     Tconsumer_close(m->xid, pool->pool[i]->consumer);
+  }
+
+  if(m->fifoPool->dirtyPoolFifo) {
+    Tconsumer_close(m->xid, m->fifoPool->dirtyPoolFifo->consumer);
   }
 
   return (void*)compensation_error();
@@ -120,28 +119,3 @@ void multiplexHashLogByKey(byte * key,
   }
 }
 
-/** 
-    Obtain a member of a fifoPool based on the value of multiplexKey.  Use CRC32 to assign the key to a consumer. */
-lladdConsumer_t * fifoPool_getConsumerCRC32( lladdFifoPool_t * pool, byte * multiplexKey, size_t multiplexKeySize) {
-  int memberId =  crc32(multiplexKey, multiplexKeySize, (unsigned long)-1L) % pool->fifoCount;
-  return pool->pool[memberId]->consumer;
-}
-
-
-/**
-   Create a new pool of ringBuffer based fifos
-
-   @param consumerCount the number of consumers in the pool.
-   @todo this function should be generalized to other consumer implementations.
-*/
-lladdFifoPool_t * fifoPool_ringBufferInit (int consumerCount, int bufferSize) {
-  lladdFifoPool_t * pool = malloc(sizeof(lladdFifoPool_t));
-
-  pool->pool = malloc(sizeof(lladdFifo_t*) * consumerCount);
-  int i;
-  for(i = 0; i < consumerCount; i++) {
-    pool->pool[i] = logMemoryFifo(bufferSize, 0);
-  }
-  pool->fifoCount = consumerCount;
-  return pool;
-}
