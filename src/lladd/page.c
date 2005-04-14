@@ -356,7 +356,6 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
     return  (fixedPageCount(p) > rid.slot) ? 
       FIXED_RECORD : UNINITIALIZED_RECORD;
   } else {
-    abort();
     return UNINITIALIZED_RECORD;
   }
 }
