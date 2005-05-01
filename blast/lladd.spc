@@ -7,6 +7,6 @@ event {
 
 event { 
   pattern { releasePage($1); }
-  guard   { $1->id != -1 }
+  guard   { $1 != 0 && $1->id != -1 }
   action  { $1->id = -1; }
 }
