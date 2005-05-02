@@ -156,21 +156,22 @@ compensated_function recordid Talloc(int xid, long size) {
   int isBlob = size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT;
 
   if(isBlob) {
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       rid = preAllocBlob(xid, size);
       Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
   } else {
 
     Page * p = NULL;
 
-    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+    //    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
       pthread_mutex_lock(&talloc_mutex);
       rid = slottedPreRalloc(xid, size, &p);
       Tupdate(xid, rid, NULL, OPERATION_ALLOC);
       /** @todo does releasePage do the correct error checking? */
       releasePage(p);
-    } compensate_ret(NULLRID);
+      //    } compensate_ret(NULLRID);
+      pthread_mutex_unlock(&talloc_mutex);
 
   }
   return rid;
@@ -205,12 +206,12 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
 
   Page * p = NULL;
   if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-    try_ret(NULLRID) { 
+    //    try_ret(NULLRID) { 
       rid = preAllocBlobFromPage(xid, page, size);
       Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
   } else {
-    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+    //    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
       pthread_mutex_lock(&talloc_mutex); 
       rid = slottedPreRallocFromPage(xid, page, size, &p);
       if(rid.size == size) { 
@@ -231,7 +232,8 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
 	/* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */      
 	releasePage(p);
       }
-    } compensate_ret(NULLRID);
+      //    } compensate_ret(NULLRID);
+      pthread_mutex_unlock(&talloc_mutex);
   }
   
   return rid;
@@ -240,22 +242,23 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
 compensated_function void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
   Page * p;
-  try {
-    p = loadPage(xid, rid.page);
-  } end;
-  begin_action(releasePage, p) {
-    readRecord(xid, p, rid, preimage);
-    /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
-    Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
-  } compensate;
+  //  try {
+  p = loadPage(xid, rid.page);
+  //  } end;
+  //  begin_action(releasePage, p) {
+  readRecord(xid, p, rid, preimage);
+  /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
+  Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
+  //  } compensate;
+  releasePage(p);
   free(preimage);
 }
 
 compensated_function int TrecordType(int xid, recordid rid) {
   Page * p;
-  try_ret(compensation_error()) {
-    p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
+  // try_ret(compensation_error()) {
+  p = loadPage(xid, rid.page);
+  //  } end_ret(compensation_error());
   int ret;
   ret = getRecordType(xid, p, rid);
   releasePage(p);
@@ -265,9 +268,9 @@ compensated_function int TrecordType(int xid, recordid rid) {
 compensated_function int TrecordSize(int xid, recordid rid) {
   int ret;
   Page * p;
-  try_ret(compensation_error()) { 
-    p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
+  //  try_ret(compensation_error()) { 
+  p = loadPage(xid, rid.page);
+  //  } end_ret(compensation_error());
   ret = getRecordSize(xid, p, rid);
   releasePage(p);
   return ret;
@@ -275,9 +278,9 @@ compensated_function int TrecordSize(int xid, recordid rid) {
 
 compensated_function int TrecordsInPage(int xid, int pageid) {
   Page * p;
-  try_ret(compensation_error()) {
-    p = loadPage(xid, pageid);
-  } end_ret(compensation_error());
+  //  try_ret(compensation_error()) {
+  p = loadPage(xid, pageid);
+  //  } end_ret(compensation_error());
   readlock(p->rwlatch, 187);
   int ret = *numslots_ptr(p);
   unlock(p->rwlatch);

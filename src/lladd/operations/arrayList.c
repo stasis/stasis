@@ -42,9 +42,9 @@ static int getBlockContainingOffset(TarrayListParameters tlp, int offset, int * 
 compensated_function recordid TarrayListAlloc(int xid, int count, int multiplier, int size) {
   
   int firstPage;
-  try_ret(NULLRID) {
-    firstPage = TpageAllocMany(xid, count+1);
-  } end_ret(NULLRID);
+  //  try_ret(NULLRID) {
+  firstPage = TpageAllocMany(xid, count+1);
+  //  } end_ret(NULLRID);
   TarrayListParameters tlp;
 
   tlp.firstPage = firstPage;
@@ -58,9 +58,9 @@ compensated_function recordid TarrayListAlloc(int xid, int count, int multiplier
   rid.page = firstPage;
   rid.size = size;
   rid.slot = 0;
-  try_ret(NULLRID) {
-    Tupdate(xid, rid, &tlp, OPERATION_ARRAY_LIST_ALLOC);
-  } end_ret(NULLRID);
+  //  try_ret(NULLRID) {
+  Tupdate(xid, rid, &tlp, OPERATION_ARRAY_LIST_ALLOC);
+    //  } end_ret(NULLRID);
 
   return rid;
 }
@@ -133,9 +133,9 @@ Operation getArrayListAlloc() {
 
 static compensated_function int TarrayListExtendInternal(int xid, recordid rid, int slots, int op) {
   Page * p;
-  try_ret(compensation_error()) {
+  //  try_ret(compensation_error()) {
     p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
   TarrayListParameters tlp = pageToTLP(p);
   releasePage(p);
   p = NULL;
@@ -158,7 +158,7 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
   tmp2.slot = 0;
   tmp2.size = tlp.size;
   /* Iterate over the (small number) of indirection blocks that need to be updated */
-  try_ret(compensation_error()) {
+  //  try_ret(compensation_error()) {
     for(int i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
       /* Alloc block i */
       int blockSize = tlp.initialSize * pow(tlp.multiplier, i);
@@ -174,7 +174,7 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
     
     int newMaxOffset = tlp.maxOffset+slots;
     alTupdate(xid, tmp, &newMaxOffset, op);
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
   return 0;
 
 }

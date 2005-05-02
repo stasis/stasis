@@ -201,7 +201,7 @@ compensated_function recordid preAllocBlob(int xid, long blobSize) {
   
   recordid rid;
  
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     
     DEBUG("Allocing blob (size %ld)\n", blobSize);
     
@@ -213,7 +213,7 @@ compensated_function recordid preAllocBlob(int xid, long blobSize) {
     
     rid.size = blobSize;
 
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
 
   return rid;
 
@@ -224,7 +224,7 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
   recordid rid;
   
   /* Allocate space for the blob entry. */
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     DEBUG("Allocing blob (size %ld)\n", blobSize);
     
     assert(blobSize > 0); /* Don't support zero length blobs right now... */
@@ -235,7 +235,7 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
 
     rid.size = blobSize;
 
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
 
   return rid;
 

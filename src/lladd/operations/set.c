@@ -98,9 +98,9 @@ static int deOperateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void
 compensated_function void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
   Page * p;
 
-  try {
+  //  try {
     p = loadPage(xid, rid.page);
-  } end;
+    //  } end;
 
   set_range_t * range = malloc(sizeof(set_range_t) + 2 * length);
   byte * record = malloc(rid.size);
@@ -124,10 +124,11 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
 
   free(record);
   /** @todo will leak 'range' if interrupted with pthread_cancel */
-  begin_action(releasePage, p) {
+  //  begin_action(releasePage, p) {
     Tupdate(xid, rid, range, OPERATION_SET_RANGE);
     free(range);
-  } compensate;
+    //  } compensate;
+    releasePage(p);
   
 }
 

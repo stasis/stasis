@@ -1,7 +1,8 @@
 # INCLUDES = @CHECK_CFLAGS@
 if HAVE_LIBCHECK
 ## Had to disable check_lht because lht needs to be rewritten.
-TESTS = check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery check_bufferManager check_indirect check_pageOperations check_linearHash  check_logicalLinearHash check_header check_linkedListNTA check_linearHashNTA check_pageOrientedList check_lockManager check_compensations check_errorHandling check_ringbuffer check_iterator check_multiplexer
+TESTS = check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery check_bufferManager check_indirect check_pageOperations check_linearHash  check_logicalLinearHash check_header check_linkedListNTA check_linearHashNTA check_pageOrientedList check_lockManager check_errorHandling check_ringbuffer check_iterator check_multiplexer
+#check_compensations 
 #check_lladdhash
 else
 TESTS = 

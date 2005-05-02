@@ -71,7 +71,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
 
 int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
   int found;
-  try_ret(compensation_error()) { 
+  //  try_ret(compensation_error()) { 
     hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
     
     recordid nextEntry;
@@ -93,7 +93,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
       nextEntry = e->next;
     } 
     free(e);
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
   
   return found;
 }
@@ -106,7 +106,7 @@ void expand (int xid, recordid hash, int next_split, int i, int keySize, int val
 #define AMORTIZE 1000
 #define FF_AM    750
   if(count <= 0 && !(count * -1) % FF_AM) {
-    try {
+    //    try {
       recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
       int j;
       TarrayListExtend(xid, hash, AMORTIZE);
@@ -122,12 +122,12 @@ void expand (int xid, recordid hash, int next_split, int i, int keySize, int val
 	headerHashBits = i; 
       }
       update_hash_header(xid, hash, i, next_split);  
-    } end;
+      //    } end;
   }
 }
 
 void update_hash_header(int xid, recordid hash, int i, int next_split) {
-  try { 
+  //  try { 
     hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(int));
     assert(he);
     recordid  * headerRidB = &he->next;
@@ -139,11 +139,11 @@ void update_hash_header(int xid, recordid hash, int i, int next_split) {
     hash.slot = 1;
   
     Tset(xid, hash, headerRidB);
-  } end;
+    //  } end;
 }
 
 void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
-  try { 
+  //  try { 
     int firstA = 1;  // Is 'A' the recordid of a bucket? 
     int firstD = 1;  // What about 'D'? 
     
@@ -282,7 +282,7 @@ void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int v
     free(D_contents);
     free(A_contents);
     free(B_contents);
-  } end;
+    //  } end;
 }
 void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
 		      hashEntry * e, int keySize, int valSize, int skipDelete) {

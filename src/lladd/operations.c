@@ -66,9 +66,9 @@ void redoUpdate(const LogEntry * e) {
     /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
     recordid rid = e->contents.update.rid;
     Page * p;
-    try {
+    //    try {
       p = loadPage(e->xid, rid.page);
-    } end;
+      //    } end;
     lsn_t pageLSN = pageReadLSN(p);
 
     if(e->LSN > pageLSN) {
@@ -91,9 +91,9 @@ void redoUpdate(const LogEntry * e) {
 
     int isNullRid = !memcmp(&rid, &NULLRID, sizeof(recordid));
     if(!isNullRid) {
-      try { 
+      //      try { 
 	p = loadPage(e->xid, rid.page);
-      } end;
+	//      } end;
     }
     //    assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
     

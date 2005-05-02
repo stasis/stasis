@@ -107,14 +107,14 @@ int compensation_error();
 void compensation_clear_error();
 void compensation_set_error(int code);
 
-#define try        do { if(compensation_error()) return;     do 
-#define try_ret(x) do { if(compensation_error()) return (x); do 
+//#define try        do { if(compensation_error()) return;     do 
+//#define try_ret(x) do { if(compensation_error()) return (x); do 
 
-#define end        while(0); if(compensation_error()) return;     }while(0)
-#define end_ret(x) while(0); if(compensation_error()) return (x); }while(0)
+//#define end        while(0); if(compensation_error()) return;     }while(0)
+//#define end_ret(x) while(0); if(compensation_error()) return (x); }while(0)
 
 extern int ___compensation_count___;
-
+/*
 #define begin_action(func, var)      \
   if(compensation_error()) return;   \
   do{                                \
@@ -123,16 +123,16 @@ extern int ___compensation_count___;
   pthread_cleanup_push(_func_=(void(*)(void*))(func), (void*)(var));\
   assert(_func_);                      \
   do
-/** @todo compensation variables don't need _func_ anymore. */
+/ ** @todo compensation variables don't need _func_ anymore. * /
 #define end_action                   \
   while(0);                          \
-  pthread_cleanup_pop(/*_func_ &&*/compensation_error());        \
+  pthread_cleanup_pop(/ *_func_ &&* /compensation_error());        \
   if(compensation_error()) return;   \
   } while(0)
 
 #define compensate                   \
   while(0);                          \
-  pthread_cleanup_pop(1/*(int)_func_*/);  \
+  pthread_cleanup_pop(1/ *(int)_func_* /);  \
   if(compensation_error()) return;   \
   } while(0)
 
@@ -145,16 +145,17 @@ extern int ___compensation_count___;
 
 #define end_action_ret(ret)                   \
   while(0);                          \
-  pthread_cleanup_pop(/*_func_ &&*/compensation_error());        \
+  pthread_cleanup_pop(/ *_func_ &&* /compensation_error());        \
   if(compensation_error()) return (ret);   \
   } while(0)
 
 #define compensate_ret(ret)                   \
   while(0);                          \
-  pthread_cleanup_pop(1/*(int)_func*/);  \
+  pthread_cleanup_pop(1/ *(int)_func* /);  \
   if(compensation_error()) return (ret);   \
   } while(0)
 
+*/
 #define compensated_function 
 
 #endif

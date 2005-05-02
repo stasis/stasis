@@ -102,9 +102,9 @@ int Tinit() {
 
 	openLogWriter();
 
-	try_ret(compensation_error()) { 
+	//	try_ret(compensation_error()) { 
 	  pageOperationsInit();
-	} end_ret(compensation_error());
+	  //	} end_ret(compensation_error());
 	initNestedTopActions();
 	ThashInit();
 	LinearHashNTAInit();
@@ -161,11 +161,11 @@ int Tbegin() {
 static compensated_function void TupdateHelper(int xid, recordid rid, const void * dat, int op, Page * p) {
   LogEntry * e;
 
-  try { 
+  //  try { 
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, rid.page);
     }
-  } end;
+    //  } end;
 
     
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
@@ -186,15 +186,15 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
   assert(numActiveXactions <= MAX_TRANSACTIONS);
   pthread_mutex_unlock(&transactional_2_mutex);
 #endif
-  try { 
+  //  try { 
     p = loadPage(xid, rid.page);
-  } end;
+    //  } end;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
     releasePage(p);
-    try { 
+    //    try { 
       rid = dereferenceRID(xid, rid);
       p = loadPage(xid, rid.page); 
-    } end;
+      //    } end;
     /** @todo Kludge! Shouldn't special case operations in transactional2. */
   } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
 	    op != OPERATION_LINEAR_INSERT && 
@@ -203,13 +203,13 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 	    op != OPERATION_UNDO_LINEAR_DELETE  ) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    try { 
+    //    try { 
       p = loadPage(xid, rid.page); 
-    } end;
+      //    } end;
   } 
 
   /** @todo For logical undo logs, grabbing a lock makes no sense! */
-  begin_action(releasePage, p) { 
+  //  begin_action(releasePage, p) { 
     TupdateHelper(xid, rid, dat, op, p);
     /*    if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, rid.page);
@@ -225,44 +225,46 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
       
       doUpdate(e, p); 
       releasePage(p);*/
-  } compensate;
+    //  } compensate;
+    releasePage(p);
 
 }
 
 compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
   Page * p ;
-  try {
+  //  try {
     p = loadPage(xid, rid.page);
-  } end;
+    //  } end;
   
-  begin_action(releasePage, p) {
-    TupdateHelper(xid, rid, dat, op, p);
-  } compensate;
+  //  begin_action(releasePage, p) {
+  TupdateHelper(xid, rid, dat, op, p);
+    //  } compensate;
+  releasePage(p);
 
 }
 
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {
   Page * p;
-  try { 
+  //  try { 
     p = loadPage(xid, rid.page);
-  } end;
+    //  } end;
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
 
-    try {
+    //    try {
       rid = dereferenceRIDUnlocked(xid, rid);
       p = loadPage(xid, rid.page);
-    } end;
+      //    } end;
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRidUnlocked(p, rid.slot);
     releasePage(p);
-    try { 
+    //    try { 
       p = loadPage(xid, rid.page);
-    } end;
+      //    } end;
 
   } else {
     abort();
@@ -273,27 +275,27 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
 
 compensated_function void Tread(int xid, recordid rid, void * dat) {
   Page * p;
-  try { 
+  //  try { 
     p = loadPage(xid, rid.page);
-  } end;
+    //  } end;
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    try { 
+    //    try { 
       rid = dereferenceRID(xid, rid);
-    } end;
-    try {
+      //    } end;
+  //    try {
       p = loadPage(xid, rid.page);
-    } end;
+      //    } end;
 
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    try { 
+    //    try { 
       p = loadPage(xid, rid.page);
-    } end;
+      //    } end;
 
   } else {
     abort();

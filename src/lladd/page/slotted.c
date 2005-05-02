@@ -178,29 +178,29 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
 
   if(lastFreepage == -1) {
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       lastFreepage = TpageAlloc(xid);
-    } end_ret(NULLRID);
-    try_ret(NULLRID) {
+      //    } end_ret(NULLRID);
+      //    try_ret(NULLRID) {
       *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
     assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
   } else {
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
   }
 
 
   if(slottedFreespace(*pp) < size ) { 
     releasePage(*pp);
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       lastFreepage = TpageAlloc(xid);
-    } end_ret(NULLRID);
-    try_ret(NULLRID) {
+      //    } end_ret(NULLRID);
+      //    try_ret(NULLRID) {
       *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
     slottedPageInitialize(*pp);
   }
   
@@ -221,9 +221,9 @@ compensated_function recordid slottedPreRallocFromPage(int xid, long page, long 
     isBlob = 1;
     size = sizeof(blob_record_t);
   }
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     *pp = loadPage(xid, page);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
   if(slottedFreespace(*pp) < size) {
     releasePage(*pp);
     *pp = NULL;

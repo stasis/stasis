@@ -16,9 +16,9 @@ void indirectInitialize(Page * p, int height) {
 /** @todo locking for dereferenceRID? */
 compensated_function recordid dereferenceRID(int xid, recordid rid) {
   Page * this;
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     this = loadPage(xid, rid.page);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
   //  printf("a"); fflush(stdout);
   int offset = 0;
   int max_slot;
@@ -36,9 +36,9 @@ compensated_function recordid dereferenceRID(int xid, recordid rid) {
     int nextPage = *page_ptr(this, i);
 
     releasePage(this);
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       this = loadPage(xid, nextPage);
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
   }
   //  printf("b"); fflush(stdout);
   
@@ -72,12 +72,12 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 compensated_function recordid rallocMany(int xid, int recordSize, int recordCount) {
   recordid ret;
   int page;
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     page = TpageAlloc(xid/*, SLOTTED_PAGE*/);
-  }end_ret(NULLRID);
-  try_ret(NULLRID) {
+    //  }end_ret(NULLRID);
+    //  try_ret(NULLRID) {
     ret = __rallocMany(xid, page, recordSize, recordCount);
-  }end_ret(NULLRID);
+    //  }end_ret(NULLRID);
 
   return  ret;
 }
@@ -124,17 +124,17 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
     int newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
     int firstChildPage;
 
-    try_ret(NULLRID) {
+    //    try_ret(NULLRID) {
       firstChildPage = TpageAllocMany(xid, newPageCount/*, SLOTTED_PAGE*/);/*pageAllocMultiple(newPageCount); */
-    } end_ret(NULLRID);
+      //    } end_ret(NULLRID);
 
     int tmpRecordCount = recordCount;
     int thisChildPage = firstChildPage;    
 
     while(tmpRecordCount > 0) {
-      try_ret(NULLRID) {
+      //      try_ret(NULLRID) {
 	__rallocMany(xid, thisChildPage, recordSize, min(tmpRecordCount, next_level_records_per_page));
-      } end_ret(NULLRID);
+	//      } end_ret(NULLRID);
       tmpRecordCount -= next_level_records_per_page;
       thisChildPage ++;
 
@@ -176,9 +176,9 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
     }
     
   }
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     TpageSet(xid, parentPage, p.memAddr);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
 
   rid.page = parentPage;
   rid.slot = RECORD_ARRAY;
@@ -192,9 +192,9 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 
 compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   Page * p;
-  try_ret(-1){
+  //  try_ret(-1){
     p = loadPage(xid, rid.page);
-  }end_ret(-1);
+    //  }end_ret(-1);
   int i = 0;
   unsigned int ret;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {

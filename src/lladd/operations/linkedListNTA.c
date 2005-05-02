@@ -75,14 +75,14 @@ compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, reco
   valueSize = log->valueSize;
   key = (byte*)(log+1);
   value = ((byte*)(log+1))+keySize;
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&linked_list_mutex);
 //  printf("Operate insert called: rid.page = %d keysize = %d valuesize = %d %d {%d %d %d}\n", rid.page, log->keySize, log->valueSize, *(int*)key, value->page, value->slot, value->size);
   // Skip writing the undo!  Recovery will write a CLR after we're done, effectively
   // wrapping this in a nested top action, so we needn't worry about that either.
     __TlinkedListInsert(xid, log->list, key, keySize, value, valueSize);
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+    //  } compensate_ret(compensation_error());
+  pthread_mutex_unlock(&linked_list_mutex);
   
   return 0;
 }
@@ -95,13 +95,13 @@ compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, reco
   
   keySize = log->keySize;
   key = (byte*)(log+1);
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&linked_list_mutex);
     //  printf("Operate remove called: %d\n", *(int*)key);
     // Don't call the version that writes an undo entry!
     __TlinkedListRemove(xid, log->list, key, keySize);
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+    //  } compensate_ret(compensation_error());
+  pthread_mutex_unlock(&linked_list_mutex);
   return 0;
 }
 
@@ -117,15 +117,15 @@ compensated_function int TlinkedListInsert(int xid, recordid list, const byte * 
   undoLog->keySize = keySize;
   memcpy(undoLog+1, key, keySize);
   pthread_mutex_lock(&linked_list_mutex);
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) { 
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) { 
     void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT, 
 					  (byte*)undoLog, sizeof(lladd_linkedListInsert_log) + keySize);
     free(undoLog);
     __TlinkedListInsert(xid, list, key, keySize, value, valueSize);
     TendNestedTopAction(xid, handle);
     
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+    //  } compensate_ret(compensation_error());
+  pthread_mutex_unlock(&linked_list_mutex);
   
   return ret;  
 }
@@ -151,7 +151,7 @@ Operation getLinkedListRemove() {
 compensated_function static void __TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   //int ret = Tli nkedListRemove(xid, list, key, keySize);
 
-  try {
+  //  try {
     
     lladd_linkedList_entry * entry = malloc(sizeof(lladd_linkedList_entry) + keySize + valueSize);
     
@@ -175,17 +175,17 @@ compensated_function static void __TlinkedListInsert(int xid, recordid list, con
       free(newEntry);
     }
     free(entry);
-  } end;
+    //  } end;
 }
 
 compensated_function int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
 
   lladd_linkedList_entry * entry = malloc(list.size);
 
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
     pthread_mutex_lock(&linked_list_mutex);
     Tread(xid, list, entry);
-  } end_action_ret(-2);
+    //  } end_action_ret(-2);
   
   if(!entry->next.size) {
     free(entry);    
@@ -195,7 +195,7 @@ compensated_function int TlinkedListFind(int xid, recordid list, const byte * ke
   
   int done = 0;
   int ret = -1;
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, -2) {
     while(!done) {
       
       if(!memcmp(entry + 1, key, keySize)) { 
@@ -214,7 +214,8 @@ compensated_function int TlinkedListFind(int xid, recordid list, const byte * ke
       }
     }
     free(entry);  
-  } compensate_ret(-2);
+    //  } compensate_ret(-2);
+    pthread_mutex_unlock(&linked_list_mutex);
 
   return ret;
 }
@@ -227,16 +228,16 @@ compensated_function int TlinkedListRemove(int xid, recordid list, const byte * 
   int valueSize;
   pthread_mutex_lock(&linked_list_mutex);
   int ret;
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     ret = TlinkedListFind(xid, list, key, keySize, &value);
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
   if(ret != -1) {
     valueSize = ret;
   } else {
     pthread_mutex_unlock(&linked_list_mutex);
     return 0;
   }
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     int entrySize = sizeof(lladd_linkedListRemove_log) + keySize + valueSize;
     lladd_linkedListRemove_log * undoLog = malloc(entrySize);
     
@@ -255,7 +256,8 @@ compensated_function int TlinkedListRemove(int xid, recordid list, const byte * 
     __TlinkedListRemove(xid, list, key, keySize);
     
     TendNestedTopAction(xid, handle);
-  } compensate_ret(compensation_error());
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linked_list_mutex);
 
   return 1;  
 }
@@ -264,9 +266,9 @@ compensated_function static int __TlinkedListRemove(int xid, recordid list, cons
   lladd_linkedList_entry * entry = malloc(list.size);
   pthread_mutex_lock(&linked_list_mutex);
 
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     Tread(xid, list, entry);
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
 
   if(entry->next.size == 0) {
     //Empty List.
@@ -280,7 +282,7 @@ compensated_function static int __TlinkedListRemove(int xid, recordid list, cons
   oldLastRead.size = -2;
   int ret = 0;
 
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     
     while(1) {
       if(compensation_error()) { break; }
@@ -325,7 +327,9 @@ compensated_function static int __TlinkedListRemove(int xid, recordid list, cons
       }
     } 
     free(entry);
-  } compensate_ret(compensation_error());
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linked_list_mutex);
+
 
   return ret;
 }
@@ -333,7 +337,7 @@ compensated_function static int __TlinkedListRemove(int xid, recordid list, cons
 compensated_function int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
   byte * value = 0;
   int ret;
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&linked_list_mutex);
     int valueSize = TlinkedListFind(xid, start_list, key, keySize, &value);
     if(valueSize != -1) {
@@ -348,22 +352,23 @@ compensated_function int TlinkedListMove(int xid, recordid start_list, recordid 
       ret = 1;
     }
     if(value) { free(value); }
-  } compensate_ret(compensation_error());
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linked_list_mutex);
 
   return ret;
 }
 compensated_function recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
   recordid ret;
-  try_ret(NULLRID) { 
+  //  try_ret(NULLRID) { 
     ret = Talloc(xid, sizeof(lladd_linkedList_entry) + keySize + valueSize);
     byte * cleared = calloc(sizeof(lladd_linkedList_entry) + keySize + valueSize, sizeof(byte));
     Tset(xid, ret, cleared);
     free(cleared);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
   return ret;
 }
 compensated_function void TlinkedListDelete(int xid, recordid list) {
-  try {
+  //  try {
     lladd_linkedList_entry * entry = malloc(list.size);
     
     Tread(xid, list, entry);
@@ -382,7 +387,7 @@ compensated_function void TlinkedListDelete(int xid, recordid list) {
     }
     
     free(entry);
-  } end;
+    //  } end;
 }
 
 compensated_function lladd_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize) {
@@ -402,7 +407,7 @@ compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it
   int done = 0;
   int ret = 0;
   lladd_linkedList_entry * entry;
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&linked_list_mutex);
     
     if(it->first == -1) {
@@ -426,19 +431,19 @@ compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it
 	it->first = 0;
       }
     }
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
 
   if(done) { 
     pthread_mutex_unlock(&linked_list_mutex);
     return ret; 
   }
 
-  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linked_list_mutex, compensation_error()) {
     assert(it->keySize + it->valueSize + sizeof(lladd_linkedList_entry) == it->next.size);
     entry = malloc(it->next.size);
     Tread(xid, it->next, entry);
 
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
 
   if(entry->next.size) {
     *keySize = it->keySize;

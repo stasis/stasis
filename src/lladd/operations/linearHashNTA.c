@@ -53,27 +53,27 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
   recordid hashHeader;
   lladd_hash_header lhh;
 
-  try_ret(NULLRID) {
+  //  try_ret(NULLRID) {
     hashHeader = Talloc(xid, sizeof(lladd_hash_header));
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
       lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(pagedListHeader));
     } else {
       lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
     }
-  } end_ret(NULLRID);
-  try_ret(NULLRID) {
+    //  } end_ret(NULLRID);
+    //  try_ret(NULLRID) {
     TarrayListExtend(xid, lhh.buckets, HASH_INIT_ARRAY_LIST_COUNT);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
   int i;
   recordid bucket = lhh.buckets;
   if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
     for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
-      try_ret(NULLRID) {
+      //      try_ret(NULLRID) {
 	recordid rid = TpagedListAlloc(xid);
 	bucket.slot = i;
 	Tset(xid, bucket, &rid);
 	//	printf("paged list alloced at rid {%d %d %d}\n", rid.page, rid.slot, rid.size);
-      } end_ret(NULLRID);
+	//      } end_ret(NULLRID);
     
     }
 
@@ -81,9 +81,9 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
     byte * entry = calloc(1, lhh.buckets.size);
     for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
       bucket.slot = i;
-      begin_action_ret(free, entry, NULLRID) {
+      //      begin_action_ret(free, entry, NULLRID) {
 	Tset(xid, bucket, entry);
-      } end_action_ret(NULLRID);
+	//      } end_action_ret(NULLRID);
     }
     free (entry);
   }
@@ -92,9 +92,9 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
   lhh.nextSplit = 0;
   lhh.bits = HASH_INIT_BITS;
   lhh.numEntries = 0;
-  try_ret(NULLRID) {
+//  try_ret(NULLRID) {
     Tset(xid, hashHeader, &lhh);
-  } end_ret(NULLRID);
+    //  } end_ret(NULLRID);
   return hashHeader;
 }
   
@@ -126,10 +126,11 @@ compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, reco
 
   byte * key = (byte*)(args+1);
   byte * value = ((byte*)(args+1))+ keySize;
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
     __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);
-  } compensate_ret(compensation_error());
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linear_hash_mutex);
   return 0;  
 }
 compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
@@ -138,11 +139,11 @@ compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, reco
   int keySize = args->keySize;  
   
   byte * key = (byte*)(args + 1);
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
     __ThashRemove(xid, hashHeader, key, keySize);
-  } compensate_ret(compensation_error());
-  
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linear_hash_mutex);
   return 0;
 }
 Operation getLinearHashInsert() {
@@ -180,11 +181,12 @@ compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* k
 
   /** @todo MEMORY LEAK arg, handle on pthread_cancel.. */
   void * handle;
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     handle = TbeginNestedTopAction(xid, OPERATION_LINEAR_HASH_INSERT, (byte*)arg, argSize);
     free(arg);
     ret = __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);  
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
 
   TendNestedTopAction(xid, handle);
 
@@ -194,11 +196,11 @@ compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* k
 }
 compensated_function static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize) {
   lladd_hash_header lhh;
-  try_ret(compensation_error()) {
+  //  try_ret(compensation_error()) {
     Tread(xid, hashHeader, &lhh);
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
   lhh.numEntries ++;
-  try_ret(compensation_error()) {
+  //  try_ret(compensation_error()) {
     if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
       if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * (HASH_FILL_FACTOR))) {
 	ThashSplitBucket(xid, hashHeader, &lhh);
@@ -208,13 +210,13 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
 	ThashSplitBucket(xid, hashHeader, &lhh);
       }
     }
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
 
   recordid bucket = lhh.buckets;
   bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
 
   int ret;
-  try_ret(compensation_error()) {  
+  //  try_ret(compensation_error()) {  
     
     if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
       
@@ -240,7 +242,7 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
     if(ret) { lhh.numEntries--; }
     Tset(xid, hashHeader, &lhh);
 
-  } end_ret(compensation_error()); 
+    //  } end_ret(compensation_error()); 
   
   return ret;
 }
@@ -249,17 +251,17 @@ compensated_function int ThashRemove(int xid, recordid hashHeader, const byte * 
   byte * value;
   int valueSize;
   int ret; 
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
     valueSize = ThashLookup(xid, hashHeader, key, keySize, &value);
-  } end_action_ret(compensation_error());
+    //  } end_action_ret(compensation_error());
 
   if(valueSize == -1) {
     pthread_mutex_unlock(&linear_hash_mutex);
     return 0; 
   }
 
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     
     int argSize = sizeof(linearHash_remove_arg) + keySize + valueSize;
     linearHash_remove_arg * arg = malloc(argSize);
@@ -277,15 +279,15 @@ compensated_function int ThashRemove(int xid, recordid hashHeader, const byte * 
     ret = __ThashRemove(xid, hashHeader, key, keySize);
     TendNestedTopAction(xid, handle);
 
-  } compensate_ret(compensation_error());
-
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linear_hash_mutex);
   return ret;
 }
 
 compensated_function static int __ThashRemove(int xid, recordid hashHeader, const byte * key, int keySize) {
   int ret;
 
-  try_ret(compensation_error()) {
+  //  try_ret(compensation_error()) {
     lladd_hash_header lhh;
     Tread(xid, hashHeader, &lhh);
     lhh.numEntries--;
@@ -303,7 +305,7 @@ compensated_function static int __ThashRemove(int xid, recordid hashHeader, cons
       assert(lhh.keySize == keySize);
       ret = TlinkedListRemove(xid, bucket, key, keySize);
     }
-  } end_ret(compensation_error());
+    //  } end_ret(compensation_error());
     
   return ret;
 }
@@ -314,7 +316,7 @@ compensated_function int ThashLookup(int xid, recordid hashHeader, const byte * 
 
   // This whole thing is safe since the callee's do not modify global state... 
   
-  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
+  //  begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
     Tread(xid, hashHeader, &lhh);
   
@@ -329,14 +331,15 @@ compensated_function int ThashLookup(int xid, recordid hashHeader, const byte * 
       assert(lhh.keySize == keySize);
       ret = TlinkedListFind(xid, bucket, key, keySize, value);
     }
-  } compensate_ret(compensation_error());
+    //  } compensate_ret(compensation_error());
+    pthread_mutex_unlock(&linear_hash_mutex);
   
   return ret;
 }
 compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * lhh) {
   // if(1) { return; }
 
-  try {
+  //  try {
     long old_bucket = lhh->nextSplit;
     long new_bucket = old_bucket + twoToThe(lhh->bits-1);
     recordid old_bucket_rid = lhh->buckets;
@@ -393,14 +396,14 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
 	free(value);
       }
     }
-  } end;
+    //  } end;
 
   //  TendNestedTopAction(xid, handle);
   return;
 }
 lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, int valueSize) {
   lladd_hash_iterator * it = malloc(sizeof(lladd_hash_iterator));
-  begin_action_ret(free, it, NULL) {
+  //  begin_action_ret(free, it, NULL) {
     it->hashHeader = hashHeader;
     lladd_hash_header lhh;
     Tread(xid, hashHeader, &lhh);
@@ -424,12 +427,12 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
       it->pit = NULL;
       it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize);
     }
-  } end_action_ret(NULL);
+    //  } end_action_ret(NULL);
   return it;
 }
   
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize) {
-  try_ret(0) { 
+  //  try_ret(0) { 
     if(it->it) {
       assert(!it->pit);
       while(!TlinkedListNext(xid, it->it, key, keySize, value, valueSize)) {
@@ -457,7 +460,7 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
 	}
       }
     }
-  } end_ret(0);
+    //  } end_ret(0);
   return 1;
 }
 
