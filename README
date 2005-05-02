@@ -1,3 +1,6 @@
+( This is a special branch of LLADD that is designed to work with blast. ) 
+
+
 LLADD is an experimental Lightweight Library for Atomicity and Durability of Data.
 
 Please see the COPYING file for licensing information.  
