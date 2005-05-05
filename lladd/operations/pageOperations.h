@@ -66,6 +66,7 @@ terms specified in this license.
 /*#define REUSE_PAGES */
 
 compensated_function int TpageAlloc(int xid/*, int type*/);
+compensated_function recordid TfixedPageAlloc(int xid, int size);
 compensated_function int TpageAllocMany(int xid, int count/*, int type*/);
 compensated_function int TpageDealloc(int xid, int pageid);
 compensated_function int TpageSet(int xid, int pageid, byte* dat);

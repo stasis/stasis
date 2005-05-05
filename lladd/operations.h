@@ -161,6 +161,7 @@ typedef struct {
 #include "operations/instantSet.h"
 #include "operations/arrayList.h"
 #include "operations/linearHash.h"
+#include "operations/bTree.h"
 #include "operations/naiveLinearHash.h"
 #include "operations/nestedTopActions.h"
 #include "operations/linkedListNTA.h"

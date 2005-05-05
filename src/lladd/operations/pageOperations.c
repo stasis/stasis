@@ -7,6 +7,8 @@
 /*#include "../page/slotted.h"*/
 #include "../page/header.h"
 #include "../pageFile.h"
+#include "../page/fixed.h"
+#include <alloca.h>
 
 #ifdef REUSE_PAGES 
 static int freelist;
@@ -298,6 +300,31 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
   /*printf("TpageAlloc alloced page %d\n", newpage); fflush(NULL); */
   return newpage;
 }
+
+
+/**
+    @todo TfixedPageAlloc is a huge hack, and it writes an extra 4k to
+    the log each time it is called.
+
+    @return a recordid.  The page field contains the page that was
+    allocated, the slot field contains the number of slots on the
+    apge, and the size field contains the size of each slot.
+*/
+recordid TfixedPageAlloc(int xid, int size) {
+  int page = TpageAlloc(xid);
+  Page * p = loadPage(xid, page);
+  fixedPageInitialize(p , xid, recordsPerPage(size));
+  byte * tmpMemAddr = alloca(PAGE_SIZE);
+  memcpy(tmpMemAddr, p->memAddr, PAGE_SIZE);
+  TpageSet(xid, page, tmpMemAddr);
+  releasePage(p);
+  recordid rid;
+  rid.page = page;
+  rid.slot = recordsPerPage(size);
+  rid.size = size;
+  return rid;
+}
+
 
 compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
   /*  int firstPage = -1;

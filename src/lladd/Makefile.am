@@ -15,7 +15,7 @@ liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c op
 		   operations/arrayList.c hash.c operations/linearHash.c \
 		   operations/naiveLinearHash.c operations/nestedTopActions.c \
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
-		   operations/pageOrientedListNTA.c
+		   operations/pageOrientedListNTA.c operations/bTree.c
 
 #		   logger/logMemory.c \ ringbuffer.c \   asdfas
 #operations/lladdhash.c 
