@@ -66,7 +66,7 @@ static pblHashTable_t *activePages; /* page lookup */
 
 static pthread_mutex_t loadPagePtr_mutex;
 
-static Page * dummy_page;
+static Page * dummy_page = 0;
 
 int bufInit() {
 
@@ -80,7 +80,7 @@ int bufInit() {
 
 	dummy_page = pageMalloc();
 	pageRealloc(dummy_page, -1);
-	Page *first;
+	Page *first = 0;
 	first = pageMalloc();
 	pageRealloc(first, 0);
 	pblHtInsert(activePages, &first->id, sizeof(int), first); 
@@ -98,7 +98,7 @@ void bufDeinit() {
 
 	closeBlobStore();
 
-	Page *p;
+	Page *p = 0;
 	DEBUG("pageCacheDeinit()");
 
 	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) { 
@@ -150,7 +150,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
 }
 
 Page * getPage(int pageid, int locktype) {
-  Page * ret;
+  Page * ret = 0;
   int spin  = 0;
 
   pthread_mutex_lock(&loadPagePtr_mutex);
@@ -260,6 +260,8 @@ Page * getPage(int pageid, int locktype) {
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n"); 
       fflush(NULL);
+      // NUKEFORBLAST
+      //      abort();
       return getPage(pageid, locktype);
     }
 
@@ -273,4 +275,8 @@ compensated_function Page *loadPage(int xid, int pageid) {
     //  } end_ret(NULL);
   Page * ret = getPage(pageid, RO);
   return ret;
+}
+
+compensated_function void assertIsCorrectPage(Page * p, int pageid) { 
+  assert(p->id == pageid);
 }
