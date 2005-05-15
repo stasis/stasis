@@ -47,7 +47,7 @@ terms specified in this license.
 #include <time.h>
 #include <lladd/transactional.h>
 #include <libdfa/messages.h>
-#include "../lladd/src/lladd/page.h"
+#include "../src/lladd/page.h"
 #include <sys/types.h>
 #include <pthread.h>
 

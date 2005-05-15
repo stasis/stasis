@@ -2,16 +2,88 @@
     @file Test cases for blast.
 */
 
-#include "lladd-blast.h"
+#include "lladd-delta.h"
+#include <assert.h>
+
+void __initialize__();
 
 Page * ptr = 0;
 
-Page * loadPage(int xid, long page) { 
+Page * loadPage(int xid, int page) { 
+  /* Trick it into assuming the user is not a total idiot. */
+  if(page == -1) { 
+    page = 1;
+  }
+
   ptr ++;
   ptr->id = page;
   return ptr;
 } 
 
+void releasePage(Page * p) { 
+  p->id = -1;
+}
+
+void assertIsCorrectPage(int pid, int id) { 
+ assert(pid == id);
+}
+
+/** To run tests:
+
+   You'll also need to uncomment main() below.  Don't ask. ;)
+
+   cpp lladd-blast.c > lladd-blast.i && cilly.asm.exe --out blast-test.c --dooptimizeLLADD lladd-blast.i
+   runblast blast-test.c failCil        
+
+   (where failCil is one of failCil, passCil, failAssert, passAssert)                         
+*/
+int passAssert(Page * p, int pageid) {
+  __initialize__();
+  pageid = 1;
+  Page * q = loadPage(1,pageid);
+  if(!p) {
+     q->id = pageid;// = loadPage(1, pageid);
+     q = loadPage(1, pageid);
+  } else if(p->id == pageid) {
+     q->id == p->id; //releasePage(q);
+     q = loadPage(1, pageid);
+  } else {
+     q = p;
+     q->id = pageid;
+     q = loadPage(1, pageid);
+  }
+  assertIsCorrectPage(q->id, pageid);
+  return 0;
+}
+
+int failAssert(Page * p, int pageid) {
+  __initialize__();
+  pageid = 1;
+  Page * q = loadPage(1,pageid);
+  if(!p) {
+     q->id = pageid;// = loadPage(1, pageid);
+     q = loadPage(1, pageid);
+  } else if(p->id == pageid) {
+     q->id == p->id; //releasePage(q);
+     q = loadPage(1, pageid);
+  } else {
+     q = p;
+     q->id = pageid;
+     q = loadPage(1, pageid);
+  }
+  assertIsCorrectPage(p->id, pageid);
+  return 0;
+}
+
+
+void passCil(Page * q, int pageid) { 
+  Page * p = loadPage(1, pageid);
+}
+
+void failCil(Page * p, int pageid) {
+  passCil_q(p, pageid);
+}
+/*
 int main(int argc, char argv[][]) {
   pass1(0, 0);
   pass2(0, 0);
@@ -30,7 +102,7 @@ int pass1(int argc, char argv[][]) {
     releasePage(p);
   }
 }
-/** @test see if it can handle multiple pages... It doesn't do arrays, unfortunately. :( */
+// @test see if it can handle multiple pages... It doesn't do arrays, unfortunately. :( 
 int pass2(int argc, char argv[][]) {
   int xid = 2;
   long page = 1;
@@ -110,6 +182,7 @@ int pass4(int argc, char argv[][]) {
 
 }
 
+
 int fail1(int argc, char argv[][]) { 
   int xid = 2; 
   Page * p = 0;
@@ -148,3 +221,4 @@ int fail2(int argc, char argv[][]) {
   }
   releasePage(p);
 }
+*/

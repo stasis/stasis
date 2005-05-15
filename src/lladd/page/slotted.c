@@ -10,7 +10,7 @@
                       ON THE MEMORY THAT IS PASSED INTO THEM -------------*/
 
 static void __really_do_ralloc(Page * page, recordid rid) ;
-
+static void __really_do_ralloc_skip_compact(Page * page, recordid rid);
 /**
    
 Move all of the records to the beginning of the page in order to 
@@ -56,7 +56,7 @@ void slottedCompact(Page * page) {
 	    rid.slot = i;
 	    rid.size = *slot_length_ptr(page, i);
 
-	    __really_do_ralloc(&bufPage, rid);
+	    __really_do_ralloc_skip_compact(&bufPage, rid);
 
 	    memcpy(record_ptr(&bufPage, rid.slot), record_ptr(page, rid.slot), rid.size);
 	    
@@ -165,6 +165,8 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   
   recordid ret;
   
+
+
   int isBlob = 0;
 
   if(size == BLOB_SLOT) {
@@ -182,13 +184,18 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
       lastFreepage = TpageAlloc(xid);
       //    } end_ret(NULLRID);
       //    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
+      Page * tmp = 0;
+      tmp = loadPage(xid, lastFreepage);
+      *pp = tmp;
       //    } end_ret(NULLRID);
     assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
     slottedPageInitialize(*pp);
   } else {
     //    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
+      Page * tmp = 0;
+      tmp = loadPage(xid, lastFreepage);
+      *pp = tmp;
+
       //    } end_ret(NULLRID);
   }
 
@@ -199,7 +206,9 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
       lastFreepage = TpageAlloc(xid);
       //    } end_ret(NULLRID);
       //    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
+      Page * tmp = 0;
+      tmp = loadPage(xid, lastFreepage);
+      *pp = tmp;
       //    } end_ret(NULLRID);
     slottedPageInitialize(*pp);
   }
@@ -217,6 +226,7 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
 compensated_function recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
   int isBlob = 0;
+  *pp = 0;
   if(size == BLOB_SLOT) {
     isBlob = 1;
     size = sizeof(blob_record_t);
@@ -274,6 +284,8 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
   int freeSpace;
   
+  recordid originalRid = rid;
+
   int isBlob = 0;
 
   if(rid.size == BLOB_SLOT) {
@@ -285,10 +297,24 @@ static void __really_do_ralloc(Page * page, recordid rid) {
   
   if(slottedFreespaceUnlocked(page) < rid.size) {
     slottedCompact(page);
-    
     /* Make sure there's enough free space... */
     assert (slottedFreespaceUnlocked(page) >= rid.size);
   }
+  __really_do_ralloc_skip_compact(page, originalRid);
+}
+
+static void __really_do_ralloc_skip_compact(Page * page, recordid rid) { 
+
+  int freeSpace;
+  
+  int isBlob = 0;
+
+  if(rid.size == BLOB_SLOT) {
+    isBlob = 1;
+    rid.size = sizeof(blob_record_t);
+  }
+
+  assert (slottedFreespaceUnlocked(page) >= rid.size);
   
   freeSpace = *freespace_ptr(page);
   

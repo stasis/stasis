@@ -150,6 +150,23 @@ Operation getRealloc() {
   return o;
 }
 
+compensated_function recordid TallocRaw(int xid, long size) {
+  recordid rid;
+  Page * p = NULL;
+  
+  //    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+  pthread_mutex_lock(&talloc_mutex);
+  rid = slottedPreRalloc(xid, size, &p);
+  Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+  /** @todo does releasePage do the correct error checking? */
+  releasePage(p);
+  //    } compensate_ret(NULLRID);
+  pthread_mutex_unlock(&talloc_mutex);
+  
+  return rid;
+
+}
+
 compensated_function recordid Talloc(int xid, long size) {
   recordid rid;
 
@@ -157,48 +174,15 @@ compensated_function recordid Talloc(int xid, long size) {
 
   if(isBlob) {
     //    try_ret(NULLRID) {
-      rid = preAllocBlob(xid, size);
+    rid = preAllocBlob(xid, size);
+    //    abort();
       Tupdate(xid,rid, NULL, OPERATION_ALLOC);
       //    } end_ret(NULLRID);
   } else {
 
-    Page * p = NULL;
-
-    //    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
-      pthread_mutex_lock(&talloc_mutex);
-      rid = slottedPreRalloc(xid, size, &p);
-      Tupdate(xid, rid, NULL, OPERATION_ALLOC);
-      /** @todo does releasePage do the correct error checking? */
-      releasePage(p);
-      //    } compensate_ret(NULLRID);
-      pthread_mutex_unlock(&talloc_mutex);
-
+    rid = TallocRaw(xid, size);
   }
   return rid;
-
-  /*  try_ret(NULL_RID) {
-    if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-      ///@todo is it OK that Talloc doesn't pin the page when a blob is alloced?
-      rid = pr eAllocBlob(xid, size);
-    } else {
-      pthread_mutex_lock(&talloc_mutex); 
-      rid = slottedPreRalloc(xid, size, &p);
-      assert(p != NULL);
-    }
-    
-    Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-  
-    if(p != NULL) {
-      /// release the page that preAllocBlob pinned for us. 
-      
-      /// @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes..
-      releasePage(p);
-      pthread_mutex_unlock(&talloc_mutex);  
-      
-    }
-  } end_ret(NULLRID);
-  return rid;*/
-  
 }
 
 compensated_function recordid TallocFromPage(int xid, long page, long size) {
@@ -241,7 +225,7 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
 
 compensated_function void Tdealloc(int xid, recordid rid) {
   void * preimage = malloc(rid.size);
-  Page * p;
+  Page * p = NULL;
   //  try {
   p = loadPage(xid, rid.page);
   //  } end;
@@ -255,7 +239,7 @@ compensated_function void Tdealloc(int xid, recordid rid) {
 }
 
 compensated_function int TrecordType(int xid, recordid rid) {
-  Page * p;
+  Page * p = NULL;
   // try_ret(compensation_error()) {
   p = loadPage(xid, rid.page);
   //  } end_ret(compensation_error());
@@ -267,7 +251,7 @@ compensated_function int TrecordType(int xid, recordid rid) {
 
 compensated_function int TrecordSize(int xid, recordid rid) {
   int ret;
-  Page * p;
+  Page * p = NULL;
   //  try_ret(compensation_error()) { 
   p = loadPage(xid, rid.page);
   //  } end_ret(compensation_error());
@@ -277,7 +261,7 @@ compensated_function int TrecordSize(int xid, recordid rid) {
 }
 
 compensated_function int TrecordsInPage(int xid, int pageid) {
-  Page * p;
+  Page * p = NULL;
   //  try_ret(compensation_error()) {
   p = loadPage(xid, pageid);
   //  } end_ret(compensation_error());

@@ -152,7 +152,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
 Page * getPage(int pageid, int locktype) {
   Page * ret = 0;
   int spin  = 0;
-
+ GETPAGE_LABEL:
   pthread_mutex_lock(&loadPagePtr_mutex);
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
@@ -262,7 +262,8 @@ Page * getPage(int pageid, int locktype) {
       fflush(NULL);
       // NUKEFORBLAST
       //      abort();
-      return getPage(pageid, locktype);
+      //      return getPage(pageid, locktype);
+      goto GETPAGE_LABEL;
     }
 
   }
@@ -277,6 +278,6 @@ compensated_function Page *loadPage(int xid, int pageid) {
   return ret;
 }
 
-compensated_function void assertIsCorrectPage(Page * p, int pageid) { 
-  assert(p->id == pageid);
+compensated_function void assertIsCorrectPage(int p, int pageid) { 
+  assert(p == pageid);
 }

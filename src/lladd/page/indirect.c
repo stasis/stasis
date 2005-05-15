@@ -15,7 +15,7 @@ void indirectInitialize(Page * p, int height) {
 }
 /** @todo locking for dereferenceRID? */
 compensated_function recordid dereferenceRID(int xid, recordid rid) {
-  Page * this;
+  Page * this = 0;
   //  try_ret(NULLRID) {
     this = loadPage(xid, rid.page);
     //  } end_ret(NULLRID);

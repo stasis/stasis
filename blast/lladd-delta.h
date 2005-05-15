@@ -17,7 +17,8 @@ struct Page_s {
 
 typedef struct Page_s Page;
 
-void assertIsCorrectPage(Page * p, int id) ;
+void assertIsCorrectPage(int pid, int id);
+
 Page * loadPage(int xid, int page);
 
 void releasePage(Page * p);

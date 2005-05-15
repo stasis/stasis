@@ -258,10 +258,18 @@ lsn_t pageReadLSN(const Page * page);
  *
  */
 void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+
+void writeRawRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat, int size); 
 /**
  *  The same as writeRecord, but does not obtain a latch on the page.
  */
 void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+
+/** 
+    Read a record, ignoring the rid's page field, and using size instead. 
+*/
+int readRawRecord(int xid, Page * p, recordid rid, void * buf, int size);
+
 /**
  * @param xid transaction ID
  * @param rid the record to be written

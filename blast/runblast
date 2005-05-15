@@ -1,0 +1,19 @@
+#!/bin/bash
+
+~/blast/blast_2.0_linux_exe/bin/spec.opt ~/lladd-blast/blast/lladd-delta.spc $1 2>&1  && \
+~/blast/blast_2.0_linux_exe/bin/pblast.opt instrumented.c -craig 1 -predH 7 -alias instrumented.bdd -main $2 2>&1 \
+ |  perl -ne 'if ($a) { print } else {$a = /\*+\s+Now running the model-checker\ \*+/;}' \
+ |  perl -ne 'print unless /^\-?\d+\s+\:\:\s+\-?\d+\:\s+/' \
+ |  grep -v ^Returning\ from\ post-bdd \
+ |  grep -v ^Nb[\ \.] \
+ |  grep -v ^Total\ \
+ |  grep -v ^In\ get_bdd\ : \
+ |  grep -v ^ptarget\ is \
+ |  grep -v ^\:\ 8\ nodes\ 1\ leaves \
+ |  grep -v ^p_lv \
+ |  grep -v ^In\ initialize_arrays \
+ |  grep -v ^Finished\ converting \
+ |  grep -v ^Encountered\ function \
+ |  grep -v ^SCC\  \
+ |  grep -v ^\:\ is\ the\ zero\ DD | perl -ne 'print unless /^[01\s\-]+$/' \
+ |  perl -ne 'if (!$a) { if (/^Timings\:\s+$/) { $a = 1; } else { print }}'

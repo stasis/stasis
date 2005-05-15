@@ -28,21 +28,21 @@ static pblHashTable_t * dirtyBlobs;
 /** Plays a nasty trick on bufferManager to force it to read and write
     blob_record_t items for us.  Relies upon bufferManager (and
     page.c's) trust in the rid.size field... */
-static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size) {
+/*static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
   readRecord(xid, p, blob_rec_rid, buf);
-    /*  T read(xid, blob_rec_rid, buf); */
-}
-
+    //  T read(xid, blob_rec_rid, buf); 
+}*/
+/*
 static void writeRawRecord(int xid, Page * p, recordid rid, lsn_t lsn, const void * buf, int size) {
   recordid blob_rec_rid = rid;
   blob_rec_rid.size = size;
   writeRecord(xid, p, lsn, blob_rec_rid, buf); 
-  /*  T set(xid, blob_rec_rid, buf); - We no longer need to write a log
-      record out here, since we're called by something that is the
-      result of a log record.*/ 
-}
+  // T set(xid, blob_rec_rid, buf); - We no longer need to write a log
+  //   record out here, since we're called by something that is the
+  //  result of a log record.
+  } */
 static lsn_t * tripleHashLookup(int xid, recordid rid) {
   lsn_t * ret;
   pthread_mutex_lock(&blob_hash_mutex);
@@ -209,7 +209,7 @@ compensated_function recordid preAllocBlob(int xid, long blobSize) {
 
     /* First in buffer manager. */
     
-    rid = Talloc(xid, BLOB_SLOT); //sizeof(blob_record_t));
+    rid = TallocRaw(xid, BLOB_SLOT); //sizeof(blob_record_t));
     
     rid.size = blobSize;
 
@@ -301,7 +301,7 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
 
      (This call must be after the files have been extended, and synced to disk, since it marks completion of the blob allocation.)
   */
-  writeRawRecord  (xid, p, rid, lsn, &blob_rec, sizeof(blob_record_t));
+  writeRawRecord  (xid, p, lsn, rid, &blob_rec, sizeof(blob_record_t));
 
 
 }
@@ -368,7 +368,7 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
     rec.fd = rec.fd ? 0 : 1;
 
     /* T set() raw record */
-    writeRawRecord(xid, p, rid, lsn, &rec, sizeof(blob_record_t));
+    writeRawRecord(xid, p, lsn, rid, &rec, sizeof(blob_record_t));
   }
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
@@ -417,7 +417,8 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
   blob_record_t rec;
 
   DEBUG("Writing blob (size %ld)\n", rid.size);
-  
+  // NUKEFORBLAST
+  //  abort();
   fd = getDirtyFD(xid, p, lsn, rid);
   readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
 

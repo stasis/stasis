@@ -132,7 +132,7 @@ Operation getArrayListAlloc() {
 */
 
 static compensated_function int TarrayListExtendInternal(int xid, recordid rid, int slots, int op) {
-  Page * p;
+  Page * p = 0;
   //  try_ret(compensation_error()) {
     p = loadPage(xid, rid.page);
     //  } end_ret(compensation_error());

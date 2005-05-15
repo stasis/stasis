@@ -142,7 +142,7 @@ compensated_function void pageOperationsInit() {
   p.loadlatch = initlock();
   assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
   p.id = 0;*/
-  Page * p;
+  Page * p = 0;
   //  try {
     p = loadPage(-1, 0);
     assert(!compensation_error());
@@ -242,7 +242,7 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 
     newpage = freelist;
 
-    Page * p;
+    Page * p = 0;
     //    begin_action_ret(pthread_mutex_unlock, &pageAllocMutex, compensation_error()) {
       p = loadPage(newpage);  /* Could obtain write lock here,
 				      but this is the only function

@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include "pageFile.h"
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
-static Page *repHead, *repMiddle, *repTail; /* replacement policy */
+static Page *repHead = 0, *repMiddle = 0, *repTail = 0; /* replacement policy */
 
 int cache_state;
 
@@ -116,7 +116,7 @@ void cacheInsertPage (Page * ret) {
   } else {
     if(bufferSize == MAX_BUFFER_SIZE/* - 1*/) {  /* Set up page kick mechanism. */
       int i;
-      Page *iter;
+      Page *iter = 0;
       
       cache_state = FULL;
       

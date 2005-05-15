@@ -153,7 +153,7 @@ int bufTransAbort(int xid, lsn_t lsn);
 /** This function assert()'s that p->id == pageid.  It is included
     because it makes it easier to verify the correctness of program
     transformations with BLAST. */
-compensated_function void assertIsCorrectPage(Page * p, int pageid);
+compensated_function void assertIsCorrectPage(int page1, int page2);
 
 END_C_DECLS
 

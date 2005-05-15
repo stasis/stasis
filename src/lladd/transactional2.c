@@ -180,7 +180,7 @@ static compensated_function void TupdateHelper(int xid, recordid rid, const void
 }
 
 compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
-  Page * p;  
+  Page * p = 0;  
 #ifdef DEBUGGING
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
@@ -231,7 +231,7 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 }
 
 compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
-  Page * p ;
+  Page * p = 0;
   //  try {
     p = loadPage(xid, rid.page);
     //  } end;
@@ -245,7 +245,7 @@ compensated_function void alTupdate(int xid, recordid rid, const void *dat, int 
 
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {
-  Page * p;
+  Page * p = 0;
   //  try { 
     p = loadPage(xid, rid.page);
     //  } end;
@@ -274,28 +274,23 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
 }
 
 compensated_function void Tread(int xid, recordid rid, void * dat) {
-  Page * p;
-  //  try { 
-    p = loadPage(xid, rid.page);
-    //  } end;
+  Page * p = 0;
+
+  p = loadPage(xid, rid.page);
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
-    //    try { 
-      rid = dereferenceRID(xid, rid);
-      //    } end;
-  //    try {
-      p = loadPage(xid, rid.page);
-      //    } end;
+    rid = dereferenceRID(xid, rid);
+    p = loadPage(xid, rid.page);
+
 
   } else if(page_type == ARRAY_LIST_PAGE) {
+   
     rid = dereferenceArrayListRid(p, rid.slot);
     releasePage(p);
-    //    try { 
-      p = loadPage(xid, rid.page);
-      //    } end;
+    p = loadPage(xid, rid.page);
 
   } else {
     abort();

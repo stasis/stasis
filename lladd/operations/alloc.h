@@ -29,6 +29,10 @@ Operation getRealloc();
     @return the recordid of the new record.
 */
 compensated_function recordid Talloc(int xid, long size);
+/**
+   Allocate a record, assuming it is not a blob.
+*/
+compensated_function recordid TallocRaw(int xid, long size);
 
 compensated_function recordid TallocFromPage(int xid, long page, long size);
 

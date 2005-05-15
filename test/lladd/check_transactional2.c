@@ -258,7 +258,8 @@ START_TEST(transactional_smokeTest) {
 
   Tread(xid, rid, &bar);
 
-  fail_unless(bar == foo, NULL);
+  assert(bar == foo);
+  //  fail_unless(bar == foo, NULL);
 
   Tcommit(xid);
 
@@ -266,8 +267,8 @@ START_TEST(transactional_smokeTest) {
 
   bar = 4;
   Tread(xid, rid, &bar);
-  fail_unless(bar == foo, NULL);
-
+  assert(bar == foo);
+  //  fail_unless(bar == foo, NULL);
 
   Tabort(xid);
 
