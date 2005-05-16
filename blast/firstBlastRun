@@ -4,7 +4,7 @@
 ## This script produces the alias information, by running blast once.   (Whether this actually works if we 
 ## edit the input file has not been shown yet...)
 
-~/blast/blast_2.0_linux_exe/bin/spec.opt ~/lladd-blast/blast/lladd-delta.spc $1 2>&1  && \
+~/blast/blast_2.0_linux_exe/bin/spec.opt ~/lladd-blast/blast/lladd-noptr.spc $1 2>&1  && \
 ~/blast/blast_2.0_linux_exe/bin/pblast.opt instrumented.c -craig 1 -predH 7 -main $2 2>&1 \
  |  perl -ne 'if ($a) { print } else {$a = /\*+\s+Now running the model-checker\ \*+/;}' \
  |  perl -ne 'print unless /^\-?\d+\s+\:\:\s+\-?\d+\:\s+/' \

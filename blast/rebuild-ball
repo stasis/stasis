@@ -1,0 +1,41 @@
+#! /bin/bash
+
+cd /home/sears/lladd-blast 
+make clean
+
+rm -rf /home/sears/ball /home/sears/preproc
+
+cd /home/sears/oink/build_interceptor
+sudo su -c "make -f Intercept.mk on"
+
+cd /home/sears/lladd-blast
+make
+
+cd /home/sears/oink/build_interceptor
+sudo su -c "make -f Intercept.mk off"
+
+mkdir ~/ball
+./reorg_build.pl
+
+ln -s /home/sears/build/lladd-blast/blast/lladd-blast.h /home/sears/ball/lladd-blast
+ln -s /home/sears/build/lladd-blast/blast/lladd-delta.h /home/sears/ball/lladd-blast
+ln -s /home/sears/build/lladd-blast/blast/lladd-blast.c /home/sears/ball/lladd-blast
+
+ln -s /home/sears/build/lladd-blast/blast/lladd-noptr.h /home/sears/ball/lladd-blast
+ln -s /home/sears/build/lladd-blast/blast/lladd-noptr.c /home/sears/ball/lladd-blast
+ln -s /home/sears/build/lladd-blast/blast/lladd-noptr.spc /home/sears/ball/lladd-blast
+
+
+
+cd /home/sears/ball/lladd-blast
+cpp lladd-blast.c > lladd-blast.i
+cpp lladd-noptr.c > lladd-noptr.i
+grep -v pbl check_transactional2.ld | grep -v bufferManager | grep -v compensations | grep -v log  | grep -v recovery | grep -v page\- | grep -v slotted | grep -v fixed | grep -v pageFile | grep -v pageCache > foo.ld
+#grep -v pbl check_transactional2.ld | grep -v bufferManager | grep -v compenastion > foo.ld
+echo `pwd`/lladd-noptr.i >> foo.ld
+
+echo The magic command is '~/blast/blast_2.0_linux_exe/bin/spec.opt ~/lladd-blast/blast/lladd.spc xact.test.c && ~/blast/blast_2.0_linux_exe/bin/pblast.opt instrumented.c -craig 1 -predH 7 -main transactional_smokeTest 2> /dev/null '
+
+echo The cil command is 'cd ~/cil/cil/ ; make ; cd ~/ball/lladd-blast ; /home/sears/cil/cil/obj/x86_LINUX/cilly.asm.exe --out xact.test.c --domakeCFG --dopartial `cat check_transactional2.ld`'
+
+echo For best results run in xterm or rxvt.
