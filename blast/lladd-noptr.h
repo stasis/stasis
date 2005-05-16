@@ -23,3 +23,6 @@ void assertIsCorrectPage(int pid, int id);
 Page * loadPage(int xid, int page);
 
 void releasePage(Page * p);
+
+void bbP(int pageid, Page * p);
+void bbQ(int pageid, Page * p);
