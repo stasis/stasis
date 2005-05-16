@@ -19,7 +19,10 @@
 \usepackage{babel}
 
 \newcommand{\yad}{LLADD\xspace}
+\newcommand{\pin}{loadPage()\xspace}
+\newcommand{\unpin}{releasePage()\xspace}
 \newcommand{\oasys}{Juicer\xspace}
+\newcommand{\PP}{\_p\xspace}
 
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
@@ -61,13 +64,52 @@ library, and would convolute client code, decreasing the usablity of
 the system.
 }
 
-\vspace*{-18pt}
-
+%\vspace*{-18pt}
 
 \section{Introduction}
 \label {intro}
 
-\rcs{Explain what LLADD is here, and then describe the techniques used by the optimizer}
+As the size of software systems increase, modularity is typically
+introduced in order to reduce the number of potential interactions
+between components.  In large systems, this can be a significant
+source of inefficiency, since it makes it difficult to implement
+optimizations that require tight coupling between the implementations
+of the system's interfaces.
+
+One possible solution is to increase the expressivity of the system's
+interfaces so that such optimizations are practical, but doing this
+undermines the system's modularity by exposing implementation details
+in interfaces that are supposed to hide these details.  Another
+possibility is to attempt to anticipate typical usage patterns, and
+then check for these usage patterns at runtime.  However, checks
+placed inside the library must then ignore contextual information that
+is easily available to client code.
+
+For example, memoization techniques are commonly employed to store the
+results of deterministic function evaluations.  Each time the function
+is invoked, its arguments looked up in a data structure.  If the
+result is found, it is immediately returned.  If not, then the results
+are computed, added to the data structure, and returned.
+Unfortunately, the data structure lookup often introduces an
+unacceptable amount of runtime overhead.  In cases such as this, a
+single pair of arguments and results can be stored in a global, per
+library-function variable.  Then, sequential calls with the same set
+of arguments will return quickly.  
+
+However, multithreaded software, or software that interleaves
+unreleated calls to the same function from many different locations
+will not be able to make use of such caching techniques.  In this
+work, we store the memoized results in the caller's stack frame,
+allowing the number of memoized results to scale with the number of
+relevant call sites, and supporting memoization across nested calls to
+the same function.
+
+We use \yad, a transactional storage library as a case study.  \yad's
+source code contains many calls to \pin and \unpin which look up a
+page in an in-memory cache, and fetch the page from disk if necessary.
+Profiling a number of \yad's benchmarks revealed that servicing cache
+hits was a significant bottleneck, suggesting that \pin should be
+optimized.  Therefore, we focus on the \pin function in this work.
 
 \section{Prior work}
 \label {prior}
@@ -76,21 +118,143 @@ the system.
 
 \section{System Design}
 
-\section{Cil and Dynamic Checks}
+Optimization of \yad occurs in two phases.  First, the source code is
+analysed, functions are transformed so that they take additional
+arguments, and a set of sound optimizations are introduced.  The
+soundness of this step optimizations relies upon the introduction of
+dynamic checks at each optimizations point.  At this point, we have
+produced an optimized, compilable version of the original program.
 
-\section{Instrumenting for Blast}
+However, the optimized program contains many dynamic checks, and many
+of these checks may be unncessary.  This is problematic for two
+reasons.  First, it makes it difficult to tell if the optimization
+worked as expected without relying on profiling or code coverage tools
+to determine whether the dynamic checks succeed at runtime.  This
+means it is difficult for programmers to obtain feedback regarding the
+quality of the code produced by the optimizer.  In turn, this makes it
+difficult for programmers to reason about the implications of changes
+to client code, which makes further optimization difficult.  Second,
+the dynamic checks have some cost at runtime, and we would like to
+minimize this cost.  In the case of \yad, this seems to be neligible.
+However, we would like to apply these optimization techniques to other
+applications in the future, so it is important that we minimize this
+source of overhead.
+
+\subsection{Cil and Dynamic Checks}
+
+We chose to implement a memoization optimization for \yad.  The
+optimization is based upon the observation that the return value of a
+call to \pin is completely determined by its second argument, a {\em
+pageid}.  Furthermore, \yad's calling conventions dictate that
+pageid's are passed into functions either as a part of a {\em
+recordid} struct, or as an integer named ``page.''
+
+Most functions that take a pageid as an argument either directly or
+indirectly \pin the corresponding page.  Therefore, we add an
+argument, {\em\PP} to any functions that are passed a pageid, but are
+not passed a Page pointer.  Effectively, this argument holds a single,
+memoized result.
+
+When the function calls \pin on the page, it first checks to see if
+\PP points to the appropriate page.\footnote{This is done by reading the
+``id'' field of the Page struct referenced by the pointer.  We arrange
+for these pointers to either point to a valid Page struct, or to be
+NULL.}  If so, it uses \PP instead of calling \pin.  Otherwise, it
+proceeds as normal.  If it skips the call to \pin, it remembers that
+it should skip the corresponding call to \unpin.  (See
+Figure~\ref{fig:dynamicCheck} for a concrete example of the
+transformation.)
+
+Of course, we cannot expect the program to behave correctly unless we
+update the call sites of the transformed functions.  When updating
+call sites, we distinguish between cases where the caller already has
+a page pointer handy, and cases where the caller has no page pointer
+in its stack frame.  In the case where a page pointer already exists,
+we simply pass the pointer to the child function.
+
+If the caller has no page pointer on its stack, the situation is a bit
+tricky.  We could pass the address of a page pointer into the child
+function, allowing it to overwrite the caller's page pointer with a
+more ``interesting'' one.  However, it is unclear how such an
+``interesting'' pointer would be defined, especially since this
+pointer would be shared by multiple child functions, and we would need
+to create a second clone of each function so that a pointer to a
+pointer could be passed in.  
+
+Instead, we opt for a simpler solution, and fall back on the heuristic
+that the pageid passed into the child is probably a reasonable choice.
+We simply add a Page pointer to the caller's stack frame, and then
+call \pin to initialize it to the pageid that is being passed into the
+child function.  In order to handle loops, we check that we are
+passing in the appropriate Page pointer at each call to a child
+function, and call \pin to load a new page if necessary.  The
+transformation also arranges for \unpin to be called as appropriate.
+
+As we will show in \ref{performance}, this transformation consistently
+improves the performance of CPU bound workloads, and the processor
+utilization of disk-bound workloads.  However, it is not very
+effective on functions that take a recordid and then pass a different
+recordid into child functions.  
+
+Unfortunately, this scenario is relatively common, especially in
+implementations of transactional structures that involve levels of
+indirection, such as trees or hashtables.  A simple solution to this
+problem is to add a new Page pointer to such functions, and then call
+\pin to preload the page referred to by the pageid of the children
+functions.  We could then add a dynamic check to the \pin call,
+removing any redundant calls that this scheme could introduce.  We
+leave this transformation for future work, but note that it would have
+minimal impact on the static analysis phase of optimization.
+
+As a final optimization \rcs{Explain \_q functions, and that $pageid==Page$ is enforced at caller.}
+
+\subsection{Instrumenting for Blast}
+
+Blast is a static analysis tool that checks code for conformance to a
+well defined API.  In order to use it to verify the soundness of our
+optimizations, we express the optimizations' soundess in terms of
+simple invariants, and then encode these invariants in the transformed
+source as calls to API functions.  We then use Blast to check that
+these API calls are safe.  If it is able to verify the safety of the
+calls, then we know that the optimization is sound.
+
+[ p = loadPage(id) => p->id == id ]  (Too hard)
+
+so:
+
+[ p = loadPage(id) => p == id     ]  (Equivalent, as long as client doesn't overwrite id field; ie: safe modulo memory saftey...)
+* STILL too hard (slow on relatively simple data structures, fails on trivial programs)*, although handles small numbers of functions well.
+
+so, we pessimistically treat all cloned functions as black boxes that return non-deterministic values.  (Modulo writing to the ->id field, of course...).   This reduces Blast's runtime to < 10 seconds on most verification tasks.
+
 
 \section{Evaluation}
+
+In this section, we focus on two aspects of the optimization's
+behavior.  First, we measure the performance of the transformed code
+(before the dynamic checks have been removed).  Second, we measure the
+number of checks that Blast is able to remove from the code.  This
+second metric measures the quality of feedback that the optimization
+provides for the user.
 
 \subsection{Performance of transformed code}
 
 \subsection{Number of dynamic checks removed by Blast}
 
-\section{Conclusion}
+\section{Future Work}
+ - improve quality of transformation
+ - add optimizations for other calls (Tread)
+ - allow for higher level definitions of this type of transformation (outline high-level principles here)
+ - look at other applications for the technique
+ - provide mechanism to transform / optimize library once, and then use information from library tranformation while transforming client code.
+
+\section{Conclusion and Future Work}
 
 \begin{thebibliography}{99}
 \begin{small}
-\bibitem[1]{multipleGenericLocking} Agrawal, et al. {\em Concurrency Control Performance Modeling: Alternatives and Implications}. TODS 12(4): (1987) 609-654
+\bibitem[1]{multipleGenericLocking} Agrawal, et al. {\em Concurrency
+Control Performance Modeling: Alternatives and Implications}. TODS
+12(4): (1987) 609-654
 
 %\bibitem[2]{bdb} Berkeley~DB, {\tt http://www.sleepycat.com/}
 
