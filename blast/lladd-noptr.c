@@ -9,6 +9,14 @@
 
 //Page * ptr = 0;
 
+void bbP(int pageid, Page * p) { 
+
+}
+
+void bbQ(int pageid, Page * p) {
+  assert(pageid == p);
+}
+
 Page * loadPage(int xid, int page) { 
   /* Trick it into assuming the user is not a total idiot. 
   */
