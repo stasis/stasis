@@ -108,8 +108,13 @@ sub runbatch {
 	
 	$variance = ($sum_x_squared/$n) - ($sum_x/$n)*($sum_x/$n);
 	$mean = $sum_x / $n;
-	
-	my $s = sqrt($variance/$n);
+	my $s;
+
+	if($variance <= 0) { 
+	    $s = 0;
+	} else {
+	    $s = sqrt($variance/$n);
+        }
 
 	my $sigma = sqrt($variance);
 

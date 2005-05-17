@@ -167,5 +167,5 @@ int main(int argc, char** argv) {
 
   Tdeinit();
 
-  printf("Committed %d times, put %d times.\n", commitCount, putCount);
+  //  printf("Committed %d times, put %d times.\n", commitCount, putCount);
 }
