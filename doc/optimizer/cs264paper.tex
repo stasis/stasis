@@ -21,8 +21,12 @@
 \newcommand{\yad}{LLADD\xspace}
 \newcommand{\pin}{loadPage()\xspace}
 \newcommand{\unpin}{releasePage()\xspace}
+\newcommand{\checkpage}{checkLoaded()\xspace}
 \newcommand{\oasys}{Juicer\xspace}
+
 \newcommand{\PP}{\_p\xspace}
+\newcommand{\fP}{{$\mathcal P$}\xspace}
+\newcommand{\fQ}{{$\mathcal Q$}\xspace}
 
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
@@ -147,21 +151,25 @@ optimization is based upon the observation that the return value of a
 call to \pin is completely determined by its second argument, a {\em
 pageid}.  Furthermore, \yad's calling conventions dictate that
 pageid's are passed into functions either as a part of a {\em
-recordid} struct, or as an integer named ``page.''
+recordid} struct, or as an integer named ``page,'' so there is a
+simple programmatic way to generate a mapping between arguments to
+existing calls and automatically generated Page pointers.
 
 Most functions that take a pageid as an argument either directly or
 indirectly \pin the corresponding page.  Therefore, we add an
 argument, {\em\PP} to any functions that are passed a pageid, but are
-not passed a Page pointer.  Effectively, this argument holds a single,
-memoized result.
+not passed a Page pointer.  At runtime, this argument effectively
+proivdes access to one memoized result per call site of the
+function.
 
-When the function calls \pin on the page, it first checks to see if
-\PP points to the appropriate page.\footnote{This is done by reading the
-``id'' field of the Page struct referenced by the pointer.  We arrange
-for these pointers to either point to a valid Page struct, or to be
-NULL.}  If so, it uses \PP instead of calling \pin.  Otherwise, it
-proceeds as normal.  If it skips the call to \pin, it remembers that
-it should skip the corresponding call to \unpin.  (See
+In the simplest version of the transformation, when the function calls
+\pin on the page, it first checks to see if \PP points to the
+appropriate page.\footnote{This is done by reading the ``id'' field of
+the Page struct referenced by the pointer.  We arrange for these
+pointers to either point to a valid Page struct, or to be NULL.}  If
+so, it uses \PP instead of calling \pin.  Otherwise, it proceeds as
+normal.  If it skips the call to \pin, it remembers that it should
+also skip the corresponding call to \unpin.  (See
 Figure~\ref{fig:dynamicCheck} for a concrete example of the
 transformation.)
 
@@ -177,7 +185,7 @@ tricky.  We could pass the address of a page pointer into the child
 function, allowing it to overwrite the caller's page pointer with a
 more ``interesting'' one.  However, it is unclear how such an
 ``interesting'' pointer would be defined, especially since this
-pointer would be shared by multiple child functions, and we would need
+pointer would be shared by multiple child functions.  Also, we would need
 to create a second clone of each function so that a pointer to a
 pointer could be passed in.  
 
@@ -190,33 +198,117 @@ passing in the appropriate Page pointer at each call to a child
 function, and call \pin to load a new page if necessary.  The
 transformation also arranges for \unpin to be called as appropriate.
 
-As we will show in \ref{performance}, this transformation consistently
-improves the performance of CPU bound workloads, and the processor
-utilization of disk-bound workloads.  However, it is not very
-effective on functions that take a recordid and then pass a different
-recordid into child functions.  
+In results not presented here, we found that this simple
+transformation performed very well on the ``raw read'' benchmark
+presented in Section~\ref{codePerformance} but that it was not able to
+significantly improve performance for the hash table workload.  It
+turns out that this transformation is not very efective on functions
+that take a recordid as an argument, but pass a different recordid
+into child functions, since they pass \PP into their children
+functions, but \PP is probably assoicated with with the wrong pageid.
+Therefore, each child must call \pin on the appropriate page. 
 
 Unfortunately, this scenario is relatively common, especially in
 implementations of transactional structures that involve levels of
 indirection, such as trees or hashtables.  A simple solution to this
-problem is to add a new Page pointer to such functions, and then call
-\pin to preload the page referred to by the pageid of the children
-functions.  We could then add a dynamic check to the \pin call,
-removing any redundant calls that this scheme could introduce.  We
-leave this transformation for future work, but note that it would have
-minimal impact on the static analysis phase of optimization.
+problem is to add a new Page pointer to functions that take \PP as an
+argument, and pass a pageid to child funcitons.  Then \pin is called
+to preload the page, just as it would have been if the \PP argument
+did not exist, except that \PP is reused when appropriate.
 
-As a final optimization \rcs{Explain \_q functions, and that $pageid==Page$ is enforced at caller.}
+One final transformation is applied in anticipation of the removale of
+dynamic checks described in the next section.  A copy is made of each
+function that was modified to take a \PP argument.  We call the
+original modified version the ``\fP'' version of the function, and the
+new copy the ``\fQ'' version.  The \fQ variant will assume that their caller
+passed in a value of \PP that matches the pageid that is passed in.
+At this point during optimization, the \fP and \fQ variants are
+identical; the only difference is in the semantics of the API they
+expose to their callers.  This transformation is in anticipation of
+the next phase of optimization, which will remove unnecessary dynamic
+checks from the optimized code.
 
 \subsection{Instrumenting for Blast}
-
+\label{instrumenting}
 Blast is a static analysis tool that checks code for conformance to a
 well defined API.  In order to use it to verify the soundness of our
 optimizations, we express the optimizations' soundess in terms of
 simple invariants, and then encode these invariants in the transformed
 source as calls to API functions.  We then use Blast to check that
 these API calls are safe.  If it is able to verify the safety of the
-calls, then we know that the optimization is sound.
+calls, then we know that the optimization is sound.  
+
+In an ideal world, this would mean that we could simply create a new,
+dummy function, \checkpage, and insert a call to \checkpage
+after each dynamic check introduced above.  We could give the
+following spec file to Blast:
+
+\begin{verbatim}
+event { 
+  pattern { $1 = loadPage($2); }
+  action { $1->id = $2; }
+}
+event { 
+  pattern { checkLoaded($1, $2); }  
+  guard { $1->id == $2 }
+}
+\end{verbatim}
+
+Then, we would have Blast verify that each use of \checkpage is safe.
+We could then iteratively remove dynamic checks, and have Blast
+re-verify the file, as we describe in Section~\ref{delta}.
+Unfortunately, this straightforward approach places too much burden on
+Blast, especially since we invoke it as part of a larger iterative
+process.  Therefore, we had to perform a number of simplifications
+before proceeding.
+
+\subsubsection{Pointer Aliasing}
+
+The guard in the original spec file dereferences the page pointer
+passed into \checkpage, which means that Blast much consider pointer
+aliasing before verifying that \checkpage is called correctly.
+Furthermore, the original implementation of \pin is non-trivial, and
+ultimately allows aliasing between pointer to different pages unless
+\unpin is caller correctly.  Also, Blast's pointer analysis is
+flow-insensitve.  We found that each of these factors was sufficient
+to prevent verification from succeeding even on seemingly 'trivial'
+functions.  
+
+Fortunately, according to \yad's API, the Page structure's id field is
+never written to outside of \pin and \unpin, and will never be written
+to if a function has pinned a page.  Because \pin and \unpin are
+designed to ensure that these invariants hold regardless of the order
+in which they are called,\footnote{\unpin could misbehave if called on
+an invalid pointer, but we do not remove dynamic checks that surround
+\unpin.}, we are willing to assume these invariants hold.  Therefore,
+in the optimzied source code that we give to Blast, we redefine
+\pin as follows:
+
+\begin{verbatim}
+Page * loadPage(int pageid) {
+  return pageid;
+}
+\end{verbatim}
+Similary, the spec file is change to this:
+\begin{verbatim}
+event { 
+  pattern { $1 = loadPage($2); }
+  action { $1 = $2; }
+}
+event { 
+  pattern { checkLoaded($1, $2); }  
+  guard { $1 == $2 }
+}
+\end{verbatim}
+
+Note that these changes prevent the program from behaving properly.
+We are able to perfrom this transformation because we will never
+actually compile this variant of the code, and because (given our
+assumptions) it does not affect the soundness of Blast's analysis.  
+
+\subsubsection{Call Graph Simplification}
+
+\subsubsection{Code Simplification}
 
 [ p = loadPage(id) => p->id == id ]  (Too hard)
 
@@ -237,7 +329,102 @@ number of checks that Blast is able to remove from the code.  This
 second metric measures the quality of feedback that the optimization
 provides for the user.
 
-\subsection{Performance of transformed code}
+\subsection{Performance of Optimized Code}
+\label{codePerformance}
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{rawReadGraph.pdf}
+\includegraphics[%
+   width=1\columnwidth]{hashTableReadGraph.pdf}
+%\vspace{-30pt}
+\caption{\sf\label{fig:read}The optimizer significantly speeds up
+read only workloads.  As long as the data being accessed fits in page
+cache, these workloads are CPU bound.  Therefore, although we report
+CPU time here, these numbers are indicative of overall
+performance. Figure~\ref{fig:write} explains why CPU time (and not
+wall-clock time) is reported. }
+
+\end{figure*}
+
+In order to evaluate the performance of the optimized code, we ran
+optimized and unoptimized benchmarking software on identical
+workloads.  The current version of our optimizer performs a
+whole-program analysis, and produces a single C source file from Cil's
+internal representation.  This presents a number of problems for
+performance evaluations.  First, Cil's transformation could change the
+performance characteristics of the code (for the better or worse).
+Second, since gcc is invoked with on a single compilation unit, it has
+more opportunities to perform optimizations involving code that
+originally spanned multiple compilation units.  To negate these
+effects, the unoptimized versions of the benchmarks were run through
+Cil without applying any \yad specific optimizations.  Both versions
+of the code were then compiled using the command ``gcc -O3 input.c
+-lpthread -lm -lcheck''.  For pragmatic reasons, the numbers presented
+in this section reflect the code with all dynamic checks in
+place.\footnote{As mentioned in Section~\ref{instrumenting}, we were
+not able to run Blast directly on an executable version of the code.
+We have not yet produced the (one to one) mapping between call sites
+in the version processed by Blast, and in the executable version.}
+
+Read only operations do not generate any log entries under \yad, and
+largely consist of calling \pin and \unpin, and using memcpy() and
+pointer arithmetic to unmarshall information stored in the page file.
+Therefore, we expected \pin and \unpin to account for a significant
+fraction of the runtime.  Figure~\ref{fig:read} confirms that this is
+the case.
+
+The raw read workload uses low level (page, slot, slot) recordid
+triples to perform a linear scan over the page file.  This is
+basically a ``best case'' scenario for the optimizer, as the top level
+loop contains recordids that can be coupled to page pointers, and
+current recordids are good predictors of pages that will be associated
+with future recordids.  Here we see that the runtime of the optimized
+version is less than half that of the original code.
+
+The hash table workload accesses hashtable keys in sorted order,
+producing random accesses to the page file.  Naively, we should not
+expect the optimization to improve matters at all in this case.
+However, we see that the optimized version completes in roughly 77\%
+of the time the original version takes.  The reason for this
+improvement is that the hashtable implementation must access a small
+amount of metadata in order to service each read.  The metadata
+consists of a header field, which describes the hash table and an
+index page that describes the layout of the hashtable's bucket list.
+The optimizer is able to take advantage of this, improving the
+hashtable workload's performance.
+
+Unfortunately, while the optimizer improves the CPU utilization of
+write-only workloads, these workloads are I/O bound, so the
+improvement in CPU utilization does not case a significant improvement
+in execution time.  However, the benchmark workloads do not contain
+any application logic.  Therefore, CPU intenstive applications built
+on top of \yad may become CPU bound even if they are write-intensive,
+and will probably include a mixture of reads and writes.  Also,
+multi-threaded transactional applications are able to amortize I/O
+costs, so optimizations in this case are not wholly without merit.
+
+We can see that the reduction in CPU time in the write-only case is
+less than the reduction in the read-only case.  This is probably due
+to the CPU overhead of the logging api, and other overhead associated
+with performing logical operations in \yad. 
+
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{rawWriteGraph.pdf}
+\includegraphics[%
+   width=1\columnwidth]{hashTableWriteGraph.pdf}
+%\vspace{-30pt}
+\caption{\sf\label{fig:write}CPU times for write-only work loads.
+These workloads invoke the logging subsystem, and therefore spend a
+smaller fraction of their time calling \pin and \unpin.  Furthermore,
+these workloads are disk bound, so wall clock times did not show any
+measurable improvement in performance.  Therefore, CPU times are reported
+here.  To facilitate comparison between the two workloads, CPU time is
+also presented in Figure~\ref{fig:read}.}
+
+\end{figure*}
+
+
 
 \subsection{Number of dynamic checks removed by Blast}
 
@@ -247,7 +434,6 @@ provides for the user.
  - allow for higher level definitions of this type of transformation (outline high-level principles here)
  - look at other applications for the technique
  - provide mechanism to transform / optimize library once, and then use information from library tranformation while transforming client code.
-
 \section{Conclusion and Future Work}
 
 \begin{thebibliography}{99}
