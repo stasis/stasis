@@ -403,7 +403,8 @@ calls to \fQ variants, we also add a \checkpage call to make sure that
 the function is properly invoked.\footnote{Initially, no calls to \fQ
 variants exist.  Instead, they are added as we iteratively run Blast.}
 
-\subsubsection{Control Flow Graph Simplification}
+\subsubsection{\label{cfgs}Control Flow Graph Simplification}
+
 
 \begin{figure*}
 \includegraphics[%
@@ -667,6 +668,7 @@ with performing logical operations in \yad.
 
 
 \subsection{Number of dynamic checks removed by Blast}
+The transformation initially added 776 dynamic checks to our LLADD implementation.  As mentioned earlier, 238 of these checks are explicitly ignored during static checking, leaving us with 538 checks.  Manual inspection allowed us to create a preprocessing phase that removed another 238 dynamic checks as explained in \ref{cfgs}, leaving us with 300 checks.  At this point, a majority of the functions (57) that have any dynamic checks in them have exactly one dynamic check in them.  Running our naive search algorithm on the code removes another 121 checks, 38 of them from the 57 functions with exactly one dynamic check in them, bringing us to a grand total of 179 checks.
 
 \begin{figure*}
 \includegraphics[%
@@ -888,4 +890,5 @@ freely available via Anonymous CVS at http://lladd.sf.net/
 
 
 \end{document}
+
 
