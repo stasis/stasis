@@ -289,7 +289,7 @@ Page * loadPage(int pageid) {
   return pageid;
 }
 \end{verbatim}
-Similary, the spec file is change to this:
+Similary, the spec file is changed to this:
 \begin{verbatim}
 event { 
   pattern { $1 = loadPage($2); }
@@ -304,21 +304,67 @@ event {
 Note that these changes prevent the program from behaving properly.
 We are able to perfrom this transformation because we will never
 actually compile this variant of the code, and because (given our
-assumptions) it does not affect the soundness of Blast's analysis.  
+assumptions) it does not affect the soundness of Blast's analysis.  We
+will use similar tricks throughout the rest of this section.
 
 \subsubsection{Call Graph Simplification}
 
-\subsubsection{Code Simplification}
+The next step in preparing the code for verification by Blast is to
+reduce the amount of code that must be consider per optimization task.
+We achieved this by replacing each call to a \fP or \fQ function with
+statements that non-deterministically assign a value to the variables
+that could be affected by the original function call.  In the case of
+calls to \fQ variants, we also add a \checkpage call to make sure that
+the function is properly invoked.\footnote{Initially, no calls to \fQ
+variants exist.  Instead, they are added as we iteratively run Blast.}
 
-[ p = loadPage(id) => p->id == id ]  (Too hard)
+\subsubsection{Control Flow Graph Simplification}
 
-so:
+We found that Blast was usually able to process verification requests
+over the simplified callgraph, but certain requests took tens of
+minutes to complete or fail.  Upon inspecting the translated code, we noticed that the follwing call pattern was extremely common:
 
-[ p = loadPage(id) => p == id     ]  (Equivalent, as long as client doesn't overwrite id field; ie: safe modulo memory saftey...)
-* STILL too hard (slow on relatively simple data structures, fails on trivial programs)*, although handles small numbers of functions well.
+\begin{verbatim}
+if(!p) { 
+  ...
+  p = loadPage(id);
+  ...
+} else if(p'->id == id) {
+  ...
+  p = p';
+  ...
+} else {
+  p = loadPage(id);
+}
+some_p_variant(p, id);
+\end{verbatim}
 
-so, we pessimistically treat all cloned functions as black boxes that return non-deterministic values.  (Modulo writing to the ->id field, of course...).   This reduces Blast's runtime to < 10 seconds on most verification tasks.
+Blocks such as this are created when the optimizer decides to
+speculatively load a page before passing it into a child function.
+They have two interesting properties.  First, all possible evaluations
+of the large if statement ensure that p->id == id, implying that the
+\fP variant at the bottom of the block can be automatically replaced
+by a call to an \fQ variant.  Therefore, we can replace all such calls
+before passing the program to the iterative blast evaluator, reducing
+the number of sites that we consider when replacing \fP variants with
+\fQ variants.
 
+Second, since the block is the result of the optimizers decision to
+speculatively load a page for a child function, it is probably not
+redundant.\footnote{There are a number of scenarios where this is not
+the case, particularly within the bodies of \fQ variants of functions.
+We leave the removal of such dynamic checks to future work.}
+Therefore, we collapse the conditional into into a single call to
+\pin, simplifying the control flow graph of the optimized code
+significantly.  
+
+This simplificition, when combined with the ones described above,
+reduces the vast majority of Blast runs to under fifteen seconds, with
+a small number of calls taking up to one minute.  Due to the call graph
+simplification described above, we are able to optimize function calls
+independently.  This allows the iterative algorithm described below to
+be feasible, reducing the time to optimize the entire library using
+naive search to less than an hour.
 
 \section{Evaluation}
 
