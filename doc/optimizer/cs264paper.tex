@@ -66,7 +66,7 @@ system that automatically widens an existing library's public
 interface, and then uses memoization to implement application specific
 optimizations.  We argue that while such a transformation could be
 applied manually, doing so would make it difficult to maintain the
-library, and would convolute client code, decreasing the usablity of
+library, and would convolute client code, decreasing the usability of
 the system.
 }
 
@@ -82,7 +82,7 @@ source of inefficiency, since it makes it difficult to implement
 optimizations that require tight coupling between the implementations
 of the system's interfaces.
 
-One possible solution is to increase the expressivity of the system's
+One possible solution is to increase the expressiveness of the system's
 interfaces so that such optimizations are practical, but doing this
 undermines the system's modularity by exposing implementation details
 in interfaces that are supposed to hide these details.  Another
@@ -102,8 +102,8 @@ single pair of arguments and results can be stored in a global, per
 library-function variable.  Then, sequential calls with the same set
 of arguments will return quickly.  
 
-However, multithreaded software, or software that interleaves
-unreleated calls to the same function from many different locations
+However, multi-threaded software, or software that interleaves
+unrelated calls to the same function from many different locations
 will not be able to make use of such caching techniques.  In this
 work, we store the memoized results in the caller's stack frame,
 allowing the number of memoized results to scale with the number of
@@ -143,7 +143,7 @@ only surface in strange situations.  Quite a bit of prior work exists
 in the area of API usage checking, including SLAM,~\cite{slam} which is an
 iterative tool that uses model checking and reachability analysis to
 ensure that all possible paths a piece of software may take conform to
-complex APIs.  In this work, we make use of BLAST,~\cite{blast} a system that is
+complex API's.  In this work, we make use of BLAST,~\cite{blast} a system that is
 similar to SLAM, but caches intermediate results in order to
 facilitate regression testing.
 
@@ -154,12 +154,12 @@ clean layer of abstraction between ``internal'' systems, such as
 recovery algorithms, lower level API's such as byte-oriented page
 access, and higher level API's such as record access and allocation.
 A number of higher level data structures are in turn built upon these
-API's, including a modular hashtable implementation that will be
+API's, including a modular hash table implementation that will be
 discussed later.
  
 While \yad's performance has been shown to be competitive with
 existing systems, its modular design does not come without a
-performance penalty.  Calls from high level code to lower level APIs
+performance penalty.  Calls from high level code to lower level API's
 tend to cause work to be repeated, since the lower level calls must
 be able to handle nearly arbitrary sequences of requests from higher
 level code, preventing them from performing optimizations that are
@@ -172,7 +172,7 @@ deal with this issue.  Essentially, general purpose, deterministic
 code (say a data structure accessor) caches the results of some or all
 of the calls made to it, and then checks its cache before recomputing
 the results.  Due to locality of application requests, this
-optimization technique can be suprisingly effective, even in cases
+optimization technique can be surprisingly effective, even in cases
 where only one result is cached.
 
 Performance profiling of \yad reveals that a large fraction of the time it
@@ -188,7 +188,7 @@ memoized functions.
 With this in mind, we set out to find a set of tools that would
 facilitate the development of high-level, correctness preserving code
 transformations.  Ideally, the tools would be flexible enough to
-support a nubmer of different optimizations, and also be appropriate
+support a number of different optimizations, and also be appropriate
 for reuse in future projects that focus on code verification rather
 than upon performance optimization.  We use Cil,~\cite{cil} the C Intermediate
 Language to implement code transformations, and Blast to verify the
@@ -206,13 +206,13 @@ versions of software that uses \yad.
 \section{The REGRES Data Store Optimizer}
 
 Optimization of \yad occurs in two phases.  First, the source code is
-analysed, functions are transformed so that they take additional
+analyzed, functions are transformed so that they take additional
 arguments, and a set of sound optimizations are introduced.  The
 soundness of the optimizations in this step relies upon the
 introduction of dynamic checks.  At the end of this step, we have produced an
 optimized, compilable version of the original program.
 
-However, at this point the optimized program contains many unecessary dynamic checks.
+However, at this point the optimized program contains many unnecessary dynamic checks.
   This is problematic for two
 reasons.  First, it makes it difficult to tell if the optimization
 worked as expected without relying on profiling or code coverage tools
@@ -224,7 +224,7 @@ to client code, which makes further optimization difficult.
 
 Second,
 the dynamic checks have some cost at runtime, and we would like to
-minimize this cost.  In the case of \yad, this seems to be neligible.
+minimize this cost.  In the case of \yad, this seems to be negligible.
 However, we would like to apply these optimization techniques to other
 applications in the future, so it is important that we minimize this
 source of overhead.
@@ -319,14 +319,14 @@ significantly improve performance for the hash table workload.  It
 turns out that this transformation is not very effective on functions
 that take a recordid as an argument, but pass a different recordid
 into child functions, since they pass \PP into their children
-functions, but \PP is probably assoicated with with the wrong pageid.
+functions, but \PP is probably associated with with the wrong pageid.
 Therefore, each child must call \pin on the appropriate page. 
 
 Unfortunately, this scenario is relatively common, especially in
 implementations of transactional structures that involve levels of
-indirection, such as trees or hashtables.  A simple solution to this
+indirection, such as trees or hash tables.  A simple solution to this
 problem is to add a new Page pointer to functions that take \PP as an
-argument, and pass a pageid to child funcitons.  Then \pin is called
+argument, and pass a pageid to child functions.  Then \pin is called
 to preload the page, just as it would have been if the \PP argument
 did not exist, except that \PP is reused when appropriate.
 
@@ -346,7 +346,7 @@ checks from the optimized code.
 \label{instrumenting}
 Blast is a static analysis tool that checks code for conformance to a
 well defined API.  In order to use it to verify the soundness of our
-optimizations, we express the optimizations' soundess in terms of
+optimizations, we express the optimizations' soundness in terms of
 simple invariants, and then encode these invariants in the transformed
 source as calls to API functions.  We then use Blast to check that
 these API calls are safe.  If it is able to verify the safety of the
@@ -384,7 +384,7 @@ aliasing before verifying that \checkpage is called correctly.
 Furthermore, the original implementation of \pin is non-trivial, and
 ultimately allows aliasing between pointers to different pages unless
 \unpin is called correctly.  Also, Blast's pointer analysis is
-flow-insensitve.  We found that each of these factors was sufficient
+flow-insensitive.  We found that each of these factors was sufficient
 to prevent verification from succeeding even on seemingly ``trivial''
 functions.  
 
@@ -395,7 +395,7 @@ designed to behave correctly regardless of the order
 in which they are called,\footnote{\unpin could misbehave if called on
 an invalid pointer, but we do not remove dynamic checks that surround
 \unpin.} we are willing to assume these invariants hold.  Therefore,
-in the optimizied source code that we give to Blast, we redefine
+in the optimized source code that we give to Blast, we redefine
 \pin as follows:
 
 \begin{verbatim}
@@ -403,7 +403,7 @@ Page * loadPage(int pageid) {
   return pageid;
 }
 \end{verbatim}
-Similary, the spec file is changed to this:
+Similarly, the spec file is changed to this:
 \begin{verbatim}
 event { 
   pattern { $1 = loadPage($2); }
@@ -452,7 +452,7 @@ wall-clock time) is reported. }
 
 
 We found that Blast was usually able to process verification requests
-over the simplified callgraph, but certain requests took tens of
+over the simplified call-graph, but certain requests took tens of
 minutes to complete or fail.  Upon inspecting the translated code, we
 noticed that the following call pattern was extremely common:
 
@@ -490,7 +490,7 @@ Therefore, we collapse the conditional into into a single call to
 \pin, simplifying the control flow graph of the optimized code
 significantly.  
 
-This simplificition, when combined with the ones described above,
+This simplification, when combined with the ones described above,
 reduces the vast majority of Blast runs to under fifteen seconds, with
 a small number of calls taking up to one minute.  Due to the call graph
 simplification described above, we are able to optimize function calls
@@ -510,7 +510,7 @@ checked is dependent on the input of the program, and may vary from run
 to run. 
 
 A second metric is merely the number of dynamic checks.  This is
-equavilent to assigning each dynamic check equal weight.  In this
+equivalent to assigning each dynamic check equal weight.  In this
 formulation, one would simply want to minimize the set of dynamic checks
 that remain in the program.  This is similar to the goal of a phase
 Delta Debugging \cite{deltaDebugging}, where they are looking for a
@@ -570,7 +570,7 @@ to cache results from its alias analysis and calls to the underlying
 theorem prover for reuse in consecutive runs.
 
 In order to simplify theorem proving for Blast, we treated calls to
-subroutines within the program as blackboxes.  This allows Blast to
+subroutines within the program as black boxes.  This allows Blast to
 assume that the subroutine returns a nondeterministic value
 (maintaining correctness), while cutting down on the execution time of
 Blast by not allowing it to spend time analyzing the possible return
@@ -587,7 +587,7 @@ for each function declaration $fd in $P
 
 This is nice because each function declaration that we encountered has
 less than 10 dynamic checks, opening up the possibility for more
-asymtotically complex search algorithms.  Also, due to the treatment of
+asymptotically complex search algorithms.  Also, due to the treatment of
 subroutine calls as a black box, the order in which we examine the
 function declarations is inconsequential.
 
@@ -668,15 +668,15 @@ current recordids are good predictors of pages that will be associated
 with future recordids.  Here we see that the runtime of the optimized
 version is less than half that of the original code.
 
-The hash table workload accesses hashtable keys in sorted order,
+The hash table workload accesses hash table keys in sorted order,
 producing random accesses to the page file.  Intuitively, we should not
 expect the optimization to improve matters at all in this case.
 However, we see that the optimized version completes in roughly 77\%
 of the time the original version takes.  The reason for this
-improvement is that the hashtable implementation must access a small
+improvement is that the hash table implementation must access a small
 amount of metadata in order to service each read.  The metadata
 consists of a header field, which describes the hash table and an
-index page that describes the layout of the hashtable's bucket list.
+index page that describes the layout of the hash table's bucket list.
 The optimizer is able to take advantage of this, improving the
 read only hash table workload's performance.
 
@@ -684,14 +684,14 @@ Unfortunately, while the optimizer also improves the CPU utilization of
 write-only workloads, these workloads are I/O bound, so the
 improvement in CPU utilization does not cause a significant improvement
 in execution time.  However, the benchmark workloads do not contain
-any application logic.  Therefore, CPU intenstive applications built
+any application logic.  Therefore, CPU intensive applications built
 on top of \yad may become CPU bound even if they are write-intensive.  Also,
 multi-threaded transactional applications are able to amortize I/O
 costs, so optimizations in this case are not wholly without merit.
 
 We can see that the reduction in CPU time in the write-only case is
 less than the reduction in the read-only case.  This is probably due
-to the CPU overhead of the logging api, and other overhead associated
+to the CPU overhead of the logging API, and other overhead associated
 with performing logical operations in \yad. 
 
 
@@ -722,7 +722,7 @@ this paper with a particular framework in mind, we believe that we
 have identified a number of important properties that allow this class
 of optimization to be implemented.  Ideally, we would like to encode
 these properties in a higher level language, allowing this class of 
-optimization to be implemented as a simple discription of an API's properties.
+optimization to be implemented as a simple description of an API's properties.
 
 In particular, optimizations geared toward memoizing a function require
 (1) a tight coupling between function parameters and return values,
@@ -731,7 +731,7 @@ between a small set of variables that may be passed into the function
 and those that may not.
 
 The first point is an obvious prerequisite of any memoization
-optimziation that relies upon function arguments to retrieve cached
+optimization that relies upon function arguments to retrieve cached
 results.  
 
 The second point is a bit more subtle, as it could be
@@ -739,12 +739,12 @@ achieved in at least two ways.  In our case, the ``interesting'' part of the
 memoized result is the id field.  Even
 though this field is not immutable over an entire program run, it is
 guaranteed to be immutable until \unpin is called.  If the return
-value truely is immutable over an entire program run, then the
+value truly is immutable over an entire program run, then the
 complexities caused by \unpin can be avoided.
 
 Finally, we used calling conventions and naming conventions to
 distinguish between {\em pageid}'s and other types of variables.  The
-pageid type does not explcitly exist within \yad's API.  Instead, we
+pageid type does not explicitly exist within \yad's API.  Instead, we
 used heuristics to infer its type.  In other circumstances the API
 might provide rich enough type information to avoid inference
 entirely, or a type inference system such as Cqual might be more
@@ -767,7 +767,7 @@ The difficulty in implementing this scheme arises because it becomes
 unclear how and when \unpin should be called, since static pointers
 could persist indefinitely.  In systems that
 memoize idempotent return values, this would not be an issue, since
-these systems would not contain a call that is analagous to \unpin.
+these systems would not contain a call that is analogous to \unpin.
 
 In \yad's case, it should be possible to ``partially release'' a page by
 calling \unpin, but keeping a copy of the page pointer.  Before making
@@ -775,13 +775,13 @@ an expensive call to \pin the function could speculatively latch
 whatever the partially released pointer points
 to.\footnote{\yad already guarantees that it points to a valid Page
 struct} If the pointer still points to the desired page, this
-scheme would avoid an expensive hashtable lookup.
+scheme would avoid an expensive hash table lookup.
 
 % - improve quality of transformation
 % - add optimizations for other calls (Tread)
 % - allow for higher level definitions of this type of transformation (outline high-level principles here)
 % - look at other applications for the technique
-% - provide mechanism to transform / optimize library once, and then use information from library tranformation while transforming client code.
+% - provide mechanism to transform / optimize library once, and then use information from library transformation while transforming client code.
 \section{Conclusion}
 
 We have designed and implemented a C source to source translation that
@@ -792,7 +792,7 @@ by showing that our optimization technique significantly increases the
 performance of an existing transactional storage library.  As far as
 we know, source level, whole program optimization techniques have not
 been applied to transactional storage systems in the past, as these
-systems tend to provide high-level APIs that are focused on program 
+systems tend to provide high-level API's that are focused on program 
 correctness and library generality rather than performance.
  
 We are unaware of any other
@@ -860,7 +860,7 @@ freely available via Anonymous CVS at http://lladd.sf.net/
 
 %\bibitem[14]{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
 
-\bibitem{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Converence on Management of Data, SIGMOD (1992) p. 371-380
+\bibitem{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Conference on Management of Data, SIGMOD (1992) p. 371-380
 
 %\bibitem[16]{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
 
