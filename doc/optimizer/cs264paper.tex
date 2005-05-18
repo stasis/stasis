@@ -367,6 +367,41 @@ independently.  This allows the iterative algorithm described below to
 be feasible, reducing the time to optimize the entire library using
 naive search to less than an hour.
 
+\section{Removing Dynamic Checks}
+The goal of this phase in the transformation is to reduce the overall
+execution time of the source program by removing the dynamic checks
+introduced earlier.  From this formulation of the problem, it is clear
+that not all dynamic checks are created equal; some dynamic checks are
+located in code points that are much more frequently executed than
+others.  Ideally, we would be able to assign a weight to each dynamic
+check proportional to some measure of its run time cost, and then try to
+remove a subset of all dynamic checks that minimizes the weight of the
+dynamic checks that are remain.  However, we decided that for this
+initial implementation, it would be sufficient to assign each of the
+dynamic checks equal weight, greatly simplifying the search.  In
+addition to assigning each dynamic check the same weight, we made the
+assumption that dynamic checks are independent of each other.  That is,
+removing one dynamic check will not affect whether or not a different
+dynamic check can be removed soundly.  
+
+In order to tell whether a given set of dynamic checks can be removed
+soundly, we turn to Blast.  First, we ask Blast to verify that the code
+is sound with all the dynamic checks in.  After this, we interatively
+search by changing the set of removed checks, and running the resulting
+code through Blast.  As an example, consider the following naive search
+algorithm used for the numbers cited in this paper \footnote{With the
+assumption that all dynamic checks are independent and that all dynamic
+checks have equal weight, this naive search finds the optimal solution.}
+
+\begin{verbatim}
+for each dynamic check $d in the program $P
+    remove $d from $P
+    run Blast on $P
+    if Blast cannot verify $P as sound
+        restore $d in $P
+\end{verbatim}
+
+
 \section{Evaluation}
 
 In this section, we focus on two aspects of the optimization's
