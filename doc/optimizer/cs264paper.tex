@@ -277,11 +277,11 @@ functions.
 Fortunately, according to \yad's API, the Page structure's id field is
 never written to outside of \pin and \unpin, and will never be written
 to if a function has pinned a page.  Because \pin and \unpin are
-designed to ensure that these invariants hold regardless of the order
+designed to behave correctly regardless of the order
 in which they are called,\footnote{\unpin could misbehave if called on
 an invalid pointer, but we do not remove dynamic checks that surround
-\unpin.}, we are willing to assume these invariants hold.  Therefore,
-in the optimzied source code that we give to Blast, we redefine
+\unpin.} we are willing to assume these invariants hold.  Therefore,
+in the optimizied source code that we give to Blast, we redefine
 \pin as follows:
 
 \begin{verbatim}
@@ -322,7 +322,8 @@ variants exist.  Instead, they are added as we iteratively run Blast.}
 
 We found that Blast was usually able to process verification requests
 over the simplified callgraph, but certain requests took tens of
-minutes to complete or fail.  Upon inspecting the translated code, we noticed that the follwing call pattern was extremely common:
+minutes to complete or fail.  Upon inspecting the translated code, we
+noticed that the follwing call pattern was extremely common:
 
 \begin{verbatim}
 if(!p) { 
@@ -345,7 +346,7 @@ They have two interesting properties.  First, all possible evaluations
 of the large if statement ensure that p->id == id, implying that the
 \fP variant at the bottom of the block can be automatically replaced
 by a call to an \fQ variant.  Therefore, we can replace all such calls
-before passing the program to the iterative blast evaluator, reducing
+before passing the program to the iterative Blast evaluator, reducing
 the number of sites that we consider when replacing \fP variants with
 \fQ variants.
 
@@ -377,7 +378,7 @@ provides for the user.
 
 \subsection{Performance of Optimized Code}
 \label{codePerformance}
-\begin{figure*}
+\begin{figure*}[t]
 \includegraphics[%
    width=1\columnwidth]{rawReadGraph.pdf}
 \includegraphics[%
@@ -439,22 +440,7 @@ index page that describes the layout of the hashtable's bucket list.
 The optimizer is able to take advantage of this, improving the
 hashtable workload's performance.
 
-Unfortunately, while the optimizer improves the CPU utilization of
-write-only workloads, these workloads are I/O bound, so the
-improvement in CPU utilization does not cause a significant improvement
-in execution time.  However, the benchmark workloads do not contain
-any application logic.  Therefore, CPU intenstive applications built
-on top of \yad may become CPU bound even if they are write-intensive,
-and will probably include a mixture of reads and writes.  Also,
-multi-threaded transactional applications are able to amortize I/O
-costs, so optimizations in this case are not wholly without merit.
-
-We can see that the reduction in CPU time in the write-only case is
-less than the reduction in the read-only case.  This is probably due
-to the CPU overhead of the logging api, and other overhead associated
-with performing logical operations in \yad. 
-
-\begin{figure*}
+\begin{figure*}[t]
 \includegraphics[%
    width=1\columnwidth]{rawWriteGraph.pdf}
 \includegraphics[%
@@ -470,17 +456,127 @@ also presented in Figure~\ref{fig:read}.}
 
 \end{figure*}
 
+Unfortunately, while the optimizer improves the CPU utilization of
+write-only workloads, these workloads are I/O bound, so the
+improvement in CPU utilization does not cause a significant improvement
+in execution time.  However, the benchmark workloads do not contain
+any application logic.  Therefore, CPU intenstive applications built
+on top of \yad may become CPU bound even if they are write-intensive,
+and will probably include a mixture of reads and writes.  Also,
+multi-threaded transactional applications are able to amortize I/O
+costs, so optimizations in this case are not wholly without merit.
+
+We can see that the reduction in CPU time in the write-only case is
+less than the reduction in the read-only case.  This is probably due
+to the CPU overhead of the logging api, and other overhead associated
+with performing logical operations in \yad. 
+
 
 
 \subsection{Number of dynamic checks removed by Blast}
 
+\begin{figure*}[t]
+\includegraphics[%
+   width=1\columnwidth]{checksRemaining.pdf}
+\includegraphics[%
+   width=1\columnwidth]{checksRemoved.pdf}
+\caption{\sf\label{fig:static}Effectiveness of naive search at
+removing dynamic checks from the optimized code.  These figures include the
+removal of dynamic checks and changes of calls from \fP to \fQ
+variants.  These figures only include changes made during iterative
+runs of Blast and only reflect checks that were actually
+considered for removal.  The ignored changes and checks consist of
+238 calls that were changed from \fP to \fQ variants during
+preprocessing and another 238 dynamic checks that were explicitly
+ignored during static checking.  Also, the system currently does not
+consider dynamic checks that protect \unpin calls.}
+\end{figure*}
+
 \section{Future Work}
- - improve quality of transformation
- - add optimizations for other calls (Tread)
- - allow for higher level definitions of this type of transformation (outline high-level principles here)
- - look at other applications for the technique
- - provide mechanism to transform / optimize library once, and then use information from library tranformation while transforming client code.
-\section{Conclusion and Future Work}
+Although we did not begin implementing the optimizations presented in
+this paper with a particular framework in mind, we believe that we
+have identified a number of important properties that allow this sort
+of optimization to be implemented.  Ideally, we would like to encode
+these properties in a higher level language, allowing this class of 
+optimization to be implemented as a simple discription of an API's properties.
+
+In particular, optimizations geared at memoizing a function require
+(1) a tight coupling between function parameters and return values,
+(2) immutability of the memoized result and (3) the ability to distinguish
+between a small set of variables that may be passed into the function,
+and those that may not.
+
+The first point is an obvious prerequisite of any memoization
+optimziation that relies upon function arguments to retrieve cached
+results.  
+
+The second point is a bit more subtle, as it could be
+achieved in at least two ways.  In our case, the ``interesting'' part of the
+memoized result is the id field.  Even
+though this field is not immutable over an entire program run, it is
+guaranteed to be immutable until \unpin is called.  If the return
+value truely is immutable over an entire program run, then the
+complexities caused by \unpin could be avoided.
+
+Finally, we used calling conventions and naming conventions to
+distinguish between {\em pageid}'s and other types of variables.  The
+pageid type does not explcitly exist within \yad's API.  Instead, we
+used heuristics to infer its type.  In other circumstances the API
+might provide rich enough type information to avoid inference
+entirely, or a type inference system such as Cqual might be more
+appropriate.
+
+It may be possible to generalize our system so that it can handle all
+of these scenarios.  Such a generalized system seems to be sufficient
+to support general purpose, high-level definitions of automated
+memoization transformations.
+
+Along these lines, we have mentioned a few other potential approaches
+toward storing memoized results throughout this paper.  One idea that
+occurred to us but that would be difficult to implement for \yad
+maintains static, per function (or per call-site) Page pointers.  The
+Page pointers could store memoized results across calls to the
+function, and this persistant information could be used in addition to to
+the \PP parameter.
+
+The difficulty in implementing this scheme arises because it becomes
+unclear how and when \unpin should be called, since static pointers
+could persist indefinitely.  In systems that
+memoize idempotent return values, this would not be an issue, since
+these systems would not contain a call that is analagous to \unpin.
+
+In \yad's case, it should be possible to 'partially release' a page by
+calling \unpin, but keeping a copy of the page pointer.  Before making
+an expensive call to \pin the function could speculatively latch
+whatever the partially released pointer points
+to.\footnote{\yad would guarantee that it points to a valid Page
+struct} If the pointer still points to the desired page, this
+scheme would avoid an expensive hashtable lookup.
+
+% - improve quality of transformation
+% - add optimizations for other calls (Tread)
+% - allow for higher level definitions of this type of transformation (outline high-level principles here)
+% - look at other applications for the technique
+% - provide mechanism to transform / optimize library once, and then use information from library tranformation while transforming client code.
+\section{Conclusion}
+
+We have designed and implemented a C source to source translation that
+implements high-level, application specific optimizations.  Such
+systems are currently uncommon, but we argue that modern programming
+practices greatly increase their importance.  We validate this claim
+by showing that our optimization technique significantly increases the
+performance of an existing library.  We are unaware of any other
+systems that take our approach toward program optimization.  We
+believe that our use combination of aggressive optimization techniques
+and conservative runtime checks is particularly valuable.  The use of
+a general purpose tool to reduce the overhead associated with runtime
+checks reduces the overhead associated with these techniques.  This
+makes it easier to implement a wide variety of application-specific
+optimization techniqes that probably would not be worth the
+development effort if implemented from scratch.  Finally, we believe
+that by moving the implementation of complex optimization techniques
+to compile time, our system improves the maintainability of software
+without sacrificing performance.
 
 \begin{thebibliography}{99}
 \begin{small}
