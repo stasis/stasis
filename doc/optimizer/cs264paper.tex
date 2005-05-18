@@ -405,6 +405,22 @@ variants exist.  Instead, they are added as we iteratively run Blast.}
 
 \subsubsection{Control Flow Graph Simplification}
 
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{rawReadGraph.pdf}
+\includegraphics[%
+   width=1\columnwidth]{hashTableReadGraph.pdf}
+%\vspace{-30pt}
+\caption{\sf\label{fig:read}The optimizer significantly speeds up
+read only workloads.  As long as the data being accessed fits in page
+cache, these workloads are CPU bound.  Therefore, although we report
+CPU time here, these numbers are indicative of overall
+performance. Figure~\ref{fig:write} explains why CPU time (and not
+wall-clock time) is reported. }
+
+\end{figure*}
+
+
 We found that Blast was usually able to process verification requests
 over the simplified callgraph, but certain requests took tens of
 minutes to complete or fail.  Upon inspecting the translated code, we
@@ -518,7 +534,7 @@ for each dynamic check $d in $dcList
         restore $d in $P
 \end{verbatim}
 
-An important feature of Blast which allowed allows iterative searches to
+An important feature of Blast which allows iterative searches to
 be tractable its regression mode.  In its regression mode, Blast is able
 to cache results from its alias analysis and calls to the underlying
 theorem prover for reuse in consecutive runs.
@@ -526,7 +542,7 @@ theorem prover for reuse in consecutive runs.
 In order to simplify theorem proving for Blast, we treated calls to
 subroutines within the program as blackboxes.  This allows Blast to
 assume that the subroutine returns a nondeterministic value
-(maintainging correctness), while cutting down on the execution time of
+(maintaining correctness), while cutting down on the execution time of
 Blast by not allowing it to spend time analyzing the possible return
 values of the call.  This, along with the simplification of the call
 graph allowed us to treat each function declaration independently.  This
@@ -547,7 +563,7 @@ function declarations is inconsequential.
 
 One subtlety we encountered is the declaration for functions in the
 class \fQ.  As mentioned above, the body of a function in \fQ is exactly
-the same as its counter part in \fP.  However, due to application
+the same as its counterpart in \fP.  However, due to application
 semantics, we know that the function in \fQ will only be called with a
 matching \_p and pageid.  In order for Blast to take advantage of this,
 we had to create wrapper functions for each function $f$ in \fQ.  The
@@ -557,6 +573,22 @@ and then passes its modified argument list to $f$.  In our LLADD case
 study, we found that Blast was able to allow us to remove over 50
 dynamic checks from functions in \fQ, while it was not able to verify
 the soundness of the removals of any dynamic checks in \fP.
+
+\begin{figure*}
+\includegraphics[%
+   width=1\columnwidth]{rawWriteGraph.pdf}
+\includegraphics[%
+   width=1\columnwidth]{hashTableWriteGraph.pdf}
+%\vspace{-30pt}
+\caption{\sf\label{fig:write}CPU times for write-only work loads.
+These workloads invoke the logging subsystem, and therefore spend a
+smaller fraction of their time calling \pin and \unpin.  Furthermore,
+these workloads are disk bound, so wall clock times did not show any
+measurable improvement in performance.  Therefore, CPU times are reported
+here.  To facilitate comparison between the two workloads, CPU time is
+also presented in Figure~\ref{fig:read}.}
+
+\end{figure*}
 
 
 \section{Evaluation}
@@ -570,20 +602,6 @@ provides for the user.
 
 \subsection{Performance of Optimized Code}
 \label{codePerformance}
-\begin{figure*}[t]
-\includegraphics[%
-   width=1\columnwidth]{rawReadGraph.pdf}
-\includegraphics[%
-   width=1\columnwidth]{hashTableReadGraph.pdf}
-%\vspace{-30pt}
-\caption{\sf\label{fig:read}The optimizer significantly speeds up
-read only workloads.  As long as the data being accessed fits in page
-cache, these workloads are CPU bound.  Therefore, although we report
-CPU time here, these numbers are indicative of overall
-performance. Figure~\ref{fig:write} explains why CPU time (and not
-wall-clock time) is reported. }
-
-\end{figure*}
 
 In order to evaluate the performance of the optimized code, we ran
 optimized and unoptimized benchmarking software on identical
@@ -632,29 +650,12 @@ index page that describes the layout of the hashtable's bucket list.
 The optimizer is able to take advantage of this, improving the
 read only hash table workload's performance.
 
-\begin{figure*}[t]
-\includegraphics[%
-   width=1\columnwidth]{rawWriteGraph.pdf}
-\includegraphics[%
-   width=1\columnwidth]{hashTableWriteGraph.pdf}
-%\vspace{-30pt}
-\caption{\sf\label{fig:write}CPU times for write-only work loads.
-These workloads invoke the logging subsystem, and therefore spend a
-smaller fraction of their time calling \pin and \unpin.  Furthermore,
-these workloads are disk bound, so wall clock times did not show any
-measurable improvement in performance.  Therefore, CPU times are reported
-here.  To facilitate comparison between the two workloads, CPU time is
-also presented in Figure~\ref{fig:read}.}
-
-\end{figure*}
-
 Unfortunately, while the optimizer also improves the CPU utilization of
 write-only workloads, these workloads are I/O bound, so the
 improvement in CPU utilization does not cause a significant improvement
 in execution time.  However, the benchmark workloads do not contain
 any application logic.  Therefore, CPU intenstive applications built
-on top of \yad may become CPU bound even if they are write-intensive,
-and will probably include a mixture of reads and writes.  Also,
+on top of \yad may become CPU bound even if they are write-intensive.  Also,
 multi-threaded transactional applications are able to amortize I/O
 costs, so optimizations in this case are not wholly without merit.
 
@@ -667,7 +668,7 @@ with performing logical operations in \yad.
 
 \subsection{Number of dynamic checks removed by Blast}
 
-\begin{figure*}[t]
+\begin{figure*}
 \includegraphics[%
    width=1\columnwidth]{checksRemaining.pdf}
 \includegraphics[%
@@ -687,15 +688,15 @@ consider dynamic checks that protect \unpin calls.}
 \section{Future Work}
 Although we did not begin implementing the optimizations presented in
 this paper with a particular framework in mind, we believe that we
-have identified a number of important properties that allow this sort
+have identified a number of important properties that allow this class
 of optimization to be implemented.  Ideally, we would like to encode
 these properties in a higher level language, allowing this class of 
 optimization to be implemented as a simple discription of an API's properties.
 
-In particular, optimizations geared at memoizing a function require
+In particular, optimizations geared toward memoizing a function require
 (1) a tight coupling between function parameters and return values,
-(2) immutability of the memoized result and (3) the ability to distinguish
-between a small set of variables that may be passed into the function,
+(2) immutability of the memoized result, and (3) the ability to distinguish
+between a small set of variables that may be passed into the function
 and those that may not.
 
 The first point is an obvious prerequisite of any memoization
@@ -708,7 +709,7 @@ memoized result is the id field.  Even
 though this field is not immutable over an entire program run, it is
 guaranteed to be immutable until \unpin is called.  If the return
 value truely is immutable over an entire program run, then the
-complexities caused by \unpin could be avoided.
+complexities caused by \unpin can be avoided.
 
 Finally, we used calling conventions and naming conventions to
 distinguish between {\em pageid}'s and other types of variables.  The
@@ -728,7 +729,7 @@ toward storing memoized results throughout this paper.  One idea that
 occurred to us but that would be difficult to implement for \yad
 maintains static, per function (or per call-site) Page pointers.  The
 Page pointers could store memoized results across calls to the
-function, and this persistant information could be used in addition to to
+function, and this persistent information could be used in addition to to
 the \PP parameter.
 
 The difficulty in implementing this scheme arises because it becomes
@@ -737,11 +738,11 @@ could persist indefinitely.  In systems that
 memoize idempotent return values, this would not be an issue, since
 these systems would not contain a call that is analagous to \unpin.
 
-In \yad's case, it should be possible to 'partially release' a page by
+In \yad's case, it should be possible to ``partially release'' a page by
 calling \unpin, but keeping a copy of the page pointer.  Before making
 an expensive call to \pin the function could speculatively latch
 whatever the partially released pointer points
-to.\footnote{\yad would guarantee that it points to a valid Page
+to.\footnote{\yad already guarantees that it points to a valid Page
 struct} If the pointer still points to the desired page, this
 scheme would avoid an expensive hashtable lookup.
 
@@ -776,6 +777,15 @@ development effort if implemented from scratch.  Finally, we believe
 that by moving the implementation of complex optimization techniques
 to compile time, our system improves the maintainability of software
 without sacrificing performance.
+
+\section{Acknowledgements and Availability}
+
+We would like to thank Daniel Wilkerson for his valuable input during
+the early phases of this project.
+
+\yad and the modifications to Cil that are described in this paper are
+freely available via Anonymous CVS at http://lladd.sf.net/
+
 
 \begin{thebibliography}{99}
 \begin{small}
