@@ -40,7 +40,9 @@
 
 \begin{document}
 %\title{\vspace*{-36pt}Application-specific program optimizations\vspace*{-36pt}}
-\title{\vspace*{-36pt}Application-specific program optimizations}
+\title{\vspace*{-36pt}Rapid Development of Application Specific Optimizations\\
+\vspace*{9pt}
+\large{or: Putting the ``regression'' back into regression testing}}
 \author{Jimmy Kittiyachavalit \and Russell Sears}
 \maketitle
 
@@ -115,19 +117,87 @@ Profiling a number of \yad's benchmarks revealed that servicing cache
 hits was a significant bottleneck, suggesting that \pin should be
 optimized.  Therefore, we focus on the \pin function in this work.
 
-\section{Prior work}
+\section{Background}
 \label {prior}
 
-\rcs{We need to look into this!}
+%- lladd
+
+\yad is an extensible transactional storage library.  It provides
+transactional, durable access to on disk data structures such as hash
+tables.  Unlike other, similar systems such as Berkeley DB, it also
+includes a set of low level data structures and API calls that are
+designed to allow application developers to use custom storage
+algorithms or data representations that match the application's needs
+more closely than the functionality provided by generic transactional
+data structures.  
+
+This approach toward storage has a number of implications.  In
+particular, \yad provides a layered API so that developers can extend
+or customize it at the most appropriate level of abstraction.
+Although it is not the focus of this work, static analysis techniques
+that verify client code's adherence to library API's would be
+particularly valuable to \yad, since many of the guarantees provided
+by its API involve exceptional situations such as hardware failure,
+and code that misuses these API's can cause data corruption bugs that
+only surface in strange situations.  Quite a bit of prior work exists
+in the area of API usage checking, including SLAM, which is an
+iterative tool that uses model checking and reachability analysis to
+ensure that all possible paths a piece of software may take conform to
+complex APIs.  In this work, we make use of BLAST, a system that is
+similar to SLAM, but caches intermediate results in order to
+facilitate regression testing.
+
+Because \yad provides a wide range of functionality, it is important
+that this API be kept as simple if the library is to be easy to use.
+Therefore, it was designed to have a modular implementation, with a
+clean layer of abstraction between ``internal'' systems, such as
+recovery algorithms, lower level API's such as byte-oriented page
+access, and higher level API's such as record access and allocation.
+A number of higher level data structures are in turn built upon these
+API's, including a modular hashtable implementation that will be
+discussed later.
+ 
+While \yad's performance has been shown to be competitive with
+existing systems, this modular design does not come without a
+performance penalty.  Calls from high level code to lower level APIs
+tends to cause work to be repeated, since the lower level calls must
+be able to handle nearly arbitrary sequences of requests from higher
+level code, preventing them from performing optimizations that are
+made possible by the high level code's structure or semantics.
+Similarly, by definition, high-level code shouldn't be bothered with
+the low-level details of the storage system's implementation.  
+
+Memoization techniques are a common set of design patterns designed to
+deal with this issue.  Essentially, general purpose, deterministic
+code (say a data structure accessor) caches the results of some or all
+of the calls made to it, and then checks its cache before recomputing
+the results.  Due to locality of application requests, this
+optimization technique can be suprisingly effective, even in cases
+where only one result is cached.
+
+Performance profiling of \yad reveals that a large fraction of time it
+takes to handle read-only requests is spent servicing cache hits in
+its page file, despite attempts to optimize this portion of the
+library.  The structure of existing code written using \yad's API's
+suggests that while repeated requests have good temporal locality,
+they also have very good locality with respect to their position on
+the stack.  This suggests that memoization will be much more effective
+if applied at call sites instead of within the implementations of the
+memoized functions.
+
+%- memoization
+%- compiler optimization
+%- cil
+%- blast
 
 \section{System Design}
 
 Optimization of \yad occurs in two phases.  First, the source code is
 analysed, functions are transformed so that they take additional
 arguments, and a set of sound optimizations are introduced.  The
-soundness of the optimizations in this step relies upon the introduction 
-of dynamic checks.  At this point, we have produced an optimized, 
-compilable version of the original program.
+soundness of the optimizations in this step relies upon the
+introduction of dynamic checks.  At this point, we have produced an
+optimized, compilable version of the original program.
 
 However, the optimized program contains many dynamic checks, and many
 of these checks may be unncessary.  This is problematic for two
