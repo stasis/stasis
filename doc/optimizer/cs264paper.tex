@@ -140,10 +140,10 @@ particularly valuable to \yad, since many of the guarantees provided
 by its API involve exceptional situations such as hardware failure,
 and code that misuses these API's can cause data corruption bugs that
 only surface in strange situations.  Quite a bit of prior work exists
-in the area of API usage checking, including SLAM, which is an
+in the area of API usage checking, including SLAM,~\cite{slam} which is an
 iterative tool that uses model checking and reachability analysis to
 ensure that all possible paths a piece of software may take conform to
-complex APIs.  In this work, we make use of BLAST, a system that is
+complex APIs.  In this work, we make use of BLAST,~\cite{blast} a system that is
 similar to SLAM, but caches intermediate results in order to
 facilitate regression testing.
 
@@ -190,12 +190,12 @@ facilitate the development of high-level, correctness preserving code
 transformations.  Ideally, the tools would be flexible enough to
 support a nubmer of different optimizations, and also be appropriate
 for reuse in future projects that focus on code verification rather
-than upon performance optimization.  We use Cil, the C Intermediate
+than upon performance optimization.  We use Cil,~\cite{cil} the C Intermediate
 Language to implement code transformations, and Blast to verify the
 soundness of our optimizations.  Blast is run in an iterative process
-that was inspired by Delta Debugging, and searches for a minimum set
+that was inspired by Delta Debugging,~\cite{deltaDebugging} and searches for a minimum set
 of dynamic checks that result in a verifiably sound program
-transformation.  Build-interceptor is used to capture preprocessed
+transformation.  Build-interceptor~\cite{buildInterceptor} is used to capture preprocessed
 versions of software that uses \yad.
 
 %- memoization
@@ -254,9 +254,38 @@ the Page struct referenced by the pointer.  We arrange for these
 pointers to either point to a valid Page struct, or to be NULL.}  If
 so, it uses \PP instead of calling \pin.  Otherwise, it proceeds as
 normal.  If it skips the call to \pin, it remembers that it should
-also skip the corresponding call to \unpin.  (See
-Figure~\ref{fig:dynamicCheck} for a concrete example of the
-transformation.)
+also skip the corresponding call to \unpin.  For concreteness, this would transform this code: 
+\begin{verbatim} 
+
+foo(int xid, int page) {
+   Page * p = loadPage(xid, page);
+   ...
+}
+\end{verbatim}
+into code similar to this:
+\begin{verbatim}
+foo_p(int xid, int page, Page * _p) { 
+   Page * p = 0;
+   int _unpin_p = 0;
+   if(!p || p->id != page) { 
+      if(_unpin_p) { 
+         releasePage(p);
+      } 
+      if(_p && _p->id == id) {
+         p = _p; _unpin_p = 0;
+      } else { 
+         p = loadPage(xid, page);
+         _unpin_p = 1;
+      }
+   }
+   ...
+}
+\end{verbatim}
+Note that foo's name has changed.  We will refer to this version of
+foo as the \fP version in the following sections.  Also, note the
+redundant checks that do not make use of the fact that p is
+initialized to NULL.  Such checks are necessary to ensure the
+soundness of some of the optimizations described below.
 
 Of course, we cannot expect the program to behave correctly unless we
 update the call sites of the transformed functions.  When updating
@@ -844,7 +873,7 @@ freely available via Anonymous CVS at http://lladd.sf.net/
 
 \bibitem{slam} Thomas Ball, Sriram K. Rajamani.  {\em Automatically Validating Temporal Safety Properties of Interfaces.} SPIN 2001.
 
-\bibitem{delta} Andreas Zeller. {\em Isolating Cause-Effect Chains from Computer Programs.} Proc. ACM SIGSOFT 10th International Symposium on the Foundations of Software Engineering (FSE-10), Charleston, South Carolina, November 2002.
+\bibitem{deltaDebugging} Andreas Zeller. {\em Isolating Cause-Effect Chains from Computer Programs.} Proc. ACM SIGSOFT 10th International Symposium on the Foundations of Software Engineering (FSE-10), Charleston, South Carolina, November 2002.
 
 \bibitem{buildInterceptor} Daniel S. Wilkerson. ``build-interceptor'' http://freshmeat.net/projects/build-interceptor/
 
