@@ -125,9 +125,9 @@ optimized.  Therefore, we focus on the \pin function in this work.
 Optimization of \yad occurs in two phases.  First, the source code is
 analysed, functions are transformed so that they take additional
 arguments, and a set of sound optimizations are introduced.  The
-soundness of this step optimizations relies upon the introduction of
-dynamic checks at each optimizations point.  At this point, we have
-produced an optimized, compilable version of the original program.
+soundness of the optimizations in this step relies upon the introduction 
+of dynamic checks.  At this point, we have produced an optimized, 
+compilable version of the original program.
 
 However, the optimized program contains many dynamic checks, and many
 of these checks may be unncessary.  This is problematic for two
@@ -265,11 +265,11 @@ before proceeding.
 \subsubsection{Pointer Aliasing}
 
 The guard in the original spec file dereferences the page pointer
-passed into \checkpage, which means that Blast much consider pointer
+passed into \checkpage, which means that Blast must consider pointer
 aliasing before verifying that \checkpage is called correctly.
 Furthermore, the original implementation of \pin is non-trivial, and
 ultimately allows aliasing between pointer to different pages unless
-\unpin is caller correctly.  Also, Blast's pointer analysis is
+\unpin is called correctly.  Also, Blast's pointer analysis is
 flow-insensitve.  We found that each of these factors was sufficient
 to prevent verification from succeeding even on seemingly 'trivial'
 functions.  
@@ -441,7 +441,7 @@ hashtable workload's performance.
 
 Unfortunately, while the optimizer improves the CPU utilization of
 write-only workloads, these workloads are I/O bound, so the
-improvement in CPU utilization does not case a significant improvement
+improvement in CPU utilization does not cause a significant improvement
 in execution time.  However, the benchmark workloads do not contain
 any application logic.  Therefore, CPU intenstive applications built
 on top of \yad may become CPU bound even if they are write-intensive,
@@ -573,3 +573,4 @@ Control Performance Modeling: Alternatives and Implications}. TODS
 
 
 \end{document}
+
