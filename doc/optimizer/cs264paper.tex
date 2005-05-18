@@ -438,38 +438,108 @@ be feasible, reducing the time to optimize the entire library using
 naive search to less than an hour.
 
 \section{Removing Dynamic Checks}
-The goal of this phase in the transformation is to reduce the overall
-execution time of the source program by removing the dynamic checks
-introduced earlier.  From this formulation of the problem, it is clear
-that not all dynamic checks are created equal; some dynamic checks are
-located in code points that are much more frequently executed than
-others.  Ideally, we would be able to assign a weight to each dynamic
-check proportional to some measure of its run time cost, and then try to
-remove a subset of all dynamic checks that minimizes the weight of the
-dynamic checks that are remain.  However, we decided that for this
-initial implementation, it would be sufficient to assign each of the
-dynamic checks equal weight, greatly simplifying the search.  In
-addition to assigning each dynamic check the same weight, we made the
-assumption that dynamic checks are independent of each other.  That is,
-removing one dynamic check will not affect whether or not a different
-dynamic check can be removed soundly.  
+The goal of this phase in the transformation is to remove a subset of
+the dynamic checks added that maximizes some metric.  One possible
+metric would be execution time.  In this metric, each dynamic check
+would need to be assigned some weight proportional to the number of
+times it is checked during an execution of the program.  This is
+nontrivial because the the number of times a dynamic check will be
+checked is dependent on the input of the program, and may vary from run
+to run. 
+
+A second metric is merely the number of dynamic checks.  This is
+equavilent to assigning each dynamic check equal weight.  In this
+formulation, one would simply want to minimize the set of dynamic checks
+that remain in the program.  This is similar to the goal of a phase
+Delta Debugging \cite{deltaDebugging}, where they are looking for a
+minimal set of deltas to transform the passing program to the failing
+program.  We therefore initially tried to design an analogous
+binary-search-like algorithm:
+
+\begin{verbatim}
+deltaSearch($P, $dcList) {
+	remove all dynamic checks in $dcList from $P
+	if $P is not sound
+		deltaSearch(first half of $dcList)
+		deltaSearch(second half of $dcList)
+}
+\end{verbatim}
+
+ 
+%The goal of this phase in the transformation is to reduce the overall
+%execution time of the source program by removing the dynamic checks
+%introduced earlier.  From this formulation of the problem, it is clear
+%that not all dynamic checks are created equal; some dynamic checks are
+%located in code points that are much more frequently executed than
+%others.  Ideally, we would be able to assign a weight to each dynamic
+%check proportional to some measure of its run time cost, and then try to
+%remove a subset of all dynamic checks that minimizes the weight of the
+%dynamic checks that are remain.  However, we decided that for this
+%initial implementation, it would be sufficient to assign each of the
+%dynamic checks equal weight, greatly simplifying the search.  In
+%addition to assigning each dynamic check the same weight, we made the
+%assumption that dynamic checks are independent of each other.  That is,
+%removing one dynamic check will not affect whether or not a different
+%dynamic check can be removed soundly.  
 
 In order to tell whether a given set of dynamic checks can be removed
 soundly, we turn to Blast.  First, we ask Blast to verify that the code
-is sound with all the dynamic checks in.  After this, we interatively
+is sound with all the dynamic checks in.  After this, we iteratively
 search by changing the set of removed checks, and running the resulting
 code through Blast.  As an example, consider the following naive search
 algorithm used for the numbers cited in this paper \footnote{With the
 assumption that all dynamic checks are independent and that all dynamic
-checks have equal weight, this naive search finds the optimal solution.}
+checks have equal weight, this naive search finds the optimal
+solution.}:
 
 \begin{verbatim}
-for each dynamic check $d in the program $P
+naiveSearch($P, $dcList)
+for each dynamic check $d in $dcList
     remove $d from $P
     run Blast on $P
     if Blast cannot verify $P as sound
         restore $d in $P
 \end{verbatim}
+
+An important feature of Blast which allowed allows iterative searches to
+be tractable its regression mode.  In its regression mode, Blast is able
+to cache results from its alias analysis and calls to the underlying
+theorem prover for reuse in consecutive runs.
+
+In order to simplify theorem proving for Blast, we treated calls to
+subroutines within the program as blackboxes.  This allows Blast to
+assume that the subroutine returns a nondeterministic value
+(maintainging correctness), while cutting down on the execution time of
+Blast by not allowing it to spend time analyzing the possible return
+values of the call.  This, along with the simplification of the call
+graph allowed us to treat each function declaration independently.  This
+led us to the following general algorithm for removing dynamic checks:
+
+\begin{verbatim}
+search($P, $dcList, $searchAlgo)
+for each function declaration $fd in $P
+    // remove checks in $fn
+    call $searchAlgo on $fn 
+\end{verbatim}
+
+This is nice because each function declaration that we encountered has
+less than 10 dynamic checks, opening up the possibility for more
+asymtotically complex search algorithms.  Also, due to the treatment of
+subroutine calls as a black box, the order in which we examine the
+function declarations is inconsequential.
+
+One subtlety we encountered is the declaration for functions in the
+class \fQ.  As mentioned above, the body of a function in \fQ is exactly
+the same as its counter part in \fP.  However, due to application
+semantics, we know that the function in \fQ will only be called with a
+matching \_p and pageid.  In order for Blast to take advantage of this,
+we had to create wrapper functions for each function $f$ in \fQ.  The
+wrapper function has the same signature as $f$, but the body explicitly
+sets both the \_p and the pageid variable to the same constant value,
+and then passes its modified argument list to $f$.  In our LLADD case
+study, we found that Blast was able to allow us to remove over 50
+dynamic checks from functions in \fQ, while it was not able to verify
+the soundness of the removals of any dynamic checks in \fP.
 
 
 \section{Evaluation}
