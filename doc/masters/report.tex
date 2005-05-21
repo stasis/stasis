@@ -36,7 +36,7 @@
 
 \begin{document}
 %\title{\vspace*{-36pt}Application-specific program optimizations\vspace*{-36pt}}
-\title{\vspace*{-36pt}High-perforamance, Transactional Storage\\
+\title{\vspace*{-36pt}High-performance, Transactional Storage\\
 \large{Masters of Science Project Report, University of California at Berkeley}}
 \author{Russell Sears}
 \maketitle
@@ -58,7 +58,7 @@ data structures. It generally outperforms Berkeley DB, and its
 extensibility enables optimizations that outperform Berkeley DB by 2x
 and MySQL by up to 5x.  We present novel optimizations for object
 serialization, graph traversal and workload-specific access method 
-optimziations that demonstrate this flexibility.}
+optimizations that demonstrate this flexibility.}
 
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
@@ -201,7 +201,7 @@ table in Section~\ref{sub:Linear-Hash-Table}, an object serialization
 scheme in Section~\ref{OASYS} a graph traversal algorithm in 
 Section~\ref{TransClos} and use code transformations to automatically optimize application code in Section~\ref{PL}.  Benchmarking figures are provided for each 
 application.  \yad also includes a cluster hash table 
-built upon two-phase commit, which will not be described.  Similarly we ommit a discussion of \yad's 
+built upon two-phase commit, which will not be described.  Similarly we omit a discussion of \yad's 
 blob implementation, which demonstrates how \yad can
 be used to easily add transactional primitives to data stored in a file system.
 
@@ -2375,7 +2375,7 @@ section to request reordering.
 %hits was a significant bottleneck, suggesting that \pin should be
 %optimized.  Therefore, we focus on the \pin function in this work.
 %
-\section{Workload-Based Access Method Optimization}
+\section{Compilation Time Optimizations}
 \label {PL}
 
 \yad's modular approach toward storage has a number of performance
@@ -2390,7 +2390,7 @@ optimization in detail, we describe the existing work that our
 techniques build upon.
 
 
-\section{Existing Program Transformation and Verification Techniques}
+\subsection{Existing Program Transformation and Verification Techniques}
 
 \label{prior}
 
@@ -2399,17 +2399,17 @@ techniques build upon.
 
 
 Although it is not the focus of this section, static analysis techniques
-that verify client code's adherence to library API's would be
+that verify client code's adherence to library APIs would be
 particularly valuable to \yad, since many of the guarantees provided
 by its API involve exceptional situations such as hardware failure,
-and code that misuses these API's can cause data corruption bugs that
+and code that misuses these APIs can cause data corruption bugs that
 only surface in strange situations.  
 
 Quite a bit of prior work exists
 in the area of API usage checking, including SLAM,~\cite{slam} which is an
 iterative tool that uses model checking and reachability analysis to
 ensure that all possible paths a piece of software may take conform to
-complex API's.  In this work, we make use of BLAST,~\cite{blast} a system that is
+complex APIs.  In this work, we make use of BLAST,~\cite{blast} a system that is
 similar to SLAM, but caches intermediate results in order to
 facilitate regression testing.
 
@@ -2417,7 +2417,7 @@ Because \yad provides a wide range of functionality, it is important
 that its API be kept simple if the library is to be easy to use.
 However, we have found that this makes it difficult to enable
 optimizations that require coordination between multiple layers of the
-storage system.  Calls from high level code to lower level API's
+storage system.  Calls from high level code to lower level APIs
 tend to cause work to be repeated, since the lower level calls must
 be able to handle nearly arbitrary sequences of requests from higher
 level code.  This prevents them from performing optimizations that are
@@ -2436,7 +2436,7 @@ where only one result is cached.
 Performance profiling of \yad reveals that a large fraction of the time it
 takes to handle read-only requests is spent servicing cache hits in
 the page file, despite attempts to optimize this portion of the
-library.  The structure of existing code written using \yad's API's
+library.  The structure of existing code written using \yad's APIs
 suggests that while repeated requests have good temporal locality,
 they also have very good locality with respect to their position on
 the stack.  This suggests that memoization will be much more effective
@@ -2477,7 +2477,7 @@ process that verifies the soundness of the program transformation.}
 \end{figure}
 \subsection{The REGRES Data Store Optimizer}
 
-Optimization of \yad occurs in in a number of seperate phases. (Figure~\ref{fig:regres})  First, the source code is
+Optimization of \yad occurs in in a number of separate phases. (Figure~\ref{fig:regres})  First, the source code is
 analyzed, functions are transformed so that they take additional
 arguments, and a set of sound optimizations are introduced.  The
 soundness of the optimizations in this step relies upon the
@@ -2999,7 +2999,7 @@ this paper with a general purpose optimization framework in mind, we believe tha
 have identified a number of important properties that allow this class
 of optimization to be applied in other situations.  Ideally, we would like to encode
 these properties in a higher level language, allowing this class of 
-optimization to be implemented as a simple description of an API's properties.
+optimization to be implemented as a simple description of an APIs properties.
 
 In particular, optimizations geared toward memoizing a function require
 (1) a tight coupling between function parameters and return values,
@@ -3067,7 +3067,7 @@ systems are currently uncommon, but we argue that modern programming
 practices greatly increase their importance.  As far as
 we know, source level, whole program optimization techniques have not
 been applied to transactional storage systems in the past, as these
-systems tend to provide high-level API's that are focused on program 
+systems tend to provide high-level APIs that are focused on program 
 correctness and library generality rather than performance.
  
 We are unaware of any other
@@ -3133,7 +3133,7 @@ linked list implementations, ArrayList and hashtable represent an
 initial attempt to implement this functionality.  We are unaware of
 any transactional system that provides such a broad range of data
 structure implementations.  We may also be able to extend these
-APIs to efficiently handle interchangable in-memory and transactional data structures.
+APIs to efficiently handle interchangeable in-memory and transactional data structures.
 
 %Also, we have noticed that the integration between transactional
 %storage primitives and in memory data structures is often fairly
@@ -3172,7 +3172,7 @@ persistent objects, and graphs.  \yad provides a wide range of
 transactional semantics, all the way up to complete ACID transactions with
 high concurrency, archiving and media recovery.  We also demonstrated
 that the low-level APIs enable many optimizations, including
-optimizations for deltas, locality, reordering, cpu utilization and durability.  We
+optimizations for deltas, locality, reordering, CPU utilization and durability.  We
 have released \yad as open source and believe it makes it easy to
 benefit from the power of transactions.
 
@@ -3185,11 +3185,11 @@ based optimizations. Mike Demmer and Bowei Du are responsible for the
 memory-efficient serialization system was Mike's, and he implemented
 much of the \yad to \oasys bridge. I would like to thank Daniel
 Wilkerson for his invaluable input during the early phases of the
-language based optimization.  Gilad Arnold and Ami Kamil were early
+language based optimization.  Gilad Arnold and Amir Kamil were early
 Beta testers of \yad, and used it to implement pobj, a transparent
-object persistance framework for Titanium.  Colleen Lewis was the first
+object persistence framework for Titanium.  Colleen Lewis was the first
 person other than \yad's developers to make use of \yad's lower level
-API's.
+APIs.
 
 \yad and the other software introduced in this paper are freely
 available via Anonymous CVS at http://lladd.sf.net/
