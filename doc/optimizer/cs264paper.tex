@@ -83,17 +83,17 @@ optimizations that require tight coupling between the implementations
 of the system's interfaces.
 
 One possible solution is to increase the expressiveness of the system's
-interfaces so that such optimizations are practical, but doing this
+interfaces so that such optimizations are practical.  However, doing this
 undermines the system's modularity by exposing implementation details
 in interfaces that are supposed to hide these details.  Another
-possibility is to attempt to anticipate typical usage patterns, and
+possibility is to attempt to anticipate typical usage patterns and
 then check for these usage patterns at runtime.  However, checks
-placed inside the library must then ignore contextual information that
+placed inside the library still do not have access to contextual information that
 is easily available to client code.
 
 For example, memoization techniques are commonly employed to store the
 results of deterministic function evaluations.  Each time the function
-is invoked, its arguments looked up in a data structure.  If the
+is invoked, its arguments are looked up in a data structure.  If the
 result is found, it is immediately returned.  If not, then the results
 are computed, added to the data structure, and returned.
 Unfortunately, the data structure lookup often introduces an
@@ -124,7 +124,7 @@ optimized.  Therefore, we focus on the \pin function in this work.
 
 \yad is an extensible transactional storage library.  It provides
 transactional, durable access to on disk data structures such as hash
-tables.  Unlike other, similar systems such as Berkeley DB, it also
+tables.  Unlike similar systems, it also
 includes a set of low level data structures and API calls that are
 designed to allow application developers to use custom storage
 algorithms or data representations that match the application's needs
@@ -149,7 +149,7 @@ facilitate regression testing.
 
 Because \yad provides a wide range of functionality, it is important
 that its API be kept simple if the library is to be easy to use.
-Therefore, it was designed to have a modular implementation, with a
+Therefore, it was designed to have a modular implementation with a
 clean layer of abstraction between ``internal'' systems, such as
 recovery algorithms, lower level API's such as byte-oriented page
 access, and higher level API's such as record access and allocation.
@@ -191,7 +191,7 @@ transformations.  Ideally, the tools would be flexible enough to
 support a number of different optimizations, and also be appropriate
 for reuse in future projects that focus on code verification rather
 than upon performance optimization.  We use Cil,~\cite{cil} the C Intermediate
-Language to implement code transformations, and Blast to verify the
+Language, to implement code transformations, and Blast to verify the
 soundness of our optimizations.  Blast is run in an iterative process
 that was inspired by Delta Debugging,~\cite{deltaDebugging} and searches for a minimum set
 of dynamic checks that result in a verifiably sound program
@@ -424,7 +424,7 @@ will use similar tricks throughout the rest of this section.
 \subsubsection{Call Graph Simplification}
 
 The next step in preparing the code for verification by Blast is to
-reduce the amount of code that must be consider per optimization task.
+reduce the amount of code that must be considered per optimization task.
 We achieved this by replacing each call to a \fP or \fQ function with
 statements that non-deterministically assign a value to the variables
 that could be affected by the original function call.  In the case of
@@ -432,8 +432,8 @@ calls to \fQ variants, we also add a \checkpage call to make sure that
 the function is properly invoked.\footnote{Initially, no calls to \fQ
 variants exist.  Instead, they are added as we iteratively run Blast.}
 
-\subsubsection{\label{cfgs}Control Flow Graph Simplification}
-
+\subsubsection{Control Flow Graph Simplification}
+\label{cfgs}
 
 \begin{figure*}
 \includegraphics[%
@@ -502,28 +502,28 @@ naive search to less than an hour.
 \label{delta}
 The goal of this phase in the transformation is to remove a subset of
 the dynamic checks added that maximizes some metric.  One possible
-metric would be execution time.  In this metric, each dynamic check
+metric would be executzion time.  In this metric, each dynamic check
 would need to be assigned some weight proportional to the number of
 times it is checked during an execution of the program.  This is
-nontrivial because the the number of times a dynamic check will be
+nontrivial because the number of times a dynamic check will be
 checked is dependent on the input of the program, and may vary from run
 to run. 
 
 A second metric is merely the number of dynamic checks.  This is
 equivalent to assigning each dynamic check equal weight.  In this
 formulation, one would simply want to minimize the set of dynamic checks
-that remain in the program.  This is similar to the goal of a phase
+that remain in the program.  This is similar to the goal of a phase in
 Delta Debugging \cite{deltaDebugging}, where they are looking for a
 minimal set of deltas to transform the passing program to the failing
 program.  We therefore initially tried to design an analogous
 binary-search-like algorithm:
 
 \begin{verbatim}
-deltaSearch(P, dcList) {
-	remove all dynamic checks in dcList from P
-	if P is not sound
-		deltaSearch(first half of dcList)
-		deltaSearch(second half of dcList)
+deltaSearch($P, $dcList) {
+   remove all dynamic checks in $dcList from $P
+   if $P is not sound
+      deltaSearch(first half of $dcList)
+      deltaSearch(second half of $dcList)
 }
 \end{verbatim}
 
@@ -565,7 +565,7 @@ for each dynamic check $d in $dcList
 \end{verbatim}
 
 An important feature of Blast which allows iterative searches to
-be tractable its regression mode.  In its regression mode, Blast is able
+be tractable is its regression mode.  In its regression mode, Blast is able
 to cache results from its alias analysis and calls to the underlying
 theorem prover for reuse in consecutive runs.
 
@@ -591,7 +591,7 @@ asymptotically complex search algorithms.  Also, due to the treatment of
 subroutine calls as a black box, the order in which we examine the
 function declarations is inconsequential.
 
-One subtlety we encountered is the declaration for functions in the
+One subtlety we encountered deals with the declaration for functions in the
 class \fQ.  As mentioned above, the body of a function in \fQ is exactly
 the same as its counterpart in \fP.  However, due to application
 semantics, we know that the function in \fQ will only be called with a
@@ -697,7 +697,7 @@ with performing logical operations in \yad.
 
 
 \subsection{Number of dynamic checks removed by Blast}
-The transformation initially added 776 dynamic checks to our LLADD implementation.  As mentioned earlier, 238 of these checks are explicitly ignored during static checking, leaving us with 538 checks.  Manual inspection allowed us to create a preprocessing phase that removed another 238 dynamic checks as explained in \ref{cfgs}, leaving us with 300 checks.  At this point, a majority of the functions (57) that have any dynamic checks in them have exactly one dynamic check in them.  Running our naive search algorithm on the code removes another 121 checks, 38 of them from the 57 functions with exactly one dynamic check in them, bringing us to a grand total of 179 checks.
+The transformation initially added 776 dynamic checks to our LLADD implementation.  As mentioned earlier, 238 of these checks are explicitly ignored during static checking, leaving us with 538 checks.  Manual inspection allowed us to create a preprocessing phase that removed another 238 dynamic checks as explained in Section~\ref{cfgs}, leaving us with 300 checks.  At this point, a majority of the functions (57) that have any dynamic checks in them have exactly one dynamic check in them.  Running our naive search algorithm on the code removes another 121 checks, 38 of them from the 57 functions with exactly one dynamic check in them, bringing us to a grand total of 179 checks.
 
 \begin{figure*}
 \includegraphics[%
@@ -747,7 +747,7 @@ distinguish between {\em pageid}'s and other types of variables.  The
 pageid type does not explicitly exist within \yad's API.  Instead, we
 used heuristics to infer its type.  In other circumstances the API
 might provide rich enough type information to avoid inference
-entirely, or a type inference system such as Cqual might be more
+entirely, or a type inference system such as Cqual~\cite{cqual} might be more
 appropriate.
 
 It may be possible to generalize our system so that it can handle all
@@ -877,6 +877,7 @@ freely available via Anonymous CVS at http://lladd.sf.net/
 
 \bibitem{buildInterceptor} Daniel S. Wilkerson. ``build-interceptor'' http://freshmeat.net/projects/build-interceptor/
 
+\bibitem{cqual} Umesh Shankar, Kunal Talwar, Jeffrey S. Foster, and David Wagner. {\em Detecting Format-String Vulnerabilities with Type Qualifiers}. In 10th USENIX Security Symposium, August 2001.
 
 %\bibitem[19]{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
 
