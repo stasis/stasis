@@ -1,0 +1,477 @@
+%%% Taken from: http://www.math.utah.edu/pub/tex/bib/tods.html
+
+
+%%% ====================================================================
+%%% Journal abbreviations:
+
+@String{j-CACM                  = "Communications of the ACM"}
+
+@String{j-TODS                  = "ACM Transactions on Database Systems"}
+
+%%% ====================================================================
+%%% Publishers and their addresses:
+
+@String{pub-ACM                 = "ACM Press"}
+
+@String{pub-ACM:adr             = "New York, NY 10036, USA"}
+
+@String{pub-IEEE                = "IEEE Computer Society Press"}
+
+@String{pub-IEEE:adr            = "1109 Spring Street, Suite 300, Silver
+                                   Spring, MD 20910, USA"}
+
+@String{pub-MORGAN-KAUFMANN     = "Morgan Kaufmann Publishers"}
+
+@String{pub-MORGAN-KAUFMANN:adr = "Los Altos, CA 94022, USA"}
+
+@Article{multipleGenericLocking,
+  author =       "Rakesh Agrawal and Michael J. Carey and Miron Livny",
+  title =        "{Concurrency Control Performance Modeling: Alternatives
+                 and Implications}",
+  journal =      j-TODS,
+  volume =       "12",
+  number =       "4",
+  pages =        "609--654",
+  month =        dec,
+  year =         "1987",
+  CODEN =        "ATDSD3",
+  ISSN =         "0362-5915",
+  bibdate =      "Sat Apr 14 10:34:48 MDT 2001",
+  bibsource =    "Database/Graefe.bib; Database/Wiederhold.bib;
+                 http://www.acm.org/pubs/toc/; Misc/real.time.bib",
+  note =         "Also published in/as: ACM SIGMOD Conf. on the
+                 Management of Data, 1985.",
+  URL =          "http://www.acm.org/pubs/articles/journals/tods/1987-12-4/p609-agrawal/p609-agrawal.pdf;
+                 http://www.acm.org/pubs/citations/journals/tods/1987-12-4/p609-agrawal/;
+                 http://www.acm.org/pubs/toc/Abstracts/tods/32220.html",
+  abstract =     "A number of recent studies have examined the
+                 performance of concurrency control algorithms for
+                 database management systems. The results reported to
+                 date, rather than being definitive, have tended to be
+                 contradictory. In this paper, rather than presenting
+                 ``yet another algorithm performance study,'' we
+                 critically investigate the assumptions made in the
+                 models used in past studies and their implications. We
+                 employ a fairly complete model of a database
+                 environment for studying the relative performance of
+                 three different approaches to the concurrency control
+                 problem under a variety of modeling assumptions. The
+                 three approaches studied represent different extremes
+                 in how transaction conflicts are dealt with, and the
+                 assumptions addressed pertain to the nature of the
+                 database system's resources, how transaction restarts
+                 are modeled, and the amount of information available to
+                 the concurrency control algorithm about transactions'
+                 reference strings. We show that differences in the
+                 underlying assumptions explain the seemingly
+                 contradictory performance results. We also address the
+                 question of how realistic the various assumptions are
+                 for actual database systems.",
+  acknowledgement = ack-nhfb,
+  annote =       "This paper is unique in that it studies the
+                 implications of fundamental assumptions regarding
+                 system resources, transactions restarts, and
+                 predeclarations of writes. Essential reading.",
+  generalterms = "Performance",
+  keywords =     "performance",
+  subject =      "{\bf H.2.4}: Information Systems, DATABASE MANAGEMENT,
+                 Systems, Concurrency. {\bf D.4.8}: Software, OPERATING
+                 SYSTEMS, Performance, Simulation. {\bf H.2.4}:
+                 Information Systems, DATABASE MANAGEMENT, Systems,
+                 Transaction processing. {\bf D.4.2}: Software,
+                 OPERATING SYSTEMS, Storage Management.",
+}
+
+@Manual{bdb,
+  title = 	 "{Berkeley DB 4.2.52}",
+  OPTkey = 	 {},
+  OPTauthor = 	 {},
+  organization = {Sleepycat Software},
+  address = 	 {http://www.sleepycat.com},
+  OPTedition = 	 {},
+  month = 	 {March},
+  year = 	 {2005},
+  note = 	 {Debian "Woody" Package},
+  OPTannote = 	 {}
+}
+
+
+@article{lrvm,
+  author    = {Mahadev Satyanarayanan and
+               Henry H. Mashburn and
+               Puneet Kumar and
+               David C. Steere and
+               James J. Kistler},
+  title     = "{Lightweight Recoverable Virtual Memory.}",
+  journal   = {ACM Trans. Comput. Syst.},
+  volume    = {12},
+  number    = {1},
+  year      = {1994},
+  pages     = {33-57},
+  ee        = {http://doi.acm.org/10.1145/174613.174615},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+@inproceedings{berkeleyDB,
+  AUTHOR = {M. Seltzer and M. Olson},
+  TITLE = "{LIBTP: Portable, Modular Transactions for UNIX}",
+  YEAR = 1991,
+  BOOKTITLE = {Proc.\ of the Winter 1992 USENIX Conference},
+  ADDRESS = {San Francisco, California},
+  PAGES = {9-26},
+  KEYWORDS = {}
+}
+
+
+@inproceedings{cht,
+  author    = {Steven D. Gribble and
+               Eric A. Brewer and
+               Joseph M. Hellerstein and
+               David E. Culler},
+  title     = "{Scalable, Distributed Data Structures for Internet Service
+               Construction.}",
+  booktitle = {OSDI},
+  year      = {2000},
+  pages     = {319-332},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+@Manual{ext3, 
+  title = 	 "{ext3}",
+  key = 	 {ext3},
+  OPTauthor = 	 {},
+  OPTorganization = {},
+  address = 	 {http://www.kernel.org},
+  OPTedition = 	 {},
+  month = 	 {March},
+  year = 	 {2005},
+  note = 	 {Included with Linux 2.6},
+  OPTannote = 	 {}
+}
+
+@Manual{reiser3,
+  title = 	 "{ReiserFS 3}",
+  OPTkey = 	 {},
+  author = 	 {Hans T Reiser},
+  organization = {NameSys},
+  address = 	 {http://www.namesys.com},
+  OPTedition = 	 {},
+  month = 	 {March},
+  year = 	 {2005},
+  note = 	 {Included with Linux 2.6},
+  OPTannote = 	 {}
+}
+
+@Manual{reiser4,
+  title = 	 "{ReiserFS 4 Homepage}",
+  OPTkey = 	 {},
+  author = 	 {Hans T Reiser},
+  organization = {NameSys},
+  address = 	 {http://www.namesys.com/v4/v4.html},
+  OPTedition = 	 {},
+  OPTmonth = 	 {},
+  OPTyear = 	 {},
+  OPTnote = 	 {},
+  OPTannote = 	 {}
+}
+
+@Manual{hibernate,
+  title = 	 "{Hibernate}",
+  key = 	 {Hibernate},
+  OPTauthor = 	 {},
+  OPTorganization = {},
+  address = 	 {http://www.hibernate.org},
+  OPTedition = 	 {},
+  OPTmonth = 	 {},
+  OPTyear = 	 {},
+  OPTnote = 	 {},
+  OPTannote = 	 {}
+}
+
+@Manual{mysql,
+  title = 	 "{MySQL 4.1}",
+  key = 	 {MySQL},
+  OPTauthor = 	 {},
+  organization = {MySQL AB},
+  address = 	 {http://www.mysql.com},
+  OPTedition = 	 {},
+  OPTmonth = 	 {},
+  OPTyear = 	 {},
+  OPTnote = 	 {},
+  OPTannote = 	 {}
+}
+
+
+@article{postgres,
+  author    = {Michael Stonebraker and
+               Greg Kemnitz},
+  title     = "{The Postgres Next Generation Database Management System.}",
+  journal   = {Commun. ACM},
+  volume    = {34},
+  number    = {10},
+  year      = {1991},
+  pages     = {78-92},
+  ee        = {db/journals/cacm/StonebrakerK91.html},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@inproceedings{capriccio,
+  author    = {J. Robert von Behren and
+               Jeremy Condit and
+               Feng Zhou and
+               George C. Necula and
+               Eric A. Brewer},
+  title     = "{Capriccio: Scalable Threads for Internet Services.}",
+  booktitle = {SOSP},
+  year      = {2003},
+  pages     = {268-281},
+  ee        = {http://doi.acm.org/10.1145/945471},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@inproceedings{ariesim,
+  author    = {C. Mohan and
+               Frank Levine},
+  title     = "{ARIES/IM: An Efficient and High Concurrency Index Management
+               Method Using Write-Ahead Logging.}",
+  booktitle = {SIGMOD Conference},
+  year      = {1992},
+  pages     = {371-380},
+  ee        = {db/conf/sigmod/MohanL92.html},
+  crossref  = {DBLP:conf/sigmod/92},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/sigmod/92,
+  editor    = {Michael Stonebraker},
+  title     = {Proceedings of the 1992 ACM SIGMOD International Conference
+               on Management of Data, San Diego, California, June 2-5,
+               1992.},
+  publisher = {ACM Press},
+  year      = {1992},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+
+@inproceedings{oo7,
+  author    = {Michael J. Carey and
+               David J. DeWitt and
+               Jeffrey F. Naughton},
+  title     = "{The oo7 Benchmark.}",
+  booktitle = {SIGMOD Conference},
+  year      = {1993},
+  pages     = {12-21},
+  ee        = {db/conf/sigmod/CareyDN93.html},
+  crossref  = {DBLP:conf/sigmod/93},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/sigmod/93,
+  editor    = {Peter Buneman and
+               Sushil Jajodia},
+  title     = {Proceedings of the 1993 ACM SIGMOD International Conference
+               on Management of Data, Washington, D.C., May 26-28, 1993.},
+  publisher = {ACM Press},
+  year      = {1993},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@article{relational,
+  author    = {E. F. Codd},
+  title     = "{A Relational Model of Data for Large Shared Data Banks.}",
+  journal   = {Commun. ACM},
+  volume    = {13},
+  number    = {6},
+  year      = {1970},
+  pages     = {377-387},
+  ee        = {db/journals/cacm/Codd70.html, http://doi.acm.org/10.1145/362384.362685},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@inproceedings{mapReduce,
+  author    = {Jeffrey Dean and
+               Sanjay Ghemawat},
+  title     = "{MapReduce: Simplified Data Processing on Large Clusters.}",
+  booktitle = {OSDI},
+  year      = {2004},
+  pages     = {137-150},
+  ee        = {http://www.usenix.org/events/osdi04/tech/dean.html},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@TechReport{lru2s,
+  author = 	 {Evangelos Markatos},
+  title = 	 "{On Caching Search Engine Results}",
+  institution =  {Institute of Computer Science, Foundation for Research & Technology - Hellas (FORTH)},
+  year = 	 {1999},
+  OPTkey = 	 {},
+  OPTtype = 	 {},
+  number = 	 {241},
+  OPTaddress = 	 {},
+  OPTmonth = 	 {},
+  OPTnote = 	 {},
+  OPTannote = 	 {}
+}
+
+
+@inproceedings{newTypes,
+  author    = {Michael Stonebraker},
+  title     = "{Inclusion of New Types in Relational Data Base Systems.}",
+  booktitle = {ICDE},
+  year      = {1986},
+  pages     = {262-269},
+  ee        = {db/conf/icde/Stonebraker86.html},
+  crossref  = {DBLP:conf/icde/86},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/icde/86,
+  title     = {Proceedings of the Second International Conference on Data
+               Engineering, February 5-7, 1986, Los Angeles, California,
+               USA},
+  publisher = {IEEE Computer Society},
+  year      = {1986},
+  isbn      = {0-8186-0655-X},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@article{lamb,
+  author    = {Charles Lamb and
+               Gordon Landis and
+               Jack A. Orenstein and
+               Daniel Weinreb},
+  title     = "{The ObjectStore Database System.}",
+  journal   = {Commun. ACM},
+  volume    = {34},
+  number    = {10},
+  year      = {1991},
+  pages     = {50-63},
+  ee        = {db/journals/cacm/LambLOW91.html},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+@inproceedings{semantic,
+  author    = {David K. Gifford and
+               Pierre Jouvelot and
+               Mark A. Sheldon and
+               James O'Toole},
+  title     = "{Semantic File Systems.}",
+  booktitle = {SOSP},
+  year      = {1991},
+  pages     = {16-25},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@article{aries,
+  author    = {C. Mohan and
+               Donald J. Haderle and
+               Bruce G. Lindsay and
+               Hamid Pirahesh and
+               Peter M. Schwarz},
+  title     = {ARIES: A Transaction Recovery Method Supporting Fine-Granularity
+               Locking and Partial Rollbacks Using Write-Ahead Logging.},
+  journal   = {ACM Trans. Database Syst.},
+  volume    = {17},
+  number    = {1},
+  year      = {1992},
+  pages     = {94-162},
+  ee        = {db/journals/tods/MohanHLPS92.html},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@inproceedings{lht,
+  author    = {Witold Litwin},
+  title     = {Linear Hashing: A New Tool for File and Table Addressing.},
+  booktitle = {VLDB},
+  year      = {1980},
+  pages     = {212-223},
+  ee        = {db/conf/vldb/Litwin80.html},
+  crossref  = {DBLP:conf/vldb/80},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@article{soft-updates,
+  author    = {Gregory R. Ganger and
+               Marshall K. McKusick and
+               Craig A. N. Soules and
+               Yale N. Patt},
+  title     = {Soft updates: a solution to the metadata update problem
+               in file systems.},
+  journal   = {ACM Trans. Comput. Syst.},
+  volume    = {18},
+  number    = {2},
+  year      = {2000},
+  pages     = {127-153},
+  ee        = {http://doi.acm.org/10.1145/350853.350863},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/vldb/80,
+  title     = {Sixth International Conference on Very Large Data Bases,
+               October 1-3, 1980, Montreal, Quebec, Canada, Proceedings.},
+  publisher = {IEEE Computer Society},
+  year      = {1980},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+
+
+@inproceedings{compensations,
+  author    = {Westley Weimer and
+               George C. Necula},
+  title     = {Finding and preventing run-time error handling mistakes.},
+  booktitle = {OOPSLA},
+  year      = {2004},
+  pages     = {419-431},
+  ee        = {http://doi.acm.org/10.1145/1029011},
+  crossref  = {DBLP:conf/oopsla/2004p},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/oopsla/2004p,
+  editor    = {John M. Vlissides and
+               Douglas C. Schmidt},
+  title     = {Proceedings of the 19th Annual ACM SIGPLAN Conference on
+               Object-Oriented Programming, Systems, Languages, and Applications,
+               OOPSLA 2004, October 24-28, 2004, Vancouver, BC, Canada},
+  booktitle = {OOPSLA},
+  publisher = {ACM},
+  year      = {2004},
+  isbn      = {1-58113-831-8},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@inproceedings{hierarcicalLocking,
+  author    = {Jim Gray and
+               Raymond A. Lorie and
+               Gianfranco R. Putzolu and
+               Irving L. Traiger},
+  title     = {Granularity of Locks in a Large Shared Data Base.},
+  booktitle = {VLDB},
+  year      = {1975},
+  pages     = {428-451},
+  ee        = {db/conf/vldb/GrayLPT75.html},
+  crossref  = {DBLP:conf/vldb/75},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{DBLP:conf/vldb/75,
+  editor    = {Douglas S. Kerr},
+  title     = {Proceedings of the International Conference on Very Large
+               Data Bases, September 22-24, 1975, Framingham, Massachusetts,
+               USA.},
+  publisher = {ACM},
+  year      = {1975},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+
+@article{haerder,
+  author    = {Theo H{\"a}rder and
+               Andreas Reuter},
+  title     = {Principles of Transaction-Oriented Database Recovery},
+  journal   = {ACM Comput. Surv.},
+  volume    = {15},
+  number    = {4},
+  year      = {1983},
+  pages     = {287-317},
+  ee        = {db/journals/csur/HarderR83.html},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
