@@ -59,8 +59,8 @@ data structures. It generally outperforms Berkeley DB, and its
 extensibility enables optimizations that outperform Berkeley DB by 2x
 and MySQL by up to 5x.  We present novel optimizations for object
 serialization and graph traversal that demonstrate this flexibility.}
-%PLserialization, graph traversal and workload-specific access method 
-%PLoptimizations that demonstrate this flexibility.}
+%PL serialization, graph traversal and workload-specific access method 
+%PL optimizations that demonstrate this flexibility.}
 
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
@@ -202,8 +202,8 @@ through a sequence of optimizations for a transactional hash
 table in Section~\ref{sub:Linear-Hash-Table}, an object serialization 
 scheme in Section~\ref{OASYS} and a graph traversal algorithm in
 Section~\ref{TransClos}.  Benchmarking figures are provided for each
-%PLscheme in Section~\ref{OASYS}, a graph traversal algorithm in 
-%PLSection~\ref{TransClos} and use code transformations to derive optimized application code in Section~\ref{PL}.  Benchmarking figures are provided for each 
+%PL scheme in Section~\ref{OASYS}, a graph traversal algorithm in 
+%PL Section~\ref{TransClos} and use code transformations to derive optimized application code in Section~\ref{PL}.  Benchmarking figures are provided for each 
 application.  \yad also includes a cluster hash table 
 built upon two-phase commit, which will not be described.  Similarly we omit a discussion of \yad's 
 blob implementation, which demonstrates how \yad can
@@ -374,11 +374,11 @@ systems, where the file system understands the contents of the files
 that it contains, and is able to provide services such as rapid
 search, or file-type specific operations such as thumb nails \cite{reiser4,semantic}.  Others are simpler, such as
 Berkeley~DB~\cite{berkeleyDB}, which provides transactional
-storage of data in indexed form using a hashtable or tree, or as a queue.  
+storage of data in indexed form using a hash table or tree, or as a queue.  
 % bdb's recno interface seems to be a specialized b-tree implementation - Rusty
-%PLWe demonstrate that, in contrast to these rigid interfaces, \yad's unique 
-%PLblurring of the interface between the application and the storage layer 
-%PLenables a new class of automated programming language based optimizations.
+%PL We demonstrate that, in contrast to these rigid interfaces, \yad's unique 
+%PL blurring of the interface between the application and the storage layer 
+%PL enables a new class of automated programming language based optimizations.
 
 Although Berkeley DB's feature set is similar to the features provided by
 \yad's implementation, there is an important distinction.  Berkeley DB
@@ -741,10 +741,10 @@ make it easy to write high-level operations and wrappers.}
 detection, although we expect many applications to make use of
 deadlock-avoidance schemes, which are already prevalent in
 multithreaded application development.  The lock manager is flexible
-enough to also provide index locks for hashtable implementations and 
+enough to also provide index locks for hash table implementations and 
 more complex locking protocols such as hierarchical two-phase 
 locking~\cite{hierarcicalLocking,ariesim}.  
-The lock manager API is divided into callback functions that are made 
+The lock manager API is divided into call-back functions that are made 
 during normal operation and recovery, and into generic lock manager 
 implementations that may be used with \yad and its index implementations.
 
@@ -778,7 +778,7 @@ work, or deal with the corner cases that aborted transactions create.
 %transactions.
 
 %\yad provides a lock manager API that allows all three variations
-%(among others). In particular, it provides upcalls on commit/abort so
+%(among others). In particular, it provides up-calls on commit/abort so
 %that the lock manager can release locks at the right time. We will
 %revisit this point in more detail when we describe some of the example
 %operations.
@@ -931,7 +931,7 @@ semantics.
 %custom log entry to invoke arbitrary application-specific code.  
 %In 
 %Section~\ref{OASYS} this is used to significantly improve performance by 
-%storing difference records in an application specfic format.
+%storing difference records in an application specific format.
 
 %In addition to supporting custom log entries, this mechanism 
 %is the basis of \yad's {\em flexible page layouts}.  
@@ -1012,7 +1012,7 @@ three steps:
   it may be possible to use finer grained mutexes.
 \item Define a logical UNDO for each operation (rather than just using
   a set of page-level UNDOs).  For example, this is easy for a
-  hashtable; the UNDO for an {\em insert} is {\em remove}.
+  hash table; the UNDO for an {\em insert} is {\em remove}.
 \item For mutating operations (not read-only), add a ``begin nested
   top action'' right after the mutex acquisition, and a ``commit
   nested top action'' right before the mutex is released.
@@ -1427,7 +1427,7 @@ easy to produce concurrent data structure implementations.
 %compare the performance of our optimized implementation, the
 %straightforward implementation and Berkeley DB's hash implementation.
 %The straightforward implementation is used by the other applications
-%presented in this paper and is \yad's default hashtable
+%presented in this paper and is \yad's default hash table
 %implementation. 
 % We chose this implementation over the faster optimized
 %hash table in order to this emphasize that it is easy to implement
@@ -1533,9 +1533,9 @@ unpinning and repinning the page in memory, providing very fast
 traversal over lists that have good locality.  This optimization would
 not be possible if it were not for the low-level interfaces provided
 by the buffer manager.
-%PL\footnote{Although the techniques in Section~\ref{PL} 
-%PLcould be used to automatically derive this optimization, we implemented 
-%PL it manually.}  
+%PL \footnote{Although the techniques in Section~\ref{PL} 
+%PL could be used to automatically derive this optimization, we implemented 
+%PL  it manually.}  
 In particular, we need to control space
 allocation, and be able to read and write multiple records with a
 single call to pin and unpin.  Due to this data structure's nice locality
@@ -1554,15 +1554,15 @@ transactionally removing items from one bucket and adding them to
 another.  
 
 The underlying transactional data structures and a
-single lock around the hashtable are all that are needed
+single lock around the hash table are all that are needed
 to complete the linear hash table implementation.  Unfortunately, as
 we mentioned in Section~\ref{nested-top-actions}, things become a bit
 more complex if we allow interleaved transactions.  The solution for
-the default hashtable is simply to follow the recipe for Nested
+the default hash table is simply to follow the recipe for Nested
 Top Actions, and latch the entire table for each operation.
 We also explore a version with finer-grain latching below.
 %This prevents the
-%hashtable implementation from fully exploiting multiprocessor
+%hash table implementation from fully exploiting multiprocessor
 %systems,\footnote{\yad passes regression tests on multiprocessor
 %systems.}  but seems to be adequate on single processor machines
 %(Figure~\ref{fig:TPS}).
@@ -1581,27 +1581,27 @@ We also explore a version with finer-grain latching below.
 %\end{enumerate}
 %
 %Note that this scheme prevents multiple threads from accessing the
-%hashtable concurrently.  However, it achieves a more important (and
+%hash table concurrently.  However, it achieves a more important (and
 %somewhat unintuitive) goal.  The use of a nested top action protects
-%the hashtable against {\em future} modifications by other
+%the hash table against {\em future} modifications by other
 %transactions.  Since other transactions may commit even if this
 %transaction aborts, we need to make sure that we can safely undo the
-%hashtable insertion.  Unfortunately, a future hashtable operation
+%hash table insertion.  Unfortunately, a future hash table operation
 %could split a hash bucket, or manipulate a bucket overflow list,
 %potentially rendering any physical undo information that we could
 %record useless.  Therefore, we need to have a logical undo operation
 %to protect against this.  However, we could still crash as the
-%physical update is taking place, leaving the hashtable in an
+%physical update is taking place, leaving the hash table in an
 %inconsistent state after REDO completes.  Therefore, we need to use
-%physical undo until the hashtable operation completes, and then {\em
+%physical undo until the hash table operation completes, and then {\em
 %switch to} logical undo before any other operation manipulates data we
 %just altered.  This is exactly the functionality that a nested top
 %action provides.  
 
-%Since a normal hashtable operation is usually fast,
-%and this is meant to be a simple hashtable implementation, we simply
-%latch the entire hashtable to prevent any other threads from
-%manipulating the hashtable until after we switch from physical to
+%Since a normal hash table operation is usually fast,
+%and this is meant to be a simple hash table implementation, we simply
+%latch the entire hash table to prevent any other threads from
+%manipulating the hash table until after we switch from physical to
 %logical undo.
 
 %\eab{need to explain better why this gives us concurrent
@@ -1610,8 +1610,8 @@ We also explore a version with finer-grain latching below.
 %insert, but not the structural changes.}
 
 %% To get around
-%% this, and to allow multithreaded access to the hashtable, we protect
-%% all of the hashtable operations with pthread mutexes. \eab{is this a lock manager, a latch or neither?}  Then, we
+%% this, and to allow multithreaded access to the hash table, we protect
+%% all of the hash table operations with pthread mutexes. \eab{is this a lock manager, a latch or neither?}  Then, we
 %% implement inverse operations for each operation we want to support
 %% (this is trivial in the case of the hash table, since ``insert'' is
 %% the logical inverse of ``remove.''), then we add calls to begin nested
@@ -1619,7 +1619,7 @@ We also explore a version with finer-grain latching below.
 %% and remove the nested top action wherever we release a mutex.  Of
 %% course, nested top actions are not necessary for read only operations.
 
-This completes our description of \yad's default hashtable
+This completes our description of \yad's default hash table
 implementation.  Implementing
 transactional support and concurrency for this data structure is
 straightforward; the only complications are a) defining a logical
@@ -1636,9 +1636,9 @@ UNDO, and b) using the bucket list to handle variable-length records. \yad hides
 %Next we describe some additional optimizations and evaluate the
 %performance of our implementations.
 
-\subsection{The Optimized Hashtable}
+\subsection{The Optimized Hash Table}
 \label{optimizedHT}
-Our optimized hashtable implementation is optimized for log bandwidth,
+Our optimized hash table implementation is optimized for log bandwidth,
 only stores fixed-length entries, and exploits a more aggressive
 version of nested top actions.
 
@@ -1648,7 +1648,7 @@ to which the on disk representation of the hash table can be corrupted.
 This is essentially ``soft updates''
 applied to a multi-page update~\cite{soft-updates}.  Before beginning
 the update, it writes an UNDO entry that will first check and restore the
-consistency of the hashtable during recovery, and then invoke the
+consistency of the hash table during recovery, and then invoke the
 inverse of the operation that needs to be undone.  This recovery
 scheme does not require record-level UNDO information, and thus avoids
 before-image log entries, which saves log bandwidth and improves
@@ -1659,12 +1659,12 @@ entries, it stores the first entry of each bucket in the ArrayList
 that represents the bucket list, reducing the number of buffer manager
 calls that must be made.  Finally, this implementation caches
 the header information in memory
-%PL\footnote{Section~\ref{PL} automatically applies this optimization to the straightforward hashtable.  However, this is not reflected in the numbers reported here.} 
+%PL \footnote{Section~\ref{PL} automatically applies this optimization to the straightforward hash table.  However, this is not reflected in the numbers reported here.} 
 rather than getting it from the buffer manager on each request.
 
 The most important component of \yad for this optimization is \yad's
 flexible recovery and logging scheme.  For brevity we only mention
-that this hashtable implementation uses bucket-granularity latching;
+that this hash table implementation uses bucket-granularity latching;
 fine-grain latching is relatively easy in this case since all
 operations only affect a few buckets, and buckets have a natural
 ordering.
@@ -1684,7 +1684,7 @@ test is run as a single transaction, overheads due to synchronous I/O
 and logging are minimized.}
 \end{figure}
 
-We ran a number of benchmarks on the two hashtable implementations
+We ran a number of benchmarks on the two hash table implementations
 mentioned above, and used Berkeley DB for comparison.
 %In the future, we hope that improved
 %tool support for \yad will allow application developers to easily apply
@@ -1698,10 +1698,10 @@ a single long-running
 transaction that loads a synthetic data set into the
 library. 
 % For comparison, we also provide throughput for many different
-%\yad operations, BerkeleyDB's DB\_HASH hashtable implementation,
+%\yad operations, BerkeleyDB's DB\_HASH hash table implementation,
 %and lower level DB\_RECNO record number based interface.  
 
-Both of \yad's hashtable implementations perform well, but the
+Both of \yad's hash table implementations perform well, but the
 optimized implementation is clearly faster.  This is not surprising as
 it issues fewer buffer manager requests and writes fewer log entries
 than the straightforward implementation.
@@ -1715,7 +1715,7 @@ than the straightforward implementation.
 
 %% %Note that page allocation is relatively infrequent since many entries
 %% %will typically fit on the same page.  In the case of our linear
-%% %hashtable, bucket reorganization ensures that the average occupancy of
+%% %hash table, bucket reorganization ensures that the average occupancy of
 %% %a bucket is less than one.  Buckets that have recently had entries
 %% %added to them will tend to have occupancies greater than or equal to
 %% %one.  As the average occupancy of these buckets drops over time, the
@@ -1728,7 +1728,7 @@ than the straightforward implementation.
 %% not presented here, we compared the implementation of the 
 %% page-oriented linked list to \yad's conventional linked-list 
 %% implementation, and found that the page-oriented list is faster 
-%% when used within the context of our hashtable implementation.
+%% when used within the context of our hash table implementation.
 
 %The NTA (Nested Top Action) version of \yad's hash table is very
 %cleanly implemented by making use of existing \yad data structures,
@@ -1736,7 +1736,7 @@ than the straightforward implementation.
 %We expect application developers to write code in this style.  
 
 %{\em @todo need to explain why page-oriented list is slower in the
-%second chart, but provides better hashtable performance.}
+%second chart, but provides better hash table performance.}
 
 \begin{figure}[t]
 \vspace{36pt}
@@ -1765,7 +1765,7 @@ significantly better than Berkeley DB's with both filesystems.}  Even
 when using the unoptimized hash table implementation, \yad
 scales very well with higher concurrency, delivering over 6000 
 %(ACID)
-transactions per second.\footnote{This test was run without lock managers, so the transactions obeyed the A,C, and D ACID properties.  Since each transaction performed exactly one hashtable write they obeyed I (isolation) in a trivial sense.} \yad had about double the throughput of Berkeley DB (up to 50 threads).
+transactions per second.\footnote{This test was run without lock managers, so the transactions obeyed the A,C, and D ACID properties.  Since each transaction performed exactly one hash table write they obeyed I (isolation) in a trivial sense.} \yad had about double the throughput of Berkeley DB (up to 50 threads).
 
 %\footnote{Although our current implementation does not provide the hooks that 
 %would be necessary to alter log scheduling policy, the logger 
@@ -1783,16 +1783,16 @@ similarly.
 
 In summary, there are a number of primitives that are necessary to
 implement custom, high-concurrency transactional data structures.  In
-order to implement and optimize the hashtable we used a number of
+order to implement and optimize the hash table we used a number of
 low-level APIs that are not supported by other systems.  We needed to
 customize page layouts to implement ArrayList.  The page-oriented list
 addresses and allocates data with respect to pages in order to
-preserve locality.  The hashtable implementation is built upon these
+preserve locality.  The hash table implementation is built upon these
 two data structures, and needs to generate custom log
 entries, define custom latching/locking semantics, and make use of, or
 even customize, nested top actions.
 
-The fact that our straightforward hashtable is competitive with Berkeley DB
+The fact that our straightforward hash table is competitive with Berkeley DB
 shows that simple \yad implementations of transactional data structures
 can compete with comparable, highly tuned, general-purpose
 implementations.  Similarly, this example shows that \yad's flexibility 
@@ -1804,7 +1804,7 @@ application developers to build custom
 transactional storage mechanisms when application performance is
 important.  Because we are advocating the use of 
 application-provided transactional storage primitives, we only use the 
-straightforward hashtable implementation during our other benchmarks.
+straightforward hash table implementation during our other benchmarks.
 
 
 We have shown that \yad's implementation provides primitives that perform 
@@ -2090,7 +2090,7 @@ whitespace, comments and boilerplate function registrations.  Although
 the reasoning required to ensure the correctness of this code is
 complex, the simplicity of the implementation is encouraging.
 
-In addition to the hashtable, which is required by \oasys's API, this
+In addition to the hash table, which is required by \oasys's API, this
 section made use of custom log formats and semantics to reduce log
 bandwidth and page file usage.  Berkeley DB supports a similar
 partial update mechanism, but it only
@@ -2297,7 +2297,7 @@ section to request reordering.
 %obvious benefit for this scheme, and there may be a way to use the
 %\oasys implementation to reduce page file utilization.  The request 
 %%reordering optimization made use of reusable operation implementations 
-%by borrowing ArrayList from the hashtable.  It cleanly separates wrapper 
+%by borrowing ArrayList from the hash table.  It cleanly separates wrapper 
 %functions from implementations and makes use of application-level log 
 %manipulation primitives to produce locality in workloads.  We believe 
 %these techniques can be generalized to other applications quite easily.
@@ -2305,7 +2305,7 @@ section to request reordering.
 %This section uses:
 %
 %\begin{enumerate}
-%\item{Reusability of operation implementations (borrows the hashtable's bucket list (the ArrayList) implementation to store objects}
+%\item{Reusability of operation implementations (borrows the hash table's bucket list (the ArrayList) implementation to store objects}
 %\item{Clean separation of logical and physiological operations provided by wrapper functions allows us to reorder requests}
 %\item{Addressability of data by page offset provides the information that is necessary to produce locality in workloads}
 %\item{The idea of the log as an application primitive, which can be generalized to other applications such as log entry merging, more advanced reordering primitives, network replication schemes, etc.} 
@@ -2387,713 +2387,713 @@ section to request reordering.
 %hits was a significant bottleneck, suggesting that \pin should be
 %optimized.  Therefore, we focus on the \pin function in this work.
 %
-%PL\section{Compilation Time Optimizations}
-%PL\label {PL}
-%PL
-%PL\yad's modular approach toward storage has a number of performance
-%PLimplications.  In this section, we focus on leveraging the simplicity
-%PLof \yad's API to implement language based whole-program optimizations.
-%PLIn particular, we describe how some of the optimizations that we
-%PLimplemented in Section~\ref{optimizedHT} can be automatically
-%PLimplemented and applied to any code that follows \yad's API, including
-%PLthe straightforward implementation of the hashtable and application
-%PLcode that directly accesses raw records.  Before explaining the
-%PLoptimization in detail, we describe the existing work that our
-%PLtechniques build upon.
-%PL
-%PL
-%PL\subsection{Existing Program Transformation and Verification Techniques}
-%PL
-%PL\label{prior}
-%PL
-%PL
-%PL%- lladd
-%PL
-%PL
-%PLAlthough it is not the focus of this section, static analysis techniques
-%PLthat verify client code's adherence to library APIs would be
-%PLparticularly valuable to \yad, since many of the guarantees provided
-%PLby its API involve exceptional situations such as hardware failure,
-%PLand code that misuses these APIs can cause data corruption bugs that
-%PLonly surface in strange situations.  
-%PL
-%PLQuite a bit of prior work exists
-%PLin the area of API usage checking, including SLAM,~\cite{slam} which is an
-%PLiterative tool that uses model checking and reachability analysis to
-%PLensure that all possible paths a piece of software may take conform to
-%PLcomplex APIs.  In this work, we make use of BLAST,~\cite{blast} a system that is
-%PLsimilar to SLAM, but caches intermediate results in order to
-%PLfacilitate regression testing.
-%PL
-%PLBecause \yad provides a wide range of functionality, it is important
-%PLthat its API be kept simple if the library is to be easy to use.
-%PLHowever, we have found that this makes it difficult to enable
-%PLoptimizations that require coordination between multiple layers of the
-%PLstorage system.  Calls from high level code to lower level APIs
-%PLtend to cause work to be repeated, since the lower level calls must
-%PLbe able to handle nearly arbitrary sequences of requests from higher
-%PLlevel code.  This prevents them from performing optimizations that are
-%PLmade possible by the high level code's structure or semantics.
-%PLSimilarly, by definition, high-level code shouldn't be bothered with
-%PLthe low-level details of the storage system's implementation.
-%PL
-%PLMemoization techniques are a common set of design patterns designed to
-%PLdeal with this issue.  Essentially, general purpose, deterministic
-%PLcode (say a data structure accessor) caches the results of some or all
-%PLof the calls made to it, and then checks its cache before recomputing
-%PLthe results.  Due to locality of application requests, this
-%PLoptimization technique can be surprisingly effective, even in cases
-%PLwhere only one result is cached.
-%PL
-%PLPerformance profiling of \yad reveals that a large fraction of the time it
-%PLtakes to handle read-only requests is spent servicing cache hits in
-%PLthe page file, despite attempts to optimize this portion of the
-%PLlibrary.  The structure of existing code written using \yad's APIs
-%PLsuggests that while repeated requests have good temporal locality,
-%PLthey also have very good locality with respect to their position on
-%PLthe stack.  This suggests that memoization will be much more effective
-%PLif applied at call sites instead of within the implementations of the
-%PLmemoized functions.
-%PL
-%PLRather than cluttering \yad's API with calls to support this directly
-%PLand encouraging application developers to produce convoluted client code, 
-%PLwe derive these optimizations automatically using a source code 
-%PLtransformation implemented in Cil.~\cite{cil}  We then use 
-%PLBlast to refine and verify the
-%PLsoundness of the optimizations.  Blast is run in an iterative process
-%PLthat was inspired by Delta Debugging,~\cite{deltaDebugging} and searches for a minimum set
-%PLof dynamic checks that result in a verifiably sound program
-%PLtransformation.  Build-interceptor~\cite{buildInterceptor} is used to capture preprocessed
-%PLversions of software that uses \yad.
-%PL
-%PLFortunately, these tools are flexible enough to also support a number
-%PLof other optimizations and are appropriate for reuse as we develop
-%PLtools to verify that client code obeys constraints that are necessary
-%PLfor program correctness.  We leave these additional optimizations and
-%PLverification tasks to future work.
-%PL
-%PL%- memoization
-%PL%- compiler optimization
-%PL%- cil
-%PL%- blast
-%PL
-%PL\begin{figure}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/regres.pdf}
-%PL\vspace{-30pt}
-%PL\caption{\sf\label{fig:regres} Overview of the Regres access method
-%PLoptimizer.  Results of calls to \yad's API are automatically cached in
-%PLthe stack frame of the caller, and accessed using dynamic checks.
-%PLThese dynamic checks are then optimistically removed in an iterative
-%PLprocess that verifies the soundness of the program transformation.}
-%PL\end{figure}
-%PL\subsection{The REGRES Data Store Optimizer}
-%PL
-%PLOptimization of \yad occurs in in a number of separate phases. (Figure~\ref{fig:regres})  First, the source code is
-%PLanalyzed, functions are transformed so that they take additional
-%PLarguments, and a set of sound optimizations are introduced.  The
-%PLsoundness of the optimizations in this step relies upon the
-%PLintroduction of dynamic checks.  At the end of this step, we have produced an
-%PLoptimized, compilable version of the original program.
-%PL
-%PLHowever, at this point the optimized program contains many unnecessary dynamic checks.
-%PL  This is problematic for two
-%PLreasons.  First, it makes it difficult to tell if the optimization
-%PLworked as expected without relying on profiling or code coverage tools
-%PLto determine how often the dynamic checks succeed at runtime.  This
-%PLmeans it is difficult to obtain feedback regarding the
-%PLquality of the code produced by the optimizer.  In turn, this makes it
-%PLdifficult for programmers to reason about the implications of changes
-%PLto client code, which makes further optimization difficult.  
-%PL
-%PLSecond,
-%PLthe dynamic checks have some cost at runtime, and we would like to
-%PLminimize this cost.  In the case of \yad, this seems to be negligible.
-%PLHowever, we would like to apply these optimization techniques to other
-%PLapplications in the future, so it is important that we minimize this
-%PLsource of overhead.  Therefore, \yad's optimizer iteratively refines 
-%PLthis version of the code, attempting to locate and remove unnecessary checks.
-%PL
-%PL\subsection{Cil and Dynamic Checks}
-%PL
-%PLThe first step of the optimization is based upon the observation that the return value of a
-%PLcall to \pin is completely determined by \pin's second argument, a {\em
-%PLpageid}.  Furthermore, \yad's calling conventions dictate that
-%PLpageid's are passed into functions either as a part of a {\em
-%PLrecordid} struct, or as an integer named ``page,'' so there is a
-%PLsimple programmatic way to generate a mapping between arguments to
-%PLexisting calls and automatically generated Page pointers.
-%PL
-%PLMost functions that take a pageid as an argument either directly or
-%PLindirectly call \pin on the corresponding page.  Therefore, we add an
-%PLargument, {\em\PP} to any functions that are passed a pageid but are
-%PLnot passed a Page pointer.  At runtime, this argument effectively
-%PLprovides access to one memoized result per call site of the
-%PLfunction.
-%PL
-%PLIn the simplest version of the transformation, when the function calls
-%PL\pin on the page, it first checks to see if \PP points to the
-%PLappropriate page.\footnote{This is done by reading the ``id'' field of
-%PLthe Page struct referenced by the pointer.  We arrange for these
-%PLpointers to either point to a valid Page struct, or to be NULL.}  If
-%PLso, it uses \PP instead of calling \pin.  Otherwise, it proceeds as
-%PLnormal.  If it skips the call to \pin, it remembers that it should
-%PLalso skip the corresponding call to \unpin.  For concreteness, this would transform this code: 
-%PL\begin{verbatim} 
-%PL
-%PLfoo(int xid, int page) {
-%PL   Page * p = loadPage(xid, page);
-%PL   ...
-%PL}
-%PL\end{verbatim}
-%PLinto code similar to this:
-%PL\begin{verbatim}
-%PLfoo_p(int xid, int page, Page * _p) { 
-%PL   Page * p = 0;
-%PL   int _unpin_p = 0;
-%PL   if(!p || p->id != page) { 
-%PL      if(_unpin_p) { 
-%PL         releasePage(p);
-%PL      } 
-%PL      if(_p && _p->id == id) {
-%PL         p = _p; _unpin_p = 0;
-%PL      } else { 
-%PL         p = loadPage(xid, page);
-%PL         _unpin_p = 1;
-%PL      }
-%PL   }
-%PL   checkLoaded(p, page);
-%PL   ...
-%PL}
-%PL\end{verbatim}
-%PLNote that foo's name has changed.  We will refer to this version of
-%PLfoo as the \fP version in the following sections.  Also, note the
-%PLredundant checks that do not make use of the fact that p is
-%PLinitialized to NULL.  Such checks are necessary to ensure the
-%PLsoundness of some of the optimizations described below.  The call to
-%PL\checkpage does nothing at runtime;  Blast will 
-%PLstatically verify that its arguments are always consistent, verifying 
-%PLthat p points to the correct page wherever the original program 
-%PLwould have called \pin.
-%PL
-%PLOf course, we cannot expect the program to behave correctly unless we
-%PLupdate the call sites of the transformed functions.  When updating
-%PLcall sites, we distinguish between cases where the caller already has
-%PLa page pointer handy, and cases where the caller has no page pointer
-%PLin its stack frame.  In the case where a page pointer already exists,
-%PLwe simply pass the pointer to the child function.
-%PL
-%PLIf the caller has no page pointer on its stack then the situation is more
-%PLcomplicated.  We could pass the address of a page pointer into the child
-%PLfunction, allowing it to overwrite the caller's page pointer with a
-%PLmore ``interesting'' one.  However, it is unclear how such an
-%PL``interesting'' pointer would be defined, especially since this
-%PLpointer would be shared by multiple child functions.  Also, we would need
-%PLto create a second clone of each function so that a pointer to a
-%PLpointer could be passed in.  
-%PL
-%PLInstead, we opt for a simpler solution, and fall back on the heuristic
-%PLthat the pageid passed into the child is probably a reasonable choice.
-%PLWe simply add a Page pointer to the caller's stack frame, and then
-%PLcall \pin to initialize it to the pageid that is being passed into the
-%PLchild function.  In order to handle loops, we check that we are
-%PLpassing in the appropriate Page pointer at each call to a child
-%PLfunction, and call \pin if necessary.  The
-%PLtransformation also arranges for \unpin to be called as appropriate.
-%PL
-%PLIn results not presented here, we found that this simple
-%PLtransformation performed very well on the ``raw read'' benchmark
-%PLpresented in Section~\ref{codePerformance} but that it was not able to
-%PLsignificantly improve performance for the hash table workload.  It
-%PLturns out that this transformation is not very effective on functions
-%PLthat take a recordid as an argument, but pass a different recordid
-%PLinto child functions, since they pass \PP into their children
-%PLfunctions, but \PP is probably associated with with the wrong pageid.
-%PLTherefore, each child must call \pin on the appropriate page. 
-%PL
-%PLUnfortunately, this scenario is relatively common, especially in
-%PLimplementations of transactional structures that involve levels of
-%PLindirection, such as trees or hash tables.  A simple solution to this
-%PLproblem is to add a new Page pointer to functions that take \PP as an
-%PLargument, and pass a pageid to child functions.  Then \pin is called
-%PLto preload the page, just as it would have been if the \PP argument
-%PLdid not exist, except that \PP is reused when appropriate.
-%PL
-%PLOne final transformation is applied in anticipation of the removal of
-%PLdynamic checks described in the next section.  A copy is made of each
-%PLfunction that was modified to take a \PP argument.  We call the
-%PLoriginal modified version the ``\fP'' version of the function, and the
-%PLnew copy the ``\fQ'' version.  The \fQ variant will assume that its callers
-%PLpass in a value of \PP that matches the pageid that is passed in, while the \fP version makes no such assumption.
-%PLAt this point during optimization, the \fP and \fQ variants are
-%PLidentical; the only difference is in the semantics of the API they
-%PLexpose to their callers.  The next phase of optimization will attempt 
-%PLto replace \fP calls to \fQ calls as it removes unnecessary dynamic
-%PLchecks.
-%PL
-%PL\subsection{Instrumenting for Blast}
-%PL\label{instrumenting}
-%PLBlast is a static analysis tool that checks code for conformance to a
-%PLwell defined API.  In order to use it to verify the soundness of our
-%PLoptimizations, we express the optimizations' soundness in terms of
-%PLsimple invariants, and then encode these invariants in the transformed
-%PLsource as calls to API functions.  We then use Blast to check that
-%PLthese API calls are safe.  If it is able to verify the safety of the
-%PLcalls, then we know that the optimization is sound.  
-%PL
-%PLIdeally, this would mean that we could simply create a new,
-%PLdummy function, \checkpage, and insert a call to \checkpage
-%PLafter each dynamic check introduced above.  We could give the
-%PLfollowing spec file to Blast:
-%PL
-%PL\begin{verbatim}
-%PLevent { 
-%PL  pattern { $1 = loadPage($2); }
-%PL  action { $1->id = $2; }
-%PL}
-%PLevent { 
-%PL  pattern { checkLoaded($1, $2); }  
-%PL  guard { $1->id == $2 }
-%PL}
-%PL\end{verbatim}
-%PL
-%PLThen, we would have Blast verify that each use of \checkpage is safe.
-%PLWe could then iteratively remove dynamic checks, and have Blast
-%PLre-verify the file, as we describe in Section~\ref{delta}.
-%PLUnfortunately, this straightforward approach places too much burden on
-%PLBlast, especially since we invoke it as part of a larger iterative
-%PLprocess.  Therefore, we had to perform a number of simplifications
-%PLbefore proceeding.
-%PL
-%PL\subsubsection{Pointer Aliasing}
-%PL
-%PLThe guard in the original spec file dereferences the page pointer
-%PLpassed into \checkpage, which means that Blast must consider pointer
-%PLaliasing before verifying that \checkpage is called correctly.
-%PLFurthermore, the original implementation of \pin is non-trivial, and
-%PLultimately allows aliasing between pointers to different pages unless
-%PL\unpin is called correctly.  Also, Blast's pointer analysis is
-%PLflow-insensitive.  We found that each of these factors was sufficient
-%PLto prevent verification from succeeding even on seemingly ``trivial''
-%PLfunctions.  
-%PL
-%PLFortunately, according to \yad's API, the Page structure's id field is
-%PLnever written to outside of \pin and \unpin, and will never be written
-%PLto if a function has pinned a page.  Because \pin and \unpin are
-%PLdesigned to behave correctly regardless of the order
-%PLin which they are called,\footnote{\unpin could misbehave if called on
-%PLan invalid pointer, but we do not remove dynamic checks that surround
-%PL\unpin.} we are willing to assume these invariants hold.  Therefore,
-%PLin the simplified source code that we give to Blast, we redefine
-%PL\pin as follows:
-%PL
-%PL\begin{verbatim}
-%PLPage * loadPage(int pageid) {
-%PL  return pageid;
-%PL}
-%PL\end{verbatim}
-%PLSimilarly, the spec file is changed to this:
-%PL\begin{verbatim}
-%PLevent { 
-%PL  pattern { $1 = loadPage($2); }
-%PL  action { $1 = $2; }
-%PL}
-%PLevent { 
-%PL  pattern { checkLoaded($1, $2); }  
-%PL  guard { $1 == $2 }
-%PL}
-%PL\end{verbatim}
-%PL
-%PLNote that these changes completely bypass the page file, and produce invalid Page pointers.
-%PLWe are able to perform this transformation because we will never
-%PLactually compile this version of the code, and because (given our
-%PLassumptions) it does not affect the soundness of Blast's analysis.  We
-%PLwill use similar tricks throughout the rest of this section.
-%PL
-%PL\subsubsection{Call Graph Simplification}
-%PL
-%PLThe next step in preparing the code for verification by Blast is to
-%PLreduce the amount of code that must be considered per optimization task.
-%PLWe achieved this by replacing each call to a \fP or \fQ function with
-%PLstatements that non-deterministically assign a value to the variables
-%PLthat could be affected by the original function call.  In the case of
-%PLcalls to \fQ variants, we also add a \checkpage call to make sure that
-%PLthe function is properly invoked.\footnote{Initially, no calls to \fQ
-%PLvariants exist.  Instead, they are added as we iteratively run Blast.}
-%PL
-%PL\subsubsection{Control Flow Graph Simplification}
-%PL\label{cfgs}
-%PL
-%PL\begin{figure*}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/rawReadGraph.pdf}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/hashTableReadGraph.pdf}
-%PL%\vspace{-30pt}
-%PL\caption{\sf\label{fig:read}The optimizer significantly speeds up
-%PLread only workloads.  As long as the data being accessed fits in page
-%PLcache, these workloads are CPU bound.  Therefore, although we report
-%PLCPU time here, these numbers are indicative of overall
-%PLperformance. Figure~\ref{fig:write} explains why CPU time (and not
-%PLwall-clock time) is reported. }
-%PL
-%PL\end{figure*}
-%PL
-%PL
-%PLWe found that Blast was usually able to process verification requests
-%PLover the simplified call-graph, but certain requests took tens of
-%PLminutes to complete or simply failed.  Upon inspecting the translated code, we
-%PLnoticed that the following call pattern was extremely common:
-%PL
-%PL\begin{verbatim}
-%PLif(!p) { 
-%PL  ...
-%PL  p = loadPage(id);
-%PL  ...
-%PL} else if(p'->id == id) {
-%PL  ...
-%PL  p = p';
-%PL  ...
-%PL} else {
-%PL  p = loadPage(id);
-%PL}
-%PLsome_p_variant(p, id);
-%PL\end{verbatim}
-%PL
-%PLBlocks such as this are created when the optimizer decides to
-%PLspeculatively load a page before passing it into a child function.
-%PLThey have two interesting properties.  First, all possible evaluations
-%PLof the large if statement ensure that p->id == id, implying that the
-%PL\fP variant at the bottom of the block can be automatically replaced
-%PLwith a call to a \fQ variant.  Therefore, we can replace all such calls
-%PLbefore passing the program to the iterative Blast evaluator, reducing
-%PLthe number of sites that we consider when replacing \fP variants with
-%PL\fQ variants.
-%PL
-%PLSecond, since the block is the result of the optimizer's decision to
-%PLspeculatively load a page for a child function, it is probably not
-%PLredundant.\footnote{There are a number of scenarios where this is not
-%PLthe case, particularly within the bodies of \fQ variants of functions.
-%PLWe leave the removal of such dynamic checks to future work.}
-%PLTherefore, we collapse the conditional into into a single call to
-%PL\pin, simplifying the control flow graph of the optimized code
-%PLsignificantly.  
-%PL
-%PLThis simplification, when combined with the ones described above,
-%PLreduces the vast majority of Blast runs to under fifteen seconds, with
-%PLa small number of calls taking up to one minute.  Due to the call graph
-%PLsimplification described above, we are able to optimize function calls
-%PLindependently.  This allows the iterative algorithm described below to
-%PLbe feasible, reducing the time to optimize the entire library using
-%PLa naive, linear search to less than an hour.
-%PL
-%PL\subsection{Removing Dynamic Checks}
-%PL\label{delta}
-%PLThe goal of this phase in the transformation is to remove a subset of
-%PLthe dynamic checks added that maximizes some metric.  One possible
-%PLmetric would be execution time.  In this metric, each dynamic check
-%PLwould need to be assigned some weight proportional to the number of
-%PLtimes it is checked during an execution of the program.  This is
-%PLnontrivial because the number of times a dynamic check will be
-%PLchecked is dependent on the input of the program, and may vary from run
-%PLto run. 
-%PL
-%PLA second metric is merely the number of dynamic checks.  This is
-%PLequivalent to assigning each dynamic check equal weight.  In this
-%PLformulation, one would simply want to minimize the set of dynamic checks
-%PLthat remain in the program.  This is similar to the goal of a phase in
-%PLDelta Debugging \cite{deltaDebugging}, where they are looking for a
-%PLminimal set of deltas to transform the passing program to the failing
-%PLprogram.  We therefore initially tried to design an analogous
-%PLbinary-search-like algorithm:
-%PL
-%PL\begin{verbatim}
-%PLdeltaSearch(P, dcList) {
-%PL   remove all dynamic checks in dcList from P
-%PL   if P is not sound
-%PL      deltaSearch(first half of dcList)
-%PL      deltaSearch(second half of dcList)
-%PL}
-%PL\end{verbatim}
-%PL
+%PL \section{Compilation Time Optimizations}
+%PL \label {PL}
 %PL 
-%PL%The goal of this phase in the transformation is to reduce the overall
-%PL%execution time of the source program by removing the dynamic checks
-%PL%introduced earlier.  From this formulation of the problem, it is clear
-%PL%that not all dynamic checks are created equal; some dynamic checks are
-%PL%located in code points that are much more frequently executed than
-%PL%others.  Ideally, we would be able to assign a weight to each dynamic
-%PL%check proportional to some measure of its run time cost, and then try to
-%PL%remove a subset of all dynamic checks that minimizes the weight of the
-%PL%dynamic checks that are remain.  However, we decided that for this
-%PL%initial implementation, it would be sufficient to assign each of the
-%PL%dynamic checks equal weight, greatly simplifying the search.  In
-%PL%addition to assigning each dynamic check the same weight, we made the
-%PL%assumption that dynamic checks are independent of each other.  That is,
-%PL%removing one dynamic check will not affect whether or not a different
-%PL%dynamic check can be removed soundly.  
-%PL
-%PL
-%PLIn order to tell whether a given set of dynamic checks can be removed
-%PLsoundly, we turn to Blast.  First, we ask Blast to verify that the code
-%PLis sound with all the dynamic checks in.  After this, we iteratively
-%PLsearch by changing the set of removed checks and running the resulting
-%PLcode through Blast.  As an example, consider the following naive search
-%PLalgorithm used for the numbers cited in this paper \footnote{With the
-%PLassumption that all dynamic checks are independent and that all dynamic
-%PLchecks have equal weight, this naive search finds the optimal
-%PLsolution.}:
-%PL
-%PL\begin{verbatim}
-%PLnaiveSearch(P, dcList)
-%PLfor each dynamic check d in dcList
-%PL    remove d from P
-%PL    run Blast on P
-%PL    if Blast cannot verify P as sound
-%PL        restore d in P
-%PL\end{verbatim}
-%PL
-%PLAn important feature of Blast which allows iterative searches to
-%PLbe tractable is its regression mode.  In its regression mode, Blast is able
-%PLto cache results from its alias analysis and calls to the underlying
-%PLtheorem prover for reuse in consecutive runs.
-%PL
-%PLIn order to simplify theorem proving for Blast, we treated calls to
-%PLsubroutines within the program as black boxes.  This allows Blast to
-%PLassume that the subroutine returns a nondeterministic value
-%PL(maintaining correctness), while cutting down on the execution time of
-%PLBlast by not allowing it to spend time analyzing the possible return
-%PLvalues of the call.  This, along with the simplification of the call
-%PLgraph allowed us to treat each function declaration independently.  This
-%PLled us to the following general algorithm for removing dynamic checks:
-%PL
-%PL\begin{verbatim}
-%PLsearch(P, dcList, searchAlgo)
-%PLfor each function declaration fd in P
-%PL    // remove checks in fn
-%PL    call searchAlgo on fn 
-%PL\end{verbatim}
-%PL
-%PLThis is nice because each function declaration that we encountered has
-%PLless than 10 dynamic checks, opening up the possibility for more
-%PLasymptotically complex search algorithms.  Also, due to the treatment of
-%PLsubroutine calls as a black box, the order in which we examine the
-%PLfunction declarations is inconsequential.
-%PL
-%PLOne subtlety we encountered deals with the declaration for functions in the
-%PLclass \fQ.  As mentioned above, the body of a function in \fQ is exactly
-%PLthe same as its counterpart in \fP.  However, due to application
-%PLsemantics, we know that the function in \fQ will only be called with a
-%PLmatching \_p and pageid.  In order for Blast to take advantage of this,
-%PLwe had to create wrapper functions for each function $f$ in \fQ.  The
-%PLwrapper function has the same signature as $f$, but the body explicitly
-%PLsets both the \_p and the pageid variable to the same constant value,
-%PLand then passes its modified argument list to $f$.  In our LLADD case
-%PLstudy, we found that Blast was able to allow us to remove over 50
-%PLdynamic checks from functions in \fQ, while it was not able to verify
-%PLthe soundness of the removals of any dynamic checks in \fP.
-%PL
-%PL\begin{figure*}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/rawWriteGraph.pdf}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/hashTableWriteGraph.pdf}
-%PL%\vspace{-30pt}
-%PL\caption{\sf\label{fig:write}CPU times for write-only work loads.
-%PLThese workloads invoke the logging subsystem, and therefore spend a
-%PLsmaller fraction of their time calling \pin and \unpin.  Furthermore,
-%PLthese workloads are disk bound, so wall clock times did not show any
-%PLmeasurable improvement in performance.  Therefore, CPU times are reported
-%PLhere.  To facilitate comparison between the two workloads, CPU time is
-%PLalso presented in Figure~\ref{fig:read}.}
-%PL
-%PL\end{figure*}
-%PL
-%PL
-%PL%\subsection{Evaluation}
-%PL%
-%PL%In this section, we focus on two aspects of the optimization's
-%PL%behavior.  First, we measure the performance of the transformed code
-%PL%(before the dynamic checks have been removed).  Second, we measure the
-%PL%number of checks that Blast is able to remove from the code.  This
-%PL%second metric measures the quality of feedback that the optimization
-%PL%provides for the user.
-%PL
-%PL\subsection{Performance of Optimized Code}
-%PL\label{codePerformance}
-%PL
-%PLIn order to evaluate the performance of the optimized code, we ran
-%PLoptimized and unoptimized benchmarking software on identical
-%PLworkloads.  The current version of our optimizer performs a
-%PLwhole-program analysis, and produces a single C source file from Cil's
-%PLinternal representation.  This presents a number of problems for
-%PLperformance evaluations.  First, Cil's transformation could change the
-%PLperformance characteristics of the code (for the better or worse).
-%PLSecond, since gcc is invoked on a single compilation unit, it has
-%PLmore opportunities to perform optimizations involving code that
-%PLoriginally spanned multiple compilation units.  To negate these
-%PLeffects, the unoptimized versions of the benchmarks were run through
-%PLCil without applying any \yad specific optimizations.  Both versions
-%PLof the code were then compiled using the command ``gcc -O3 input.c
-%PL-lpthread -lm -lcheck''.  For pragmatic reasons, the numbers presented
-%PLin this section reflect the code with all dynamic checks in
-%PLplace.\footnote{As mentioned in Section~\ref{instrumenting}, we were
-%PLnot able to run Blast directly on an executable version of the code.
-%PLWe have not yet produced the (one to one) mapping between call sites
-%PLin the version processed by Blast and the call sites in the executable version.}
-%PL
-%PLRead only operations do not generate any log entries under \yad, and
-%PLlargely consist of calling \pin, \unpin and memcpy(), and using
-%PLpointer arithmetic to unmarshall information stored in the page file.
-%PLTherefore, we expected \pin and \unpin to account for a significant
-%PLfraction of the runtime.  Figure~\ref{fig:read} confirms that this is
-%PLthe case.
-%PL
-%PLThe raw read workload uses low level $(page, slot, size)$ recordid
-%PLtriples to perform a linear scan over the page file.  This is
-%PLbasically a ``best case'' scenario for the optimizer.  The top level
-%PLloop contains recordids that can be coupled to page pointers, and
-%PLcurrent recordids are good predictors of pages that will be associated
-%PLwith future recordids.  Here we see that the runtime of the optimized
-%PLversion is less than half that of the original code.
-%PL
-%PLThe hash table workload accesses hash table keys in sorted order,
-%PLproducing random accesses to the page file.  Intuitively, we should not
-%PLexpect the optimization to improve matters at all in this case.
-%PLHowever, we see that the optimized version completes in roughly 77\%
-%PLof the time the original version takes.  The reason for this
-%PLimprovement is that the hash table implementation must access a small
-%PLamount of metadata in order to service each read.  The metadata
-%PLconsists of a header field, which describes the hash table and an
-%PLindex page that describes the layout of the hash table's bucket list.
-%PLThe optimizer is able to take advantage of this, improving the
-%PLread only hash table workload's performance.
-%PL
-%PLUnfortunately, while the optimizer also improves the CPU utilization of
-%PLwrite-only workloads, these workloads are I/O bound, so the
-%PLimprovement in CPU utilization does not cause a significant improvement
-%PLin execution time.  However, the benchmark workloads do not contain
-%PLany application logic.  Therefore, CPU intensive applications built
-%PLon top of \yad may become CPU bound even if they are write-intensive.  Also,
-%PLmulti-threaded transactional applications are able to amortize I/O
-%PLcosts, so optimizations in this case are not wholly without merit.
-%PL
-%PLWe can see that the reduction in CPU time in the write-only case is
-%PLless than the reduction in the read-only case.  This is probably due
-%PLto the CPU overhead of the logging API, and other overhead associated
-%PLwith performing logical operations in \yad. 
-%PL
-%PL
-%PL
-%PL\subsection{Number of dynamic checks removed by Blast}
-%PLThe transformation initially added 776 dynamic checks to our LLADD implementation.  As mentioned earlier, 238 of these checks are explicitly ignored during static checking, leaving us with 538 checks.  Manual inspection allowed us to create a preprocessing phase that removed another 238 dynamic checks as explained in Section~\ref{cfgs}, leaving us with 300 checks.  At this point, a majority of the functions (57) that have any dynamic checks in them have exactly one dynamic check in them.  Running our naive search algorithm on the code removes another 121 checks, 38 of them from the 57 functions with exactly one dynamic check in them, bringing us to a grand total of 179 checks.
-%PL
-%PL\begin{figure*}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/checksRemaining.pdf}
-%PL\includegraphics[%
-%PL   width=1\columnwidth]{../optimizer/checksRemoved.pdf}
-%PL\caption{\sf\label{fig:static}Effectiveness of naive search at
-%PLremoving dynamic checks from the optimized code.  These figures include the
-%PLremoval of dynamic checks and changes of calls from \fP to \fQ
-%PLvariants.  These figures only include changes made during iterative
-%PLruns of Blast and only reflect checks that were actually
-%PLconsidered for removal.  The ignored changes and checks consist of
-%PL238 calls that were changed from \fP to \fQ variants during
-%PLpreprocessing and another 238 dynamic checks that were explicitly
-%PLignored during static checking.  Also, the system currently does not
-%PLconsider dynamic checks that protect \unpin calls.}
-%PL\end{figure*}
-%PL
-%PL\subsection{Generalization to Other Systems}
-%PLAlthough we did not implement the optimizations presented in
-%PLthis paper with a general purpose optimization framework in mind, we believe that we
-%PLhave identified a number of important properties that allow this class
-%PLof optimization to be applied in other situations.  Ideally, we would like to encode
-%PLthese properties in a higher level language, allowing this class of 
-%PLoptimization to be implemented as a simple description of an APIs properties.
-%PL
-%PLIn particular, optimizations geared toward memoizing a function require
-%PL(1) a tight coupling between function parameters and return values,
-%PL(2) immutability of the memoized result, and (3) the ability to distinguish
-%PLbetween a small set of variables that may be passed into the function
-%PLand those that may not.
-%PL
-%PLThe first point is an obvious prerequisite of any memoization
-%PLoptimization that relies upon function arguments to retrieve cached
-%PLresults.  
-%PL
-%PLThe second point is a bit more subtle, as it could be
-%PLachieved in at least two ways.  In our case, the ``interesting'' part of the
-%PLmemoized result is the id field.  Even
-%PLthough this field is not immutable over an entire program run, it is
-%PLguaranteed to be immutable until \unpin is called.  If the return
-%PLvalue truly is immutable over an entire program run, then the
-%PLcomplexities caused by \unpin can be avoided.
-%PL
-%PLFinally, we used calling conventions and naming conventions to
-%PLdistinguish between {\em pageid}'s and other types of variables.  The
-%PLpageid type does not explicitly exist within \yad's API.  Instead, we
-%PLused heuristics to infer its type.  In other circumstances the API
-%PLmight provide rich enough type information to avoid inference
-%PLentirely, or a type inference system such as Cqual~\cite{cqual} might be more
-%PLappropriate.
-%PL
-%PLIt may be possible to generalize our system so that it can handle all
-%PLof these scenarios.  Such a generalized system seems to be sufficient
-%PLto support general purpose, high-level definitions of automated
-%PLmemoization transformations.
-%PL
-%PLAlong these lines, we have mentioned a few other potential approaches
-%PLtoward storing memoized results throughout this section.  A potential 
-%PLapproach that would complement our method well 
-%PLmaintains static, per function (or per call-site) page pointers.  The
-%PLpage pointers could store memoized results across calls to the
-%PLfunction, and this persistent information could be used in addition to to
-%PLthe \PP parameter.
-%PL
-%PLThe difficulty in implementing this scheme arises because it becomes
-%PLunclear how and when \unpin should be called, since static pointers
-%PLcould persist indefinitely.  In systems that
-%PLmemoize idempotent return values, this would not be an issue, since
-%PLthese systems would not contain a call that is analogous to \unpin.
-%PL
-%PLIn \yad's case, it should be possible to ``partially release'' a page by
-%PLcalling \unpin, but keeping a copy of the page pointer.  Before making
-%PLan expensive call to \pin the function could speculatively latch
-%PLwhatever the partially released pointer points
-%PLto.\footnote{\yad already guarantees that it points to a valid Page
-%PLstruct} If the pointer still points to the desired page, this
-%PLscheme would avoid an expensive hash table lookup.
-%PL
-%PL% - improve quality of transformation
-%PL% - add optimizations for other calls (Tread)
-%PL% - allow for higher level definitions of this type of transformation (outline high-level principles here)
-%PL% - look at other applications for the technique
-%PL% - provide mechanism to transform / optimize library once, and then use information from library transformation while transforming client code.
-%PL\subsection{Conclusion}
-%PL
-%PLWe have designed and implemented a C source to source translation that
-%PLimplements high-level, application specific optimizations.  Such
-%PLsystems are currently uncommon, but we argue that modern programming
-%PLpractices greatly increase their importance.  As far as
-%PLwe know, source level, whole program optimization techniques have not
-%PLbeen applied to transactional storage systems in the past, as these
-%PLsystems tend to provide high-level APIs that are focused on program 
-%PLcorrectness and library generality rather than performance.
+%PL \yad's modular approach toward storage has a number of performance
+%PL implications.  In this section, we focus on leveraging the simplicity
+%PL of \yad's API to implement language based whole-program optimizations.
+%PL In particular, we describe how some of the optimizations that we
+%PL implemented in Section~\ref{optimizedHT} can be automatically
+%PL implemented and applied to any code that follows \yad's API, including
+%PL the straightforward implementation of the hash table and application
+%PL code that directly accesses raw records.  Before explaining the
+%PL optimization in detail, we describe the existing work that our
+%PL techniques build upon.
 %PL 
-%PLWe are unaware of any other
-%PLsystems that take our approach toward program optimization and
-%PLbelieve that our combination of aggressive optimization techniques
-%PLand conservative runtime checks is particularly valuable.  The use of
-%PLa general purpose tool to reduce the overhead associated with runtime
-%PLchecks can provide valuable feedback to programmers and reduces the 
-%PLcomputational overhead associated with these techniques, while making 
-%PLit easier to implement a wide variety of application-specific optimizations.
-%PLFinally, we believe
-%PLthat by moving the implementation of complex optimizations
-%PLto compile time, our system improves the maintainability of software
-%PLbuilt with \yad without sacrificing performance.
+%PL 
+%PL \subsection{Existing Program Transformation and Verification Techniques}
+%PL 
+%PL \label{prior}
+%PL 
+%PL 
+%PL %- LLADD
+%PL 
+%PL 
+%PL Although it is not the focus of this section, static analysis techniques
+%PL that verify client code's adherence to library APIs would be
+%PL particularly valuable to \yad, since many of the guarantees provided
+%PL by its API involve exceptional situations such as hardware failure,
+%PL and code that misuses these APIs can cause data corruption bugs that
+%PL only surface in strange situations.  
+%PL 
+%PL Quite a bit of prior work exists
+%PL in the area of API usage checking, including SLAM,~\cite{slam} which is an
+%PL iterative tool that uses model checking and reachability analysis to
+%PL ensure that all possible paths a piece of software may take conform to
+%PL complex APIs.  In this work, we make use of BLAST,~\cite{blast} a system that is
+%PL similar to SLAM, but caches intermediate results in order to
+%PL facilitate regression testing.
+%PL 
+%PL Because \yad provides a wide range of functionality, it is important
+%PL that its API be kept simple if the library is to be easy to use.
+%PL However, we have found that this makes it difficult to enable
+%PL optimizations that require coordination between multiple layers of the
+%PL storage system.  Calls from high level code to lower level APIs
+%PL tend to cause work to be repeated, since the lower level calls must
+%PL be able to handle nearly arbitrary sequences of requests from higher
+%PL level code.  This prevents them from performing optimizations that are
+%PL made possible by the high level code's structure or semantics.
+%PL Similarly, by definition, high-level code shouldn't be bothered with
+%PL the low-level details of the storage system's implementation.
+%PL 
+%PL Memoization techniques are a common set of design patterns designed to
+%PL deal with this issue.  Essentially, general purpose, deterministic
+%PL code (say a data structure accessor) caches the results of some or all
+%PL of the calls made to it, and then checks its cache before recomputing
+%PL the results.  Due to locality of application requests, this
+%PL optimization technique can be surprisingly effective, even in cases
+%PL where only one result is cached.
+%PL 
+%PL Performance profiling of \yad reveals that a large fraction of the time it
+%PL takes to handle read-only requests is spent servicing cache hits in
+%PL the page file, despite attempts to optimize this portion of the
+%PL library.  The structure of existing code written using \yad's APIs
+%PL suggests that while repeated requests have good temporal locality,
+%PL they also have very good locality with respect to their position on
+%PL the stack.  This suggests that memoization will be much more effective
+%PL if applied at call sites instead of within the implementations of the
+%PL memoized functions.
+%PL 
+%PL Rather than cluttering \yad's API with calls to support this directly
+%PL and encouraging application developers to produce convoluted client code, 
+%PL we derive these optimizations automatically using a source code 
+%PL transformation implemented in Cil.~\cite{cil}  We then use 
+%PL Blast to refine and verify the
+%PL soundness of the optimizations.  Blast is run in an iterative process
+%PL that was inspired by Delta Debugging,~\cite{deltaDebugging} and searches for a minimum set
+%PL of dynamic checks that result in a verifiably sound program
+%PL transformation.  Build-interceptor~\cite{buildInterceptor} is used to capture preprocessed
+%PL versions of software that uses \yad.
+%PL 
+%PL Fortunately, these tools are flexible enough to also support a number
+%PL of other optimizations and are appropriate for reuse as we develop
+%PL tools to verify that client code obeys constraints that are necessary
+%PL for program correctness.  We leave these additional optimizations and
+%PL verification tasks to future work.
+%PL 
+%PL %- memoization
+%PL %- compiler optimization
+%PL %- Cil
+%PL %- blast
+%PL 
+%PL \begin{figure}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/regres.pdf}
+%PL \vspace{-30pt}
+%PL \caption{\sf\label{fig:regres} Overview of the Regres access method
+%PL optimizer.  Results of calls to \yad's API are automatically cached in
+%PL the stack frame of the caller, and accessed using dynamic checks.
+%PL These dynamic checks are then optimistically removed in an iterative
+%PL process that verifies the soundness of the program transformation.}
+%PL \end{figure}
+%PL \subsection{The REGRES Data Store Optimizer}
+%PL 
+%PL Optimization of \yad occurs in in a number of separate phases. (Figure~\ref{fig:regres})  First, the source code is
+%PL analyzed, functions are transformed so that they take additional
+%PL arguments, and a set of sound optimizations are introduced.  The
+%PL soundness of the optimizations in this step relies upon the
+%PL introduction of dynamic checks.  At the end of this step, we have produced an
+%PL optimized, compilable version of the original program.
+%PL 
+%PL However, at this point the optimized program contains many unnecessary dynamic checks.
+%PL   This is problematic for two
+%PL reasons.  First, it makes it difficult to tell if the optimization
+%PL worked as expected without relying on profiling or code coverage tools
+%PL to determine how often the dynamic checks succeed at runtime.  This
+%PL means it is difficult to obtain feedback regarding the
+%PL quality of the code produced by the optimizer.  In turn, this makes it
+%PL difficult for programmers to reason about the implications of changes
+%PL to client code, which makes further optimization difficult.  
+%PL 
+%PL Second,
+%PL the dynamic checks have some cost at runtime, and we would like to
+%PL minimize this cost.  In the case of \yad, this seems to be negligible.
+%PL However, we would like to apply these optimization techniques to other
+%PL applications in the future, so it is important that we minimize this
+%PL source of overhead.  Therefore, \yad's optimizer iteratively refines 
+%PL this version of the code, attempting to locate and remove unnecessary checks.
+%PL 
+%PL \subsection{Cil and Dynamic Checks}
+%PL 
+%PL The first step of the optimization is based upon the observation that the return value of a
+%PL call to \pin is completely determined by \pin's second argument, a {\em
+%PL pageid}.  Furthermore, \yad's calling conventions dictate that
+%PL pageid's are passed into functions either as a part of a {\em
+%PL recordid} struct, or as an integer named ``page,'' so there is a
+%PL simple programmatic way to generate a mapping between arguments to
+%PL existing calls and automatically generated Page pointers.
+%PL 
+%PL Most functions that take a pageid as an argument either directly or
+%PL indirectly call \pin on the corresponding page.  Therefore, we add an
+%PL argument, {\em\PP} to any functions that are passed a pageid but are
+%PL not passed a Page pointer.  At runtime, this argument effectively
+%PL provides access to one memoized result per call site of the
+%PL function.
+%PL 
+%PL In the simplest version of the transformation, when the function calls
+%PL \pin on the page, it first checks to see if \PP points to the
+%PL appropriate page.\footnote{This is done by reading the ``id'' field of
+%PL the Page struct referenced by the pointer.  We arrange for these
+%PL pointers to either point to a valid Page struct, or to be NULL.}  If
+%PL so, it uses \PP instead of calling \pin.  Otherwise, it proceeds as
+%PL normal.  If it skips the call to \pin, it remembers that it should
+%PL also skip the corresponding call to \unpin.  For concreteness, this would transform this code: 
+%PL \begin{verbatim} 
+%PL 
+%PL foo(int xid, int page) {
+%PL    Page * p = loadPage(xid, page);
+%PL    ...
+%PL }
+%PL \end{verbatim}
+%PL into code similar to this:
+%PL \begin{verbatim}
+%PL foo_p(int xid, int page, Page * _p) { 
+%PL    Page * p = 0;
+%PL    int _unpin_p = 0;
+%PL    if(!p || p->id != page) { 
+%PL       if(_unpin_p) { 
+%PL          releasePage(p);
+%PL       } 
+%PL       if(_p && _p->id == id) {
+%PL          p = _p; _unpin_p = 0;
+%PL       } else { 
+%PL          p = loadPage(xid, page);
+%PL          _unpin_p = 1;
+%PL       }
+%PL    }
+%PL    checkLoaded(p, page);
+%PL    ...
+%PL }
+%PL \end{verbatim}
+%PL Note that foo's name has changed.  We will refer to this version of
+%PL foo as the \fP version in the following sections.  Also, note the
+%PL redundant checks that do not make use of the fact that p is
+%PL initialized to NULL.  Such checks are necessary to ensure the
+%PL soundness of some of the optimizations described below.  The call to
+%PL \checkpage does nothing at runtime;  Blast will 
+%PL statically verify that its arguments are always consistent, verifying 
+%PL that p points to the correct page wherever the original program 
+%PL would have called \pin.
+%PL 
+%PL Of course, we cannot expect the program to behave correctly unless we
+%PL update the call sites of the transformed functions.  When updating
+%PL call sites, we distinguish between cases where the caller already has
+%PL a page pointer handy, and cases where the caller has no page pointer
+%PL in its stack frame.  In the case where a page pointer already exists,
+%PL we simply pass the pointer to the child function.
+%PL 
+%PL If the caller has no page pointer on its stack then the situation is more
+%PL complicated.  We could pass the address of a page pointer into the child
+%PL function, allowing it to overwrite the caller's page pointer with a
+%PL more ``interesting'' one.  However, it is unclear how such an
+%PL ``interesting'' pointer would be defined, especially since this
+%PL pointer would be shared by multiple child functions.  Also, we would need
+%PL to create a second clone of each function so that a pointer to a
+%PL pointer could be passed in.  
+%PL 
+%PL Instead, we opt for a simpler solution, and fall back on the heuristic
+%PL that the pageid passed into the child is probably a reasonable choice.
+%PL We simply add a Page pointer to the caller's stack frame, and then
+%PL call \pin to initialize it to the pageid that is being passed into the
+%PL child function.  In order to handle loops, we check that we are
+%PL passing in the appropriate Page pointer at each call to a child
+%PL function, and call \pin if necessary.  The
+%PL transformation also arranges for \unpin to be called as appropriate.
+%PL 
+%PL In results not presented here, we found that this simple
+%PL transformation performed very well on the ``raw read'' benchmark
+%PL presented in Section~\ref{codePerformance} but that it was not able to
+%PL significantly improve performance for the hash table workload.  It
+%PL turns out that this transformation is not very effective on functions
+%PL that take a recordid as an argument, but pass a different recordid
+%PL into child functions, since they pass \PP into their children
+%PL functions, but \PP is probably associated with with the wrong pageid.
+%PL Therefore, each child must call \pin on the appropriate page. 
+%PL 
+%PL Unfortunately, this scenario is relatively common, especially in
+%PL implementations of transactional structures that involve levels of
+%PL indirection, such as trees or hash tables.  A simple solution to this
+%PL problem is to add a new Page pointer to functions that take \PP as an
+%PL argument, and pass a pageid to child functions.  Then \pin is called
+%PL to preload the page, just as it would have been if the \PP argument
+%PL did not exist, except that \PP is reused when appropriate.
+%PL 
+%PL One final transformation is applied in anticipation of the removal of
+%PL dynamic checks described in the next section.  A copy is made of each
+%PL function that was modified to take a \PP argument.  We call the
+%PL original modified version the ``\fP'' version of the function, and the
+%PL new copy the ``\fQ'' version.  The \fQ variant will assume that its callers
+%PL pass in a value of \PP that matches the pageid that is passed in, while the \fP version makes no such assumption.
+%PL At this point during optimization, the \fP and \fQ variants are
+%PL identical; the only difference is in the semantics of the API they
+%PL expose to their callers.  The next phase of optimization will attempt 
+%PL to replace \fP calls to \fQ calls as it removes unnecessary dynamic
+%PL checks.
+%PL 
+%PL \subsection{Instrumenting for Blast}
+%PL \label{instrumenting}
+%PL Blast is a static analysis tool that checks code for conformance to a
+%PL well defined API.  In order to use it to verify the soundness of our
+%PL optimizations, we express the optimizations' soundness in terms of
+%PL simple invariants, and then encode these invariants in the transformed
+%PL source as calls to API functions.  We then use Blast to check that
+%PL these API calls are safe.  If it is able to verify the safety of the
+%PL calls, then we know that the optimization is sound.  
+%PL 
+%PL Ideally, this would mean that we could simply create a new,
+%PL dummy function, \checkpage, and insert a call to \checkpage
+%PL after each dynamic check introduced above.  We could give the
+%PL following spec file to Blast:
+%PL 
+%PL \begin{verbatim}
+%PL event { 
+%PL   pattern { $1 = loadPage($2); }
+%PL   action { $1->id = $2; }
+%PL }
+%PL event { 
+%PL   pattern { checkLoaded($1, $2); }  
+%PL   guard { $1->id == $2 }
+%PL }
+%PL \end{verbatim}
+%PL 
+%PL Then, we would have Blast verify that each use of \checkpage is safe.
+%PL We could then iteratively remove dynamic checks, and have Blast
+%PL re-verify the file, as we describe in Section~\ref{delta}.
+%PL Unfortunately, this straightforward approach places too much burden on
+%PL Blast, especially since we invoke it as part of a larger iterative
+%PL process.  Therefore, we had to perform a number of simplifications
+%PL before proceeding.
+%PL 
+%PL \subsubsection{Pointer Aliasing}
+%PL 
+%PL The guard in the original spec file dereferences the page pointer
+%PL passed into \checkpage, which means that Blast must consider pointer
+%PL aliasing before verifying that \checkpage is called correctly.
+%PL Furthermore, the original implementation of \pin is non-trivial, and
+%PL ultimately allows aliasing between pointers to different pages unless
+%PL \unpin is called correctly.  Also, Blast's pointer analysis is
+%PL flow-insensitive.  We found that each of these factors was sufficient
+%PL to prevent verification from succeeding even on seemingly ``trivial''
+%PL functions.  
+%PL 
+%PL Fortunately, according to \yad's API, the Page structure's id field is
+%PL never written to outside of \pin and \unpin, and will never be written
+%PL to if a function has pinned a page.  Because \pin and \unpin are
+%PL designed to behave correctly regardless of the order
+%PL in which they are called,\footnote{\unpin could misbehave if called on
+%PL an invalid pointer, but we do not remove dynamic checks that surround
+%PL \unpin.} we are willing to assume these invariants hold.  Therefore,
+%PL in the simplified source code that we give to Blast, we redefine
+%PL \pin as follows:
+%PL 
+%PL \begin{verbatim}
+%PL Page * loadPage(int pageid) {
+%PL   return pageid;
+%PL }
+%PL \end{verbatim}
+%PL Similarly, the spec file is changed to this:
+%PL \begin{verbatim}
+%PL event { 
+%PL   pattern { $1 = loadPage($2); }
+%PL   action { $1 = $2; }
+%PL }
+%PL event { 
+%PL   pattern { checkLoaded($1, $2); }  
+%PL   guard { $1 == $2 }
+%PL }
+%PL \end{verbatim}
+%PL 
+%PL Note that these changes completely bypass the page file, and produce invalid Page pointers.
+%PL We are able to perform this transformation because we will never
+%PL actually compile this version of the code, and because (given our
+%PL assumptions) it does not affect the soundness of Blast's analysis.  We
+%PL will use similar tricks throughout the rest of this section.
+%PL 
+%PL \subsubsection{Call Graph Simplification}
+%PL 
+%PL The next step in preparing the code for verification by Blast is to
+%PL reduce the amount of code that must be considered per optimization task.
+%PL We achieved this by replacing each call to a \fP or \fQ function with
+%PL statements that non-deterministically assign a value to the variables
+%PL that could be affected by the original function call.  In the case of
+%PL calls to \fQ variants, we also add a \checkpage call to make sure that
+%PL the function is properly invoked.\footnote{Initially, no calls to \fQ
+%PL variants exist.  Instead, they are added as we iteratively run Blast.}
+%PL 
+%PL \subsubsection{Control Flow Graph Simplification}
+%PL \label{cfgs}
+%PL 
+%PL \begin{figure*}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/rawReadGraph.pdf}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/hash tableReadGraph.pdf}
+%PL %\vspace{-30pt}
+%PL \caption{\sf\label{fig:read}The optimizer significantly speeds up
+%PL read only workloads.  As long as the data being accessed fits in page
+%PL cache, these workloads are CPU bound.  Therefore, although we report
+%PL CPU time here, these numbers are indicative of overall
+%PL performance. Figure~\ref{fig:write} explains why CPU time (and not
+%PL wall-clock time) is reported. }
+%PL 
+%PL \end{figure*}
+%PL 
+%PL 
+%PL We found that Blast was usually able to process verification requests
+%PL over the simplified call-graph, but certain requests took tens of
+%PL minutes to complete or simply failed.  Upon inspecting the translated code, we
+%PL noticed that the following call pattern was extremely common:
+%PL 
+%PL \begin{verbatim}
+%PL if(!p) { 
+%PL   ...
+%PL   p = loadPage(id);
+%PL   ...
+%PL } else if(p'->id == id) {
+%PL   ...
+%PL   p = p';
+%PL   ...
+%PL } else {
+%PL   p = loadPage(id);
+%PL }
+%PL some_p_variant(p, id);
+%PL \end{verbatim}
+%PL 
+%PL Blocks such as this are created when the optimizer decides to
+%PL speculatively load a page before passing it into a child function.
+%PL They have two interesting properties.  First, all possible evaluations
+%PL of the large if statement ensure that p->id == id, implying that the
+%PL \fP variant at the bottom of the block can be automatically replaced
+%PL with a call to a \fQ variant.  Therefore, we can replace all such calls
+%PL before passing the program to the iterative Blast evaluator, reducing
+%PL the number of sites that we consider when replacing \fP variants with
+%PL \fQ variants.
+%PL 
+%PL Second, since the block is the result of the optimizer's decision to
+%PL speculatively load a page for a child function, it is probably not
+%PL redundant.\footnote{There are a number of scenarios where this is not
+%PL the case, particularly within the bodies of \fQ variants of functions.
+%PL We leave the removal of such dynamic checks to future work.}
+%PL Therefore, we collapse the conditional into into a single call to
+%PL \pin, simplifying the control flow graph of the optimized code
+%PL significantly.  
+%PL 
+%PL This simplification, when combined with the ones described above,
+%PL reduces the vast majority of Blast runs to under fifteen seconds, with
+%PL a small number of calls taking up to one minute.  Due to the call graph
+%PL simplification described above, we are able to optimize function calls
+%PL independently.  This allows the iterative algorithm described below to
+%PL be feasible, reducing the time to optimize the entire library using
+%PL a naive, linear search to less than an hour.
+%PL 
+%PL \subsection{Removing Dynamic Checks}
+%PL \label{delta}
+%PL The goal of this phase in the transformation is to remove a subset of
+%PL the dynamic checks added that maximizes some metric.  One possible
+%PL metric would be execution time.  In this metric, each dynamic check
+%PL would need to be assigned some weight proportional to the number of
+%PL times it is checked during an execution of the program.  This is
+%PL nontrivial because the number of times a dynamic check will be
+%PL checked is dependent on the input of the program, and may vary from run
+%PL to run. 
+%PL 
+%PL A second metric is merely the number of dynamic checks.  This is
+%PL equivalent to assigning each dynamic check equal weight.  In this
+%PL formulation, one would simply want to minimize the set of dynamic checks
+%PL that remain in the program.  This is similar to the goal of a phase in
+%PL Delta Debugging \cite{deltaDebugging}, where they are looking for a
+%PL minimal set of deltas to transform the passing program to the failing
+%PL program.  We therefore initially tried to design an analogous
+%PL binary-search-like algorithm:
+%PL 
+%PL \begin{verbatim}
+%PL deltaSearch(P, dcList) {
+%PL    remove all dynamic checks in dcList from P
+%PL    if P is not sound
+%PL       deltaSearch(first half of dcList)
+%PL       deltaSearch(second half of dcList)
+%PL }
+%PL \end{verbatim}
+%PL 
+%PL  
+%PL %The goal of this phase in the transformation is to reduce the overall
+%PL %execution time of the source program by removing the dynamic checks
+%PL %introduced earlier.  From this formulation of the problem, it is clear
+%PL %that not all dynamic checks are created equal; some dynamic checks are
+%PL %located in code points that are much more frequently executed than
+%PL %others.  Ideally, we would be able to assign a weight to each dynamic
+%PL %check proportional to some measure of its run time cost, and then try to
+%PL %remove a subset of all dynamic checks that minimizes the weight of the
+%PL %dynamic checks that are remain.  However, we decided that for this
+%PL %initial implementation, it would be sufficient to assign each of the
+%PL %dynamic checks equal weight, greatly simplifying the search.  In
+%PL %addition to assigning each dynamic check the same weight, we made the
+%PL %assumption that dynamic checks are independent of each other.  That is,
+%PL %removing one dynamic check will not affect whether or not a different
+%PL %dynamic check can be removed soundly.  
+%PL 
+%PL 
+%PL In order to tell whether a given set of dynamic checks can be removed
+%PL soundly, we turn to Blast.  First, we ask Blast to verify that the code
+%PL is sound with all the dynamic checks in.  After this, we iteratively
+%PL search by changing the set of removed checks and running the resulting
+%PL code through Blast.  As an example, consider the following naive search
+%PL algorithm used for the numbers cited in this paper \footnote{With the
+%PL assumption that all dynamic checks are independent and that all dynamic
+%PL checks have equal weight, this naive search finds the optimal
+%PL solution.}:
+%PL 
+%PL \begin{verbatim}
+%PL naiveSearch(P, dcList)
+%PL for each dynamic check d in dcList
+%PL     remove d from P
+%PL     run Blast on P
+%PL     if Blast cannot verify P as sound
+%PL         restore d in P
+%PL \end{verbatim}
+%PL 
+%PL An important feature of Blast which allows iterative searches to
+%PL be tractable is its regression mode.  In its regression mode, Blast is able
+%PL to cache results from its alias analysis and calls to the underlying
+%PL theorem prover for reuse in consecutive runs.
+%PL 
+%PL In order to simplify theorem proving for Blast, we treated calls to
+%PL subroutines within the program as black boxes.  This allows Blast to
+%PL assume that the subroutine returns a nondeterministic value
+%PL (maintaining correctness), while cutting down on the execution time of
+%PL Blast by not allowing it to spend time analyzing the possible return
+%PL values of the call.  This, along with the simplification of the call
+%PL graph allowed us to treat each function declaration independently.  This
+%PL led us to the following general algorithm for removing dynamic checks:
+%PL 
+%PL \begin{verbatim}
+%PL search(P, dcList, searchAlgo)
+%PL for each function declaration fd in P
+%PL     // remove checks in fn
+%PL     call searchAlgo on fn 
+%PL \end{verbatim}
+%PL 
+%PL This is nice because each function declaration that we encountered has
+%PL less than 10 dynamic checks, opening up the possibility for more
+%PL asymptotically complex search algorithms.  Also, due to the treatment of
+%PL subroutine calls as a black box, the order in which we examine the
+%PL function declarations is inconsequential.
+%PL 
+%PL One subtlety we encountered deals with the declaration for functions in the
+%PL class \fQ.  As mentioned above, the body of a function in \fQ is exactly
+%PL the same as its counterpart in \fP.  However, due to application
+%PL semantics, we know that the function in \fQ will only be called with a
+%PL matching \_p and pageid.  In order for Blast to take advantage of this,
+%PL we had to create wrapper functions for each function $f$ in \fQ.  The
+%PL wrapper function has the same signature as $f$, but the body explicitly
+%PL sets both the \_p and the pageid variable to the same constant value,
+%PL and then passes its modified argument list to $f$.  In our LLADD case
+%PL study, we found that Blast was able to allow us to remove over 50
+%PL dynamic checks from functions in \fQ, while it was not able to verify
+%PL the soundness of the removals of any dynamic checks in \fP.
+%PL 
+%PL \begin{figure*}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/rawWriteGraph.pdf}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/hash tableWriteGraph.pdf}
+%PL %\vspace{-30pt}
+%PL \caption{\sf\label{fig:write}CPU times for write-only work loads.
+%PL These workloads invoke the logging subsystem, and therefore spend a
+%PL smaller fraction of their time calling \pin and \unpin.  Furthermore,
+%PL these workloads are disk bound, so wall clock times did not show any
+%PL measurable improvement in performance.  Therefore, CPU times are reported
+%PL here.  To facilitate comparison between the two workloads, CPU time is
+%PL also presented in Figure~\ref{fig:read}.}
+%PL 
+%PL \end{figure*}
+%PL 
+%PL 
+%PL %\subsection{Evaluation}
+%PL %
+%PL %In this section, we focus on two aspects of the optimization's
+%PL %behavior.  First, we measure the performance of the transformed code
+%PL %(before the dynamic checks have been removed).  Second, we measure the
+%PL %number of checks that Blast is able to remove from the code.  This
+%PL %second metric measures the quality of feedback that the optimization
+%PL %provides for the user.
+%PL 
+%PL \subsection{Performance of Optimized Code}
+%PL \label{codePerformance}
+%PL 
+%PL In order to evaluate the performance of the optimized code, we ran
+%PL optimized and unoptimized benchmarking software on identical
+%PL workloads.  The current version of our optimizer performs a
+%PL whole-program analysis, and produces a single C source file from Cil's
+%PL internal representation.  This presents a number of problems for
+%PL performance evaluations.  First, Cil's transformation could change the
+%PL performance characteristics of the code (for the better or worse).
+%PL Second, since gcc is invoked on a single compilation unit, it has
+%PL more opportunities to perform optimizations involving code that
+%PL originally spanned multiple compilation units.  To negate these
+%PL effects, the unoptimized versions of the benchmarks were run through
+%PL Cil without applying any \yad specific optimizations.  Both versions
+%PL of the code were then compiled using the command ``gcc -O3 input.c
+%PL -lpthread -lm -lcheck''.  For pragmatic reasons, the numbers presented
+%PL in this section reflect the code with all dynamic checks in
+%PL place.\footnote{As mentioned in Section~\ref{instrumenting}, we were
+%PL not able to run Blast directly on an executable version of the code.
+%PL We have not yet produced the (one to one) mapping between call sites
+%PL in the version processed by Blast and the call sites in the executable version.}
+%PL 
+%PL Read only operations do not generate any log entries under \yad, and
+%PL largely consist of calling \pin, \unpin and memcpy(), and using
+%PL pointer arithmetic to unmarshall information stored in the page file.
+%PL Therefore, we expected \pin and \unpin to account for a significant
+%PL fraction of the runtime.  Figure~\ref{fig:read} confirms that this is
+%PL the case.
+%PL 
+%PL The raw read workload uses low level $(page, slot, size)$ recordid
+%PL triples to perform a linear scan over the page file.  This is
+%PL basically a ``best case'' scenario for the optimizer.  The top level
+%PL loop contains recordids that can be coupled to page pointers, and
+%PL current recordids are good predictors of pages that will be associated
+%PL with future recordids.  Here we see that the runtime of the optimized
+%PL version is less than half that of the original code.
+%PL 
+%PL The hash table workload accesses hash table keys in sorted order,
+%PL producing random accesses to the page file.  Intuitively, we should not
+%PL expect the optimization to improve matters at all in this case.
+%PL However, we see that the optimized version completes in roughly 77\%
+%PL of the time the original version takes.  The reason for this
+%PL improvement is that the hash table implementation must access a small
+%PL amount of metadata in order to service each read.  The metadata
+%PL consists of a header field, which describes the hash table and an
+%PL index page that describes the layout of the hash table's bucket list.
+%PL The optimizer is able to take advantage of this, improving the
+%PL read only hash table workload's performance.
+%PL 
+%PL Unfortunately, while the optimizer also improves the CPU utilization of
+%PL write-only workloads, these workloads are I/O bound, so the
+%PL improvement in CPU utilization does not cause a significant improvement
+%PL in execution time.  However, the benchmark workloads do not contain
+%PL any application logic.  Therefore, CPU intensive applications built
+%PL on top of \yad may become CPU bound even if they are write-intensive.  Also,
+%PL multi-threaded transactional applications are able to amortize I/O
+%PL costs, so optimizations in this case are not wholly without merit.
+%PL 
+%PL We can see that the reduction in CPU time in the write-only case is
+%PL less than the reduction in the read-only case.  This is probably due
+%PL to the CPU overhead of the logging API, and other overhead associated
+%PL with performing logical operations in \yad. 
+%PL 
+%PL 
+%PL 
+%PL \subsection{Number of dynamic checks removed by Blast}
+%PL The transformation initially added 776 dynamic checks to our LLADD implementation.  As mentioned earlier, 238 of these checks are explicitly ignored during static checking, leaving us with 538 checks.  Manual inspection allowed us to create a preprocessing phase that removed another 238 dynamic checks as explained in Section~\ref{cfgs}, leaving us with 300 checks.  At this point, a majority of the functions (57) that have any dynamic checks in them have exactly one dynamic check in them.  Running our naive search algorithm on the code removes another 121 checks, 38 of them from the 57 functions with exactly one dynamic check in them, bringing us to a grand total of 179 checks.
+%PL 
+%PL \begin{figure*}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/checksRemaining.pdf}
+%PL \includegraphics[%
+%PL    width=1\columnwidth]{../optimizer/checksRemoved.pdf}
+%PL \caption{\sf\label{fig:static}Effectiveness of naive search at
+%PL removing dynamic checks from the optimized code.  These figures include the
+%PL removal of dynamic checks and changes of calls from \fP to \fQ
+%PL variants.  These figures only include changes made during iterative
+%PL runs of Blast and only reflect checks that were actually
+%PL considered for removal.  The ignored changes and checks consist of
+%PL 238 calls that were changed from \fP to \fQ variants during
+%PL preprocessing and another 238 dynamic checks that were explicitly
+%PL ignored during static checking.  Also, the system currently does not
+%PL consider dynamic checks that protect \unpin calls.}
+%PL \end{figure*}
+%PL 
+%PL \subsection{Generalization to Other Systems}
+%PL Although we did not implement the optimizations presented in
+%PL this paper with a general purpose optimization framework in mind, we believe that we
+%PL have identified a number of important properties that allow this class
+%PL of optimization to be applied in other situations.  Ideally, we would like to encode
+%PL these properties in a higher level language, allowing this class of 
+%PL optimization to be implemented as a simple description of an APIs properties.
+%PL 
+%PL In particular, optimizations geared toward memoizing a function require
+%PL (1) a tight coupling between function parameters and return values,
+%PL (2) immutability of the memoized result, and (3) the ability to distinguish
+%PL between a small set of variables that may be passed into the function
+%PL and those that may not.
+%PL 
+%PL The first point is an obvious prerequisite of any memoization
+%PL optimization that relies upon function arguments to retrieve cached
+%PL results.  
+%PL 
+%PL The second point is a bit more subtle, as it could be
+%PL achieved in at least two ways.  In our case, the ``interesting'' part of the
+%PL memoized result is the id field.  Even
+%PL though this field is not immutable over an entire program run, it is
+%PL guaranteed to be immutable until \unpin is called.  If the return
+%PL value truly is immutable over an entire program run, then the
+%PL complexities caused by \unpin can be avoided.
+%PL 
+%PL Finally, we used calling conventions and naming conventions to
+%PL distinguish between {\em pageid}'s and other types of variables.  The
+%PL pageid type does not explicitly exist within \yad's API.  Instead, we
+%PL used heuristics to infer its type.  In other circumstances the API
+%PL might provide rich enough type information to avoid inference
+%PL entirely, or a type inference system such as Cqual~\cite{cqual} might be more
+%PL appropriate.
+%PL 
+%PL It may be possible to generalize our system so that it can handle all
+%PL of these scenarios.  Such a generalized system seems to be sufficient
+%PL to support general purpose, high-level definitions of automated
+%PL memoization transformations.
+%PL 
+%PL Along these lines, we have mentioned a few other potential approaches
+%PL toward storing memoized results throughout this section.  A potential 
+%PL approach that would complement our method well 
+%PL maintains static, per function (or per call-site) page pointers.  The
+%PL page pointers could store memoized results across calls to the
+%PL function, and this persistent information could be used in addition to to
+%PL the \PP parameter.
+%PL 
+%PL The difficulty in implementing this scheme arises because it becomes
+%PL unclear how and when \unpin should be called, since static pointers
+%PL could persist indefinitely.  In systems that
+%PL memoize idempotent return values, this would not be an issue, since
+%PL these systems would not contain a call that is analogous to \unpin.
+%PL 
+%PL In \yad's case, it should be possible to ``partially release'' a page by
+%PL calling \unpin, but keeping a copy of the page pointer.  Before making
+%PL an expensive call to \pin the function could speculatively latch
+%PL whatever the partially released pointer points
+%PL to.\footnote{\yad already guarantees that it points to a valid Page
+%PL struct} If the pointer still points to the desired page, this
+%PL scheme would avoid an expensive hash table lookup.
+%PL 
+%PL % - improve quality of transformation
+%PL % - add optimizations for other calls (Tread)
+%PL % - allow for higher level definitions of this type of transformation (outline high-level principles here)
+%PL % - look at other applications for the technique
+%PL % - provide mechanism to transform / optimize library once, and then use information from library transformation while transforming client code.
+%PL \subsection{Conclusion}
+%PL 
+%PL We have designed and implemented a C source to source translation that
+%PL implements high-level, application specific optimizations.  Such
+%PL systems are currently uncommon, but we argue that modern programming
+%PL practices greatly increase their importance.  As far as
+%PL we know, source level, whole program optimization techniques have not
+%PL been applied to transactional storage systems in the past, as these
+%PL systems tend to provide high-level APIs that are focused on program 
+%PL correctness and library generality rather than performance.
+%PL  
+%PL We are unaware of any other
+%PL systems that take our approach toward program optimization and
+%PL believe that our combination of aggressive optimization techniques
+%PL and conservative runtime checks is particularly valuable.  The use of
+%PL a general purpose tool to reduce the overhead associated with runtime
+%PL checks can provide valuable feedback to programmers and reduces the 
+%PL computational overhead associated with these techniques, while making 
+%PL it easier to implement a wide variety of application-specific optimizations.
+%PL Finally, we believe
+%PL that by moving the implementation of complex optimizations
+%PL to compile time, our system improves the maintainability of software
+%PL built with \yad without sacrificing performance.
 
 
 \section{Future work}
@@ -3114,7 +3114,7 @@ extensions written by other developers.  Well-known static analysis
 techniques could be used to verify that operations hold locks (and
 initiate nested top actions) where appropriate, and to ensure
 compliance with \yad's API.  Our benchmarking section shows that our simple default
-hashtable implementation is 3 to 4 times slower than our optimized
+hash table implementation is 3 to 4 times slower than our optimized
 implementation, but that automated techniques can increase its performance.
   Further application of static checking and high-level automated code
 optimization techniques may allow us to narrow or close this
@@ -3141,7 +3141,7 @@ in a transactional data store.
 We also hope to provide a library of transactional data structures
 with functionality that is comparable to standard programming language
 libraries such as Java's Collection API or portions of C++'s STL.  Our
-linked list implementations, ArrayList and hashtable represent an
+linked list implementations, ArrayList and hash table represent an
 initial attempt to implement this functionality.  We are unaware of
 any transactional system that provides such a broad range of data
 structure implementations.  We may also be able to extend these
@@ -3209,106 +3209,106 @@ available via Anonymous CVS at http://lladd.sf.net/
 \bibliography{report}
 
 
-%PL\begin{thebibliography}{99}
-%PL\begin{small}
-%PL\bibitem{multipleGenericLocking} Agrawal, et al. {\em Concurrency
-%PLControl Performance Modeling: Alternatives and Implications}. TODS
-%PL12(4): (1987) 609-654
-%PL
-%PL\bibitem{bdb} Berkeley~DB, {\tt http://www.sleepycat.com/}
-%PL
-%PL\bibitem{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
-%PL
-%PL\bibitem{oo7} Carey, Michael J., DeWitt, David J., Naughton, Jeffrey F. {\em The OO7 Benchmark.} SIGMOD (1993)
-%PL
-%PL\bibitem{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
-%PL
-%PL\bibitem{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
-%PL
-%PL\bibitem{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
-%PL
-%PL\bibitem{soft-updates} Greg Ganger.  {\em Soft Updates: A Solution to the Metadata Update Problem in File Systems } ACM Transactions (2000)
-%PL
-%PL\bibitem{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
-%PL
-%PL\bibitem{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
-%PL
-%PL\bibitem{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, September 1975. Reprinted in Readings in Database Systems, 3rd ed.
-%PL
-%PL\bibitem{cht}  Gribble, Steven D., Brewer, Eric A., Hellerstein, Joseph M., Culler, David.  {\em Scalable, Distributed Data Structures for Internet Service Construction. } OSDI (2000)
-%PL
-%PL\bibitem{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) (1983) % p 287-317
-%PL
-%PL\bibitem{hibernate} Hibernate, {\tt http://www.hibernate.org/}
-%PL
-%PL\bibitem{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991)
-%PL
-%PL\bibitem{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
-%PL
-%PL\bibitem{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) % p. 212-223
-%PL
-%PL\bibitem{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
-%PL
-%PL\bibitem{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
-%PL
-%PL\bibitem{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Conference on Management of Data, SIGMOD (1992) p. 371-380
-%PL
-%PL\bibitem{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
-%PL
-%PL\bibitem{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
-%PL%
-%PL\bibitem{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
-%PL
-%PL\bibitem{cil} George C. Necula, Scott McPeak, Shree Prakash Rahul, Westley Weimer. {\em CIL: Intermediate Language and Tools for Analysis and Transformation of C Programs}. CC 2002: 213-228
-%PL\bibitem{blast} Dirk Beyer, Adam J. Chlipala, Thomas A. Henzinger, Ranjit Jhala, and Rupak Majumdar. {\em The Blast Query Language for Software Verification.} Proceedings of the 11th International Static Analysis Symposium (SAS) 2004.
-%PL
-%PL\bibitem{slam} Thomas Ball, Sriram K. Rajamani.  {\em Automatically Validating Temporal Safety Properties of Interfaces.} SPIN 2001.
-%PL
-%PL\bibitem{deltaDebugging} Andreas Zeller. {\em Isolating Cause-Effect Chains from Computer Programs.} Proc. ACM SIGSOFT 10th International Symposium on the Foundations of Software Engineering (FSE-10), Charleston, South Carolina, November 2002.
-%PL
-%PL\bibitem{buildInterceptor} Daniel S. Wilkerson. ``build-interceptor'' http://freshmeat.net/projects/build-interceptor/
-%PL
-%PL\bibitem{cqual} Umesh Shankar, Kunal Talwar, Jeffrey S. Foster, and David Wagner. {\em Detecting Format-String Vulnerabilities with Type Qualifiers}. In 10th USENIX Security Symposium, August 2001.
-%PL
-%PL\bibitem{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
-%PL
-%PL\bibitem{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base. } ICDE (1986) %p. 262-269
-%PL
-%PL\bibitem{postgres} Stonebraker and Kemnitz. {\em The POSTGRES Next-Generation Database Management System. } CACM (1991)
-%PL%\rcs{we probably should put SLOC numbers back into the paper... }
-%PL%\bibitem{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
-%PL
-%PL\bibitem{lcov} The~LTP~gcov~extension, {\tt http://ltp.sourceforge.net/coverage/lcov.php }
-%PL
-%PL\bibitem{compensations} Weimer, Westley and Necula, George. {\em Finding and Preventing Run-time Error Handling Mistakes}. OOPSLA (2004)
-%PL
-%PL
-%PL%\bibitem[Beazley]{beazley} D.~M.~Beazley and P.~S.~Lomdahl, 
-%PL%{\em Message-Passing Multi-Cell Molecular Dynamics on the Connection
-%PL%Machine 5}, Parall.~Comp.~ 20 (1994) p. 173-195.
-%PL%
-%PL%\bibitem[RealName]{CitePetName} A.~N.~Author and A.~N.~Other, 
-%PL%{\em Title of Riveting Article}, JournalName VolNum (Year) p. Start-End
-%PL%
-%PL%\bibitem[ET]{embed} Embedded Tk, \\
-%PL%{\tt ftp://ftp.vnet.net/pub/users/drh/ET.html}
-%PL%
-%PL%\bibitem[Expect]{expect} Don Libes, {\em Exploring Expect}, O'Reilly \& Associates, Inc. (1995).
-%PL%
-%PL%\bibitem[Heidrich]{heidrich} Wolfgang Heidrich and Philipp Slusallek, {\em
-%PL%Automatic Generation of Tcl Bindings for C and C++ Libraries.},
-%PL%USENIX 3rd Annual Tcl/Tk Workshop (1995).
-%PL%
-%PL%\bibitem[Ousterhout]{ousterhout} John K. Ousterhout, {\em Tcl and the Tk Toolkit}, Addison-Wesley Publishers (1994).
-%PL%
-%PL%\bibitem[Perl5]{perl5} Perl5 Programmers reference,\\
-%PL%{\tt http://www.metronet.com/perlinfo/doc}, (1996).
-%PL%
-%PL%\bibitem[Wetherall]{otcl} D. Wetherall, C. J. Lindblad, ``Extending Tcl for
-%PL%Dynamic Object-Oriented Programming'', Proceedings of the USENIX 3rd Annual Tcl/Tk Workshop (1995).
-%PL\end{small}
-%PL\end{thebibliography}
-%PL
+%PL \begin{thebibliography}{99}
+%PL \begin{small}
+%PL \bibitem{multipleGenericLocking} Agrawal, et al. {\em Concurrency
+%PL Control Performance Modeling: Alternatives and Implications}. TODS
+%PL 12(4): (1987) 609-654
+%PL 
+%PL \bibitem{bdb} Berkeley~DB, {\tt http://www.sleepycat.com/}
+%PL 
+%PL \bibitem{capriccio} R. von Behren, J Condit, F. Zhou, G. Necula, and E. Brewer. {\em Capriccio: Scalable Threads for Internet Services} SOSP 19 (2003).
+%PL 
+%PL \bibitem{oo7} Carey, Michael J., DeWitt, David J., Naughton, Jeffrey F. {\em The OO7 Benchmark.} SIGMOD (1993)
+%PL 
+%PL \bibitem{relational} E. F. Codd, {\em A Relational Model of Data for Large Shared Data Banks.} CACM 13(6) p. 377-387 (1970)
+%PL 
+%PL \bibitem{mapReduce} Jeffrey Dean and Sanjay Ghemawat. {\em Simplified Data Processing on Large Clusters. } OSDI (2004)
+%PL 
+%PL \bibitem{lru2s} Envangelos P. Markatos. {\em On Caching Search Engine Results}.  Institute of Computer Science, Foundation for Research \& Technology - Hellas (FORTH) Technical Report 241 (1999)
+%PL 
+%PL \bibitem{soft-updates} Greg Ganger.  {\em Soft Updates: A Solution to the Metadata Update Problem in File Systems } ACM Transactions (2000)
+%PL 
+%PL \bibitem{semantic} David K. Gifford, P. Jouvelot, Mark A. Sheldon, and Jr. James W. O'Toole. {\em Semantic file systems}. Proceedings of the Thirteenth ACM Symposium on Operating Systems Principles, (1991) p. 16-25.
+%PL 
+%PL \bibitem{physiological} Gray, J. and Reuter, A. {\em Transaction Processing: Concepts and Techniques}. Morgan Kaufmann (1993) San Mateo, CA
+%PL 
+%PL \bibitem{hierarcicalLocking} Jim Gray, Raymond A. Lorie, and Gianfranco R. Putzulo. {\em Granularity of locks and degrees of consistency in a shared database}. In 1st International Conference on VLDB, September 1975. Reprinted in Readings in Database Systems, 3rd ed.
+%PL 
+%PL \bibitem{cht}  Gribble, Steven D., Brewer, Eric A., Hellerstein, Joseph M., Culler, David.  {\em Scalable, Distributed Data Structures for Internet Service Construction. } OSDI (2000)
+%PL 
+%PL \bibitem{haerder} Haerder \& Reuter {\em "Principles of Transaction-Oriented Database Recovery." } Computing Surveys 15(4) (1983) % p 287-317
+%PL 
+%PL \bibitem{hibernate} Hibernate, {\tt http://www.hibernate.org/}
+%PL 
+%PL \bibitem{lamb} Lamb, et al., {\em The ObjectStore System.} CACM 34(10) (1991)
+%PL 
+%PL \bibitem{blink} Lehman \& Yao, {\em Efficient Locking for Concurrent Operations in B-trees.} TODS 6(4) (1981) p. 650-670
+%PL 
+%PL \bibitem{lht} Litwin, W., {\em Linear Hashing: A New Tool for File and Table Addressing}. Proc. 6th VLDB, Montreal, Canada, (Oct. 1980) % p. 212-223
+%PL 
+%PL \bibitem{aries} Mohan, et al., {\em ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging.} TODS 17(1) (1992) p. 94-162
+%PL 
+%PL \bibitem{twopc} Mohan, Lindsay \& Obermarck, {\em Transaction Management in the R* Distributed Database Management System} TODS 11(4) (1986) p. 378-396
+%PL 
+%PL \bibitem{ariesim} Mohan, Levine. {\em ARIES/IM: an efficient and high concurrency index management method using write-ahead logging} International Conference on Management of Data, SIGMOD (1992) p. 371-380
+%PL 
+%PL \bibitem{mysql} {\em MySQL}, {\tt http://www.mysql.com/ }
+%PL 
+%PL \bibitem{reiser} Reiser,~Hans~T. {\em ReiserFS 4} {\tt http://www.namesys.com/ }
+%PL %
+%PL \bibitem{berkeleyDB} M. Seltzer, M. Olsen. {\em LIBTP: Portable, Modular Transactions for UNIX}. Proceedings of the 1992 Winter Usenix (1992)
+%PL 
+%PL \bibitem{cil} George C. Necula, Scott McPeak, Shree Prakash Rahul, Westley Weimer. {\em CIL: Intermediate Language and Tools for Analysis and Transformation of C Programs}. CC 2002: 213-228
+%PL \bibitem{blast} Dirk Beyer, Adam J. Chlipala, Thomas A. Henzinger, Ranjit Jhala, and Rupak Majumdar. {\em The Blast Query Language for Software Verification.} Proceedings of the 11th International Static Analysis Symposium (SAS) 2004.
+%PL 
+%PL \bibitem{slam} Thomas Ball, Sriram K. Rajamani.  {\em Automatically Validating Temporal Safety Properties of Interfaces.} SPIN 2001.
+%PL 
+%PL \bibitem{deltaDebugging} Andreas Zeller. {\em Isolating Cause-Effect Chains from Computer Programs.} Proc. ACM SIGSOFT 10th International Symposium on the Foundations of Software Engineering (FSE-10), Charleston, South Carolina, November 2002.
+%PL 
+%PL \bibitem{buildInterceptor} Daniel S. Wilkerson. ``build-interceptor'' http://freshmeat.net/projects/build-interceptor/
+%PL 
+%PL \bibitem{cqual} Umesh Shankar, Kunal Talwar, Jeffrey S. Foster, and David Wagner. {\em Detecting Format-String Vulnerabilities with Type Qualifiers}. In 10th USENIX Security Symposium, August 2001.
+%PL 
+%PL \bibitem{lrvm} Satyanarayanan, M., Mashburn, H. H., Kumar, P., Steere, D. C., AND Kistler, J. J. {\em Lightweight Recoverable Virtual Memory}. ACM Transactions on Computer Systems 12, 1 (Februrary 1994) p. 33-57. Corrigendum: May 1994, Vol. 12, No. 2, pp. 165-172.
+%PL 
+%PL \bibitem{newTypes} Stonebraker. {\em Inclusion of New Types in Relational Data Base. } ICDE (1986) %p. 262-269
+%PL 
+%PL \bibitem{postgres} Stonebraker and Kemnitz. {\em The POSTGRES Next-Generation Database Management System. } CACM (1991)
+%PL %\rcs{we probably should put SLOC numbers back into the paper... }
+%PL %\bibitem{sloccount} SLOCCount, {\tt http://www.dwheeler.com/sloccount/ }
+%PL 
+%PL \bibitem{lcov} The~LTP~gcov~extension, {\tt http://ltp.sourceforge.net/coverage/lcov.php }
+%PL 
+%PL \bibitem{compensations} Weimer, Westley and Necula, George. {\em Finding and Preventing Run-time Error Handling Mistakes}. OOPSLA (2004)
+%PL 
+%PL 
+%PL %\bibitem[Beazley]{beazley} D.~M.~Beazley and P.~S.~Lomdahl, 
+%PL %{\em Message-Passing Multi-Cell Molecular Dynamics on the Connection
+%PL %Machine 5}, Parall.~Comp.~ 20 (1994) p. 173-195.
+%PL %
+%PL %\bibitem[RealName]{CitePetName} A.~N.~Author and A.~N.~Other, 
+%PL %{\em Title of Riveting Article}, JournalName VolNum (Year) p. Start-End
+%PL %
+%PL %\bibitem[ET]{embed} Embedded Tk, \\
+%PL %{\tt ftp://ftp.vnet.net/pub/users/drh/ET.html}
+%PL %
+%PL %\bibitem[Expect]{expect} Don Libes, {\em Exploring Expect}, O'Reilly \& Associates, Inc. (1995).
+%PL %
+%PL %\bibitem[Heidrich]{heidrich} Wolfgang Heidrich and Philipp Slusallek, {\em
+%PL %Automatic Generation of Tcl Bindings for C and C++ Libraries.},
+%PL %USENIX 3rd Annual Tcl/Tk Workshop (1995).
+%PL %
+%PL %\bibitem[Ousterhout]{ousterhout} John K. Ousterhout, {\em Tcl and the Tk Toolkit}, Addison-Wesley Publishers (1994).
+%PL %
+%PL %\bibitem[Perl5]{perl5} Perl5 Programmers reference,\\
+%PL %{\tt http://www.metronet.com/perlinfo/doc}, (1996).
+%PL %
+%PL %\bibitem[Wetherall]{otcl} D. Wetherall, C. J. Lindblad, ``Extending Tcl for
+%PL %Dynamic Object-Oriented Programming'', Proceedings of the USENIX 3rd Annual Tcl/Tk Workshop (1995).
+%PL \end{small}
+%PL \end{thebibliography}
+%PL 
 
 
 \end{document}
