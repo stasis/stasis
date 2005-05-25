@@ -36,7 +36,7 @@
 
 \begin{document}
 %\title{\vspace*{-36pt}Application-specific program optimizations\vspace*{-36pt}}
-\title{\vspace*{-36pt}High-performance, Transactional Storage\\
+\title{\vspace*{-36pt}Flexible Transactional Storage\\
 \large{Masters of Science Project Report, University of California at Berkeley}}
 \author{Russell Sears}
 \maketitle
@@ -57,8 +57,9 @@ example, \yad makes it easy to develop high-performance transactional
 data structures. It generally outperforms Berkeley DB, and its
 extensibility enables optimizations that outperform Berkeley DB by 2x
 and MySQL by up to 5x.  We present novel optimizations for object
-serialization, graph traversal and workload-specific access method 
-optimizations that demonstrate this flexibility.}
+serialization and graph traversal that demonstrate this flexibility.}
+%PLserialization, graph traversal and workload-specific access method 
+%PLoptimizations that demonstrate this flexibility.}
 
 %Although many systems provide transactionally consistent data
 %management, existing implementations are generally monolithic and tied
@@ -155,7 +156,7 @@ these properties as reusable building blocks for systems to implement
 complete transactions.
 
 With these trends in mind, we have implemented a modular, extensible
-transaction system based on on ARIES that makes as few assumptions as
+transaction system based on ARIES that makes as few assumptions as
 possible about application data and workloads. Where such
 assumptions are inevitable, we allow 
 the developer to plug in alternative implementations or
@@ -198,12 +199,18 @@ to low-level primitives, and the most important portions of the implementation h
 To validate these claims, we walk
 through a sequence of optimizations for a transactional hash
 table in Section~\ref{sub:Linear-Hash-Table}, an object serialization 
-scheme in Section~\ref{OASYS} a graph traversal algorithm in 
-Section~\ref{TransClos} and use code transformations to automatically optimize application code in Section~\ref{PL}.  Benchmarking figures are provided for each 
+scheme in Section~\ref{OASYS} and a graph traversal algorithm in
+Section~\ref{TransClos}.  Benchmarking figures are provided for each
+%PLscheme in Section~\ref{OASYS}, a graph traversal algorithm in 
+%PLSection~\ref{TransClos} and use code transformations to derive optimized application code in Section~\ref{PL}.  Benchmarking figures are provided for each 
 application.  \yad also includes a cluster hash table 
 built upon two-phase commit, which will not be described.  Similarly we omit a discussion of \yad's 
 blob implementation, which demonstrates how \yad can
-be used to easily add transactional primitives to data stored in a file system.
+be used to add transactional primitives to data stored 
+in a file system, and a preliminary compile-time 
+optimization system that improves the performance 
+of \yad's access methods based upon the way these methods 
+are used by application code.
 
 %To validate these claims, we developed a number of applications such
 %as an efficient persistent object layer, {\em @todo locality preserving
@@ -368,9 +375,9 @@ search, or file-type specific operations such as thumb nails \cite{reiser,semant
 Berkeley~DB~\cite{berkeleyDB}, which provides transactional
 storage of data in indexed form using a hashtable or tree, or as a queue.  
 % bdb's recno interface seems to be a specialized b-tree implementation - Rusty
-We demonstrate that, in contrast to these rigid interfaces, \yad's unique 
-blurring of the interface between the application and the storage layer 
-enables a new class of automated programming language based optimizations.
+%PLWe demonstrate that, in contrast to these rigid interfaces, \yad's unique 
+%PLblurring of the interface between the application and the storage layer 
+%PLenables a new class of automated programming language based optimizations.
 
 Although Berkeley DB's feature set is similar to the features provided by
 \yad's implementation, there is an important distinction.  Berkeley DB
@@ -721,7 +728,7 @@ to the page file and log are protected by the Tupdate() call, and
 that wrapper functions may be built upon each other.  Operation 
 implementations are automatically invoked  by the transactional 
 library.  Not shown are a set of convenience functions that 
-make it easy to write high level operations and wrappers.}
+make it easy to write high-level operations and wrappers.}
 \end{figure}
 
 
@@ -1525,9 +1532,11 @@ In addition, all of the entries within a page may be traversed without
 unpinning and repinning the page in memory, providing very fast
 traversal over lists that have good locality.  This optimization would
 not be possible if it were not for the low-level interfaces provided
-by the buffer manager.\footnote{Although the techniques in Section~\ref{PL} 
-could be used to automatically derive this optimization, we implemented 
-it manually.}  In particular, we need to control space
+by the buffer manager.
+%PL\footnote{Although the techniques in Section~\ref{PL} 
+%PLcould be used to automatically derive this optimization, we implemented 
+%PLit manually.}  
+In particular, we need to control space
 allocation, and be able to read and write multiple records with a
 single call to pin and unpin.  Due to this data structure's nice locality
 properties and good performance for short lists, it can also be used
@@ -1649,7 +1658,9 @@ Also, since this implementation does not need to support variable-size
 entries, it stores the first entry of each bucket in the ArrayList
 that represents the bucket list, reducing the number of buffer manager
 calls that must be made.  Finally, this implementation caches
-the header information in memory,\footnote{Section~\ref{PL} automatically applies this optimization to the straightforward hashtable.  However, this is not reflected in the numbers reported here.} rather than getting it from the buffer manager on each request.
+the header information in memory
+%PL\footnote{Section~\ref{PL} automatically applies this optimization to the straightforward hashtable.  However, this is not reflected in the numbers reported here.} 
+rather than getting it from the buffer manager on each request.
 
 The most important component of \yad for this optimization is \yad's
 flexible recovery and logging scheme.  For brevity we only mention
@@ -1728,6 +1739,7 @@ than the straightforward implementation.
 %second chart, but provides better hashtable performance.}
 
 \begin{figure}[t]
+\vspace{36pt}
 \hspace*{18pt}
 %\includegraphics[%
 %   width=1\columnwidth]{tps-new.pdf}
@@ -2038,7 +2050,7 @@ for all configurations.
 The first graph in Figure \ref{fig:OASYS} shows the update rate as we
 vary the fraction of the object that is modified by each update for
 Berkeley DB, unmodified \yad, \yad with the update/flush optimization,
-and \yad with both the update/flush optimization and delta- based log
+and \yad with both the update/flush optimization and delta-based log
 records.
 The graph confirms that the savings in log bandwidth and
 buffer pool overhead by both \yad optimizations 
