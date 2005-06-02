@@ -54,7 +54,7 @@ the poor fit of existing transactional storage systems to persistent
 objects and hierarchical or semi-structured data, such as XML or
 scientific data.  This work proposes a novel flexible transaction
 framework intended for non-database transactional systems; for
-example, \yad makes it easy to develop high-performance transactional
+example, \yad (Lightweight Library for Atomicity and Data Durability) makes it easy to develop high-performance transactional
 data structures. It generally outperforms Berkeley DB, and its
 extensibility enables optimizations that outperform Berkeley DB by 2x
 and MySQL by up to 5x.  We present novel optimizations for object
@@ -102,11 +102,11 @@ systems, version-control systems, bioinformatics, workflow
 applications, search engines, recoverable virtual memory, and
 programming languages with persistent objects.
 
-In essence, there is an {\em impedance mismatch} between the data
+In essence, there is an {\em impedance mismatch}\cite{impedanceMismatch} between the data
 model provided by a DBMS and that required by these applications. This is
 not an accident: the purpose of the relational model is exactly to
 move to a higher-level set-based data model that avoids the kind of
-``navigational'' interactions required by these lower-level systems.
+imperative, ``navigational'' interactions required by these lower-level systems.
 Thus in some sense, we are arguing for the development of modern
 navigational transaction systems that can compliment relational systems 
 and that naturally support current system designs and development methodologies.
@@ -115,7 +115,7 @@ The most obvious example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
 (EJB). In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table\footnote{Normalized objects may actually span many tables~\cite{hibernate}.}  and then issuing queries to keep the
-objects and rows consistent. A typical update must confirm it has the
+objects and rows consistent. In order to service an update, typical application code must confirm that it has the
 current version, modify the object, write out a serialized version
 using the SQL {\tt update} command and commit.  This is an awkward
 and slow mechanism; we show up to a 5x speedup over a MySQL implementation 
@@ -131,7 +131,7 @@ In this paper we introduce \yad, a flexible framework for ACID
 transactions that is intended to support a broader range of
 applications.  Although we believe \yad could also be the basis of a
 DBMS, there are already many excellent DBMS solutions, and we thus
-focus on the rest of the applications.  The primary goal of \yad is to
+focus on the other classes of applications that have stringent storage requirements.  The primary goal of \yad is to
 provide flexible and complete transactions.
 
 By {\em flexible} we mean that \yad can implement a wide range of
@@ -157,8 +157,7 @@ these properties as reusable building blocks for systems to implement
 complete transactions.
 
 With these trends in mind, we have implemented a modular, extensible
-transaction system based on ARIES that makes as few assumptions as
-possible about application data and workloads. Where such
+transaction system based on ARIES that makes very few assumptions about the applications built on top of it. Where such
 assumptions are inevitable, we allow 
 the developer to plug in alternative implementations or
 define custom operations whenever possible. Rather than hiding the underlying complexity
@@ -454,7 +453,7 @@ of the current CHT implementations.
 
 %\rcs{compare and contrast with boxwood!!}
 
-Boxwood provides a networked, fault-tolerant transactional B-Tree and
+Boxwood\cite{boxwood} provides a networked, fault-tolerant transactional B-Tree and
 ``Chunk Manager''.  We believe that \yad could be a valuable part of
 such a system.  However, we believe that \yad's concept of a page file
 and system-independent logical log suggest an alternative approach to
@@ -501,10 +500,10 @@ is protected according to the ACID properties mentioned above.
 Typically, the
 information necessary to REDO and UNDO each action is stored in the
 log.  We refine this concept and explicitly discuss {\em operations},
-which must be atomically applicable to the page file.  
+which must be atomically applicable to the disk pages that the actions modify.
 
 \yad is essentially a framework for transactional pages: each page is
-independent and can be recovered independently. For now, we simply
+independent and can be recovered independently.~\cite{physiologicalLogging} For now, we simply
 assume that operations do not span pages.  Since single pages are
 written to disk atomically, we have a simple atomic primitive on which
 to build. In Section~\ref{nested-top-actions}, we explain how to
@@ -517,8 +516,9 @@ function.\footnote{Actually, even this can be overridden, but doing so
 complicates recovery semantics, and only should be done as a last
 resort.  Currently, this is only done to implement the \oasys flush()
 and update() operations described in Section~\ref{OASYS}.}  This has
-the nice property that the REDO code is known to work, since the
-original operation was the exact same ``redo''.  In general, the \yad
+the nice property that the code that implements REDO is known to work, 
+since the
+original operation was the exact same ``redo''.  This reduces the amount of code that must be implemented and tested when a new operation is implemented.  In general, the \yad
 philosophy is that you define operations in terms of their REDO/UNDO
 behavior, and then build a user-friendly {\em wrapper} interface
 around them (Figure~\ref{fig:structure}).  The value of \yad is that it provides a skeleton that
@@ -637,7 +637,7 @@ though the application manually aborted them with the ``abort''
 function call.
   
 After the analysis phase, the on-disk version of the page file is in
-the same state it was in when \yad crashed. This means that some
+the same state it was in when the system crashed. This means that some
 subset of the page updates performed during normal operation have made
 it to disk, and that the log contains full redo and undo information
 for the version of each page present in the page
@@ -916,7 +916,7 @@ and the physical (page-number) addresses to which they are applied.
 {\em Physiological logging } extends this idea, and is generally used 
 for \yad's REDO entries.  The physical address (page number) is
 stored, along with the arguments of an arbitrary function that 
-is associated with the log entry.
+is associated with the log entry.~\cite{physiologicalLogging}
 
 This is used to implement many primitives, including {\em slotted pages}, which use
 an on-page level of indirection to allow records to be rearranged
@@ -1190,7 +1190,7 @@ In this section we walked through some of the more important parts of
 the \yad API, including the lock manager, nested top actions and log
 operations.  The majority of the recovery algorithm's complexity is 
 hidden from developers.  We argue that \yad's novel approach toward 
-the encapsulation of transactional primitives makes it easy for 
+the encapsulation of transactional primitives into composable and replaceable units makes it easy for 
 developers to use these mechanisms to enhance application performance
 and simplify software design.
 
@@ -1673,11 +1673,13 @@ ordering.
 \subsection{Performance}
 
 \begin{figure}[t]
+\vspace{-28
+pt}\hspace{-25pt}
 \includegraphics[%
-   width=1\columnwidth]{../paper2/bulk-load.pdf}
+   width=1.2\columnwidth]{bulk-load.pdf}
 %\includegraphics[%
 %   width=1\columnwidth]{bulk-load-raw.pdf}
-\vspace{-30pt}
+\vspace{-80pt}
 \caption{\sf\label{fig:BULK_LOAD} This test measures the raw performance
 of the data structures provided by \yad and Berkeley DB.  Since the
 test is run as a single transaction, overheads due to synchronous I/O
@@ -1685,7 +1687,7 @@ and logging are minimized.}
 \end{figure}
 
 We ran a number of benchmarks on the two hash table implementations
-mentioned above, and used Berkeley DB for comparison.
+mentioned above, and used Berkeley DB hash implementation for comparison.
 %In the future, we hope that improved
 %tool support for \yad will allow application developers to easily apply
 %sophisticated optimizations to their operations.  Until then, application 
@@ -1739,13 +1741,14 @@ than the straightforward implementation.
 %second chart, but provides better hash table performance.}
 
 \begin{figure}[t]
-\vspace{36pt}
-\hspace*{18pt}
+\vspace{-42pt}
+%\hspace*{18pt}
+\hspace{-20pt}
 %\includegraphics[%
 %   width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
-   width=3.25in]{../paper2/tps-extended.pdf}
-\vspace{-36pt}
+   width=1.3\columnwidth]{tps-extended.pdf}
+\vspace{-87.7pt}
 \caption{\sf\label{fig:TPS} The logging mechanisms of \yad and Berkeley
 DB are able to combine multiple calls to commit() into a single disk 
 force, increasing throughput as the number of concurrent transactions 
@@ -1876,11 +1879,11 @@ In summary, this system architecture (though commonly
 deployed~\cite{hibernate,postgres}) is fundamentally
 flawed.  In order to access objects quickly, the application must keep
 its working set in cache.  Yet in order to efficiently service write 
-requests, the
+requests while maintaining read locality, the
 transactional layer must store a copy of serialized objects
-in memory or resort to random I/O.  
-Thus, any given working set size requires roughly double the system
-memory to achieve good performance.
+in memory or resort to random I/O.
+Thus, unless a different approach is taken toward maintaining the page and object caches, any given working set size will require roughly double the system
+memory to achieve good performance.~\cite{mob}  
 
 \subsection{\yad Optimizations}
 
@@ -2018,10 +2021,23 @@ forward, but this is not required.
 %% operations.
 
 \begin{figure*}[t!]
-\includegraphics[width=3.3in]{../paper2/object-diff.pdf}
-\hspace{.3in}
-\includegraphics[width=3.3in]{../paper2/mem-pressure.pdf}
-\vspace{-.15in}
+%\vspace{-1.05in}
+%\hspace{-.4in}
+\includegraphics[%
+  viewport=65bp 135bp 715bp 530bp,
+  clip,
+  width=3.3in]{object-diff.pdf}
+%\includegraphics[width=3.5in]{object-diff.pdf}
+%\vspace{2.05in}
+\hspace{.1in}
+%\hspace{0.3in}
+\includegraphics[%
+  viewport=40bp 240bp 520bp 525bp,
+  clip,
+  width=3.3in]{mem-pressure.pdf}
+%\scalebox{.5}{\includegraphics*[0in,0in][8.5in,11in]{mem-pressure.pdf}}
+%\includegraphics*[[width=3.5in]{mem-pressure.pdf}
+%\vspace{-.15in}
 \caption{\sf \label{fig:OASYS}
 \yad optimizations for object
 serialization. The first graph shows the effect of the two \yad
@@ -2251,8 +2267,10 @@ LRVM~\cite{lrvm}.
 \subsection {Performance Evaluation}
 
 \begin{figure}[t]
-\includegraphics[width=3.3in]{../paper2/oo7.pdf}
-\vspace{-15pt}
+\vspace{-30pt}
+\hspace{-0.4in}
+\includegraphics[width=4.4in]{oo7.pdf}
+\vspace{-125pt}
 \caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
 \end{figure}
 
