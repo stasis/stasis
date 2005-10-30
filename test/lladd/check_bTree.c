@@ -54,16 +54,139 @@ terms specified in this license.
 #define NUM_ENTRIES 100000
 /** @test
 */
+
+START_TEST(bTreeFixedPage)
+{
+ Tinit();
+  SimpleExampleFixedPage();
+   Tdeinit();
+} END_TEST
+
+int SimpleExampleFixedPage(){
+
+
+  int DEBUGT = 1;
+  int xid = Tbegin();
+  int pageid1;
+  Page * p1;
+  
+  recordid rid = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
+  
+  pageid1 = rid.page;
+  
+  p1 = loadPage(xid, pageid1);
+  
+  int num_slots = rid.slot;
+  int size_of_slots = rid.size;
+  
+  if(DEBUGT) { printf("\n rid:size_of_slots  = %d" , size_of_slots); }
+  if(DEBUGT) { printf("\n rid:num_slots = %d" , num_slots);}
+  
+  
+  if(DEBUGT) {printf("\n record size (p1) = %d" , fixedPageRecordSize(p1));}
+  if(DEBUGT) {printf("\n fixedPageCount (p1) = %d" , fixedPageCount(p1));}
+  
+  releasePage(p1);
+  Tcommit(xid);
+  
+  return 0;
+}
 START_TEST(bTreeTest)
 {
   Tinit();
-  HelloWorld();
+  // HelloWorld();
+  SimpleExample();
+  // printf("\n end of practice run\n");
    Tdeinit();
 } END_TEST
+
+int SimpleExample(){
+
+  int DEBUGP = 0;
+  int DEBUGT = 0;
+  int xid = Tbegin();
+  /* Where to find stuff
+   * ****************************
+   *  TpageAlloc ->         lladd/src/lladd/operations/pageOperations.c
+   *  TfixedPageAlloc ->    lladd/src/lladd/operations/pageOperations.c
+   *  fixedPageInitailze -> lladd/src/lladd/page/fixed.c
+   */
+  int pageid1;// = TpageAlloc(xid);
+
+  int pageid2 =  TpageAlloc(xid);
+
+  int pageid3;// =  TpageAlloc(xid);
+
+  Page * p1;// = (Page *) malloc (sizeof(300));
+  Page * p2;
+
+ 
+
+  //p2 =  loadPage(xid, pageid2);
+
+  //  fixedPageInitialize(p1, sizeof(int) , 4); 
+
+
+  recordid rid = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
+
+  pageid1 = rid.page;
+
+  p1 = loadPage(xid, pageid1);
+
+  int num_slots = rid.slot;
+  int size_of_slots = rid.size;
+
+  if(DEBUGP) { printf("\n size of int = %d ", sizeof(int));}
+     
+  if(DEBUGT) { printf("\n rid:size_of_slots  = %d" , size_of_slots); }
+  if(DEBUGT) { printf("\n rid:num_slots = %d" , num_slots);}
+	   
+  if(DEBUGP) {  printf("\n rid:pageid num = %d" , pageid1);}
+  
+  
+  
+  
+  // int page_type = *page_type_ptr(p1);
+  
+  //  if(DEBUGP) { printf ("\n\n *page_type_ptr (p1) = %d \n" ,( *page_type_ptr(p1) == FIXED_PAGE)); }
+  
+  // if(DEBUGT) { printf ("\n\n *page_type_ptr (p1) = %d \n" , page_type_ptr(p1));}
+  
+  // if(DEBUGT) { printf ( page_type_ptr(p1));}
+  
+  //  * page_type_ptr(p1);
+
+  // int  i = page_type_ptr(p1);
+  
+  
+  if(DEBUGT) {printf("\n record size (p1) = %d" , fixedPageRecordSize(p1));}
+  if(DEBUGT) {printf("\n fixedPageCount (p1) = %d" , fixedPageCount(p1));}
+
+ 
+  
+  if(DEBUGT) {  printf("\n%x\n", p1);}
+
+  //  recordid r =  fixedRawRallocMany(p1, 4);
+  //fixedRawRallocMany(p1, 4);
+  if(DEBUGP) {printf("\n");}
+  if(DEBUGT) {printf("\n Just for FUN ....  \n  .... ");}
+
+  Page * p = & p1;
+  // int page_type = *page_type_ptr(p); // copied from page.c
+
+  //  if(DEBUGT) {printf("\n page_type = %d", page_type);}
+
+  releasePage(p1);
+  Tcommit(xid);
+
+
+  return 0;
+}
 
 /** @test
 */
 
+#define NUM_ENTRIES_XACT 10000
 
 Suite * check_suite(void) {
   Suite *s = suite_create("bTree");
@@ -71,9 +194,12 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("simple");
 
   tcase_set_timeout(tc, 0); // disable timeouts if test takes more than 2 sec - it would get killed 
+
   /* Sub tests are added, one per line, here */
    tcase_add_test(tc, bTreeTest);
- 
+   tcase_add_test(tc, bTreeFixedPage);
+   //  tcase_add_test(tc, simpleLinearHashTest); // put back in if playing with hashtable
+
   
   /* --------------------------------------------- */
   
