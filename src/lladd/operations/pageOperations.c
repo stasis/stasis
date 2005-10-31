@@ -313,7 +313,7 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 recordid TfixedPageAlloc(int xid, int size) {
   int page = TpageAlloc(xid);
   Page * p = loadPage(xid, page);
-  fixedPageInitialize(p , xid, recordsPerPage(size));
+  fixedPageInitialize(p , size, recordsPerPage(size));
   byte * tmpMemAddr = alloca(PAGE_SIZE);
   memcpy(tmpMemAddr, p->memAddr, PAGE_SIZE);
   TpageSet(xid, page, tmpMemAddr);
