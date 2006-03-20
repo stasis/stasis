@@ -155,13 +155,13 @@ static int g_is_constructed = 0;
 int
 pobj_start (void)
 {
-    int active_xid;
-    int active_nested;
+    long active_xid;
+    long active_nested;
     
     if (! g_is_init)
 	return -1;
 
-    active_xid = (int) pthread_getspecific (g_active_xid_key) - 1;
+    active_xid = (long) pthread_getspecific (g_active_xid_key) - 1;
     if (active_xid < 0) {
 	active_xid = Tbegin ();
 	if (active_xid < 0
@@ -173,7 +173,7 @@ pobj_start (void)
 	}
     }
     else {
-	active_nested = (int) pthread_getspecific (g_active_nested_key);
+	active_nested = (long) pthread_getspecific (g_active_nested_key);
 	active_nested++;
 	if (pthread_setspecific (g_active_nested_key, (void *) active_nested))
 	    return -1;
@@ -185,20 +185,20 @@ pobj_start (void)
 int
 pobj_end (void)
 {
-    int active_xid;
-    int active_nested;
+    long active_xid;
+    long active_nested;
 
     if (! g_is_init)
 	return -1;
 
-    active_nested = (int) pthread_getspecific (g_active_nested_key);
+    active_nested = pthread_getspecific (g_active_nested_key);
     if (active_nested) {
 	active_nested--;
 	if (pthread_setspecific (g_active_nested_key, (void *) active_nested))
 	    return -1;
     }
     else {
-	active_xid = (int) pthread_getspecific (g_active_xid_key) - 1;
+	active_xid = pthread_getspecific (g_active_xid_key) - 1;
 	if (active_xid >= 0) {
 	    if (pthread_setspecific (g_active_xid_key, NULL))
 		return -1;
@@ -855,7 +855,7 @@ pobj_set (void *obj, void *fld, void *data, size_t len, unsigned char flags)
     if (CHECK_FLAG (flags, POBJ_SET_F_COPY))
 	memcpy (fld, data, len);
     else
-	memset (fld, (int) data, len);
+	memset (fld, (byte) data, len);
 
     /* Update corresponding record (persistent objects only). */
     if (p->repo_index >= 0) {

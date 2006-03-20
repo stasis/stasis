@@ -11,7 +11,7 @@
 void indirectInitialize(Page * p, int height) {
   *level_ptr(p) = height;
   *page_type_ptr(p) = INDIRECT_PAGE;
-  memset(p->memAddr, INVALID_SLOT, ((int)level_ptr(p)) - ((int)p->memAddr));
+  memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }
 /** @todo locking for dereferenceRID? */
 compensated_function recordid dereferenceRID(int xid, recordid rid) {

@@ -56,8 +56,8 @@ Slotted page layout:
 
 ************************************************************************/
 
-#define SLOTTED_PAGE_OVERHEAD_PER_RECORD 4
-#define SLOTTED_PAGE_HEADER_OVERHEAD 6
+#define SLOTTED_PAGE_OVERHEAD_PER_RECORD (2 * sizeof(short))
+#define SLOTTED_PAGE_HEADER_OVERHEAD (3 * sizeof(short))
 
 void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
 void slottedRead(int xid, Page * page, recordid rid, byte *buff);

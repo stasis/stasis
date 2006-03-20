@@ -12,7 +12,7 @@
 unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc);
 static int BuildCRCTable(void);
 
-static unsigned long *CRCTable;	// Table constructed for fast lookup.
+static unsigned int *CRCTable;	// Table constructed for fast lookup.
 
 #define CRC32_POLYNOMIAL	0xEDB88320
 

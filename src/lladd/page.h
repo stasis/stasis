@@ -93,7 +93,7 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-#define lsn_ptr(page)                   (((lsn_t *)(&((page)->memAddr[PAGE_SIZE])))-1)
+#define lsn_ptr(page)                   (((lsn_t*)(&((page)->memAddr[PAGE_SIZE])))-1)
 #define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
 #define end_of_usable_space_ptr(page)   page_type_ptr((page))
 
@@ -127,7 +127,7 @@ struct Page_s {
   /** @todo Shouldn't Page.id be a long? */
   int id;
   /** @todo The Page.LSN field seems extraneous.  Why do we need it? */
-  long LSN;
+  lsn_t LSN;
   byte *memAddr;
   byte dirty;
   /** The next item in the replacement policy's queue */

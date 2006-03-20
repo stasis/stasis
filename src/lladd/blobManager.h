@@ -71,8 +71,8 @@ void commitBlobs(int xid);
 void abortBlobs(int xid);
 
 typedef struct {
-  unsigned offset;
-  unsigned long size;
+  size_t offset;
+  size_t size;
   unsigned fd : 1;
 } blob_record_t;
 

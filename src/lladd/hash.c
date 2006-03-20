@@ -12,7 +12,7 @@ unsigned int max_bucket(unsigned char tableBits, unsigned long nextExtension) {
 
 unsigned int hash(const void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {
   unsigned int oldTableLength = /*powl(2, tableBits - 1); */ twoToThe(tableBits - 1);
-  unsigned int unmixed = crc32(val, val_length, (unsigned long)-1L);
+  unsigned int unmixed = crc32(val, val_length, (unsigned int)-1);
   unsigned int ret = unmixed & (oldTableLength - 1); 
 
   /* What would the low hash value be? */

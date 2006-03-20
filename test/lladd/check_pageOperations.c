@@ -106,15 +106,15 @@ START_TEST(pageOpCheckRecovery) {
 
   memset(p.memAddr, 1, PAGE_SIZE);
   TpageGet(xid, pageid1, newAddr);
-  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-4));
+  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-sizeof(lsn_t)));
 
   memset(p.memAddr, 2, PAGE_SIZE);
   TpageGet(xid, pageid2, newAddr);
-  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-4));
+  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-sizeof(lsn_t)));
 
   memset(p.memAddr, 3, PAGE_SIZE);
   TpageGet(xid, pageid3, newAddr);
-  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-4));
+  assert(!memcmp(p.memAddr, newAddr, PAGE_SIZE-sizeof(lsn_t)));
   Tcommit(xid);
   Tdeinit();
 

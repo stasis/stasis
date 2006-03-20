@@ -185,7 +185,7 @@ int openLogWriter() {
       global offset for the truncated log.  (Not implemented yet)
     */
     lsn_t zero = 0;
-    int nmemb = fwrite(&zero, sizeof(lsn_t), 1, log);
+    size_t nmemb = fwrite(&zero, sizeof(lsn_t), 1, log);
     if(nmemb != 1) {
       perror("Couldn't start new log file!");
       //      assert(0);
@@ -199,7 +199,7 @@ int openLogWriter() {
       perror("Could not seek to head of log");
     }
     
-    int bytesRead = read(roLogFD, &global_offset, sizeof(lsn_t));
+    ssize_t bytesRead = read(roLogFD, &global_offset, sizeof(lsn_t));
     
     if(bytesRead != sizeof(lsn_t)) {
       printf("Could not read log header.");
@@ -257,10 +257,12 @@ int writeLogEntry(LogEntry * e) {
 
   /* Set the log entry's LSN. */
   e->LSN = nextAvailableLSN;
+  //printf ("\nLSN: %ld\n", e->LSN);
+  //fflush(stdout);
 
   nextAvailableLSN += (size + sizeof(long));
   
-  int nmemb = fwrite(&size, sizeof(long), 1, log);
+  size_t nmemb = fwrite(&size, sizeof(long), 1, log);
   if(nmemb != 1) {
     if(feof(log))   { abort();  /* feof makes no sense here */  }
     if(ferror(log)) {
@@ -280,6 +282,8 @@ int writeLogEntry(LogEntry * e) {
     }
     return LLADD_IO_ERROR;
   }
+
+  //fflush(log);
   
   pthread_mutex_unlock(&log_write_mutex);  
 
@@ -330,13 +334,13 @@ void closeLogWriter() {
 void deleteLogWriter() {
   remove(LOG_FILE);
 }
-
+long debug_lsn = -1;
 static LogEntry * readLogEntry() {
   LogEntry * ret = 0;
   long size;
   long entrySize;
   
-  int bytesRead = read(roLogFD, &size, sizeof(long));
+  ssize_t bytesRead = read(roLogFD, &size, sizeof(long));
 
   if(bytesRead != sizeof(long)) { 
     if(bytesRead == 0) {
@@ -348,12 +352,15 @@ static LogEntry * readLogEntry() {
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
-      fprintf(stderr, "short read from log.  Expected %d bytes, got %d.\nFIXME: This is 'normal', but currently not handled", sizeof(long), bytesRead);
+      fprintf(stderr, "short read from log.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", sizeof(long), bytesRead);
       fflush(stderr);
       abort();  // really abort here.  This code should attempt to piece together short log reads...
     }
   }
   ret = malloc(size);
+
+  //printf("Log entry is %ld bytes long.\n", size);
+  //fflush(stdout);
 
   bytesRead = read(roLogFD, ret, size);
 
@@ -367,7 +374,11 @@ static LogEntry * readLogEntry() {
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
-      printf("short read from log.  Expected %ld bytes, got %d.\nFIXME: This is 'normal', but currently not handled", size, bytesRead);
+      printf("short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
+      fflush(stderr);
+      long newSize = size - bytesRead;
+      long newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
+      printf("\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
       fflush(stderr);
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
@@ -393,9 +404,14 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 
   pthread_mutex_lock(&log_read_mutex);
 
+  assert(global_offset <= LSN);
+  
+
+  debug_lsn = LSN;
   off_t newPosition = lseek(roLogFD, LSN - global_offset, SEEK_SET);
   if(newPosition == -1) {
     perror("Could not seek for log read");
+    abort();
   } else {
     //    fprintf(stderr, "sought to %d\n", (int)newPosition);
     //    fflush(stderr);
@@ -419,7 +435,7 @@ int truncateLog(lsn_t LSN) {
 
   pthread_mutex_lock(&truncateLog_mutex);
 
-  if(global_offset + 4 >= LSN) {
+  if(global_offset + sizeof(lsn_t) >= LSN) {
     /* Another thread beat us to it...the log is already truncated
        past the point requested, so just return. */
     pthread_mutex_unlock(&truncateLog_mutex);

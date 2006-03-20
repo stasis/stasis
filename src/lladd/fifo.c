@@ -11,7 +11,7 @@
     Obtain a member of a fifoPool based on the value of multiplexKey.  Use CRC32 to assign the key to a consumer. 
 */
 lladdFifo_t * lladdFifoPool_getFifoCRC32( lladdFifoPool_t * pool, byte * multiplexKey, size_t multiplexKeySize) {
-  int memberId =  crc32(multiplexKey, multiplexKeySize, (unsigned long)-1L) % pool->fifoCount;
+  int memberId =  crc32(multiplexKey, multiplexKeySize, (unsigned int)-1) % pool->fifoCount;
   return pool->pool[memberId];
 }
 void lladdFifoPool_markDirty(int xid, lladdFifoPool_t * pool, lladdFifo_t * fifo) {

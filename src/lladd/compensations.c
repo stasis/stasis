@@ -19,8 +19,8 @@ void compensations_deinit() {
   assert(!ret);
 }
 
-int compensation_error() {
-  int error = (int) pthread_getspecific(error_key);
+long compensation_error() {
+  long error = (long) pthread_getspecific(error_key);
   return error;
 }
 
@@ -28,7 +28,7 @@ void compensation_clear_error() {
   compensation_set_error(0);
 }
 
-void compensation_set_error(int error) {
+void compensation_set_error(long error) {
   int ret = pthread_setspecific(error_key, (void *)error);
   if(ret) {
     printf("Unhandled error: %s\n", strerror(ret));

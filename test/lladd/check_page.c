@@ -152,9 +152,11 @@ static void* worker_thread(void * arg_ptr) {
   recordid rid;
   for(i = 0; i < 10000; i++) {
     pthread_mutex_lock(&lsn_mutex);
+
     this_lsn = lsn;
     lsn++;
-    pthread_mutex_unlock(&lsn_mutex);
+
+    pthread_mutex_unlock(&lsn_mutex);  
 
     if(! first ) {
       readRecord(1, p, rid, (byte*)&j);
@@ -164,14 +166,23 @@ static void* worker_thread(void * arg_ptr) {
     } 
     
     first = 0;
+
+    // TODO A condition variable would be more efficient...
     
-    rid = slottedRawRalloc(p, sizeof(int));
-    writeRecord(-1, p, lsn, rid, (byte*)&i);
+    pthread_mutex_lock(&lsn_mutex);
+    if(slottedFreespace(p) < sizeof(int)) { 
+      first = 1;
+      pthread_mutex_unlock(&lsn_mutex);
+    } else {
+      rid = slottedRawRalloc(p, sizeof(int));
+      pthread_mutex_unlock(&lsn_mutex);
+      writeRecord(-1, p, lsn, rid, (byte*)&i);
+    }
     sched_yield();
 
     assert(pageReadLSN(p) <= lsn);
   }
-  
+
   return NULL;
 }
 

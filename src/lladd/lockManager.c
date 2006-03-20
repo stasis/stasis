@@ -92,7 +92,7 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
   if(!xidLocks) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
-  int currentLockLevel = (int)pblHtLookup(xidLocks, dat, datLen);
+  long currentLockLevel = (long)pblHtLookup(xidLocks, dat, datLen);
   //  printf("xid %d read lock (%d)\n", xid, currentLockLevel);
   if(currentLockLevel >= LM_READLOCK) {
     pthread_mutex_unlock(&xid_table_mutex);
@@ -152,7 +152,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
 
-  int currentLockLevel = (int)pblHtLookup(xidLocks, dat, datLen);
+  long currentLockLevel = (long)pblHtLookup(xidLocks, dat, datLen);
 
   //  printf("xid %d write lock (%d)\n", xid, currentLockLevel);
 
@@ -231,7 +231,7 @@ int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
 
-  int currentLevel = (int)pblHtLookup(xidLocks, dat, datLen);
+  long currentLevel = (long)pblHtLookup(xidLocks, dat, datLen);
 
   if(currentLevel) {
     pblHtRemove(xidLocks, dat, datLen);

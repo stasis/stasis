@@ -127,15 +127,15 @@ int main (int argc, char ** argv) {
 			       broadcast_lists_count, broadcast_list_host_count);
 
   if(list_number == 0) {
-    int ret;
+    long ret;
 
     dfa_reinitialize(dfaSet, broadcast_lists[list_number][node_number], transitions_star, 2, states_star, 2);
 
     spawn_main_thread(dfaSet);
     
-    ret =(int) request(dfaSet, HUB_START, "bc:1", NULL_MACHINE, NULL);
+    ret =(long) request(dfaSet, HUB_START, "bc:1", NULL_MACHINE, NULL);
     
-    printf("run_request_returned: %x\n", ret);
+    printf("run_request_returned: %lx\n", ret);
     
   } else {
     

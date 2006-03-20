@@ -527,7 +527,7 @@ pthread_t spawn_worker_thread(DfaSet * dfaSet, state_machine_id machine_id) {
 void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, state_machine_id recipient_machine_id, Message * message) {
   StateMachine * initial_sm;
   state_machine_id machine_id;
-  int ret;
+  void * ret;
   writelock(dfaSet->lock, 600);
 
   initial_sm = allocSmash(dfaSet->smash);
@@ -558,7 +558,7 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   machine_id = initial_sm->machine_id;
   writeunlock(dfaSet->lock);
 
-  ret = (int)run_request(dfaSet, machine_id);
+  ret = run_request(dfaSet, machine_id);
 
   writelock(dfaSet->lock, machine_id); 
   assert(initial_sm == getSmash(dfaSet->smash, machine_id));
@@ -570,7 +570,7 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   freeSmash(dfaSet->smash, initial_sm->machine_id);
   writeunlock(dfaSet->lock);
 
-  return (void*)ret;
+  return ret;
 }
 
 void * run_request(DfaSet * dfaSet, state_machine_id machine_id) {

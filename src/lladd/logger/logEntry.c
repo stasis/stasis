@@ -54,6 +54,7 @@ LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   ret->prevLSN = prevLSN;
   ret->xid     = xid;
   ret->type    = type;
+  //printf ("logEntry.c: Log entry length is %ld\n", sizeof(struct __raw_log_entry));
   return ret;
 }
 

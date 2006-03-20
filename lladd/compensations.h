@@ -103,9 +103,9 @@ void lock_c_line_1231(lock * l) {
 
 void compensations_init();
 void compensations_deinit();
-int compensation_error();
+long compensation_error();
 void compensation_clear_error();
-void compensation_set_error(int code);
+void compensation_set_error(long code);
 
 #define try        do { if(compensation_error()) return;     do 
 #define try_ret(x) do { if(compensation_error()) return (x); do 
