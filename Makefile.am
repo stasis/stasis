@@ -1,6 +1,6 @@
 EXTRA_DIST = reconf
 SUBDIRS = src test utilities benchmarks
-AM_CFLAGS = -g -Wall -pedantic
+AM_CFLAGS = -g -Wall -pedantic -Wconversion
 
 docs:
 	doxygen doc/Doxyfile-api

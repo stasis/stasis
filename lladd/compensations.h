@@ -114,14 +114,14 @@ void compensation_set_error(long code);
 #define end_ret(x) while(0); if(compensation_error()) return (x); }while(0)
 
 extern int ___compensation_count___;
-
+ 
 #define begin_action(func, var)      \
   if(compensation_error()) return;   \
   do{                                \
-  void (*_func_)(void*);             \
-  assert(func);                      \
-  pthread_cleanup_push(_func_=(void(*)(void*))(func), (void*)(var));\
-  assert(_func_);                      \
+/*  void (*_func_)(void*); */             \
+/*  assert(func);   */                   \
+  pthread_cleanup_push(/*_func_=*/(void(*)(void*))(func), (void*)(var));\
+/*  assert(_func_);    */                  \
   do
 /** @todo compensation variables don't need _func_ anymore. */
 #define end_action                   \
@@ -139,8 +139,8 @@ extern int ___compensation_count___;
 #define begin_action_ret(func, var, ret)      \
   if(compensation_error()) return (ret);   \
   do{                                \
-  void (*_func_)(void*);             \
-  pthread_cleanup_push(_func_=(void(*)(void*))(func), (void*)(var));\
+/*  void (*_func_)(void*); */            \
+  pthread_cleanup_push(/*_func_=*/(void(*)(void*))(func), (void*)(var));\
   do
 
 #define end_action_ret(ret)                   \

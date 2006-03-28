@@ -255,11 +255,12 @@ BEGIN_C_DECLS
 
 /**
  * represents how to look up a record on a page
+ * @todo size should be 64bit.  Unfortunately, 'long' is 32 bit on ia32...
  */
 typedef struct {
   int page;
   int slot;
-  long size;
+  size_t size;
 } recordid;
 
 extern const recordid ROOT_RECORD;
@@ -288,12 +289,9 @@ extern const recordid NULLRID;
  * @param xid transaction ID
  * @param LSN last log that this transaction used
  */
-/*  @param status @ todo Undocumented.  (Unused?)
- */
 typedef struct {
 	int xid;
 	long LSN;
-  /*	int status; */
 } Transaction;
 
 

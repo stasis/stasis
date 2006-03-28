@@ -21,11 +21,11 @@ The caller of this function must have a writelock on the page.
 
 void slottedCompact(Page * page) {
 
-	int i;
+	short i;
 	Page bufPage;
 	byte buffer[PAGE_SIZE];
 
-	int numSlots;
+	short numSlots;
 	size_t meta_size;
 
 	bufPage.id = -1;
@@ -139,7 +139,19 @@ void slottedPageInitialize(Page * page) {
 }
 
 size_t slottedFreespaceUnlocked(Page * page) {
-  return ((size_t)slot_length_ptr(page, *numslots_ptr(page)) - (size_t)(page->memAddr + *freespace_ptr(page))) - SLOTTED_PAGE_OVERHEAD_PER_RECORD;
+  /* @todo I'm unsure these variable names are actually acurrate... */
+  size_t end_of_free_space = (size_t)slot_length_ptr(page, *numslots_ptr(page));
+  size_t start_of_free_space =  (size_t)(page->memAddr + *freespace_ptr(page));
+//  assert( (slot_length_ptr(page, *numslots_ptr(page))) >= (((size_t)(page->memAddr + *freespace_ptr(page))) + SLOTTED_PAGE_OVERHEAD_PER_RECORD));
+  assert(end_of_free_space >= start_of_free_space); 
+  if(end_of_free_space - start_of_free_space <= SLOTTED_PAGE_OVERHEAD_PER_RECORD) { 
+    return 0; 
+  } else { 
+    return end_of_free_space - start_of_free_space - SLOTTED_PAGE_OVERHEAD_PER_RECORD;
+  }
+
+  //  size_t ret = ((size_t)slot_length_ptr(page, *numslots_ptr(page)) - (size_t)(page->memAddr + *freespace_ptr(page))) - SLOTTED_PAGE_OVERHEAD_PER_RECORD;
+  //return ret;
 }
 
 
@@ -275,7 +287,7 @@ recordid slottedRawRalloc(Page * page, int size) {
 
 static void __really_do_ralloc(Page * page, recordid rid) {
 
-  int freeSpace;
+  short freeSpace;
   
   int isBlob = 0;
 
@@ -374,17 +386,16 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   writelock(page->rwlatch, 443);
   // readlock(page->rwlatch, 443);
-  int oldFreeLen = slottedFreespaceUnlocked(page);
-    *slot_ptr(page, rid.slot) =  INVALID_SLOT;
-    *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
-    *freelist_ptr(page) = rid.slot;  
-    /*  *slot_length_ptr(page, rid.slot) = 0; */
-
-    pageWriteLSN(xid, page, lsn);
-    int newFreeLen = slottedFreespaceUnlocked(page);
-    assert(oldFreeLen <= newFreeLen && oldFreeLen >= 0);
-    unlock(page->rwlatch);
-    
+  size_t oldFreeLen = slottedFreespaceUnlocked(page);
+  *slot_ptr(page, rid.slot) =  INVALID_SLOT;
+  *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
+  *freelist_ptr(page) = rid.slot;  
+  /*  *slot_length_ptr(page, rid.slot) = 0; */
+  
+  pageWriteLSN(xid, page, lsn);
+  size_t newFreeLen = slottedFreespaceUnlocked(page);
+  assert(oldFreeLen <= newFreeLen);
+  unlock(page->rwlatch);
 }
 
 void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff) {

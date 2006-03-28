@@ -206,7 +206,7 @@ START_TEST(multiplexTest) {
   // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.) 
 
   
-  /* threads have static thread sizes.  Ughh. */
+  /* threads have static stack sizes.  Ughh. */
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 
