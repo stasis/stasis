@@ -157,9 +157,9 @@ END_TEST
 
 START_TEST(logHandleColdReverseIterator) {
   LogEntry * e;
+  setup_log();
   LogHandle lh = getLogHandle();
   int i = 0;
-  setup_log();
 
 
   while(((e = nextInLog(&lh)) && (i < 100)) ) {
@@ -190,10 +190,10 @@ START_TEST(logWriterTruncate) {
   LogEntry * le2;
   LogEntry * le3 = NULL;
   LogEntry * tmp;
+  setup_log();
 
   LogHandle lh = getLogHandle();
   int i = 0;
-  setup_log();
 
   while(i < 234) {
     i++;
