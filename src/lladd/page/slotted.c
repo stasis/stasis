@@ -138,20 +138,25 @@ void slottedPageInitialize(Page * page) {
 
 }
 
+/** @todo Implement a model of slotted pages in the test scripts, and
+    then write a randomized test that confirms the model matches the
+    implementation's behavior. */
 size_t slottedFreespaceUnlocked(Page * page) {
-  /* @todo I'm unsure these variable names are actually acurrate... */
-  size_t end_of_free_space = (size_t)slot_length_ptr(page, *numslots_ptr(page));
-  size_t start_of_free_space =  (size_t)(page->memAddr + *freespace_ptr(page));
-//  assert( (slot_length_ptr(page, *numslots_ptr(page))) >= (((size_t)(page->memAddr + *freespace_ptr(page))) + SLOTTED_PAGE_OVERHEAD_PER_RECORD));
-  assert(end_of_free_space >= start_of_free_space); 
-  if(end_of_free_space - start_of_free_space <= SLOTTED_PAGE_OVERHEAD_PER_RECORD) { 
-    return 0; 
-  } else { 
-    return end_of_free_space - start_of_free_space - SLOTTED_PAGE_OVERHEAD_PER_RECORD;
-  }
+  // end_of_free_space points to the beginning of the next slot header (if we were to allocate one)
+  byte* end_of_free_space = (byte*)slot_length_ptr(page, *numslots_ptr(page)-1); 
+  // start_of_free_space points to the first unallocated byte in the page
+  // (ignoring space that could be reclaimed by compaction)
+  byte* start_of_free_space =  (byte*)(page->memAddr + *freespace_ptr(page));
+  // We need the "+ SLOTTED_PAGE_OVERHEAD_PER_RECORD" because the regions they cover could overlap.
+  assert(end_of_free_space + SLOTTED_PAGE_OVERHEAD_PER_RECORD >= start_of_free_space); 
 
-  //  size_t ret = ((size_t)slot_length_ptr(page, *numslots_ptr(page)) - (size_t)(page->memAddr + *freespace_ptr(page))) - SLOTTED_PAGE_OVERHEAD_PER_RECORD;
-  //return ret;
+  if(end_of_free_space < start_of_free_space) { 
+    // The regions overlap; there is no free space.
+    return 0;
+  } else { 
+    // The regions do not overlap.  There might be free space.
+    return (size_t) (end_of_free_space - start_of_free_space);
+  }
 }
 
 
@@ -302,6 +307,8 @@ static void __really_do_ralloc(Page * page, recordid rid) {
     slottedCompact(page);
     
     /* Make sure there's enough free space... */
+    // DELETE NEXT LINE
+    int size = slottedFreespaceUnlocked(page);
     assert (slottedFreespaceUnlocked(page) >= rid.size);
   }
 
