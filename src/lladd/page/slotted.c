@@ -142,8 +142,8 @@ void slottedPageInitialize(Page * page) {
     then write a randomized test that confirms the model matches the
     implementation's behavior. */
 size_t slottedFreespaceUnlocked(Page * page) {
-  // end_of_free_space points to the beginning of the next slot header (if we were to allocate one)
-  byte* end_of_free_space = (byte*)slot_length_ptr(page, *numslots_ptr(page)-1); 
+  // end_of_free_space points to the beginning of the slot header the caller is about to allocate.
+  byte* end_of_free_space = (byte*)slot_length_ptr(page, *numslots_ptr(page)); 
   // start_of_free_space points to the first unallocated byte in the page
   // (ignoring space that could be reclaimed by compaction)
   byte* start_of_free_space =  (byte*)(page->memAddr + *freespace_ptr(page));
