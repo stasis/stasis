@@ -73,7 +73,7 @@ compensated_function int logMemory_Iterator_next (int xid, void * impl) {
   pthread_mutex_lock(&(fifo->readerMutex));
   pthread_mutex_lock(&(fifo->mutex));
   size_t size;
-  int lsn; 
+  lsn_t lsn; 
   int ret;
 
   if(fifo->eof != -1 && fifo->eof == ringBufferReadPosition(fifo->ringBuffer)) {
@@ -146,7 +146,7 @@ compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
   }
   pthread_mutex_lock(&(fifo->mutex));
   size_t size;
-  int lsn; 
+  lsn_t lsn; 
   int ret;
 
   if(fifo->eof != -1 && fifo->eof == ringBufferReadPosition(fifo->ringBuffer)) {
@@ -234,7 +234,7 @@ compensated_function int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
   pthread_mutex_lock(&(fifo->readerMutex));
   pthread_mutex_lock(&(fifo->mutex));
   size_t size;
-  int lsn; 
+  lsn_t lsn; 
   int ret;
 
   if(fifo->eof != -1 && fifo->eof == ringBufferReadPosition(fifo->ringBuffer)) {
