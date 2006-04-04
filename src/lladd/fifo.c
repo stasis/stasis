@@ -91,7 +91,7 @@ int lladdFifoPool_iterator_next(int xid, void * it) {
     pthread_cond_wait(&(impl->readOK), &(impl->mutex));
   }
 
-  if(impl->eof) {
+  if(impl->eof && impl->last == NULL) {
     pthread_mutex_unlock(&(impl->mutex));
     return 0;
   }
