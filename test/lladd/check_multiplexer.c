@@ -63,7 +63,7 @@ terms specified in this license.
 #define NUM_INSERTS 100000
 #define NUM_THREADS 500
 
-int * array;
+lsn_t * array;
 
 static pthread_mutex_t mutex;
 static pthread_cond_t  never;
@@ -87,10 +87,10 @@ static void * go( void * arg) {
     LogEntry * e = (LogEntry*)value;
     linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
     
-    assert(arg->keySize == sizeof(int));
+    assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
     
-    int i = *(int*)(arg+1);
+    lsn_t i = *(lsn_t*)(arg+1);
     array[i]++;
     assert(array[i] == 1);
 
@@ -118,10 +118,10 @@ static void * trygo( void * arg) {
     LogEntry * e = (LogEntry*)value;
     linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
     
-    assert(arg->keySize == sizeof(int));
+    assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
     
-    int i = *(int*)(arg+1);
+    lsn_t i = *(lsn_t*)(arg+1);
     array[i]++;
     assert(*(lsn_t*)key == i);
     assert(array[i] == 1);
@@ -167,23 +167,23 @@ START_TEST(multiplexTest) {
   Tinit();
   int xid = Tbegin();
 
-  recordid hash = ThashCreate(xid, sizeof(int), VARIABLE_LENGTH);
-  linearHash_remove_arg * arg = malloc(sizeof(linearHash_remove_arg) + sizeof(int) + sizeof(char));
-  arg->keySize = sizeof(int);
+  recordid hash = ThashCreate(xid, sizeof(lsn_t), VARIABLE_LENGTH);
+  linearHash_remove_arg * arg = malloc(sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
+  arg->keySize = sizeof(lsn_t);
   arg->valueSize = sizeof(char);
 
 
-  int i;
+  lsn_t i;
 
-  array = (int*)calloc(NUM_INSERTS, sizeof(int));
+  array = (lsn_t*)calloc(NUM_INSERTS, sizeof(lsn_t));
 
   for(i = 0; i < NUM_INSERTS; i++) { 
 
-    (*(int*)(arg+1)) = i;
+    (*(lsn_t*)(arg+1)) = i;
     LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, NULLRID, (byte*)arg,
-				       sizeof(linearHash_remove_arg) + sizeof(int) + sizeof(char), NULL);
+				       sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char), NULL);
     
-    ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)e, sizeofLogEntry(e));
+    ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(e));
 
 
     free(e);
@@ -194,7 +194,7 @@ START_TEST(multiplexTest) {
   Tcommit(xid);
 
   lladdIterator_t * it = ThashGenericIterator(xid, hash);
-  lladdFifo_t * dirtyFifos = logMemoryFifo((int)(((double)NUM_INSERTS) * 0.5), 0);   //  8 bytes of memory used per queued request.
+  lladdFifo_t * dirtyFifos = logMemoryFifo((lsn_t)(((double)NUM_INSERTS) * 0.5), 0);   //  8 bytes of memory used per queued request.
   //  lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
   lladdFifoPool_t * fifoPool = lladdFifoPool_pointerPoolInit(NUM_THREADS, NUM_BYTES_IN_FIFO/10, NULL, dirtyFifos);
 
