@@ -56,7 +56,7 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
   try_ret(NULLRID) {
     hashHeader = Talloc(xid, sizeof(lladd_hash_header));
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
-      lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(pagedListHeader));
+      lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(recordid));
     } else {
       lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
     }
@@ -418,6 +418,7 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
       it->it = NULL;
       recordid bucketList;
+      assert(it->bucket.size == sizeof(bucketList));
       Tread(xid, it->bucket, &bucketList);
       it->pit= TpagedListIterator(xid, bucketList);
     } else {
