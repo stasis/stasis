@@ -37,15 +37,21 @@ void slottedCompact(Page * page) {
 	memset(buffer, -1, PAGE_SIZE);
 	
 	meta_size = (((size_t)page->memAddr) + PAGE_SIZE ) - (size_t)end_of_usable_space_ptr(page); 
-                                /* *slot_length_ptr(page, (*numslots_ptr(page))-1);*/
 
 	memcpy(buffer + PAGE_SIZE - meta_size, page->memAddr + PAGE_SIZE - meta_size, meta_size);
 
 	slottedPageInitialize(&bufPage);
 
 	numSlots = *numslots_ptr(page);
-	for (i = 0; i < numSlots; i++) {
-	  /*	  ("i = %d\n", i);   */
+
+	// Iterate over the slots backwards.  This lets
+	// __really_do_ralloc() create the entire freelist at once.
+	// This is a bit inefficient, since it then must remove things
+	// from the freelist, but it ensures that the list is kept in
+	// sorted order, and we rely upon that later.
+
+	for(i = numSlots-1; i >= 0; i--) { 
+
 	  if (isValidSlot(page, i)) {
 	    /*	    printf("copying %d\n", i); 
 		    fflush(NULL); */
@@ -60,10 +66,6 @@ void slottedCompact(Page * page) {
 
 	    memcpy(record_ptr(&bufPage, rid.slot), record_ptr(page, rid.slot), rid.size);
 	    
-	  } else {
-	    *slot_ptr(&bufPage, i) = INVALID_SLOT;
-	    *slot_length_ptr(&bufPage, i) = *freelist_ptr(page);
-	    *freelist_ptr(page) = i;
 	  }
 	}
 	
@@ -72,26 +74,25 @@ void slottedCompact(Page * page) {
 	    the number of slots needed by this page just decreased.
 	    If we let the list run outside of that area, it could
 	    cause inadvertant page corruption.  Therefore, we need to
-	    truncate the list before continuing. */
+	    truncate the list before continuing. 
 
-	short next = *freelist_ptr(page);
-	while(next >= numSlots && next != INVALID_SLOT) {
-	  next = *slot_length_ptr(page, next);
+	    The list is sorted from lowest to highest numbered slot */
+
+	short next = *freelist_ptr(&bufPage);
+	short last = INVALID_SLOT;
+	while(next < numSlots && next != INVALID_SLOT) { 
+	  assert(*slot_ptr(&bufPage, next) == INVALID_SLOT);
+	  last = next;
+	  next = *slot_length_ptr(&bufPage, next);
+	  // Check to see that the entries are sorted.  (This check
+	  // misses entries after the first entry that is greater than
+	  // numslots_ptr.)
+	  assert(next > last || next == INVALID_SLOT || last == INVALID_SLOT);
 	}
-
-	*freelist_ptr(page) = next;
 	
-	// Rebuild the freelist. 
-	
-	/*	*freelist_ptr(&bufPage) = 0;
-	for (i = 0; i < numSlots; i++) { 
-	  if (!isValidSlot(&bufPage, i)) {
-	    *slot_length_ptr(&bufPage, i) = *freelist_ptr(&bufPage);
-	    *freelist_ptr(&bufPage) = i;
-	    break;
-	  }
-	  } */
-	
+	if(last != INVALID_SLOT) { 
+	  *slot_length_ptr(&bufPage, last) = INVALID_SLOT;
+	}
 
 	memcpy(page->memAddr, buffer, PAGE_SIZE);
 }
@@ -138,7 +139,6 @@ void slottedPageInitialize(Page * page) {
 
 }
 size_t slottedFreespaceUnlocked(Page * page);
-//@todo Still wrong...handles full pages incorrectly.
 
 /** 
     This is needed to correctly implement __really_do_ralloc(), since
@@ -150,23 +150,22 @@ size_t slottedFreespaceForSlot(Page * page, int slot) {
   if(slot >= 0 && slot < *numslots_ptr(page)) { 
     slotOverhead = 0;
   } else { 
-    //    assert(*numslots_ptr(page) == slot || slot < 0);
     slotOverhead = SLOTTED_PAGE_OVERHEAD_PER_RECORD * (*numslots_ptr(page) - slot);
   }
   // end_of_free_space points to the beginning of the slot header at the bottom of the page header.
   byte* end_of_free_space = (byte*)slot_length_ptr(page, (*numslots_ptr(page))-1); 
+
   // start_of_free_space points to the first unallocated byte in the page
   // (ignoring space that could be reclaimed by compaction)
   byte* start_of_free_space =  (byte*)(page->memAddr + *freespace_ptr(page));
+
   assert(end_of_free_space >= start_of_free_space);
-  // We need the "+ SLOTTED_PAGE_OVERHEAD_PER_RECORD" because the regions they cover could overlap.
-  //  assert(end_of_free_space + SLOTTED_PAGE_OVERHEAD_PER_RECORD >= start_of_free_space); 
 
   if(end_of_free_space < start_of_free_space + slotOverhead) { 
-    // The regions would overlap after allocation; there is no free space.
+    // The regions would overlap after allocation.  There is no free space.
     return 0;
   } else { 
-    // The regions do not overlap.  There might be free space.
+    // The regions would not overlap.  There might be free space.
     return (size_t) (end_of_free_space - start_of_free_space - slotOverhead);
   }
 }
@@ -177,24 +176,6 @@ size_t slottedFreespaceForSlot(Page * page, int slot) {
 size_t slottedFreespaceUnlocked(Page * page) { 
   return slottedFreespaceForSlot(page, -1);
 }
-/*size_t slottedFreespaceUnlocked(Page * page) {
-  // end_of_free_space points to the beginning of the slot header the caller is about to allocate.
-  byte* end_of_free_space = (byte*)slot_length_ptr(page, *numslots_ptr(page)); 
-  // start_of_free_space points to the first unallocated byte in the page
-  // (ignoring space that could be reclaimed by compaction)
-  byte* start_of_free_space =  (byte*)(page->memAddr + *freespace_ptr(page));
-  // We need the "+ SLOTTED_PAGE_OVERHEAD_PER_RECORD" because the regions they cover could overlap.
-  assert(end_of_free_space + SLOTTED_PAGE_OVERHEAD_PER_RECORD >= start_of_free_space); 
-
-  if(end_of_free_space < start_of_free_space) { 
-    // The regions overlap; there is no free space.
-    return 0;
-  } else { 
-    // The regions do not overlap.  There might be free space.
-    return (size_t) (end_of_free_space - start_of_free_space);
-  }
-  }*/
-
 
 size_t slottedFreespace(Page * page) {
   size_t ret;
@@ -306,7 +287,7 @@ recordid slottedRawRalloc(Page * page, int size) {
 	rid.slot = *numslots_ptr(page);
 	rid.size = size;
 
-	/* new way - The freelist_ptr points to the first free slot number, which 
+	/* The freelist_ptr points to the first free slot number, which 
 	   is the head of a linked list of free slot numbers.*/
 	if(*freelist_ptr(page) != INVALID_SLOT) {
 	  rid.slot = *freelist_ptr(page);
@@ -326,6 +307,16 @@ recordid slottedRawRalloc(Page * page, int size) {
 	return rid;
 }
 
+/** 
+  @todo Allocation is scary without locking.  Consider this situation:
+
+   (1) *numslot_ptr(page) is 10
+   (2) An aborting transcation calls __really_do_ralloc(page) with rid.slot = 12
+   (3) *numslot_ptr(page) must be incremented to 12.  Now, what happens to 11?
+     - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
+   (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
+       be reused by aborting transactions...)
+*/
 static void __really_do_ralloc(Page * page, recordid rid) {
 
   short freeSpace;
@@ -339,38 +330,95 @@ static void __really_do_ralloc(Page * page, recordid rid) {
 
   assert(rid.size > 0);
 
+  // Compact the page if we don't have enough room.
   if(slottedFreespaceForSlot(page, rid.slot) < rid.size) {
     slottedCompact(page);
     
-    /* Make sure there's enough free space... */
-    // DELETE NEXT LINE
-    //int size = slottedFreespaceForSlot(page, rid.slot);
+    // Make sure we have enough enough free space for the new record
     assert (slottedFreespaceForSlot(page, rid.slot) >= rid.size);
   }
 
-  //  assert(*numslots_ptr(page) >= rid.slot);
-
   freeSpace = *freespace_ptr(page);
-  // Totally wrong!
-  if(*numslots_ptr(page) <= rid.slot) {
-    /*    printf("Incrementing numSlots."); */
-    *numslots_ptr(page) = rid.slot + 1;
+
+  // Remove this entry from the freelist (if necessary) slottedCompact
+  // assumes that this does not change the order of items in the list.
+  // If it did, then slottedCompact could leaks slot id's (or worse!)
+  if(rid.slot < *numslots_ptr(page) && *slot_ptr(page,rid.slot) == INVALID_SLOT) { 
+    short next = *freelist_ptr(page);
+    short last = INVALID_SLOT;
+    // special case:  is the slot physically before us the predecessor? 
+    if(rid.slot > 0) { 
+      if(*slot_length_ptr(page, rid.slot-1) == rid.slot && *slot_ptr(page, rid.slot-1) == INVALID_SLOT) { 
+	next = rid.slot;
+	last = rid.slot-1;
+      } 
+    }
+    while(next != INVALID_SLOT && next != rid.slot) { 
+      last = next;
+      next = *slot_length_ptr(page, next);
+    }
+    if(next == rid.slot) { 
+      if(last == INVALID_SLOT) { 
+	*freelist_ptr(page) = *slot_length_ptr(page, rid.slot);
+      } else { 
+	*slot_length_ptr(page, last) = *slot_length_ptr(page, rid.slot);
+      }
+    }
+  }
+
+  // Insert any slots that come between the previous numslots_ptr()
+  // and the slot we're allocating onto the freelist.  In order to 
+  // promote the reuse of free slot numbers, we go out of our way to make sure
+  // that we put them in the list in increasing order.  (Note:  slottedCompact's 
+  // correctness depends on this behavior!)
+  short lastFree = INVALID_SLOT;
+  while(*numslots_ptr(page) < rid.slot) {
+    int slot = *numslots_ptr(page);
+    short successor;
+    if(lastFree == INVALID_SLOT) { 
+
+      // The first time through, get our successor pointer from the 
+      // page's freelist pointer.
+
+      // @todo Grab this from the *end* of the freelist, since we 
+      // know that each slot we are about to insert has a higher number
+      // than anything in the list.
+
+      successor = *freelist_ptr(page);
+      *freelist_ptr(page) = slot;
+    } else { 
+      // Put this page after the last page we inserted into the list
+      successor = *slot_length_ptr(page, lastFree);
+      *slot_length_ptr(page, lastFree) = slot;
+
+      // Make sure that we didn't just find an allocated page on the free list.
+      assert(*slot_ptr(page, lastFree) == INVALID_SLOT);
+    }
+
+    // Update the pointers in the new slot header.
+    *slot_length_ptr(page, slot) = successor;
+    *slot_ptr(page, slot) = INVALID_SLOT;
+    (*numslots_ptr(page))++;
+    lastFree = slot;
+  }
+  // Increment numslots_ptr if necessary.
+  if(*numslots_ptr(page) == rid.slot) { 
+    (*numslots_ptr(page))++;
   } 
 
   DEBUG("Num slots %d\trid.slot %d\n", *numslots_ptr(page), rid.slot);
-
+  
+  // Reserve space for this record and record the space's offset in
+  // the slot header.
   *freespace_ptr(page) = freeSpace + rid.size;
-
   *slot_ptr(page, rid.slot)  = freeSpace;
 
-  /*  assert(!*slot_length_ptr(page, rid.slot) || (-1 == *slot_length_ptr(page, rid.slot)));*/
+  // Remember how long this record is
   if(isBlob) {
     *slot_length_ptr(page, rid.slot = BLOB_SLOT);
   } else {
     *slot_length_ptr(page, rid.slot) = rid.size; 
   }
-
-  assert(slottedFreespaceUnlocked(page) >= 0);
 
 }
 
@@ -405,18 +453,23 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	  slottedPageInitialize(page);  
 	}
 
+	// Make sure the slot is invalid.  If the slot has not been used yet, then 
+	// slot_length_ptr will still be zero, so we allow that too.
 	if((*slot_length_ptr(page, rid.slot) == 0) || (*slot_ptr(page, rid.slot) == INVALID_SLOT)) {
-	  /*	if(*slot_ptr(page, rid.slot) == INVALID_SLOT) { */
-
 	  __really_do_ralloc(page, rid);
 	
        	} else {
 
-	  /*	  int ijk = rid.size;
-		  int lmn = *slot_length_ptr(page, rid.slot); */
-
-	   assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
-		  (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
+	  // Check to see that the slot happens to be the right size,
+	  // so we are (hopefully) just overwriting a slot with
+	  // itself, or that the slot is a blob slot.  This can happen
+	  // under normal operation, since __really_do_ralloc() must
+	  // be called before and after the log entry is generated.
+	  // (See comment above...)  
+	  // @todo Check to see that the blob is the right size?
+	  
+	  assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
+		 (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE));
 
 	}
 
