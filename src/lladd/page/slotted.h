@@ -175,9 +175,7 @@ recordid slottedRawRalloc(Page * page, int size);
  * @return an exact measurment of the freespace, or, in the case of
  * fragmentation, an underestimate.
  */
-int  slottedFreespace(Page * p);
-
-
+size_t slottedFreespace(Page * p);
 
 /** 
  *  Check to see if a slot is a normal slot, or something else, such
