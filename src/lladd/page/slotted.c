@@ -137,11 +137,47 @@ void slottedPageInitialize(Page * page) {
   *freelist_ptr(page)  = INVALID_SLOT;
 
 }
+size_t slottedFreespaceUnlocked(Page * page);
+//@todo Still wrong...handles full pages incorrectly.
+
+/** 
+    This is needed to correctly implement __really_do_ralloc(), since
+    it takes the position of the new slot's header into account.
+*/
+size_t slottedFreespaceForSlot(Page * page, int slot) { 
+  size_t slotOverhead;
+
+  if(slot >= 0 && slot < *numslots_ptr(page)) { 
+    slotOverhead = 0;
+  } else { 
+    //    assert(*numslots_ptr(page) == slot || slot < 0);
+    slotOverhead = SLOTTED_PAGE_OVERHEAD_PER_RECORD * (*numslots_ptr(page) - slot);
+  }
+  // end_of_free_space points to the beginning of the slot header at the bottom of the page header.
+  byte* end_of_free_space = (byte*)slot_length_ptr(page, (*numslots_ptr(page))-1); 
+  // start_of_free_space points to the first unallocated byte in the page
+  // (ignoring space that could be reclaimed by compaction)
+  byte* start_of_free_space =  (byte*)(page->memAddr + *freespace_ptr(page));
+  assert(end_of_free_space >= start_of_free_space);
+  // We need the "+ SLOTTED_PAGE_OVERHEAD_PER_RECORD" because the regions they cover could overlap.
+  //  assert(end_of_free_space + SLOTTED_PAGE_OVERHEAD_PER_RECORD >= start_of_free_space); 
+
+  if(end_of_free_space < start_of_free_space + slotOverhead) { 
+    // The regions would overlap after allocation; there is no free space.
+    return 0;
+  } else { 
+    // The regions do not overlap.  There might be free space.
+    return (size_t) (end_of_free_space - start_of_free_space - slotOverhead);
+  }
+}
 
 /** @todo Implement a model of slotted pages in the test scripts, and
     then write a randomized test that confirms the model matches the
     implementation's behavior. */
-size_t slottedFreespaceUnlocked(Page * page) {
+size_t slottedFreespaceUnlocked(Page * page) { 
+  return slottedFreespaceForSlot(page, -1);
+}
+/*size_t slottedFreespaceUnlocked(Page * page) {
   // end_of_free_space points to the beginning of the slot header the caller is about to allocate.
   byte* end_of_free_space = (byte*)slot_length_ptr(page, *numslots_ptr(page)); 
   // start_of_free_space points to the first unallocated byte in the page
@@ -157,11 +193,11 @@ size_t slottedFreespaceUnlocked(Page * page) {
     // The regions do not overlap.  There might be free space.
     return (size_t) (end_of_free_space - start_of_free_space);
   }
-}
+  }*/
 
 
-int slottedFreespace(Page * page) {
-  int ret;
+size_t slottedFreespace(Page * page) {
+  size_t ret;
   readlock(page->rwlatch, 292);
   ret = slottedFreespaceUnlocked(page);
   readunlock(page->rwlatch);
@@ -302,23 +338,24 @@ static void __really_do_ralloc(Page * page, recordid rid) {
   }
 
   assert(rid.size > 0);
-  
-  if(slottedFreespaceUnlocked(page) < rid.size) {
+
+  if(slottedFreespaceForSlot(page, rid.slot) < rid.size) {
     slottedCompact(page);
     
     /* Make sure there's enough free space... */
     // DELETE NEXT LINE
-    int size = slottedFreespaceUnlocked(page);
-    assert (slottedFreespaceUnlocked(page) >= rid.size);
+    //int size = slottedFreespaceForSlot(page, rid.slot);
+    assert (slottedFreespaceForSlot(page, rid.slot) >= rid.size);
   }
 
-  freeSpace = *freespace_ptr(page);
-  
+  //  assert(*numslots_ptr(page) >= rid.slot);
 
+  freeSpace = *freespace_ptr(page);
+  // Totally wrong!
   if(*numslots_ptr(page) <= rid.slot) {
     /*    printf("Incrementing numSlots."); */
     *numslots_ptr(page) = rid.slot + 1;
-  }
+  } 
 
   DEBUG("Num slots %d\trid.slot %d\n", *numslots_ptr(page), rid.slot);
 
@@ -435,8 +472,8 @@ void slottedRead(int xid, Page * page, recordid rid, byte *buff) {
 
   // DELETE THIS
 
-  int free_space = slottedFreespaceUnlocked(page);
-  int slot_count = *numslots_ptr(page);
+  //  int free_space = slottedFreespaceUnlocked(page);
+  //  int slot_count = *numslots_ptr(page);
 
   // END DELETE THIS
 
