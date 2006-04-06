@@ -15,7 +15,6 @@
 #include <pbl/pbl.h>
 #include "linkedlist.h"
 #include "logger/logHandle.h"
-#include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 #include <lladd/lockManager.h>
 
@@ -230,7 +229,7 @@ static void Undo(int recovery) {
 	  	  
 	    /* Need to log a clr here. */
 	    
-	    clr_lsn = LogCLR(e);
+	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, e->prevLSN);
 	    
 	    /* Undo update is a no-op if the page does not reflect this
 	       update, but it will write the new clr_lsn if necessary.  */
@@ -242,7 +241,7 @@ static void Undo(int recovery) {
 	  } else {
 	    // The log entry is not associated with a particular page.
 	    // (Therefore, it must be an idempotent logical log entry.)
-	    clr_lsn = LogCLR(e);
+	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, e->prevLSN);
 	    undoUpdate(e, NULL, clr_lsn);
 	  }
 	  break;

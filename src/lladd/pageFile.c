@@ -8,7 +8,7 @@
 
 #include "pageFile.h"
 #include <assert.h>
-#include "logger/logWriter.h"
+#include <lladd/logger/logger2.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -85,10 +85,8 @@ void pageWrite(Page * ret) {
 
   /*  assert(ret->pending == 0); */
   
-  if(flushedLSN() < pageReadLSN(ret)) {
-    DEBUG("pageWrite is calling syncLog()!\n"); 
-    syncLog();
-  }
+  // If necessary, force the log to disk so that ret's LSN will be stable.
+  LogForce(pageReadLSN(ret));
 
   pthread_mutex_lock(&stable_mutex);
 

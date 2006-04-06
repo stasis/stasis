@@ -49,6 +49,58 @@ terms specified in this license.
 /*#include <lladd/bufferManager.h>*/
 #include <stdio.h>
 #include <assert.h>
+
+static int loggerType = -1;
+
+static void genericLogWrite(LogEntry * e) { 
+  assert(loggerType != -1); // Otherwise, we haven't been initialized.
+  if(loggerType == LOG_TO_FILE) { 
+    writeLogEntry(e);
+  }
+}
+
+int LogInit(int logType) { 
+  if(LOG_TO_FILE == logType) { 
+    openLogWriter();
+  } else { 
+    return -1;
+  }
+  loggerType = logType;
+  return 0;
+}
+
+int LogDeinit() { 
+  assert(loggerType != -1); 
+  if(LOG_TO_FILE == loggerType) { 
+    closeLogWriter();
+  }
+  return 0;
+}
+
+void LogForce(lsn_t lsn) { 
+  assert(loggerType != -1);
+  if(LOG_TO_FILE == loggerType) { 
+    if(flushedLSN() < lsn) { 
+      syncLog();
+    }
+  }
+}
+
+lsn_t LogTruncationPoint() { 
+  assert(loggerType != -1);
+  if(LOG_TO_FILE == loggerType) { 
+    return firstLogEntry();
+  }
+  abort();
+}
+LogEntry * LogReadLSN(lsn_t lsn) { 
+  assert(loggerType != -1); 
+  if(LOG_TO_FILE == loggerType) { 
+    return readLSNEntry(lsn);
+  }
+  abort();
+}
+
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
   tl.xid = xid;
@@ -62,7 +114,8 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
   LogEntry * e = allocCommonLogEntry(l->prevLSN, l->xid, type);
   lsn_t ret;
 
-  writeLogEntry(e);
+  genericLogWrite(e);
+
   l->prevLSN = e->LSN;
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
@@ -76,7 +129,10 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 }
 
 extern int numActiveXactions;
-lsn_t LogTransCommit(TransactionLog * l) {
+/**
+   @todo This belongs in logWriter.c and needs a new name.
+*/
+static lsn_t LogTransBundledCommit(TransactionLog * l) {
   static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
   static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
   static int pendingCommits = 0;
@@ -130,6 +186,14 @@ lsn_t LogTransCommit(TransactionLog * l) {
   return ret;
 }
 
+lsn_t LogTransCommit(TransactionLog * l) { 
+  assert(loggerType != -1);
+  if(LOG_TO_FILE == loggerType) { 
+    return LogTransBundledCommit(l);
+  }
+  abort();
+}
+
 lsn_t LogTransAbort(TransactionLog * l) {
   return LogTransCommon(l, XABORT);
 }
@@ -165,7 +229,8 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   
-  writeLogEntry(e); 
+  //  writeLogEntry(e); 
+  genericLogWrite(e);
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
 
@@ -177,13 +242,13 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   return e;
 }
 
-lsn_t LogCLR(LogEntry * undone) {
+lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN) { 
   lsn_t ret;
-  LogEntry * e = allocCLRLogEntry(-1, undone->xid, undone->LSN, undone->contents.update.rid, undone->prevLSN);
-  writeLogEntry(e);
+  LogEntry * e = allocCLRLogEntry(-1, xid, LSN, rid, prevLSN);
+  genericLogWrite(e);
 
-  DEBUG("Log CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)undone->LSN, (long int)undone->prevLSN);
+  DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
+  	 e->LSN, LSN, prevLSN);
 
   ret = e->LSN;
   free(e);

@@ -41,8 +41,6 @@ terms specified in this license.
 ---*/
 
 #include <lladd/logger/logger2.h>
-/*#include "logEntry.h"
-  #include "logWriter.h" */
 
 #ifndef __LOGHANDLE_H
 #define __LOGHANDLE_H

@@ -4,7 +4,6 @@
 #include <lladd/transactional.h>
 
 #include <lladd/recovery.h>
-#include "logger/logWriter.h"
 #include <lladd/bufferManager.h>
 #include <lladd/consumer.h>
 #include <lladd/lockManager.h>
@@ -100,7 +99,7 @@ int Tinit() {
 	
 	bufInit();
 
-	openLogWriter();
+	LogInit(LOG_TO_FILE);
 
 	try_ret(compensation_error()) { 
 	  pageOperationsInit();
@@ -354,7 +353,7 @@ int Tdeinit() {
 	assert( numActiveXactions == 0 );
 	ThashDeinit();
 	bufDeinit();
-	closeLogWriter();
+	LogDeinit();
 
 	return 0;
 }

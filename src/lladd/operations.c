@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 #include <lladd/operations.h>
 
-#include "logger/logWriter.h"
+#include <lladd/logger/logger2.h>
 #include <lladd/bufferManager.h>
 #include <assert.h>
 #include <string.h>
@@ -85,7 +85,7 @@ void redoUpdate(const LogEntry * e) {
 
     releasePage(p);
   } else if(e->type == CLRLOG) {
-    LogEntry * f = readLSNEntry(e->contents.clr.thisUpdateLSN);
+    LogEntry * f = LogReadLSN(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
     Page * p = NULL;
 
@@ -99,7 +99,7 @@ void redoUpdate(const LogEntry * e) {
     
     /* See if the page contains the result of the undo that this CLR is supposed to perform. If it
        doesn't, then undo the original operation. */
-    /*    if(f->LSN > pageReadLSN(e->contents.update.rid.page)) { */
+
     if(isNullRid || f->LSN > pageReadLSN(p)) {
 
       DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);

@@ -48,7 +48,6 @@ terms specified in this license.
 #include <lladd/common.h>
 #include <lladd/operations/nestedTopActions.h>
 #include <lladd/logger/logger2.h>
-#include "../logger/logWriter.h"
 #include <pbl/pbl.h>
 #include <string.h>
 #include <stdlib.h>
@@ -114,19 +113,16 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)
   
   // Write a CLR.
-  LogEntry * e = allocCLRLogEntry(-1, xid, undoneLSN, undoneRID, *prevLSN);
-  writeLogEntry(e);
+  lsn_t clrLSN = LogCLR(xid, undoneLSN, undoneRID, *prevLSN);
   
   // Ensure that the next action in this transaction points to the CLR. 
-  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = e->LSN;
+  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
   
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)undone->LSN, (long int)undone->prevLSN);
+	 clrLSN, undoneLSN, *prevLSN);
 
-  lsn_t ret = e->LSN;
-  free(e);
   free(prevLSN);
   pthread_mutex_unlock(&transactional_2_mutex);
   
-  return ret;
+  return clrLSN;
 }

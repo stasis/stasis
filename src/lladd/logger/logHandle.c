@@ -41,7 +41,6 @@ terms specified in this license.
 ---*/
 
 #include "logHandle.h"
-#include "logWriter.h" 
 #include <config.h> 
 #include <stdlib.h>
 
@@ -56,7 +55,7 @@ static void set_offsets(LogHandle * h, LogEntry * e, lsn_t lastRead);
 
 LogHandle getLogHandle() {
 
-  lsn_t lsn = firstLogEntry();
+  lsn_t lsn = LogTruncationPoint();
 
   return getGuardedHandle(lsn, NULL, NULL);
 }
@@ -75,7 +74,7 @@ LogHandle getGuardedHandle(lsn_t lsn, guard_fcn_t * guard, void * guard_state) {
 }
 
 LogEntry * nextInLog(LogHandle * h) {
-  LogEntry * ret = readLSNEntry(h->next_offset);
+  LogEntry * ret = LogReadLSN(h->next_offset);
   if(ret != NULL) {
     set_offsets(h, ret, h->next_offset);
   }
@@ -95,7 +94,7 @@ LogEntry * previousInTransaction(LogHandle * h) {
   LogEntry * ret = NULL;
   if(h->prev_offset > 0) {
     /* printf("A");  fflush(NULL); */
-    ret = readLSNEntry(h->prev_offset);
+    ret = LogReadLSN(h->prev_offset);
     set_offsets(h, ret, h->prev_offset);
     /*printf("B");  fflush(NULL); */
 

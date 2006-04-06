@@ -47,13 +47,13 @@ terms specified in this license.
  **********************************************/
 
 #include <lladd/operations.h>
-#include "../logger/logWriter.h"
+#include <lladd/logger/logger2.h>
 #include <stdlib.h>
 #include <assert.h>
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-  syncLog();
+  LogForce(lsn);
   return 0;
 }
 

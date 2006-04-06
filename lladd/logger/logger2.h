@@ -83,6 +83,18 @@ typedef struct {
   LogHandle lh;
 } TransactionLog;
 
+#define LOG_TO_FILE   0
+#define LOG_TO_MEMORY 1
+
+int  LogInit(int logType);
+
+int  LogDeinit();
+
+void LogForce(lsn_t lsn);
+
+lsn_t LogTruncationPoint();
+
+LogEntry * LogReadLSN(lsn_t lsn);
 
 /**
    Inform the logging layer that a new transaction has begun.
@@ -118,7 +130,8 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
    (Needed so that the lsn slot of the page in question can be
    updated.)  
 */
-lsn_t LogCLR (LogEntry * undone);
+//lsn_t LogCLR (LogEntry * undone);
+lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
 
 /**
    Write a end transaction record @see XEND
