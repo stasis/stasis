@@ -45,23 +45,28 @@ terms specified in this license.
 
 #include <lladd/logger/logger2.h>
 #include "logWriter.h"
+#include "inMemoryLog.h"
 #include "page.h"
 /*#include <lladd/bufferManager.h>*/
 #include <stdio.h>
 #include <assert.h>
 
-static int loggerType = -1;
+int loggerType = LOG_TO_FILE; //MEMORY;
 
-static void genericLogWrite(LogEntry * e) { 
+void genericLogWrite(LogEntry * e) { 
   assert(loggerType != -1); // Otherwise, we haven't been initialized.
   if(loggerType == LOG_TO_FILE) { 
     writeLogEntry(e);
+  } else if (loggerType == LOG_TO_MEMORY) {
+    writeLogEntry_InMemoryLog(e);
   }
 }
 
 int LogInit(int logType) { 
   if(LOG_TO_FILE == logType) { 
     openLogWriter();
+  } else if(LOG_TO_MEMORY == logType) { 
+    open_InMemoryLog();
   } else { 
     return -1;
   }
@@ -73,6 +78,8 @@ int LogDeinit() {
   assert(loggerType != -1); 
   if(LOG_TO_FILE == loggerType) { 
     closeLogWriter();
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    close_InMemoryLog();
   }
   return 0;
 }
@@ -83,13 +90,21 @@ void LogForce(lsn_t lsn) {
     if(flushedLSN() < lsn) { 
       syncLog();
     }
+    assert(flushedLSN() >= lsn);
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    assert(flushedLSN_InMemoryLog() >= lsn);
   }
+}
+void LogTruncate(lsn_t lsn) { 
+  truncateLog(lsn);
 }
 
 lsn_t LogTruncationPoint() { 
   assert(loggerType != -1);
   if(LOG_TO_FILE == loggerType) { 
     return firstLogEntry();
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    return firstLogEntry_InMemoryLog();
   }
   abort();
 }
@@ -97,7 +112,9 @@ LogEntry * LogReadLSN(lsn_t lsn) {
   assert(loggerType != -1); 
   if(LOG_TO_FILE == loggerType) { 
     return readLSNEntry(lsn);
-  }
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    return readLSNEntry_InMemoryLog(lsn);
+  } 
   abort();
 }
 
@@ -190,6 +207,8 @@ lsn_t LogTransCommit(TransactionLog * l) {
   assert(loggerType != -1);
   if(LOG_TO_FILE == loggerType) { 
     return LogTransBundledCommit(l);
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    return LogTransCommon(l, XCOMMIT); 
   }
   abort();
 }

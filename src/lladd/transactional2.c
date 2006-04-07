@@ -99,7 +99,7 @@ int Tinit() {
 	
 	bufInit();
 
-	LogInit(LOG_TO_FILE);
+	LogInit(loggerType);
 
 	try_ret(compensation_error()) { 
 	  pageOperationsInit();

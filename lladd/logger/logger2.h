@@ -86,11 +86,15 @@ typedef struct {
 #define LOG_TO_FILE   0
 #define LOG_TO_MEMORY 1
 
+extern int loggerType;
+
 int  LogInit(int logType);
 
 int  LogDeinit();
 
+
 void LogForce(lsn_t lsn);
+void LogTruncate(lsn_t lsn);
 
 lsn_t LogTruncationPoint();
 
@@ -139,5 +143,10 @@ lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
    @todo Implement LogEnd
 */
 void LogEnd (TransactionLog * l);
+
+/** 
+  (For internal use only..)
+*/
+void genericLogWrite(LogEntry * e);
 
 #endif

@@ -215,6 +215,8 @@ START_TEST(pageNoThreadTest)
   worker_thread(p);
 
   unlock(p->loadlatch);
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
 
   Tdeinit();
 
@@ -302,8 +304,16 @@ START_TEST(pageNoThreadMultPageTest)
   p = loadPage(-1, 1);
   slottedPageInitialize(p);
   multiple_simultaneous_pages(p);
+  // Normally, you would call pageWriteLSN() to update the LSN.  This
+  // is a hack, since Tdeinit() will crash if it detects page updates
+  // that are off the end of the log..
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
+
   releasePage(p);
+
   /*  unlock(p->loadlatch); */
+
 
   Tdeinit();
 
@@ -341,6 +351,8 @@ START_TEST(pageThreadTest) {
   }
 
   /*  unlock(p->loadlatch); */
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
   releasePage(p);
 
   Tdeinit();
@@ -368,7 +380,10 @@ START_TEST(fixedPageThreadTest) {
     pthread_join(workers[i], NULL);
   }
 
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
   releasePage(p);
+  Tdeinit();
 } END_TEST
 
 START_TEST(pageCheckSlotTypeTest) {
@@ -416,7 +431,8 @@ START_TEST(pageCheckSlotTypeTest) {
 	/** getRecordType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
 	bad.slot = slot.slot;
 	assert(getRecordType(xid, p, bad) == SLOTTED_RECORD);
-	
+	p->LSN = 0;
+	*lsn_ptr(p) = p->LSN;
 	releasePage(p);
 	
 	Tcommit(xid);

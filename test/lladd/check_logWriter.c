@@ -46,7 +46,8 @@ terms specified in this license.
 #include <lladd/transactional.h>
 /*#include <lladd/logger/logEntry.h> */
 #include "../../src/lladd/logger/logHandle.h"
-#include "../../src/lladd/logger/logWriter.h"
+#include <lladd/logger/logger2.h>
+//#include "../../src/lladd/logger/logWriter.h"
 
 #include "../../src/lladd/latches.h"
 #include <sched.h>
@@ -57,15 +58,20 @@ terms specified in this license.
 
 #define LOG_NAME   "check_logWriter.log"
 
+static int logType = LOG_TO_MEMORY;
+
 static void setup_log() {
   int i;
   lsn_t prevLSN = -1;
-  int xid = 100;
+  int xid = 42;
 
   Tinit();
 
+  LogDeinit();
   deleteLogWriter();
-  openLogWriter();
+  //  openLogWriter();
+
+  LogInit(logType);
   
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
@@ -79,10 +85,11 @@ static void setup_log() {
     rid.slot = 0;
     rid.size = sizeof(unsigned long);
 
-    writeLogEntry(e);
+    genericLogWrite(e);
     prevLSN = e->LSN;
-    
-    f = readLSNEntry(prevLSN);
+
+    f = LogReadLSN(prevLSN);
+
     fail_unless(sizeofLogEntry(e) == sizeofLogEntry(f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(e)), "Log entries did not agree!!");
 
@@ -90,16 +97,20 @@ static void setup_log() {
     free (f);
 
     e = allocUpdateLogEntry(prevLSN, xid, 1, rid, args, args_size, (byte*) &preImage);
-    writeLogEntry(e);
-    prevLSN = e->prevLSN;
-    f = allocCLRLogEntry(100, 1, 200, rid, prevLSN);
 
-    prevLSN = f->prevLSN; 
-    
-    writeLogEntry(f);
+    genericLogWrite(e);
+    prevLSN = e->prevLSN;
+
+    f = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
+
+    genericLogWrite(f);
+    assert (f->type == CLRLOG);
+    prevLSN = f->LSN; 
+
     free (e);
     free (f);
   }
+
 }
 /**
    @test 
@@ -113,7 +124,7 @@ static void setup_log() {
    In particular, logWriter checks to make sure that each log entry's
    size matches the size that it recorded before the logEntry.  Also,
    when checking the 1000 of 3000 entries, this test uses
-   readLSNEntry, which tests the logWriter's ability to succesfully
+   LogReadLSN, which tests the logWriter's ability to succesfully
    manipulate LSN's.
 
    @todo Test logHandle more thoroughly. (Still need to test the guard mechanism.)
@@ -127,16 +138,17 @@ START_TEST(logWriterTest)
 
 
   setup_log();
-  syncLog();
-  closeLogWriter();
-
-  openLogWriter();
-
+  //  syncLog();
+  //closeLogWriter();
+  LogDeinit();
+  //  openLogWriter();
+  LogInit(logType);
   
   h = getLogHandle();
-  /*  readLSNEntry(sizeof(lsn_t)); */
+  /*  LogReadLSN(sizeof(lsn_t)); */
 
   while((e = nextInLog(&h))) {
+    free(e);
     i++;
   }
 
@@ -144,6 +156,7 @@ START_TEST(logWriterTest)
   fail_unless(i = 3000, "Wrong number of log entries!");
 
   deleteLogWriter();
+  LogDeinit();
 
 
 }
@@ -163,19 +176,23 @@ START_TEST(logHandleColdReverseIterator) {
 
 
   while(((e = nextInLog(&lh)) && (i < 100)) ) {
+    free(e);
     i++;
   }
   
   i = 0;
-  lh = getLogHandle(e->LSN);
-
+  //  printf("getLogHandle(%ld)\n", e->LSN);
+  lh = getLSNHandle(e->LSN);  // was 'getLogHandle...'
   while((e = previousInTransaction(&lh))) {
     i++;
+    free(e);
   }
   /*  printf("i = %d\n", i); */
-  fail_unless( i == 1 , NULL);  /* The 1 is because we immediately hit a clr that goes to the beginning of the log... */
-
- deleteLogWriter();
+  //  assert(i == 1);
+  assert(i < 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
+  //  fail_unless( i == 1 , NULL);  
+  LogDeinit();
+  deleteLogWriter();
 
 }
 END_TEST
@@ -208,35 +225,46 @@ START_TEST(logWriterTruncate) {
   }
   
 
-  truncateLog(le->LSN);
+  //  truncateLog(le->LSN);
+  LogTruncate(le->LSN);
   
-  tmp = readLSNEntry(le->LSN);
+  tmp = LogReadLSN(le->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
   
-  tmp = readLSNEntry(le2->LSN);
+  free(tmp);
+  tmp = LogReadLSN(le2->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le2->LSN, NULL);
 
-  tmp = readLSNEntry(le3->LSN);
+  free(tmp);
+  tmp = LogReadLSN(le3->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
-
+  
+  free(tmp);
 
   lh = getLogHandle();
   
   i = 0;
+  
+  free(le);
+  free(le2);
+  free(le3);
 
   while((le = nextInLog(&lh))) {
     i++;
+    free(le);
   }
 
 
-  fail_unless(i == (3000 - 234 + 1), NULL);
+  assert(i == (3000 - 234 + 1));
+  //  fail_unless(i == (3000 - 234 + 1), NULL);
   
+  LogDeinit();
 
 } END_TEST
 
@@ -293,7 +321,7 @@ static void* worker_thread(void * arg) {
       /*      DEBUG("i = %d, le = %x\n", i, (unsigned int)le); */
       /*      fail_unless(1, NULL); */
       le->xid = i+key;
-      writeLogEntry(le);
+      genericLogWrite(le);
       //printf("reportedLSN: %ld\n", le->LSN);
       lsns[i] = le->LSN;
       i++;
@@ -302,9 +330,11 @@ static void* worker_thread(void * arg) {
     pthread_mutex_lock(&random_mutex);
     if(lsns[entry] > truncated_to && entry < i) {
       pthread_mutex_unlock(&random_mutex);
-      /*printf("X %d\n", (readLSNEntry(lsns[entry])->xid == entry+key)); fflush(stdout); */
-      assert(readLSNEntry(lsns[entry])->xid == entry+key);
-      /*      fail_unless(readLSNEntry(lsns[entry])->xid == entry+key, NULL); */
+      /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
+      LogEntry * e = LogReadLSN(lsns[entry]);
+      assert(e->xid == entry+key);
+      free(e);
+      /*      fail_unless(LogReadLSN(lsns[entry])->xid == entry+key, NULL); */
     } else { 
       pthread_mutex_unlock(&random_mutex);
     }
@@ -362,10 +392,10 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0);
   /* Sub tests are added, one per line, here */
   
-  /* tcase_add_test(tc, logWriterTest);*/
-  /*tcase_add_test(tc, logHandleColdReverseIterator);*/
+  tcase_add_test(tc, logWriterTest);
+  tcase_add_test(tc, logHandleColdReverseIterator);
   /*tcase_add_test(tc, logWriterTruncate);*/
-  /*tcase_add_test(tc, logWriterCheckWorker); */
+  tcase_add_test(tc, logWriterCheckWorker);
   tcase_add_test(tc, logWriterCheckThreaded); 
 
   /* --------------------------------------------- */

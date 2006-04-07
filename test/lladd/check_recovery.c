@@ -44,6 +44,7 @@ terms specified in this license.
 #include <assert.h> 
 
 #include <lladd/transactional.h>
+#include <lladd/logger/logger2.h>
 #include "../../src/lladd/logger/logWriter.h"
 #include "../check_includes.h"
 
@@ -497,17 +498,19 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 0); // disable timeouts
 
-  /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, recovery_idempotent);
-  tcase_add_test(tc, recovery_exactlyOnce);
-
-  tcase_add_test(tc, recovery_idempotentAbort);
-  tcase_add_test(tc, recovery_exactlyOnceAbort);
-
-  tcase_add_test(tc, recovery_clr);
-  tcase_add_test(tc, recovery_crash);
-  tcase_add_test(tc, recovery_multiple_xacts);
-
+  if(LOG_TO_MEMORY != loggerType) { 
+    
+    /* Sub tests are added, one per line, here */
+    tcase_add_test(tc, recovery_idempotent);
+    tcase_add_test(tc, recovery_exactlyOnce);
+    
+    tcase_add_test(tc, recovery_idempotentAbort);
+    tcase_add_test(tc, recovery_exactlyOnceAbort);
+    
+    tcase_add_test(tc, recovery_clr);
+    tcase_add_test(tc, recovery_crash);
+    tcase_add_test(tc, recovery_multiple_xacts);
+  }
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

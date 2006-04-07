@@ -122,7 +122,14 @@ LogEntry * previousInTransaction(LogHandle * h) {
    readLSNEntry return it explicitly.)
 */
 static void set_offsets(LogHandle * h, LogEntry * e, lsn_t lastRead) {
-  h->next_offset = lastRead + sizeofLogEntry(e)+sizeof(lsn_t);
+  if(loggerType == LOG_TO_FILE) { 
+    h->next_offset = lastRead + sizeofLogEntry(e)+sizeof(lsn_t);
+  } else if(loggerType == LOG_TO_MEMORY) { 
+    h->next_offset = lastRead + 1; 
+  } else { 
+    abort();
+  }
   h->prev_offset = (e->type==CLRLOG) ? e->contents.clr.undoNextLSN : e->prevLSN ;
+  
 }
 

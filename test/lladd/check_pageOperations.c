@@ -48,6 +48,7 @@ terms specified in this license.
 #include "../../src/lladd/page/slotted.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
+#include <lladd/logger/logger2.h>
 
 #include "../../src/lladd/latches.h"
 #include <sched.h>
@@ -185,8 +186,9 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, pageOpCheckAllocDealloc);
-  tcase_add_test(tc, pageOpCheckRecovery);
-
+  if(LOG_TO_MEMORY != loggerType) { 
+    tcase_add_test(tc, pageOpCheckRecovery);
+  }
   /* --------------------------------------------- */
   
   tcase_add_checked_fixture(tc, setup, teardown);

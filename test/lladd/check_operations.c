@@ -44,7 +44,7 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 #include "../../src/lladd/logger/logWriter.h"
-
+#include <lladd/logger/logger2.h>
 #include <lladd/bufferManager.h>
 
 #include "../check_includes.h"
@@ -239,7 +239,8 @@ START_TEST(operation_prepare) {
   Tcommit(winner);
 
   simulateBufferManagerCrash();
-  closeLogWriter();
+  //  closeLogWriter();
+  LogDeinit();
   numActiveXactions = 0;
 
 
@@ -296,7 +297,8 @@ START_TEST(operation_prepare) {
   Tcommit(winner);
 
   simulateBufferManagerCrash();
-  closeLogWriter();
+  //  closeLogWriter();
+  LogDeinit();
   numActiveXactions = 0;
 
 
@@ -527,7 +529,7 @@ START_TEST(operation_alloc_test) {
   recordid rid2 = Talloc(xid, 100);
   Tcommit(xid);
   
-  printf("rid1={%d,%d,%ld} rid2={%d,%d,%ld}\n", 
+  printf("rid1={%d,%d,%lld} rid2={%d,%d,%lld}\n", 
 	 rid1.page, rid1.slot, rid1.size,
 	 rid2.page, rid2.slot, rid2.size);  
   
@@ -634,7 +636,9 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_set_range);
-  tcase_add_test(tc, operation_prepare);
+  if(loggerType != LOG_TO_MEMORY) { 
+    tcase_add_test(tc, operation_prepare);
+  }
   tcase_add_test(tc, operation_alloc_test);
   tcase_add_test(tc, operation_array_list);
   /* --------------------------------------------- */

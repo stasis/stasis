@@ -42,6 +42,8 @@ void initializePages() {
 
     writeRecord(1, p, 1, rid, &i);
 
+    p->LSN = 0;
+    *lsn_ptr(p) = 0;
     releasePage(p);    
   }
   
@@ -72,6 +74,8 @@ void * workerThread(void * p) {
 
     assert(rid.page == k);
     
+    p->LSN = 0;
+    *lsn_ptr(p) = 0;
     releasePage(p);
 
     assert(k == j);
@@ -90,6 +94,8 @@ void * workerThreadWriting(void * q) {
     pthread_mutex_lock(&ralloc_mutex);
     rids[i] = slottedPreRalloc(1, sizeof(int), &tmp);
     slottedPostRalloc(-1, tmp, 1, rids[i]);
+    tmp->LSN = 0;
+    *lsn_ptr(tmp) = 0;
     releasePage(tmp);
     pthread_mutex_unlock(&ralloc_mutex);
     
@@ -122,6 +128,8 @@ void * workerThreadWriting(void * q) {
     writeRecord(1, p, 0, rids[i], &val); 
 
     assert(p->id == rids[i].page);
+    p->LSN = 0;
+    *lsn_ptr(p) = 0;
     releasePage(p);
 
     if(! (i % 100) ) {
@@ -139,6 +147,8 @@ void * workerThreadWriting(void * q) {
 
     readRecord(1, p, rids[i], &val); 
 
+    p->LSN = 0;
+    *lsn_ptr(p) = 0;
     releasePage(p);
 
     if(! (i % 100) ) {
