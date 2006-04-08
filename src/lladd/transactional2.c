@@ -94,7 +94,7 @@ void setupOperationsTable() {
 int Tinit() {
          
         pthread_mutex_init(&transactional_2_mutex, NULL);
-
+	numActiveXactions = 0;
         setupOperationsTable();
 	
 	bufInit();
@@ -144,8 +144,6 @@ int Tbegin() {
 
 	xidCount_tmp = xidCount;
 
-	assert( i < MAX_TRANSACTIONS );
-	
 	XactionTable[index].xid = PENDING_XTABLE_XID;
 
 	pthread_mutex_unlock(&transactional_2_mutex);	

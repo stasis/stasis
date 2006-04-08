@@ -51,7 +51,7 @@ terms specified in this license.
 #include <stdio.h>
 #include <assert.h>
 
-int loggerType = LOG_TO_FILE; //MEMORY;
+int loggerType = LOG_TO_MEMORY;
 
 void genericLogWrite(LogEntry * e) { 
   assert(loggerType != -1); // Otherwise, we haven't been initialized.
