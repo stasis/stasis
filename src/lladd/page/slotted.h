@@ -122,7 +122,7 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 void     slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 
 void slottedPageInit();
-void slottedPageDeinit();
+void slottedPageDeInit();
 
 /**
  *

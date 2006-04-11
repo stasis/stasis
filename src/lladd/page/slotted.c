@@ -123,7 +123,7 @@ void slottedPageInit() {
   lastFreepage = -1;
 }
 
-void slottedPageDeinit() {
+void slottedPageDeInit() {
   /*  pthread_mutex_destroy(&lastFreepage_mutex); */
 }
 
