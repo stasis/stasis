@@ -43,17 +43,14 @@ terms specified in this license.
 /**
  * @file
  *
- * interface for dealing with slotted pages
+ * interface for dealing with generic, lsn based pages
  *
- * This file provides a re-entrant interface for pages that contain
- * variable-size records.
+ * This file provides a re-entrant interface for pages that are labeled
+ * with an LSN and a page type.
  *
  * @ingroup LLADD_CORE
  * $Id$
  * 
- * @todo The slotted pages implementation, and the rest of the page
- * structure should be seperated, and each page should have a 'type'
- * slot so that we can implement multiple page types on top of LLADD.
 
  STRUCTURE OF A GENERIC PAGE
 <pre>
@@ -88,8 +85,6 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
-#include "../../src/lladd/page.h"
-
 
 BEGIN_C_DECLS
 
@@ -103,15 +98,6 @@ BEGIN_C_DECLS
 #define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
 
 #define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
-
-/*#define UNINITIALIZED_RECORD 0
-#define BLOB_RECORD          1
-#define SLOTTED_RECORD       2
-#define FIXED_RECORD         3 */
-
-
-
-/*#define invalidateSlot(page, n) (*slot_ptr((page), (n)) =  INVALID_SLOT)*/
 
 /** 
     The page type contains in-memory information about pages.  This
@@ -224,24 +210,6 @@ void pageWriteLSN(int xid, Page * page, lsn_t lsn);
 lsn_t pageReadLSN(const Page * page);
 
 /**
-   Sets the record type, if applicable.  Right now, this is only
-   really meaningful in the case of slotted pages that store
-   information about blobs, but the intention of this function is to
-   allow a level of indirection so that the blob implementation and
-   slotted page implementation are independent of each other.
-
-   The record type is meant to be a hint to the page implementation,
-   so no getRecordType function is provided.  (If the type of record
-   does not matter to the page implementation, then it is free to
-   ignore this call.)
-
-   @param page A pointer to the page containing the record of interest.
-   @param rid The record's id.
-   @param slot_type The new type of the record.  (Must be > PAGE_SIZE).
-*/
-/*void setRecordType(Page * page, recordid rid, int slot_type); */
-
-/**
  * @param xid transaction id @param lsn the lsn that the updated
  * record will reflect.  This is needed by recovery, and undo.  (The
  * lsn of a page must always increase.  Undos are handled by passing
@@ -282,22 +250,13 @@ void pageCommit(int xid);
 */
 void pageAbort(int xid);
 
-Page* pageMalloc();
-void  pageRealloc(Page * p, int id);
-
 /** 
-    Allocates a single page on disk.  Has nothing to do with pageMalloc.
+    Allocate memory to hold a new page.
 
-    @return the pageid of the newly allocated page, which is the
-    offset of the page in the file, divided by the page size.
+    @return A pointer to the new page.  This memory is part of a pool,
+    and should never be freed manually.  Instead, it should be passed
+    into pageFree() so that it can be reused.
 */
-/*int pageAlloc() ;*/
-/**
-   obtains the type of the record pointed to by rid.  
-
-   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, FIXED_RECORD or an error code.
-*/
-
 
 int getRecordType(int xid, Page * p, recordid rid);
 

@@ -51,12 +51,13 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/bufferManager.h>
+#include <lladd/bufferPool.h>
+
 #include <lladd/lockManager.h>
 #include "page.h"
 #include "blobManager.h"
 #include <lladd/pageCache.h>
 #include "pageFile.h"
-
 #include <pbl/pbl.h>
 
 
@@ -79,10 +80,10 @@ int bufInit() {
 	activePages = pblHtCreate(); 
 
 	dummy_page = pageMalloc();
-	pageRealloc(dummy_page, -1);
+	pageFree(dummy_page, -1);
 	Page *first;
 	first = pageMalloc();
-	pageRealloc(first, 0);
+	pageFree(first, 0);
 	pblHtInsert(activePages, &first->id, sizeof(int), first); 
 
 	openBlobStore();
@@ -233,7 +234,7 @@ Page * getPage(int pageid, int locktype) {
       pageWrite(ret);
     }
 
-    pageRealloc(ret, pageid);
+    pageFree(ret, pageid);
 
     pageRead(ret);
 

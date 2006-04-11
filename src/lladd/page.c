@@ -88,20 +88,7 @@ terms specified in this license.
 #include <lladd/compensations.h>
 #include "page/slotted.h"
 #include "page/fixed.h"
-
-/* TODO:  Combine with buffer size... */
-static int nextPage = 0;
-
-static int lastAllocedPage;
-static pthread_mutex_t lastAllocedPage_mutex;
-
-
-
-/* ------ */
-
-static pthread_mutex_t pageMallocMutex;
-/** We need one dummy page for locking purposes, so this array has one extra page in it. */
-Page pool[MAX_BUFFER_SIZE+1];
+#include <lladd/bufferPool.h>
 
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
   /* unlocked since we're only called by a function that holds the writelock. */
@@ -134,12 +121,6 @@ lsn_t pageReadLSN(const Page * page) {
 
 
 
-static void pageReallocNoLock(Page *p, int id) {
-  p->id = id;
-  p->LSN = 0;
-  p->dirty = 0;
-}
-
 /* ----- end static functions ----- */
 
 /* ----- (de)initialization functions.  Do not need to support multithreading. -----*/
@@ -149,39 +130,14 @@ static void pageReallocNoLock(Page *p, int id) {
  * all the functions dealing with pages.
  */
 void pageInit() {
-
-  nextPage = 0;
-	
-  pthread_mutex_init(&pageMallocMutex, NULL);
-
-  for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
-    pool[i].rwlatch = initlock();
-    pool[i].loadlatch = initlock();
-#ifdef HAVE_POSIX_MEMALIGN
-    // Note that the backup behavior for posix_memalign breaks O_DIRECT.  Therefore, O_DIRECT should be
-    // disabled whenever posix_memalign is not present. 
-    int ret = posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE);
-    assert(!ret);
-#else
-//#warn Not using posix_memalign
-    pool[i].memAddr = malloc(PAGE_SIZE);
-    assert(pool[i].memAddr);
-#endif
-  }
-  pthread_mutex_init(&lastAllocedPage_mutex , NULL);
-	
-  lastAllocedPage = 0; 
+  bufferPoolInit();
   slottedPageInit();
 
 }
 
 void pageDeInit() {
-  for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
-    deletelock(pool[i].rwlatch);
-    deletelock(pool[i].loadlatch);
-    free(pool[i].memAddr); // breaks efence
-  }
-  pthread_mutex_destroy(&lastAllocedPage_mutex);
+  bufferPoolDeInit();
+  slottedPageDeInit();
 }
 
 void pageCommit(int xid) {
@@ -189,79 +145,6 @@ void pageCommit(int xid) {
 
 void pageAbort(int xid) {
 }
-/*
-static int pageAllocUnlocked() {
-  int ret = lastAllocedPage;
-  Page * p;
-
-  lastAllocedPage += 1;
-  
-  p = load Page(lastAllocedPage);
-  / ** TODO Incorrect, but this kludge tricks the tests (for now) * /
-  while(*page_type_ptr(p) != UNINITIALIZED_PAGE) {
-    releasePage(p);
-    lastAllocedPage++;
-    p = load Page(lastAllocedPage);
-  }
-  releasePage(p);
-
-  return ret;
-}*/
-
-/**
-   @todo DATA CORRUPTION BUG pageAllocMultiple needs to scan forward in the store file until
-   it finds page(s) with type = UNINITIALIZED_PAGE.  Otherwise, after recovery, it will trash the storefile.
-
-   A better way to implement this is probably to reserve the first
-   slot of the first page in the storefile for metadata, and to keep
-   lastFreepage there, instead of in RAM.
-*/
-/*int pageAlloc() {
-  pthread_mutex_lock(&lastAllocedPage_mutex);  
-  int ret = pageAllocUnlocked();
-  pthread_mutex_unlock(&lastAllocedPage_mutex);
-  return ret;
-  }*/
-
-
-
-
-/** @todo Does pageRealloc really need to obtain a lock? */
-void pageRealloc(Page *p, int id) {
-  writelock(p->rwlatch, 10);
-  pageReallocNoLock(p,id);
-  writeunlock(p->rwlatch);
-}
-
-
-/** 
-	Allocate a new page. 
-	@return A pointer to the new page.  This memory is part of a pool, 
-	        and should never be freed manually.  Instead, you can 
-		reclaim it with pageRealloc()
- */
-Page *pageMalloc() {
-  Page *page;
-
-  pthread_mutex_lock(&pageMallocMutex);
-  
-  page = &(pool[nextPage]);
-  
-  nextPage++;
-  /* There's a dummy page that we need to keep around, thus the +1 */
-  assert(nextPage <= MAX_BUFFER_SIZE + 1); 
-
-  pthread_mutex_unlock(&pageMallocMutex);
-
-  return page;
-}
-
-/*void setRecordType(Page * page, recordid rid, int slot_type) {
-  if(*page_type_ptr(page) == SLOTTED_PAGE) {
-    slottedSetType(page, rid.slot, slot_type);
-  }
-  }*/
-
 
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
