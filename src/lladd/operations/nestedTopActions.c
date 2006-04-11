@@ -87,7 +87,7 @@ void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   }
   pblHtInsert(nestedTopActions, &xid, sizeof(int), prevLSN);
   pthread_mutex_unlock(&transactional_2_mutex);
-  free(e);
+  FreeLogEntry(e);
   return ret;
 }
 

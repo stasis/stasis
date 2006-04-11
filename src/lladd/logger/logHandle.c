@@ -49,7 +49,7 @@ terms specified in this license.
    That should probably be set before calling this function.
 */
 
-static void set_offsets(LogHandle * h, LogEntry * e, lsn_t lastRead);
+static void set_offsets(LogHandle * h, const LogEntry * e, lsn_t lastRead);
 
 /*-------------------------------------------------------*/
 
@@ -73,15 +73,15 @@ LogHandle getGuardedHandle(lsn_t lsn, guard_fcn_t * guard, void * guard_state) {
   return ret;
 }
 
-LogEntry * nextInLog(LogHandle * h) {
-  LogEntry * ret = LogReadLSN(h->next_offset);
+const LogEntry * nextInLog(LogHandle * h) {
+  const LogEntry * ret = LogReadLSN(h->next_offset);
   if(ret != NULL) {
     set_offsets(h, ret, h->next_offset);
   }
 
   if(h->guard) {
     if(!(h->guard(ret, h->guard_state))) {
-      free(ret);
+      FreeLogEntry(ret);
       ret = NULL;
     }
   }
@@ -90,8 +90,8 @@ LogEntry * nextInLog(LogHandle * h) {
   return ret;
 }
 
-LogEntry * previousInTransaction(LogHandle * h) {
-  LogEntry * ret = NULL;
+const LogEntry * previousInTransaction(LogHandle * h) {
+  const LogEntry * ret = NULL;
   if(h->prev_offset > 0) {
     /* printf("A");  fflush(NULL); */
     ret = LogReadLSN(h->prev_offset);
@@ -102,7 +102,7 @@ LogEntry * previousInTransaction(LogHandle * h) {
       /*printf("C");  fflush(NULL);*/
 
       if(!h->guard(ret, h->guard_state)) {
-	free(ret);
+	FreeLogEntry(ret);
 	ret = NULL;
       }
       /*printf("D");  fflush(NULL);*/
@@ -121,7 +121,7 @@ LogEntry * previousInTransaction(LogHandle * h) {
    logging implementation, not here.  (One possibility is to have
    readLSNEntry return it explicitly.)
 */
-static void set_offsets(LogHandle * h, LogEntry * e, lsn_t lastRead) {
+static void set_offsets(LogHandle * h, const LogEntry * e, lsn_t lastRead) {
   if(loggerType == LOG_TO_FILE) { 
     h->next_offset = lastRead + sizeofLogEntry(e)+sizeof(lsn_t);
   } else if(loggerType == LOG_TO_MEMORY) { 

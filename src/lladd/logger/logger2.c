@@ -54,12 +54,14 @@ terms specified in this license.
 int loggerType = LOG_TO_MEMORY;
 
 void genericLogWrite(LogEntry * e) { 
-  assert(loggerType != -1); // Otherwise, we haven't been initialized.
   if(loggerType == LOG_TO_FILE) { 
     writeLogEntry(e);
+    return;
   } else if (loggerType == LOG_TO_MEMORY) {
     writeLogEntry_InMemoryLog(e);
+    return;
   }
+  abort(); // we dont have an appropriate implementation, or weren't initialized...
 }
 
 int LogInit(int logType) { 
@@ -85,22 +87,23 @@ int LogDeinit() {
 }
 
 void LogForce(lsn_t lsn) { 
-  assert(loggerType != -1);
   if(LOG_TO_FILE == loggerType) { 
     if(flushedLSN() < lsn) { 
       syncLog();
     }
     assert(flushedLSN() >= lsn);
+    return;
   } else if(LOG_TO_MEMORY == loggerType) { 
     assert(flushedLSN_InMemoryLog() >= lsn);
+    return;
   }
+  abort();
 }
 void LogTruncate(lsn_t lsn) { 
   truncateLog(lsn);
 }
 
 lsn_t LogTruncationPoint() { 
-  assert(loggerType != -1);
   if(LOG_TO_FILE == loggerType) { 
     return firstLogEntry();
   } else if(LOG_TO_MEMORY == loggerType) { 
@@ -108,8 +111,7 @@ lsn_t LogTruncationPoint() {
   }
   abort();
 }
-LogEntry * LogReadLSN(lsn_t lsn) { 
-  assert(loggerType != -1); 
+const LogEntry * LogReadLSN(lsn_t lsn) { 
   if(LOG_TO_FILE == loggerType) { 
     return readLSNEntry(lsn);
   } else if(LOG_TO_MEMORY == loggerType) { 
@@ -117,6 +119,20 @@ LogEntry * LogReadLSN(lsn_t lsn) {
   } 
   abort();
 }
+
+void FreeLogEntry(const LogEntry * e) { 
+  if(LOG_TO_FILE == loggerType) { 
+    free(e);
+    return;
+  } else if(LOG_TO_MEMORY == loggerType) {
+    if(e->LSN == -1) { 
+      free(e);
+    }
+    return;
+  }
+  abort();
+}
+
 
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
@@ -139,7 +155,7 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 
   ret = e->LSN;
 
-  free(e);
+  FreeLogEntry(e);
 
   return ret;
 
@@ -270,6 +286,6 @@ lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN) {
   	 e->LSN, LSN, prevLSN);
 
   ret = e->LSN;
-  free(e);
+  FreeLogEntry(e);
   return ret;
 }

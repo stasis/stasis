@@ -85,7 +85,7 @@ void redoUpdate(const LogEntry * e) {
 
     releasePage(p);
   } else if(e->type == CLRLOG) {
-    LogEntry * f = LogReadLSN(e->contents.clr.thisUpdateLSN);
+    const LogEntry * f = LogReadLSN(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
     Page * p = NULL;
 
@@ -109,6 +109,7 @@ void redoUpdate(const LogEntry * e) {
     }
 
     releasePage(p);
+    FreeLogEntry(f); 
   } else {
     assert(0);
   }

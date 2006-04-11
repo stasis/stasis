@@ -60,7 +60,7 @@ terms specified in this license.
    returning log entries depending on the context in which it was
    called.
 */
-typedef int (guard_fcn_t)(LogEntry *, void *);
+typedef int (guard_fcn_t)(const LogEntry *, void *);
 
 typedef struct { 
   /** The LSN of the last log entry returned.*/
@@ -98,7 +98,7 @@ void LogTruncate(lsn_t lsn);
 
 lsn_t LogTruncationPoint();
 
-LogEntry * LogReadLSN(lsn_t lsn);
+const LogEntry * LogReadLSN(lsn_t lsn);
 
 /**
    Inform the logging layer that a new transaction has begun.
@@ -124,6 +124,13 @@ lsn_t LogTransAbort(TransactionLog * l);
   LogUpdate writes an UPDATE log record to the log tail
 */
 LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, const byte * args);
+
+/**
+   Whenever a LogEntry is returned by a function that is defined by
+   logger2.h or logHandle.h, the caller should eventually call this
+   function to release any resources held by that entry.
+*/
+void FreeLogEntry(const LogEntry * e);
 
 /**
    Write a compensation log record.  These records are used to allow

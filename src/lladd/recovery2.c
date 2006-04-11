@@ -54,7 +54,7 @@ static LinkedListPtr rollbackLSNs = NULL;
 */
 static void Analysis () {
 
-  LogEntry * e;
+  const LogEntry * e;
 
   LogHandle lh = getLogHandle();
 
@@ -141,14 +141,14 @@ static void Analysis () {
     default:
       assert (0);
     }
-    free (e);
+    FreeLogEntry(e);
   }
   TsetXIDCount(highestXid);
 }
 
 static void Redo() {
   LogHandle lh = getLogHandle();
-  LogEntry  * e;
+  const LogEntry  * e;
   
   while((e = nextInLog(&lh))) {
 
@@ -170,7 +170,7 @@ static void Redo() {
 	globalLockManager.commit(e->xid);
       } // if transaction aborted, wait until undo is complete before notifying the globalLockManager.
     }
-    free(e);
+    FreeLogEntry(e);
   }
 }
 
@@ -183,7 +183,7 @@ static void Undo(int recovery) {
 
   
   while(rollbackLSNs != NULL) {
-    LogEntry * e;
+    const LogEntry * e;
     lsn_t rollback = popMaxVal(&rollbackLSNs);
 
     prepare_guard_state = getPrepareGuardState();
@@ -260,7 +260,7 @@ static void Undo(int recovery) {
 	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%ld), skipping...\n", e->type, e->xid, e->LSN); 
       break;
       }
-      free(e);
+      FreeLogEntry(e);
     }
     int transactionWasPrepared = prepareAction(prepare_guard_state);
     free(prepare_guard_state);

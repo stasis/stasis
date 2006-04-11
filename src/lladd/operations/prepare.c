@@ -84,7 +84,7 @@ void * getPrepareGuardState() {
 }
 
 
-int prepareGuard(LogEntry * e, void * state) {
+int prepareGuard(const LogEntry * e, void * state) {
   PrepareGuardState * pgs = state; 
   int ret = pgs->continueIterating;
   if(e->type == UPDATELOG) {

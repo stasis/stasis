@@ -185,8 +185,8 @@ pobj_start (void)
 int
 pobj_end (void)
 {
-    long active_xid;
-    long active_nested;
+    void * active_xid;
+    void * active_nested;
 
     if (! g_is_init)
 	return -1;
@@ -202,7 +202,7 @@ pobj_end (void)
 	if (active_xid >= 0) {
 	    if (pthread_setspecific (g_active_xid_key, NULL))
 		return -1;
-	    Tcommit (active_xid);
+	    Tcommit ((int)active_xid);
 	}
 	else
 	    return -1;  /* Attempt to close a non-open transaction. */

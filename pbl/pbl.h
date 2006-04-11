@@ -26,6 +26,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.3  2006/04/11 02:20:21  sears
+    removed memcpy() calls from inMemoryLog; added "const" qualifier to many LogEntry pointers.
+
     Revision 1.2  2005/03/02 05:46:29  sears
     Compiles on FreeBSD!
 
@@ -394,14 +397,14 @@ extern int    pbl_LongSize( unsigned long value );
 extern int    pbl_VarBufSize( unsigned char * buffer );
 
 extern pblHashTable_t * pblHtCreate( );
-extern int    pblHtInsert  ( pblHashTable_t * h, void * key, size_t keylen,
+extern int    pblHtInsert  ( pblHashTable_t * h, const void * key, size_t keylen,
                              void * dataptr);
-extern void * pblHtLookup  ( pblHashTable_t * h, void * key, size_t keylen );
+extern void * pblHtLookup  ( pblHashTable_t * h, const void * key, size_t keylen );
 extern void * pblHtFirst   ( pblHashTable_t * h );
 extern void * pblHtNext    ( pblHashTable_t * h );
 extern void * pblHtCurrent ( pblHashTable_t * h );
 extern void * pblHtCurrentKey ( pblHashTable_t * h );
-extern int    pblHtRemove  ( pblHashTable_t * h, void * key, size_t keylen );
+extern int    pblHtRemove  ( pblHashTable_t * h, const void * key, size_t keylen );
 extern int    pblHtDelete  ( pblHashTable_t * h );
 
 /*

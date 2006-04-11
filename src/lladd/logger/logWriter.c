@@ -244,14 +244,14 @@ int writeLogEntry(LogEntry * e) {
   if(!nextAvailableLSN) { 
 
     LogHandle lh;
-    LogEntry * le;
+    const LogEntry * le;
 
     nextAvailableLSN = sizeof(lsn_t);
     lh = getLSNHandle(nextAvailableLSN);
 
     while((le = nextInLog(&lh))) {
       nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(long);;
-      free(le);
+      FreeLogEntry(le);
     }
   }
 
@@ -428,7 +428,7 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 int truncateLog(lsn_t LSN) {
   FILE *tmpLog;
 
-  LogEntry * le;
+  const LogEntry * le;
   LogHandle lh;
 
   long size;
@@ -474,7 +474,7 @@ int truncateLog(lsn_t LSN) {
     size = sizeofLogEntry(le);
     myFwrite(&size, sizeof(lsn_t), tmpLog);
     myFwrite(le, size, tmpLog);
-    free (le);
+    FreeLogEntry(le);
   } 
 
   fflush(tmpLog);

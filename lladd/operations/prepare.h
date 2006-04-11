@@ -99,7 +99,7 @@ Operation getPrepare();
 /**
    Recovery's undo phase uses this logHandle iterator guard to implement Tprepare().
 */
-int prepareGuard(LogEntry * e, void * state);
+int prepareGuard(const LogEntry * e, void * state);
 void * getPrepareGuardState();
 int prepareAction(void * state);
 #endif

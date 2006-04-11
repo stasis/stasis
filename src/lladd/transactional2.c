@@ -173,7 +173,7 @@ static compensated_function void TupdateHelper(int xid, recordid rid, const void
   
   doUpdate(e, p);
 
-  free(e);
+  FreeLogEntry(e);
 }
 
 compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {

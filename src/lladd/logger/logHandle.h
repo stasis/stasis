@@ -78,7 +78,7 @@ LogHandle getGuardedHandle(lsn_t lsn, guard_fcn_t * f, void * guard_state);
     EOF.
 
  */
-LogEntry * nextInLog(LogHandle * h);
+const LogEntry * nextInLog(LogHandle * h);
 /** 
     Returns a pointer to the previous log entry in this
     transaction. This is used to undo transactions.  If the logHandle
@@ -95,7 +95,7 @@ LogEntry * nextInLog(LogHandle * h);
     @return NULL if there is no previous LogEntry for this
     transaction, or if the guard indicates that we're done by returning 0.
  */
-LogEntry * previousInTransaction(LogHandle * h);
+const LogEntry * previousInTransaction(LogHandle * h);
 /*
 void closeHandle(LogHandle h);
 */

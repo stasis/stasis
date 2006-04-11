@@ -75,7 +75,7 @@ static void setup_log() {
   
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
-    LogEntry * f;
+    const LogEntry * f;
     recordid rid;
     byte * args = (byte*)"Test 123.";
     long args_size = 10;  /* Including null */
@@ -93,22 +93,22 @@ static void setup_log() {
     fail_unless(sizeofLogEntry(e) == sizeofLogEntry(f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(e)), "Log entries did not agree!!");
 
-    free (e);
-    free (f);
+    FreeLogEntry (e);
+    FreeLogEntry (f);
 
     e = allocUpdateLogEntry(prevLSN, xid, 1, rid, args, args_size, (byte*) &preImage);
 
     genericLogWrite(e);
     prevLSN = e->prevLSN;
 
-    f = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
+    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
 
-    genericLogWrite(f);
-    assert (f->type == CLRLOG);
-    prevLSN = f->LSN; 
+    genericLogWrite(g);
+    assert (g->type == CLRLOG);
+    prevLSN = g->LSN; 
 
-    free (e);
-    free (f);
+    FreeLogEntry (e);
+    FreeLogEntry (g);
   }
 
 }
@@ -132,7 +132,7 @@ static void setup_log() {
 */
 START_TEST(logWriterTest)
 {
-  LogEntry * e;
+  const LogEntry * e;
   LogHandle h;
   int i = 0;
 
@@ -148,7 +148,7 @@ START_TEST(logWriterTest)
   /*  LogReadLSN(sizeof(lsn_t)); */
 
   while((e = nextInLog(&h))) {
-    free(e);
+    FreeLogEntry(e);
     i++;
   }
 
@@ -169,14 +169,14 @@ END_TEST
     allocated? */
 
 START_TEST(logHandleColdReverseIterator) {
-  LogEntry * e;
+  const LogEntry * e;
   setup_log();
   LogHandle lh = getLogHandle();
   int i = 0;
 
 
   while(((e = nextInLog(&lh)) && (i < 100)) ) {
-    free(e);
+    FreeLogEntry(e);
     i++;
   }
   
@@ -185,7 +185,7 @@ START_TEST(logHandleColdReverseIterator) {
   lh = getLSNHandle(e->LSN);  // was 'getLogHandle...'
   while((e = previousInTransaction(&lh))) {
     i++;
-    free(e);
+    FreeLogEntry(e);
   }
   /*  printf("i = %d\n", i); */
   //  assert(i == 1);
@@ -203,10 +203,10 @@ END_TEST
     Build a simple log, truncate it, and then test the logWriter routines against it.
 */
 START_TEST(logWriterTruncate) {
-  LogEntry * le;
-  LogEntry * le2;
-  LogEntry * le3 = NULL;
-  LogEntry * tmp;
+  const LogEntry * le;
+  const LogEntry * le2;
+  const LogEntry * le3 = NULL;
+  const LogEntry * tmp;
   setup_log();
 
   LogHandle lh = getLogHandle();
@@ -233,31 +233,31 @@ START_TEST(logWriterTruncate) {
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
   
-  free(tmp);
+  FreeLogEntry(tmp);
   tmp = LogReadLSN(le2->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le2->LSN, NULL);
 
-  free(tmp);
+  FreeLogEntry(tmp);
   tmp = LogReadLSN(le3->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
   
-  free(tmp);
+  FreeLogEntry(tmp);
 
   lh = getLogHandle();
   
   i = 0;
   
-  free(le);
-  free(le2);
-  free(le3);
+  FreeLogEntry(le);
+  FreeLogEntry(le2);
+  FreeLogEntry(le3);
 
   while((le = nextInLog(&lh))) {
     i++;
-    free(le);
+    FreeLogEntry(le);
   }
 
 
@@ -277,7 +277,7 @@ static void* worker_thread(void * arg) {
   long i = 0;
   int truncated_to = 4;
 
-  LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
+
 
   int lsns[ENTRIES_PER_THREAD];
 
@@ -285,6 +285,7 @@ static void* worker_thread(void * arg) {
   /*  fail_unless(NULL != le, NULL); */
 
   while(i < ENTRIES_PER_THREAD) {
+    LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
     int threshold;
     long entry;
     int needToTruncate = 0;
@@ -331,9 +332,9 @@ static void* worker_thread(void * arg) {
     if(lsns[entry] > truncated_to && entry < i) {
       pthread_mutex_unlock(&random_mutex);
       /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
-      LogEntry * e = LogReadLSN(lsns[entry]);
+      const LogEntry * e = LogReadLSN(lsns[entry]);
       assert(e->xid == entry+key);
-      free(e);
+      FreeLogEntry(e);
       /*      fail_unless(LogReadLSN(lsns[entry])->xid == entry+key, NULL); */
     } else { 
       pthread_mutex_unlock(&random_mutex);
@@ -343,10 +344,10 @@ static void* worker_thread(void * arg) {
     /* Try to interleave requests as much as possible */
     /*pthread_yield(); */
     sched_yield();
-
+    FreeLogEntry(le);
   }
 
-  free(le);
+
 
   return 0;
 }

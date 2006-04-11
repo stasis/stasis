@@ -24,6 +24,9 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.8  2006/04/11 02:20:21  sears
+    removed memcpy() calls from inMemoryLog; added "const" qualifier to many LogEntry pointers.
+
     Revision 1.7  2004/10/20 06:54:39  sears
     parameter tweak..
 
@@ -209,7 +212,7 @@ pblHashTable_t * pblHtCreate( void )
 
 int pblHtInsert(
 pblHashTable_t          * h,      /** hash table to insert to             */
-void                    * key,    /** key to insert                       */
+const void              * key,    /** key to insert                       */
 size_t                    keylen, /** length of that key                  */
 void                    * dataptr /** dataptr to insert                   */
 )
@@ -277,7 +280,7 @@ void                    * dataptr /** dataptr to insert                   */
 
 void * pblHtLookup(
 pblHashTable_t              * h,      /** hash table to search in          */
-void                        * key,    /** key to search                    */
+const void                  * key,    /** key to search                    */
 size_t                        keylen  /** length of that key               */
 )
 {
@@ -479,7 +482,7 @@ pblHashTable_t              * h       /** hash table to look in            */
 
 int pblHtRemove(
 pblHashTable_t            * h,     /** hash table to remove from           */
-void                      * key,   /** OPT: key to remove                  */
+const void                * key,   /** OPT: key to remove                  */
 size_t                      keylen /** OPT: length of that key             */
 )
 {

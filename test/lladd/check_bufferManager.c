@@ -4,9 +4,6 @@
 #include <check.h>
 
 #include <lladd/transactional.h>
-/*#include <lladd/logger/logEntry.h> */
-#include "../../src/lladd/logger/logHandle.h"
-#include "../../src/lladd/logger/logWriter.h"
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"
 #include "../../src/lladd/page/slotted.h" 
@@ -117,11 +114,7 @@ void * workerThreadWriting(void * q) {
     assert(p->id == rids[i].page);
 
     for(k = 0; k < 100; k++) {
-      int * j  =NULL;
-      //      assert(p->loadlatch->lock->readers);
       assert(p->id == rids[i].page);
-      free(j = malloc(sizeof(int)));
-      assert(j);
     }
     
     /*    sched_yield(); */

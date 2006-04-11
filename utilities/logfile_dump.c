@@ -6,14 +6,14 @@
 #include "../src/lladd/logger/logWriter.h"
 
 
-static char * logEntryToString(LogEntry * le) {
+static char * logEntryToString(const LogEntry * le) {
   char * ret = NULL;
 
   switch(le->type) {
   case UPDATELOG:
     {
       recordid rid = le->contents.clr.rid;
-      asprintf(&ret, "UPDATE\tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5ld}\tfuncId=%3d\targSize=%9d\n", le->LSN, le->prevLSN, le->xid, 
+      asprintf(&ret, "UPDATE\tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5lld}\tfuncId=%3d\targSize=%9d\n", le->LSN, le->prevLSN, le->xid, 
 	       rid.page, rid.slot, rid.size, le->contents.update.funcID, le->contents.update.argSize );
       
     }
@@ -43,7 +43,7 @@ static char * logEntryToString(LogEntry * le) {
   case CLRLOG:
     {
       recordid rid = le->contents.clr.rid;
-      asprintf(&ret, "CLR   \tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5ld}\tthisUpdateLSN=%9ld\tundoNextLSN=%9ld\n", le->LSN, le->prevLSN, le->xid, 
+      asprintf(&ret, "CLR   \tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5lld}\tthisUpdateLSN=%9ld\tundoNextLSN=%9ld\n", le->LSN, le->prevLSN, le->xid, 
 	       rid.page, rid.slot, rid.size, (long int)le->contents.clr.thisUpdateLSN, (long int)le->contents.clr.undoNextLSN );
     }
     break;
@@ -55,7 +55,7 @@ void setupOperationsTable();
 
 int main() {
   LogHandle lh;
-  LogEntry * le;
+  const LogEntry * le;
 
   setupOperationsTable();
 
@@ -73,6 +73,7 @@ int main() {
 
       free(s);
     }
+    FreeLogEntry(le);
   }
   
 
