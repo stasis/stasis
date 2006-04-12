@@ -103,6 +103,15 @@ void LogTruncate(lsn_t lsn) {
   truncateLog(lsn);
 }
 
+lsn_t LogFlushedLSN() { 
+  if(LOG_TO_FILE == loggerType) { 
+    return flushedLSN();
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    return flushedLSN_InMemoryLog();
+  } 
+  abort();
+}
+
 lsn_t LogTruncationPoint() { 
   if(LOG_TO_FILE == loggerType) { 
     return firstLogEntry();
