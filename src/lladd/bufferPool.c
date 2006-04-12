@@ -57,6 +57,8 @@ terms specified in this license.
 static int nextPage = 0;
 static pthread_mutex_t pageMallocMutex;
 
+static void * addressFromMalloc = 0;
+
 /** We need one dummy page for locking purposes, so this array has one extra page in it. */
 Page pool[MAX_BUFFER_SIZE+1];
 
@@ -67,34 +69,32 @@ void bufferPoolInit() {
 	
   pthread_mutex_init(&pageMallocMutex, NULL);
 
+  byte * bufferSpace ;
+
+#ifdef HAVE_POSIX_MEMALIGN
+  int ret = posix_memalign((void*)&bufferSpace, PAGE_SIZE, PAGE_SIZE * (MAX_BUFFER_SIZE + 1));
+  assert(!ret);
+  addressFromMalloc = bufferSpace;
+#else
+  bufferSpace = malloc(PAGE_SIZE * (MAX_BUFFER_SIZE + 2));
+  assert(bufferSpace);
+  addressFromMalloc = bufferSpace;
+  bufferSpace += PAGE_SIZE - (bufferSpace % PAGE_SIZE);
+#endif
+
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     pool[i].rwlatch = initlock();
     pool[i].loadlatch = initlock();
-    /** @todo The buffer pool should be allocated as a contiguous
-	unit.  This would also allow us to work around systems that
-	lack posix_memalign...*/
-#ifdef HAVE_POSIX_MEMALIGN
-    // Note that the backup behavior for posix_memalign breaks O_DIRECT.  Therefore, O_DIRECT should be
-    // disabled whenever posix_memalign is not present. 
-    int ret = posix_memalign((void*)(&(pool[i].memAddr)), PAGE_SIZE, PAGE_SIZE);
-    assert(!ret);
-#else
-//#warn Not using posix_memalign 
-    pool[i].memAddr = malloc(PAGE_SIZE);
-    assert(pool[i].memAddr);
-#endif
+    pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
   }
-  //  pthread_mutex_init(&lastAllocedPage_mutex , NULL);
-	
-  //  lastAllocedPage = 0; 
 }
 
 void bufferPoolDeInit() { 
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     deletelock(pool[i].rwlatch);
     deletelock(pool[i].loadlatch);
-    free(pool[i].memAddr); // breaks efence
   }
+  free(addressFromMalloc); // breaks efence
   pthread_mutex_destroy(&pageMallocMutex);
 }
 

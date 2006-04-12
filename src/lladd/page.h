@@ -112,7 +112,6 @@ BEGIN_C_DECLS
 struct Page_s {
   /** @todo Shouldn't Page.id be a long? */
   int id;
-  /** @todo The Page.LSN field seems extraneous.  Why do we need it? */
   lsn_t LSN;
   byte *memAddr;
   byte dirty;

@@ -91,15 +91,6 @@ terms specified in this license.
 #include <lladd/bufferPool.h>
 
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
-  /* unlocked since we're only called by a function that holds the writelock. */
-  /*  *(long *)(page->memAddr + START_OF_LSN) = page->LSN; */
-  
-  /*  tr y {
-    if(globalLockM anager.writ eLockPage) { 
-      globalLock Manager.writeL ockPage(xid, page->id); 
-    }
-    } en d; */
-
   if(page->LSN < lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
@@ -118,10 +109,6 @@ lsn_t pageReadLSN(const Page * page) {
 
   return ret;
 }
-
-
-
-/* ----- end static functions ----- */
 
 /* ----- (de)initialization functions.  Do not need to support multithreading. -----*/
 
@@ -149,14 +136,6 @@ void pageAbort(int xid) {
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-
-  
-  /*  writelock(p->rwlatch, 225);  // Need a writelock so that we can update the lsn. 
-  int lock_ret = pageWriteLSN(xid, p, lsn);
-  unlock(p->rwlatch);    
-  if(lock_ret) {
-    return lock_ret;
-    } */
 
   writelock(p->rwlatch, 225);
   pageWriteLSN(xid, p, lsn);
@@ -227,9 +206,8 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
     return UNINITIALIZED_RECORD;	
     
   } else if(page_type == SLOTTED_PAGE) {
-    if(*numslots_ptr(p) <= rid.slot || *slot_ptr(p, rid.slot) == INVALID_SLOT /*|| *slot_length_ptr(p, rid.slot) == INVALID_SLOT*/) {
+    if(*numslots_ptr(p) <= rid.slot || *slot_ptr(p, rid.slot) == INVALID_SLOT) {
       return UNINITIALIZED_PAGE;
-      //    } else if(*slot_length_ptr(p, rid.slot) == BLOB_REC_SIZE) {
     } else if (*slot_length_ptr(p, rid.slot) == BLOB_SLOT) {
       return BLOB_RECORD; 
     } else {
@@ -267,15 +245,6 @@ int getRecordSize(int xid, Page * p, recordid rid) {
 void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-
-  /*  writelock(p->rwlatch, 225);  // Need a writelock so that we can update the lsn. 
-  int lock_error = pageWriteLSN(xid, p, lsn);
-  if(lock_error) {
-    unlock(p->rwlatch);
-    return lock_error;
-  }
-  unlock(p->rwlatch);    */
-
 
   // Need a writelock so that we can update the lsn. 
 

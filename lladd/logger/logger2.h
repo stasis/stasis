@@ -95,6 +95,8 @@ int  LogDeinit();
 
 void LogForce(lsn_t lsn);
 void LogTruncate(lsn_t lsn);
+lsn_t LogFlushedLSN();
+
 
 lsn_t LogTruncationPoint();
 

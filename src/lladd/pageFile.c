@@ -122,20 +122,13 @@ void pageWrite(Page * ret) {
 
   pthread_mutex_unlock(&stable_mutex);
 }
-/** @todo O_DIRECT is broken on old (pre 2.6.2ish?) linux, so it's disabled until the build script can be improved. :( */
+/** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
 void openPageFile() {
 
   DEBUG("Opening storefile.\n");
 
-#if HAVE_POSIX_MEMALIGN
-  // O_DIRECT is broken under linux 2.4.. 
-  stable = open (STORE_FILE, O_CREAT | O_RDWR/* | O_DIRECT*/, S_IRWXU | S_IRWXG | S_IRWXO);
-  //  printf("WARNING: LLADD IS USING O_DIRECT!!!\n");
-#else
-//#warn Not using O_DIRECT
-  // If we don't have posix_memalign(), then we aren't aligning our pages in memory, and can't use O_DIRECT.
-  stable = open (STORE_FILE, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
-#endif
+  stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
+
   if(stable == -1) {
     perror("couldn't open storefile");
     fflush(NULL);
