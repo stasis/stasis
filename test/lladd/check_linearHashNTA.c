@@ -81,7 +81,7 @@ START_TEST(linearHashNTAtest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
-  if(1) { return; }
+  //  if(1) { return; }
   Tcommit(xid);
   printf("\n"); fflush(stdout);
 

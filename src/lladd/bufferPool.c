@@ -53,6 +53,8 @@ terms specified in this license.
 
 #include <lladd/bufferPool.h>
 #include <assert.h>
+#include <lladd/truncation.h>
+
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
 static pthread_mutex_t pageMallocMutex;

@@ -11,7 +11,7 @@
 
 #include "page.h"
 #include <lladd/logger/logger2.h>
-
+#include <lladd/truncation.h>
 #include <stdio.h>
 #include <assert.h>
 #include "page/indirect.h"
@@ -92,14 +92,16 @@ void setupOperationsTable() {
 
 
 int Tinit() {
-         
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
         setupOperationsTable();
+
+	dirtyPagesInit();
 	
 	bufInit();
 
 	LogInit(loggerType);
+
 
 	try_ret(compensation_error()) { 
 	  pageOperationsInit();
@@ -116,6 +118,10 @@ int Tinit() {
 	
 	InitiateRecovery();
 	
+	truncationInit();
+	if(lladd_enableAutoTruncation) { 
+	  autoTruncate(); // should this be before InitiateRecovery?
+	}
 	return 0;
 }
 
@@ -208,20 +214,6 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
   /** @todo For logical undo logs, grabbing a lock makes no sense! */
   begin_action(releasePage, p) { 
     TupdateHelper(xid, rid, dat, op, p);
-    /*    if(globalLockManager.writeLockPage) {
-      globalLockManager.writeLockPage(xid, rid.page);
-      }
-      
-      e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-      
-      } en d_action;
-      
-      assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
-      
-      DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-      
-      doUpdate(e, p); 
-      releasePage(p);*/
   } compensate;
 
 }
@@ -349,10 +341,11 @@ int Tdeinit() {
 		}
 	}
 	assert( numActiveXactions == 0 );
+	truncationDeinit();
 	ThashDeinit();
 	bufDeinit();
 	LogDeinit();
-
+	dirtyPagesDeinit();
 	return 0;
 }
 
@@ -384,3 +377,19 @@ void TsetXIDCount(int xid) {
   xidCount = xid;
   pthread_mutex_unlock(&transactional_2_mutex);
 }
+
+lsn_t transactions_minRecLSN() { 
+  lsn_t minRecLSN = LogFlushedLSN();
+  pthread_mutex_lock(&transactional_2_mutex);
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) { 
+    if(XactionTable[i].xid != INVALID_XTABLE_XID) { 
+      lsn_t recLSN = XactionTable[i].recLSN;
+      if(recLSN != -1 && recLSN < minRecLSN) { 
+	minRecLSN = recLSN;
+      }
+    }
+  }
+  pthread_mutex_unlock(&transactional_2_mutex);
+  return minRecLSN;
+}
+

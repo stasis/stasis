@@ -89,13 +89,16 @@ terms specified in this license.
 #include "page/slotted.h"
 #include "page/fixed.h"
 #include <lladd/bufferPool.h>
-
+#include <lladd/truncation.h>
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
+  // if(!page->dirty) {  // This assert belongs here, but would cause some hacked up unit tests to fail... 
+  //  assert(page->LSN < lsn);
+  // }
   if(page->LSN < lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
   } 
-  page->dirty = 1;
+  dirtyPages_add(page);
   return;
 }
 
@@ -119,7 +122,6 @@ lsn_t pageReadLSN(const Page * page) {
 void pageInit() {
   bufferPoolInit();
   slottedPageInit();
-
 }
 
 void pageDeInit() {

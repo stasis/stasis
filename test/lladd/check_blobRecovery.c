@@ -432,7 +432,7 @@ START_TEST(recoverBlob__crash) {
 
   Tread(xid, rid, &j);
   fail_unless(!memcmp(j,k,ARRAY_SIZE), NULL);
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   closeLogWriter();
   numActiveXactions = 0;
@@ -519,7 +519,7 @@ START_TEST (recoverBlob__multiple_xacts) {
   Tset(xid1, rid1,&k);
   
   /*simulate crash */
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   closeLogWriter();
   numActiveXactions = 0;

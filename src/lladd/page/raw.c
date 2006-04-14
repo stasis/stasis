@@ -1,5 +1,6 @@
 #include "page/raw.h"
 #include <lladd/logger/logger2.h>
+#include <lladd/truncation.h>
 /**
    @todo Should rawPageInferMetadata set a page type in the Page
    struct?
@@ -15,7 +16,8 @@ byte* rawPageGetData(int xid, Page * p) {
 void  rawPageSetData(int xid, lsn_t lsn, Page * p) { 
   writelock(p->rwlatch, 255);
   rawPageWriteLSN(xid, p, lsn);
-  p->dirty = 1;
+  //  p->dirty = 1;
+  dirtyPages_add(p);
   unlock(p->rwlatch);
   return;
 }

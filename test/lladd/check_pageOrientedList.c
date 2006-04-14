@@ -66,6 +66,7 @@ START_TEST(emptyIterator) {
     abort();
   }
   Tcommit(xid);
+  Tdeinit();
 } END_TEST
 
 START_TEST(pagedListCheck) {

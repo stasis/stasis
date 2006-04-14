@@ -51,7 +51,7 @@ terms specified in this license.
 #include <stdio.h>
 #include <assert.h>
 
-int loggerType = LOG_TO_MEMORY;
+int loggerType = LOG_TO_FILE;
 
 void genericLogWrite(LogEntry * e) { 
   if(loggerType == LOG_TO_FILE) { 
@@ -65,6 +65,7 @@ void genericLogWrite(LogEntry * e) {
 }
 
 int LogInit(int logType) { 
+  assert(logType == loggerType);
   if(LOG_TO_FILE == logType) { 
     openLogWriter();
   } else if(LOG_TO_MEMORY == logType) { 
@@ -100,7 +101,14 @@ void LogForce(lsn_t lsn) {
   abort();
 }
 void LogTruncate(lsn_t lsn) { 
-  truncateLog(lsn);
+  if(LOG_TO_FILE == loggerType) { 
+    truncateLog(lsn);
+  } else if(LOG_TO_MEMORY == loggerType) { 
+    abort();
+  } else { 
+    abort();
+  }
+
 }
 
 lsn_t LogFlushedLSN() { 
@@ -142,13 +150,13 @@ void FreeLogEntry(const LogEntry * e) {
   abort();
 }
 
-
 TransactionLog LogTransBegin(int xid) {
   TransactionLog tl;
   tl.xid = xid;
   
   DEBUG("Log Begin %d\n", xid);
   tl.prevLSN = -1;
+  tl.recLSN = -1;
   return tl;
 }
 
@@ -158,6 +166,7 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 
   genericLogWrite(e);
 
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
@@ -281,7 +290,7 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   if(preImage) {
     free(preImage);
   }
-
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   return e;
 }

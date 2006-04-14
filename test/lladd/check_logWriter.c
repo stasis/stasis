@@ -53,25 +53,26 @@ terms specified in this license.
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"
-
+#include <lladd/truncation.h>
 
 
 #define LOG_NAME   "check_logWriter.log"
 
-static int logType = LOG_TO_MEMORY;
+//static int logType = LOG_TO_MEMORY;
 
 static void setup_log() {
   int i;
   lsn_t prevLSN = -1;
   int xid = 42;
-
+  deleteLogWriter();
+  lladd_enableAutoTruncation = 0;
   Tinit();
 
-  LogDeinit();
-  deleteLogWriter();
+  //  LogDeinit();
+  //deleteLogWriter();
   //  openLogWriter();
 
-  LogInit(logType);
+  //  LogInit(logType);
   
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
@@ -110,6 +111,7 @@ static void setup_log() {
     FreeLogEntry (e);
     FreeLogEntry (g);
   }
+  //  truncationDeinit();
 
 }
 /**
@@ -140,9 +142,9 @@ START_TEST(logWriterTest)
   setup_log();
   //  syncLog();
   //closeLogWriter();
-  LogDeinit();
+  //  LogDeinit();
   //  openLogWriter();
-  LogInit(logType);
+  //  LogInit(logType);
   
   h = getLogHandle();
   /*  LogReadLSN(sizeof(lsn_t)); */
@@ -268,18 +270,21 @@ START_TEST(logWriterTruncate) {
 
 } END_TEST
 
-#define ENTRIES_PER_THREAD 2000
+#define ENTRIES_PER_THREAD 200
 
 pthread_mutex_t random_mutex;
+
+lsn_t truncated_to = 4;
+//pthread_mutex_t truncated_to_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void* worker_thread(void * arg) {
   long key = *(int*)arg;
   long i = 0;
-  int truncated_to = 4;
 
 
 
-  int lsns[ENTRIES_PER_THREAD];
+
+  lsn_t lsns[ENTRIES_PER_THREAD];
 
 
   /*  fail_unless(NULL != le, NULL); */
@@ -289,6 +294,7 @@ static void* worker_thread(void * arg) {
     int threshold;
     long entry;
     int needToTruncate = 0;
+    lsn_t myTruncVal = 0;
     pthread_mutex_lock(&random_mutex);
 
     threshold = (int) (2000.0*random()/(RAND_MAX+1.0));
@@ -299,28 +305,20 @@ static void* worker_thread(void * arg) {
 	needToTruncate = 1;
 	if(lsns[i - 10] > truncated_to) {
 	  truncated_to = lsns[i - 10];
+	  myTruncVal = truncated_to;
 	}
       }
     }
 
     pthread_mutex_unlock(&random_mutex);
 
-    /*    fail_unless(threshold <= 100, NULL); */
+    if(needToTruncate) { 
+      LogTruncate(myTruncVal);
+      assert(LogTruncationPoint() >= myTruncVal);
+    }
 
     if(threshold < 3) {
-      if(i > 10) {
-	/* Truncate the log .15% of the time; result in a bit over 100 truncates per test run.*/
-	/*	fail_unless(1, NULL); */
-
-	/*truncateLog(lsns[i - 10]);*/
-
-	//truncated_to = i - 10;
-      } 
-      /*      fail_unless(1, NULL); */
     } else {
-
-      /*      DEBUG("i = %d, le = %x\n", i, (unsigned int)le); */
-      /*      fail_unless(1, NULL); */
       le->xid = i+key;
       genericLogWrite(le);
       //printf("reportedLSN: %ld\n", le->LSN);
@@ -330,9 +328,9 @@ static void* worker_thread(void * arg) {
     /*    fail_unless(1, NULL); */
     pthread_mutex_lock(&random_mutex);
     if(lsns[entry] > truncated_to && entry < i) {
-      pthread_mutex_unlock(&random_mutex);
       /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
       const LogEntry * e = LogReadLSN(lsns[entry]);
+      pthread_mutex_unlock(&random_mutex);
       assert(e->xid == entry+key);
       FreeLogEntry(e);
       /*      fail_unless(LogReadLSN(lsns[entry])->xid == entry+key, NULL); */
@@ -395,7 +393,7 @@ Suite * check_suite(void) {
   
   tcase_add_test(tc, logWriterTest);
   tcase_add_test(tc, logHandleColdReverseIterator);
-  /*tcase_add_test(tc, logWriterTruncate);*/
+  tcase_add_test(tc, logWriterTruncate);
   tcase_add_test(tc, logWriterCheckWorker);
   tcase_add_test(tc, logWriterCheckThreaded); 
 

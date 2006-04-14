@@ -59,7 +59,7 @@ terms specified in this license.
 #include <lladd/pageCache.h>
 #include "pageFile.h"
 #include <pbl/pbl.h>
-
+#include <lladd/truncation.h>
 
 static pblHashTable_t *activePages; /* page lookup */
 /*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
@@ -107,6 +107,7 @@ void bufDeinit() {
 	  pblHtRemove( activePages, 0, 0 );
 	  DEBUG("+");
 	  pageWrite(p);
+	  //	  dirtyPages_remove(p);
 
 	}
 	
@@ -150,7 +151,7 @@ int bufTransAbort(int xid, lsn_t lsn) {
   return 0;
 }
 
-Page * getPage(int pageid, int locktype) {
+static Page * getPage(int pageid, int locktype) {
   Page * ret;
   int spin  = 0;
 
@@ -232,6 +233,7 @@ Page * getPage(int pageid, int locktype) {
     assert(ret != dummy_page);
     if(ret->id != -1) { 
       pageWrite(ret);
+      //      dirtyPages_remove(ret);
     }
 
     pageFree(ret, pageid);

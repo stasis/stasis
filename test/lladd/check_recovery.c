@@ -382,7 +382,7 @@ START_TEST(recovery_crash) {
 
   Tread(xid, rid, &j);
   fail_unless(j == 6, "Decrement not working?");
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   closeLogWriter();
   numActiveXactions = 0;
@@ -462,7 +462,7 @@ START_TEST (recovery_multiple_xacts) {
   Tset(xid1, rid1,&k);
   
   /*simulate crash */
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   closeLogWriter();
   numActiveXactions = 0;

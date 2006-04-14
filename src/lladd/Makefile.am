@@ -4,7 +4,8 @@ lib_LIBRARIES=liblladd.a
 #liblladd_a_LIBADD=logger/liblogger.a operations/liboperations.a
 # removed: recovery.c transactional.c logger.c logger/logparser.c logger/logstreamer.c
 liblladd_a_SOURCES=crc32.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
-                   pageFile.c pageCache.c page.c bufferPool.c blobManager.c recovery2.c transactional2.c \
+                   pageFile.c pageCache.c page.c bufferPool.c blobManager.c recovery2.c truncation.c \
+		   transactional2.c \
 		   lockManager.c iterator.c consumer.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c graph.c\
 	           logger/logEntry.c logger/logWriter.c logger/inMemoryLog.c logger/logHandle.c logger/logger2.c \
 		   logger/logMemory.c \

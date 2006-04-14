@@ -6,7 +6,7 @@
 #define RO 0
 #define RW 1
 
-Page * getPage(int pageid, int locktype);
+//Page * getPage(int pageid, int locktype);
 /** 
     Implements lladd's caching policy.  Looks up pageid in the cache.
     If pageid doesn't exist, then allocate a new slot for it.  If

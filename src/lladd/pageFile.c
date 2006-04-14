@@ -9,7 +9,7 @@
 #include "pageFile.h"
 #include <assert.h>
 #include <lladd/logger/logger2.h>
-
+#include <lladd/truncation.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -119,6 +119,7 @@ void pageWrite(Page * ret) {
   }
 
   ret->dirty = 0;
+  dirtyPages_remove(ret);
 
   pthread_mutex_unlock(&stable_mutex);
 }

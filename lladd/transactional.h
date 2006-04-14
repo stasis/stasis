@@ -378,6 +378,10 @@ void Trevive(int xid, long lsn);
  */
 void TsetXIDCount(int xid);
 
+/** 
+    This is used by log truncation.
+*/
+lsn_t transactions_minRecLSN();
 
 END_C_DECLS
 

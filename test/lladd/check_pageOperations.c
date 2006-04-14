@@ -90,10 +90,12 @@ START_TEST(pageOpCheckRecovery) {
   TpageDealloc(xid, pageid1);
   TpageDealloc(xid, pageid2);
 
+  truncationDeinit();
   simulateBufferManagerCrash();
 
   closeLogWriter();
   numActiveXactions = 0;
+
   Tinit();
 
   xid = Tbegin();

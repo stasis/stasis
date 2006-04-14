@@ -192,12 +192,21 @@ void pageInit();
 void pageDeInit();
 
 /**
- * assumes that the page is already loaded in memory.  It takes
- * as a parameter a Page.  The Page struct contains the new LSN and the page
- * number to which the new LSN must be written to.
+ * assumes that the page is already loaded in memory.  It takes as a
+ * parameter a Page.  The Page struct contains the new LSN and the
+ * page number to which the new LSN must be written to.  Furthermore,
+ * this function updates the dirtyPages table, if necessary.  The
+ * dirtyPages table is needed for log truncation.  (If the page->id is
+ * null, this function assumes the page is not in the buffer pool, and
+ * does not update dirtyPages.  Similarly, if the page is already
+ * dirty, there is no need to udpate dirtyPages.
  *
- * @param page You must have a writelock on page before calling this function.
- * @param lsn The new lsn of the page.  If the new lsn is less than the page's current lsn, then the page's lsn will not be changed.
+ * @param page You must have a writelock on page before calling this
+ * function.
+ *
+ * @param lsn The new lsn of the page.  If the new lsn is less than
+ * the page's current lsn, then the page's lsn will not be changed.
+ * If the page is clean, the new lsn must be greater than the old lsn.
  */
 void pageWriteLSN(int xid, Page * page, lsn_t lsn);
 

@@ -161,7 +161,7 @@ START_TEST(operation_physical_do_undo) {
 
 
   /** @todo need to re-think check_operations.  The test is pretty broken. */
-
+  Tdeinit();
   return;
 
   setToTwo->LSN = 10;
@@ -237,7 +237,7 @@ START_TEST(operation_prepare) {
   Tset(prepared, b, &two);
 
   Tcommit(winner);
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   //  closeLogWriter();
   LogDeinit();
@@ -295,7 +295,7 @@ START_TEST(operation_prepare) {
   Tset(prepared, b, &two);
 
   Tcommit(winner);
-
+  truncationDeinit();
   simulateBufferManagerCrash();
   //  closeLogWriter();
   LogDeinit();

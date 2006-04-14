@@ -207,7 +207,7 @@ START_TEST(indirectAccessDirect) {
   }
   
   Tcommit(xid);
-
+  Tdeinit();
 } END_TEST
 
 START_TEST(indirectAccessIndirect) {

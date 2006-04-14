@@ -215,7 +215,8 @@ static void Undo(int recovery) {
 	  /* Need write lock for undo.. (Why??) */
 	  if(e->contents.update.rid.size != -1) {
 
-	    Page * p = getPage(e->contents.update.rid.page, RO); 
+	    //	    Page * p = getPage(e->contents.update.rid.page, RO); 
+	    Page * p = loadPage(thisXid, e->contents.update.rid.page);
 	    this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
 	    
 	    

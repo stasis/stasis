@@ -237,7 +237,7 @@ int openLogWriter() {
 
 int writeLogEntry(LogEntry * e) {
 
-  const long size = sizeofLogEntry(e);
+  const lsn_t size = sizeofLogEntry(e);
 
   pthread_mutex_lock(&log_write_mutex);  
   
@@ -250,7 +250,7 @@ int writeLogEntry(LogEntry * e) {
     lh = getLSNHandle(nextAvailableLSN);
 
     while((le = nextInLog(&lh))) {
-      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(long);;
+      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);;
       FreeLogEntry(le);
     }
   }
@@ -260,9 +260,9 @@ int writeLogEntry(LogEntry * e) {
   //printf ("\nLSN: %ld\n", e->LSN);
   //fflush(stdout);
 
-  nextAvailableLSN += (size + sizeof(long));
+  nextAvailableLSN += (size + sizeof(lsn_t));
   
-  size_t nmemb = fwrite(&size, sizeof(long), 1, log);
+  size_t nmemb = fwrite(&size, sizeof(lsn_t), 1, log);
   if(nmemb != 1) {
     if(feof(log))   { abort();  /* feof makes no sense here */  }
     if(ferror(log)) {
@@ -292,9 +292,10 @@ int writeLogEntry(LogEntry * e) {
 
 void syncLog() {
   lsn_t newFlushedLSN;
- 
-  newFlushedLSN = ftell(log);
-  
+
+  pthread_mutex_lock(&log_read_mutex);
+  newFlushedLSN = ftell(log) + global_offset;
+  pthread_mutex_unlock(&log_read_mutex);
   // Wait to set the static variable until after the flush returns. 
 
   // Since we opened the logfile with O_SYNC, fflush() is sufficient.
@@ -334,15 +335,15 @@ void closeLogWriter() {
 void deleteLogWriter() {
   remove(LOG_FILE);
 }
-long debug_lsn = -1;
+lsn_t debug_lsn = -1;
 static LogEntry * readLogEntry() {
   LogEntry * ret = 0;
-  long size;
-  long entrySize;
+  lsn_t size;
+  lsn_t entrySize;
   
-  ssize_t bytesRead = read(roLogFD, &size, sizeof(long));
+  ssize_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
 
-  if(bytesRead != sizeof(long)) { 
+  if(bytesRead != sizeof(lsn_t)) { 
     if(bytesRead == 0) {
       //      fprintf(stderr, "eof on log entry size\n");
       //      fflush(stderr);
@@ -352,7 +353,7 @@ static LogEntry * readLogEntry() {
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
-      fprintf(stderr, "short read from log.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", sizeof(long), bytesRead);
+      fprintf(stderr, "short read from log.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", sizeof(lsn_t), bytesRead);
       fflush(stderr);
       abort();  // really abort here.  This code should attempt to piece together short log reads...
     }
@@ -376,8 +377,8 @@ static LogEntry * readLogEntry() {
     } else { 
       printf("short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
       fflush(stderr);
-      long newSize = size - bytesRead;
-      long newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
+      lsn_t newSize = size - bytesRead;
+      lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
       printf("\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
       fflush(stderr);
       abort();
@@ -396,16 +397,16 @@ LogEntry * readLSNEntry(lsn_t LSN) {
 
   /** Because we use two file descriptors to access the log, we need
       to flush the log write buffer before concluding we're at EOF. */
-  if(flushedLSN() <= LSN) {
+  if(flushedLSN() <= LSN && LSN < nextAvailableLSN) {
     //    fprintf(stderr, "Syncing log flushed = %d, requested = %d\n", flushedLSN(), LSN);
     syncLog();
+    assert(flushedLSN() >= LSN);
     //    fprintf(stderr, "Synced log flushed = %d, requested = %d\n", flushedLSN(), LSN);
   }
 
   pthread_mutex_lock(&log_read_mutex);
 
   assert(global_offset <= LSN);
-  
 
   debug_lsn = LSN;
   off_t newPosition = lseek(roLogFD, LSN - global_offset, SEEK_SET);
@@ -418,6 +419,7 @@ LogEntry * readLSNEntry(lsn_t LSN) {
   }
 
   ret = readLogEntry();
+  assert(ret || LSN >= nextAvailableLSN);
 
   pthread_mutex_unlock(&log_read_mutex);
 
@@ -431,7 +433,7 @@ int truncateLog(lsn_t LSN) {
   const LogEntry * le;
   LogHandle lh;
 
-  long size;
+  lsn_t size;
 
   pthread_mutex_lock(&truncateLog_mutex);
 
@@ -468,15 +470,18 @@ int truncateLog(lsn_t LSN) {
   */
   pthread_mutex_lock(&log_write_mutex);
 
-  lh = getLSNHandle(LSN);
+  fflush(log);
 
+  lh = getLSNHandle(LSN);
+  lsn_t lengthOfCopiedLog = 0;
   while((le = nextInLog(&lh))) {
     size = sizeofLogEntry(le);
+    lengthOfCopiedLog += (size + sizeof(lsn_t));
     myFwrite(&size, sizeof(lsn_t), tmpLog);
     myFwrite(le, size, tmpLog);
     FreeLogEntry(le);
   } 
-
+  assert(nextAvailableLSN == LSN + lengthOfCopiedLog);
   fflush(tmpLog);
 #ifdef HAVE_FDATASYNC
   fdatasync(fileno(tmpLog));
@@ -539,6 +544,7 @@ int truncateLog(lsn_t LSN) {
 
   global_offset = LSN - sizeof(lsn_t);
 
+
   pthread_mutex_unlock(&log_read_mutex);
   pthread_mutex_unlock(&log_write_mutex);
   pthread_mutex_unlock(&truncateLog_mutex);
@@ -549,5 +555,8 @@ int truncateLog(lsn_t LSN) {
 
 lsn_t firstLogEntry() {
   assert(log);
-  return global_offset + sizeof(lsn_t);
+  pthread_mutex_lock(&log_read_mutex); // for global offset...
+  lsn_t ret = global_offset + sizeof(lsn_t);
+  pthread_mutex_unlock(&log_read_mutex);
+  return ret;
 }
