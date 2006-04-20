@@ -2,25 +2,31 @@
 
 .SECONDARY:
 
-all:
+all: LLADD.pdf
 
-%: %.tex
-	latex $<
-	bibtex $*
-	latex $<
-	latex $<
+#%: %.tex %.bib
+#	latex $<
+#	bibtex $*
+#	latex $<
+#	latex $<
 
-%.dvi: %.tex
-	latex $<
+%.dvi: %.tex %.bib
+	touch $*.ent
+	latex $*.tex
 	bibtex $*
-	latex $<
-	latex $<
+	latex $*.tex
+	latex $*.tex
 
 %.ps: %.dvi %.tex
 	dvips -t letter -o $@ $< 
 
-%.pdf: %.ps %.dvi %.tex
-	ps2pdf $< $@
+%.pdf: %.tex %.bib
+	touch $*.ent
+	pdflatex $*.tex
+	bibtex $*
+	pdflatex $*.tex
+	pdflatex $*.tex
+#	ps2pdf $< $@
 
 clean:
 	rm -f *.aux *.log *.dvi *.bbl *.blg *~ *.ent
