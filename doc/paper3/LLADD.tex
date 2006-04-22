@@ -17,9 +17,14 @@
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes,xspace}
-%\usepackage{babel}
 
-\newcommand{\yad}{Lemon\xspace}
+% Name candidates:
+%  Anza
+%  Void 
+%  Station (from Genesis's "Grand Central" component) 
+%  TARDIS: Atomic, Recoverable, Datamodel Independent Storage
+
+\newcommand{\yad}{Void\xspace}
 \newcommand{\oasys}{Juicer\xspace}
 
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
@@ -33,7 +38,7 @@
 
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf Wonderful : A Terrific Application and Fascinating Paper}
+\title{\Large \bf \yad: A Terrific Application and Fascinating Paper}
 
 %for single author (just remove % characters)
 \author{
@@ -46,18 +51,15 @@ UC Berkeley
 {\rm Eric Brewer}\\
 UC Berkeley
 } % end author
-% copy the following lines to add more authors
 
 \maketitle
 
 % Use the following at camera-ready time to suppress page numbers.
 % Comment it out when you first submit the paper for review.
-\thispagestyle{empty}
+%\thispagestyle{empty}
 
 
 \subsection*{Abstract}
-
-%\cite{nil} is a dummy citation to make bibtex happy.
 
 \yad is a storage framework that incorporates ideas from traditional
 write-ahead-logging storage algorithms and file system technologies,
@@ -88,14 +90,248 @@ existing systems.
 
 \section{Introduction}
 
-\section{Existing transactional systems}
+%It is well known that, to a system implementor, high-level
+%abstractions built into low-level services are at best a nuisance, and
+%often lead to the circumvention or complete reimplementation of
+%complex, hardware-dependent code.
 
-This section desribes DBMS systems, Berkeley DB and Database toolkits.
- 
-Relevant DB toolkit work (that I need to read): Exodus: E and ESM, Starburst,
-Genesis, P2 (not ``Pier 2'').
+%This work is based on the premise that as reliability and performance
+%issues have forced ``low-level'' operating system software to
+%incorporate database services such as durability and isolation.  As
+%this has happened, the abstractions provided by database systems have
+%seriously restricted system designs and implementations.
 
-\section{Write ahead logging}
+Approximately a decade ago, the operating systems community came to
+the painful realization that the presence of high level abstractions
+in ``unavoidable'' system components precluded the development of
+crucial, performance sensitive applications.  
+
+As our reliance on computing infrastructure has increased, components
+for the reliable storage and manipulation of data have become
+unavoidable.  However, current transactional storage systems provide
+abstractions that are intended for systems that execute many
+independent, short, and computationally inexpensive progams
+simultaneously.  Modern systems that deviate from this description are
+often forced to use existing systems in degenerate ways, or to
+reimplement complex, bug-prone data manipulation routines by hand.
+
+Until an architectural shift in transactional storage occurs,
+databases' imposition of unwanted abstraction upon their users will
+restrict system designs and implementations.
+
+%To paraphrase a hard-learned lesson the operating sytems community:
+%
+%\begin{quote} The defining tragedy of the [database] systems community
+%  has been the definition of an [databse] system as software that both
+%  multiplexes and {\em abstracts} physical resources...The solution we
+%  propose is simple: complete elimination of [database] sytems
+%  abstractions by lowering the [database] system interface to the
+%  hardware level~\cite{engler95}.
+%\end{quote}
+
+%In short, reliable data managment has become as unavoidable as any
+%other operating system service.  As this has happened, database
+%designs have not incorporated this decade-old lesson from operating
+%systems research:
+%
+%\begin{quote} The defining tragedy of the operating systems community
+%  has been the definition of an operating system as software that both
+%  multiplexes and {\em abstracts} physical resources...The solution we
+%  propose is simple: complete elimination of operating sytems
+%  abstractions by lowering the operating system interface to the
+%  hardware level~\cite{engler95}.
+%\end{quote}
+
+
+The widespread success of lower level transactional storage libraries
+(such as Berkeley DB) is a sign of these trends.  However, the level of
+abstraction provided by these systems is well above the hardware
+level, and applications that must resort to ad-hoc storage mechanisms
+are still common.
+
+This paper presents \yad, a library that provides transactional
+storage at a level of abstraction as close to the hardware as
+possible.  The library can support special purpose, transactional
+storage interfaces as well as ACID, database style interfaces to
+abstract data models.  A partial implementation of the ideas presented
+below is available; performance numbers are presented when possible.
+
+\section{Prior work}
+
+Database research has a long history, including the development of
+many technologies that our system builds upon.  However, we view \yad
+as a rejection of the fundamental assumptions that underly database
+systems.  Here we will focus on lines of research that are
+superficially similar, but distinct from our own, and cite evidence
+from within the database community that highlights problems with
+systems that attempt to incorporate databases into other systems.
+
+Of course, database systems have a place in modern software
+development and design, and are the best available storage solution
+for many classes of applications.  Also, this section refers to work
+that introduces technologies that are crucial to \yad's design; when
+we claim that prior work is dissimilar to our own, we refer to
+high-level architectural considerations, not low-level details.
+
+\subsection{Databases  as system components}
+
+
+A recent survey enumerates problems that plague users of
+state-of-the-art database systems.  Efficiently optimizing and
+consistenly servicing large declarative queries is inherently
+difficult.  This leads to managability and tuning issues that
+prevent databases from effectively servicing diverse, interactive
+workloads.  While SQL serves some classes of applications well, it is
+often inadequate for algorithmic and hierarchical computing tasks.
+
+The survey finds that database implementations are also a poor fit for
+smaller devices, where footprint, predictable performance, and power
+consumption are primary concerns.  Finally, complete, modern database
+implementations are often incomprehensible, and border on
+irreproducable, hindering further research.  After making these
+points, the study concludes by suggesting the adoption of ``RISC''
+style database architectures, both as a research, and as an
+implementation tool~\cite{riscDB}.  
+
+%For example, large scale application such as web search, map services,
+%e-mail use databases to store unstructured binary data, if at all.
+
+%More recently, WinFS, Microsoft's database based
+%file metadata management system, has been replaced in favor of an
+%embedded indexing engine that imposes less structure (and provides
+%fewer consistency guarantees) than the original
+%proposal~\cite{needtocitesomething}.
+
+%Scaling to the very large doesn't work (SAP used DB2 as a hash table
+%for years), search engines, cad/vlsi didn't happen.  scalable GIS
+%systems use shredded blobs (terraserver, google maps), scaling to many
+%was more difficult than implementing from scratch (winfs), scaling
+%down doesn't work (variance in performance, footprint),
+
+\subsection{Database toolkits}
+
+Database toolkits are based upon the idea that database
+implementations can be broken into smaller components with
+standardized interfaces.  Early work in this field surveyed database
+implementations that existed at the time.  It casts compoenents of
+these implementation in terms of a physical database
+model~\cite{batoryPhysical} and conceptual-to-internal
+mappings~\cite{batoryConceptual}.  These abstractions describe
+relational database systems, and describe many aspects of subsequent
+database toolkit research.
+
+However, these abstractions are built upon assumptions about
+application structure and data layout.  At the time of the survey, ten
+conceptual-to-internal mappings were sufficient to describe existing
+implementation.  These mappings included:
+
+\begin{itemize}
+\item indexing
+\item encoding (compression, encryption, etc)
+\item transposition
+\item segmentation (along field boundaries)
+\item fragmentation (without regard to field boundaries)
+\item pointers with support for $n:m$ relationships
+\item horizonatal partitioning
+\end{itemize}
+
+Many data manipulation tasks can be cast as mappings from abstract to
+more concrete representation, and even cleanly partitioned into more
+general sets of mappings.  In fact, Genesis,~\cite{genesis} an early
+database toolkit was built in terms of interchangable primitives that
+implemented interfaces that correspond to these interafaces.
+
+Similarly, the physical database model partitions storage into simple
+files, which provide operations associated with key based storage, and
+linksets, which make use of various pointer storage schemes to provide
+mappings between records in simple files.
+
+Subsequent database toolkit work built upon these foundations,
+Exodus~\cite{exodus} and Starburst~\cite{starburst} are notable
+examples, and incorporated a number of ideas that will be referred to
+later in this paper.  Although further discussion is beyond the scope
+of this paper, object oriented database systems, and relational
+databases with support for user definable abstract data types (such as
+in Postgres~\cite{postgres}) were the primary competitors to these
+database toolkits work.
+
+Fundamentally, all of these systems allowed users to quickly define
+new DBMS software by defining some abstract data types and often index
+methods to manipulate these types.  These definitions, where then used
+to provide queries, optimizers, relations (or files), and foreign keys
+(or pointers) that manipluated objects of these types.  Additional
+features, such as concurrency and networking models, and eventually
+triggers were supported as well.
+
+However, the abstractions that are needed to support this laundry
+list of features is precisely what \yad seeks to avoid.  Furthermore,
+since \yad seeks to address applications not well serviced by database
+systems, the value of these features is dubious, especially if they
+are packaged as a single monolithic entity.
+
+Proposed RISC database architectures have many elements in common with
+database toolkits.  However, they take the database toolkit idea one
+step further, and suggest standardizing the interfaces of the
+toolkit's internal components, allowing multiple organizations to
+compete to improve each module.  Thie idea is to produce a research
+platform, and especially to address issues that affect modern
+databases, such as automatic performance tuning, and reducing the
+effort required to implement a new database system~\cite{riscDB}.
+
+While we agree with the motivations behind RISC databases, instead of
+building a modular database, we seek to build a module that allows
+programmers to avoid databases.
+
+
+\subsection{Transaction processing libraries}
+
+Berkeley DB is a highly successful alternative to conventional
+database design.  At its core, it provides the physical database, or
+relational storage system of a conventional database server.
+
+This module focuses on providing fully transactional data storage with
+B-Tree and hashtable based indexes.  Berkeley DB also provides some
+support for application specific access methods, as did Genesis, and
+the database toolkits that succeeded it.~\cite{libtp} Finally,
+Berkeley DB allows applications that need to modify the recovery
+semantics of Berkeley DB, or otherwise tweak the way its
+write-ahead-logging protocol works to pass flags via its API.
+
+Transaction processong libraries are \yad's closest relative.
+However, \yad provides applications with a broader range of options
+for tweaking, customizing, or completely replacing each of the
+primitives it uses to implement write-ahead-logging.  
+
+The current implementation includes sample implementations of Berkeley
+DB style functionality, but the use of this functionality is optional.
+Later in the paper, we provide examples of how this functionality and
+the write-ahead-logging algorithm can be modified to provide
+customized semantics to applications, while improving overall system
+performance.  
+
+%  This part of the rant belongs in some other paper:
+%
+%Offer rebuttal to the Asilomar Report.  On the web 2.0, no one knows
+%you implemeneted your web service with perl and duct tape...  Is it
+%possible to scale to 1,000,000's of datastores without punting on the
+%data model?  (HTML suggests not...) Argue that C bindings are be the
+%¨universal glue¨ the RISC db paper should be asking for.
+
+%cover P2 (the old one, not "Pier 2" if there is time...
+
+\section{Write ahead loging}
+***This paragraph doesn't fit...***
+
+ We believe that the time spent to customize our library is less than
+or comparable to the amount of time that it would take to work around
+typical problems with existing transactional storage systems.
+However, a solid understanding of write-ahead-logging is needed to
+safely change the system.
+
+This section provides a brief overview of write-ahead-logging
+protocols.  We refer the interested reader to the compreshensive
+explanations and discussions in the literature.\cite{some, wal,
+  papers}
 
 This section desribes write ahead logging in generic terms, introduces
 STEAL/no-FORCE and ARIES.
@@ -105,10 +341,10 @@ STEAL/no-FORCE and ARIES.
 This section desribes proof-of-concept extensions to \yad.
 Performance figures accompany the extensions that we have implemented.
 
-\section{Relationship to prior work}
+\section{Relationship to existing systems}
 
 This section describes how existing systems can be recast as
-specializations of \yad.
+specializations of \yad.  <--- This should be inlined into the text. 
 
 \section{Conclusion}
 
