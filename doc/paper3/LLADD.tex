@@ -214,32 +214,57 @@ so good.  (Take ideas from old paper.)**
 Database research has a long history, including the development of
 many technologies that our system builds upon.  However, we view \yad
 as a rejection of the fundamental assumptions that underly database
-systems.  Here we will focus on lines of research that are
-superficially similar, but distinct from our own, and cite evidence
-from within the database community that highlights problems with
-systems that attempt to incorporate databases into other systems.
+systems.  In particular, we reject the idea that a general purpose
+storage sytem should attempt to encode universal data models and
+computational paradigms.  
 
-Of course, database systems have a place in modern software
-development and design, and are the best available storage solution
-for many classes of applications.  Also, this section refers to work
-that introduces technologies that are crucial to \yad's design; when
-we claim that prior work is dissimilar to our own, we refer to
-high-level architectural considerations, not low-level details.
+Instead, we are less ambitious and seek to build a storage system that
+provides durable (which often implies transactional) access to the
+primitives provided by the underlying hardware.  To be of practical
+value, it must be easy to specialize such a system so that it encodes
+any of a variety of data models and computational paradigms.
+Otherwise, the system could not easily reused in many environments.
+We know of no system that adequately achieves these two goals.
+
+Here, we present a brief history of transactional storage systems, and
+explain why they fail to achieve \yad's goals.  Citations of the
+technical work upon which our system is based are included below, in
+the description of \yad's design.
+
+%Here we will focus on lines of research that are
+%superficially similar, but distinct from our own, and cite evidence
+%from within the database community that highlights problems with
+%systems that attempt to incorporate databases into other systems.
+
+%Of course, database systems have a place in modern software
+%development and design, and are the best available storage solution
+%for many classes of applications.  Also, this section refers to work
+%that introduces technologies that are crucial to \yad's design; when
+%we claim that prior work is dissimilar to our own, we refer to
+%high-level architectural considerations, not low-level details.
 
 \subsection{Databases  as system components}
 
-
-A recent survey enumerates problems that plague users of
-state-of-the-art database systems.  Efficiently optimizing and
+A recent survey~\cite{riscDB} enumerates problems that plague users of
+state-of-the-art database systems.  It concludes that efficiently optimizing and
 consistenly servicing large declarative queries is inherently
-difficult.  This leads to managability and tuning issues that
-prevent databases from effectively servicing diverse, interactive
-workloads.  While SQL serves some classes of applications well, it is
+difficult.  
+
+The survey finds that database implementations fail to scale to modern systems.  
+This leads to managability and tuning issues that
+prevent databases from effectively servicing large scale, diverse, interactive
+workloads.  
+They are also a poor fit for
+smaller devices, where footprint, predictable performance, and power
+consumption are primary concerns.  
+Scaling out to large numbers of self-administering desktop 
+installations will be difficult until a number of open research problems are solved.  
+
+The survey provides evidence that SQL itself is problematic.  
+While SQL serves some classes of applications well, it is
 often inadequate for algorithmic and hierarchical computing tasks.
 
-The survey finds that database implementations are also a poor fit for
-smaller devices, where footprint, predictable performance, and power
-consumption are primary concerns.  Finally, complete, modern database
+Finally, complete, modern database
 implementations are often incomprehensible, and border on
 irreproducable, hindering further research.  After making these
 points, the study concludes by suggesting the adoption of ``RISC''
@@ -261,40 +286,105 @@ implementation tool~\cite{riscDB}.
 %was more difficult than implementing from scratch (winfs), scaling
 %down doesn't work (variance in performance, footprint),
 
-\subsection{Database toolkits}
+\subsection{Database Toolkits}
 
-Database toolkits are based upon the idea that database
-implementations can be broken into smaller components with
-standardized interfaces.  Early work in this field surveyed database
-implementations that existed at the time.  It casts compoenents of
-these implementation in terms of a physical database
-model~\cite{batoryPhysical} and conceptual-to-internal
-mappings~\cite{batoryConceptual}.  These abstractions describe
-relational database systems, and describe many aspects of subsequent
-database toolkit research.
+\yad is a library that could be used to provide storage primatives to a
+database server.  Therefore, one might suppose that \yad is a database
+toolkit.  However, such an assumption would be incorrect.  Here we
+describe the two characteristics that are the essence of database
+toolkits: {\em conceptual-to-internal mappings}~\cite{batoryConceptual}
+and {\em physical database models}~\cite{batoryPhysical}.
 
-However, these abstractions are built upon assumptions about
-application structure and data layout.  At the time of the survey, ten
+Conceptual-to-internal mappings and physical database models were
+discovered by an early survey of database implementations.  Mappings
+are essentially a model of computation, while physical database models
+are essentially a model of data layout and representation.
+
+Both concepts are fundamentally incompatible with a general storage
+implementation.  By definition, a database server encodes both
+concepts, while transaction processing libraries mange to avoid
+conceptual mappings. \yad's novelty stems from the fact that it avoids
+both concepts, while incorporating results from the database
+literature.
+
+
+\subsubsection{Conceptual mappings}
+
+%Database toolkits are based upon the idea that database
+%implementations can be broken into smaller components with
+%standardized interfaces.  
+
+%Early work in this field surveyed database
+%implementations that existed at the time.  It casts compoenents of
+%these implementation in terms of a physical database
+%model~\cite{batoryPhysical} and conceptual-to-internal
+%mappings~\cite{batoryConceptual}.  These abstractions describe
+%relational database systems, and describe many aspects of subsequent
+%database toolkit research.
+
+%However, these abstractions are built upon assumptions about
+%application structure and data layout.  
+
+At the time of their introduction, ten
 conceptual-to-internal mappings were sufficient to describe existing
-implementation.  These mappings included:
+database systems.  These mappings include indexing, encoding
+(compression, encryption, etc), segmentation (along field boundaries),
+fragmentation (without regard to fields), $n:m$ pointers, and
+horizontal partitioning, among others.
+  
+The initial survey postulates that a finite number of such mappings
+are adequate to describe database implementations.  A general purpose
+database toolkit need only implement each type of mapping in order to
+encode the set of all conceivable database systems.
 
-\begin{itemize}
-\item indexing
-\item encoding (compression, encryption, etc)
-\item transposition
-\item segmentation (along field boundaries)
-\item fragmentation (without regard to field boundaries)
-\item pointers with support for $n:m$ relationships
-\item horizonatal partitioning
-\end{itemize}
+To meet out requirements with this approach, one would first develop a
+framework that adequately encodes the requirements of {\em every}
+system that manipulates data, and would then define interfaces that
+support the needs of each implementation of the components specified
+by the framework.  
 
-Many data manipulation tasks can be cast as mappings from abstract to
-more concrete representation, and even cleanly partitioned into more
-general sets of mappings.  In fact, Genesis,~\cite{genesis} an early
-database toolkit was built in terms of interchangable primitives that
-implemented interfaces that correspond to these interafaces.
+Put this way, this goal seems absurd.  However, this approach has
+been extremeley successful.   In fact, much of the
+database literature is devoted to this task and has
+certainly improved the state of computer science.  Furthermore, it is the basis for
+the highly successful database industry.  
 
-Similarly, the physical database model partitions storage into simple
+However, from a practical perspective, current database 
+implementations are already among the most complex
+software systems ever created, are difficult to understand or 
+reason about, They still only encode a small percentage of
+the computational and storage primitives in the database 
+literature, which in turn only represents a portion of 
+the computer science literature.
+
+
+%\begin{itemize}
+%\item indexing
+%\item encoding (compression, encryption, etc)
+%\item transposition
+%\item segmentation (along field boundaries)
+%\item fragmentation (without regard to field boundaries)
+%\item pointers with support for $n:m$ relationships
+%\item horizonatal partitioning
+%\end{itemize}
+
+\subsubsection{Physical data models}
+
+As it was initially tempting to say that \yad was a database toolkit,
+it may now be tempting to claim that \yad implements a physical
+database model.  In this section, we compare \yad to the physical
+database model of existing toolkits, and show that it supports a wider
+range of storage technologies than physical database models.  In fact,
+it has no concept of a physical database model, and intentionally
+allows applications to avoid such concepts as well.
+
+Genesis,~\cite{genesis} an early database toolkit, was built in terms
+of interchangable primitives that implemented the interfaces of an
+early database implementation model.  It built upon the idea of
+conceptual mappings described above, and the physical databse model
+decribed here.
+
+The physical database model partitions storage into simple
 files, which provide operations associated with key based storage, and
 linksets, which make use of various pointer storage schemes to provide
 mappings between records in simple files.
