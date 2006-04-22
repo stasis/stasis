@@ -118,10 +118,10 @@ a partial break from traditional database dogma.
 %this has happened, the abstractions provided by database systems have
 %seriously restricted system designs and implementations.
 
-Approximately a decade ago, the operating systems community came to
+Approximately a decade ago, the operating systems research community came to
 the painful realization that the presence of high level abstractions
 in ``unavoidable'' system components precluded the development of
-crucial, performance sensitive applications.  
+crucial, performance sensitive applications.~\cite{exterminate, stonebrakerDatabaseDig}
 
 As our reliance on computing infrastructure has increased, components
 for the reliable storage and manipulation of data have become
@@ -132,9 +132,21 @@ simultaneously.  Modern systems that deviate from this description are
 often forced to use existing systems in degenerate ways, or to
 reimplement complex, bug-prone data manipulation routines by hand.
 
-Until an architectural shift in transactional storage occurs,
-databases' imposition of unwanted abstraction upon their users will
-restrict system designs and implementations.
+Examples of real world systems that currently fall into this category
+are web search engines, document repositories, large-scale web-email
+services, map and trip planning services, ticket reservation systems,
+photo and video repositories, bioinformatics, version control systems,
+workflow applications, CAD/VLSI applications and directory services.
+Applications that have only recently begun to make use of high-level
+database features include XML based systems, object persistance
+mechanisms, and enterprise management systems (notably, SAP R/3).
+
+In short, we beleive that a fundamental architectural shift in
+transactional storage is necessary before general purpose storage
+systems are of practical use to modern applications.
+Until this change occurs, databases' imposition of unwanted
+abstraction upon their users will restrict system designs and
+implementations.
 
 %To paraphrase a hard-learned lesson the operating sytems community:
 %
@@ -161,17 +173,25 @@ restrict system designs and implementations.
 
 
 The widespread success of lower level transactional storage libraries
-(such as Berkeley DB) is a sign of these trends.  However, the level of
-abstraction provided by these systems is well above the hardware
-level, and applications that must resort to ad-hoc storage mechanisms
-are still common.
+(such as Berkeley DB) is a sign of these trends.  However, the level
+of abstraction provided by these systems is well above the hardware
+level, and applications that resort to ad-hoc storage mechanisms are
+still common.
 
 This paper presents \yad, a library that provides transactional
 storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
 storage interfaces as well as ACID, database style interfaces to
-abstract data models.  A partial implementation of the ideas presented
-below is available; performance numbers are presented when possible.
+abstract data models.  
+
+Notably, \yad incorporates many existing technologies from the storage
+communities, and allows applications to incorporate appropriate
+subsystems as necessary.  A partial open-source implementation of the
+ideas presented below is available; performance numbers are provided
+when possible.
+
+**We've explained why the sky is falling.  Now, explain why \yad is
+so good.  (Take ideas from old paper.)**
 
 \section{Prior work}
 
