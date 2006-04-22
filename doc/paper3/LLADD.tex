@@ -67,25 +67,42 @@ while providing applications with increased control over its
 underlying modules.  Generic transactional storage systems such as SQL
 and BerkeleyDB serve many applications well, but impose constraints
 that are undesirable to developers of system software and
-high-performance applications, while filesystems provide limited
-functionality to applications.
+high-performance applications.  Conversely, while filesystems place
+few constraints on applications, the do not provide atomicity or
+durability properties that naturally correspond to application needs.
 
-This paper generalizes write-ahead-logging algorithms, providing
-applications with specialized functionality, cleaner semantics and
-improved performance.
+This paper addresses this gap (and enables the development of
+unforeseen variants on transactional storage) by generalizing
+write-ahead-logging algorithms.  Our partial implementation of these
+ideas already provides specialized (and cleaner) semantics and
+improved performance to applications.
 
-Applications may use our modular library of basic data strctures to
-compose new concurrent transactional access methods, or write their
-own from scratch.  This paper presents concrete low level examples
-that modify the semantics of the buffer manager to reduce memory and
-CPU overhead, reorder log entries for increased efficiency, and do
-away with per-page LSNs in order to perform zero-copy transactional
-I/O.  We argue that encapsulation allows applications to compose
-extensions.
+%Applications may use our modular library of basic data strctures to
+%compose new concurrent transactional access methods, or write their
+%own from scratch.  
+This paper presents examples that make use of custom access methods,
+modifed buffer manager semantics, direct log file manipulation, and
+LSN-free pages that facilitate zero-copy optimizations, and discusses
+the composability of these extensions.
 
-These ideas have been partially implemented, and initial performance
-figures, and experience using the library compare favorably with
-existing systems.
+We argue that our ability to support such a diverse range of
+transactional systems stems directly from our rejectiion of
+assumptions made by early database designers.  These assumptions
+permeate ``database toolkit'' research.  We attribute the success of
+low-level transaction processing libraries (such as Berkeley DB) to
+a partial break from traditional database dogma.
+
+% entries, and 
+% to reduce memory and
+%CPU overhead, reorder log entries for increased efficiency, and do
+%away with per-page LSNs in order to perform zero-copy transactional
+%I/O.  
+%We argue that encapsulation allows applications to compose
+%extensions.
+
+%These ideas have been partially implemented, and initial performance
+%figures, and experience using the library compare favorably with
+%existing systems.
 
 
 \section{Introduction}
