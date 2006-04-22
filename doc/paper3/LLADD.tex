@@ -320,21 +320,221 @@ performance.
 %cover P2 (the old one, not "Pier 2" if there is time...
 
 \section{Write ahead loging}
-***This paragraph doesn't fit...***
 
- We believe that the time spent to customize our library is less than
-or comparable to the amount of time that it would take to work around
-typical problems with existing transactional storage systems.
-However, a solid understanding of write-ahead-logging is needed to
-safely change the system.
+This section describes how \yad uses write-ahead-logging to support the
+four properties of transactional storage: Atomicity, Consistency,
+Isolation and Durability.  Like existing transactional storage sytems,
+\yad allows applications to opt out or modify the semantics of each of
+these properties.
 
-This section provides a brief overview of write-ahead-logging
-protocols.  We refer the interested reader to the compreshensive
-explanations and discussions in the literature.\cite{some, wal,
-  papers}
+However, \yad takes customization of transactional semantics one step
+further, allowing applications to add support for transactional
+semantics that we have not anticipated.  While we do not believe that
+we can anticipate every possible variation of write ahead logging, we
+have observed that most changes that we are interested in making
+involve quite a few common underlying primitives.  As we have
+implemented new extensions, we have located portions of the system
+that are prone to change, and have extended the API accordingly.  Our
+goal is to allow applications to implement their own modules to
+replace our implementations of each of the major write ahead logging
+components.
 
-This section desribes write ahead logging in generic terms, introduces
-STEAL/no-FORCE and ARIES.
+\subsection{Operation semantics}
+
+The smallest unit of a \yad transaction is the {\em operation}.  An
+operation consists of a {\em redo} function, {\em undo} function, and
+a log format.  At runtime or if recovery decides to reapply the
+operation, the redo function is invoked with the contents of the log
+entry as an argument.  During abort, or if recovery decides to undo
+the operation, the undo function is invoked with the contents of the
+log as an argument.  Like Berkeley DB, and most database toolkits, we
+allow system designers to define new operations.  Unlike earlier
+systems, we have based our library of operations on object oriented
+collection libraries, and have built complex index structures from
+simpler structures.  These modules are all directly avaialable,
+providing a wide range of data structures to applications, and
+facilitating the develop of more complex structures through reuse.  We
+compare the peroformance of our modular approach with a monolithic
+implementation on top of \yad, using Berkeley DB as a baseline.
+
+
+\subsection{Runtime invariants}
+
+In order to support recovery, a write-ahead-logging algorithm must
+identify pages that {\em may} be written back to disk, and those that
+{\em must} be written back to disk.  \yad provides full support for
+Steal/no-Force write ahead logging, due to its generally favorable
+performance properties.  ``Steal'' refers to the fact that pages may
+be written back to disk before a transaction completes.  ``No-Force''
+means that a transaction may commit before the pages it modified are
+written back to disk.  
+
+In a Steal/no-Force system, a page may be written to disk once the log
+entries corresponding to the udpates it contains are written to the
+log file.  A page must be written to disk if the log file is full, and
+the version of the page on disk is so old that deleting the beginning
+of the log would lose redo information that may be needed at recovery.
+
+Steal is desirable because it allows a single transaction to modify
+more data than is present in memory.  Also, it provides more
+opportunities for the buffer manager to write pages back to disk.
+Otherwise, in the face of concurrent transactions that all modify the
+same page, it may never be legal to write the page back to disk.  Of
+course, if these problems would never come up in practice, an
+application could opt for a no-Steal policy, possibly allowing it to
+write undo information to the log file.
+
+No-Force is often desirable for two reasons.  First, forcing pages
+modified by a transaction to disk can be extremely slow if the updates
+are not near each other on disk.  Second, if many transactions update
+a page, Force could cause that page to be written once per transaction
+that touched the page.  However, a Force policy could reduce the
+amount of redo information that must be written to the log file.
+
+
+
+\subsection{Buffer manager policy}
+
+Generally, write ahead logging algorithms ensure that the most recent
+version of each memory-resident page is stored in the buffer manager,
+and the most recent version of other pages is stored in the page file.
+This allows the buffer manager to present a uniform view of the stored
+data to the application.  The buffer manager uses a cache replacement
+policy (\yad currently uses LRU-2 by default) to decide which pages
+should be written back to disk.
+
+Section~\ref{oasys}, we will provide example where the most recent
+version of application data is not managed by \yad at all, and
+Section~\ref{zeroCopy} explains why efficiency may force certain
+operations to bypass the buffer manager entirely.
+
+\subsection{Atomic page file updates}
+
+Most write ahead logging algorithms store an {\em LSN}, log sequence
+number, on each page.  The size and alignment of each page is chosen
+so that it will be atomically updated, even if the system crashes.
+Each operation performed on the page file is assigned a monotonically
+increasing LSN.  This way, when recovery begins, the system knows
+which version of each page reached disk, and can undo or redo
+operations accordingly.  Operations do not need to be idempotent.  For
+example, a log entry could simply tell recovery to increment a value
+on a page by some value, or to allocate a new record on the page.  In
+such cases, if the recovery algorithm does not know exactly which
+version of a page it is dealing with, the operation could
+inadvertantly be applied more than once, incrementing the value twice,
+or double allocating a record.
+
+However, if operations are idempotent, as is the case when pure
+physical logging is used by an operation, we can remove the LSN field,
+and have recovery conservatively assume that it is dealing with a page
+that is potentially older than the one on disk.  We call such pages
+``LSN-free'' pages.  While other systems use LSN-free
+pages,~\cite{rvm} we observe that LSN-free pages can be stored
+alongsize normal pages.  Furthermore, efficient recovery and log
+truncation require only minor modifications to our recovery algorithm.
+In practice, this is implemented by providing a callback for LSN free
+pages that allows the buffer manager to compute a conservative
+estimate of the page's LSN whenever it is read from disk.
+
+Section~\ref{zeroCopy} explains how these two observations led us to
+approaches for recoverable virtual memory, and large object data that
+we believe will have significant advantages when compared to existing
+systems.
+
+
+\subsection{Concurrent transactions}
+
+So far, we have glossed over the behavior of our system when multiple
+transactions execute concurrently.  To understand the problems that
+can arise when multiple transactions run concurrently, consider what
+would happen if one transaction, A, rearranged the layout of a data
+structure.  Next, assume a second transaction, B modified that
+structure, and then A aborted.  When A rolls back, its UNDO entries
+will undo the rearrangment that it made to the data structure, without
+regard to B's modifications.  This is likely to cause corruption.
+
+Two common solutions to this problem are ``total isolation'' and
+``nested top actions.''  Total isolation simply prevents any
+transaction from accessing a data structure that has been modified by
+another in-progress transaction.  An application can achieve this
+using its own concurrency control mechanisms to implement deadlock
+avoidance, or by obtaining a commit duration lock on each data
+structure that it modifies, and cope with the possibility that its
+transactions may deadlock.  Other approaches to the problem include
+{\em cascading aborts}, where transactions abort if they make
+modifications that rely upon modifications performed by aborted
+transactions, and careful ordering of writes with custom recovery-time
+logic to deal with potential inconsistencies.  Because nested top
+actions are easy to use, and fairly general, \yad contains operations
+that implement nested top actions.  \yad's nested top actions may be
+used following these three steps:
+
+\begin{enumerate}
+\item Wrap a mutex around each operation.  If this is done with care,
+  it may be possible to use finer grained mutexes.
+\item Define a logical UNDO for each operation (rather than just using
+  a set of page-level UNDO's).  For example, this is easy for a
+  hashtable; the UNDO for an {\em insert} is {\em remove}.
+\item For mutating operations, (not read-only), add a ``begin nested
+  top action'' right after the mutex acquisition, and a ``commit
+  nested top action''right before the mutex is required.
+\end{enumerate}
+
+If the transaction that encloses the operation aborts, the logical
+undo will {\em compensate} for its effects, leaving the structural
+changes intact.  Note that this recipe does not ensure transactional
+consistency and is largely orthoganol to the use of a lock manager.
+
+We have found that it is easy to protect operations that make
+structural changes to data structures with nested top actions, and use
+them throughout our default data structure implementations, although
+\yad does not preclude the use of more complex schemes that lead to
+higher concurrency.
+
+\subsection{Isolation}
+
+\yad distinguishes between {\em latches} and {\em locks}.  A latch
+corresponds to a operating system mutex, and is held for a short
+period of time.  All of \yad's default data structures use latches and
+deadlock avoidance schemes.  This allows multithreaded code to treat
+\yad as a normal, reentrant data structure library.  Applications that
+want conventional transactional isolation, (eg: serializability), may
+make use of a lock manager.
+
+\subsection{Recovery and durability}
+
+\yad makes use of the same basic recovery strategy as existing
+write-ahead-logging schemes such as ARIES.  Recovery consists of three
+stages, {\em analysis}, {\em redo}, and {\em undo}.  Analysis is
+essentially a performance optimization, and makes use of information
+left during forward operation to reduce the cost of redo and undo.  It
+also decides which transactions committed, and which aborted.  The
+redo phase iterates over the log, applying the redo function of each
+logged operation if necessary.  Once the log has been played forward,
+the page file and buffer manager are in the same conceptual state they
+were in at crash.  The undo phase simply aborts each transaction that
+does not have a commit entry, exactly as it would during normal
+operation.
+
+From the applications perspective, this process is interesting for a
+number of reasons.  First, if full transactional durability is
+unneeded, the log can be flushed to disk less frequently, improving
+performance.  In fact, \yad allows applications to store the
+transaction log in memory, reducing disk activity at the expense of
+recovery.  We are in the process of optimizing the system to handle
+fully in-memory workloads efficiently.  
+
+\subsection{Summary of write ahead logging}
+This section provided an extremely brief overview of
+write-ahead-logging protocols.  While the extensions that it proposes
+require a fair amount of knowledge about transactional logging
+schemes, our initial experience customizing the system for various
+applications is positive.  We believe that the time spent customizing
+the library is less than amount of time that it would take to work
+around typical problems with existing transactional storage systems.
+However, we do not yet have a good understanding of the testing and
+reliability issues that arise in practice as the system is modified in
+this fashion.
 
 \section{Extensions}
 
