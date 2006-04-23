@@ -864,10 +864,37 @@ We present three variants of \yad here.  The first treats \yad like
 Berkeley DB.  The second customizes the behavior of the buffer
 manager.  Instead of maintaining an up-to-date version of each object
 in the buffer manager or page file, it allows the buffer manager's
-view of live application objects to become stale.  (This is incomplete... I'm writing it right now...)
+view of live application objects to become stale.  This is safe since
+the system is always able to reconstruct the appropriate page entry
+form the live copy of the object.
 
-It treats the application's pool of deserialized (live)
-in-memory objects as the primary copy of tdata.
+The reason it would be difficult to do this with Berkeley DB is that
+we still need to generate log entries as the object is being updated.
+Otherwise, commit would not be durable, and the application would be
+unable to abort() transactions.  Even if we decided to disallow
+application aborts, we would still need to write log entries
+committing.  This would cause Berekley DB to write data back to the
+page file, increasing the working set of the program, and increasing
+disk activity.
+
+Under \yad, we implemented this optimization by adding two new
+operations, update(), which only updates the log, and flush(), which
+updates the page file.  We decrease the size of the page file, so
+flush() is likely to incur disk overhead.  However, we have roughly
+doubled the number of objects that are cached in memory, and expect
+flush() to be called relatively infrequently.
+
+The third \yad plugin to \oasys incorporated all of the updates of the
+second, but arranged to only the changed portions of objects to the
+log.
+
+Figure~\ref{objectSerialization} presents the performance of the three
+\yad optimizations, and the \oasys plugins implemented on top of other
+systems.  As we can see, \yad performs better than the baseline
+systems.  More interestingly, in non-memory bound systems, the
+optimizations nearly double \yad's performance, and we see that in the
+memory-bound setup, update/flush indeed improves memory utilization.
+
 
 \subsection{Graph traversal}
 
