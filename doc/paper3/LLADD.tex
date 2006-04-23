@@ -32,6 +32,8 @@
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 \newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
+\newcommand{\eat}[1]{}
+
 \begin{document}
 
 %don't want date printed
@@ -128,20 +130,24 @@ the composability of these extensions.
 %seriously restricted system designs and implementations.
 
 
-
+\eab{cut?:
 Approximately a decade ago, the operating systems research community came to
 the painful realization that the presence of high level abstractions
 in ``unavoidable'' system components precluded the development of
-crucial, performance sensitive applications.~\cite{exterminate, stonebrakerDatabaseDig}
+crucial, performance sensitive applications.~\cite{exterminate, stonebrakerDatabaseDig}}
 
-As our reliance on computing infrastructure has increased, components
-for the reliable storage and manipulation of data have become
-unavoidable.  However, current transactional storage systems provide
-abstractions that are intended for systems that execute many
-independent, short, and computationally inexpensive progams
-simultaneously.  Modern systems that deviate from this description are
-often forced to use existing systems in degenerate ways, or to
-reimplement complex, bug-prone data manipulation routines by hand.
+As our reliance on computing infrastructure has increased, the need
+for robust data management has increased greatly, as has the range of
+applications and systems that need it.  Traditionally, data management
+has been the province of database management systems, which although
+well-suited to enterprise applications, leads to poor support for a
+wide-range systems including grid and scientific computing,
+bioinformatics, search engines, version control, and workflow
+applications.  These applications need transactions but don't fit well
+onto SQL and the monolithic approach of current databases.  And in
+fact, DBMSs are often not used for these systems, which must then
+implement their own ad-hoc data management tools on top of file
+systems.
 
 %Examples include:
 %\begin{itemize}
@@ -158,17 +164,24 @@ reimplement complex, bug-prone data manipulation routines by hand.
 %\item Directory services
 %\end{itemize}
 
+A typical example of this mismatch is in the support for
+persistent objects in Java, called {\em Enterprise Java Beans}
+(EJB). In a typical usage, an array of objects is made persistent by
+mapping each object to a row in a table (or sometimes multiple
+tables~\cite[xxx]) and then issuing queries to keep the objects and
+rows consistent. A typical update must confirm it has the current
+version, modify the object, write out a serialized version using the
+SQL update command and commit. This is an awkward and slow mechanism;
+we show up to a 5x speedup over a MySQL implementation that is
+optimized for single-threaded, local access (Section XXX).
+
+\eat{
 Examples of real world systems that currently fall into this category
 are web search engines, document repositories, large-scale web-email
 services, map and trip planning services, ticket reservation systems,
 photo and video repositories, bioinformatics, version control systems,
 workflow applications, CAD/VLSI applications and directory services.
 
-\eab{need to talk about positive examples: LRVM, Berk DB, windows registry? Grid FS from Wisconsin}
-
-Applications that have only recently begun to make use of high-level
-database features include XML based systems, object persistance
-mechanisms, and enterprise management systems (notably, SAP R/3).
 
 In short, we believe that a fundamental architectural shift in
 transactional storage is necessary before general purpose storage
@@ -176,16 +189,7 @@ systems are of practical use to modern applications.
 Until this change occurs, databases' imposition of unwanted
 abstraction upon their users will restrict system designs and
 implementations.
-
-%To paraphrase a hard-learned lesson the operating sytems community:
-%
-%\begin{quote} The defining tragedy of the [database] systems community
-%  has been the definition of an [databse] system as software that both
-%  multiplexes and {\em abstracts} physical resources...The solution we
-%  propose is simple: complete elimination of [database] sytems
-%  abstractions by lowering the [database] system interface to the
-%  hardware level~\cite{engler95}.
-%\end{quote}
+}
 
 %In short, reliable data managment has become as unavoidable as any
 %other operating system service.  As this has happened, database
@@ -200,8 +204,7 @@ implementations.
 %  hardware level~\cite{engler95}.
 %\end{quote}
 
-
-The widespread success of lower level transactional storage libraries
+The widespread success of lower-level transactional storage libraries
 (such as Berkeley DB) is a sign of these trends.  However, the level
 of abstraction provided by these systems is well above the hardware
 level, and applications that resort to ad-hoc storage mechanisms are
@@ -210,7 +213,7 @@ still common.
 This paper presents \yad, a library that provides transactional
 storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
-storage interfaces as well as ACID, database style interfaces to
+storage interfaces as well as ACID database-style interfaces to
 abstract data models.  
 
 Notably, \yad incorporates many existing technologies from the storage
@@ -218,6 +221,36 @@ communities, and allows applications to incorporate appropriate
 subsystems as necessary.  A partial open-source implementation of the
 ideas presented below is available; performance numbers are provided
 when possible.
+
+Taken from sosp:
+
+By {\em flexible} we mean that \yad{}  can implement a wide
+range of transactional data structures, that it can support a variety
+of policies for locking, commit, clusters and buffer management.
+Also, it is extensible for both new core operations
+and new data structures. It is this flexibility that allows the
+support of a wide range of systems.
+
+By {\em complete} we mean full redo/undo logging that supports
+both {\em no force}, which provides durability with only log writes,
+and {\em steal}, which allows dirty pages to be written out prematurely
+to reduce memory pressure. By complete, we also
+mean support for media recovery, which is the ability to roll
+forward from an archived copy, and support for error-handling,
+clusters, and multithreading. These requirements are difficult
+to meet and form the {\em raison d'\^etre} for \yad{}: the framework
+delivers these properties as reusable building blocks for systems
+to implement complete transactions.
+
+---
+
+\eab{need to talk about positive examples: LRVM, Berk DB, windows registry? Grid FS from Wisconsin}
+
+
+Applications that have only recently begun to make use of high-level
+database features include XML based systems, object persistance
+mechanisms, and enterprise management systems (notably, SAP R/3).
+
 
 **We've explained why the sky is falling.  Now, explain why \yad is
 so good.  (Take ideas from old paper.)**
