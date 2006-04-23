@@ -735,7 +735,11 @@ We discuss existing approaches to the systems presented here when
 appropriate.
 
 \subsection{Adding log operations}
-
+\begin{figure}
+\includegraphics[%
+   width=1\columnwidth]{figs/structure.pdf}
+\caption{\sf\label{fig:structure} The portions of \yad that new operations interact with directly.}
+\end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
 using custom log operations.  In this section, we desribe how to add a
@@ -779,6 +783,25 @@ implementation must obey a few more invariants:
 \end{itemize}
 
 \subsection{Linear hash table}
+\begin{figure}[t]
+\includegraphics[%
+   width=1\columnwidth]{figs/bulk-load.pdf}
+%\includegraphics[%
+%   width=1\columnwidth]{bulk-load-raw.pdf}
+%\vspace{-30pt}
+\caption{\sf\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hashtable implementations.  The
+test is run as a single transaction, minimizing overheads due to synchronous log writes.}
+\end{figure}
+\begin{figure}[t]
+%\hspace*{18pt}
+%\includegraphics[%
+%   width=1\columnwidth]{tps-new.pdf}
+\includegraphics[%
+   width=3.25in]{figs/tps-extended.pdf}
+%\vspace{-36pt}
+\caption{\sf\label{fig:TPS} High concurrency performance of Berkeley DB and \yad.  We were unable to get Berkeley DB to work correctly with more than 50 threads. (See text)
+}
+\end{figure}
 
 Although the beginning of this paper describes the limitations of
 physical database models and relational storage systems in great
@@ -846,6 +869,15 @@ benchmark.
 
 \subsection{Object serialization}
 
+\begin{figure*}[t!]
+\includegraphics[width=3.3in]{figs/object-diff.pdf}
+\hspace{.3in}
+\includegraphics[width=3.3in]{figs/mem-pressure.pdf}
+\vspace{-.15in}
+\caption{\sf \label{fig:OASYS}
+The effect of \yad object serialization optimizations under low and high memory pressure.}
+\end{figure*}
+
 Numerous schemes are used for object serialization.  Support for two
 different styles of object serialization have been eimplemented in
 \yad.  The first, pobj, provided transactional updates to objects in
@@ -897,6 +929,29 @@ memory-bound setup, update/flush indeed improves memory utilization.
 
 
 \subsection{Manipulation of logical log entries}
+
+\begin{figure}
+\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}
+\vspace{-24pt}
+\caption{\sf\label{fig:multiplexor} Because pages are independent, we
+can reorder requests among different pages. Using a log demultiplexer,
+we partition requests into independent queues, which can be 
+handled in any order, improving locality and merging opportunities.}
+\end{figure}
+\begin{figure}[t]
+\includegraphics[width=3.3in]{figs/oo7.pdf}
+\vspace{-15pt}
+\caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
+\end{figure}
+
+\begin{figure}[t]
+\includegraphics[width=3.3in]{figs/trans-closure-hotset.pdf}
+\vspace{-12pt}
+\caption{\sf\label{fig:hotGraph} Hot set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
+we see that the multiplexer helps when the graph has poor locality.
+However, in the cases where depth first search performs well, the
+reordering is inexpensive.}
+\end{figure}
 
 Database optimizers operate over relational algebra expressions that
 will correspond to sequence of logical operations at runtime.  \yad
