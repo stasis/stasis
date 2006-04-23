@@ -896,15 +896,107 @@ optimizations nearly double \yad's performance, and we see that in the
 memory-bound setup, update/flush indeed improves memory utilization.
 
 
-\subsection{Graph traversal}
+\subsection{Manipulation of logical log entries}
 
+Database optimizers operate over relational algebra expressions that
+will correspond to sequence of logical operations at runtime.  \yad
+does not support query languages, relational algebra, or other general
+purpose primitves.
 
+However, it does include an extendible logging infrastructure, and any
+operations that make user of physiological logging implicitly
+implement UNDO (and often REDO) functions that interpret logical
+operations.
 
-\subsection{Request reordering for locality}
-Compare to DB optimizer.  (Reordering can happen later than DB optimizer's reordering..)
+Logical operations often have some nice properties that this section
+will exploit.  Because they can be invoked at arbitrary times in the
+future, they tend to be independent of the database's physical state.
+They tend to be inverses of operations that programmer's understand.
+If each method in the API exposed to the programmer is the inverse of
+some other method in the API, then each logical operation corresponds
+to a method the programmer can manually invoke.
+
+Because of this, application developers can easily determine whether
+logical operations may safely be reordered, transformed, or even
+dropped from the stream of requests that \yad is processing.  Even
+better, if requests can be partitioned in a natural way, load
+balancing can be implemented by spliting requests across many nodes.
+Similarly, a node can easily service streams of requests from multiple
+nodes by combining them into a single log, and processing the log
+using operaiton implementations.  Furthermore, application-specific
+procedures that are analagous to standard relational algebra methods
+(join, project and select) could be used to efficiently transform the data
+before it reaches the page file, while it is layed out sequentially
+in memory.
+
+Note that read-only operations do not necessarily generate log
+entries.  Therefore, applications may need to implement custom
+operations to make use of the ideas in this section.
+
+Although \yad has rudimentary support for a two-phase commit based
+cluster hash table, we have not yet implemented a logical log based
+networking primitives.  Therefore, we implemented some of these ideas
+in a single node configuration in order to increase request locality
+during the traversal of a random graph.  The graph traversal system
+takes a sequence of (read) requests, and partitions them using some
+function.  It then proceses each partition in isolation from the
+others.  We considered two partitioning functions.  The first, which
+is really only of interested in the distributed case, partitions the
+requests according to the hash of the node id they refer to.  This
+would allow us to balance the graph traversal across many nodes.  (We
+expect the early phases of such a traversal to be bandwidth, not
+latency limited, as each node would stream large sequences of
+asynchronous requests to the other nodes.) 
+
+The second partitioning function, which was used to produce
+Figure~\ref{hotset} partitions requests by their position in the page
+file.  When the graph has good locality, a normal depth first search
+traversal and the prioritized traversal perform well.  As locality
+decreases, the partitioned traversal algorithm's performance degrades
+less than the naive traversal.
+
+**TODO This really needs more experimental setup... look at older draft!**
+
 \subsection{LSN-Free pages}
-\subsection{Blobs: File system based and zero-copy}
-\subsection{Recoverable Virtual Memory}
+
+In Section~\ref{todo}, we describe how operations can avoid recording
+LSN's on the pages they modify.  Essentially, opeartions that make use
+of purely physical logging need not heed page boundaries, as
+physiological operations must.  Recall that purely physical logging
+interacts poorly with concurrent transactions that modify the same
+data structures or pages, so LSN-Free pages are not applicable in all
+situations.
+
+Consider the retreival of a large (page spanning) object stored on
+pages that contain LSN's.  The object's data will not be contiguous.
+Therefore, in order to retrive the object, the transaction system must
+load the pages contained on disk into memory, allocate buffer space to
+allow the object to be read, and perform a byte-by-byte copy of the
+portions of the pages that contain the large object's data.  Compare
+this approach to a modern filesystem, which allows applications to
+perform a DMA copy of the data into memory, avoiding the expensive
+byte-by-byte copy of the data, and allowing the CPU to be used for
+more productive purposes.  Furthermore, modern operating systems allow
+network services to use DMA and ethernet adaptor hardware to read data
+from disk, and send it over a network socket without passing it
+through the CPU.  Again, this frees the CPU, allowing it to perform
+other tasks.
+
+We beleive that LSN free pages will allow reads to make use of such
+optimizations in a straightforward fashion.  Zero copy writes could be
+performed by performing a DMA write to a portion of the log file.
+However, doing this complicates log truncation, and does not address
+the problem of updating the page file.  We suspect that contributions
+from the log based filesystem literature can address these problems in
+a straightforward fashion.
+
+Finally, RVM, recoverable virtual memory, made use of LSN-free pages
+so that it could use mmap() to map portions of the page file into
+application memory.  However, without support for logical log entries
+and nested top actions, it would be difficult to implement a
+concurrent, durable data structure using RVM.  We plan to add RVM
+style transactional memory to \yad in a way that is compatible with
+fully concurrent collections such as hash tables and tree structures.
 
 \section{Conclusion}
 
