@@ -259,8 +259,8 @@ many technologies that our system builds upon.  However, we view \yad
 as a rejection of the fundamental assumptions that underly database
 systems.  In particular, we reject the idea that a general-purpose
 storage sytem should attempt to encode universal data models and
-computational paradigms.  Although we accept that such data models may
-make sense for applications, we believe that system builders need more
+computational paradigms.  Although we accept that such a data model 
+for a particular class of applications, we believe that system builders need more
 control and flexibility.
 
 Instead, we are less ambitious and seek to build a flexible
@@ -271,7 +271,7 @@ any of a variety of data models and computational paradigms.
 Otherwise, the system could not easily reused in many environments.
 We know of no system that adequately achieves these two goals.
 
-Here, we present a brief history of transactional storage systems, and
+Here, we present a brief history of transactional storage architectures, and
 explain why they fail to achieve \yad's goals.  Citations of the
 technical work upon which our system is based are included below, in
 the description of \yad's design.
@@ -291,9 +291,7 @@ the description of \yad's design.
 \subsection{Databases as system components}
 
 A recent survey~\cite{riscDB} enumerates problems that plague users of
-state-of-the-art database systems.  It concludes that efficiently
-optimizing and consistenly servicing large declarative queries is
-inherently difficult.
+state-of-the-art database systems.  
 
 The survey finds that database implementations fail to support the
 needs of modern systems.  In large systems, this manifests itself as
@@ -305,15 +303,15 @@ primary concerns that remain troublesome.
 %independent, self-administering desktop installations will be
 %problematic unless a number of open research problems are solved.
 
-The survey also provides evidence that SQL itself is problematic.  
+The survey also provides evidence that declarative languages such as SQL are problematic.  
 Although SQL serves some classes of applications well, it is
 often inadequate for algorithmic and hierarchical computing tasks.
 
 Finally, complete, modern database
-implementations are often incomprehensible, and border on
+implementations are often incomprehensible and
 irreproducable, hindering further research.  After making these
 points, the study concludes by suggesting the adoption of ``RISC''
-style database architectures, both as a research and an
+style database architectures, both as a research and as an
 implementation tool~\cite{riscDB}.  
 
 %For example, large scale application such as web search, map services,
@@ -347,29 +345,14 @@ by a system in terms of data layouts and representations that are commonly
 used by relational and navigational database implementations.
 
 Both concepts are fundamentally incompatible with a general storage
-implementation.  By definition, a database server encodes both
-concepts, while transaction processing libraries manage to avoid
+implementation.  By definition, database servers (and toolkits) encode both
+concepts, while transaction processing libraries manage to avoid complex
 conceptual mappings. \yad's novelty stems from the fact that it avoids
 both concepts, while making it easy for applications to incorporate results from the database
 literature.
 
 
 \subsubsection{Conceptual mappings}
-
-%Database toolkits are based upon the idea that database
-%implementations can be broken into smaller components with
-%standardized interfaces.  
-
-%Early work in this field surveyed database
-%implementations that existed at the time.  It casts compoenents of
-%these implementation in terms of a physical database
-%model~\cite{batoryPhysical} and conceptual-to-internal
-%mappings~\cite{batoryConceptual}.  These abstractions describe
-%relational database systems, and describe many aspects of subsequent
-%database toolkit research.
-
-%However, these abstractions are built upon assumptions about
-%application structure and data layout.  
 
 At the time of their introduction, ten
 conceptual-to-internal mappings were sufficient to describe existing
@@ -384,25 +367,11 @@ database toolkit need only implement each type of mapping in order to
 encode the set of all conceivable database systems.
 
 Our work's primary concern is to support systems beyond database
-implementations.  If we were to follow the database toolkit approach,
-we would proceed by developing a framework that adequately encodes the
-set of all abstract data types and all algorithms that system software
-designers require.  Finally, we would describe a framework that is
-capable of encoding all conceivable system software designs, and
-encode stanadard, intechangable interfaces to each type of component
-in our framework.
+implementations.  Therefore, our system must support a more general
+set of primitives than existing systems.  Defining a universal (but
+practical) framework that encompasses such a broad class of
+computation is clearly unrealistic.
 
-Put this way, the database toolkit approach to system design seems
-absurd.  However, similar approachs have been extremeley successful
-for well-understood, well-defined classes of applications.  In
-particular, it has been highly successful in the design of systems
-that perform limited types of computations over particular classes of
-data.  Much of the database literature is based upon this idea, as is the 
-highly sucessful database industry.  
-
-Clearly, however, this approach is inappropriate for the design of
-general purpose components for system developers, or for applications
-that make use of unique computational and storage primitives.
 Therefore, \yad's architecture avoids hard-coded assumptions regarding
 the computation or abstract data types of the applications built on
 top of it.
@@ -429,7 +398,7 @@ database model.  In this section, we discuss fundamental limitations
 of the physical data model, and explain how \yad avoids these
 limitations.  
 
-We discuss Berkeley DB, and show that it provides funcationality
+\rcs{this should be later...} We discuss Berkeley DB, and show that it provides funcationality
 similar to a physical database model.  Just as \yad allows
 applications to build mappings on top of the primitives it provides,
 \yad's design allows them to take design storage in terms of a
@@ -455,31 +424,21 @@ later in this paper.  Although further discussion is beyond the scope
 of this paper, object-oriented database systems, and relational
 databases with support for user-definable abstract data types (such as
 in Postgres~\cite{postgres}) were the primary competitors to these
-database toolkits.
+database toolkits, and are the precursors to the user definable types
+present in current database systems.  
 
-Fundamentally, all of these systems allowed users to quickly define
-new DBMS software by defining some abstract data types and often index
-methods to manipulate these types.  Data was adressable via various
-mechanisms.  Most systems implemented a particular addressing scheme
-(direct, hash based, tree based, etc), depending on the applications
-it supported.  Many potential linkset implementations exist, each
-targets a particular workload.  More complex data strucutres (such as
-graphs) could be built on these primitives.  Some systems optimized
-for fast pointer traversal, making it impractical to rearrange data on
-disk after allocation, while others interposed an expensive index
-lookup on each pointer traversal.  Special purpose optimizations were
-added, addressing egregious performance issues that were exposed by
-common workloads built on common sets of tradeoffs.  This process
-leads to highly complex physical database designs that implement a
-compromise between applications with widely varying needs.
+One can characterise the difference between database toolkits and
+extensible database servers in terms of early and late binding.  With
+a database toolkit, new types are defined when the database server is
+compiled.  In today's object-relational database systems, new types
+are defined at runtime.  Each approach has its advantages.  However,
+both types of systems attempted to provide similar levels of
+abstraction and flexibility to their end users.
 
-Furthermore the features and abstractions that introduce this complexity 
-are designed to efficiently serve the needs of a database implementation.  
-As \yad seeks to address applications not well serviced by database
-systems, the value of these features is dubious, especially if they
-are provided as a monolithic physical database implementation.
+Therefore, the database toolkit approach is inappropriate for
+applications not well serviced by modern database systems.
 
-Therefore, \yad abandons the concept of a physical database.  Instead
+\eat{Therefore, \yad abandons the concept of a physical database.  Instead
 of forcing applications to reason in terms of simple files and
 linksets, it allows applications to reason about storage in terms of
 atomically applicable changes to the page file.  Of course,
@@ -491,7 +450,7 @@ this restriction is fundamental if we wish to support concurrent
 transactions, durability and recovery using conventional hardware
 systems.  In Section~\ref{nestedTopActions} we explain how a set of
 atomic changes may be atomically applied to the page file, alleviating
-the burden we place upon applications somewhat.
+the burden we place upon applications somewhat.}
 
 Now that we have introduced the underlying concepts of database 
 toolkits, we can discuss the proposed RISC database architectures 
@@ -523,26 +482,21 @@ Berkeley DB allows applications that need to modify the recovery
 semantics of Berkeley DB, or otherwise tweak the way its
 write-ahead-logging protocol works to pass flags via its API.
 
-Transaction processong libraries are \yad's closest relative.
-However, \yad provides applications with a broader range of options
-for tweaking, customizing, or completely replacing each of the
-primitives it uses to implement write-ahead-logging.  
-
-The current \yad implementation includes sample implementations of Berkeley
-DB style functionality, but the use of this functionality is optional.
-Later in the paper, we provide examples of how this functionality and
-the write-ahead-logging algorithm can be modified to provide
-customized semantics to applications, while improving overall system
-performance.  
+Transaction processing libraries such as Berkeley DB are \yad's closest relative.
+However, they encode a physical data model, and hardcode many
+assumptions regarding workloads and decisions regarding low level data
+representation.  While Berkeley DB could be built on top of \yad,
+Berkeley DB is too specialized to support \yad.
 
 The Boxwood system provides a networked, fault-tolerant transactional
-B-Tree and ``Chunk Manager.''  We believe that \yad could be a
-valuable part of such a system, especially given \yad's focus on
-intelligence and optimizations within a single node.  In particular,
-when implementing applications with predictable locality properties, 
-it would be interesting to explore alternative approaches toward the
-implementation of Boxwood that make use of \yad's customizable
-write-ahead-logging semantics, and fully logical logging mechanism.
+B-Tree and ``Chunk Manager.''  We believe that \yad is an interesting
+complement to such a system, especially given \yad's focus on
+intelligence and optimizations within a single node, and Boxwoods
+focus on multiple node systems.  In particular, when implementing
+applications with predictable locality properties, it would be
+interesting to explore extensions to the Boxwood approach that make
+use of \yad's customizable semantics (Section~\ref{wal}), and fully logical logging
+mechanism. (Section~\ref{logging})
 
 
 %  This part of the rant belongs in some other paper:
