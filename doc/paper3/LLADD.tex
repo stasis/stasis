@@ -269,23 +269,24 @@ software we are interested in.
 \subsection{The database abstraction}
 
 Database systems are often thought of in terms of the high-level
-abstractions they present.  For instance, Relational database systems
-implement the relation model~\cite{cobb}, while object oriented
+abstractions they present.  For instance, relational database systems
+implement the relational model~\cite{cobb}, object oriented
 databases implement object abstractions, XML databases implement
 hierarchical datasets, and so on.  Before the relational model,
-navigational databases implemented a navigational, pointer and record
-based data model.
+navigational databases implemented pointer and record
+based data models.
 
 An early survey of database implementations sought to enumerate the
 fundamental components used by database system implementors.  This
 survey was performed due to difficulties in extending database systems
-into new application domains.  The survey divided databases into two
-broad modules: conceptual mappings~\cite{batoryConceptual} and the
-physical database~\cite{batoryPhysical} model.  
+into new application domains.  The survey divided internal database
+routines into two broad modules: conceptual
+mappings~\cite{batoryConceptual} and the physical
+database~\cite{batoryPhysical} model.
 
-A conceptual mapping may translate a relation into a set of keyed
-tuples.  A physical model may translate a set of tuples into an
-on-disk B-Tree with support for iterators and range-based query
+A conceptual mapping might translate a relation into a set of keyed
+tuples.  A physical model could then translate a set of tuples into an
+on-disk B-Tree, and provide support for iterators and range-based query
 operations.
 
 It is the responsibility of a database implementor to choose a set of
@@ -298,10 +299,10 @@ top of it.
 can support more than a small percentage of today's applications.}
 
 Instead of attempting to create such a model after decades of database
-research has failed to produce one, we opt to provide a storage model
-that mimics the primitives provided by modern hardware as closely as
-possible.  This makes it easy for system designers to implement most
-of the data models that the underlying hardware can support.
+research has failed to produce one, we opt to provide a transactional
+storage model that mimics the primitives provided by modern hardware.
+This makes it easy for system designers to implement most of the data
+models that the underlying hardware is capable of supporting.
 
 \subsection{\yad and ``traditional'' database workloads}
 
