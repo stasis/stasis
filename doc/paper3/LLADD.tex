@@ -687,7 +687,7 @@ higher concurrency.
 \yad distinguishes between {\em latches} and {\em locks}.  A latch
 corresponds to a operating system mutex, and is held for a short
 period of time.  All of \yad's default data structures use latches and
-deadlock avoidance schemes.  This allows multithreaded code to treat
+the 2PL deadlock avoidance scheme~\cite{twoPhaseLocking}.  This allows multithreaded code to treat
 \yad as a normal, reentrant data structure library.  Applications that
 want conventional transactional isolation, (eg: serializability), may
 make use of a lock manager.
@@ -731,11 +731,153 @@ this fashion.
 
 This section desribes proof-of-concept extensions to \yad.
 Performance figures accompany the extensions that we have implemented.
+We discuss existing approaches to the systems presented here when
+appropriate.
 
-\section{Relationship to existing systems}
+\subsection{Adding log operations}
 
-This section describes how existing systems can be recast as
-specializations of \yad.  <--- This should be inlined into the text. 
+\yad allows application developers to easily add new operations to the
+system.  Many of the customizations described below can be implemented
+using custom log operations.  In this section, we desribe how to add a
+``typical'' Steal/no-Force operation that supports concurrent
+transactions, full physiological logging, and per-page LSN's.  Such
+opeartions are typical of high-performance commercial database
+engines.
+
+As we mentioned above, \yad operations must implement a number of
+functions.  Figure~\ref{yadArch} describes the environment that
+schedules and invokes these functions.  The first step in implementing
+a new set of log interfaces is to decide upon interface that these log
+interfaces will export to callers outside of \yad.  
+
+These interfaces are implemented by the Wrapper Functions and Read
+only access methods in Figure~\ref{yadArch}.  Wrapper functions that
+modify the state of the database package any information that will be
+needed for undo or redo into a data format of its choosing.  This data
+structure, and an opcode associated with the type of the new
+operation, are passed into Tupdate(), which copies its arguments to
+the log, and then passes its arguments into the operation's REDO
+function.
+ 
+REDO modifies the page file, or takes some other action directly.  It
+is essentially an iterpreter for the log entries it is associated
+with.  UNDO works analagously, but is invoked when an operation must
+be undone (usually due to an aborted transaction, or during recovery).
+This general pattern is quite general, and applies in many cases.  In
+order to implement a ``typical'' operation, the operations
+implementation must obey a few more invariants:
+
+\begin{itemize}
+\item Pages should only be updated inside REDO and UNDO functions.
+\item Page updates atomically update page LSN's by pinning the page.
+\item If the data seen by a wrapper function must match data seen
+  during REDO, then the wrapper should use a latch to protect against
+  concurrent attempts to update the sensitive data (and against
+  concurrent attempts to allocate log entries that update the data).
+\item Nested top actions (and logical undo), or ``big locks'' (which
+  reduce concurrency) should be used to implement multi-page updates.
+\end{itemize}
+
+\subsection{Linear hash table}
+
+Although the beginning of this paper describes the limitations of
+physical database models and relational storage systems in great
+detail, these systems are the basis of most common transactional
+storage routines.  Therefore, we implement key-based storage, and a
+primititve form of linksets in this section.  We argue that obtaining
+obtaining reasonable performance in such a system under \yad is
+straightforward, and compare a simple hash table to a hand-tuned (not
+straightforward) hash table, and Berkeley DB's implementation.
+
+The simple hash table uses nested top actions to atomically update its
+internal structure.  It is based on a linear hash function, allowing
+it to incrementally grow its buffer list.  It is based on a number of
+modular subcomponents, notably a growable array of fixed length
+entries, and the user's choice of two different linked list
+implementations.  The hand-tuned hashtable also uses a {\em linear} hash
+function,~\cite{lht} but is monolithic, and uses carefully ordered writes to
+reduce log bandwidth, and other runtime overhead.  Berkeley DB's
+hashtable is a popular, commonly deployed implementation, and serves
+as a baseline for our experiements.
+
+Both of our hashtables outperform Berkeley DB on a workload that
+bulkloads the tables by repeatedly inserting key, value pairs into
+them.  We do not claim that our partial implementation of \yad
+generally outperforms Berkeley DB, or that it is a robust alternative
+to Berkeley DB.  Instead, this test shows that \yad is comparable to
+existing systems, and that its modular design does not introduce gross
+inefficiencies at runtime.
+
+The comparison between our two hash implementations is more
+enlightening.  The performance of the simple hash table shows that
+quick, straightfoward datastructure implementations composed from
+simpler structures behave reasonably well in \yad.  The hand-tuned
+implementation shows that \yad allows application developers to
+optimize the primitives they build their applications upon.  In the
+best case, past systems allowed application developers to providing
+hints to improve performance.  In the worst case, a developer would be
+forced to redesign the application to avoid sub-optimal properties of
+the transactional data structure implementation.
+
+Figure~\ref{lhtThread} describes performance of the two systems under
+highly concurrent workloads.  For this test, we used the simple
+(unoptimized) hash table, since we are interested in the performance a
+clean, modular data structure that a typical system implementor would
+be likely to produce, not the performance of our own highly tuned,
+monolithic, implementations.
+
+Both Berekely DB and \yad can service concurrent calls to commit with
+a single synchronous I/O.\endnote{The multi-threaded benchmarks
+  presented here were performed using an ext3 filesystem, as high
+  concurrency caused both Berkeley DB and \yad to behave unpredictably
+  when reiserfs was used.  However, \yad's multi-threaded throughput
+  was significantly better that Berkeley DB's under both systems.}
+\yad scaled quite well, delivering over 6000 transactions per
+second,\endnote{This test was run without lock managers, so the
+  transactions obeyed the A, C, and D properties.  Since each
+  transaction performed exactly one hashtable write and no reads, they
+  obeyed I (isolation) in a trivial sense.}  and provided roughly
+double Berkeley DB's throughput (up to 50 threads).  We do not report
+the data here, but we implemented a simple load generator that makes
+use of a fixed pool of threads with a fixed think time.  We found that
+the latency of Berkeley DB and \yad were similar, addressing concerns
+that \yad simply trades latency for throughput during the concurrency
+benchmark.
+
+\subsection{Object serialization}
+
+Numerous schemes are used for object serialization.  Support for two
+different styles of object serialization have been eimplemented in
+\yad.  The first, pobj, provided transactional updates to objects in
+Titanium, a Java variant.  It transparently loaded and persisted
+entire graphs of objects.
+
+The second variant was built on top of a generic C++ object
+serialization library, \oasys.  \oasys makes use of pluggable storage
+modules to actually implement persistant storage, and includes plugins
+for Berkeley DB and MySQL.  This section will describe how the \yad's
+\oasys plugin reduces the runtime serialization/deserialization cpu
+overhead of write intensive workloads, while using half as much system
+memory as the other two systems.
+
+We present three variants of \yad here.  The first treats \yad like
+Berkeley DB.  The second customizes the behavior of the buffer
+manager.  Instead of maintaining an up-to-date version of each object
+in the buffer manager or page file, it allows the buffer manager's
+view of live application objects to become stale.  (This is incomplete... I'm writing it right now...)
+
+It treats the application's pool of deserialized (live)
+in-memory objects as the primary copy of tdata.
+
+\subsection{Graph traversal}
+
+
+
+\subsection{Request reordering for locality}
+Compare to DB optimizer.  (Reordering can happen later than DB optimizer's reordering..)
+\subsection{LSN-Free pages}
+\subsection{Blobs: File system based and zero-copy}
+\subsection{Recoverable Virtual Memory}
 
 \section{Conclusion}
 
