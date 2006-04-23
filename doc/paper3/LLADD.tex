@@ -16,13 +16,14 @@
 % by the Word sample file. 
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,10pt]{article}
-\usepackage{usenix,epsfig,endnotes,xspace}
+\usepackage{usenix,epsfig,endnotes,xspace,color}
 
 % Name candidates:
 %  Anza
 %  Void 
 %  Station (from Genesis's "Grand Central" component) 
 %  TARDIS: Atomic, Recoverable, Datamodel Independent Storage
+% EAB: flex, basis, stable, dura
 
 \newcommand{\yad}{Void\xspace}
 \newcommand{\oasys}{Juicer\xspace}
@@ -61,18 +62,25 @@ UC Berkeley
 
 \subsection*{Abstract}
 
-\yad is a storage framework that incorporates ideas from traditional
-write-ahead-logging storage algorithms and file system technologies,
-while providing applications with increased control over its
-underlying modules.  Generic transactional storage systems such as SQL
-and BerkeleyDB serve many applications well, but impose constraints
-that are undesirable to developers of system software and
-high-performance applications.  Conversely, while filesystems place
-few constraints on applications, the do not provide atomicity or
-durability properties that naturally correspond to application needs.
+The is an increasing need to manage data well in a wide variety of
+systems, including robust support for atomic durable concurrent
+transactions.  Databases provide the default solution, but force
+applications to interact via SQL and to forfeit control over data
+layout and access mechanisms.  We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
 
-This paper addresses this gap (and enables the development of
-unforeseen variants on transactional storage) by generalizing
+\yad is a storage framework that incorporates ideas from traditional
+write-ahead-logging storage algorithms and file systems,
+while providing applications with flexible control over data structure, layout and performance vs. robustness tradeoffs.
+% increased control over their
+%underlying modules.  Generic transactional storage systems such as SQL
+%and BerkeleyDB serve many applications well, but impose constraints
+%that are undesirable to developers of system software and
+%high-performance applications.  Conversely, while filesystems place
+%few constraints on applications, the do not provide atomicity or
+%durability properties that naturally correspond to application needs.
+
+\yad enables the development of
+unforeseen variants on transactional storage by generalizing
 write-ahead-logging algorithms.  Our partial implementation of these
 ideas already provides specialized (and cleaner) semantics and
 improved performance to applications.
@@ -80,17 +88,18 @@ improved performance to applications.
 %Applications may use our modular library of basic data strctures to
 %compose new concurrent transactional access methods, or write their
 %own from scratch.  
-This paper presents examples that make use of custom access methods,
+
+We present examples that make use of custom access methods,
 modifed buffer manager semantics, direct log file manipulation, and
 LSN-free pages that facilitate zero-copy optimizations, and discusses
 the composability of these extensions.
 
-We argue that our ability to support such a diverse range of
-transactional systems stems directly from our rejectiion of
-assumptions made by early database designers.  These assumptions
-permeate ``database toolkit'' research.  We attribute the success of
-low-level transaction processing libraries (such as Berkeley DB) to
-a partial break from traditional database dogma.
+%We argue that our ability to support such a diverse range of
+%transactional systems stems directly from our rejection of
+%assumptions made by early database designers.  These assumptions
+%permeate ``database toolkit'' research.  We attribute the success of
+%low-level transaction processing libraries (such as Berkeley DB) to
+%a partial break from traditional database dogma.
 
 % entries, and 
 % to reduce memory and
@@ -117,6 +126,8 @@ a partial break from traditional database dogma.
 %incorporate database services such as durability and isolation.  As
 %this has happened, the abstractions provided by database systems have
 %seriously restricted system designs and implementations.
+
+
 
 Approximately a decade ago, the operating systems research community came to
 the painful realization that the presence of high level abstractions
@@ -152,6 +163,8 @@ are web search engines, document repositories, large-scale web-email
 services, map and trip planning services, ticket reservation systems,
 photo and video repositories, bioinformatics, version control systems,
 workflow applications, CAD/VLSI applications and directory services.
+
+\eab{need to talk about positive examples: LRVM, Berk DB, windows registry? Grid FS from Wisconsin}
 
 Applications that have only recently begun to make use of high-level
 database features include XML based systems, object persistance
@@ -209,17 +222,19 @@ when possible.
 **We've explained why the sky is falling.  Now, explain why \yad is
 so good.  (Take ideas from old paper.)**
 
-\section{Prior work}
+\section{\yad is not a Database}
 
 Database research has a long history, including the development of
 many technologies that our system builds upon.  However, we view \yad
 as a rejection of the fundamental assumptions that underly database
-systems.  In particular, we reject the idea that a general purpose
+systems.  In particular, we reject the idea that a general-purpose
 storage sytem should attempt to encode universal data models and
-computational paradigms.  
+computational paradigms.  Although we accept that such data models may
+make sense for applications, we believe that system builders need more
+control and flexibility.
 
-Instead, we are less ambitious and seek to build a storage system that
-provides durable (which often implies transactional) access to the
+Instead, we are less ambitious and seek to build a flexible
+transactional storage system that provides durable access to the
 primitives provided by the underlying hardware.  To be of practical
 value, it must be easy to specialize such a system so that it encodes
 any of a variety of data models and computational paradigms.
@@ -243,31 +258,32 @@ the description of \yad's design.
 %we claim that prior work is dissimilar to our own, we refer to
 %high-level architectural considerations, not low-level details.
 
-\subsection{Databases  as system components}
+\subsection{Databases as system components}
 
 A recent survey~\cite{riscDB} enumerates problems that plague users of
-state-of-the-art database systems.  It concludes that efficiently optimizing and
-consistenly servicing large declarative queries is inherently
-difficult.  
+state-of-the-art database systems.  It concludes that efficiently
+optimizing and consistenly servicing large declarative queries is
+inherently difficult.
 
-The survey finds that database implementations fail to support the needs of modern systems.  
-In large systems, this manifests itself as managability and tuning issues that
-prevent databases from effectively servicing large scale, diverse, interactive
-workloads.  
-On smaller systems, footprint, predictable performance, and power
-consumption are primary concerns, that are not addressed by full-fledged database systems.
-Database applications that must scale up to large numbers of independent, self-administering desktop 
-installations will be problematic unless a number of open research problems are solved.  
+The survey finds that database implementations fail to support the
+needs of modern systems.  In large systems, this manifests itself as
+managability and tuning issues that prevent databases from effectively
+servicing large scale, diverse, interactive workloads.  On smaller
+systems, footprint, predictable performance, and power consumption are
+primary concerns that remain troublesome.
+%Database applications that must scale up to large numbers of
+%independent, self-administering desktop installations will be
+%problematic unless a number of open research problems are solved.
 
 The survey also provides evidence that SQL itself is problematic.  
-While SQL serves some classes of applications well, it is
+Although SQL serves some classes of applications well, it is
 often inadequate for algorithmic and hierarchical computing tasks.
 
 Finally, complete, modern database
 implementations are often incomprehensible, and border on
 irreproducable, hindering further research.  After making these
 points, the study concludes by suggesting the adoption of ``RISC''
-style database architectures, both as a research and as an
+style database architectures, both as a research and an
 implementation tool~\cite{riscDB}.  
 
 %For example, large scale application such as web search, map services,
@@ -295,14 +311,14 @@ and {\em physical database models}~\cite{batoryPhysical}.
 
 Conceptual-to-internal mappings and physical database models were
 discovered during an early survey of database implementations.  Mappings
-desribe the computational primitives upon which client applications must 
+describe the computational primitives upon which client applications must 
 be implemented.  Physical database models define the on-disk layout used 
 by a system in terms of data layouts and representations that are commonly 
 used by relational and navigational database implementations.
 
 Both concepts are fundamentally incompatible with a general storage
 implementation.  By definition, a database server encodes both
-concepts, while transaction processing libraries mange to avoid
+concepts, while transaction processing libraries manage to avoid
 conceptual mappings. \yad's novelty stems from the fact that it avoids
 both concepts, while making it easy for applications to incorporate results from the database
 literature.
@@ -341,7 +357,7 @@ Our work's primary concern is to support systems beyond database
 implementations.  If we were to follow the database toolkit approach,
 we would proceed by developing a framework that adequately encodes the
 set of all abstract data types and all algorithms that system software
-designers make use of.  Finally, we would describe a framework that is
+designers require.  Finally, we would describe a framework that is
 capable of encoding all conceivable system software designs, and
 encode stanadard, intechangable interfaces to each type of component
 in our framework.
@@ -351,9 +367,8 @@ absurd.  However, similar approachs have been extremeley successful
 for well-understood, well-defined classes of applications.  In
 particular, it has been highly successful in the design of systems
 that perform limited types of computations over particular classes of
-data.  Much of the database literature is based upon this idea, and
-continues to successfully improve the state of computer science, and
-is the basis of the highly sucessful database industry.  
+data.  Much of the database literature is based upon this idea, as is the 
+highly sucessful database industry.  
 
 Clearly, however, this approach is inappropriate for the design of
 general purpose components for system developers, or for applications
@@ -366,7 +381,7 @@ Instead, it leaves decisions regarding abstract data types and
 algorithm design to system developers or language designers.  For
 instance, while \yad has no concept of object oriented data types, two
 radically different approaches toward object persistance have been
-implemented on top of it.~\ref{oasys}
+implemented on top of it~\ref{oasys}.
 
 We could have just as easily written a persistance mechanism for a
 functional programming language, or a particular application (such as
@@ -391,7 +406,7 @@ applications to build mappings on top of the primitives it provides,
 physical database model.  Therefore, while Berkeley DB could be implemented on top
 of \yad, Berkeley DB cannot support the primitives provided by \yad.
 
-Genesis,~\cite{genesis} an early database toolkit, was built in terms
+Genesis~\cite{genesis}, an early database toolkit, was built in terms
 of interchangable primitives that implemented the interfaces of an
 early database implementation model.  It built upon the idea of
 conceptual mappings described above, and the physical database model
@@ -407,10 +422,10 @@ Subsequent database toolkit work builds upon these foundations,
 Exodus~\cite{exodus} and Starburst~\cite{starburst} are notable
 examples, and incorporated a number of ideas that will be referred to
 later in this paper.  Although further discussion is beyond the scope
-of this paper, object oriented database systems, and relational
-databases with support for user definable abstract data types (such as
+of this paper, object-oriented database systems, and relational
+databases with support for user-definable abstract data types (such as
 in Postgres~\cite{postgres}) were the primary competitors to these
-database toolkits work.
+database toolkits.
 
 Fundamentally, all of these systems allowed users to quickly define
 new DBMS software by defining some abstract data types and often index
@@ -441,7 +456,7 @@ atomically applicable changes to the page file.  Of course,
 applications that wish to reason in terms of linksets and simple files
 are free to do so.
 
-We reget forcing applications to arrange for updates to be atomic, but
+We regret forcing applications to arrange for updates to be atomic, but
 this restriction is fundamental if we wish to support concurrent
 transactions, durability and recovery using conventional hardware
 systems.  In Section~\ref{nestedTopActions} we explain how a set of
@@ -459,8 +474,8 @@ platform, and to address issues that affect modern
 databases, such as automatic performance tuning, and reducing the
 effort required to implement a new database system~\cite{riscDB}.
 
-While we agree with the motivations behind RISC databases, instead of
-building a modular database, we seek to build a module that allows
+Although we agree with the motivations behind RISC databases, instead of
+building a modular database, we seek to build a system that allows
 programmers to avoid databases.
 
 
@@ -468,12 +483,12 @@ programmers to avoid databases.
 
 Berkeley DB is a highly successful alternative to conventional
 database design.  At its core, it provides the physical database, or
-relational storage system of a conventional database server.
+the relational storage system of a conventional database server.
 
 This module focuses on providing fully transactional data storage with
 B-Tree and hashtable based indexes.  Berkeley DB also provides some
 support for application specific access methods, as did Genesis, and
-the database toolkits that succeeded it.~\cite{libtp} Finally,
+the database toolkits that succeeded it~\cite{libtp}. Finally,
 Berkeley DB allows applications that need to modify the recovery
 semantics of Berkeley DB, or otherwise tweak the way its
 write-ahead-logging protocol works to pass flags via its API.
