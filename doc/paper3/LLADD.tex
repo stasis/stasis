@@ -115,24 +115,6 @@ the composability of these extensions.
 
 \section{Introduction}
 
-%It is well known that, to a system implementor, high-level
-%abstractions built into low-level services are at best a nuisance, and
-%often lead to the circumvention or complete reimplementation of
-%complex, hardware-dependent code.
-
-%This work is based on the premise that as reliability and performance
-%issues have forced ``low-level'' operating system software to
-%incorporate database services such as durability and isolation.  As
-%this has happened, the abstractions provided by database systems have
-%seriously restricted system designs and implementations.
-
-
-\eab{cut?:
-Approximately a decade ago, the operating systems research community came to
-the painful realization that the presence of high level abstractions
-in ``unavoidable'' system components precluded the development of
-crucial, performance sensitive applications.~\cite{exterminate, stonebrakerDatabaseDig}}
-
 As our reliance on computing infrastructure has increased, the need
 for robust data management has increased greatly, as has the range of
 applications and systems that need it.  Traditionally, data management
@@ -145,21 +127,6 @@ onto SQL and the monolithic approach of current databases.  And in
 fact, DBMSs are often not used for these systems, which must then
 implement their own ad-hoc data management tools on top of file
 systems.
-
-%Examples include:
-%\begin{itemize}
-%\item Search engines
-%\item Document repositories (including desktop search)
-%\item Web based email services
-%\item Web based map and gis services
-%\item Ticket reservation systems
-%\item Photo, audio and video repositories
-%\item Bioinformatics
-%\item Version control systems
-%\item Workflow applications
-%\item CAD/VLSI applications
-%\item Directory services
-%\end{itemize}
 
 A typical example of this mismatch is in the support for
 persistent objects in Java, called {\em Enterprise Java Beans}
