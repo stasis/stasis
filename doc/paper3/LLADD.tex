@@ -524,9 +524,10 @@ updates to apply.
 
 We also need to make sure that only the results of committed
 transactions still exist after recovery.  This is best done by writing
-a commit record to the log during the commit.  If pages that were
-modified by active transactions are pinned in memory, then recovery
-simply avoids playing back transactions without commit records.
+a commit record to the log during the commit.  If the system pins uncommitted
+dirty pages in memory, recovery does not need to worry about undoing 
+any updates, and simply plays back the redo records from 
+transactions that have commit records.
 
 However, pinning the pages of active transactions in memory is problematic.
 First, a single transaction may need more pages than can be pinned at
@@ -549,12 +550,12 @@ take one argument. An update is always the redo function applied to
 the page (there is no ``do'' function), and it always ensures that the
 redo log entry (with its LSN and argument) reach the disk before
 commit.  Similarly, an undo log entry, with its LSN and argument,
-alway reaches the disk before a page is stolen.  ARIES works
-essentially the same way, but without the ability to easily add new
-operations.
+always reaches the disk before a page is stolen.  ARIES works
+essentially the same way, but hard-codes recommended page 
+formats and index structures.~\cite{ariesIM}
 
-To manually abort a transaction, the \yad could either reload the page
-from disk and roll it forward to reflect committed transactions, or it
+To manually abort a transaction, \yad could either reload the page
+from disk and roll it forward to reflect committed transactions (this would imply ``no steal''), or it
 could roll back the page using the undo entries applied in reverse LSN
 order. (It currently does the latter.)
 
@@ -608,14 +609,21 @@ is also written to the log.
 
 \eab{describe recovery?}
 
-Recovery is handled by playing the log forward, and only applying log
-entries that are newer than the version of the page on disk.  Once the
-end of the log is reached, recovery proceeds to abort any transactions
-that did not commit before the system crashed.\endnote{Like ARIES,
-\yad actually implements recovery in three phases, Analysis, Redo and
-Undo.}  Recovery arranges to continue any outstanding aborts where
-they left off, instead of rolling back the abort, only to restart it
-again.
+This section very briefly described how a simplified
+write-ahead-logging algorithm might work, and glossed over many
+details.  Like ARIES, \yad actually implements recovery in three
+phases: Analysis, Redo and Undo.  Because recovery algorithms are
+desribed in the literature, and in an good database textbook, we
+will not desribe them in further detail.
+
+%Recovery is handled by playing the log forward, and only applying log
+%entries that are newer than the version of the page on disk.  Once the
+%end of the log is reached, recovery proceeds to abort any transactions
+%that did not commit before the system crashed.\endnote{Like ARIES,
+%\yad actually implements recovery in three phases, Analysis, Redo and
+%Undo.}  Recovery arranges to continue any outstanding aborts where
+%they left off, instead of rolling back the abort, only to restart it
+%again.
 
 \eat{
 Note that recovery relies on the fact that it knows which version of
@@ -681,9 +689,9 @@ amount of redo information that must be written to the log file.
 
 \subsection{Nested top actions}
 
-So far, we have glossed over the behavior of our system when multiple
-transactions execute concurrently.  To understand the problems that
-can arise when multiple transactions run concurrently, consider what
+So far, we have glossed over the behavior of our system when concurrent
+transactions modify the same data structure.  To understand the problems that
+arise in this case, consider what
 would happen if one transaction, A, rearranged the layout of a data
 structure.  Next, assume a second transaction, B, modified that
 structure, and then A aborted.  When A rolls back, its UNDO entries
@@ -697,20 +705,20 @@ another in-progress transaction.  An application can achieve this
 using its own concurrency control mechanisms, or by holding a lock on
 each data structure until the end of the transaction.  Releasing the
 lock after the modification, but before the end of the transaction,
-increases concurrency but means that follow-on transactions that use
-that data likely need to abort if the current transaction aborts ({\em
-cascading aborts}.
+increases concurrency.  However, it means that follow-on transactions that use
+that data may need to abort if a current transaction aborts ({\em
+cascading aborts}.  These issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrenctPerformance}.
 
-Unfortunately, total isolation causes bottlenecks when applied to key
-data structures, since the structure is locked for a relatively long
-time.  Nested top actions are essentially mini-transactions that can
+Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
+data structures.
+Nested top actions are essentially mini-transactions that can
 commit even if their containing transaction aborts; thus follow-on
 transactions can use the data structure without fear of cascading
 aborts.  
 
 The key idea is to distinguish between the logical operations of a
 data structure, such as inserting a key, and the physical operations
-such as splitting tree nodes or or rebalancing a tree. These physical
+such as splitting tree nodes or or rebalancing a tree. The physical
 operations do not need to undone if the containing logical operation
 (insert) aborts.
 
@@ -749,9 +757,16 @@ up the object.  It is tempting to try to move the LSNs elsewhere, but
 then they will not be written atomically with their page, which
 defeats their purpose.
 
-LSNs were introduced to avoid apply updates more than once. However, by focusing on idempotent redo entries, \yad can eliminate the LSN on each page.
+LSNs were introduced to prevent recovery from applying updates more
+than once. However, by constraining itself to a special type of idempotent redo and undo
+entries,\endnote{Idempotency does not guarantee that $f(g(x)) =
+  f(g(f(g(x))))$.  Therefore, idempotency does not guarantee that it is safe
+  to assume that a page is older than it is.}
+\yad can eliminate the LSN on each page.
 Consider purely physical logging operations that overwrite a fixed
-byte range on the page regardless of the page's initial state.  If all
+byte range on the page regardless of the page's initial state.  
+We say that such operations perform ``blind writes.''
+If all
 operations that modify a page have this property, then we can remove
 the LSN field, and have recovery conservatively assume that it is
 dealing with a version of the page that is at least as old on the one
@@ -777,7 +792,7 @@ properly.
 
 We call such pages ``LSN-free'' pages.  Although this technique is
 novel for databases, it resembles the mechanism used by
-LRVM~\cite{rvm}; \yad generalizes the concept and allows it to
+RVM~\cite{rvm}; \yad generalizes the concept and allows it to
 co-exist with traditional pages.  Furthermore, efficient recovery and
 log truncation require only minor modifications to our recovery
 algorithm.  In practice, this is implemented by providing a callback
@@ -787,8 +802,10 @@ For a less conservative estimate, it suffices to write a page's LSN to
 the log shortly after the page itself is written out; on recovery the
 log entry is thus a conservative but close estimate.
 
-Section~\ref{zeroCopy} explains how LSN-free pages led us to new 
-approaches for recoverable virtual memory and for large object storage.
+Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
+approaches for recoverable virtual memory and for large object storage.  
+Section~\ref{sec:oasys} uses blind writes to efficiently update records 
+on pages that are manipulated using more general operations.
 
 \subsection{Media recovery}
 
@@ -867,12 +884,12 @@ These issues are beyond the scope of this discussion.  Section~\ref{logReorderin
 
 This section provided an extremely brief overview of transactional
 pages and write-ahead logging.  Transactional pages are a valuable
-building block for a wide-variety of data management systems, as we
+building block for a wide variety of data management systems, as we
 show in the next section.  Nested top actions and LSN-free pages
-enable important optimizations.  In particular, \yad allows both
-simple custom operations using LSNs, or custom idempotent operations
-without LSNs, which enables transactions for objects that are larger than
-one page to have a contiguous layout on disk.
+enable important optimizations.  In particular, \yad allows general 
+custom operations using LSNs, or custom blind-write operations
+without LSNs.  This enables transactional manipulation of large, 
+contiguously stored objects.
 
 \eat{
 Although the extensions that it proposes
@@ -902,12 +919,12 @@ appropriate.
 
 We chose Berkeley DB in the following experiements because, among
 commonly used systems, it provides transactional storage primitives
-that are most similar to \yad, and it was designed for high
+that are most similar to \yad.  Also, Berkeley DB is designed to provide high
 performance and high concurrency.  For all tests, the two libraries
 provide the same transactional semantics, unless explicitly noted.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
-10K RPM SCSI drive, formatted with reiserfs.\endnote{We found that the
+10K RPM SCSI drive formatted using with ReiserFS~\cite{reiserfs}.\endnote{We found that the
   relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
   filesystem choice, and we plan to investigate the reasons why the
   performance of \yad under ext3 is degraded. However, the results
@@ -926,11 +943,13 @@ Optimizations to Berkeley DB that we performed included disabling the
 lock manager, though we still use ``Free Threaded'' handles for all
 tests.  This yielded a significant increase in performance because it
 removed the possibility of transaction deadlock, abort, and
-repetition.  However, once we disabled the lock manager, highly
-concurrent Berkeley DB benchmarks became unstable, suggesting either a
-bug or misuse of the feature.  With the lock manager enabled, Berkeley
+repetition.  However, disabling the lock manager, caused highly
+concurrent Berkeley DB benchmarks to become unstable, suggesting either a
+bug or misuse of the feature.  
+
+With the lock manager enabled, Berkeley
 DB's performance for Figure~\ref{fig:TPS} strictly decreased with
-increased concurrency.  The other tests were single-threaded.  We
+increased concurrency.  (The other tests were single-threaded.)  We also
 increased Berkeley DB's buffer cache and log buffer sizes to match
 \yad's default sizes.
 
@@ -973,7 +992,7 @@ is essentially an iterpreter for the log entries it is associated
 with.  UNDO works analagously, but is invoked when an operation must
 be undone (usually due to an aborted transaction, or during recovery).
 
-This general pattern is quite general, and applies in many cases.  In
+This pattern applies in many cases.  In
 order to implement a ``typical'' operation, the operations
 implementation must obey a few more invariants:
 
@@ -1063,7 +1082,7 @@ clean, modular data structure that a typical system implementor would
 be likely to produce, not the performance of our own highly tuned,
 monolithic implementations.
 
-Both Berekely DB and \yad can service concurrent calls to commit with
+Both Berkely DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
   presented here were performed using an ext3 filesystem, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
