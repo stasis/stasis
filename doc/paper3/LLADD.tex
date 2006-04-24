@@ -27,6 +27,7 @@
 % Stasys:  SYStem for Adaptable Transactional Storage: 
 
 \newcommand{\yad}{Stasys\xspace}
+\newcommand{\yads}{Stasys'\xspace}
 \newcommand{\oasys}{Oasys\xspace}
 
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
@@ -413,15 +414,40 @@ to build a system that enables a wider range of data management options.
 %down doesn't work (variance in performance, footprint),
 
 
-\section{Write ahead logging}
+\section{Transactional Pages}
 
-Section~\ref{notDB} described the ways in which a hard-coded data
-model limits the generality and flexibility of write ahead logging
-implementations.  This section provides a brief review of write ahead
-logging algorithms, and then explains why our refusal to incorporate a
-data model into \yad resulted in a write-ahead-logging system with
-unexpected, and unprecedented flexibility.
+Section~\ref{notDB} described the ways in which a top-down data model
+limits the generality and flexibility of databases.  In this section,
+we cover the basic bottom-up approach of \yad: {\em transactional
+pages}. Although similar to the underlying write-ahead logging
+approaches of databases, particularly ARIES~\cite{aries}, \yads
+bottom-up approach yields unexpected flexibility.
 
+Transactional pages provide the properties of transactions, but
+limited to updates within a single page in the simplest case.  After
+covering the single-page case, we explore multi-page transactions,
+which enable a complete transaction system.
+
+In this model, pages are the in-memory representation of disk blocks
+and thus must be the same size.  Pages are a convenient abstraction
+because the write back of a page (disk block) is normally atomic,
+giving us a foundation for larger atomic actions. In practice, disk
+blocks are not always atomic, but the disk can detect partial writes
+via checksums.  Thus, we actually depend only on detection of
+non-atomicity, which we treat as media failure.  One nice property of
+\yad is that we can roll forward an individual page from an archive copy to
+recover from media failures.
+
+A subtlety of transactional pages is that they technically only
+provide the "atomicity" and "durability" of ACID transactions.\footnote{The "A" in ACID really means atomic persistence of data, rather than atomic in-memory updates, as the term is normally used in systems work~\cite{GR97}; the latter is covered by "C" and "I".}  This
+is because "isolation" comes typically from locking, which is a higher
+(but compatible) layer. "Consistency" is less well defined but comes
+in part from transactional pages (from mutexes to avoid race
+conditions), and in part from higher layers (e.g. unique key
+requirements).
+
+
+\eat{
 \yad uses write-ahead-logging to support the
 four properties of transactional storage: Atomicity, Consistency,
 Isolation and Durability.  Like existing transactional storage sytems,
@@ -442,9 +468,70 @@ that are prone to change, and have extended the API accordingly.  Our
 goal is to allow applications to implement their own modules to
 replace our implementations of each of the major write ahead logging
 components.
+}
 
-\subsection{Single page transactions}
 
+\subsection{Single-page Transactions}
+
+In this section we show how to implement single-page transactions.
+This is not at all novel, and is in fact based on ARIES, but it forms
+important background.  We also gloss over many important and
+well-known optimizations that \yad exploits, such as group
+commit~\cite{group-commit}.
+
+The trivial way to acheive single-page transactions is simply to apply
+all the updates to the page and then write it out on commit. The page
+must be pinned until the transaction commits to avoid "dirty" data
+(uncommitted data on disk), but no logging is required.  As disk
+block writes are atomic, this ensures that we provide the "A" and "D"
+of ACID.
+
+This approach has poor performance since we must {\em force} pages to disk
+on commit and wait for a (random access) synchronous write to
+complete. By using a write-ahead log, we can support {\em no force}
+transactions: we write "redo" information to the log on commit, and
+then can write the pages later. If we crash, we can use the log to
+redo the lost updates during recovery.
+
+For this to work, we need to be able to tell which updates to
+re-apply, which is solved by using a per-page sequence number called a
+{\em log sequence number}. Each log entry contains the sequence
+number, and each page contains the sequence number of the last applied
+update.  Thus on recovery, we load a page, look at its sequence
+number, and re-apply all later updates.  Similarly, to restore a page
+from archive we use the same process, but with likely many more
+updates to apply.
+
+Pinning the pages of active transactions leads to problems as well.
+First, a single transaction may need more pages than can be pinned at
+one time. Second, under concurrent transactions, a given page may be
+pinned forever as long as it has at least one active transaction in
+progress all the time.  To avoid these problems, transaction systems
+support a {\em steal}, which means that pages can be written back
+before a transaction commits. 
+
+Thus, on recovery a page may contain data that never committed and the
+corresponding updates must be rolled back.  To enable this, "undo" log
+entries for uncommitted updates must be on disk before the page can be
+stolen (written back).  On recovery, the LSN on the page reveals which
+UNDO entries to apply to roll back the page.
+
+Thus, the single-page transactions of \yad work as follows.  An {\em
+operation} consists of both a redo and an undo function, both of which
+take one argument. An update is always the redo function applied to
+the page (there is no "do" function), and it always ensures that the
+redo log entry (with its LSN and argument) reach the disk before
+commit.  Similarly, an undo log entry, with its LSN and argument,
+alway reaches the disk before a page is stolen.  ARIES works
+essentially the same way, but without the ability to easily add new
+operations.
+
+To manually abort a transaction, the \yad could either reload the page from disk and roll it forward to reflect committed transactions, or it could roll back the page using the undo entries applied in reverse LSN order. (It currently does the latter.)
+
+--- still working, stopped here for dinner ---
+
+
+\eat{
 Write ahead logging algorithms are quite simple if each operation
 applied to the page file can be applied atomically.  This section will
 describe a write ahead logging scheme that can transactionally update a single page
@@ -452,6 +539,7 @@ of storage that is guaranteed to be written to disk atomically.  We refer
 the readers to the large body of literature discussing write ahead
 logging if more detail is required.  Also, for brevity, this
 section glosses over many standard write ahead logging optimizations that \yad implements.
+
 
 Assume an application wishes to transactionally apply a series of functions to a piece
 of persistant storage.  For simplicity, we will assume we have two
@@ -487,6 +575,7 @@ single transaction case, abort will restore the page to the state it
 was in before the transaction began.  Note that each call to undo is
 assigned a new LSN so the page LSN will be different.  Also, each undo
 is also written to the log.
+}
 
 Recovery is handled by playing the log forward, and only applying log
 entries that are newer than the version of the page on disk.  Once the
@@ -544,7 +633,7 @@ amount of redo information that must be written to the log file.
 
 \yad distinguishes between {\em latches} and {\em locks}.  A latch
 corresponds to an operating system mutex, and is held for a short
-period of time.  All of \yad's default data structures use latches and
+period of time.  All of \yads default data structures use latches and
 the 2PL deadlock avoidance scheme~\cite{twoPhaseLocking}.  This allows multithreaded code to treat
 \yad as a normal, reentrant data structure library.  Applications that
 want conventional transactional isolation, (eg: serializability), may
@@ -853,7 +942,7 @@ Both Berekely DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
   presented here were performed using an ext3 filesystem, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when reiserfs was used.  However, \yad's multi-threaded throughput
+  when reiserfs was used.  However, \yads multi-threaded throughput
   was significantly better that Berkeley DB's under both systems.}
 \yad scaled quite well, delivering over 6000 transactions per
 second,\endnote{This test was run without lock managers, so the
@@ -905,7 +994,7 @@ entire graphs of objects.
 The second variant was built on top of a generic C++ object
 serialization library, \oasys.  \oasys makes use of pluggable storage
 modules to actually implement persistant storage, and includes plugins
-for Berkeley DB and MySQL.  This section will describe how the \yad's
+for Berkeley DB and MySQL.  This section will describe how the \yads
 \oasys plugin reduces the runtime serialization/deserialization cpu
 overhead of write intensive workloads, while using half as much system
 memory as the other two systems.
@@ -942,7 +1031,7 @@ Figure~\ref{objectSerialization} presents the performance of the three
 \yad optimizations, and the \oasys plugins implemented on top of other
 systems.  As we can see, \yad performs better than the baseline
 systems.  More interestingly, in non-memory bound systems, the
-optimizations nearly double \yad's performance, and we see that in the
+optimizations nearly double \yads performance, and we see that in the
 memory-bound setup, update/flush indeed improves memory utilization.
 
 
@@ -1076,12 +1165,12 @@ fully concurrent collections such as hash tables and tree structures.
 
 The Boxwood system provides a networked, fault-tolerant transactional
 B-Tree and ``Chunk Manager.''  We believe that \yad is an interesting
-complement to such a system, especially given \yad's focus on
+complement to such a system, especially given \yads focus on
 intelligence and optimizations within a single node, and Boxwoods
 focus on multiple node systems.  In particular, when implementing
 applications with predictable locality properties, it would be
 interesting to explore extensions to the Boxwood approach that make
-use of \yad's customizable semantics (Section~\ref{wal}), and fully logical logging
+use of \yads customizable semantics (Section~\ref{wal}), and fully logical logging
 mechanism. (Section~\ref{logging})
 
 \section{Conclusion}
@@ -1092,7 +1181,7 @@ mike demmer, others?
 
 \section{Availability}
 
-Additional information, and \yad's source code is available at:
+Additional information, and \yads source code is available at:
 
 \begin{center}
 {\tt http://\yad.sourceforge.net/}
