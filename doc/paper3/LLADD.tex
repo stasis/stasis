@@ -89,17 +89,20 @@ ideas already provides specialized (and cleaner) semantics to applications.
 %compose new concurrent transactional access methods, or write their
 %own from scratch.  
 
-We present examples that make use of custom access methods,
-modifed buffer manager semantics, direct log file manipulation, and
-LSN-free pages that facilitate zero-copy optimizations, and discuss
-the composability of these extensions.
-
 We evaluate the performance of a traditional transactional storage
 system based on \yad, and show that it performs comparably to existing
-systems.  Application-specific optimizations that can not be expressed
-within existing transactional storage implementations allow us to more
-than double system performance with little effort.  }
+systems.  
+%Application-specific optimizations that can not be expressed
+%within existing transactional storage implementations allow us to more
+%than double system performance with little effort. 
 
+We present examples that make use of custom access methods, modifed
+buffer manager semantics, direct log file manipulation, and LSN-free
+pages that facilitate zero-copy optimizations, and discuss the
+composability of these extensions.  Many of these optimizations are
+easy to implement and more than double performance.
+
+}
 %We argue that our ability to support such a diverse range of
 %transactional systems stems directly from our rejection of
 %assumptions made by early database designers.  These assumptions
@@ -127,9 +130,10 @@ As our reliance on computing infrastructure has increased, a wider range of
 applications require robust data management.  Traditionally, data management
 has been the province of database management systems (DBMSs), which although
 well-suited to enterprise applications, lead to poor support for a
-wide-range systems including grid and scientific computing,
-bioinformatics, search engines, version control, and workflow
-applications.  These applications need transactions but do not fit well
+systems such as grid and scientific computing,
+bioinformatics, search engines, web-services, version control, workflow
+applications, and typical operating system services.  These applications 
+need transactions but do not fit well
 onto SQL and the monolithic approach of current databases.  In
 fact, DBMSs are often not used for these systems, which instead
 implement custom, ad-hoc data management tools on top of file
@@ -142,11 +146,11 @@ persistent objects.
 In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table (or sometimes multiple
 tables)~\cite{hibernate} and then issuing queries to keep the objects and
-rows consistent. A typical update must confirm it has the current
+rows consistent. An update must confirm it has the current
 version, modify the object, write out a serialized version using the
 SQL update command and commit. This is an awkward and slow mechanism;
 we show up to a 5x speedup over a MySQL implementation that is
-optimized for single-threaded, local access (Section XXX).
+optimized for single-threaded, local access (Section~\ref{sec:oasys}).
 
 Similarly, bioinformatics systems perform complex scientific
 computations over large, semi-structured databases with rapidly evolving schemas.  Versioning and
@@ -225,7 +229,7 @@ the ideas presented below is available.
 \eab{others?  CVS, windows registry, berk DB, Grid FS?}
 \rcs{maybe in related work?}
 
-This paper begin by contrasting \yad's approach with that of
+This paper begins by contrasting \yad's approach with that of
 conventional database and transactional storage systems.  It proceeds
 to discuss write ahead logging, and describe ways in which \yad can be
 customized to implement many existing (and some new) write ahead
@@ -235,7 +239,7 @@ conclude with a survey of the technologies the \yad implementation is
 based upon.
 
 \section{\yad is not a Database}
-
+\label{sec:notDB}
 Database research has a long history, including the development of
 many technologies that our system builds upon.  This section explains
 why databases are fundamentally inappropriate tools for system
@@ -254,9 +258,9 @@ navigational databases implemented pointer- and record-based data models.
 An early survey of database implementations sought to enumerate the
 fundamental components used by database system implementors.  This
 survey was performed due to difficulties in extending database systems
-into new application domains.  The survey divided internal database
+into new application domains.  It divided internal database
 routines into two broad modules: {\em conceptual
-mappings}~\cite{batoryConceptual} and the {\em physical
+mappings}~\cite{batoryConceptual} and {\em physical
 database models}~\cite{batoryPhysical}.
 
 A conceptual mapping might translate a relation into a set of keyed
@@ -293,28 +297,28 @@ In each case, this limits the applicability of their implementations.
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
 of a physical data model, and the conceptual mappings desribed above.
-It was designed allow database implementors to easily swap out
+It was designed to allow database implementors to easily swap out
 implementations of the various components defined by its framework.
 Like subsequent systems (including \yad), it allowed it users to
 implement custom operations.
 
 Subsequent extensible database work builds upon these foundations.
-For example, the Exodus~\cite{exodus} database toolkit was the successor to
-Genesis. It supported the autmatic generation of query optimizers and
+For example, the Exodus~\cite{exodus} database toolkit is the successor to
+Genesis. It supports the automatic generation of query optimizers and
 execution engines based upon abstract data type definitions, access
 methods and cost models provided by its users.
 
 \eab{move this next paragraph to RW?}\rcs{We could.  We don't provide triggers, but it would be nice to provide clustering hints, especially in the RVM setting...}
 
-Starburst's~\cite{starburst} physical data model consisted of {\em
-  storage methods}.  Storage methods supported {\em attachment types}
+Starburst's~\cite{starburst} physical data model consists of {\em
+  storage methods}.  Storage methods support {\em attachment types}
 that allowed triggers and active databases to be implemented.  An
 attachment type is associated with some data on disk, and is invoked
 via an event queue whenever the data is modified.  In addition to
-providing triggers, it was used to facilitate index management.
-Starburst includes a type system that supported multiple inheritance,
-and it supports hints such as information regarding desired physical
-clustering.  Starburst also included a query language.
+providing triggers, attachment types are used to facilitate index management.
+Starburst includes a type system that supports multiple inheritance.  
+It also supports hints such as information regarding desired physical
+clustering.  Starburst also includes a query language.
 
 Although further discussion is beyond the scope of this paper,
 object-oriented database systems, and relational databases with
@@ -333,26 +337,27 @@ both types of systems aim to extend a high-level data model with new abstract da
 
 \subsubsection{Berkeley DB}
 
-System R was one of the first relational database implementations, and
-defined a clean separation between its query processor and its storage
-subsystem.  In fact, it supported a simple navigational interface to
-the storage subsystem, which remains the architecture for modern
-databases.
+%System R was one of the first relational database implementations, and
+%defined a clean separation between its query processor and its storage
+%subsystem.  In fact, it supported a simple navigational interface to
+%the storage subsystem, which remains the architecture for modern
+%databases.
 
 Berkeley DB is a highly successful alternative to conventional
 databases.  At its core, it provides the physical database, or
 the relational storage system of a conventional database server.
-It is based on the
-observation that the storge subsystem is a more general (and less
-abstract) component than a monolithic database, and provides a
-standalone implementation of the storage primitives built into 
-most relational database systems~\cite{libtp}.  In particular, 
+%It is based on the
+%observation that the storge subsystem is a more general (and less
+%abstract) component than a monolithic database, and provides a
+%standalone implementation of the storage primitives built into 
+%most relational database systems~\cite{libtp}.  
+In particular, 
 it provides fully transactional (ACID) operations over B-Trees, 
 hashtables, and other access methods.  It provides flags that 
 let its users tweak various aspects of the performance of these
-primitives.
+primitives.~\cite{libtp}
 
-We have already discussed the limitations of this approach.  With the
+With the
 exception of the direct comparisons of the two systems, none of the \yad 
 applications presented in Section~\ref{extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
@@ -368,6 +373,7 @@ Berkeley DB's data model, and write ahead logging system are both too specialize
 
 \subsubsection{Better databases}
 
+\rcs{This section is too long}
 The database community is also aware of this gap. 
 A recent survey~\cite{riscDB} enumerates problems that plague users of
 state-of-the-art database systems, and finds that database implementations fail to support the
@@ -422,7 +428,7 @@ to build a system that enables a wider range of data management options.
 
 \section{Transactional Pages}
 
-Section~\ref{notDB} described the ways in which a top-down data model
+Section~\ref{sec:notDB} described the ways in which a top-down data model
 limits the generality and flexibility of databases.  In this section,
 we cover the basic bottom-up approach of \yad: {\em transactional
 pages}. Although similar to the underlying write-ahead logging
@@ -430,7 +436,7 @@ approaches of databases, particularly ARIES~\cite{aries}, \yads
 bottom-up approach yields unexpected flexibility.
 
 Transactional pages provide the properties of transactions, but
-limited to updates within a single page in the simplest case.  After
+only allow updates within a single page in the simplest case.  After
 covering the single-page case, we explore multi-page transactions,
 which enable a complete transaction system.
 
@@ -500,11 +506,11 @@ must be pinned until the transaction commits to avoid "dirty" data
 block writes are atomic, this ensures that we provide the "A" and "D"
 of ACID.
 
-This approach has poor performance since we must {\em force} pages to disk
+This approach scales poorly to multiple pages since we must {\em force} pages to disk
 on commit and wait for a (random access) synchronous write to
 complete. By using a write-ahead log, we can support {\em no force}
-transactions: we write "redo" information to the log on commit, and
-then can write the pages later. If we crash, we can use the log to
+transactions: we write (sequential) "redo" information to the log on commit, and
+then can write the (random-access) pages later. If we crash, we can use the log to
 redo the lost updates during recovery.
 
 For this to work, we need to be able to tell which updates to
@@ -516,17 +522,18 @@ number, and re-apply all later updates.  Similarly, to restore a page
 from archive we use the same process, but with likely many more
 updates to apply.
 
-We also need to make sure we only re-apply updates for transactions
-that committed.  This is best done by writing a commit record to the
-log during the commit.  Transactions without commit records should not
-be recovered.
+We also need to make sure that only the results of committed
+transactions still exist after recovery.  This is best done by writing
+a commit record to the log during the commit.  If pages that were
+modified by active transactions are pinned in memory, then recovery
+simply avoids playing back transactions without commit records.
 
-Pinning the pages of active transactions leads to problems as well.
+However, pinning the pages of active transactions in memory is problematic.
 First, a single transaction may need more pages than can be pinned at
 one time. Second, under concurrent transactions, a given page may be
 pinned forever as long as it has at least one active transaction in
 progress all the time.  To avoid these problems, transaction systems
-support a {\em steal}, which means that pages can be written back
+support {\em steal}, which means that pages can be written back
 before a transaction commits. 
 
 Thus, on recovery a page may contain data that never committed and the
@@ -822,7 +829,7 @@ data to the application.  The buffer manager uses a cache replacement
 policy (\yad currently uses LRU-2 by default) to decide which pages
 should be written back to disk.
 
-Section~\ref{oasys}, we will provide example where the most recent
+Section~\ref{sec:oasys}, we will provide example where the most recent
 version of application data is not managed by \yad at all, and
 Section~\ref{zeroCopy} explains why efficiency may force certain
 operations to bypass the buffer manager entirely.
@@ -1084,6 +1091,7 @@ The effect of \yad object serialization optimizations under low and high memory 
 \end{figure*}
 
 \subsection{Object persistance}
+\label{sec:oasys}
 Numerous schemes are used for object serialization.  Support for two
 different styles of object serialization have been eimplemented in
 \yad.  We could have just as easily implemented a persistance
