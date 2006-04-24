@@ -24,6 +24,7 @@
 %  Station (from Genesis's "Grand Central" component) 
 %  TARDIS: Atomic, Recoverable, Datamodel Independent Storage
 % EAB: flex, basis, stable, dura
+% Stasys:  SYStem for Adaptable Transactional Storage: 
 
 \newcommand{\yad}{Stasys\xspace}
 \newcommand{\oasys}{Oasys\xspace}
@@ -41,7 +42,7 @@
 
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf \yad: A Terrific Application and Fascinating Paper}
+\title{\Large \bf \yad: System for adapatable, transactional storage}
 
 %for single author (just remove % characters)
 \author{
@@ -81,8 +82,7 @@ while providing applications with flexible control over data structures, layout,
 \yad enables the development of
 unforeseen variants on transactional storage by generalizing
 write-ahead-logging algorithms.  Our partial implementation of these
-ideas already provides specialized (and cleaner) semantics and
-improved performance to applications.
+ideas already provides specialized (and cleaner) semantics to applications.
 
 %Applications may use our modular library of basic data strctures to
 %compose new concurrent transactional access methods, or write their
@@ -93,9 +93,11 @@ modifed buffer manager semantics, direct log file manipulation, and
 LSN-free pages that facilitate zero-copy optimizations, and discuss
 the composability of these extensions.
 
-\eab{performance}
-
-}
+We evaluate the performance of a traditional transactional storage
+system based on \yad, and show that it performs comparably to existing
+systems.  Application-specific optimizations that can not be expressed
+within existing transactional storage implementations allow us to more
+than double system performance with little effort.  }
 
 %We argue that our ability to support such a diverse range of
 %transactional systems stems directly from our rejection of
@@ -120,31 +122,36 @@ the composability of these extensions.
 
 \section{Introduction}
 
-As our reliance on computing infrastructure has increased, the need
-for robust data management has increased greatly, as has the range of
-applications and systems that need it.  Traditionally, data management
+As our reliance on computing infrastructure has increased, a wider range of 
+applications require robust data management.  Traditionally, data management
 has been the province of database management systems (DBMSs), which although
 well-suited to enterprise applications, lead to poor support for a
 wide-range systems including grid and scientific computing,
 bioinformatics, search engines, version control, and workflow
-applications.  These applications need transactions but don't fit well
-onto SQL and the monolithic approach of current databases.  And in
-fact, DBMSs are often not used for these systems, which must then
-implement their own ad-hoc data management tools on top of file
+applications.  These applications need transactions but do not fit well
+onto SQL and the monolithic approach of current databases.  In
+fact, DBMSs are often not used for these systems, which instead
+implement custom, ad-hoc data management tools on top of file
 systems.
 
 A typical example of this mismatch is in the support for
-persistent objects in Java, called {\em Enterprise Java Beans}
-(EJB). In a typical usage, an array of objects is made persistent by
+persistent objects.
+% in Java, called {\em Enterprise Java Beans}
+%(EJB). 
+In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table (or sometimes multiple
-tables~\cite{xxx}) and then issuing queries to keep the objects and
+tables)~\cite{xxx} and then issuing queries to keep the objects and
 rows consistent. A typical update must confirm it has the current
 version, modify the object, write out a serialized version using the
 SQL update command and commit. This is an awkward and slow mechanism;
 we show up to a 5x speedup over a MySQL implementation that is
 optimized for single-threaded, local access (Section XXX).
 
-Add bioinformatics = Perl + files example?
+Similarly, bioinformatics systems perform complex scientific
+computations over large, semi-structured databases with rapidly evolving schemas.  Versioning and
+lineage tracking are also key concerns.  Relational databases support
+none of these features well.  Instead, office suites, ad-hoc
+text-based formats and Perl scripts are used for data management~\cite{perl, excel}.
 
 \eat{
 Examples of real world systems that currently fall into this category
