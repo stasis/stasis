@@ -78,10 +78,8 @@ write-ahead-logging algorithms.  Our partial implementation of these
 ideas already provides specialized (and cleaner) semantics to applications.
 
 We evaluate the performance of a traditional transactional storage
-system based on \yad, and show that it performs comparably to existing
-systems.  
-
-We present examples that make use of custom access methods, modifed
+system based on \yad, and show that it performs favorably relative to existing
+systems.  We present examples that make use of custom access methods, modifed
 buffer manager semantics, direct log file manipulation, and LSN-free
 pages that facilitate zero-copy optimizations, and discuss the
 composability of these extensions.  Many of these optimizations are
@@ -548,7 +546,7 @@ Thus, the single-page transactions of \yad work as follows.  An {\em
 operation} consists of both a redo and an undo function, both of which
 take one argument. An update is always the redo function applied to
 the page (there is no ``do'' function), and it always ensures that the
-redo log entry (with its LSN and argument) reach the disk before
+redo log entry (with its LSN and argument) reaches the disk before
 commit.  Similarly, an undo log entry, with its LSN and argument,
 always reaches the disk before a page is stolen.  ARIES works
 essentially the same way, but hard-codes recommended page 
@@ -606,8 +604,6 @@ was in before the transaction began.  Note that each call to undo is
 assigned a new LSN so the page LSN will be different.  Also, each undo
 is also written to the log.
 }
-
-\eab{describe recovery?}
 
 This section very briefly described how a simplified
 write-ahead-logging algorithm might work, and glossed over many
@@ -707,7 +703,7 @@ each data structure until the end of the transaction.  Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
-cascading aborts}.  These issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrenctPerformance}.
+cascading aborts}).  These issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrenctPerformance}.
 
 Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
 data structures.
@@ -736,10 +732,11 @@ implements nested top actions.  The extension may be used as follows:
   nested top action'' right before the mutex is released.
 \end{enumerate}
 
-If the transaction that encloses the operation aborts, the logical
+\noindent If the transaction thata encloses the operation aborts, the logical
 undo will {\em compensate} for its effects, leaving the structural
-changes intact.  Note that this recipe does not ensure transactional
-consistency and is largely orthogonol to the use of a lock manager.
+changes intact. 
+% Note that this recipe does not ensure iso transactional
+%consistency and is largely orthogonol to the use of a lock manager.
 
 We have found that it is easy to protect operations that make
 structural changes to data structures with this recipe.
@@ -769,7 +766,7 @@ We say that such operations perform ``blind writes.''
 If all
 operations that modify a page have this property, then we can remove
 the LSN field, and have recovery conservatively assume that it is
-dealing with a version of the page that is at least as old on the one
+dealing with a version of the page that is at least as old as the one
 on disk.  
 
 \eat{
@@ -964,7 +961,7 @@ multiple machines and file systems.
 \begin{figure}
 \includegraphics[%
    width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that new operations directly interact with.}
+\caption{\sf\label{fig:structure} The portions of \yad that interact with new operations directly.}
 \end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
@@ -981,7 +978,7 @@ a new set of log interfaces is to decide upon an interface that these log
 interfaces will export to callers outside of \yad.  
 
 The externally visible interface is implemented by wrapper functions
-and read only access methods.  The wrapper function modifies the state
+and read-only access methods.  The wrapper function modifies the state
 of the page file by packaging the information that will be needed for
 undo and redo into a data format of its choosing.  This data structure
 is passed into Tupdate().  Tupdate() copies the data to the log, and
@@ -998,13 +995,12 @@ implementation must obey a few more invariants:
 
 \begin{itemize}
 \item Pages should only be updated inside REDO and UNDO functions.
-\item Page updates atomically update page LSN's by pinning the page.
+\item Page updates atomically update the page's LSN by pinning the page.
 \item If the data seen by a wrapper function must match data seen
   during REDO, then the wrapper should use a latch to protect against
   concurrent attempts to update the sensitive data (and against
   concurrent attempts to allocate log entries that update the data).
-\item Nested top actions (and logical undo), or ``big locks'' (which
-  reduce concurrency) should be used to implement multi-page updates. (Section~\ref{sec:nta})
+\item Nested top actions (and logical undo), or ``big locks'' (total isolation but lower concurrency) should be used to implement multi-page updates. (Section~\ref{sec:nta})
 \end{itemize}
 
 \subsection{Linear hash table}
@@ -1049,23 +1045,23 @@ The hand-tuned hashtable also uses a linear hash
 function.  However, it is monolithic and uses carefully ordered writes to
 reduce runtime overheads such as log bandwidth.  Berkeley DB's
 hashtable is a popular, commonly deployed implementation, and serves
-as a baseline for our experiements.
+as a baseline for our experiments.
 
 Both of our hashtables outperform Berkeley DB on a workload that
-bulk loads the tables by repeatedly inserting (key, value) pairs.
-We do not claim that our partial implementation of \yad
-generally outperforms, or is a robust alternative
-to Berkeley DB.  Instead, this test shows that \yad is comparable to
-existing systems, and that its modular design does not introduce gross
-inefficiencies at runtime.
-
+bulk loads the tables by repeatedly inserting (key, value) pairs,
+although we do not wish to imply this is always the case.
+%We do not claim that our partial implementation of \yad
+%generally outperforms, or is a robust alternative
+%to Berkeley DB.  Instead, this test shows that \yad is comparable to
+%existing systems, and that its modular design does not introduce gross
+%inefficiencies at runtime.
 The comparison between the \yad  implementations is more
 enlightening.  The performance of the simple hash table shows that
 straightfoward datastructure implementations composed from
 simpler structures can perform as well as the implementations included 
 in existing monolithic systems.  The hand-tuned
 implementation shows that \yad allows application developers to
-optimize the primitives they build their applications upon.  
+optimize key primitives.
 
 % I cut this because berkeley db supports custom data structures....
 
@@ -1130,8 +1126,8 @@ modules that implement persistant storage, and includes plugins
 for Berkeley DB and MySQL.  
 
 This section will describe how the \yad
-\oasys plugin reduces the runtime serialization/deserialization cpu
-overhead of write intensive workloads, while using half as much system
+\oasys plugin reduces the runtime serialization/deserialization CPU
+overhead of write-intensive workloads, while using half as much system
 memory as the other two systems.
 
 We present three variants of the \yad plugin here.  The first treats \yad like
@@ -1149,7 +1145,7 @@ CPU utilization, and it also allows us to drastically decrease the
 size of the page file.  In turn this allows us to increase the size of
 the application's cache of live objects.
 
-We implemented the \yad buffer pool optimization by adding two new
+We implemented the \yad buffer-pool optimization by adding two new
 operations, update(), which only updates the log, and flush(), which
 updates the page file.  
 
@@ -1194,7 +1190,7 @@ manager optimizations.  However, it only writes the changed portions of
 objects to the log.  Because of \yad's support for custom log entry
 formats, this optimization is straightforward.
 
-In addition to the buffer pool optimizations, \yad provides several 
+In addition to the buffer-pool optimizations, \yad provides several 
 options to handle UNDO records in the context
 of object serialization. The first is to use a single transaction for
 each object modification, avoiding the cost of generating or logging
@@ -1309,7 +1305,7 @@ cluster hash table, we have not yet implemented networking primitives for logica
 Therefore, we implemented a single node log reordering scheme that increases request locality
 during the traversal of a random graph.  The graph traversal system
 takes a sequence of (read) requests, and partitions them using some
-function.  It then proceses each partition in isolation from the
+function.  It then processes each partition in isolation from the
 others.  We considered two partitioning functions.  The first divides the page file
 into equally sized contiguous regions, which increases locality.  The second takes the hash
 of the page's offset in the file, which enables load balancing.
@@ -1337,9 +1333,9 @@ one edge from each node has good locality while the others generally
 have poor locality.
 
 The second experiment explicitly measures the effect of graph locality
-on our optimization. (Figure~\ref{fig:hotGraph}) It extends the idea
+on our optimization (Figure~\ref{fig:hotGraph}). It extends the idea
 of a hot set to graph generation.  Each node has a distinct hot set
-which includes the 10\% of the nodes that are closest to it in ring
+that includes the 10\% of the nodes that are closest to it in ring
 order.  The remaining nodes are in the cold set.  We use random edges
 instead of ring edges for this test.  This does not ensure graph
 connectivity, but we used the same random seeds for the two systems.
