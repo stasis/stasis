@@ -810,7 +810,7 @@ compare the peroformance of our modular approach with a monolithic
 implementation on top of \yad, using Berkeley DB as a baseline.
 }
 
-\subsection{Buffer manager policy}
+\eat{ \subsection{Buffer manager policy}
 
 \eab{cut this?}
 
@@ -855,7 +855,7 @@ recovery.  We are in the process of optimizing the system to handle
 fully in-memory workloads efficiently.  Of course, durability is closely
 tied to system management issues such as reliability, replication and so on.  
 These issues are beyond the scope of this discussion.  Section~\ref{logReordering} will describe why applications might decide to manipulate the log directly.
-
+}
 \subsection{Summary of Transactional Pages}
 
 This section provided an extremely brief overview of transactional
@@ -1346,7 +1346,7 @@ Alternatively, we could use DMA to overwrite the blob to the page file
 in a non-atomic fashion, providing filesystem style semantics.
 (Existing database servers often provide this mode based on the
 observation that many blobs are static data that does not really need
-to be updated transactionally.~\cite{sqlServer}) Of course, \yad could
+to be updated transactionally.~\cite{sqlserver}) Of course, \yad could
 also support other approaches to blob storage, such as B-Tree layouts
 that allow arbitrary insertions and deletions in the middle of
 objects~\cite{esm}.
@@ -1360,7 +1360,52 @@ style transactional memory to \yad in a way that is compatible with
 fully concurrent collections such as hash tables and tree structures.
 
 
-\section{Related Work?}
+\section{Related Work}
+
+This paper has described a number of custom transactional storage
+extensions, and explained why can \yad support them.  This section
+will describe existing ideas in the literature that we would like to
+incorporate into \yad.
+
+Many approaches toward the physical layout of large objects have been
+proposed.  Some allow arbitrary insertion and deletion of
+bytes~\cite{esm} or pages~\cite{sqlserver} within the object, while
+typical filesystems provide append only storage~\cite{ffs,ntfs}.
+Record-oriented file systems are an older, but still used
+alternative~\cite{multics,gfs}. None of these alternatives serve all
+workloads well.  In fact, hybrid systems that use two different
+storage mechanisms depending on object size are common.  Modern
+databases that support blobs work this way, and a number of
+filesystems pack multiple small files into a single page, while
+allocating space by the page or extent for larger files~\cite{reiserfs3,didFFSdoThis}.
+
+Similarly, a multitude of allocation strategies exist.  Relational
+database allocation routines are optimized for dynamic tables of
+relatively homogenous tuples, and often leave portions of pages
+unallocated to reduce fragmentation.  Some filesystems attempt to lay
+out data in logically sequential order, while log-based filesystems
+lay files out in the order they were written~\cite{lfs}.  Our recent
+survey of NTFS and Microsoft SQL Server fragmentation found that
+neither system outperforms the other on all workloads, but that their
+performance varied wildly.  Also, we found that neither system's
+allocation algorithm made use of the fact that some of our workloads
+consisted of constant sized objects~\cite{msrTechReport}.  
+
+Although fragmentation becomes less of a concern, allocation of small
+objects is complex as well, and has been studied extensively in the
+database and programming languages literature.  In particular, the
+Hoard memory allocator~\cite{hoard} is a highly concurrent version of
+malloc that makes use of thread context to allocate memory in a way
+that favors cache locality.  Also Starburst~\cite{starburst} (and
+other systems) provide clustering hints that allow applications to ask
+for space physically near an existing object.  More recent work has
+made use of the caller's stack to infer information about memory
+management.~\cite{xxx} \rcs{Eric, do you have a reference for this?}
+Finally, we are interested in allowing applcations to store records in
+the transacation log.  Assuming log fragmentation is kept to a
+minimum, this is particularly attractive on a single disk system.  We
+plan to use ideas from LFS~\cite{lfs} and POSTGRES~\cite{postgres}
+to implement this.
 
 The Boxwood system provides a networked, fault-tolerant transactional
 B-Tree and ``Chunk Manager.''  We believe that \yad is an interesting
@@ -1372,7 +1417,50 @@ interesting to explore extensions to the Boxwood approach that make
 use of \yads customizable semantics (Section~\ref{wal}), and fully logical logging
 mechanism. (Section~\ref{logging})
 
+Complexity problems may begin to arise as we attempt to implement more
+extensions to \yad.  However, we have observered that \yads source
+code {\em shrinks} over time.  Currently, the code is roughly broken
+into three categories:
+\begin{itemize}
+\item The core of \yad which is roughly 3000 lines
+of code, and implements the buffer manager, IO, recovery, and other
+sytems
+\item Custom operations, which account for another 3000 lines of code
+\item Page layouts and logging implementations, which account for 1600 lines of code.
+\end{itemize}
+
+The complexity of the core of \yad is our primary concern, as it
+contains hardcoded policies and assumptions.  Over time, the core has
+shrunk as functionality has been moved into extensions.  We exepect
+this trend to continue as development progresses.  A resource manager
+is a common pattern in system software design, and manages
+dependencies and ordering constraings between sets of components.
+Over time, we hope to shrink \yads core to the point where it is
+essentially a resource manager and the implementation of a few unavoidable
+algorithms related to write-ahead logging, such as a generic recovery
+algorithm, and code that manages bookkeeping information, such as 
+LSN's at runtime.  \yads current functionality, and some of the algorithms
+mentioned above would be shipped as modular, well-tested extensions.
+Highly specialized \oasys extensions, and other systems would be built
+by reusing \yads default extensions as appropriate.
+
+
 \section{Conclusion}
+
+We have presented \yad, a transactional storage library that addresses
+the needs of system developers.  \yad provides more opportunities for
+specialization than existing systems.  The effort required to extend
+\yad to support a new type of system is reasonable, especially when
+compared to currently common practices, such as working around
+limitations of existing systems, breaking guarantees regarding data
+integrity, or reimplementing the entire storage infrastructure from
+scratch.
+
+We have experimentally demonstrated that \yad provides fully
+concurrent, high performance transactions, and explained how it can
+support a number of systems that typically make use of suboptimal or
+ad-hoc storage approaches.  Finally, we have explained how \yad can be
+extended in the future to support a larger range of systems.
 
 \section{Acknowledgements}
 
