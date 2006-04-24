@@ -141,7 +141,7 @@ persistent objects.
 %(EJB). 
 In a typical usage, an array of objects is made persistent by
 mapping each object to a row in a table (or sometimes multiple
-tables)~\cite{xxx} and then issuing queries to keep the objects and
+tables)~\cite{hibernate} and then issuing queries to keep the objects and
 rows consistent. A typical update must confirm it has the current
 version, modify the object, write out a serialized version using the
 SQL update command and commit. This is an awkward and slow mechanism;
@@ -217,16 +217,22 @@ delivers these properties as reusable building blocks for systems
 to implement complete transactions.
 
 Through examples, and their good performance, we show how \yad{}
-support a wide range of uses that in the database gap, including
-persistent objects (roadmap?), graph or XML apps, and recoverable
+supports a wide range of uses that in the database gap, including
+persistent objects, graph or XML apps, and recoverable
 virtual memory~\cite{lrvm}.  An (early) open-source implementation of
 the ideas presented below is available.
 
 \eab{others?  CVS, windows registry, berk DB, Grid FS?}
+\rcs{maybe in related work?}
 
-roadmap?
-
-
+This paper begin by contrasting \yad's approach with that of
+conventional database and transactional storage systems.  It proceeds
+to discuss write ahead logging, and describe ways in which \yad can be
+customized to implement many existing (and some new) write ahead
+logging variants.  Implementations of some of these variants are
+presented, and benchmarked against popular real-world systems.  We
+conclude with a survey of the technologies the \yad implementation is
+based upon.
 
 \section{\yad is not a Database}
 
@@ -236,17 +242,11 @@ why databases are fundamentally inappropriate tools for system
 developers.  The problems we present here have been the focus of
 database systems and research projects for at least 25 years.
 
-The section concludes with a discussion of database systems that
-attempt to address these problems.  Although these systems were
-successful in many respects, they fundamentally aim to implement a
-data model, rather than build transactions from the bottom up. \eab{move this?}
-
-
 \subsection{The database abstraction}
 
 Database systems are often thought of in terms of the high-level
 abstractions they present.  For instance, relational database systems
-implement the relational model~\cite{cobb}, object oriented
+implement the relational model~\cite{codd}, object oriented
 databases implement object abstractions, XML databases implement
 hierarchical datasets, and so on.  Before the relational model,
 navigational databases implemented pointer- and record-based data models.
@@ -257,7 +257,7 @@ survey was performed due to difficulties in extending database systems
 into new application domains.  The survey divided internal database
 routines into two broad modules: {\em conceptual
 mappings}~\cite{batoryConceptual} and the {\em physical
-database}~\cite{batoryPhysical} model.
+database models}~\cite{batoryPhysical}.
 
 A conceptual mapping might translate a relation into a set of keyed
 tuples.  A physical model would then translate a set of tuples into an
@@ -281,7 +281,15 @@ models that the underlying hardware can support, or to
 abandon the data model approach entirely, and forgo the use of a
 structured physical model or conceptual mappings.
 
-\subsection{Extensible databases}
+\subsection{Extensible transaction systems} 
+
+The section contains discussion of database systems with goals similar to ours.
+Although these projects were
+successful in many respects, they fundamentally aimed to implement a
+extendible data model, rather than build transactions from the bottom up.
+In each case, this limits the applicability of their implementations.
+
+\subsubsection{Extensible databases}
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
 of a physical data model, and the conceptual mappings desribed above.
@@ -296,7 +304,7 @@ Genesis. It supported the autmatic generation of query optimizers and
 execution engines based upon abstract data type definitions, access
 methods and cost models provided by its users.
 
-\eab{move this next paragraph to RW?}
+\eab{move this next paragraph to RW?}\rcs{We could.  We don't provide triggers, but it would be nice to provide clustering hints, especially in the RVM setting...}
 
 Starburst's~\cite{starburst} physical data model consisted of {\em
   storage methods}.  Storage methods supported {\em attachment types}
@@ -323,7 +331,7 @@ compiled.  In today's object-relational database systems, new types
 are defined at runtime.  Each approach has its advantages.  However,
 both types of systems aim to extend a high-level data model with new abstract data types, and thus are quite limited in the range of new applications they support.  Not surprisingly, this kind of extensibility has had little impact on the range of applications we listed above.
 
-\subsection{Berkeley DB}
+\subsubsection{Berkeley DB}
 
 System R was the first relational database implementation, and was
 based upon a clean separation between its storage system and its
@@ -350,24 +358,24 @@ applications presented in Section~\ref{extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
 assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB is too specialized to support \yad.
+Berkeley DB's data model, and write ahead logging system are both too specialized to support \yad.
 
-\eab{for BDB, should we say that it still has a data model?}
+\eab{for BDB, should we say that it still has a data model?} \rcs{ Does the last sentence above fix it?}
 
 
 
 %cover P2 (the old one, not "Pier 2" if there is time...
 
-\subsection{Better databases}
+\subsubsection{Better databases}
 
 The database community is also aware of this gap. 
 A recent survey~\cite{riscDB} enumerates problems that plague users of
 state-of-the-art database systems, and finds that database implementations fail to support the
 needs of modern systems.  In large systems, this manifests itself as
 managability and tuning issues that prevent databases from predictably
-servicing diverse, large scale, declartive, workloads.  
+servicing diverse, large scale, declarative, workloads.  
 On small devices, footprint, predictable performance, and power consumption are
-primary, concerns that database systems do not address.
+primary concerns that database systems do not address.
 
 %Midsize deployments, such as desktop installations, must run without
 %user intervention, but self-tuning, self-administering database
@@ -440,7 +448,7 @@ recover from media failures.
 
 A subtlety of transactional pages is that they technically only
 provide the "atomicity" and "durability" of ACID
-transactions.\footnote{The "A" in ACID really means atomic persistence
+transactions.\endnote{The "A" in ACID really means atomic persistence
 of data, rather than atomic in-memory updates, as the term is normally
 used in systems work~\cite{GR97}; the latter is covered by "C" and
 "I".}  This is because "isolation" comes typically from locking, which
@@ -883,6 +891,51 @@ Performance figures accompany the extensions that we have implemented.
 We discuss existing approaches to the systems presented here when
 appropriate.
 
+\subsection{Experimental setup}
+
+\label{sec:experimental_setup}
+
+We chose Berkeley DB in the following experiements because, among
+commonly used systems, it provides transactional storage primitives
+that are most similar to \yad, and it was designed for high
+performance and high concurrency.  For all tests, the two libraries
+provide the same transactional semantics, unless explicitly noted.
+
+All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
+10K RPM SCSI drive, formatted with reiserfs.\endnote{We found that the
+  relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
+  filesystem choice, and we plan to investigate the reasons why the
+  performance of \yad under ext3 is degraded. However, the results
+  relating to the \yad optimizations are consistent across filesystem
+  types.}  All results correspond to the mean of multiple runs with a
+95\% confidence interval with a half-width of 5\%.
+
+We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
+branch during March of 2005, with the flags DB\_TXN\_SYNC, and
+DB\_THREAD enabled. These flags were chosen to match Berkeley DB's
+configuration to \yad's as closely as possible.  In cases where
+Berkeley DB implements a feature that is not provided by \yad, we
+only enable the feature if it improves Berkeley DB's performance.
+
+Optimizations to Berkeley DB that we performed included disabling the
+lock manager, though we still use ``Free Threaded'' handles for all
+tests.  This yielded a significant increase in performance because it
+removed the possibility of transaction deadlock, abort, and
+repetition.  However, once we disabled the lock manager, highly
+concurrent Berkeley DB benchmarks became unstable, suggesting either a
+bug or misuse of the feature.  With the lock manager enabled, Berkeley
+DB's performance for Figure~\ref{fig:TPS} strictly decreased with
+increased concurrency.  The other tests were single-threaded.  We
+increased Berkeley DB's buffer cache and log buffer sizes to match
+\yad's default sizes.
+
+We expended a considerable effort tuning Berkeley DB, and our efforts
+significantly improved Berkeley DB's performance on these tests.
+Although further tuning by Berkeley DB experts would probably improve
+Berkeley DB's numbers, we think that we have produced a reasonably
+fair comparison.  The results presented here have been reproduced on
+multiple machines and file systems.
+
 \subsection{Adding log operations}
 \begin{figure}
 \includegraphics[%
@@ -891,31 +944,30 @@ appropriate.
 \end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
-using custom log operations.  In this section, we desribe how to add a
-``typical'' Steal/no-Force operation that supports concurrent
-transactions, full physiological logging, and per-page LSN's.  Such
-opeartions are typical of high-performance commercial database
+using custom log operations.  In this section, we desribe how to implement a
+``ARIES style'' concurrent, steal/no force operation using 
+full physiological logging and per-page LSN's.
+Such operations are typical of high-performance commercial database
 engines.
 
 As we mentioned above, \yad operations must implement a number of
-functions.  Figure~\ref{yadArch} describes the environment that
+functions.  Figure~\ref{fig:structure} describes the environment that
 schedules and invokes these functions.  The first step in implementing
-a new set of log interfaces is to decide upon interface that these log
+a new set of log interfaces is to decide upon an interface that these log
 interfaces will export to callers outside of \yad.  
 
-These interfaces are implemented by the Wrapper Functions and Read
-only access methods in Figure~\ref{yadArch}.  Wrapper functions that
-modify the state of the database package any information that will be
-needed for undo or redo into a data format of its choosing.  This data
-structure, and an opcode associated with the type of the new
-operation, are passed into Tupdate(), which copies its arguments to
-the log, and then passes its arguments into the operation's REDO
-function.
+The externally visible interface is implemented by wrapper functions
+and read only access methods.  The wrapper function modifies the state
+of the page file by packaging the information that will be needed for
+undo and redo into a data format of its choosing.  This data structure
+is passed into Tupdate().  Tupdate() copies the data to the log, and
+then passes the data into the operation's REDO function.
  
-REDO modifies the page file, or takes some other action directly.  It
+REDO modifies the page file directly (or takes some other action).  It
 is essentially an iterpreter for the log entries it is associated
 with.  UNDO works analagously, but is invoked when an operation must
 be undone (usually due to an aborted transaction, or during recovery).
+
 This general pattern is quite general, and applies in many cases.  In
 order to implement a ``typical'' operation, the operations
 implementation must obey a few more invariants:
@@ -928,7 +980,7 @@ implementation must obey a few more invariants:
   concurrent attempts to update the sensitive data (and against
   concurrent attempts to allocate log entries that update the data).
 \item Nested top actions (and logical undo), or ``big locks'' (which
-  reduce concurrency) should be used to implement multi-page updates.
+  reduce concurrency) should be used to implement multi-page updates. (Section~\ref{sec:nta})
 \end{itemize}
 
 \subsection{Linear hash table}
@@ -955,8 +1007,8 @@ test is run as a single transaction, minimizing overheads due to synchronous log
 Although the beginning of this paper describes the limitations of
 physical database models and relational storage systems in great
 detail, these systems are the basis of most common transactional
-storage routines.  Therefore, we implement key-based storage, and a
-primititve form of linksets in this section.  We argue that obtaining
+storage routines.  Therefore, we implement a key-based access 
+method in this section. We argue that obtaining
 obtaining reasonable performance in such a system under \yad is
 straightforward, and compare a simple hash table to a hand-tuned (not
 straightforward) hash table, and Berkeley DB's implementation.
@@ -964,18 +1016,21 @@ straightforward) hash table, and Berkeley DB's implementation.
 The simple hash table uses nested top actions to atomically update its
 internal structure.  It is based on a linear hash function, allowing
 it to incrementally grow its buffer list.  It is based on a number of
-modular subcomponents, notably a growable array of fixed length
-entries, and the user's choice of two different linked list
-implementations.  The hand-tuned hashtable also uses a {\em linear} hash
+modular subcomponents.  Notably, its bucket list is a growable array
+of fixed length entries (a linkset, in the terms of the physical
+database model) and the user's choice of two different linked list
+implementations.
+
+The hand-tuned hashtable also uses a {\em linear} hash
 function,~\cite{lht} but is monolithic, and uses carefully ordered writes to
 reduce log bandwidth, and other runtime overhead.  Berkeley DB's
 hashtable is a popular, commonly deployed implementation, and serves
 as a baseline for our experiements.
 
 Both of our hashtables outperform Berkeley DB on a workload that
-bulkloads the tables by repeatedly inserting key, value pairs into
-them.  We do not claim that our partial implementation of \yad
-generally outperforms Berkeley DB, or that it is a robust alternative
+bulk loads the tables by repeatedly inserting (key, value) pairs.
+We do not claim that our partial implementation of \yad
+generally outperforms, or is a robust alternative
 to Berkeley DB.  Instead, this test shows that \yad is comparable to
 existing systems, and that its modular design does not introduce gross
 inefficiencies at runtime.
@@ -983,38 +1038,42 @@ inefficiencies at runtime.
 The comparison between our two hash implementations is more
 enlightening.  The performance of the simple hash table shows that
 quick, straightfoward datastructure implementations composed from
-simpler structures behave reasonably well in \yad.  The hand-tuned
+simpler structures can perform as well as implementations included 
+in existing monolithic systems.  The hand-tuned
 implementation shows that \yad allows application developers to
-optimize the primitives they build their applications upon.  In the
-best case, past systems allowed application developers to providing
-hints to improve performance.  In the worst case, a developer would be
-forced to redesign the application to avoid sub-optimal properties of
-the transactional data structure implementation.
+optimize the primitives they build their applications upon.  
+
+% I cut this because berkeley db supports custom data structures....
+
+%In the
+%best case, past systems allowed application developers to provide
+%hints to improve performance.  In the worst case, a developer would be
+%forced to redesign and application to avoid sub-optimal properties of
+%the transactional data structure implementation.
 
 Figure~\ref{lhtThread} describes performance of the two systems under
 highly concurrent workloads.  For this test, we used the simple
 (unoptimized) hash table, since we are interested in the performance a
 clean, modular data structure that a typical system implementor would
 be likely to produce, not the performance of our own highly tuned,
-monolithic, implementations.
+monolithic implementations.
 
 Both Berekely DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
   presented here were performed using an ext3 filesystem, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when reiserfs was used.  However, \yads multi-threaded throughput
-  was significantly better that Berkeley DB's under both systems.}
+  when reiserfs was used.  However, \yad's multi-threaded throughput
+  was significantly better that Berkeley DB's under both filesystems.}
 \yad scaled quite well, delivering over 6000 transactions per
-second,\endnote{This test was run without lock managers, so the
+second,\endnote{The concurrency test was run without lock managers, and the
   transactions obeyed the A, C, and D properties.  Since each
-  transaction performed exactly one hashtable write and no reads, they
+  transaction performed exactly one hashtable write and no reads, they also
   obeyed I (isolation) in a trivial sense.}  and provided roughly
 double Berkeley DB's throughput (up to 50 threads).  We do not report
 the data here, but we implemented a simple load generator that makes
 use of a fixed pool of threads with a fixed think time.  We found that
-the latency of Berkeley DB and \yad were similar, addressing concerns
-that \yad simply trades latency for throughput during the concurrency
-benchmark.
+the latency of Berkeley DB and \yad were similar, showing that \yad is 
+not simply trading latency for throughput during the concurrency benchmark.
 
 \subsection{Object serialization}
 
