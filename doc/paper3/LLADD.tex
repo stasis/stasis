@@ -333,14 +333,14 @@ both types of systems aim to extend a high-level data model with new abstract da
 
 \subsubsection{Berkeley DB}
 
-System R was the first relational database implementation, and was
-based upon a clean separation between its storage system and its
-query processing engine.  In fact, it supported a simple navigational
-interface to the storage subsystem.  To this day, database systems are
-built using this sort of architecture.  
+System R was one of the first relational database implementations, and
+defined a clean separation between its query processor and its storage
+subsystem.  In fact, it supported a simple navigational interface to
+the storage subsystem, which remains the architecture for modern
+databases.
 
 Berkeley DB is a highly successful alternative to conventional
-database design.  At its core, it provides the physical database, or
+databases.  At its core, it provides the physical database, or
 the relational storage system of a conventional database server.
 It is based on the
 observation that the storge subsystem is a more general (and less
@@ -353,7 +353,7 @@ let its users tweak various aspects of the performance of these
 primitives.
 
 We have already discussed the limitations of this approach.  With the
-exception of the direct comparison of the two systems, none of the \yad 
+exception of the direct comparisons of the two systems, none of the \yad 
 applications presented in Section~\ref{extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
 assumptions regarding workloads and decisions regarding low level data
@@ -392,9 +392,7 @@ database toolkits.  However, they take the database toolkit idea one
 step further, and suggest standardizing the interfaces of the
 toolkit's internal components, allowing multiple organizations to
 compete to improve each module.  The idea is to produce a research
-platform, and to address issues that affect modern
-databases, such as automatic performance tuning, and reducing the
-effort required to implement a new database system~\cite{riscDB}.
+platform that enables specialization and shares the effort required to biuld a full database~\cite{riscDB}.
 
 We agree with the motivations behind RISC databases, and that a need
 for improvement in database technology exists.  In fact, is our hope
