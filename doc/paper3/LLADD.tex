@@ -1073,7 +1073,6 @@ use of a fixed pool of threads with a fixed think time.  We found that
 the latency of Berkeley DB and \yad were similar, showing that \yad is 
 not simply trading latency for throughput during the concurrency benchmark.
 
-\subsection{Object serialization}
 
 \begin{figure*}[t!]
 \includegraphics[width=3.3in]{figs/object-diff.pdf}
@@ -1084,39 +1083,31 @@ not simply trading latency for throughput during the concurrency benchmark.
 The effect of \yad object serialization optimizations under low and high memory pressure.}
 \end{figure*}
 
-\subsection{Object persistance mechanisms}
-\rcs{ This belongs somewhere else: Instead, it leaves decisions regarding abstract data types and
-algorithm design to system developers or language designers.  For
-instance, while \yad has no concept of object oriented data types, two
-radically different approaches toward object persistance have been
-implemented on top of it~\ref{oasys}.}
-
-\rcs{We could have just as easily written a persistance mechanism for a
-functional programming language, or a particular application (such as
-an email server).  Our experience building data manipulation routines
-on top of application-specific primitives was favorable compared to
-past experiences attempting to restructure entire applications to
-match pre-existing computational models, such as SQL's declarative
-interface.}
-
-
-
-
+\subsection{Object persistance}
 Numerous schemes are used for object serialization.  Support for two
 different styles of object serialization have been eimplemented in
-\yad.  The first, pobj, provided transactional updates to objects in
-Titanium, a Java variant.  It transparently loaded and persisted
+\yad.  We could have just as easily implemented a persistance
+mechanism for a statically typed functional programming language, a
+dynamically typed scripting language, or a particular application,
+such as an email server.  In each case, \yads lack of a hardcoded data
+model would allow us to choose a representation and transactional
+semantics that made the most sense for the system at hand.
+
+The first object persistance mechanism, pobj, provides transactional updates to objects in
+Titanium, a Java variant.  It transparently loads and persists
 entire graphs of objects.
 
 The second variant was built on top of a generic C++ object
 serialization library, \oasys.  \oasys makes use of pluggable storage
-modules to actually implement persistant storage, and includes plugins
-for Berkeley DB and MySQL.  This section will describe how the \yads
+modules that implement persistant storage, and includes plugins
+for Berkeley DB and MySQL.  
+
+This section will describe how the \yad
 \oasys plugin reduces the runtime serialization/deserialization cpu
 overhead of write intensive workloads, while using half as much system
 memory as the other two systems.
 
-We present three variants of \yad here.  The first treats \yad like
+We present three variants of the \yad plugin here.  The first treats \yad like
 Berkeley DB.  The second customizes the behavior of the buffer
 manager.  Instead of maintaining an up-to-date version of each object
 in the buffer manager or page file, it allows the buffer manager's
@@ -1124,32 +1115,108 @@ view of live application objects to become stale.  This is safe since
 the system is always able to reconstruct the appropriate page entry
 form the live copy of the object.
 
+By allowing the buffer manager to contain stale data, we reduce the
+number of times the \yad \oasys plugin must serialize objects to
+update the page file.  The reduced number of serializations decreases
+CPU utilization, and it also allows us to drastically decrease the
+size of the page file.  In turn this allows us to increase the size of
+the application's cache of live objects.
+
+We implemented the \yad buffer pool optimization by adding two new
+operations, update(), which only updates the log, and flush(), which
+updates the page file.  
+
 The reason it would be difficult to do this with Berkeley DB is that
 we still need to generate log entries as the object is being updated.
-Otherwise, commit would not be durable, and the application would be
-unable to abort() transactions.  Even if we decided to disallow
-application aborts, we would still need to write log entries
+Otherwise, commit would not be durable, unless we queued up log 
+entries, and wrote them all before committing.  
 committing.  This would cause Berekley DB to write data back to the
 page file, increasing the working set of the program, and increasing
 disk activity.
 
-Under \yad, we implemented this optimization by adding two new
-operations, update(), which only updates the log, and flush(), which
-updates the page file.  We decrease the size of the page file, so
-flush() is likely to incur disk overhead.  However, we have roughly
-doubled the number of objects that are cached in memory, and expect
-flush() to be called relatively infrequently.
+Furthermore, because objects may be written to disk in an
+order that differs from the order in which they were updated, we need
+to maintain multiple LSN's per page.  This means we need to register a
+callback with the recovery routing to process the LSN's.  (A similar
+callback will be needed in Section~\ref{sec:zeroCopy}.)  Also, 
+we must prevent \yads storage routine from overwriting the per-object 
+LSN's of deleted objects that may still be addressed during abort or recovery.  
 
-The third \yad plugin to \oasys incorporated all of the updates of the
-second, but arranged to only the changed portions of objects to the
-log.
+Alternatively, we could arrange for the object pool to cooperate 
+further with the buffer pool by atomically updating the buffer 
+manager's copy of all objects that share a given page, removing the 
+need for multiple LSN's per page, and simplifying storage allocation.
 
-Figure~\ref{objectSerialization} presents the performance of the three
+However, the simplest solution to this problem is to observe that
+updates (not allocations or deletions) to fixed length objects meet
+the requirements of the LSN free transactional update scheme, and that
+we may do away with per-object LSN's entirely.\endnote{\yad does not
+  yet implement LSN-free pages.  In order to obtain performance
+  numbers for object serialization, we made use of our LSN page
+  implementation.  The runtime performance impact of LSN-free pages
+  should be negligible.}  Allocation and deletion can then be handled
+as updates to normal LSN containing pages.  At recovery time, object
+updates are executed based on the existence of the object on the page,
+and a conservative estimate of its LSN.  (If the page doesn't contain
+the object during REDO, then it must have been written back to disk
+after the object was deleted.  Therefore, we do not need to apply the
+REDO.)
+
+
+The third \yad plugin to \oasys incorporates all of the optimizations
+present in the second plugin, but arranges to only write the changed
+portions of objects to the log.  Because of \yad's support for custom
+log entry formats, this optimization is straightforward.
+
+In addition to the buffer pool optimizations, \yad provides several 
+options  to handle UNDO records in the context
+of object serialization. The first is to use a single transaction for
+each object modification, avoiding the cost of generating or logging
+any UNDO records. The second option is to assume that the
+application will provide a custom UNDO for the delta, 
+which increases the size of the log entry generated by each update, 
+but still avoids the need to read or update the page
+file.
+
+The third option is to relax the atomicity requirements for a set of
+object updates and again avoid generating any UNDO records. This
+assumes that the application cannot abort individual updates, 
+and is willing to
+accept that some prefix of logged but uncommitted updates may 
+be applied to the page
+file after recovery. These ``transactions'' would still be durable
+after commit(), as it would force the log to disk. 
+For the benchmarks below, we
+use this approach, as it is the most aggressive and is
+not supported by any other general-purpose transactional 
+storage system (that we know of).
+
+The operations required for these two optimizations required a mere
+150 lines of C code, including whitespace, comments and boilerplate
+function registrations.\endnote{These figures do not include the
+  simple LSN free object logic required for recovery, as \yad does not
+  yet support LSN free operations.}  Although the reasoning required
+to ensure the correctness of this code is complex, the simplicity of
+the implementation is encouraging.
+
+In this experiment, Berkeley DB was configured as described above.  We
+ran MySQL using InnoDB for the table engine, as it is the fastest
+engine that provides similar durability to \yad. For this test, we
+also linked directly with the libmysqld daemon library, bypassing the
+RPC layer. In experiments that used the RPC layer, test completion
+times were orders of magnitude slower.
+
+
+Figure~\ref{fig:OASYS} presents the performance of the three
 \yad optimizations, and the \oasys plugins implemented on top of other
 systems.  As we can see, \yad performs better than the baseline
-systems.  More interestingly, in non-memory bound systems, the
-optimizations nearly double \yads performance, and we see that in the
-memory-bound setup, update/flush indeed improves memory utilization.
+systems, which is not surpising, since it is not providing the A
+property of ACID transactions.
+
+In non-memory bound systems, the optimizations nearly double \yads
+performance by reducing the CPU overhead of object serialization and
+the number of log entries written to disk.  In the memory bound test,
+we see that update/flush indeed improves memory utilization.
 
 
 \subsection{Manipulation of logical log entries}
@@ -1294,7 +1361,16 @@ mechanism. (Section~\ref{logging})
 
 \section{Acknowledgements}
 
-mike demmer, others?
+The idea behind the \oasys buffer manager optimization is from Mike
+Demmer.  He and Bowei Du implemented \oasys.  Gilad and Amir were
+responsible for pobj.  Jim Blomo, Jason Bayer, and Jimmy
+Kittiyachavalit worked on an earliy version of \yad.
+
+Thanks to C. Mohan for pointing out the need for tombstones with
+per-object LSN's.  Jim Gray provided feedback on an earlier version of
+this paper, and suggested we build a resource manager to manage
+dependencies within \yads API.  Joe Hellerstein and Mike Franklin
+provided us with invaluable feedback.
 
 \section{Availability}
 
