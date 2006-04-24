@@ -63,15 +63,14 @@ UC Berkeley
 
 %\subsection*{Abstract}
 
-{\em There is an increasing need to manage data well in a wide variety of
-systems, including robust support for atomic durable concurrent
+{\em An increasing range of applications require robust support for atomic, durable and concurrent
 transactions.  Databases provide the default solution, but force
 applications to interact via SQL and to forfeit control over data
 layout and access mechanisms.  We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
 
 \yad is a storage framework that incorporates ideas from traditional
-write-ahead-logging storage algorithms and file systems,
-while providing applications with flexible control over data structures, layout, and performance vs. robustness tradeoffs.
+write-ahead-logging storage algorithms and file systems.
+It provides applications with flexible control over data structures and layout, and transactional performance and robustness properties.
 \yad enables the development of
 unforeseen variants on transactional storage by generalizing
 write-ahead-logging algorithms.  Our partial implementation of these
@@ -81,9 +80,9 @@ We evaluate the performance of a traditional transactional storage
 system based on \yad, and show that it performs favorably relative to existing
 systems.  We present examples that make use of custom access methods, modifed
 buffer manager semantics, direct log file manipulation, and LSN-free
-pages that facilitate zero-copy optimizations, and discuss the
-composability of these extensions.  Many of these optimizations are
-easy to implement and more than double performance.
+pages.  These examples facilitate sophisticated performance 
+optimizations such as zero-copy I/O.  These extensions are composable,
+easy to implement and frequently more than double performance.
 
 }
 %We argue that our ability to support such a diverse range of
@@ -109,7 +108,7 @@ easy to implement and more than double performance.
 
 \section{Introduction}
 
-As our reliance on computing infrastructure has increased, a wider range of 
+As our reliance on computing infrastructure increases, a wider range of 
 applications require robust data management.  Traditionally, data management
 has been the province of database management systems (DBMSs), which are
 well-suited to enterprise applications, but lead to poor support for
@@ -185,7 +184,7 @@ storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
 storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
-(e.g. write-ahead logging) and systems (e.g. zero-copy techniques).
+(e.g. write-ahead-logging) and systems (e.g. zero-copy techniques).
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work, with the complete semantics
 that exemplify the database field.
@@ -209,8 +208,9 @@ delivers these properties as reusable building blocks for systems
 that implement complete transactions.
 
 Through examples and their good performance, we show how \yad{}
-supports a wide range of uses that in the database gap, including
-persistent objects, graph or XML apps, and recoverable
+supports a wide range of uses that fall in the gap between 
+database and filesystem technologies, including
+persistent objects, graph or XML based applications, and recoverable
 virtual memory~\cite{lrvm}.  
 
 For example, on an object serialization workload, we provide up to 
@@ -222,20 +222,19 @@ We implemented this extension in 150 lines of C, including comments and boilerpl
 in mind when we wrote \yad.  In fact, the idea came from a potential 
 user that is not familiar with \yad.
 
-An (early) open-source implementation of
-the ideas presented here is available.
-
 \eab{others?  CVS, windows registry, berk DB, Grid FS?}
 \rcs{maybe in related work?}
 
 This paper begins by contrasting \yad's approach with that of
 conventional database and transactional storage systems.  It proceeds
-to discuss write ahead logging, and describe ways in which \yad can be
-customized to implement many existing (and some new) write ahead
-logging variants.  Implementations of some of these variants are
+to discuss write-ahead-logging, and describe ways in which \yad can be
+customized to implement many existing (and some new) write-ahead-logging variants.  Implementations of some of these variants are
 presented, and benchmarked against popular real-world systems.  We
 conclude with a survey of the technologies the \yad implementation is
 based upon.
+
+An (early) open-source implementation of
+the ideas presented here is available.
 
 \section{\yad is not a Database}
 \label{sec:notDB}
@@ -354,7 +353,7 @@ applications presented in Section~\ref{sec:extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
 assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB's data model, and write ahead logging system are both too specialized to support \yad.
+Berkeley DB's data model, and write-ahead-logging system are too specialized to support \yad.
 
 \eab{for BDB, should we say that it still has a data model?} \rcs{ Does the last sentence above fix it?}
 
@@ -429,7 +428,7 @@ to build a system that enables a wider range of data management options.
 Section~\ref{sec:notDB} described the ways in which a top-down data model
 limits the generality and flexibility of databases.  In this section,
 we cover the basic bottom-up approach of \yad: {\em transactional
-pages}. Although similar to the underlying write-ahead logging
+pages}. Although similar to the underlying write-ahead-logging
 approaches of databases, particularly ARIES~\cite{aries}, \yads
 bottom-up approach yields unexpected flexibility.
 
@@ -475,7 +474,7 @@ property.
 However, \yad takes customization of transactional semantics one step
 further, allowing applications to add support for transactional
 semantics that we have not anticipated.  We do not believe that
-we can anticipate every possible variation of write ahead logging.  
+we can anticipate every possible variation of write-ahead-logging.  
 However, we
 have observed that most changes that we are interested in making
 involve a few common underlying primitives.  
@@ -484,7 +483,7 @@ As we have
 implemented new extensions, we have located portions of the system
 that are prone to change, and have extended the API accordingly.  Our
 goal is to allow applications to implement their own modules to
-replace our implementations of each of the major write ahead logging
+replace our implementations of each of the major write-ahead-logging
 components.
 }
 
@@ -492,10 +491,13 @@ components.
 \subsection{Single-page Transactions}
 
 In this section we show how to implement single-page transactions.
-This is not at all novel, and is in fact based on ARIES~\cite{aries}, but it forms
-important background.  We also gloss over many important and
-well-known optimizations that \yad exploits, such as group
-commit~\cite{group-commit}.
+This is not at all novel, and is in fact based on ARIES~\cite{aries},
+but it forms important background.  We also gloss over many important
+and well-known optimizations that \yad exploits, such as group
+commit~\cite{group-commit}.  These aspects of recovery algorithms are
+described in the literature, and in any good textbook that describes
+database implementations.  The are not particularly important to the
+discussion here, so we do not cover them.
 
 The trivial way to acheive single-page transactions is simply to apply
 all the updates to the page and then write it out on commit. The page
@@ -511,8 +513,8 @@ transactions: we write (sequential) ``redo'' information to the log on commit, a
 then can write the  pages later. If we crash, we can use the log to
 redo the lost updates during recovery.
 
-For this to work, we need to be able to tell which updates to
-re-apply, which is solved by using a per-page sequence number called a
+For this to work, recovery must be able to decide which updates to
+re-apply.  This is solved by using a per-page sequence number called a
 {\em log sequence number}. Each log entry contains the sequence
 number, and each page contains the sequence number of the last applied
 update.  Thus on recovery, we load a page, look at its sequence
@@ -524,7 +526,7 @@ We also need to make sure that only the results of committed
 transactions still exist after recovery.  This is best done by writing
 a commit record to the log during the commit.  If the system pins uncommitted
 dirty pages in memory, recovery does not need to worry about undoing 
-any updates, and simply plays back the redo records from 
+any updates.  Therefore recovery simply plays back unapplied redo records from 
 transactions that have commit records.
 
 However, pinning the pages of active transactions in memory is problematic.
@@ -550,7 +552,7 @@ redo log entry (with its LSN and argument) reaches the disk before
 commit.  Similarly, an undo log entry, with its LSN and argument,
 always reaches the disk before a page is stolen.  ARIES works
 essentially the same way, but hard-codes recommended page 
-formats and index structures.~\cite{ariesIM}
+formats and index structures~\cite{ariesIM}.
 
 To manually abort a transaction, \yad could either reload the page
 from disk and roll it forward to reflect committed transactions (this would imply ``no steal''), or it
@@ -559,7 +561,7 @@ order. (It currently does the latter.)
 
 
 \eat{
-Write ahead logging algorithms are quite simple if each operation
+Write-ahead-logging algorithms are quite simple if each operation
 applied to the page file can be applied atomically.  This section will
 describe a write ahead logging scheme that can transactionally update
 a single page of storage that is guaranteed to be written to disk
@@ -580,7 +582,7 @@ each other.  Normally, only calls to abort and recovery will invoke undo, so
 we will assume that transactions consist of repeated applications of
 the redo function.
 
-Following the lead of ARIES (the write ahead logging system \yad
+Following the lead of ARIES (the write-ahead-logging system \yad
 originally set out to implement), assume that the function is also
 passed a distinct, monotonically increasing number each time it is
 invoked, and that it records that number in an LSN (log sequence number)
@@ -608,9 +610,7 @@ is also written to the log.
 This section very briefly described how a simplified
 write-ahead-logging algorithm might work, and glossed over many
 details.  Like ARIES, \yad actually implements recovery in three
-phases: Analysis, Redo and Undo.  Because recovery algorithms are
-desribed in the literature, and in an good database textbook, we
-will not desribe them in further detail.
+phases: Analysis, Redo and Undo.  
 
 %Recovery is handled by playing the log forward, and only applying log
 %entries that are newer than the version of the page on disk.  Once the
@@ -638,8 +638,8 @@ is relatively easy.
 
 First, we need to ensure that all log entries have a transaction ID
 (XID) so that we can tell that updates to different pages are part of
-the same transaction (we need this for multiple updates within a
-single page too).  Given single-page recovery, we can just apply it to
+the same transaction (we need this in the single page case as well).
+  Given single-page recovery, we can just apply it to
 all of the pages touched by a transaction to recover a multi-page
 transaction.  This works because steal and no-force already imply
 that pages can be written back early or late (respectively), so there
@@ -648,12 +648,12 @@ need only ensure that redo entries for all pages reach the disk before
 the commit record (and before commit returns).
 
 \eat{
-\subsection{Write ahead logging invariants}
+\subsection{Write-ahead-logging invariants}
 
 In order to support recovery, a write-ahead-logging algorithm must
 identify pages that {\em may} be written back to disk, and those that
 {\em must} be written back to disk.  \yad provides full support for
-Steal/no-Force write ahead logging, due to its generally favorable
+Steal/no-Force write-ahead-logging, due to its generally favorable
 performance properties.  ``Steal'' refers to the fact that pages may
 be written back to disk before a transaction completes.  ``No-Force''
 means that a transaction may commit before the pages it modified are
@@ -694,8 +694,8 @@ structure, and then A aborted.  When A rolls back, its UNDO entries
 will undo the rearrangment that it made to the data structure, without
 regard to B's modifications.  This is likely to cause corruption.
 
-Two common solutions to this problem are ``total isolation'' and
-``nested top actions.''  Total isolation simply prevents any
+Two common solutions to this problem are {\em total isolation} and
+{\em nested top actions}.  Total isolation simply prevents any
 transaction from accessing a data structure that has been modified by
 another in-progress transaction.  An application can achieve this
 using its own concurrency control mechanisms, or by holding a lock on
@@ -715,7 +715,7 @@ aborts.
 The key idea is to distinguish between the logical operations of a
 data structure, such as inserting a key, and the physical operations
 such as splitting tree nodes or or rebalancing a tree. The physical
-operations do not need to undone if the containing logical operation
+operations do not need to be undone if the containing logical operation
 (insert) aborts.
 
 Because nested top actions are easy to use and do not lead to 
@@ -751,7 +751,7 @@ As described above, and in all database implementations of which we
 are aware, transactional pages use LSNs on each page.  This makes it
 difficult to map large objects onto multiple pages, as the LSNs break
 up the object.  It is tempting to try to move the LSNs elsewhere, but
-then they will not be written atomically with their page, which
+then they would not be written atomically with their page, which
 defeats their purpose.
 
 LSNs were introduced to prevent recovery from applying updates more
@@ -760,6 +760,7 @@ entries,\endnote{Idempotency does not guarantee that $f(g(x)) =
   f(g(f(g(x))))$.  Therefore, idempotency does not guarantee that it is safe
   to assume that a page is older than it is.}
 \yad can eliminate the LSN on each page.
+
 Consider purely physical logging operations that overwrite a fixed
 byte range on the page regardless of the page's initial state.  
 We say that such operations perform ``blind writes.''
@@ -784,7 +785,7 @@ update some subset of the bits on the page.  If the log entries do not
 update a bit, then its value was correct before recovery began, so it
 must be correct after recovery.  Otherwise, we know that recovery will
 update the bit.  Furthermore, after all redos, the bit's value will be the
-value it contained at crash, so we know that undo will behave
+last value it contained before the crash, so we know that undo will behave
 properly.
 
 We call such pages ``LSN-free'' pages.  Although this technique is
@@ -792,9 +793,9 @@ novel for databases, it resembles the mechanism used by
 RVM~\cite{rvm}; \yad generalizes the concept and allows it to
 co-exist with traditional pages.  Furthermore, efficient recovery and
 log truncation require only minor modifications to our recovery
-algorithm.  In practice, this is implemented by providing a callback
-for LSN free pages that allows the buffer manager to compute a
-conservative estimate of the page's LSN whenever it is read from disk.
+algorithm.  In practice, this is implemented by providing a buffer manager callback
+for LSN free pages.  The callback computes a
+conservative estimate of the page's LSN whenever the page is read from disk.
 For a less conservative estimate, it suffices to write a page's LSN to
 the log shortly after the page itself is written out; on recovery the
 log entry is thus a conservative but close estimate.
@@ -880,7 +881,7 @@ These issues are beyond the scope of this discussion.  Section~\ref{logReorderin
 \subsection{Summary of Transactional Pages}
 
 This section provided an extremely brief overview of transactional
-pages and write-ahead logging.  Transactional pages are a valuable
+pages and write-ahead-logging.  Transactional pages are a valuable
 building block for a wide variety of data management systems, as we
 show in the next section.  Nested top actions and LSN-free pages
 enable important optimizations.  In particular, \yad allows general 
@@ -940,7 +941,7 @@ Optimizations to Berkeley DB that we performed included disabling the
 lock manager, though we still use ``Free Threaded'' handles for all
 tests.  This yielded a significant increase in performance because it
 removed the possibility of transaction deadlock, abort, and
-repetition.  However, disabling the lock manager, caused highly
+repetition.  However, disabling the lock manager caused highly
 concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
 
@@ -1034,7 +1035,7 @@ straightforward.  We then compare our simple, straightforward
 implementation to our hand-tuned version and Berkeley DB's implementation.
 
 The simple hash table uses nested top actions to atomically update its
-internal structure.  It is based on a {\em linear} hash function~\cite{lht}, allowing
+internal structure.  It uses a {\em linear} hash function~\cite{lht}, allowing
 it to incrementally grow its buffer list.  It is based on a number of
 modular subcomponents.  Notably, its bucket list is a growable array
 of fixed length entries (a linkset, in the terms of the physical
@@ -1048,8 +1049,8 @@ hashtable is a popular, commonly deployed implementation, and serves
 as a baseline for our experiments.
 
 Both of our hashtables outperform Berkeley DB on a workload that
-bulk loads the tables by repeatedly inserting (key, value) pairs,
-although we do not wish to imply this is always the case.
+bulk loads the tables by repeatedly inserting (key, value) pairs.  
+However, we do not wish to imply this is always the case.
 %We do not claim that our partial implementation of \yad
 %generally outperforms, or is a robust alternative
 %to Berkeley DB.  Instead, this test shows that \yad is comparable to
@@ -1071,7 +1072,7 @@ optimize key primitives.
 %forced to redesign and application to avoid sub-optimal properties of
 %the transactional data structure implementation.
 
-Figure~\ref{fig:TPS} describes performance of the two systems under
+Figure~\ref{fig:TPS} describes the performance of the two systems under
 highly concurrent workloads.  For this test, we used the simple
 (unoptimized) hash table, since we are interested in the performance a
 clean, modular data structure that a typical system implementor would
@@ -1108,7 +1109,7 @@ The effect of \yad object serialization optimizations under low and high memory 
 \subsection{Object persistance}
 \label{sec:oasys}
 Numerous schemes are used for object serialization.  Support for two
-different styles of object serialization have been eimplemented in
+different styles of object serialization have been implemented in
 \yad.  We could have just as easily implemented a persistance
 mechanism for a statically typed functional programming language, a
 dynamically typed scripting language, or a particular application,
@@ -1157,7 +1158,7 @@ entries, and wrote them all before committing.
 page file, increasing the working set of the program, and increasing
 disk activity.
 
-Furthermore, because objects may be written to disk in an
+Furthermore, objects may be written to disk in an
 order that differs from the order in which they were updated, 
 violating one of the write-ahead-logging invariants.  One way to 
 deal with this is to maintain multiple LSN's per page.  This means we would need to register a
@@ -1166,7 +1167,6 @@ callback will be needed in Section~\ref{sec:zeroCopy}), and
 extend \yads page format to contain per-record LSN's.  
 Also, we must prevent \yads storage allocation routine from overwriting the per-object 
 LSN's of deleted objects that may still be addressed during abort or recovery.  
-\yad can support this approach. 
 
 Alternatively, we could arrange for the object pool to cooperate 
 further with the buffer pool by atomically updating the buffer 
@@ -1174,7 +1174,7 @@ manager's copy of all objects that share a given page, removing the
 need for multiple LSN's per page, and simplifying storage allocation.
 
 However, the simplest solution, and the one we take here, is based on the observation that
-updates (not allocations or deletions) to fixed length objects are blind writes.
+updates (not allocations or deletions) of fixed length objects are blind writes.
 This allows us to do away with per-object LSN's entirely.  Allocation and deletion can then be handled
 as updates to normal LSN containing pages.  At recovery time, object
 updates are executed based on the existence of the object on the page
@@ -1486,7 +1486,7 @@ is a common pattern in system software design, and manages
 dependencies and ordering constraints between sets of components.
 Over time, we hope to shrink \yads core to the point where it is
 simply a resource manager and a set of implementations of a few unavoidable
-algorithms related to write-ahead logging.  For instance, 
+algorithms related to write-ahead-logging.  For instance, 
 we suspect that support for appropriaite callbacks will 
 allow us to hardcode a generic recovery agorithm into the 
 system.  Similarly, and code that manages book-keeping information, such as 
