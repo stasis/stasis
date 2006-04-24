@@ -1130,14 +1130,14 @@ The reason it would be difficult to do this with Berkeley DB is that
 we still need to generate log entries as the object is being updated.
 Otherwise, commit would not be durable, unless we queued up log 
 entries, and wrote them all before committing.  
-committing.  This would cause Berekley DB to write data back to the
+  This would cause Berekley DB to write data back to the
 page file, increasing the working set of the program, and increasing
 disk activity.
 
 Furthermore, because objects may be written to disk in an
 order that differs from the order in which they were updated, we need
-to maintain multiple LSN's per page.  This means we need to register a
-callback with the recovery routing to process the LSN's.  (A similar
+to maintain multiple LSN's per page.  This means we would need to register a
+callback with the recovery routine to process the LSN's.  (A similar
 callback will be needed in Section~\ref{sec:zeroCopy}.)  Also, 
 we must prevent \yads storage routine from overwriting the per-object 
 LSN's of deleted objects that may still be addressed during abort or recovery.  
@@ -1147,26 +1147,27 @@ further with the buffer pool by atomically updating the buffer
 manager's copy of all objects that share a given page, removing the 
 need for multiple LSN's per page, and simplifying storage allocation.
 
-However, the simplest solution to this problem is to observe that
+However, the simplest solution to this problem is based on the observation that
 updates (not allocations or deletions) to fixed length objects meet
-the requirements of the LSN free transactional update scheme, and that
+the requirements of an LSN free transactional update scheme, and that
 we may do away with per-object LSN's entirely.\endnote{\yad does not
   yet implement LSN-free pages.  In order to obtain performance
   numbers for object serialization, we made use of our LSN page
   implementation.  The runtime performance impact of LSN-free pages
   should be negligible.}  Allocation and deletion can then be handled
 as updates to normal LSN containing pages.  At recovery time, object
-updates are executed based on the existence of the object on the page,
+updates are executed based on the existence of the object on the page
 and a conservative estimate of its LSN.  (If the page doesn't contain
 the object during REDO, then it must have been written back to disk
 after the object was deleted.  Therefore, we do not need to apply the
-REDO.)
+REDO.)  This means that the system can ``forget'' about objects that 
+were freed by committed transaction, simplifying space reuse 
+tremendously.
 
-
-The third \yad plugin to \oasys incorporates all of the optimizations
-present in the second plugin, but arranges to only write the changed
-portions of objects to the log.  Because of \yad's support for custom
-log entry formats, this optimization is straightforward.
+The third \yad plugin to \oasys incorporates all of these buffer
+manager optimizations.  However, it only write the changed portions of
+objects to the log.  Because of \yad's support for custom log entry
+formats, this optimization is straightforward.
 
 In addition to the buffer pool optimizations, \yad provides several 
 options  to handle UNDO records in the context
@@ -1200,18 +1201,17 @@ to ensure the correctness of this code is complex, the simplicity of
 the implementation is encouraging.
 
 In this experiment, Berkeley DB was configured as described above.  We
-ran MySQL using InnoDB for the table engine, as it is the fastest
-engine that provides similar durability to \yad. For this test, we
-also linked directly with the libmysqld daemon library, bypassing the
-RPC layer. In experiments that used the RPC layer, test completion
-times were orders of magnitude slower.
-
+ran MySQL using InnoDB for the table engine.  For this benchmark, it
+is the fastest engine that provides similar durability to \yad. We
+linked the benchmark's executable to the libmysqld daemon library,
+bypassing the RPC layer. In experiments that used the RPC layer, test
+completion times were orders of magnitude slower.
 
 Figure~\ref{fig:OASYS} presents the performance of the three
 \yad optimizations, and the \oasys plugins implemented on top of other
 systems.  As we can see, \yad performs better than the baseline
 systems, which is not surpising, since it is not providing the A
-property of ACID transactions.
+property of ACID transactions.  (Although it is applying each individual operation atomically.)
 
 In non-memory bound systems, the optimizations nearly double \yads
 performance by reducing the CPU overhead of object serialization and
@@ -1245,66 +1245,62 @@ reordering is inexpensive.}
 \end{figure}
 
 Database optimizers operate over relational algebra expressions that
-will correspond to sequence of logical operations at runtime.  \yad
-does not support query languages, relational algebra, or other general
-purpose primitves.
+correspond to perform logical operations over streams of data at runtime.  \yad
+does not provide query languages, relational algebra, or other such query processing primitives.  
 
-However, it does include an extendible logging infrastructure, and any
+However, it does include an extensible logging infrastructure, and any
 operations that make user of physiological logging implicitly
 implement UNDO (and often REDO) functions that interpret logical
-operations.
+requests.
 
 Logical operations often have some nice properties that this section
 will exploit.  Because they can be invoked at arbitrary times in the
 future, they tend to be independent of the database's physical state.
-They tend to be inverses of operations that programmer's understand.
-If each method in the API exposed to the programmer is the inverse of
-some other method in the API, then each logical operation corresponds
-to a method the programmer can manually invoke.
+Often, they correspond to operations that programmer's understand.
 
 Because of this, application developers can easily determine whether
-logical operations may safely be reordered, transformed, or even
-dropped from the stream of requests that \yad is processing.  Even
-better, if requests can be partitioned in a natural way, load
-balancing can be implemented by spliting requests across many nodes.
+logical operations may be reordered, transformed, or even
+dropped from the stream of requests that \yad is processing.
+
+If requests can be partitioned in a natural way, load
+balancing can be implemented by splitting requests across many nodes.
 Similarly, a node can easily service streams of requests from multiple
 nodes by combining them into a single log, and processing the log
-using operaiton implementations.  Furthermore, application-specific
+using operaiton implementations.  
+
+Furthermore, application-specific
 procedures that are analagous to standard relational algebra methods
 (join, project and select) could be used to efficiently transform the data
 before it reaches the page file, while it is layed out sequentially
-in memory.
+in non-transactional memory.
 
 Note that read-only operations do not necessarily generate log
 entries.  Therefore, applications may need to implement custom
 operations to make use of the ideas in this section.
 
 Although \yad has rudimentary support for a two-phase commit based
-cluster hash table, we have not yet implemented a logical log based
-networking primitives.  Therefore, we implemented some of these ideas
-in a single node configuration in order to increase request locality
+cluster hash table, we have not yet implemented networking primitives for logical logs.
+Therefore, we implemented a single node log reordering scheme that increases request locality
 during the traversal of a random graph.  The graph traversal system
 takes a sequence of (read) requests, and partitions them using some
 function.  It then proceses each partition in isolation from the
-others.  We considered two partitioning functions.  The first, which
-is really only of interested in the distributed case, partitions the
-requests according to the hash of the node id they refer to.  This
-would allow us to balance the graph traversal across many nodes.  (We
-expect the early phases of such a traversal to be bandwidth, not
+others.  We considered two partitioning functions.  The first, partitions the
+requests according to the hash of the node id they refer to, and would be useful for load balancing over a network.
+(We expect the early phases of such a traversal to be bandwidth, not
 latency limited, as each node would stream large sequences of
 asynchronous requests to the other nodes.) 
 
-The second partitioning function, which was used to produce
-Figure~\ref{hotset} partitions requests by their position in the page
-file.  When the graph has good locality, a normal depth first search
-traversal and the prioritized traversal perform well.  As locality
+The second partitioning function, which was used in our benchmarks,
+partitions requests by their position in the page
+file.  We ran two experiments.  The first, presented in Figure~\ref{fig:oo7} is loosely based on the oo7 database benchmark.~\cite{oo7}.  The second explicitly measures the effect of graph locality on our optimization. (Figure~\ref{fig:hotGraph})  When the graph has good locality, a normal depth first search
+traversal and the prioritized traversal performs well.  As locality
 decreases, the partitioned traversal algorithm's performance degrades
 less than the naive traversal.
 
-**TODO This really needs more experimental setup... look at older draft!**
+\rcs{ This really needs more experimental setup... look at older draft! }
 
 \subsection{LSN-Free pages}
-
+\label{sec:zeroCopy}
 In Section~\ref{todo}, we describe how operations can avoid recording
 LSN's on the pages they modify.  Essentially, opeartions that make use
 of purely physical logging need not heed page boundaries, as
@@ -1323,22 +1319,41 @@ this approach to a modern filesystem, which allows applications to
 perform a DMA copy of the data into memory, avoiding the expensive
 byte-by-byte copy of the data, and allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
-network services to use DMA and ethernet adaptor hardware to read data
+network services to use DMA and network adaptor hardware to read data
 from disk, and send it over a network socket without passing it
 through the CPU.  Again, this frees the CPU, allowing it to perform
 other tasks.
 
-We beleive that LSN free pages will allow reads to make use of such
-optimizations in a straightforward fashion.  Zero copy writes could be
+We believe that LSN free pages will allow reads to make use of such
+optimizations in a straightforward fashion.  Zero copy writes are more challenging, but could be
 performed by performing a DMA write to a portion of the log file.
 However, doing this complicates log truncation, and does not address
 the problem of updating the page file.  We suspect that contributions
 from the log based filesystem literature can address these problems in
-a straightforward fashion.
+a straightforward fashion.  In particular, we imagine storing 
+portions of the log (the portion that stores the blob) in the 
+page file, or other addressable storage.  In the worst case, 
+the blob would have to be relocated in order to defragment the 
+storage.  Assuming the blob was relocated once, this would amount 
+to a total of three, mostly sequential disk operation.  (Two 
+writes and one read.)  A conventional blob system would need 
+to write the blob twice, but also may need to create complex 
+structures such as B-Trees, or may evict a large number of 
+unrelated pages from the buffer pool as the blob is being written 
+to disk.  
+
+Alternatively, we could use DMA to overwrite the blob to the page file
+in a non-atomic fashion, providing filesystem style semantics.
+(Existing database servers often provide this mode based on the
+observation that many blobs are static data that does not really need
+to be updated transactionally.~\cite{sqlServer}) Of course, \yad could
+also support other approaches to blob storage, such as B-Tree layouts
+that allow arbitrary insertions and deletions in the middle of
+objects~\cite{esm}.
 
 Finally, RVM, recoverable virtual memory, made use of LSN-free pages
 so that it could use mmap() to map portions of the page file into
-application memory.  However, without support for logical log entries
+application memory.\cite{rvm}  However, without support for logical log entries
 and nested top actions, it would be difficult to implement a
 concurrent, durable data structure using RVM.  We plan to add RVM
 style transactional memory to \yad in a way that is compatible with
