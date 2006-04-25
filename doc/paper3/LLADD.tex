@@ -284,7 +284,7 @@ abandon the database approach entirely, and forgo the use of a
 structured physical model or abstract conceptual mappings.
 
 \subsection{Extensible transaction systems} 
-
+\label{sec:otherDBs}
 This section contains discussion of database systems with goals similar to ours.
 Although these projects were
 successful in many respects, they fundamentally aimed to implement a
@@ -912,7 +912,7 @@ appropriate.
 \begin{figure}
 \includegraphics[%
    width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that interact with new operations directly.}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
 \end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
@@ -1275,7 +1275,7 @@ handled in any order, improving locality and merging opportunities.}
 \vspace{-12pt}
 \caption{\sf\label{fig:hotGraph} Hot set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
 we see that the multiplexer helps when the graph has poor locality.
-However, in the cases where depth first search performs well, the
+In the cases where depth first search performs well, the
 reordering is inexpensive.}
 \end{figure}
 
@@ -1429,7 +1429,8 @@ fully concurrent collections such as hash tables and tree structures.
 This paper has described a number of custom transactional storage
 extensions, and explained why can \yad support them.  This section
 will describe existing ideas in the literature that we would like to
-incorporate into \yad.
+incorporate into \yad.  An overview of database systems that have 
+goals similar to our own is in Section~\ref{sec:otherDBs}.
 
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
