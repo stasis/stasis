@@ -355,8 +355,6 @@ assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
 Berkeley DB's data model, and write-ahead-logging system are too specialized to support \yad.
 
-%\e ab{for BDB, should we say that it still has a data model?} \r cs{ Does the last sentence above fix it?}
-
 
 
 %cover P2 (the old one, not Pier 2 if there is time...
@@ -639,7 +637,7 @@ than one page.  Given a no-force/steal single-page transaction, this
 is relatively easy.
 
 First, we need to ensure that all log entries have a transaction ID
-(XID) so that we can tell that updates to different pages are part of
+ so that we can tell that updates to different pages are part of
 the same transaction (we need this in the single page case as well).
   Given single-page recovery, we can just apply it to
 all of the pages touched by a transaction to recover a multi-page
@@ -836,8 +834,6 @@ implementation on top of \yad, using Berkeley DB as a baseline.
 
 \eat{ \subsection{Buffer manager policy}
 
-\eab{cut this?}
-
 Generally, write ahead logging algorithms ensure that the most recent
 version of each memory-resident page is stored in the buffer manager,
 and the most recent version of other pages is stored in the page file.
@@ -853,8 +849,6 @@ operations to bypass the buffer manager entirely.
 
 
 \subsection{Durability}
-
-\eab{cut this too?}
 
 \eat{\yad makes use of the same basic recovery strategy as existing
 write-ahead-logging schemes such as ARIES.  Recovery consists of three
@@ -1445,7 +1439,7 @@ Record-oriented file systems are an older, but still-used~\cite{gfs}
 alternative. Each of these API's addresses 
 different workloads.
 
-While most filesystems attempt to lay out data in logically sequential
+Although most filesystems attempt to lay out data in logically sequential
 order, write-optimized filesystems lay files out in the order they
 were written~\cite{lfs}.  Schemes to improve locality between small
 objects exist as well. Relational databases allow users to specify the order
