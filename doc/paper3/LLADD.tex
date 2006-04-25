@@ -30,9 +30,9 @@
 \newcommand{\yads}{Stasys'\xspace}
 \newcommand{\oasys}{Oasys\xspace}
 
-\newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
-\newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
-\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
+%\newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
+%\newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
+%\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
 \newcommand{\eat}[1]{}
 
@@ -70,7 +70,7 @@ layout and access mechanisms.  We argue there is a gap between DBMSs and file sy
 
 \yad is a storage framework that incorporates ideas from traditional
 write-ahead-logging storage algorithms and file systems.
-It provides applications with flexible control over data structures and layout, and transactional performance and robustness properties.
+It provides applications with flexible control over data structures, data layout, performance and robustness properties.
 \yad enables the development of
 unforeseen variants on transactional storage by generalizing
 write-ahead-logging algorithms.  Our partial implementation of these
@@ -82,7 +82,7 @@ systems.  We present examples that make use of custom access methods, modified
 buffer manager semantics, direct log file manipulation, and LSN-free
 pages.  These examples facilitate sophisticated performance 
 optimizations such as zero-copy I/O.  These extensions are composable,
-easy to implement and frequently more than double performance.
+easy to implement and significantly improve performance.
 
 }
 %We argue that our ability to support such a diverse range of
@@ -186,7 +186,7 @@ storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
 (e.g. write-ahead-logging) and systems (e.g. zero-copy techniques).
 Our goal is to combine the flexibility and layering of low-level
-abstractions typical for systems work, with the complete semantics
+abstractions typical for systems work with the complete semantics
 that exemplify the database field.
 
 By {\em flexible} we mean that \yad{}  can implement a wide
@@ -222,10 +222,10 @@ We implemented this extension in 150 lines of C, including comments and boilerpl
 in mind when we wrote \yad.  In fact, the idea came from a potential 
 user that is not familiar with \yad.
 
-\eab{others?  CVS, windows registry, berk DB, Grid FS?}
-\rcs{maybe in related work?}
+%\e ab{others?  CVS, windows registry, berk DB, Grid FS?}
+%\r cs{maybe in related work?}
 
-This paper begins by contrasting \yad's approach with that of
+This paper begins by contrasting \yads approach with that of
 conventional database and transactional storage systems.  It proceeds
 to discuss write-ahead-logging, and describe ways in which \yad can be
 customized to implement many existing (and some new) write-ahead-logging variants.  Implementations of some of these variants are
@@ -281,7 +281,7 @@ storage model that mimics the primitives provided by modern hardware.
 This makes it easy for system designers to implement most of the data
 models that the underlying hardware can support, or to
 abandon the database approach entirely, and forgo the use of a
-structured physical model or conceptual mappings.
+structured physical model or abstract conceptual mappings.
 
 \subsection{Extensible transaction systems} 
 
@@ -355,7 +355,7 @@ assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
 Berkeley DB's data model, and write-ahead-logging system are too specialized to support \yad.
 
-\eab{for BDB, should we say that it still has a data model?} \rcs{ Does the last sentence above fix it?}
+%\e ab{for BDB, should we say that it still has a data model?} \r cs{ Does the last sentence above fix it?}
 
 
 
@@ -371,7 +371,7 @@ databases are too complex to be implemented (or understood)
 as a monolithic entity.
 
 It supports this argument with real-world evidence that suggests
-database servers are too unpredictable and difficult to manage to
+database servers are too unpredictable and unmanagable to
 scale up the size of today's systems.  Similarly, they are a poor fit
 for small devices.  SQL's declarative interface only complicates the
 situation.
@@ -451,7 +451,8 @@ A subtlety of transactional pages is that they technically only
 provide the ``atomicity'' and ``durability'' of ACID
 transactions.\endnote{The ``A'' in ACID really means atomic persistence
 of data, rather than atomic in-memory updates, as the term is normally
-used in systems work~\cite{GR97}; the latter is covered by ``C'' and
+used in systems work; %~\cite{GR97}; 
+the latter is covered by ``C'' and
 ``I''.}  This is because ``isolation'' comes typically from locking, which
 is a higher (but compatible) layer. ``Consistency'' is less well defined
 but comes in part from transactional pages (from mutexes to avoid race
@@ -494,10 +495,11 @@ In this section we show how to implement single-page transactions.
 This is not at all novel, and is in fact based on ARIES~\cite{aries},
 but it forms important background.  We also gloss over many important
 and well-known optimizations that \yad exploits, such as group
-commit~\cite{group-commit}.  These aspects of recovery algorithms are
+commit.%~\cite{group-commit}.  
+These aspects of recovery algorithms are
 described in the literature, and in any good textbook that describes
-database implementations.  The are not particularly important to the
-discussion here, so we do not cover them.
+database implementations.  They are not particularly important to our
+discussion, so we do not cover them.
 
 The trivial way to achieve single-page transactions is simply to apply
 all the updates to the page and then write it out on commit. The page
@@ -703,7 +705,7 @@ each data structure until the end of the transaction.  Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
-cascading aborts}).  Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
+cascading aborts}).  %Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
 
 Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
 data structures.
@@ -920,7 +922,7 @@ appropriate.
 \end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
-using custom log operations.  In this section, we describe how to implement a
+using custom log operations.  In this section, we describe how to implement an
 ``ARIES style'' concurrent, steal/no force operation using 
 full physiological logging and per-page LSN's.
 Such operations are typical of high-performance commercial database
@@ -981,7 +983,7 @@ All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
 We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
 branch during March of 2005, with the flags DB\_TXN\_SYNC, and
 DB\_THREAD enabled. These flags were chosen to match Berkeley DB's
-configuration to \yad's as closely as possible.  In cases where
+configuration to \yads as closely as possible.  In cases where
 Berkeley DB implements a feature that is not provided by \yad, we
 only enable the feature if it improves Berkeley DB's performance.
 
@@ -994,10 +996,10 @@ concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
 
 With the lock manager enabled, Berkeley
-DB's performance for in the multithreaded test in Section~\ref{sec:lht} strictly decreased with
+DB's performance in the multithreaded test in Section~\ref{sec:lht} strictly decreased with
 increased concurrency.  (The other tests were single-threaded.)  We also
 increased Berkeley DB's buffer cache and log buffer sizes to match
-\yad's default sizes.
+\yads default sizes.
 
 We expended a considerable effort tuning Berkeley DB, and our efforts
 significantly improved Berkeley DB's performance on these tests.
@@ -1077,16 +1079,16 @@ optimize key primitives.
 
 Figure~\ref{fig:TPS} describes the performance of the two systems under
 highly concurrent workloads.  For this test, we used the simple
-(unoptimized) hash table, since we are interested in the performance a
-clean, modular data structure that a typical system implementor would
-be likely to produce, not the performance of our own highly tuned,
+(unoptimized) hash table, since we are interested in the performance of a
+clean, modular data structure that a typical system implementor might
+ produce, not the performance of our own highly tuned,
 monolithic implementations.
 
 Both Berkeley DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
   presented here were performed using an ext3 filesystem, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when ReiserFS was used.  However, \yad's multi-threaded throughput
+  when ReiserFS was used.  However, \yads multi-threaded throughput
   was significantly better that Berkeley DB's under both filesystems.}
 \yad scaled quite well, delivering over 6000 transactions per
 second,\endnote{The concurrency test was run without lock managers, and the
@@ -1190,7 +1192,7 @@ tremendously.
 
 The third \yad plugin, ``delta'' incorporates the buffer
 manager optimizations.  However, it only writes the changed portions of
-objects to the log.  Because of \yad's support for custom log entry
+objects to the log.  Because of \yads support for custom log entry
 formats, this optimization is straightforward.
 
 %In addition to the buffer-pool optimizations, \yad provides several 
@@ -1216,13 +1218,13 @@ is designed to be used in systems that stream objects over an
 unreliable network connection.  Each object update corresponds to an
 independent message, so there is never any reason to roll back an
 applied object update.  On the other hand, \oasys does support a
-flush() method, which guarantees the durability of updates after it
+flush method, which guarantees the durability of updates after it
 returns.  In order to match these semantics as closely as possible,
-\yad's update()/flush() and delta optimizations do not write any 
+\yads update/flush and delta optimizations do not write any 
 undo information to the log.  
 
 These ``transactions'' are still durable
-after commit(), as commit forces the log to disk. 
+after commit, as commit forces the log to disk. 
 %For the benchmarks below, we
 %use this approach, as it is the most aggressive and is
 As far as we can tell, MySQL and Berkeley DB do not support this
@@ -1320,7 +1322,7 @@ in non-transactional memory.
 
 Although \yad has rudimentary support for a two-phase commit based
 cluster hash table, we have not yet implemented networking primitives for logical logs.
-Therefore, we implemented a single node log reordering scheme that increases request locality
+Therefore, we implemented a single node log-reordering scheme that increases request locality
 during the traversal of a random graph.  The graph traversal system
 takes a sequence of (read) requests, and partitions them using some
 function.  It then processes each partition in isolation from the
@@ -1346,7 +1348,7 @@ hard-code the out-degree of each node, and use a directed graph.  OO7
 constructs graphs by first connecting nodes together into a ring.
 It then randomly adds edges between the nodes until the desired
 out-degree is obtained.  This structure ensures graph connectivity.
-If the nodes are laid out in ring order on disk, it also ensures that
+If the nodes are laid out in ring order on disk then it also ensures that
 one edge from each node has good locality while the others generally
 have poor locality.
 
@@ -1396,20 +1398,19 @@ optimizations in a straightforward fashion.  Zero copy writes are more challengi
 performed by performing a DMA write to a portion of the log file.
 However, doing this complicates log truncation, and does not address
 the problem of updating the page file.  We suspect that contributions
-from the log based filesystem literature can address these problems in
+from the log based filesystem~\cite{lfs} literature can address these problems in
 a straightforward fashion.  In particular, we imagine storing 
 portions of the log (the portion that stores the blob) in the 
 page file, or other addressable storage.  In the worst case, 
 the blob would have to be relocated in order to defragment the 
 storage.  Assuming the blob was relocated once, this would amount 
 to a total of three, mostly sequential disk operations.  (Two 
-writes and one read.)  
-
-A conventional blob system would need 
-to write the blob twice, but also may need to create complex 
-structures such as B-Trees, or may evict a large number of 
-unrelated pages from the buffer pool as the blob is being written 
-to disk.  
+writes and one read.)  However, in the best case, the blob would only need to written once.
+In contrast, a conventional atomic blob implementation would always need 
+to write the blob twice. %but also may need to create complex 
+%structures such as B-Trees, or may evict a large number of 
+%unrelated pages from the buffer pool as the blob is being written 
+%to disk.  
 
 Alternatively, we could use DMA to overwrite the blob in the page file
 in a non-atomic fashion, providing filesystem style semantics.
@@ -1440,8 +1441,8 @@ Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
 pages~\cite{sqlserver} within the object, while typical filesystems
 provide append-only storage allocation~\cite{ffs}.
-Record-oriented file systems are an older, but still-used
-alternative~\cite{vmsFiles11,gfs}. Each of these API's addresses 
+Record-oriented file systems are an older, but still-used~\cite{gfs}
+alternative. Each of these API's addresses 
 different workloads.
 
 While most filesystems attempt to lay out data in logically sequential
@@ -1454,9 +1455,9 @@ unallocated to reduce fragmentation as new records are allocated.
 Memory allocation routines also address this problem.  For example, the Hoard memory
 allocator is a highly concurrent version of malloc that
 makes use of thread context to allocate memory in a way that favors
-cache locality~\cite{hoard}.  Other work makes use of the caller's stack to infer
-information about memory management.~\cite{xxx} \rcs{Eric, do you have
-  a reference for this?}
+cache locality~\cite{hoard}.  %Other work makes use of the caller's stack to infer
+%information about memory management.~\cite{xxx} \rcs{Eric, do you have
+%  a reference for this?}
 
 Finally, many systems take a hybrid approach to allocation.  Examples include
 databases with blob support, and a number of
@@ -1488,14 +1489,14 @@ extensions to \yad.  However, \yads implementation is still fairly simple:
 
 \begin{itemize}
 \item The core of \yad is roughly 3000 lines
-of code, and implements the buffer manager, IO, recovery, and other
+of C code, and implements the buffer manager, IO, recovery, and other
 systems
 \item Custom operations account for another 3000 lines of code
 \item Page layouts and logging implementations account for 1600 lines of code.
 \end{itemize}
 
 The complexity of the core of \yad is our primary concern, as it
-contains hard-coded policies and assumptions.  Over time, the core has
+contains the hard-coded policies and assumptions.  Over time, the core has
 shrunk as functionality has been moved into extensions.  We expect
 this trend to continue as development progresses.  
 
@@ -1507,8 +1508,8 @@ simply a resource manager and a set of implementations of a few unavoidable
 algorithms related to write-ahead-logging.  For instance, 
 we suspect that support for appropriate callbacks will 
 allow us to hard-code a generic recovery algorithm into the 
-system.  Similarly, and code that manages book-keeping information, such as 
-LSN's seems to be general enough to be hard-coded.  
+system.  Similarly, any code that manages book-keeping information, such as 
+LSN's may be general enough to be hard-coded.  
 
 Of course, we also plan to provide \yads current functionality, including the algorithms
 mentioned above as modular, well-tested extensions.
@@ -1537,12 +1538,12 @@ extended in the future to support a larger range of systems.
 
 The idea behind the \oasys buffer manager optimization is from Mike
 Demmer.  He and Bowei Du implemented \oasys.  Gilad Arnold and Amir Kamil implemented
-responsible for pobj.  Jim Blomo, Jason Bayer, and Jimmy
+ for pobj.  Jim Blomo, Jason Bayer, and Jimmy
 Kittiyachavalit worked on an early version of \yad.
 
 Thanks to C. Mohan for pointing out the need for tombstones with
 per-object LSN's.  Jim Gray provided feedback on an earlier version of
-this paper, and suggested we build a resource manager to manage
+this paper, and suggested we use a resource manager to manage
 dependencies within \yads API.  Joe Hellerstein and Mike Franklin
 provided us with invaluable feedback.
 
