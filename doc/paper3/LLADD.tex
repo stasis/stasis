@@ -339,7 +339,7 @@ databases.  At its core, it provides the physical database
 %It is based on the
 %observation that the storage subsystem is a more general (and less
 %abstract) component than a monolithic database, and provides a
-%standalone implementation of the storage primitives built into 
+%stand-alone implementation of the storage primitives built into 
 %most relational database systems~\cite{libtp}.  
 In particular, 
 it provides fully transactional (ACID) operations over B-Trees, 
@@ -411,13 +411,13 @@ to build a system that enables a wider range of data management options.
 %e-mail use databases to store unstructured binary data, if at all.
 
 %More recently, WinFS, Microsoft's database based
-%file metadata management system, has been replaced in favor of an
+%file meta data management system, has been replaced in favor of an
 %embedded indexing engine that imposes less structure (and provides
 %fewer consistency guarantees) than the original
 %proposal~\cite{needtocitesomething}.
 
 %Scaling to the very large doesn't work (SAP used DB2 as a hash table
-%for years), search engines, cad/vlsi didn't happen.  scalable GIS
+%for years), search engines, cad/VLSI didn't happen.  scalable GIS
 %systems use shredded blobs (terraserver, google maps), scaling to many
 %was more difficult than implementing from scratch (winfs), scaling
 %down doesn't work (variance in performance, footprint),
@@ -703,7 +703,7 @@ each data structure until the end of the transaction.  Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
-cascading aborts}).  These issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrenctPerformance}.
+cascading aborts}).  Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
 
 Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
 data structures.
@@ -735,7 +735,7 @@ implements nested top actions.  The extension may be used as follows:
 \noindent If the transaction that encloses the operation aborts, the logical
 undo will {\em compensate} for its effects, leaving the structural
 changes intact. 
-% Note that this recipe does not ensure iso transactional
+% Note that this recipe does not ensure ISO transactional
 %consistency and is largely orthogonal to the use of a lock manager.
 
 We have found that it is easy to protect operations that make
@@ -790,7 +790,7 @@ properly.
 
 We call such pages ``LSN-free'' pages.  Although this technique is
 novel for databases, it resembles the mechanism used by
-RVM~\cite{rvm}; \yad generalizes the concept and allows it to
+RVM~\cite{lrvm}; \yad generalizes the concept and allows it to
 co-exist with traditional pages.  Furthermore, efficient recovery and
 log truncation require only minor modifications to our recovery
 algorithm.  In practice, this is implemented by providing a buffer manager callback
@@ -912,6 +912,7 @@ We discuss existing approaches to the systems presented here when
 appropriate.
 
 \subsection{Adding log operations}
+\label{sec:wal}
 \begin{figure}
 \includegraphics[%
    width=1\columnwidth]{figs/structure.pdf}
@@ -1258,7 +1259,7 @@ we see that update/flush indeed improves memory utilization.
 
 
 \subsection{Manipulation of logical log entries}
-
+\label{sec:logging}
 \begin{figure}
 \includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}
 \vspace{-24pt}
@@ -1305,7 +1306,7 @@ balancing can be implemented by splitting requests across many nodes.
 Similarly, a node can easily service streams of requests from multiple
 nodes by combining them into a single log, and processing the log
 using operation implementations.  For example, this type of optimization 
-is used by RVM's log-merging operations~\cite{rvm}.
+is used by RVM's log-merging operations~\cite{lrvm}.
 
 Furthermore, application-specific
 procedures that are analogous to standard relational algebra methods
@@ -1421,7 +1422,7 @@ objects~\cite{esm}.
 
 Finally, RVM, recoverable virtual memory, made use of LSN-free pages
 so that it could use mmap() to map portions of the page file into
-application memory\cite{rvm}.  However, without support for logical log entries
+application memory\cite{lrvm}.  However, without support for logical log entries
 and nested top actions, it would be difficult to implement a
 concurrent, durable data structure using RVM.  We plan to add RVM
 style transactional memory to \yad in a way that is compatible with
@@ -1438,7 +1439,7 @@ incorporate into \yad.
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
 pages~\cite{sqlserver} within the object, while typical filesystems
-provide append-only storage allocation~\cite{ffs,ntfs}.
+provide append-only storage allocation~\cite{ffs}.
 Record-oriented file systems are an older, but still-used
 alternative~\cite{vmsFiles11,gfs}. Each of these API's addresses 
 different workloads.
@@ -1458,8 +1459,8 @@ information about memory management.~\cite{xxx} \rcs{Eric, do you have
   a reference for this?}
 
 Finally, many systems take a hybrid approach to allocation.  Examples include
-databases with blob support\cite{something}, and a number of
-filesystems~\cite{reiserfs3,didFFSdoThis}.
+databases with blob support, and a number of
+filesystems~\cite{reiserfs,ffs}.
 
 We are interested in allowing applications to store records in
 the transaction log.  Assuming log fragmentation is kept to a
@@ -1477,8 +1478,8 @@ complement to such a system, especially given \yads focus on
 intelligence and optimizations within a single node, and Boxwood's
 focus on multiple node systems.  In particular, it would be
 interesting to explore extensions to the Boxwood approach that make
-use of \yads customizable semantics (Section~\ref{wal}), and fully logical logging
-mechanism. (Section~\ref{logging})
+use of \yads customizable semantics (Section~\ref{sec:wal}), and fully logical logging
+mechanism. (Section~\ref{sec:logging})
 
 \section{Future Work}
 
