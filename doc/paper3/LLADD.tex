@@ -911,53 +911,6 @@ Performance figures accompany the extensions that we have implemented.
 We discuss existing approaches to the systems presented here when
 appropriate.
 
-\subsection{Experimental setup}
-
-\label{sec:experimental_setup}
-
-We chose Berkeley DB in the following experiements because, among
-commonly used systems, it provides transactional storage primitives
-that are most similar to \yad.  Also, Berkeley DB is designed to provide high
-performance and high concurrency.  For all tests, the two libraries
-provide the same transactional semantics, unless explicitly noted.
-
-All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
-10K RPM SCSI drive formatted using with ReiserFS~\cite{reiserfs}.\endnote{We found that the
-  relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
-  filesystem choice, and we plan to investigate the reasons why the
-  performance of \yad under ext3 is degraded. However, the results
-  relating to the \yad optimizations are consistent across filesystem
-  types.}  All results correspond to the mean of multiple runs with a
-95\% confidence interval with a half-width of 5\%.
-
-We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
-branch during March of 2005, with the flags DB\_TXN\_SYNC, and
-DB\_THREAD enabled. These flags were chosen to match Berkeley DB's
-configuration to \yad's as closely as possible.  In cases where
-Berkeley DB implements a feature that is not provided by \yad, we
-only enable the feature if it improves Berkeley DB's performance.
-
-Optimizations to Berkeley DB that we performed included disabling the
-lock manager, though we still use ``Free Threaded'' handles for all
-tests.  This yielded a significant increase in performance because it
-removed the possibility of transaction deadlock, abort, and
-repetition.  However, disabling the lock manager caused highly
-concurrent Berkeley DB benchmarks to become unstable, suggesting either a
-bug or misuse of the feature.  
-
-With the lock manager enabled, Berkeley
-DB's performance for Figure~\ref{fig:TPS} strictly decreased with
-increased concurrency.  (The other tests were single-threaded.)  We also
-increased Berkeley DB's buffer cache and log buffer sizes to match
-\yad's default sizes.
-
-We expended a considerable effort tuning Berkeley DB, and our efforts
-significantly improved Berkeley DB's performance on these tests.
-Although further tuning by Berkeley DB experts would probably improve
-Berkeley DB's numbers, we think that we have produced a reasonably
-fair comparison.  The results presented here have been reproduced on
-multiple machines and file systems.
-
 \subsection{Adding log operations}
 \begin{figure}
 \includegraphics[%
@@ -1004,7 +957,56 @@ implementation must obey a few more invariants:
 \item Nested top actions (and logical undo), or ``big locks'' (total isolation but lower concurrency) should be used to implement multi-page updates. (Section~\ref{sec:nta})
 \end{itemize}
 
+
+\subsection{Experimental setup}
+
+\label{sec:experimental_setup}
+
+We chose Berkeley DB in the following experiements because, among
+commonly used systems, it provides transactional storage primitives
+that are most similar to \yad.  Also, Berkeley DB is designed to provide high
+performance and high concurrency.  For all tests, the two libraries
+provide the same transactional semantics, unless explicitly noted.
+
+All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
+10K RPM SCSI drive formatted using with ReiserFS~\cite{reiserfs}.\endnote{We found that the
+  relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
+  filesystem choice, and we plan to investigate the reasons why the
+  performance of \yad under ext3 is degraded. However, the results
+  relating to the \yad optimizations are consistent across filesystem
+  types.}  All results correspond to the mean of multiple runs with a
+95\% confidence interval with a half-width of 5\%.
+
+We used Berkeley DB 4.2.52 as it existed in Debian Linux's testing
+branch during March of 2005, with the flags DB\_TXN\_SYNC, and
+DB\_THREAD enabled. These flags were chosen to match Berkeley DB's
+configuration to \yad's as closely as possible.  In cases where
+Berkeley DB implements a feature that is not provided by \yad, we
+only enable the feature if it improves Berkeley DB's performance.
+
+Optimizations to Berkeley DB that we performed included disabling the
+lock manager, though we still use ``Free Threaded'' handles for all
+tests.  This yielded a significant increase in performance because it
+removed the possibility of transaction deadlock, abort, and
+repetition.  However, disabling the lock manager caused highly
+concurrent Berkeley DB benchmarks to become unstable, suggesting either a
+bug or misuse of the feature.  
+
+With the lock manager enabled, Berkeley
+DB's performance for in the multithreaded test in Section~\ref{sec:lht} strictly decreased with
+increased concurrency.  (The other tests were single-threaded.)  We also
+increased Berkeley DB's buffer cache and log buffer sizes to match
+\yad's default sizes.
+
+We expended a considerable effort tuning Berkeley DB, and our efforts
+significantly improved Berkeley DB's performance on these tests.
+Although further tuning by Berkeley DB experts would probably improve
+Berkeley DB's numbers, we think that we have produced a reasonably
+fair comparison.  The results presented here have been reproduced on
+multiple machines and file systems.
+
 \subsection{Linear hash table}
+\label{sec:lht}
 \begin{figure}[t]
 \includegraphics[%
    width=1\columnwidth]{figs/bulk-load.pdf}
@@ -1019,7 +1021,7 @@ test is run as a single transaction, minimizing overheads due to synchronous log
 %\includegraphics[%
 %   width=1\columnwidth]{tps-new.pdf}
 \includegraphics[%
-   width=3.25in]{figs/tps-extended.pdf}
+   width=1\columnwidth]{figs/tps-extended.pdf}
 %\vspace{-36pt}
 \caption{\sf\label{fig:TPS} High concurrency performance of Berkeley DB and \yad.  We were unable to get Berkeley DB to work correctly with more than 50 threads. (See text)
 }
@@ -1097,10 +1099,10 @@ the latency of Berkeley DB and \yad were similar, showing that \yad is
 not simply trading latency for throughput during the concurrency benchmark.
 
 
-\begin{figure*}[t!]
-\includegraphics[width=3.3in]{figs/object-diff.pdf}
-\hspace{.3in}
-\includegraphics[width=3.3in]{figs/mem-pressure.pdf}
+\begin{figure*}
+\includegraphics[width=1\columnwidth]{figs/object-diff.pdf}
+\hspace{.2in}
+\includegraphics[width=1\columnwidth]{figs/mem-pressure.pdf}
 \vspace{-.15in}
 \caption{\sf \label{fig:OASYS}
 The effect of \yad object serialization optimizations under low and high memory pressure.}
@@ -1127,12 +1129,11 @@ modules that implement persistant storage, and includes plugins
 for Berkeley DB and MySQL.  
 
 This section will describe how the \yad
-\oasys plugin reduces the runtime serialization/deserialization CPU
-overhead of write-intensive workloads, while using half as much system
+\oasys plugin reduces amount of data written to log, while using half as much system
 memory as the other two systems.
 
 We present three variants of the \yad plugin here.  The first treats \yad like
-Berkeley DB.  The second customizes the behavior of the buffer
+Berkeley DB.  The second, ``update/flush'' customizes the behavior of the buffer
 manager.  Instead of maintaining an up-to-date version of each object
 in the buffer manager or page file, it allows the buffer manager's
 view of live application objects to become stale.  This is safe since
@@ -1140,9 +1141,10 @@ the system is always able to reconstruct the appropriate page entry
 from the live copy of the object.
 
 By allowing the buffer manager to contain stale data, we reduce the
-number of times the \yad \oasys plugin must serialize objects to
-update the page file.  Reducing the number of serializations decreases
-CPU utilization, and it also allows us to drastically decrease the
+number of times the \yad \oasys plugin must update serialized objects in the buffer manager.
+%  Reducing the number of serializations decreases
+%CPU utilization, and it also
+This allows us to drastically decrease the
 size of the page file.  In turn this allows us to increase the size of
 the application's cache of live objects.
 
@@ -1179,41 +1181,56 @@ This allows us to do away with per-object LSN's entirely.  Allocation and deleti
 as updates to normal LSN containing pages.  At recovery time, object
 updates are executed based on the existence of the object on the page
 and a conservative estimate of its LSN.  (If the page doesn't contain
-the object during REDO, then it must have been written back to disk
+the object during REDO then it must have been written back to disk
 after the object was deleted.  Therefore, we do not need to apply the
 REDO.)  This means that the system can ``forget'' about objects that 
 were freed by committed transactions, simplifying space reuse 
 tremendously.
 
-The third \yad plugin to \oasys incorporates the buffer
+The third \yad plugin, ``delta'' incorporates the buffer
 manager optimizations.  However, it only writes the changed portions of
 objects to the log.  Because of \yad's support for custom log entry
 formats, this optimization is straightforward.
 
-In addition to the buffer-pool optimizations, \yad provides several 
-options to handle UNDO records in the context
-of object serialization. The first is to use a single transaction for
-each object modification, avoiding the cost of generating or logging
-any UNDO records. The second option is to assume that the
-application will provide a custom UNDO for the delta, 
-which increases the size of the log entry generated by each update, 
-but still avoids the need to read or update the page
-file.
+%In addition to the buffer-pool optimizations, \yad provides several 
+%options to handle UNDO records in the context
+%of object serialization. The first is to use a single transaction for
+%each object modification, avoiding the cost of generating or logging
+%any UNDO records. The second option is to assume that the
+%application will provide a custom UNDO for the delta, 
+%which increases the size of the log entry generated by each update, 
+%but still avoids the need to read or update the page
+%file.
+%
+%The third option is to relax the atomicity requirements for a set of
+%object updates and again avoid generating any UNDO records. This
+%assumes that the application cannot abort individual updates, 
+%and is willing to
+%accept that some prefix of logged but uncommitted updates may 
+%be applied to the page
+%file after recovery. 
 
-The third option is to relax the atomicity requirements for a set of
-object updates and again avoid generating any UNDO records. This
-assumes that the application cannot abort individual updates, 
-and is willing to
-accept that some prefix of logged but uncommitted updates may 
-be applied to the page
-file after recovery. These ``transactions'' would still be durable
-after commit(), as it would force the log to disk. 
-For the benchmarks below, we
-use this approach, as it is the most aggressive and is
-not supported by any other general-purpose transactional 
-storage system (that we know of).
+\oasys does not export transactions to its callers.  Instead, it
+is designed to be used in systems that stream objects over an
+unreliable network connection.  Each object update corresponds to an
+independent message, so there is never any reason to roll back an
+applied object update.  On the other hand, \oasys does support a
+flush() method, which guarantees the durability of updates after it
+returns.  In order to match these semantics as closely as possible,
+\yad's update()/flush() and delta optimizations do not write any 
+undo information to the log.  
 
-The operations required for these two optimizations required a mere
+These ``transactions'' are still durable
+after commit(), as commit forces the log to disk. 
+%For the benchmarks below, we
+%use this approach, as it is the most aggressive and is
+As far as we can tell, MySQL and Berkeley DB do not support this
+optimization in a straightfoward fashion.  (``Auto-commit'' comes
+close, but does not quite provide the correct durability semantics.)
+%not supported by any other general-purpose transactional 
+%storage system (that we know of).
+
+The operations required for these two optimizations required 
 150 lines of C code, including whitespace, comments and boilerplate
 function registrations.\endnote{These figures do not include the
   simple LSN free object logic required for recovery, as \yad does not
@@ -1251,13 +1268,13 @@ we partition requests into independent queues, which can be
 handled in any order, improving locality and merging opportunities.}
 \end{figure}
 \begin{figure}[t]
-\includegraphics[width=3.3in]{figs/oo7.pdf}
+\includegraphics[width=1\columnwidth]{figs/oo7.pdf}
 \vspace{-15pt}
 \caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
 \end{figure}
 
 \begin{figure}[t]
-\includegraphics[width=3.3in]{figs/trans-closure-hotset.pdf}
+\includegraphics[width=1\columnwidth]{figs/trans-closure-hotset.pdf}
 \vspace{-12pt}
 \caption{\sf\label{fig:hotGraph} Hot set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
 we see that the multiplexer helps when the graph has poor locality.
@@ -1266,10 +1283,10 @@ reordering is inexpensive.}
 \end{figure}
 
 Database optimizers operate over relational algebra expressions that
-correspond to logical operations over streams of data at runtime.  \yad
+correspond to logical operations over streams of data.  \yad
 does not provide query languages, relational algebra, or other such query processing primitives.  
 
-However, it does include an extensible logging infrastructure, and many
+However, it does include an extensible logging infrastructure.  Furthermore, many
 operations that make use of physiological logging implicitly
 implement UNDO (and often REDO) functions that interpret logical
 requests.
