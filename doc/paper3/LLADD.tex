@@ -43,7 +43,7 @@
 
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf \yad: System for adapatable, transactional storage}
+\title{\Large \bf \yad: System for adaptable, transactional storage}
 
 %for single author (just remove % characters)
 \author{
@@ -78,7 +78,7 @@ ideas already provides specialized (and cleaner) semantics to applications.
 
 We evaluate the performance of a traditional transactional storage
 system based on \yad, and show that it performs favorably relative to existing
-systems.  We present examples that make use of custom access methods, modifed
+systems.  We present examples that make use of custom access methods, modified
 buffer manager semantics, direct log file manipulation, and LSN-free
 pages.  These examples facilitate sophisticated performance 
 optimizations such as zero-copy I/O.  These extensions are composable,
@@ -112,7 +112,7 @@ As our reliance on computing infrastructure increases, a wider range of
 applications require robust data management.  Traditionally, data management
 has been the province of database management systems (DBMSs), which are
 well-suited to enterprise applications, but lead to poor support for
-systems such as web services, search engines, version systems, workflow 
+systems such as web services, search engines, version systems, work-flow 
 applications, bioinformatics, grid computing and scientific computing.  These 
 applications have complex transactional storage requirements
 but do not fit well
@@ -143,14 +143,14 @@ Bioinformatics systems perform complex scientific
 computations over large, semi-structured databases with rapidly evolving schemas.  Versioning and
 lineage tracking are also key concerns.  Relational databases support
 none of these requirements well.  Instead, office suites, ad-hoc
-text-based formats and Perl scripts are used for data management~\cite{perl} (with mixed successs~\cite{excel}).
+text-based formats and Perl scripts are used for data management~\cite{perl} (with mixed success~\cite{excel}).
 
 \eat{
 Examples of real world systems that currently fall into this category
 are web search engines, document repositories, large-scale web-email
 services, map and trip planning services, ticket reservation systems,
 photo and video repositories, bioinformatics, version control systems,
-workflow applications, CAD/VLSI applications and directory services.
+work-flow applications, CAD/VLSI applications and directory services.
 
 In short, we believe that a fundamental architectural shift in
 transactional storage is necessary before general purpose storage
@@ -160,7 +160,7 @@ abstraction upon their users will restrict system designs and
 implementations.
 }
 
-%In short, reliable data managment has become as unavoidable as any
+%In short, reliable data management has become as unavoidable as any
 %other operating system service.  As this has happened, database
 %designs have not incorporated this decade-old lesson from operating
 %systems research:
@@ -168,7 +168,7 @@ implementations.
 %\begin{quote} The defining tragedy of the operating systems community
 %  has been the definition of an operating system as software that both
 %  multiplexes and {\em abstracts} physical resources...The solution we
-%  propose is simple: complete elimination of operating sytems
+%  propose is simple: complete elimination of operating systems
 %  abstractions by lowering the operating system interface to the
 %  hardware level~\cite{engler95}.
 %\end{quote}
@@ -294,7 +294,7 @@ In each case, this limits the applicability of their implementations.
 \subsubsection{Extensible databases}
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
-of a physical data model and the conceptual mappings desribed above.
+of a physical data model and the conceptual mappings described above.
 It is designed to allow database implementors to easily swap out
 implementations of the various components defined by its framework.
 Like subsequent systems (including \yad), it allows its users to
@@ -314,7 +314,7 @@ database toolkits.  Ideas from all of these systems have been
 incorporated into the mechanisms that support user-definable types in
 current database systems.
 
-One can characterise the difference between database toolkits and
+One can characterize the difference between database toolkits and
 extensible database servers in terms of early and late binding.  With
 a database toolkit, new types are defined when the database server is
 compiled.  In today's object-relational database systems, new types
@@ -337,7 +337,7 @@ Berkeley DB is a highly successful alternative to conventional
 databases.  At its core, it provides the physical database
 (relational storage system) of a conventional database server.
 %It is based on the
-%observation that the storge subsystem is a more general (and less
+%observation that the storage subsystem is a more general (and less
 %abstract) component than a monolithic database, and provides a
 %standalone implementation of the storage primitives built into 
 %most relational database systems~\cite{libtp}.  
@@ -371,20 +371,20 @@ databases are too complex to be implemented (or understood)
 as a monolithic entity.
 
 It supports this argument with real-world evidence that suggests
-database servers are too unpredictable and difficult to managage to
+database servers are too unpredictable and difficult to manage to
 scale up the size of today's systems.  Similarly, they are a poor fit
 for small devices.  SQL's declarative interface only complicates the
 situation.
 
 %In large systems, this manifests itself as
-%managability and tuning issues that prevent databases from predictably
+%manageability and tuning issues that prevent databases from predictably
 %servicing diverse, large scale, declarative, workloads.  
 %On small devices, footprint, predictable performance, and power consumption are
 %primary concerns that database systems do not address.
 
 %The survey argues that these problems cannot be adequately addressed without a fundamental shift in the architectures that underly database systems.  Complete, modern database
 %implementations are generally incomprehensible and
-%irreproducable, hindering further research.  
+%irreproducible, hindering further research.  
 The study concludes 
 by suggesting the adoption of {\em RISC} database architectures, both as a resource for researchers and as a 
 real-world database system.
@@ -397,7 +397,7 @@ compete to improve each module.  The idea is to produce a research
 platform that enables specialization and shares the effort required to build a full database~\cite{riscDB}.
 
 We agree with the motivations behind RISC databases, and to build 
-databases from interchangable modules exists.  In fact, is our hope
+databases from interchangeable modules exists.  In fact, is our hope
 that our system will mature to the point where it can support 
 a competitive relational database.  However this is
 not our primary goal.  
@@ -467,7 +467,7 @@ library.  Applications that want conventional isolation
 \eat{
 \yad uses write-ahead-logging to support the
 four properties of transactional storage: Atomicity, Consistency,
-Isolation and Durability.  Like existing transactional storage sytems,
+Isolation and Durability.  Like existing transactional storage systems,
 \yad allows applications to disable or choose different variants of each
 property.
 
@@ -499,7 +499,7 @@ described in the literature, and in any good textbook that describes
 database implementations.  The are not particularly important to the
 discussion here, so we do not cover them.
 
-The trivial way to acheive single-page transactions is simply to apply
+The trivial way to achieve single-page transactions is simply to apply
 all the updates to the page and then write it out on commit. The page
 must be pinned until the transaction commits to avoid ``dirty'' data
 (uncommitted data on disk), but no logging is required.  As disk
@@ -572,7 +572,7 @@ optimizations that \yad implements.
 
 
 Assume an application wishes to transactionally apply a series of
-functions to a piece of persistant storage.  For simplicity, we will
+functions to a piece of persistent storage.  For simplicity, we will
 assume we have two deterministic functions, {\em undo}, and {\em
 redo}.  Both functions take the contents of a page and a second
 argument, and return a modified page.
@@ -660,7 +660,7 @@ means that a transaction may commit before the pages it modified are
 written back to disk.  
 
 In a Steal/no-Force system, a page may be written to disk once the log
-entries corresponding to the udpates it contains are written to the
+entries corresponding to the updates it contains are written to the
 log file.  A page must be written to disk if the log file is full, and
 the version of the page on disk is so old that deleting the beginning
 of the log would lose redo information that may be needed at recovery.
@@ -691,7 +691,7 @@ arise in this case, consider what
 would happen if one transaction, A, rearranged the layout of a data
 structure.  Next, assume a second transaction, B, modified that
 structure, and then A aborted.  When A rolls back, its UNDO entries
-will undo the rearrangment that it made to the data structure, without
+will undo the rearrangement that it made to the data structure, without
 regard to B's modifications.  This is likely to cause corruption.
 
 Two common solutions to this problem are {\em total isolation} and
@@ -732,11 +732,11 @@ implements nested top actions.  The extension may be used as follows:
   nested top action'' right before the mutex is released.
 \end{enumerate}
 
-\noindent If the transaction thata encloses the operation aborts, the logical
+\noindent If the transaction that encloses the operation aborts, the logical
 undo will {\em compensate} for its effects, leaving the structural
 changes intact. 
 % Note that this recipe does not ensure iso transactional
-%consistency and is largely orthogonol to the use of a lock manager.
+%consistency and is largely orthogonal to the use of a lock manager.
 
 We have found that it is easy to protect operations that make
 structural changes to data structures with this recipe.
@@ -776,7 +776,7 @@ example, a log entry could simply tell recovery to increment a value
 on a page by some value, or to allocate a new record on the page.  
 If the recovery algorithm did not know exactly which
 version of a page it is dealing with, the operation could
-inadvertantly be applied more than once, incrementing the value twice,
+inadvertently be applied more than once, incrementing the value twice,
 or double allocating a record.
 }
 
@@ -784,7 +784,7 @@ To understand why this works, note that the log entries
 update some subset of the bits on the page.  If the log entries do not
 update a bit, then its value was correct before recovery began, so it
 must be correct after recovery.  Otherwise, we know that recovery will
-update the bit.  Furthermore, after all redos, the bit's value will be the
+update the bit.  Furthermore, after all REDOs, the bit's value will be the
 last value it contained before the crash, so we know that undo will behave
 properly.
 
@@ -825,10 +825,10 @@ log as an argument.  Like Berkeley DB, and most database toolkits, we
 allow system designers to define new operations.  Unlike earlier
 systems, we have based our library of operations on object oriented
 collection libraries, and have built complex index structures from
-simpler structures.  These modules are all directly avaialable,
+simpler structures.  These modules are all directly available,
 providing a wide range of data structures to applications, and
 facilitating the develop of more complex structures through reuse.  We
-compare the peroformance of our modular approach with a monolithic
+compare the performance of our modular approach with a monolithic
 implementation on top of \yad, using Berkeley DB as a baseline.
 }
 
@@ -906,7 +906,7 @@ around typical problems with existing transactional storage systems.
 
 \section{Extensions}
 \label{sec:extensions}
-This section desribes proof-of-concept extensions to \yad.
+This section describes proof-of-concept extensions to \yad.
 Performance figures accompany the extensions that we have implemented.
 We discuss existing approaches to the systems presented here when
 appropriate.
@@ -919,7 +919,7 @@ appropriate.
 \end{figure}
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
-using custom log operations.  In this section, we desribe how to implement a
+using custom log operations.  In this section, we describe how to implement a
 ``ARIES style'' concurrent, steal/no force operation using 
 full physiological logging and per-page LSN's.
 Such operations are typical of high-performance commercial database
@@ -939,8 +939,8 @@ is passed into Tupdate().  Tupdate() copies the data to the log, and
 then passes the data into the operation's REDO function.
  
 REDO modifies the page file directly (or takes some other action).  It
-is essentially an iterpreter for the log entries it is associated
-with.  UNDO works analagously, but is invoked when an operation must
+is essentially an interpreter for the log entries it is associated
+with.  UNDO works analogously, but is invoked when an operation must
 be undone (usually due to an aborted transaction, or during recovery).
 
 This pattern applies in many cases.  In
@@ -962,7 +962,7 @@ implementation must obey a few more invariants:
 
 \label{sec:experimental_setup}
 
-We chose Berkeley DB in the following experiements because, among
+We chose Berkeley DB in the following experiments because, among
 commonly used systems, it provides transactional storage primitives
 that are most similar to \yad.  Also, Berkeley DB is designed to provide high
 performance and high concurrency.  For all tests, the two libraries
@@ -1060,13 +1060,13 @@ However, we do not wish to imply this is always the case.
 %inefficiencies at runtime.
 The comparison between the \yad  implementations is more
 enlightening.  The performance of the simple hash table shows that
-straightfoward datastructure implementations composed from
+straightforward data structure implementations composed from
 simpler structures can perform as well as the implementations included 
 in existing monolithic systems.  The hand-tuned
 implementation shows that \yad allows application developers to
 optimize key primitives.
 
-% I cut this because berkeley db supports custom data structures....
+% I cut this because Berkeley db supports custom data structures....
 
 %In the
 %best case, past systems allowed application developers to provide
@@ -1081,11 +1081,11 @@ clean, modular data structure that a typical system implementor would
 be likely to produce, not the performance of our own highly tuned,
 monolithic implementations.
 
-Both Berkely DB and \yad can service concurrent calls to commit with
+Both Berkeley DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
   presented here were performed using an ext3 filesystem, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when reiserfs was used.  However, \yad's multi-threaded throughput
+  when ReiserFS was used.  However, \yad's multi-threaded throughput
   was significantly better that Berkeley DB's under both filesystems.}
 \yad scaled quite well, delivering over 6000 transactions per
 second,\endnote{The concurrency test was run without lock managers, and the
@@ -1108,24 +1108,24 @@ not simply trading latency for throughput during the concurrency benchmark.
 The effect of \yad object serialization optimizations under low and high memory pressure.}
 \end{figure*}
 
-\subsection{Object persistance}
+\subsection{Object persistence}
 \label{sec:oasys}
 Numerous schemes are used for object serialization.  Support for two
 different styles of object serialization have been implemented in
-\yad.  We could have just as easily implemented a persistance
+\yad.  We could have just as easily implemented a persistence
 mechanism for a statically typed functional programming language, a
 dynamically typed scripting language, or a particular application,
-such as an email server.  In each case, \yads lack of a hardcoded data
+such as an email server.  In each case, \yads lack of a hard-coded data
 model would allow us to choose the representation and transactional
 semantics that make the most sense for the system at hand.
 
-The first object persistance mechanism, pobj, provides transactional updates to objects in
+The first object persistence mechanism, pobj, provides transactional updates to objects in
 Titanium, a Java variant.  It transparently loads and persists
 entire graphs of objects, but will not be discussed in further detail.
 
 The second variant was built on top of a C++ object
 serialization library, \oasys.  \oasys makes use of pluggable storage
-modules that implement persistant storage, and includes plugins
+modules that implement persistent storage, and includes plugins
 for Berkeley DB and MySQL.  
 
 This section will describe how the \yad
@@ -1156,7 +1156,7 @@ The reason it would be difficult to do this with Berkeley DB is that
 we still need to generate log entries as the object is being updated.
 Otherwise, commit would not be durable, unless we queued up log 
 entries, and wrote them all before committing.  
-  This would cause Berekley DB to write data back to the
+  This would cause Berkeley DB to write data back to the
 page file, increasing the working set of the program, and increasing
 disk activity.
 
@@ -1225,7 +1225,7 @@ after commit(), as commit forces the log to disk.
 %For the benchmarks below, we
 %use this approach, as it is the most aggressive and is
 As far as we can tell, MySQL and Berkeley DB do not support this
-optimization in a straightfoward fashion.  (``Auto-commit'' comes
+optimization in a straightforward fashion.  (``Auto-commit'' comes
 close, but does not quite provide the correct durability semantics.)
 %not supported by any other general-purpose transactional 
 %storage system (that we know of).
@@ -1248,7 +1248,7 @@ completion times were orders of magnitude slower.
 Figure~\ref{fig:OASYS} presents the performance of the three
 \yad optimizations, and the \oasys plugins implemented on top of other
 systems.  As we can see, \yad performs better than the baseline
-systems, which is not surpising, since it is not providing the A
+systems, which is not surprising, since it is not providing the A
 property of ACID transactions.  (Although it is applying each individual operation atomically.)
 
 In non-memory bound systems, the optimizations nearly double \yads
@@ -1308,7 +1308,7 @@ using operation implementations.  For example, this type of optimization
 is used by RVM's log-merging operations~\cite{rvm}.
 
 Furthermore, application-specific
-procedures that are analagous to standard relational algebra methods
+procedures that are analogous to standard relational algebra methods
 (join, project and select) could be used to efficiently transform the data
 while it is still layed out sequentially
 in non-transactional memory.
@@ -1341,7 +1341,7 @@ the growable array implementation that is used as our linear
 hashtable's bucket list.
 The first experiment (Figure~\ref{fig:oo7})
 is loosely based on the oo7 database benchmark.~\cite{oo7}.  We
-hardcode the out-degree of each node, and use a directed graph.  OO7
+hard-code the out-degree of each node, and use a directed graph.  OO7
 constructs graphs by first connecting nodes together into a ring.
 It then randomly adds edges between the nodes until the desired
 out-degree is obtained.  This structure ensures graph connectivity.
@@ -1359,7 +1359,7 @@ connectivity, but we used the same random seeds for the two systems.
 
 When the graph has good locality, a normal depth first search
 traversal and the prioritized traversal both perform well.  The
-prioritied traversal is slightly slower due to the overhead of extra
+prioritized traversal is slightly slower due to the overhead of extra
 log manipulation. As locality decreases, the partitioned traversal
 algorithm's outperforms the naive traversal.
 
@@ -1376,7 +1376,7 @@ situations.
 
 Consider the retrieval of a large (page spanning) object stored on
 pages that contain LSN's.  The object's data will not be contiguous.
-Therefore, in order to retrive the object, the transaction system must
+Therefore, in order to retrieve the object, the transaction system must
 load the pages contained on disk into memory, and perform a byte-by-byte copy of the
 portions of the pages that contain the large object's data into a second buffer.  
 
@@ -1462,13 +1462,13 @@ databases with blob support\cite{something}, and a number of
 filesystems~\cite{reiserfs3,didFFSdoThis}.
 
 We are interested in allowing applications to store records in
-the transacation log.  Assuming log fragmentation is kept to a
+the transaction log.  Assuming log fragmentation is kept to a
 minimum, this is particularly attractive on a single disk system.  We
 plan to use ideas from LFS~\cite{lfs} and POSTGRES~\cite{postgres}
 to implement this.
 
 Starburst~\cite{starburst} provides a flexible approach to index
-managment, and database trigger support, as well as hints for small
+management, and database trigger support, as well as hints for small
 object layout.
 
 The Boxwood system provides a networked, fault-tolerant transactional
@@ -1488,14 +1488,14 @@ extensions to \yad.  However, \yads implementation is still fairly simple:
 \begin{itemize}
 \item The core of \yad is roughly 3000 lines
 of code, and implements the buffer manager, IO, recovery, and other
-sytems
+systems
 \item Custom operations account for another 3000 lines of code
 \item Page layouts and logging implementations account for 1600 lines of code.
 \end{itemize}
 
 The complexity of the core of \yad is our primary concern, as it
-contains hardcoded policies and assumptions.  Over time, the core has
-shrunk as functionality has been moved into extensions.  We exepect
+contains hard-coded policies and assumptions.  Over time, the core has
+shrunk as functionality has been moved into extensions.  We expect
 this trend to continue as development progresses.  
 
 A resource manager
@@ -1504,10 +1504,10 @@ dependencies and ordering constraints between sets of components.
 Over time, we hope to shrink \yads core to the point where it is
 simply a resource manager and a set of implementations of a few unavoidable
 algorithms related to write-ahead-logging.  For instance, 
-we suspect that support for appropriaite callbacks will 
-allow us to hardcode a generic recovery agorithm into the 
+we suspect that support for appropriate callbacks will 
+allow us to hard-code a generic recovery algorithm into the 
 system.  Similarly, and code that manages book-keeping information, such as 
-LSN's seems to be general enough to be hardcoded.  
+LSN's seems to be general enough to be hard-coded.  
 
 Of course, we also plan to provide \yads current functionality, including the algorithms
 mentioned above as modular, well-tested extensions.
