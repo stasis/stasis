@@ -121,6 +121,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("recovery_suite");
   /* Begin a new test */
   TCase *tc = tcase_create("recovery");
+   tcase_set_timeout(tc, 0); 
   /* void * foobar; */  /* used to supress warnings. */
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, header_test);

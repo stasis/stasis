@@ -55,9 +55,10 @@ static lsn_t dirtyPages_minRecLSN() {
 }
 
 static void dirtyPages_flush() { 
-  int * staleDirtyPages = malloc(sizeof(int) * MAX_BUFFER_SIZE);
+  // XXX Why was this MAX_BUFFER_SIZE+1?!?
+  int * staleDirtyPages = malloc(sizeof(int) * (MAX_BUFFER_SIZE));
   int i;
-  for(i = 0; i < MAX_BUFFER_SIZE+1; i++) { 
+  for(i = 0; i < MAX_BUFFER_SIZE; i++) { 
     staleDirtyPages[i] = -1;
   }
   Page* p = 0;
@@ -69,7 +70,7 @@ static void dirtyPages_flush() {
     staleDirtyPages[i] = *((int*) pblHtCurrentKey(dirtyPages));
     i++;
   }
-  assert(i <= MAX_BUFFER_SIZE);
+  assert(i < MAX_BUFFER_SIZE);
   pthread_mutex_unlock(&dirtyPages_mutex);
 
   for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
@@ -80,7 +81,7 @@ static void dirtyPages_flush() {
       //}
     releasePage(p);
   }
-
+  free(staleDirtyPages);
 }
 
 void dirtyPagesInit() { 
@@ -138,7 +139,10 @@ int truncateNow() {
       printf("Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
       fflush(stdout);
       dirtyPages_flush();
-      rec_lsn = dirtyPages_minRecLSN();
+
+      page_rec_lsn = dirtyPages_minRecLSN();
+      rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
+
       printf("Truncating to rec_lsn = %ld\n", rec_lsn);
       fflush(stdout);
       if(rec_lsn != flushed) {
