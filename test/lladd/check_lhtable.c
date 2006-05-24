@@ -84,7 +84,7 @@ START_TEST(lhtableTest)
   
   for(long i = 0; i < NUM_ENTRIES; i+=2) { 
     char * key;
-    int keyLen = asprintf(&key, "--> %ld <--\n", i);
+    asprintf(&key, "--> %ld <--\n", i);
     
     assert((void*)i == LH_ENTRY(find)(t, key, strlen(key)));
     LH_ENTRY(remove)(t, keys[i], strlen(keys[i]));
@@ -106,6 +106,9 @@ Suite * check_suite(void) {
   Suite *s = suite_create("lhtable");
   /* Begin a new test */
   TCase *tc = tcase_create("lhtable");
+
+  tcase_set_timeout(tc, 0); // disable timeouts
+
 
   /* Sub tests are added, one per line, here */
 
