@@ -4,6 +4,7 @@
 #include <pbl/pbl.h>
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 /**
    @todo Look up the balls + bins stuff, and pick FILL_FACTOR in a
@@ -25,11 +26,17 @@
   use of the pbl hashtable implementation will continue to work.
 
 */
-//===================================================== Static helper functions
-static void extendHashTable(struct LH_ENTRY(table) * table) { 
-  // @todo implement extendHashTable...
-}
 
+struct LH_ENTRY(table) {
+  struct LH_ENTRY(pair_t) * bucketList;
+  unsigned int bucketListLength;
+  unsigned char bucketListBits;
+  unsigned int bucketListNextExtension;
+  unsigned int occupancy;
+};
+
+
+//===================================================== Static helper functions
 
 static struct LH_ENTRY(pair_t) * 
 findInLinkedList(const void * key, int len, 
@@ -47,100 +54,10 @@ findInLinkedList(const void * key, int len,
   return 0;
 }
 
-//======================================================== The public interface
-
-struct LH_ENTRY(table) {
-  struct LH_ENTRY(pair_t) * bucketList;
-  unsigned int bucketListLength;
-  unsigned char bucketListBits;
-  unsigned int bucketListNextExtension;
-  unsigned int occupancy;
-};
-
-
-struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
-  struct LH_ENTRY(table) * ret = malloc(sizeof(struct LH_ENTRY(table)));
-  ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
-  hashGetParamsForSize(initialSize, 
-		       &(ret->bucketListBits),
-		       &(ret->bucketListNextExtension));
-  ret->bucketListLength = initialSize;
-  ret->occupancy = 0;
-  return ret;
-}
-
-LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
-				      const  LH_ENTRY(key_t) * key, int len,
-					     LH_ENTRY(value_t) * value) { 
-  // @todo 32 vs. 64 bit..
-  long bucket = hash(key, len, 
-		     table->bucketListBits, table->bucketListNextExtension);
-  struct LH_ENTRY(pair_t) * thePair = 0;
-  struct LH_ENTRY(pair_t) * junk;
-  LH_ENTRY(value_t) * ret = 0;
-  if(table->bucketList[bucket].key == 0) { 
-    // The bucket's empty
-    // Sanity checks...
-    assert(table->bucketList[bucket].keyLength == 0);
-    assert(table->bucketList[bucket].value     == 0);
-    assert(table->bucketList[bucket].next      == 0);
-    thePair = &(table->bucketList[bucket]);
-    thePair->key = malloc(len);
-    thePair->keyLength = len;
-    memcpy(((void*)thePair->key), key, len);
-    thePair->value = value;
-    table->occupancy++;
-  } else { 
-    if((thePair = findInLinkedList(key, len, &(table->bucketList[bucket]), 
-				   &junk))) { 
-      // In this bucket.
-      ret = thePair->value;
-      thePair->value = value;
-      // Don't need to update occupancy.
-    } else { 
-      // Not in this bucket, but the bucket isn't empty.
-      thePair = malloc(sizeof(struct LH_ENTRY(pair_t)));
-      thePair->key = malloc(len);
-      memcpy((void*)thePair->key, key, len);
-      thePair->keyLength = len;
-      thePair->value = value;
-      thePair->next = table->bucketList[bucket].next;
-      table->bucketList[bucket].next = thePair;
-      table->occupancy++;
-    }
-    // Need to check for + insert into linked list...
-  }
-
-  { // more sanity checks
-    // Did we set thePair correctly?
-    assert(thePair->value == value);
-    assert(thePair->keyLength == len);
-    assert(!memcmp(thePair->key, key, len));
-    struct LH_ENTRY(pair_t) * pairInBucket = 0;
-    // Is thePair in the bucket?
-    assert((pairInBucket = findInLinkedList(key, len, 
-					    &(table->bucketList[bucket]), 
-					    &junk)));
-    assert(pairInBucket == thePair);
-    // Exactly one time?
-    assert(!findInLinkedList(key, len, pairInBucket->next, &junk));
-  }
-
-  if(FILL_FACTOR < (  ((double)table->occupancy) / 
-                      ((double)table->bucketListLength)
-		    )) { 
-    extendHashTable(table);
-  }
-
-  return ret;
-}
-
-LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
-				      const  LH_ENTRY(key_t) * key, int len) { 
-  // @todo 32 vs. 64 bit..
-  long bucket = hash(key, len, 
-		     table->bucketListBits, table->bucketListNextExtension);
-  struct LH_ENTRY(pair_t) * predecessor;
+static LH_ENTRY(value_t) * removeFromLinkedList(struct LH_ENTRY(table) * table,
+						int bucket, 
+						const LH_ENTRY(key_t)* key, int len){
+    struct LH_ENTRY(pair_t) * predecessor;
   struct LH_ENTRY(pair_t) * thePair;
   LH_ENTRY(value_t) * ret;
   thePair = findInLinkedList(key, len, 
@@ -172,6 +89,192 @@ LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
     free(thePair);
   }
   return ret;
+}
+static struct  LH_ENTRY(pair_t)* insertIntoLinkedList(struct LH_ENTRY(table) * table,
+						      int bucket, 
+						      const LH_ENTRY(key_t) * key, int len,
+						      LH_ENTRY(value_t) * value){
+  struct LH_ENTRY(pair_t) *thePair;
+  if(table->bucketList[bucket].key == 0) {
+    // The bucket's empty 
+    // Sanity checks...
+    assert(table->bucketList[bucket].keyLength == 0);
+    assert(table->bucketList[bucket].value     == 0);
+    assert(table->bucketList[bucket].next      == 0);
+
+    thePair = &(table->bucketList[bucket]);
+    thePair->key = malloc(len);
+    thePair->keyLength = len;
+    memcpy(((void*)thePair->key), key, len);
+    thePair->value = value;    
+  } else { 
+    // the bucket isn't empty.  
+    thePair = malloc(sizeof(struct LH_ENTRY(pair_t)));
+    thePair->key = malloc(len);
+    memcpy((void*)thePair->key, key, len);
+    thePair->keyLength = len;
+    thePair->value = value;
+    thePair->next = table->bucketList[bucket].next;
+    table->bucketList[bucket].next = thePair;
+  }
+  return thePair;
+}
+static void extendHashTable(struct LH_ENTRY(table) * table) { 
+  int maxExtension = twoToThe(table->bucketListBits-1);
+  // If table->bucketListNextExtension == maxExtension, then newBucket =
+  // twoToThe(table->bucketListBits), which is one higher than the hash can
+  // return.
+
+  if(table->bucketListNextExtension < maxExtension) { 
+    table->bucketListNextExtension++;
+  } else {
+    table->bucketListNextExtension = 1;
+    table->bucketListBits ++;
+    maxExtension = twoToThe(table->bucketListBits-1);
+  }
+  
+  int splitBucket   = table->bucketListNextExtension - 1;
+  int newBucket     = table->bucketListNextExtension - 1 + maxExtension;
+
+  // Assumes realloc is reasonably fast... This seems to be a good
+  // assumption under linux.
+  table->bucketList = realloc(table->bucketList, 
+			      (1+newBucket) * sizeof(struct LH_ENTRY(pair_t)));
+  table->bucketListLength = 1+newBucket;
+  table->bucketList[newBucket].key = 0;
+  table->bucketList[newBucket].keyLength = 0;
+  table->bucketList[newBucket].value = 0;
+  table->bucketList[newBucket].next = 0;
+
+  // Now, table->nextExtension, table->tableBits are correct, so we
+  // can call hash.
+
+  struct LH_ENTRY(pair_t) * splitBucketRoot = 
+    &(table->bucketList[splitBucket]);
+  while(splitBucketRoot->key &&
+	(hash(splitBucketRoot->key, splitBucketRoot->keyLength, 
+	     table->bucketListBits, table->bucketListNextExtension) ==
+	 newBucket)) {
+    insertIntoLinkedList(table, newBucket, 
+			 splitBucketRoot->key, splitBucketRoot->keyLength, 
+			 splitBucketRoot->value);
+    removeFromLinkedList(table, splitBucket, 
+			 splitBucketRoot->key, splitBucketRoot->keyLength);
+  }
+  if(splitBucketRoot->key) {
+    assert(hash(splitBucketRoot->key, splitBucketRoot->keyLength,
+		table->bucketListBits, table->bucketListNextExtension) 
+	   == splitBucket);
+  } else { 
+    assert(!splitBucketRoot->next);
+  }
+  struct LH_ENTRY(pair_t) * next = splitBucketRoot->next;
+  while(next) { 
+    // We know that next isn't the bucketList root, so removing it from
+    // the list doesn't change its successor.
+    struct LH_ENTRY(pair_t) * newNext = next->next;
+
+    if(hash(next->key, next->keyLength, 
+	    table->bucketListBits, table->bucketListNextExtension) ==
+       newBucket) {
+      insertIntoLinkedList(table, newBucket,
+			   next->key, next->keyLength, next->value);
+      removeFromLinkedList(table, splitBucket,
+			   next->key, next->keyLength);
+    } else { 
+      assert(hash(next->key, next->keyLength, 
+		  table->bucketListBits, table->bucketListNextExtension) == 
+	     splitBucket);
+
+    }
+    next = newNext;
+  }
+}
+
+//======================================================== The public interface
+
+
+struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
+  struct LH_ENTRY(table) * ret = malloc(sizeof(struct LH_ENTRY(table)));
+  ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
+  hashGetParamsForSize(initialSize, 
+		       &(ret->bucketListBits),
+		       &(ret->bucketListNextExtension));
+  ret->bucketListLength = initialSize;
+  ret->occupancy = 0;
+  //  printf("Table: {size = %d, bits = %d, ext = %d\n", ret->bucketListLength, ret->bucketListBits, ret->bucketListNextExtension);
+  return ret;
+}
+
+LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
+				      const  LH_ENTRY(key_t) * key, int len,
+					     LH_ENTRY(value_t) * value) { 
+  // @todo 32 vs. 64 bit..
+  long bucket = hash(key, len, 
+		     table->bucketListBits, table->bucketListNextExtension);
+  struct LH_ENTRY(pair_t) * thePair = 0;
+  struct LH_ENTRY(pair_t) * junk;
+  LH_ENTRY(value_t) * ret;
+  /*  if(table->bucketList[bucket].key == 0) { 
+    // XXX just call findInLinkedList, and then call
+    // insertIntoLinkedList if it fails.  
+    
+    // The bucket's empty 
+    // Sanity checks...
+    assert(table->bucketList[bucket].keyLength == 0);
+    assert(table->bucketList[bucket].value     == 0);
+    assert(table->bucketList[bucket].next      == 0);
+    thePair = &(table->bucketList[bucket]);
+    thePair->key = malloc(len);
+    thePair->keyLength = len;
+    memcpy(((void*)thePair->key), key, len);
+    thePair->value = value;
+    table->occupancy++;
+    } else { */
+  if((thePair = findInLinkedList(key, len, &(table->bucketList[bucket]), 
+				 &junk))) { 
+    // In this bucket.
+    ret = thePair->value;
+    thePair->value = value;
+    // Don't need to update occupancy.
+  } else { 
+    // Not in this bucket
+    thePair = insertIntoLinkedList(table, bucket, key, len, value);
+    ret = 0;
+    table->occupancy++;
+  }
+  //  }
+
+  { // more sanity checks
+    // Did we set thePair correctly?
+    assert(thePair->value == value);
+    assert(thePair->keyLength == len);
+    assert(!memcmp(thePair->key, key, len));
+    struct LH_ENTRY(pair_t) * pairInBucket = 0;
+    // Is thePair in the bucket?
+    assert((pairInBucket = findInLinkedList(key, len, 
+					    &(table->bucketList[bucket]), 
+					    &junk)));
+    assert(pairInBucket == thePair);
+    // Exactly one time?
+    assert(!findInLinkedList(key, len, pairInBucket->next, &junk));
+  }
+
+  if(FILL_FACTOR < (  ((double)table->occupancy) / 
+                      ((double)table->bucketListLength)
+		    )) { 
+    extendHashTable(table);
+  }
+
+  return ret;
+}
+
+LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
+				      const  LH_ENTRY(key_t) * key, int len) { 
+  // @todo 32 vs. 64 bit..
+  long bucket = hash(key, len, 
+		     table->bucketListBits, table->bucketListNextExtension);
+  return removeFromLinkedList(table, bucket, key, len);
 }
 
 LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
@@ -247,7 +350,8 @@ void LH_ENTRY(destroy) (struct LH_ENTRY(table) * t) {
 // ============ Legacy PBL compatibility functions.  There are defined in pbl.h
 
 pblHashTable_t * pblHtCreate( ) {
-  return (pblHashTable_t*)LH_ENTRY(create)(2017); // some prime number...
+  //  return (pblHashTable_t*)LH_ENTRY(create)(2048);
+  return (pblHashTable_t*)LH_ENTRY(create)(16); 
 }
 int    pblHtDelete  ( pblHashTable_t * h ) {
   LH_ENTRY(destroy)((struct LH_ENTRY(table)*)h);
