@@ -24,6 +24,11 @@
    please see: http://mission.base.com/.
 
     $Log$
+    Revision 1.9  2006/05/24 02:19:04  sears
+    No more pblht (still need to delete pbl files from CVS, but want to run performance comparison first...)
+
+    Also, the linear hash table doesn't extend itself yet.
+
     Revision 1.8  2006/04/11 02:20:21  sears
     removed memcpy() calls from inMemoryLog; added "const" qualifier to many LogEntry pointers.
 
@@ -161,7 +166,7 @@ typedef struct pbl_hashtable_s pbl_hashtable_t;
   return ((unsigned int)(crc32((char*)key, keylen, -1))) & (PBL_HASHTABLE_SIZE-1); //% PBL_HASHTABLE_SIZE;
 }*/
 
-#define hash(x, y) (((keylen)==sizeof(int) ?  \
+#define hash(key, keylen) (((keylen)==sizeof(int) ?  \
 		    (*(unsigned int*)key) & (PBL_HASHTABLE_SIZE-1) :\
 		    ((unsigned int)(crc32((char*)(key), (keylen), -1))) & (PBL_HASHTABLE_SIZE-1)))
 

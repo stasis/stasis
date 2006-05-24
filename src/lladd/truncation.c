@@ -20,8 +20,9 @@ void dirtyPages_add(Page * p) {
   pthread_mutex_lock(&dirtyPages_mutex);
   if(!p->dirty) { 
     p->dirty = 1;
-
-    assert(!pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
+    //assert(p->LSN);
+    void* ret = pblHtLookup(dirtyPages, &(p->id), sizeof(int));
+    assert(!ret);
     pblHtInsert(dirtyPages, &(p->id), sizeof(int), (void*)p->LSN);
   }
   pthread_mutex_unlock(&dirtyPages_mutex);
@@ -32,8 +33,10 @@ void dirtyPages_remove(Page * p) {
   //  printf("Removing page %d\n", p->id);
   //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
   //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
-  assert(!pblHtRemove(dirtyPages, &(p->id), sizeof(int)));
-  //assert(!pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
+  int ret = pblHtRemove(dirtyPages, &(p->id), sizeof(int));
+  //assert(!ret); <--- Due to a bug in the PBL compatibility mode,
+  //there is no way to tell whether the value didn't exist, or if it
+  //was null.
   pthread_mutex_unlock(&dirtyPages_mutex);
 }
 

@@ -12,7 +12,7 @@
 unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc);
 static int BuildCRCTable(void);
 
-static unsigned int *CRCTable;	// Table constructed for fast lookup.
+static unsigned int CRCTable[256];	// Table constructed for fast lookup.
 
 #define CRC32_POLYNOMIAL	0xEDB88320
 
@@ -22,13 +22,6 @@ static int BuildCRCTable(void)
 {
 	int i, j;
 	unsigned int crc;
-
-	CRCTable = malloc(256 * sizeof(unsigned int));
-	if (CRCTable == NULL)
-	{
-		fprintf(stderr, "Can't malloc space for CRC table in file %s\n", __FILE__);
-		return -1L;
-	}
 
 	for (i = 0; i <= 255; i++)
 	{
@@ -51,8 +44,7 @@ unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc)
 
 	if (firsttime)
 	{
-		if (BuildCRCTable())
-			return -1;
+		BuildCRCTable();
 		firsttime = 0;
 	}
 

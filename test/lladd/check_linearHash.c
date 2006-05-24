@@ -72,11 +72,11 @@ START_TEST(checkHashFcn) {
     int j = (int) (100000.0*random()/(RAND_MAX+1.0));  /* int for CRC. */
     int k = (int) 2+(30.0*random()/(RAND_MAX+1.0));  /* number of bits in result. */
 
-    unsigned long first = hash(&j, sizeof(int), k, ULONG_MAX);
+    unsigned long first = hash(&j, sizeof(int), k, UINT_MAX);
     int boundary = first + 10;
     unsigned long second = hash(&j, sizeof(int), k, boundary);
     assert(first == second);
-    unsigned long third =  hash(&j, sizeof(int), k+1, ULONG_MAX);
+    unsigned long third =  hash(&j, sizeof(int), k+1, UINT_MAX);
     assert((first == third) || (pow(2,k)+ first == third));
   }
 } END_TEST

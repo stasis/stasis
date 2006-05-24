@@ -172,8 +172,8 @@ void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int v
       return; 
     }
     
-    int old_hash;
-    int new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
+    unsigned int old_hash;
+    unsigned int new_hash = hash(A_contents+1, keySize, i,   UINT_MAX) + 2;
 
     while(new_hash != next_split) {
       // Need a record in A that belongs in the first bucket... 
@@ -226,7 +226,7 @@ void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int v
       Tset(xid, A, A_contents);
       Tdealloc(xid, oldANext);
       
-      new_hash = hash(A_contents+1, keySize, i,   ULONG_MAX) + 2;
+      new_hash = hash(A_contents+1, keySize, i,   UINT_MAX) + 2;
     }
     /*  printf("Got past loop 1\n");
 	fflush(NULL); */
@@ -238,8 +238,8 @@ void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int v
       Tread(xid, B, B_contents);
       C = B_contents->next;
       
-      old_hash = hash(B_contents+1, keySize, i-1, ULONG_MAX) + 2;
-      new_hash = hash(B_contents+1, keySize, i,   ULONG_MAX) + 2;
+      old_hash = hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
+      new_hash = hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
       
       assert(next_split == old_hash); 
       assert(new_hash   == old_hash || new_hash == old_hash + twoToThe(i-1));

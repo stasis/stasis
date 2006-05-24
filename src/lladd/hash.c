@@ -1,29 +1,25 @@
 #include <lladd/hash.h>
-/*#include <math.h> */
-/*static int  thomasWangs32BitMixFunction(int key);
-  static unsigned long thomasWangs64BitMixFunction(unsigned long key);*/
+#include <assert.h>
+//#include <stdio.h>
+/**
+ @todo Make hash.c 32/64bit little/big-endian clean...
+*/
 
-unsigned int max_bucket(unsigned char tableBits, unsigned long nextExtension) {
-  unsigned int oldTableLength = twoToThe(tableBits - 1);
-  return oldTableLength + nextExtension - 1;
+#ifdef THOMAS_WANG_32
+static int thomasWangs32BitMixFunction(int key)
+{
+  key += ~(key << 15);
+  key ^=  (key >> 10);
+  key +=  (key << 3);
+  key ^=  (key >> 6);
+  key += ~(key << 11);
+  key ^=  (key >> 16);
+  return key;
 }
+#else 
+#ifdef THOMAS_WANG_64
 
-/** @todo replace powl in hash with something more efficient, if hash() becomes a bottleneck. */
-
-unsigned int hash(const void * val, long val_length, unsigned char tableBits, unsigned long nextExtension) {
-  unsigned int oldTableLength = /*powl(2, tableBits - 1); */ twoToThe(tableBits - 1);
-  unsigned int unmixed = crc32(val, val_length, (unsigned int)-1);
-  unsigned int ret = unmixed & (oldTableLength - 1); 
-
-  /* What would the low hash value be? */
-  if(ret < nextExtension) { /* Might be too low. */
-    unsigned int tableLength = /* powl(2, tableBits); */ twoToThe(tableBits);
-    ret = unmixed & (tableLength - 1);
-  }
-  return (int) ret;
-}
-
-/*static unsigned long thomasWangs64BitMixFunction(unsigned long key) 
+static unsigned long thomasWangs64BitMixFunction(unsigned long key) 
 {
   key += ~(key << 32L);
   key ^= (key >> 22L);
@@ -36,15 +32,90 @@ unsigned int hash(const void * val, long val_length, unsigned char tableBits, un
   return key;
 }
 
-static int thomasWangs32BitMixFunction(int key)
-{
-  key += ~(key << 15);
-  key ^=  (key >> 10);
-  key +=  (key << 3);
-  key ^=  (key >> 6);
-  key += ~(key << 11);
-  key ^=  (key >> 16);
-  return key;
+#endif
+#endif
+
+unsigned int max_bucket(unsigned char tableBits, unsigned int nextExtension) {
+  unsigned int oldTableLength = twoToThe(tableBits - 1);
+  return oldTableLength + nextExtension - 1;
 }
 
+void hashGetParamsForSize(unsigned int desiredSize, 
+		      unsigned char * tableBits, unsigned int* nextExtension) {
+  *tableBits = logBase2(desiredSize)+1;
+  *nextExtension = ((desiredSize) - twoToThe(*tableBits-1));
+}
+
+
+unsigned int hash(const void * val, long val_length, 
+		  unsigned char tableBits, unsigned int nextExtension) {
+  // Calculate the hash value as it was before this round of splitting.
+  unsigned int oldTableLength = twoToThe(tableBits - 1);
+  unsigned int unmixed = crc32(val, val_length, (unsigned int)-1);
+  unsigned int ret = unmixed & (oldTableLength - 1); 
+
+  // If the hash value is before the point in this round where we've split,
+  // use the new value instead.  (The new value may be the same as the 
+  // old value.)
+  if(ret < nextExtension) { /* Might be too low. */
+    unsigned int tableLength =  twoToThe(tableBits);
+    ret = unmixed & (tableLength - 1);
+  }
+  //  printf("ret = %d, bits = %d, nextExt = %d\n", ret, tableBits, nextExtension);
+  //  fflush(stdout);
+  //  assert(ret >= 0 && ret < nextExtension - 1);
+  return  ret;
+}
+
+static const char LogTable256[] = 
+{
+  0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+};
+
+/*Taken from 
+  http://graphics.stanford.edu/~seander/bithacks.html
+
+  @todo extend to handle unsigned long (this will mean 64bit on 64bit
+  platforms; need compiler macro to test for sizeof(long), test
+  harness to compare logBase2Slow's output with logBase2's output,
+  etc...)
 */
+unsigned int logBase2(unsigned int v) { 
+  unsigned int r = 0; // r will be lg(v)
+  register unsigned int t, tt; // temporaries
+  
+  if ((tt = v >> 16))
+    {
+      r = (t = v >> 24) ? 24 + LogTable256[t] : 16 + LogTable256[tt & 0xFF];
+    }
+  else 
+    {
+      r = (t = v >> 8) ? 8 + LogTable256[t] : LogTable256[v];
+    }
+  return r;
+}
+
+unsigned long logBase2Slow(unsigned long v) { 
+  unsigned long r = 0; // r will be lg(v)
+
+  while (v >>= 1) // unroll for more speed...
+    {
+      r++;
+    }
+  return r;
+}
