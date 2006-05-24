@@ -33,7 +33,7 @@ void dirtyPages_remove(Page * p) {
   //  printf("Removing page %d\n", p->id);
   //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
   //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
-  int ret = pblHtRemove(dirtyPages, &(p->id), sizeof(int));
+  pblHtRemove(dirtyPages, &(p->id), sizeof(int));
   //assert(!ret); <--- Due to a bug in the PBL compatibility mode,
   //there is no way to tell whether the value didn't exist, or if it
   //was null.
@@ -132,31 +132,35 @@ int truncateNow() {
   lsn_t xact_rec_lsn = transactions_minRecLSN();
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   lsn_t log_trunc = LogTruncationPoint();
-  if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
-    printf("Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
-    LogTruncate(rec_lsn);
-    return 1;
-  } else { 
-    lsn_t flushed = LogFlushedLSN();
-    if(flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
-      printf("Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
-      fflush(stdout);
-      dirtyPages_flush();
-
-      page_rec_lsn = dirtyPages_minRecLSN();
-      rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
-
-      printf("Truncating to rec_lsn = %ld\n", rec_lsn);
-      fflush(stdout);
-      if(rec_lsn != flushed) {
-	LogTruncate(rec_lsn);
-	return 1;
-      } else {
+  if((xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
+    printf("xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
+    if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
+      printf("Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
+      LogTruncate(rec_lsn);
+      return 1;
+    } else { 
+      lsn_t flushed = LogFlushedLSN();
+      if(flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
+	printf("Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
+	fflush(stdout);
+	dirtyPages_flush();
+	
+	page_rec_lsn = dirtyPages_minRecLSN();
+	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
+	
+	printf("Truncating to rec_lsn = %ld\n", rec_lsn);
+	fflush(stdout);
+	if(rec_lsn != flushed) {
+	  LogTruncate(rec_lsn);
+	  return 1;
+	} else {
+	  return 0;
+	}
+      } else { 
 	return 0;
       }
-
-    } else { 
-      return 0;
     }
+  } else {
+    return 0;
   }
 }
