@@ -51,12 +51,12 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
   int deltaPushed = 0;
 
   while(Titerator_tryNext(xid, local->iterator)) { // @nextOrEmprty?
-    recordid * rid;
+    byte * brid;
     recordid localRid;
-    size_t size = Titerator_value(xid, local->iterator, (byte**)&rid);
+    size_t size = Titerator_value(xid, local->iterator, &brid);
     
     assert(size == sizeof(recordid));
-    
+    recordid * rid = (recordid*)brid;
     localRid = *rid;
 
     if(myFifo == -1) {

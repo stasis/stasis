@@ -11,11 +11,11 @@ recordid xid_ht = app_state_cht->xid_ht;                                        
 int ht_xid = app_state_cht->ht_xid;                                                         
 
 int getXid(int ht_xid, recordid xid_ht, state_machine_id id) {
-  int * xid;
+  byte * xid;
   int ret;
-  int size = ThashLookup(ht_xid, xid_ht, (byte*)&id, sizeof(state_machine_id), (byte**)&xid);
+  int size = ThashLookup(ht_xid, xid_ht, (byte*)&id, sizeof(state_machine_id), &xid);
   if(size == sizeof(int)) {
-    ret = *xid;
+    ret = *(int*)xid;
     free(xid);
   } else {
     assert(size == -1);
@@ -26,11 +26,11 @@ int getXid(int ht_xid, recordid xid_ht, state_machine_id id) {
 
 
 recordid getHashTable (int ht_xid, recordid ht_ht, clusterHashTable_t hashTable) {
-  recordid * ht;
+  byte * ht;
   recordid ret;
-  int size = ThashLookup(ht_xid, ht_ht, (byte*)&(hashTable), sizeof(clusterHashTable_t), (byte**)&ht);
+  int size = ThashLookup(ht_xid, ht_ht, (byte*)&hashTable, sizeof(clusterHashTable_t), &ht);
   if(size == sizeof(recordid)) {
-    ret = *ht;
+    ret = *(recordid*)ht;
     free(ht);
   } else {
     assert(size == -1);
@@ -244,6 +244,7 @@ state_name eval_action_cht(void * dfaSet, StateMachine * stateMachine, Message *
     xid = Tbegin();
     if(xid < 0) {
       printf("Tbegin failed; %d\n", xid);
+      abort();
     } else {
       ThashInsert(ht_xid, xid_ht, (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), (byte*)&xid, sizeof(int));
       xid_exists = 1;

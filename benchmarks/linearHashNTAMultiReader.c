@@ -41,9 +41,9 @@ static void * go (void * arg_ptr) {
 
   for(j = 0; j < count ; j++) {
     unsigned int r = rand_r(&seed) % 10000;
-    int * tmp = NULL;
-    ThashLookup(xid, hash, (byte*)&r, sizeof(int), (byte**)&tmp);
-    assert(r == *tmp);
+    byte * tmp = NULL;
+    ThashLookup(xid, hash, (byte*)&r, sizeof(int), &tmp);
+    assert(r == *(unsigned int*)tmp);
   }
   //  for(j = k * count; j < (k+1) *(count) ; j++) {
   //   TlogicalHashInsert(xid, hash, &j, sizeof(int), &j, sizeof(int));

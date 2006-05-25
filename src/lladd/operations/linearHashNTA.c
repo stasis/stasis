@@ -582,11 +582,11 @@ void * ThashAsyncWorker(void * argp) {
   //  lladdIterator_t * it = (lladdIterator_t *) arg;
   //  recordid hash;
   while(Titerator_next(arg->xid, arg->it)) {
-    lladdFifo_t * fifo;
-    int fifo_size = Titerator_value(arg->xid, arg->it, (byte**)&fifo);
+    byte * fifo;
+    int fifo_size = Titerator_value(arg->xid, arg->it, &fifo);
     assert(fifo_size == sizeof(lladdFifo_t));
 
-    ThashInsertConsume(arg->xid, arg->hash,  fifo->iterator);
+    ThashInsertConsume(arg->xid, arg->hash,  ((lladdFifo_t*)fifo)->iterator);
 
     Titerator_tupleDone(arg->xid, arg->it);
   }

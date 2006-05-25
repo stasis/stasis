@@ -42,7 +42,6 @@ terms specified in this license.
 #include "cht.h"
 #include <netinet/in.h>
 #include <assert.h>
-#include <string.h>
 #include <stdlib.h>
 #include "../../2pc/2pc.h"
 #include "../../libdfa/callbacks.h"
@@ -103,14 +102,14 @@ short multiplex_interleaved(DfaSet * dfaSet, Message * m) {
 state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * m, char * from);
 
 int xid_exists(int ht_xid, recordid xid_ht, StateMachine * stateMachine) {
-  int * xid = 0;
+  byte * xid = 0;
   
   int size = ThashLookup(ht_xid, xid_ht, 
 			 (byte*)&(stateMachine->machine_id), sizeof(state_machine_id), 
-			 (byte**)&xid);
+			 &xid);
   if(size != -1) {
     assert(size == sizeof(int));
-    int ret = *xid;
+    int ret = *(int*)xid;
     free(xid);
     return ret;
   } else {

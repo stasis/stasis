@@ -222,19 +222,6 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 
 }
 
-/*compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
-  Page * p ;
-  try {
-    p = loadPage(xid, rid.page);
-  } end;
-  
-  begin_action(releasePage, p) {
-    TupdateHelper(xid, rid, dat, op, p);
-  } compensate;
-
-  }*/
-
-
 void TreadUnlocked(int xid, recordid rid, void * dat) {
   Page * p;
   try { 

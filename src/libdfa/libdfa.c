@@ -110,6 +110,8 @@ pthread_t spawn_main_thread(DfaSet * dfaSet);
 void recover(DfaSet * dfaSet) {
   StateMachine * sm;
   StateMachine * this;
+  byte * bsm; 
+  byte * bsm_id; // Need these to make gcc -O2 happy (avoiding type-punning...)
   int keySize = sizeof(state_machine_id);
   state_machine_id * sm_id;
   int valueSize = sizeof(StateMachine);
@@ -117,7 +119,9 @@ void recover(DfaSet * dfaSet) {
 					   dfaSet->smash->hash, 
 					   keySize, valueSize);
 
-  while(ThashNext(dfaSet->smash->xid, it, (byte**)&sm_id, &keySize, (byte**)&sm, &valueSize)) {
+  while(ThashNext(dfaSet->smash->xid, it, &bsm_id, &keySize, &bsm, &valueSize)) {
+    sm = (StateMachine*)bsm;
+    sm_id = (state_machine_id*)bsm_id;
     assert(*sm_id == sm->machine_id);
     this = getSmash(dfaSet->smash, *sm_id);
     DEBUG("StateMachine %ld\n", sm->machine_id);
@@ -362,7 +366,7 @@ void * inner_worker_loop(void * arg_void) {
   while(1) {
     int rc = 0;
 
-    state_name i, state_idx; 
+    state_name i, state_idx = NULL_STATE; 
     
     /** @todo inner worker loop doesn't seem to 'do the right thing' with respect to timing */
     if(1|| !stateMachine->pending) {  /* If no pending messages, go to sleep */
@@ -428,6 +432,7 @@ void * inner_worker_loop(void * arg_void) {
       }
     } 
 
+    assert(state_idx != NULL_STATE);
     DEBUG("Worker loop for state machine: %ld still active\n", machine_id);
 
     int send = 1;

@@ -130,11 +130,12 @@ StateMachine *  allocSmash (smash_t * smash) {
 /** @return -1 on error, 0 if there isn't any more room, and 1 on success. */
 StateMachine *  insertSmash(smash_t * smash, state_machine_id id) {
   void * ret;
-  StateMachine * junk;
+  byte * junk; // will point to StateMachine...
 
   pthread_mutex_lock(smash->lock);
-   
-  if(ThashLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), (byte**)&junk) != -1) {
+
+  if(ThashLookup(smash->xid, smash->hash, (byte*)&(smash->next_sm_id), sizeof(state_machine_id), &junk) != -1) {
+
     free(junk);
     pthread_mutex_unlock(smash->lock);
     return NULL;
