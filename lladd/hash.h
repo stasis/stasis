@@ -3,6 +3,10 @@
 
 #ifndef __HASH_H
 #define __HASH_H
+/**
+   @todo write a test harness for this...
+*/
+
 unsigned int max_bucket(unsigned char tableBits, unsigned int nextExtension);
 /**
    This function maps from the length of the bucket list to a appropriate set 

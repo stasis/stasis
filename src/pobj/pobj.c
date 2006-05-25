@@ -202,7 +202,7 @@ pobj_end (void)
 	if (active_xid >= 0) {
 	    if (pthread_setspecific (g_active_xid_key, NULL))
 		return -1;
-	    Tcommit ((int)active_xid);
+	    Tcommit ((long)active_xid);
 	}
 	else
 	    return -1;  /* Attempt to close a non-open transaction. */
@@ -855,7 +855,7 @@ pobj_set (void *obj, void *fld, void *data, size_t len, unsigned char flags)
     if (CHECK_FLAG (flags, POBJ_SET_F_COPY))
 	memcpy (fld, data, len);
     else
-	memset (fld, (byte) data, len);
+	memset (fld, (byte) (long)data, len);
 
     /* Update corresponding record (persistent objects only). */
     if (p->repo_index >= 0) {
@@ -883,7 +883,7 @@ pobj_memcpy (void *obj, void *fld, void *data, size_t len)
 }
 
 void *
-pobj_memset (void *obj, void *fld, int c, size_t len)
+pobj_memset (void *obj, void *fld, long c, size_t len)
 {
     return (pobj_set (obj, fld, (void *) c, len, 0) < 0 ? NULL : obj);
 }

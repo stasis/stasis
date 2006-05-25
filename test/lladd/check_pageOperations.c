@@ -48,6 +48,7 @@ terms specified in this license.
 #include "../../src/lladd/page/slotted.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
+#include <lladd/truncation.h>
 #include <lladd/logger/logger2.h>
 
 #include "../../src/lladd/latches.h"

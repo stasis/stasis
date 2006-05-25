@@ -233,8 +233,6 @@ int openLogWriter() {
     
 */
 
-//static int flushLog();
-
 int writeLogEntry(LogEntry * e) {
 
   const lsn_t size = sizeofLogEntry(e);

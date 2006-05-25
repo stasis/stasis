@@ -31,6 +31,7 @@ typedef struct  {
   int xid;
 } lladdMultiplexer_t;
 
+void * lladdMultiplexer_flush(lladdMultiplexer_t * m) ;
 
 lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it, 
 					    void (*multiplexer)(byte * key,

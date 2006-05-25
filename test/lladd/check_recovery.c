@@ -45,6 +45,7 @@ terms specified in this license.
 
 #include <lladd/transactional.h>
 #include <lladd/logger/logger2.h>
+#include <lladd/truncation.h>
 #include "../../src/lladd/logger/logWriter.h"
 #include "../check_includes.h"
 

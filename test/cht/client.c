@@ -28,7 +28,7 @@ int main(int argc, char ** argv) {
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
-    unsigned int newLen = sizeof(int);
+    size_t newLen = sizeof(int);
     int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
     //    xid++;
     //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);
@@ -41,7 +41,7 @@ int main(int argc, char ** argv) {
 
   for(i = 0; i < 10000; i+=10) {
     int one = i; int two = -1;
-    unsigned int size = sizeof(int);
+    size_t size = sizeof(int);
     int removed = cHtRemove(xid, cht_client, &new_ht, &one, sizeof(int), &two, &size);
     assert(removed);
 
@@ -53,7 +53,7 @@ int main(int argc, char ** argv) {
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
-    unsigned int newLen = sizeof(int);
+    size_t newLen = sizeof(int);
     int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
 
     assert(!ret);
@@ -67,7 +67,7 @@ int main(int argc, char ** argv) {
     int newOne, newTwo;
     newOne = i;
     newTwo = 0;
-    unsigned int newLen = sizeof(int);
+    size_t newLen = sizeof(int);
     int ret = cHtLookup(xid, cht_client, &new_ht, &newOne, sizeof(int), &newTwo, &newLen);
     //    xid++;
     //printf("lookup returned %d (%d->%d)\n", ret, newOne, newTwo);

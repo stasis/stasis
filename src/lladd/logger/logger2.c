@@ -139,11 +139,11 @@ const LogEntry * LogReadLSN(lsn_t lsn) {
 
 void FreeLogEntry(const LogEntry * e) { 
   if(LOG_TO_FILE == loggerType) { 
-    free(e);
+    free((LogEntry*)e);
     return;
   } else if(LOG_TO_MEMORY == loggerType) {
     if(e->LSN == -1) { 
-      free(e);
+      free((LogEntry*)e);
     }
     return;
   }

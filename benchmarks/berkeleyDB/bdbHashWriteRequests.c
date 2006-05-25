@@ -3,7 +3,7 @@
 
 #include <errno.h>
 #include <pthread.h>
-
+#include <math.h>
 // if we're using linux's crazy version of the pthread header, 
 // it probably forgot to include PTHREAD_STACK_MIN 
 
@@ -97,7 +97,7 @@ main(int argc, char *argv[])
 
 
 	pthread_t * threads = malloc(num_threads * sizeof(pthread_t));
-	int i ;
+	long i;
 	for(i = 0; i < num_threads; i++) {
 	  if ((ret = pthread_create(&(threads[i]), &attr, runThread, (void *)i)) != 0){
 	    fprintf(stderr,
@@ -132,7 +132,7 @@ main(int argc, char *argv[])
 
 
 void * runThread(void * arg) {
-  int offset = (int) arg;
+  long offset = (long)arg;
   
   pthread_mutex_lock(&mutex);
   activeThreads++;

@@ -46,7 +46,7 @@ terms specified in this license.
 #include "../../src/lladd/logger/logWriter.h"
 #include <lladd/logger/logger2.h>
 #include <lladd/bufferManager.h>
-
+#include <lladd/truncation.h>
 #include "../check_includes.h"
 #include "../../src/lladd/page.h"
 #include "../../src/lladd/page/slotted.h"

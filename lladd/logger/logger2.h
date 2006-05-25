@@ -132,6 +132,13 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
    Whenever a LogEntry is returned by a function that is defined by
    logger2.h or logHandle.h, the caller should eventually call this
    function to release any resources held by that entry.
+   
+   @todo The 'const' modifier on FreeLogEntry's parameter is a hack;
+   for some log types (in memory) it is very important that the caller
+   does not modify LogEntries returned by this API, so we always
+   return 'const' pointers to callers.  The implementation of
+   FreeLogEntry knows whether the const is important, and ignores it
+   if appropriate, so const isn't really the right concept...
 */
 void FreeLogEntry(const LogEntry * e);
 

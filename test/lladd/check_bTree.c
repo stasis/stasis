@@ -58,7 +58,8 @@ terms specified in this license.
 /** @test
 */
 
-
+void testFunctions();
+int SimpleExample();
 
 START_TEST(bTreeTest)
 {
@@ -157,7 +158,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
   }
 
   // convert the input valueIn into a byte array
-  byte * valueInBuff = (byte *) & valueIn;
+  //  byte * valueInBuff = (byte *) & valueIn;
 
   // get the rid ready to write to the insertLocation (determined above)
   rid.slot = insertLocation;
@@ -167,7 +168,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
   printf("\n***rid.page  = %d\n", rid.page);
 
  
-  
+  return 0;
 
 }
 
@@ -176,7 +177,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
    it to be a BTreeNode. Just puts the value 0 in the  
    first index of the page. 
 */
-int initializeNewBTreeNode(Page* p, recordid rid){
+void initializeNewBTreeNode(Page* p, recordid rid){
   
   // need access to the first slot 
   rid.slot = 0;  
@@ -189,7 +190,7 @@ int initializeNewBTreeNode(Page* p, recordid rid){
   fixedWrite(p, rid, countBuff); 
 
 }
-int testFunctions(){
+void testFunctions(){
   printf("testing functions");
   
   // getting things ready
@@ -213,8 +214,8 @@ int testFunctions(){
 int SimpleExample(){
 
   int DEBUGP = 0;
-  int DEBUGT = 0;
-  int DEBUGA = 0;
+  //  int DEBUGT = 0;
+  //  int DEBUGA = 0;
   int xid = Tbegin();
 
   /* Where to find stuff
@@ -245,7 +246,7 @@ int SimpleExample(){
   /* check to make sure page is recorded as a FIXED_PAGE */
   assert( *page_type_ptr(p1) == FIXED_PAGE);
   
-  if (DEBUGP) { printf("\n%d\n", rid1); }
+  if (DEBUGP) { printf("\n%d\n", rid1.page); }
   byte * b1 = (byte *) malloc (sizeof (int));
   byte * b2 = (byte *) malloc (sizeof (int));
   byte * b3 = (byte *) malloc (sizeof (int));

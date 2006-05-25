@@ -62,26 +62,6 @@ terms specified in this license.
 /*#define NUM_ENTRIES 100  */
 
 /**
-   @test Runs some simple tests on the hash() function.  Not comprehensive enough.
-   @todo the checkHashFcn test is broken.
-*/
-START_TEST(checkHashFcn) {
-  int i;
-  srandom(12312313);
-  for(i = 0; i < 100000;i++) {
-    int j = (int) (100000.0*random()/(RAND_MAX+1.0));  /* int for CRC. */
-    int k = (int) 2+(30.0*random()/(RAND_MAX+1.0));  /* number of bits in result. */
-
-    unsigned long first = hash(&j, sizeof(int), k, UINT_MAX);
-    int boundary = first + 10;
-    unsigned long second = hash(&j, sizeof(int), k, boundary);
-    assert(first == second);
-    unsigned long third =  hash(&j, sizeof(int), k+1, UINT_MAX);
-    assert((first == third) || (pow(2,k)+ first == third));
-  }
-} END_TEST
-
-/**
    @test Insert some stuff into a linear hash, delete some stuff, and
    make sure that abort() and commit() work.
 */

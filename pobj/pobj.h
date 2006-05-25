@@ -69,7 +69,7 @@ int pobj_ref_typify (void *, int *);
 
 /* Object modification. */
 void *pobj_memcpy (void *, void *, void *, size_t);
-void *pobj_memset (void *, void *, int, size_t);
+void *pobj_memset (void *, void *, long, size_t);
 int pobj_set_int (void *, int *, int);
 int pobj_set_unsigned (void *, unsigned *, unsigned);
 int pobj_set_long (void *, long *, long);

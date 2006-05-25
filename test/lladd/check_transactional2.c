@@ -452,7 +452,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_abort);
   tcase_add_test(tc, transactional_blobs_nothreads_abort);  
-  /*  tcase_add_test(tc, transactional_blobs_threads_abort);  */
+  tcase_add_test(tc, transactional_blobs_threads_abort);  
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

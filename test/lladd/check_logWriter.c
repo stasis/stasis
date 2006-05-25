@@ -47,7 +47,7 @@ terms specified in this license.
 /*#include <lladd/logger/logEntry.h> */
 #include "../../src/lladd/logger/logHandle.h"
 #include <lladd/logger/logger2.h>
-//#include "../../src/lladd/logger/logWriter.h"
+#include "../../src/lladd/logger/logWriter.h"
 
 #include "../../src/lladd/latches.h"
 #include <sched.h>
