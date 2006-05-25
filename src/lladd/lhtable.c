@@ -80,6 +80,7 @@ static LH_ENTRY(value_t) * removeFromLinkedList(struct LH_ENTRY(table) * table,
       // bucketList, and free that item.
       struct LH_ENTRY(pair_t) * oldNext = thePair->next;
       *thePair = *(thePair->next);
+      ret = thePair->value;
       free(oldNext);
     }
   } else {  // Found, in spillover bucket.
