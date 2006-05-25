@@ -79,6 +79,9 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
 	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
 	
+	operationsTable[OPERATION_SET_RAW] = getSetRaw();
+	operationsTable[OPERATION_INSTANT_SET_RAW] = getInstantSetRaw();
+
 	/* 
 	   int i;
 
@@ -192,25 +195,26 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
   try { 
     p = loadPage(xid, rid.page);
   } end;
-  if(*page_type_ptr(p) == INDIRECT_PAGE) {
-    releasePage(p);
-    try { 
-      rid = dereferenceRID(xid, rid);
-      p = loadPage(xid, rid.page); 
-    } end;
-    /** @todo Kludge! Shouldn't special case operations in transactional2. */
-  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
-	    op != OPERATION_LINEAR_INSERT && 
-	    op != OPERATION_UNDO_LINEAR_INSERT &&
-	    op != OPERATION_LINEAR_DELETE && 
-	    op != OPERATION_UNDO_LINEAR_DELETE  ) {
-    rid = dereferenceArrayListRid(p, rid.slot);
-    releasePage(p);
-    try { 
-      p = loadPage(xid, rid.page); 
-    } end;
-  } 
-
+  if(op != OPERATION_SET_RAW && op != OPERATION_INSTANT_SET_RAW) { 
+    if(*page_type_ptr(p) == INDIRECT_PAGE) {
+      releasePage(p);
+      try { 
+	rid = dereferenceRID(xid, rid);
+	p = loadPage(xid, rid.page); 
+      } end;
+      /** @todo Kludge! Shouldn't special case operations in transactional2. */
+    } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
+	      op != OPERATION_LINEAR_INSERT && 
+	      op != OPERATION_UNDO_LINEAR_INSERT &&
+	      op != OPERATION_LINEAR_DELETE && 
+	      op != OPERATION_UNDO_LINEAR_DELETE  ) {
+      rid = dereferenceArrayListRid(p, rid.slot);
+      releasePage(p);
+      try { 
+	p = loadPage(xid, rid.page); 
+      } end;
+    } 
+  }
   /** @todo For logical undo logs, grabbing a lock makes no sense! */
   begin_action(releasePage, p) { 
     TupdateHelper(xid, rid, dat, op, p);
@@ -218,7 +222,7 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 
 }
 
-compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
+/*compensated_function void alTupdate(int xid, recordid rid, const void *dat, int op) {
   Page * p ;
   try {
     p = loadPage(xid, rid.page);
@@ -228,7 +232,7 @@ compensated_function void alTupdate(int xid, recordid rid, const void *dat, int 
     TupdateHelper(xid, rid, dat, op, p);
   } compensate;
 
-}
+  }*/
 
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {

@@ -133,7 +133,7 @@ int truncateNow() {
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   lsn_t log_trunc = LogTruncationPoint();
   if((xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
-    printf("xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
+    //printf("xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
       printf("Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       LogTruncate(rec_lsn);

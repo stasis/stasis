@@ -64,6 +64,15 @@ Operation getInstantSet() {
 	};
 	return o;
 }
+Operation getInstantSetRaw() { 
+	Operation o = {
+		OPERATION_INSTANT_SET_RAW, /* id */
+		SIZEOF_RECORD, /* use the size of the record as size of arg */
+		OPERATION_NOOP, 
+		&operate /* Function */
+	};
+	return o;
+}
 
 
 /** @todo The spirit of instantSet suggests that it should hold a

@@ -63,6 +63,7 @@ terms specified in this license.
 #define Tset(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_SET)
 
 Operation getSet();
+Operation getSetRaw();
 
 Operation getSetRangeInverse();
 Operation getSetRange();

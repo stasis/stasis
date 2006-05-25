@@ -166,24 +166,30 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
       DEBUG("block %d\n", i);
       /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-      alTupdate(xid, tmp, &newFirstPage, op);
+      //      alTupdate(xid, tmp, &newFirstPage, op);
+
+      /**
+	 @XXX the calls to Tupdate in arrayList.c are bypassing operation implementations.
+      */
+      Tupdate(xid, tmp, &newFirstPage, op);
       DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
     }
     
     tmp.slot = MAX_OFFSET_POSITION;
     
     int newMaxOffset = tlp.maxOffset+slots;
-    alTupdate(xid, tmp, &newMaxOffset, op);
+    //    alTupdate(xid, tmp, &newMaxOffset, op);
+    Tupdate(xid, tmp, &newMaxOffset, op);
   } end_ret(compensation_error());
   return 0;
 
 }
 
 compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots) {
-  return TarrayListExtendInternal(xid, rid, slots, OPERATION_INSTANT_SET);
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_INSTANT_SET_RAW);
 }
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
-  return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET);
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET_RAW);
 }
 
 static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {

@@ -58,5 +58,6 @@ terms specified in this license.
 #define TinstantSet(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_INSTANT_SET)
 
 Operation getInstantSet();
+Operation getInstantSetRaw();
 
 #endif

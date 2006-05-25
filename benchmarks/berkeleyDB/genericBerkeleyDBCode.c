@@ -59,7 +59,7 @@ env_open(DB_ENV **dbenvp)
 		}*/
 
 	dbenv->set_tx_max(dbenv, 32000);
-	int max;
+	unsigned int max;
 	dbenv->get_tx_max(dbenv, &max);
 	printf("Max xact count: %d\n", max);
 
