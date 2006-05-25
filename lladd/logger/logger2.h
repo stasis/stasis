@@ -81,7 +81,6 @@ typedef struct {
   int xid; 
   lsn_t prevLSN;
   lsn_t recLSN;
-  LogHandle lh;
 } TransactionLog;
 
 #define LOG_TO_FILE   0
