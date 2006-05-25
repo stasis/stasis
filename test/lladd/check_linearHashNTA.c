@@ -259,7 +259,7 @@ START_TEST(linearHashNTAThreadedTest) {
   }
   for(i = 0; i < NUM_THREADS; i++) {
     void * ret;
-    pthread_join(threads[i], ret);
+    pthread_join(threads[i], &ret);
   }
   Tdeinit();
 } END_TEST
