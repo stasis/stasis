@@ -1,0 +1,8 @@
+Title: Bulk Load Time - Single Transaction
+Plot-Type: 2D Line
+X-Label: Insertions
+Y-Label: Seconds
+X-Range: qw(10 50 100 500 1000)
+Data-Series: "LINEAR_HASH_NTA" linearHashNTA 1 $x
+Data-Series: "Linear_Hash"     logicalHash   1 $x
+Data-Series: "Berkeley_DB"     bdbHash       1 $x

@@ -1,0 +1,17 @@
+#!/usr/bin/perl -w 
+
+use strict;
+
+my $dataSeries = shift @ARGV;
+
+my @tok = split /\-/, $dataSeries;
+
+my $usage = "Usage $0 GRAPH_NAME-SERIES_NAME\n";
+
+@tok == 2 || die $usage;
+#(-r $tok[0]) || (-r $tok[0]) || die ("Couldn't open ."$tok[0]."\n");
+my $seriesLine = `grep Data-Series\: $tok[0].def | grep $tok[1]` 
+    || die "No Data-Series entry\n";
+my $range      = `grep X-Range\: $tok[0].def` || die "No X-Range entry\n";
+
+warn "Series line:\t$seriesLine\rRange:$range";
