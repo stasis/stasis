@@ -9,6 +9,9 @@ volatile static int initialized = 0;
 static int automaticallyTuncating = 0;
 static pthread_t truncationThread;
 
+static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  shutdown_cond  = PTHREAD_COND_INITIALIZER;
+
 static pblHashTable_t * dirtyPages = 0;
 static pthread_mutex_t dirtyPages_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -104,19 +107,31 @@ void truncationDeinit() {
   initialized = 0;
   if(automaticallyTuncating) {
     void * ret = 0;
+    pthread_cond_broadcast(&shutdown_cond);
     pthread_join(truncationThread, &ret);
   }
   automaticallyTuncating = 0;
 }
 
 static void* periodicTruncation(void * ignored) { 
+  pthread_mutex_lock(&shutdown_mutex);
   while(initialized) { 
     if(LogFlushedLSN() - LogTruncationPoint() > TARGET_LOG_SIZE) {
       truncateNow();
     }
     // @todo TRUNCATE_INTERVAL should be dynamically set...
-    sleep(TRUNCATE_INTERVAL);
+    struct timeval now;
+    struct timespec timeout;
+    int timeret = gettimeofday(&now, 0);
+    assert(0 == timeret);
+    
+    timeout.tv_sec = now.tv_sec;
+    timeout.tv_nsec = now.tv_usec;
+    timeout.tv_sec += TRUNCATE_INTERVAL;
+    
+    pthread_cond_timedwait(&shutdown_cond, &shutdown_mutex, &timeout);
   }
+  pthread_mutex_unlock(&shutdown_mutex);
   return (void*)0;
 }
 
