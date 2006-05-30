@@ -1,4 +1,12 @@
 
+## .SECONDARY means that the files will be deleted if their generation
+## is interrupted, but will not be automatically deleted when make
+## exits normally.
+
+.SECONDARY :
+# %.ci-raw %.def
+
+
 # This lets us keep the .def files in their own directory, but treat
 # them as though they're in the current (per run) directory.
 #VPATH=../defs/
@@ -31,8 +39,11 @@ all-ps-graphs  : $(patsubst %, %.ps,  $(GRAPHS))
 	$(MAKE) $(MAKEFLAGS) `grep Data-Series\: $< | \
               perl -ne 's/[\"\s]+/\t/g;print;print"\n"' | \
               cut -f2 | \
-              perl -ne 'chomp;print"$*-";print;print".dat\n"'` \
-	| grep -v 'is up to date.' || true
+              perl -ne 'chomp;print"$*-";print;print".dat\n"'`
+	touch $*.results
+
+# \
+#	| grep -v 'is up to date.' || true
 
 %.png: %.results %.def
 	../plot --format png $* | R $(RFLAGS) > /dev/null
@@ -44,9 +55,13 @@ all-ps-graphs  : $(patsubst %, %.ps,  $(GRAPHS))
 %.def : defs/%.def 
 	ln -s $< .
 
-%.dat : ${all-binaries} ${all-defs}
+
+%.ci-raw : ${all-binaries} ${all-defs} 
+#	echo "Foo" > $*.ci-raw
 	../generateGraphData $*
-	cp defs/$@ $@
+
+%.dat: %.ci-raw ${all-defs}
+	../ci-parser $*.def < $*.ci-raw > $*.dat
 
 %.R : %.def
 	plotting.pl $* > $*.R
@@ -54,7 +69,7 @@ all-ps-graphs  : $(patsubst %, %.ps,  $(GRAPHS))
 clean :
 	rm -f *.def *.R *.png *.pdf *.ps
 veryclean : clean
-	rm -f *.exe *.dat *.results binaries
+	rm -f *.exe *.dat *.ci-raw *.results binaries
 
 binaries:
 	touch binaries
