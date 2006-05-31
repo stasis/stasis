@@ -42,7 +42,8 @@ terms specified in this license.
 
 #define _GNU_SOURCE
 #include <stdio.h>
-
+#include <time.h>
+#include <limits.h>
 #include <config.h>
 #include <check.h>
 
@@ -101,6 +102,117 @@ START_TEST(lhtableTest)
 
 } END_TEST
 
+long myrandom(long x) {
+  double xx = x;
+  double r = random();
+  double max = RAND_MAX;
+  
+  return (long)(xx * (r/max));
+}
+
+//#define myrandom(x)( 
+//   (long)  ( ((double)x) * ((double)random()) / ((double)RAND_MAX) )  )
+
+#define MAXSETS   1000
+#define MAXSETLEN 10000
+#define NUM_ITERS 10
+char * itoa(int i) {
+  char * ret;
+  asprintf(&ret, "%d", i);
+  return ret;
+}
+
+START_TEST(lhtableRandomized) {
+ for(int jjj = 0; jjj < NUM_ITERS; jjj++) { 
+  time_t seed = time(0);
+  printf("\nSeed = %ld\n", seed);
+  srandom(seed);
+
+  struct LH_ENTRY(table) * t = LH_ENTRY(create)(myrandom(10000));
+  int numSets = myrandom(MAXSETS);
+  int* setLength = malloc(numSets * sizeof(int));
+  int** sets = malloc(numSets * sizeof(int*));
+  long nextVal = 1;
+  long eventCount = 0;
+
+  int* setNextAlloc = calloc(numSets, sizeof(int));
+  int* setNextDel   = calloc(numSets, sizeof(int));
+  int* setNextRead  = calloc(numSets, sizeof(int));
+
+  for(int i =0; i < numSets; i++) { 
+    setLength[i] = myrandom(MAXSETLEN);
+    sets[i] = malloc(setLength[i] * sizeof(int));
+    eventCount += setLength[i];
+    for(int j =0; j < setLength[i]; j++) {
+      sets[i][j] = nextVal;
+      nextVal++;
+    }
+  }
+
+  eventCount = myrandom(eventCount * 4);
+  printf("Running %ld events.\n", eventCount);
+  
+  for(int iii = 0; iii < eventCount; iii++) { 
+    int eventType = myrandom(3);  // 0 = insert; 1 = read; 2 = delete.
+    int set = myrandom(numSets);
+    switch(eventType) { 
+    case 0: // insert
+      if(setNextAlloc[set] != setLength[set]) {
+	int keyInt = sets[set][setNextAlloc[set]];
+	char * key = itoa(keyInt);
+	assert(!LH_ENTRY(find)(t, key, strlen(key)+1));
+	LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)(long)keyInt);
+	//	printf("i %d\n", keyInt);
+	assert(LH_ENTRY(find)(t, key, strlen(key)+1));
+	free(key);
+	setNextAlloc[set]++;
+      }
+      break;
+    case 1: // read
+      if(setNextAlloc[set] != setNextDel[set]) { 
+	setNextRead[set]++;
+	if(setNextRead[set] < setNextDel[set]) { 
+	  setNextRead[set] = setNextDel[set];
+	} else if(setNextRead[set] == setNextAlloc[set]) { 
+	  setNextRead[set] = setNextDel[set];
+	}
+	assert(setNextRead[set] < setNextAlloc[set] && setNextRead[set] >= setNextDel[set]);
+	long keyInt = sets[set][setNextRead[set]];
+	char * key = itoa(keyInt);
+	long fret = (long)LH_ENTRY(find)(t, key, strlen(key)+1);
+	assert(keyInt == fret);
+	assert(keyInt == (long)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)(keyInt+1)));
+	assert(keyInt+1 == (long)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)keyInt));
+	free(key);
+      }
+      break;
+    case 2: // delete
+      if(setNextAlloc[set] != setNextDel[set]) { 
+	int keyInt = sets[set][setNextDel[set]];
+	char * key = itoa(keyInt);
+	assert((long)keyInt == (long)LH_ENTRY(find)  (t, key, strlen(key)+1));
+	assert((long)keyInt == (long)LH_ENTRY(remove)(t, key, strlen(key)+1));
+	assert((long)0 == (long)LH_ENTRY(find)(t, key, strlen(key)+1));
+	//	printf("d %d\n", keyInt);
+	free(key);
+	setNextDel[set]++;
+      }
+      break;
+    default:
+      abort();
+    }
+  }
+
+  for(int i = 0; i < numSets; i++) { 
+    free(sets[i]);
+  }
+  free(setNextAlloc);
+  free(setNextDel);
+  free(setNextRead);
+  free(setLength);
+  LH_ENTRY(destroy)(t);
+ } 
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("lhtable");
@@ -113,6 +225,7 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, lhtableTest);
+  tcase_add_test(tc, lhtableRandomized);
 
   /* --------------------------------------------- */
   
