@@ -47,7 +47,8 @@ terms specified in this license.
 
 #define LOG_NAME   "check_lht.log"
 
-/** Insert 1000 values into a hashtable.  (For testing) */
+/** Insert 1000 values into a hashtable.  
+    @test */
 static void test_lht_insert1000(int xid, lladdHash_t * ht) {
   int j;
   for(j =0 ; j < 1000; j++) {
@@ -55,7 +56,8 @@ static void test_lht_insert1000(int xid, lladdHash_t * ht) {
   }
 }
 
-/** Lookup 1000 vales from the hashtable (For testing) */
+/** Lookup 1000 vales from the hashtable 
+    @test */
 static void test_lht_lookup1000(int xid, lladdHash_t * ht, int shouldBeThere) {
   int j, k;
   char * message = shouldBeThere ? "Couldn't lookup value" : "Found value that shouldn't exist";
@@ -76,7 +78,9 @@ static void test_lht_lookup1000(int xid, lladdHash_t * ht, int shouldBeThere) {
 }
 
 
-/** Lookup 1000 vales from the hashtable (For testing) */
+/** Lookup 1000 vales from the hashtable 
+    @test
+ */
 void test_lht_remove1000(int xid, lladdHash_t * ht, int shouldBeThere) {
   int j, k;
   char * message = shouldBeThere ? "Couldn't remove value" : "Removed value that shouldn't exist";
