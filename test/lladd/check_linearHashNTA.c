@@ -271,7 +271,7 @@ START_TEST(linearHashNTAThreadedTest) {
   }
   Tdeinit();
 } END_TEST
-
+#ifdef LONG_TEST
 START_TEST(linearHashNTAThreadedTestRandomized) {
   Tinit();
   struct timeval tv;
@@ -303,7 +303,7 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
   }
   Tdeinit();
 } END_TEST
-
+#endif // LONG_TEST
 START_TEST(linearHashNTAIteratortest) {
   Tinit();
   int xid = Tbegin();
