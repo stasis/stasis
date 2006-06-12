@@ -64,7 +64,6 @@ terms specified in this license.
 #ifndef __lladd_common_h
 #define __lladd_common_h
 
-
 #ifdef __cplusplus
 #  define BEGIN_C_DECLS extern "C" {
 #  define END_C_DECLS   }
@@ -72,6 +71,8 @@ terms specified in this license.
 #  define BEGIN_C_DECLS
 #  define END_C_DECLS
 #endif /* __cplusplus */
+
+#include <limits.h>
 
 /* Should be included by the .c files only. :( */
 /*#if HAVE_CONFIG_H
@@ -99,7 +100,7 @@ extern int errno;
 
 #define byte unsigned char
 #define lsn_t long
-
+#define LSN_T_MAX (LONG_MAX)
 
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/

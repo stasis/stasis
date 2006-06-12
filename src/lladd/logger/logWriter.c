@@ -316,7 +316,7 @@ void syncLog() {
 
   pthread_mutex_lock(&log_read_mutex);
   // newFlushedLSN = ftell(log) + global_offset;
-  newFlushedLSN = nextAvailableLSN -1;
+  newFlushedLSN = nextAvailableLSN;
   pthread_mutex_unlock(&log_read_mutex);
   // Wait to set the static variable until after the flush returns. 
 

@@ -95,6 +95,10 @@ int  LogDeinit();
 
 void LogForce(lsn_t lsn);
 void LogTruncate(lsn_t lsn);
+/** This function is guaranteed to return the LSN of the most recent
+    log entry that has not been flushed to disk.  (If the entire log
+    is flushed, this function returns the LSN of the entry that will
+    be allocated the next time the log is appended to. */
 lsn_t LogFlushedLSN();
 
 

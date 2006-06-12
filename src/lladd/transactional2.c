@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "page/indirect.h"
+#include <limits.h>
 
 TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
@@ -370,7 +371,7 @@ void TsetXIDCount(int xid) {
 }
 
 lsn_t transactions_minRecLSN() { 
-  lsn_t minRecLSN = LogFlushedLSN();
+  lsn_t minRecLSN = LSN_T_MAX; // LogFlushedLSN()
   pthread_mutex_lock(&transactional_2_mutex);
   for(int i = 0; i < MAX_TRANSACTIONS; i++) { 
     if(XactionTable[i].xid != INVALID_XTABLE_XID) { 

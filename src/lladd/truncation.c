@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <lladd/truncation.h>
 #include <pbl/pbl.h>
 #include <lladd/logger/logger2.h>
@@ -53,7 +54,7 @@ int dirtyPages_isDirty(Page * p) {
 }
 
 static lsn_t dirtyPages_minRecLSN() { 
-  lsn_t lsn = LogFlushedLSN ();
+  lsn_t lsn = LSN_T_MAX; // LogFlushedLSN ();
   int* pageid;
   pthread_mutex_lock(&dirtyPages_mutex);
 
@@ -149,9 +150,21 @@ void autoTruncate() {
 
 
 int truncateNow() { 
+  
+
+  // *_minRecLSN() used to return the same value as flushed if
+  //there were no outstanding transactions, but flushed might
+  //not point to the front of a log entry...  now, both return
+  //LSN_T_MAX if there are no outstanding transactions / no
+  //dirty pages.
+  
   lsn_t page_rec_lsn = dirtyPages_minRecLSN();
   lsn_t xact_rec_lsn = transactions_minRecLSN();
+  lsn_t flushed_lsn  = LogFlushedLSN();
+
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
+  rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
+
   lsn_t log_trunc = LogTruncationPoint();
   if((xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
     //printf("xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
@@ -168,16 +181,14 @@ int truncateNow() {
 	
 	page_rec_lsn = dirtyPages_minRecLSN();
 	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
+	rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 	
 	printf("Truncating to rec_lsn = %ld\n", rec_lsn);
 	fflush(stdout);
-	// What was this check for?!?
-	//if(rec_lsn != flushed) {
+
 	LogTruncate(rec_lsn);
 	return 1;
-	//	} else {
-	//	  return 0;
-	//	}
+
       } else { 
 	return 0;
       }
