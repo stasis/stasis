@@ -77,8 +77,7 @@ static int roLogFD = 0;
 static lsn_t flushedLSN_val;
 
 /**
-   Invariant: No thread is writing to flushedLSN.  (This lock is not
-   needed if doubles are set atomically by the processeor.)  Since
+   Invariant: No thread is writing to flushedLSN.  Since
    flushedLSN is monotonically increasing, readers can immmediately
    release their locks after checking the value of flushedLSN.
 */
@@ -90,12 +89,15 @@ static rwl * flushedLSN_lock;
 
    @see writeLogEntry
 */
-static lsn_t nextAvailableLSN = 0;
+static lsn_t nextAvailableLSN;
 
 /**
    The global offset for the current version of the log file.
  */
 static lsn_t global_offset;
+
+// Lock order:  truncateLog_mutex, log_write_mutex, log_read_mutex
+
 /**
    This mutex makes sequences of calls to lseek() and read() atomic.
    It is also used by truncateLog to block read requests while
@@ -170,7 +172,9 @@ int openLogWriter() {
 
 
   flushedLSN_val = 0;
-  nextAvailableLSN = 0;
+
+
+
 
   /*
     Seek append only log to the end of the file.  This is unnecessary,
@@ -207,6 +211,20 @@ int openLogWriter() {
     }
 
   }
+
+  // Initialize nextAvailableLSN.
+
+  LogHandle lh;
+  const LogEntry * le;
+  
+  nextAvailableLSN = sizeof(lsn_t);
+  lh = getLSNHandle(nextAvailableLSN);
+  
+  while((le = nextInLog(&lh))) {
+    nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);;
+    FreeLogEntry(le);
+  }
+
   return 0;
 }
 
@@ -239,7 +257,7 @@ int writeLogEntry(LogEntry * e) {
 
   pthread_mutex_lock(&log_write_mutex);  
   
-  if(!nextAvailableLSN) { 
+  /*  if(!nextAvailableLSN) { 
 
     LogHandle lh;
     const LogEntry * le;
@@ -251,15 +269,13 @@ int writeLogEntry(LogEntry * e) {
       nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);;
       FreeLogEntry(le);
     }
-  }
+    }*/
 
   /* Set the log entry's LSN. */
   e->LSN = nextAvailableLSN;
   //printf ("\nLSN: %ld\n", e->LSN);
   //fflush(stdout);
 
-  nextAvailableLSN += (size + sizeof(lsn_t));
-  
   size_t nmemb = fwrite(&size, sizeof(lsn_t), 1, log);
   if(nmemb != 1) {
     if(feof(log))   { abort();  /* feof makes no sense here */  }
@@ -267,6 +283,7 @@ int writeLogEntry(LogEntry * e) {
       fprintf(stderr, "writeLog couldn't write next log entry: %d\n", ferror(log));
       abort();
     }
+    // XXX nextAvailableLSN not set...
     return LLADD_IO_ERROR;
   }
 
@@ -278,10 +295,16 @@ int writeLogEntry(LogEntry * e) {
       fprintf(stderr, "writeLog couldn't write next log entry: %d\n", ferror(log));
       abort();
     }
+    // XXX nextAvailableLSN not set...
     return LLADD_IO_ERROR;
   }
 
   //fflush(log);
+
+  pthread_mutex_lock(&log_read_mutex);
+  nextAvailableLSN += (size + sizeof(lsn_t));
+  pthread_mutex_unlock(&log_read_mutex);
+
   
   pthread_mutex_unlock(&log_write_mutex);  
 
@@ -292,7 +315,8 @@ void syncLog() {
   lsn_t newFlushedLSN;
 
   pthread_mutex_lock(&log_read_mutex);
-  newFlushedLSN = ftell(log) + global_offset;
+  // newFlushedLSN = ftell(log) + global_offset;
+  newFlushedLSN = nextAvailableLSN -1;
   pthread_mutex_unlock(&log_read_mutex);
   // Wait to set the static variable until after the flush returns. 
 
@@ -365,19 +389,20 @@ static LogEntry * readLogEntry() {
 
   if(bytesRead != size) {
     if(bytesRead == 0) {
-      //      fprintf(stderr, "eof reading entry\n");
-      //      fflush(stderr);
-      return(NULL);
+      fprintf(stderr, "eof reading entry\n");
+      fflush(stderr);
+      abort();
+      //      return(NULL);
     } else if(bytesRead == -1) {
       perror("error reading log");
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
-      printf("short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
+      fprintf(stderr, "short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
       fflush(stderr);
       lsn_t newSize = size - bytesRead;
       lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
-      printf("\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
+      fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
       fflush(stderr);
       abort();
       return (LogEntry*)LLADD_IO_ERROR;

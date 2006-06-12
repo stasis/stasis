@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-
+#include <pthread.h>
 /**
    @todo Look up the balls + bins stuff, and pick FILL_FACTOR in a
    principled way...
@@ -27,12 +27,18 @@
 
 */
 
+#define NAIVE_LOCKING
+
+
 struct LH_ENTRY(table) {
   struct LH_ENTRY(pair_t) * bucketList;
   unsigned int bucketListLength;
   unsigned char bucketListBits;
   unsigned int bucketListNextExtension;
   unsigned int occupancy;
+#ifdef NAIVE_LOCKING
+  pthread_mutex_t lock;
+#endif
 };
 
 
@@ -204,12 +210,18 @@ struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
   ret->bucketListLength = initialSize;
   ret->occupancy = 0;
   //  printf("Table: {size = %d, bits = %d, ext = %d\n", ret->bucketListLength, ret->bucketListBits, ret->bucketListNextExtension);
+#ifdef NAIVE_LOCKING
+  pthread_mutex_init(&(ret->lock), 0);
+#endif
   return ret;
 }
 
 LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
 				      const  LH_ENTRY(key_t) * key, int len,
 					     LH_ENTRY(value_t) * value) { 
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(table->lock));
+#endif
   // @todo 32 vs. 64 bit..
   long bucket = hash(key, len, 
 		     table->bucketListBits, table->bucketListNextExtension);
@@ -266,20 +278,34 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
 		    )) { 
     extendHashTable(table);
   }
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(table->lock));
+#endif
 
   return ret;
 }
 
 LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
 				      const  LH_ENTRY(key_t) * key, int len) { 
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(table->lock));
+#endif
   // @todo 32 vs. 64 bit..
   long bucket = hash(key, len, 
 		     table->bucketListBits, table->bucketListNextExtension);
-  return removeFromLinkedList(table, bucket, key, len);
+
+  LH_ENTRY(value_t) * ret = removeFromLinkedList(table, bucket, key, len);
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(table->lock));
+#endif
+  return ret;
 }
 
 LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
 				   const  LH_ENTRY(key_t) * key, int len) { 
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(table->lock));
+#endif
   // @todo 32 vs. 64 bit..
   int bucket = hash(key, len, 
 		    table->bucketListBits, table->bucketListNextExtension);
@@ -288,6 +314,10 @@ LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
   thePair = findInLinkedList(key, len, 
 			     &(table->bucketList[bucket]), 
 			     &predecessor);
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(table->lock));
+#endif
+
   if(!thePair) { 
     return 0;
   } else {
@@ -297,14 +327,23 @@ LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
 
 void LH_ENTRY(openlist)(const struct LH_ENTRY(table) * table, 
 			struct LH_ENTRY(list)  * list) { 
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(((struct LH_ENTRY(table)*)table)->lock));
+#endif
   list->table = table;
   list->currentPair = 0;
   list->nextPair = 0;
   list->currentBucket = -1;
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(((struct LH_ENTRY(table)*)table)->lock));
+#endif
 
 }
 
 const struct LH_ENTRY(pair_t)* LH_ENTRY(readlist)(struct LH_ENTRY(list)  * list) { 
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(((struct LH_ENTRY(table)*)(list->table))->lock));
+#endif
   assert(list->currentBucket != -2);
   while(!list->nextPair) {
     list->currentBucket++;
@@ -319,12 +358,23 @@ const struct LH_ENTRY(pair_t)* LH_ENTRY(readlist)(struct LH_ENTRY(list)  * list)
   if(list->currentPair) { 
     list->nextPair = list->currentPair->next;
   }
-  return list->currentPair;
+  // XXX is it even meaningful to return a pair object on an unlocked hashtable?
+  const struct LH_ENTRY(pair_t)* ret = list->currentPair;
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(((struct LH_ENTRY(table)*)(list->table))->lock));
+#endif
+  return ret;
 }
 
 void LH_ENTRY(closelist)(struct LH_ENTRY(list) * list) {
+#ifdef NAIVE_LOCKING
+  pthread_mutex_lock(&(((struct LH_ENTRY(table)*)(list->table))->lock));
+#endif
   assert(list->currentBucket != -2);
   list->currentBucket = -2;
+#ifdef NAIVE_LOCKING
+  pthread_mutex_unlock(&(((struct LH_ENTRY(table)*)(list->table))->lock));
+#endif
 }
 
 void LH_ENTRY(destroy) (struct LH_ENTRY(table) * t) {
@@ -342,6 +392,9 @@ void LH_ENTRY(destroy) (struct LH_ENTRY(table) * t) {
   }
   LH_ENTRY(closelist)(&l);
   free(t->bucketList);
+#ifdef NAIVE_LOCKING
+  pthread_mutex_destroy(&(t->lock));
+#endif
   free(t);
 }
 

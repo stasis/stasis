@@ -58,6 +58,7 @@ void dirtyPagesDeinit();
 
 void dirtyPages_add(Page * p); 
 void dirtyPages_remove(Page * p);
+int  dirtyPages_isDirty(Page * p);
 
 void truncationInit();
 void truncationDeinit();

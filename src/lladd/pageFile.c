@@ -76,7 +76,7 @@ void pageRead(Page *ret) {
     dirty page table can be kept up to date. */
 void pageWrite(Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
-  if(!ret->dirty) { 
+  if(!dirtyPages_isDirty(ret)) { 
     DEBUG(" =^)~ "); 
     return; 
   }
@@ -118,7 +118,6 @@ void pageWrite(Page * ret) {
     }
   }
 
-  ret->dirty = 0;
   dirtyPages_remove(ret);
 
   pthread_mutex_unlock(&stable_mutex);

@@ -36,11 +36,20 @@ void dirtyPages_remove(Page * p) {
   //  printf("Removing page %d\n", p->id);
   //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
   //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
+  p->dirty = 0;
   pblHtRemove(dirtyPages, &(p->id), sizeof(int));
   //assert(!ret); <--- Due to a bug in the PBL compatibility mode,
   //there is no way to tell whether the value didn't exist, or if it
   //was null.
   pthread_mutex_unlock(&dirtyPages_mutex);
+}
+
+int dirtyPages_isDirty(Page * p) { 
+  int ret;
+  pthread_mutex_lock(&dirtyPages_mutex);
+  ret = p->dirty;
+  pthread_mutex_unlock(&dirtyPages_mutex);
+  return ret;
 }
 
 static lsn_t dirtyPages_minRecLSN() { 
@@ -81,10 +90,7 @@ static void dirtyPages_flush() {
 
   for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
     p = loadPage(-1, staleDirtyPages[i]);
-    //if(p->dirty) { 
     pageWrite(p);
-      //      dirtyPages_remove(p);
-      //}
     releasePage(p);
   }
   free(staleDirtyPages);

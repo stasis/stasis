@@ -107,7 +107,6 @@ void bufDeinit() {
 	  pblHtRemove( activePages, 0, 0 );
 	  DEBUG("+");
 	  pageWrite(p);
-	  //	  dirtyPages_remove(p);
 
 	}
 	
@@ -233,7 +232,6 @@ static Page * getPage(int pageid, int locktype) {
     assert(ret != dummy_page);
     if(ret->id != -1) { 
       pageWrite(ret);
-      //      dirtyPages_remove(ret);
     }
 
     pageFree(ret, pageid);
