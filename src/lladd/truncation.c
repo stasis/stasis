@@ -17,9 +17,15 @@ static pblHashTable_t * dirtyPages = 0;
 static pthread_mutex_t dirtyPages_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int lladd_enableAutoTruncation = 1;
+#ifdef LONG_TEST
+#define TARGET_LOG_SIZE (1024 * 1024 * 5)
+#define TRUNCATE_INTERVAL 1
+#define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 1)
+#else 
 #define TARGET_LOG_SIZE (1024 * 1024 * 50)
 #define TRUNCATE_INTERVAL 1
-#define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 10)
+#define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 25)
+#endif
 void dirtyPages_add(Page * p) {
   pthread_mutex_lock(&dirtyPages_mutex);
   if(!p->dirty) { 

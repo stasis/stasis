@@ -50,6 +50,10 @@ terms specified in this license.
 #include <limits.h>
 #include <math.h>
 #include <pthread.h>
+
+#include <sys/time.h>
+#include <time.h>
+
 #define LOG_NAME   "check_linearHashNTA.log"
 #define NUM_ENTRIES 100000
 /** @test
@@ -187,9 +191,13 @@ START_TEST(linearHashNTAVariableSizetest)
 } END_TEST
 
 
+#define DEFAULT_NUM_THREADS 100
 
-#define NUM_THREADS 100
-#define NUM_T_ENTRIES 500
+#define DEFAULT_NUM_T_ENTRIES 500
+
+int NUM_THREADS = DEFAULT_NUM_THREADS;
+int NUM_T_ENTRIES = DEFAULT_NUM_T_ENTRIES;
+
 typedef struct { 
   int thread;
   recordid rid;
@@ -256,6 +264,38 @@ START_TEST(linearHashNTAThreadedTest) {
     args->thread = i;
     args->rid= rid;
     pthread_create(&threads[i], NULL, &worker, args);
+  }
+  for(i = 0; i < NUM_THREADS; i++) {
+    void * ret;
+    pthread_join(threads[i], &ret);
+  }
+  Tdeinit();
+} END_TEST
+
+START_TEST(linearHashNTAThreadedTestRandomized) {
+  Tinit();
+  struct timeval tv;
+  gettimeofday(&tv, 0);
+
+  srandom(tv.tv_sec * 1000000 + tv.tv_usec);
+  NUM_THREADS = (int)(((double)random()/(double)RAND_MAX)* ((double)DEFAULT_NUM_THREADS) * 5.0);
+  NUM_T_ENTRIES = (int)(((double)random()/(double)RAND_MAX) * ((double)DEFAULT_NUM_T_ENTRIES) * 5.0);
+  
+  printf("\n%d threads, %d entries", NUM_THREADS, NUM_T_ENTRIES);
+
+  int xid = Tbegin();
+  recordid rid = ThashCreate(xid, sizeof(recordid), sizeof(int));
+  int i;
+  Tcommit(xid);
+  pthread_t threads[NUM_THREADS];
+  for(i = 0; i < NUM_THREADS; i++) {
+    linear_hash_worker_args * args = malloc(sizeof(linear_hash_worker_args));
+    args->thread = i;
+    args->rid= rid;
+    pthread_create(&threads[i], NULL, &worker, args);
+    if(!(i % 50)) { 
+      sleep(1);
+    }
   }
   for(i = 0; i < NUM_THREADS; i++) {
     void * ret;
@@ -365,6 +405,11 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
+#ifdef LONG_TEST
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+#endif
   tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);
   tcase_add_test(tc, linearHashNTAVariableSizetest);
