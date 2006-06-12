@@ -171,12 +171,13 @@ int truncateNow() {
 	
 	printf("Truncating to rec_lsn = %ld\n", rec_lsn);
 	fflush(stdout);
-	if(rec_lsn != flushed) {
-	  LogTruncate(rec_lsn);
-	  return 1;
-	} else {
-	  return 0;
-	}
+	// What was this check for?!?
+	//if(rec_lsn != flushed) {
+	LogTruncate(rec_lsn);
+	return 1;
+	//	} else {
+	//	  return 0;
+	//	}
       } else { 
 	return 0;
       }

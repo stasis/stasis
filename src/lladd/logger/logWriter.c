@@ -463,6 +463,7 @@ int truncateLog(lsn_t LSN) {
   if(global_offset + sizeof(lsn_t) >= LSN) {
     /* Another thread beat us to it...the log is already truncated
        past the point requested, so just return. */
+    printf("Skipping truncate.  global_offset = %ld, requested LSN = %ld\n", global_offset, LSN);
     pthread_mutex_unlock(&truncateLog_mutex);
     return 0;
   }
@@ -530,6 +531,9 @@ int truncateLog(lsn_t LSN) {
   
     perror("Error replacing old log file with new log file");
     return LLADD_IO_ERROR;
+  } else {
+    printf("Truncation complete.\n");
+    fflush(stdout);
   }
   
   int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
