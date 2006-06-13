@@ -265,9 +265,10 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
     assert(!memcmp(thePair->key, key, len));
     struct LH_ENTRY(pair_t) * pairInBucket = 0;
     // Is thePair in the bucket?
-    assert((pairInBucket = findInLinkedList(key, len, 
-					    &(table->bucketList[bucket]), 
-					    &junk)));
+    pairInBucket = findInLinkedList(key, len, 
+				    &(table->bucketList[bucket]), 
+				    &junk);
+    assert(pairInBucket);
     assert(pairInBucket == thePair);
     // Exactly one time?
     assert(!findInLinkedList(key, len, pairInBucket->next, &junk));

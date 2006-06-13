@@ -91,7 +91,9 @@ int main (int argc, char** argv) {
   dfa_initialize_new (dfaSet, 10001, 100);
   
   /*  initial_sm1 = allocMachine(&(dfaSet->monoTree)); */
-  assert(NULL != (initial_sm1 = allocSmash(dfaSet->smash)));
+  initial_sm1 = allocSmash(dfaSet->smash);
+  assert(NULL != initial_sm1);
+  //(initial_sm1 = allocSmash(dfaSet->smash)));
   
   initial_sm1->message.from_machine_id = initial_sm1->machine_id;
   initial_sm1->message.to_machine_id   = NULL_MACHINE;
