@@ -142,7 +142,7 @@ compensated_function void pageOperationsInit() {
 /*  Page p;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
-  assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
+//  assert(!posix_memalign((void **)&(p.memAddr), PAGE_SIZE, PAGE_SIZE));
   p.id = 0;*/
   Page * p;
   try {
