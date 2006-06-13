@@ -255,7 +255,7 @@ START_TEST(pageCheckMacros) {
 
   assert(*lsn_ptr(&p) == lsn);
   assert(*page_type_ptr(&p) == 10);
-  assert(*end_of_usable_space_ptr(&p) == 10);
+  assert(end_of_usable_space_ptr(&p) == page_type_ptr(&p));
   assert(*freespace_ptr(&p) == 15);
   assert(*numslots_ptr(&p)  == 20);
   assert(*slot_ptr(&p, 0) == 30);
