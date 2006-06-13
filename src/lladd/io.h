@@ -5,7 +5,6 @@
 
 */
 
-#include <stdio.h>
 #include <lladd/common.h>
 
 BEGIN_C_DECLS

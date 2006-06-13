@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "io.h"
 #include <stdlib.h>
 long myFseek(FILE * f, long offset, int whence) {
