@@ -55,7 +55,7 @@ terms specified in this license.
 
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
-
+#include <lladd/transactional.h>
 /*#define DEBUG 1*/
 
 #define LOG_FILE "logfile.txt"
@@ -145,20 +145,20 @@ terms specified in this license.
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 
+#define SLOT_TYPE_BASE PAGE_SIZE
+
 /** This constant is used as a placeholder to mark slot locations that are invalid.
     @see slotted.c, indirect.c
 */
-#define INVALID_SLOT PAGE_SIZE
+#define INVALID_SLOT  (SLOT_TYPE_BASE+0)
 /** This constant is used as a placeholder to mark slot locations that contain blobs. 
     @see slotted.c, indirect.c,  blobManager.c  */
-#define BLOB_SLOT (PAGE_SIZE + 1)
+#define BLOB_SLOT     (SLOT_TYPE_BASE + 1)
+#define SLOT_TYPE_END (SLOT_TYPE_BASE + 2)
 
-/*  #define NORMAL_SLOT (PAGE_SIZE + 1)
-  #define BLOB_SLOT (PAGE_SIZE + 2)*/
-
-/* * @ deprecated Replace all occurrances with sizeof(blob_record_t) */
-//#define BLOB_REC_SIZE sizeof(blob_record_t) /*12*/
-
+/** Initialized statically in transactional2.c */
+extern const short SLOT_TYPE_LENGTHS[];
+ 
 #define BLOB_THRESHOLD_SIZE (PAGE_SIZE-30)
 
 #define BITS_PER_BYTE 8
