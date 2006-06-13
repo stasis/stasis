@@ -63,7 +63,7 @@ void pageRead(Page *ret) {
     } else if(read_size == -1) { 
       perror("pageFile.c couldn't read");
       fflush(NULL);
-      assert(0);
+      abort();
     } else {
       printf("pageFile.c readfile: read_size = %d, errno = %d\n", read_size, errno);
       abort();
