@@ -44,6 +44,11 @@ terms specified in this license.
  *
  * Implementation of log truncation for lladd.
  * 
+ * @todo TRUNCATE_INTERVAL should be dynamically set...
+ * @todo log truncation policy should be set of the percentage of the log that can be truncated
+ * (instead of by absolute logfile size)
+ * @todo avoid copying the non-truncated tail of the log each time truncation occurs.
+ * 
  * $Id$
  * 
  */

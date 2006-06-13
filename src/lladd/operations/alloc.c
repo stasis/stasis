@@ -77,13 +77,6 @@
 */
 //}end
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  /* * @ todo Currently, T alloc () needs to clean up the page type (for recovery).  Should this be elsewhere? */
-
- /* if(*page_type_ptr(p) == UNINITIALIZED_PAGE) {
-    *page_type_ptr(p) = SLOTTED_PAGE;
-  }
-
-  assert(*page_type_ptr(p) == SLOTTED_PAGE); */
   
   if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
     allocBlob(xid, p, lsn, rid);
@@ -203,7 +196,6 @@ compensated_function recordid Talloc(int xid, long size) {
 compensated_function recordid TallocFromPage(int xid, long page, long size) {
   recordid rid;
 
-  Page * p = NULL;
   if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
     try_ret(NULLRID) { 
       rid = preAllocBlobFromPage(xid, page, size);
@@ -211,29 +203,22 @@ compensated_function recordid TallocFromPage(int xid, long page, long size) {
     } end_ret(NULLRID);
   } else {
     begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+      Page * p = loadPage(xid, page);
       pthread_mutex_lock(&talloc_mutex); 
-      rid = slottedPreRallocFromPage(xid, page, size, &p);
-      if(rid.size == size) { 
-	Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-      } else {
-	p = loadPage(xid, page);
+
+      if(slottedFreespace(p) < size) { 
 	slottedCompact(p);
-	releasePage(p);
-	p = NULL;
-	rid = slottedPreRallocFromPage(xid, page, size, &p);
-	if(rid.size == size) {
-	  Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-	} else {
-	  assert(rid.size < 0);
-	}
       }
-      if(p) {
-	/* @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes.. */      
-	releasePage(p);
+      if(slottedFreespace(p) < size) { 
+	rid = NULLRID;
+      } else { 
+	rid = slottedRawRalloc(p, size);
+	assert(rid.size == size);
+	Tupdate(xid, rid, NULL, OPERATION_ALLOC);
       }
+      releasePage(p);
     } compensate_ret(NULLRID);
   }
-  
   return rid;
 }
 

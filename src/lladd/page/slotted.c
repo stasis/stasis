@@ -196,16 +196,12 @@ size_t slottedFreespace(Page * page) {
     @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
 */
 compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
-  
   recordid ret;
-  
   int isBlob = 0;
-
   if(size == BLOB_SLOT) {
     isBlob = 1;
     size = sizeof(blob_record_t);
   }
-
   assert(size < BLOB_THRESHOLD_SIZE);
 
 
@@ -237,8 +233,9 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
     } end_ret(NULLRID);
     slottedPageInitialize(*pp);
   }
-  
+  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
   ret = slottedRawRalloc(*pp, size);
+  assert(ret.size == size);
   
   if(isBlob) {
     *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
@@ -249,33 +246,6 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
   return ret;
 }
 
-compensated_function recordid slottedPreRallocFromPage(int xid, long page, long size, Page **pp) {
-  int isBlob = 0;
-  if(size == BLOB_SLOT) {
-    isBlob = 1;
-    size = sizeof(blob_record_t);
-  }
-  try_ret(NULLRID) {
-    *pp = loadPage(xid, page);
-  } end_ret(NULLRID);
-  if(slottedFreespace(*pp) < size) {
-    releasePage(*pp);
-    *pp = NULL;
-    return NULLRID;
-  }
-  
-  if(*page_type_ptr(*pp) == UNINITIALIZED_PAGE) {
-    slottedPageInitialize(*pp);
-  }
-  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
-  recordid ret = slottedRawRalloc(*pp, size);
-  assert(ret.size == size);
-  if(isBlob) {
-    *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
-  }
-  return ret;
-  
-}
 
 recordid slottedRawRalloc(Page * page, int size) {
 

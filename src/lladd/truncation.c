@@ -132,7 +132,6 @@ static void* periodicTruncation(void * ignored) {
     if(LogFlushedLSN() - LogTruncationPoint() > TARGET_LOG_SIZE) {
       truncateNow();
     }
-    // @todo TRUNCATE_INTERVAL should be dynamically set...
     struct timeval now;
     struct timespec timeout;
     int timeret = gettimeofday(&now, 0);
