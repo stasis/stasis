@@ -88,17 +88,6 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-#define lsn_ptr(page)                   (((lsn_t*)(&((page)->memAddr[PAGE_SIZE])))-1)
-#define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
-#define end_of_usable_space_ptr(page)   page_type_ptr((page))
-
-#define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
-#define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
-#define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
-#define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
-
-#define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
-
 /** 
     The page type contains in-memory information about pages.  This
     information is used by LLADD to track the page while it is in
@@ -180,6 +169,21 @@ struct Page_s {
   rwl * loadlatch;
 
 };
+
+#define lsn_ptr(page)                   (((lsn_t*)(&((page)->memAddr[PAGE_SIZE])))-1)
+#define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
+#define end_of_usable_space_ptr(page)   page_type_ptr((page))
+
+#define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
+#define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
+#define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
+#define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
+
+#define decode_size(size) (((size) >= SLOT_TYPE_BASE) ? SLOT_TYPE_LENGTHS[(size)-SLOT_TYPE_BASE] : (size))
+
+#define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
+
+
 
 /**
  * initializes all the global variables needed by the functions
