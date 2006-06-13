@@ -59,7 +59,7 @@ terms specified in this license.
  * $Id$
  */
 
-//#define NDEBUG
+//#define NDEBUG 1
 
 #ifndef __lladd_common_h
 #define __lladd_common_h
@@ -72,6 +72,7 @@ terms specified in this license.
 #  define END_C_DECLS
 #endif /* __cplusplus */
 
+#include <stdint.h> // uint32, et. al.
 #include <limits.h>
 
 /* Should be included by the .c files only. :( */
@@ -98,9 +99,15 @@ terms specified in this license.
 extern int errno;
 #endif
 
-#define byte unsigned char
-#define lsn_t long
-#define LSN_T_MAX (LONG_MAX)
+//#define byte unsigned char
+//#define lsn_t long
+
+typedef unsigned char byte;
+//@todo lsn_t should be unsigned.
+// If it were unsigned, it could be typedef'ed from size_t.
+typedef int64_t lsn_t;
+#define LSN_T_MAX (INT64_MAX)
+
 
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/
