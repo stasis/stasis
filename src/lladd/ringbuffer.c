@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <lladd/ringbuffer.h>
 
+//#define TRACK_OFFSETS
+
 /* Could also use mod here, but 64-bit mod under intel is kinda slow,
    and (in theory) gcc should only calculate ((lsn)-(x)->start) one
    time...besides, I implemented it this way before I thought of using mod. ;) */
@@ -18,7 +20,7 @@ struct ringBufferLog_s {
   /** An array of bytes that holds the contents of the ringbuffer. */
   byte * buf;
   /** The number of bytes in the ringbuffer */
-  int size;
+  unsigned int size;
   /** The first byte in the ringbuffer that is valid. */
   lsn_t start;
   /** The last byte in the ringbuffer that is valid.  Note that due to
@@ -26,14 +28,19 @@ struct ringBufferLog_s {
       simply means that the ring buffer wraps around the end of
       buf. */
   lsn_t end;
+#ifdef TRACK_OFFSETS
   /** The offset of the first byte in the ring buffer.  Ignoring
       wrap-around, lsn(buf[i]) = offset + (i-start). */
   lsn_t offset;
+#endif
 } ringBufferLog_s;
 
 
 #define lsn_to_offset(x, lsn) ((lsn) % (x)->size)
+
+#ifdef TRACK_OFFSETS
 #define offset_to_lsn(x, lsn) ((lsn) + (x)->offset)
+#endif
 
 static int truncateLog(ringBufferLog_t * log, lsn_t lsn);
 
@@ -44,8 +51,9 @@ ringBufferLog_t * openLogRingBuffer(size_t size, lsn_t initialOffset) {
   ret->start = initialOffset % size;
   ret->end   = initialOffset % size;
   
-  ret->offset= initialOffset / size;;
-  
+#ifdef TRACK_OFFSETS
+  ret->offset= initialOffset / size;
+#endif
   return ret;
 }
 
@@ -61,7 +69,7 @@ void closeLogRingBuffer(ringBufferLog_t * log) {
     and end, but this is optional.
 */
 static void memcpyFromRingBuffer(byte * dest, ringBufferLog_t * log, lsn_t lsn, size_t size) { 
-  int offset = lsn_to_offset(log, lsn);
+  lsn_t offset = lsn_to_offset(log, lsn);
   if(offset + size < log->size) {
     memcpy(dest, &(log->buf[offset]), size);
   } else {
@@ -131,11 +139,14 @@ int ringBufferTruncateRead(byte * buf, ringBufferLog_t * log, size_t size) {
 /** static because it does no error checking. */
 static int truncateLog(ringBufferLog_t * log, lsn_t lsn) {
 
-  int newStart = lsn_to_offset(log, lsn);
+#ifdef TRACK_OFFSETS
+  lsn_t newStart = lsn_to_offset(log, lsn);
 
-  if(newStart < lsn_to_offset(log, log->start));  // buffer wrapped. 
+  if(newStart < lsn_to_offset(log, log->start)) {  // buffer wrapped. 
+    log->offset += log->size;
+  }
+#endif
 
-  log->offset += log->size;
   log->start = lsn;
 
   return 0;
