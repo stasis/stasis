@@ -6,7 +6,7 @@
 #include <assert.h>
 #include "pageFile.h"
 
-volatile static int initialized = 0;
+static volatile int initialized = 0;
 static int automaticallyTuncating = 0;
 static pthread_t truncationThread;
 
