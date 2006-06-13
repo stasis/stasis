@@ -23,7 +23,7 @@ int xidCount = 0;
 
 const recordid ROOT_RECORD = {1, 0, -1};
 const recordid NULLRID = {0,0,-1};
-
+const short SLOT_TYPE_LENGTHS[] = { 0, sizeof(blob_record_t), -1};
 /** 
     Locking for transactional2.c works as follows:
     
@@ -329,7 +329,7 @@ int Tdeinit() {
 	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
 		if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
 			Tabort(XactionTable[i].xid);
-			printf("WARNING: Tdeinit() is aborting transaction %d\n", XactionTable[i].xid);
+			fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", XactionTable[i].xid);
 		}
 	}
 	assert( numActiveXactions == 0 );
@@ -349,8 +349,8 @@ void Trevive(int xid, long lsn) {
   
   if(XactionTable[index].xid != INVALID_XTABLE_XID) {
     if(xid != XactionTable[index].xid) {
-      printf("Clashing Tprepare()'ed XID's encountered on recovery!!\n");
-      assert(0);
+      fprintf(stderr, "Clashing Tprepare()'ed XID's encountered on recovery!!\n");
+      abort();
     }
     assert(XactionTable[index].xid == xid);
     assert(XactionTable[index].prevLSN == lsn);
