@@ -1,6 +1,13 @@
 EXTRA_DIST = reconf
 SUBDIRS = src test utilities benchmarks
-AM_CFLAGS = -g -Wall -pedantic -Wconversion
+export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -Winline 
+## GOAL:  Make these not warn!
+#-Wextra -Wno-unused-parameter
+
+# -feliminate-unused-debug-symbols -feliminate-unused-debug-types -funit-at-a-time -finline-functions -fno-keep-static-consts
+
+#-funit-at-a-time => -finline-functions-called-once
+#-Wconversion
 
 docs:
 	doxygen doc/Doxyfile-api

@@ -20,4 +20,5 @@ liblladd_a_SOURCES=crc32.c lhtable.c common.c stats.c io.c bufferManager.c linke
 
 #		   logger/logMemory.c \ ringbuffer.c \   asdfas
 #operations/lladdhash.c 
-AM_CFLAGS= -g -Wall -pedantic -std=gnu99
+#AM_CFLAGS= -g -Wall -pedantic -std=gnu99
+AM_CFLAGS=${GLOBAL_CFLAGS}

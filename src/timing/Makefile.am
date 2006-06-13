@@ -1,3 +1,3 @@
 bin_PROGRAMS=getTimeOfDay
-AM_CFLAGS= -g -Wall -pedantic
+AM_CFLAGS=${GLOBAL_CFLAGS}
 
