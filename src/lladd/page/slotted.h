@@ -54,6 +54,11 @@ Slotted page layout:
 
  $Id$
 
+@todo slotted.c shouldn't need to include the buffer manager calls 
+                (like loadPage(), releasePage()).
+@todo slotted.c Should know that specific record types (like blobs) exist,
+                (but should not hardcode information about these types)
+
 ************************************************************************/
 
 #define SLOTTED_PAGE_OVERHEAD_PER_RECORD (2 * sizeof(short))
