@@ -30,7 +30,7 @@ Operation getRealloc();
 */
 compensated_function recordid Talloc(int xid, long size);
 
-compensated_function recordid TallocFromPage(int xid, long page, long size);
+compensated_function recordid TallocFromPage(int xid, long page, unsigned long size);
 
 /** 
    Free a record.  

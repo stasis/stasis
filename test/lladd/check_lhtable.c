@@ -105,9 +105,9 @@ START_TEST(lhtableTest)
 long myrandom(long x) {
   double xx = x;
   double r = random();
-  double max = RAND_MAX;
-  
-  return (long)(xx * (r/max));
+  double max = ((long)RAND_MAX)+1;
+  max /= xx;
+  return (long)((r/max));
 }
 
 //#define myrandom(x)( 
@@ -126,7 +126,11 @@ START_TEST(lhtableRandomized) {
  for(int jjj = 0; jjj < NUM_ITERS; jjj++) { 
   time_t seed = time(0);
   printf("\nSeed = %ld\n", seed);
-  srandom(seed);
+  if(jjj) { 
+    srandom(seed);
+  } else { 
+    srandom(1150241705);  // This seed gets the random number generator to hit RAND_MAX, which makes a good test for myrandom()
+  }
 
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(myrandom(10000));
   int numSets = myrandom(MAXSETS);

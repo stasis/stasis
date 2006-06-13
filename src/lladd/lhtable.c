@@ -127,7 +127,7 @@ static struct  LH_ENTRY(pair_t)* insertIntoLinkedList(struct LH_ENTRY(table) * t
   return thePair;
 }
 static void extendHashTable(struct LH_ENTRY(table) * table) { 
-  int maxExtension = twoToThe(table->bucketListBits-1);
+  unsigned int maxExtension = twoToThe(table->bucketListBits-1);
   // If table->bucketListNextExtension == maxExtension, then newBucket =
   // twoToThe(table->bucketListBits), which is one higher than the hash can
   // return.
@@ -140,8 +140,8 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
     maxExtension = twoToThe(table->bucketListBits-1);
   }
   
-  int splitBucket   = table->bucketListNextExtension - 1;
-  int newBucket     = table->bucketListNextExtension - 1 + maxExtension;
+  unsigned int splitBucket   = table->bucketListNextExtension - 1;
+  unsigned int newBucket     = table->bucketListNextExtension - 1 + maxExtension;
 
   // Assumes realloc is reasonably fast... This seems to be a good
   // assumption under linux.

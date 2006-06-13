@@ -256,12 +256,12 @@ BEGIN_C_DECLS
 /**
  * represents how to look up a record on a page
  * @todo size should be 64bit.  Unfortunately, 'long' is 32 bit on ia32...
- * @todo signed long long is a stopgap fix.. should do this in a prinicpled way.
+ * @todo int64_t is a stopgap fix.. should do this in a prinicpled way.
  */
 typedef struct {
   int page;
   int slot;
-  signed long long size;
+  int64_t size; //signed long long size;
 } recordid;
 
 typedef struct {

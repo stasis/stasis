@@ -21,6 +21,7 @@ void iterator_init() {
    linearHashNTAIterator_next, 
    linearHashNTAIterator_key, 
    linearHashNTAIterator_value,
+   noopTupDone,
    noopTupDone
   };
   lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
@@ -30,6 +31,7 @@ void iterator_init() {
     arrayIterator_next,         
     arrayIterator_key,         
     arrayIterator_value,         
+    noopTupDone,
     noopTupDone
   };
   lladdIterator_register(ARRAY_ITERATOR, array_def);

@@ -193,7 +193,7 @@ compensated_function recordid Talloc(int xid, long size) {
   
 }
 
-compensated_function recordid TallocFromPage(int xid, long page, long size) {
+compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
   recordid rid;
 
   if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 

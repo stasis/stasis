@@ -60,7 +60,7 @@ void unlockBucket(int bucket) {
   pthread_cond_broadcast(&bucketUnlocked);
 }
 
-void rehash(int xid, recordid hash, int next_split, int i, int keySize, int valSize);
+void rehash(int xid, recordid hash, unsigned int next_split, unsigned int i, unsigned int keySize, unsigned int valSize);
 void update_hash_header(int xid, recordid hash, int i, int next_split);
 int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
 		     void * key, int keySize, int valSize, recordid * deletedEntry);
@@ -142,7 +142,7 @@ void update_hash_header(int xid, recordid hash, int i, int next_split) {
   } end;
 }
 
-void rehash(int xid, recordid hashRid, int next_split, int i, int keySize, int valSize) {
+void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, unsigned int keySize, unsigned int valSize) {
   try { 
     int firstA = 1;  // Is 'A' the recordid of a bucket? 
     int firstD = 1;  // What about 'D'? 

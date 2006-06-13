@@ -113,11 +113,11 @@ void slottedCompact(Page * page) {
 
 
 /*static pthread_mutex_t lastFreepage_mutex; */
-  static unsigned int lastFreepage = -10; 
+  static uint64_t lastFreepage = -10; 
 
 void slottedPageInit() {
   /*pthread_mutex_init(&lastFreepage_mutex , NULL);  */
-  lastFreepage = -1;
+  lastFreepage = UINT64_MAX;
 }
 
 void slottedPageDeInit() {
@@ -192,7 +192,7 @@ size_t slottedFreespace(Page * page) {
 
     @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
 */
-compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
+compensated_function recordid slottedPreRalloc(int xid, unsigned long size, Page ** pp) {
   recordid ret;
   int isBlob = 0;
   if(size == BLOB_SLOT) {
@@ -204,7 +204,7 @@ compensated_function recordid slottedPreRalloc(int xid, long size, Page ** pp) {
 
   /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
 
-  if(lastFreepage == -1) {
+  if(lastFreepage == UINT64_MAX) {
     try_ret(NULLRID) {
       lastFreepage = TpageAlloc(xid);
     } end_ret(NULLRID);
