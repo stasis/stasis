@@ -70,12 +70,6 @@ void commitBlobs(int xid);
 
 void abortBlobs(int xid);
 
-typedef struct {
-  size_t offset;
-  size_t size;
-  unsigned fd : 1;
-} blob_record_t;
-
 
 compensated_function recordid preAllocBlob(int xid, long blobsize);
 compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobsize);

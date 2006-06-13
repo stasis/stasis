@@ -264,6 +264,14 @@ typedef struct {
   signed long long size;
 } recordid;
 
+typedef struct {
+  size_t offset;
+  size_t size;
+  unsigned fd : 1;
+} blob_record_t;
+
+
+
 extern const recordid ROOT_RECORD;
 extern const recordid NULLRID;
 

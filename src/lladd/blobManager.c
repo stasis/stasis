@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <config.h>
 #include <lladd/common.h>
 
@@ -137,6 +138,8 @@ void openBlobStore() {
 
   dirtyBlobs = pblHtCreate();
   pthread_mutex_init(&blob_hash_mutex, NULL);
+
+  
 }
 
 /** Discards all changes to dirty blobs, and closes the blob store. 
