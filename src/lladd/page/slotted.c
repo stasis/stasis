@@ -6,10 +6,7 @@
 #include "slotted.h"
 #include <assert.h>
 
-/* ------------------ STATIC FUNCTIONS.  NONE OF THESE ACQUIRE LOCKS
-                      ON THE MEMORY THAT IS PASSED INTO THEM -------------*/
-
-static void __really_do_ralloc(Page * page, recordid rid) ;
+static void really_do_ralloc(Page * page, recordid rid) ;
 
 /**
    
@@ -45,7 +42,7 @@ void slottedCompact(Page * page) {
 	numSlots = *numslots_ptr(page);
 
 	// Iterate over the slots backwards.  This lets
-	// __really_do_ralloc() create the entire freelist at once.
+	// really_do_ralloc() create the entire freelist at once.
 	// This is a bit inefficient, since it then must remove things
 	// from the freelist, but it ensures that the list is kept in
 	// sorted order, and we rely upon that later.
@@ -62,7 +59,7 @@ void slottedCompact(Page * page) {
 	    rid.slot = i;
 	    rid.size = *slot_length_ptr(page, i);
 
-	    __really_do_ralloc(&bufPage, rid);
+	    really_do_ralloc(&bufPage, rid);
 
 	    memcpy(record_ptr(&bufPage, rid.slot), record_ptr(page, rid.slot), rid.size);
 	    
@@ -141,7 +138,7 @@ void slottedPageInitialize(Page * page) {
 size_t slottedFreespaceUnlocked(Page * page);
 
 /** 
-    This is needed to correctly implement __really_do_ralloc(), since
+    This is needed to correctly implement really_do_ralloc(), since
     it takes the position of the new slot's header into account.
 */
 size_t slottedFreespaceForSlot(Page * page, int slot) { 
@@ -265,7 +262,7 @@ recordid slottedRawRalloc(Page * page, int size) {
 	  *slot_length_ptr(page, rid.slot) = 0;
 	}  
 	  
-	__really_do_ralloc(page, rid);
+	really_do_ralloc(page, rid);
 
 	/*	DEBUG("slot: %d freespace: %d\n", rid.slot, freeSpace); */
 
@@ -281,13 +278,13 @@ recordid slottedRawRalloc(Page * page, int size) {
   @todo Allocation is scary without locking.  Consider this situation:
 
    (1) *numslot_ptr(page) is 10
-   (2) An aborting transcation calls __really_do_ralloc(page) with rid.slot = 12
+   (2) An aborting transcation calls really_do_ralloc(page) with rid.slot = 12
    (3) *numslot_ptr(page) must be incremented to 12.  Now, what happens to 11?
      - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
    (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
        be reused by aborting transactions...)
 */
-static void __really_do_ralloc(Page * page, recordid rid) {
+static void really_do_ralloc(Page * page, recordid rid) {
 
   short freeSpace;
   
@@ -426,14 +423,14 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	// Make sure the slot is invalid.  If the slot has not been used yet, then 
 	// slot_length_ptr will still be zero, so we allow that too.
 	if((*slot_length_ptr(page, rid.slot) == 0) || (*slot_ptr(page, rid.slot) == INVALID_SLOT)) {
-	  __really_do_ralloc(page, rid);
+	  really_do_ralloc(page, rid);
 	
        	} else {
 
 	  // Check to see that the slot happens to be the right size,
 	  // so we are (hopefully) just overwriting a slot with
 	  // itself, or that the slot is a blob slot.  This can happen
-	  // under normal operation, since __really_do_ralloc() must
+	  // under normal operation, since really_do_ralloc() must
 	  // be called before and after the log entry is generated.
 	  // (See comment above...)  
 	  // @todo Check to see that the blob is the right size?
