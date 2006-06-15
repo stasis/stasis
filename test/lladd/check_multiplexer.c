@@ -107,7 +107,10 @@ static void * trygo( void * arg) {
   pthread_mutex_unlock(&mutex);
   
   int itRet = 0;
+  assert(it->type >= 0 && it->type < MAX_ITERATOR_TYPES);
   while((itRet = Titerator_tryNext(-1, it))) {
+    assert(it->type >= 0 && it->type < MAX_ITERATOR_TYPES);
+  
     byte * key, * value;
     int keySize, valueSize;
     
@@ -147,12 +150,14 @@ static void * go2( void * arg) {
     
     dirtyFifo = * dirtyFifo_ptr;
 
-    assert(dirtyFifoSize == sizeof(lladdFifo_t *));
-    
+    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);    
+
     Titerator_tupleDone(-1, it);
 
-    trygo(dirtyFifo->iterator);
+    assert(dirtyFifoSize == sizeof(lladdFifo_t *));
+    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);    
 
+    trygo(dirtyFifo->iterator);
   }  
   return NULL;
 }
@@ -195,7 +200,7 @@ START_TEST(multiplexTest) {
 
   lladdIterator_t * it = ThashGenericIterator(xid, hash);
   lladdFifo_t * dirtyFifos = logMemoryFifo((lsn_t)(((double)NUM_INSERTS) * 0.5), 0);   //  8 bytes of memory used per queued request.
-  //  lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
+  //lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
   lladdFifoPool_t * fifoPool = lladdFifoPool_pointerPoolInit(NUM_THREADS, NUM_BYTES_IN_FIFO/10, NULL, dirtyFifos);
 
   lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, 
@@ -244,8 +249,9 @@ START_TEST(multiplexTest) {
   
   lladdMultiplexer_join(mux);
 
-  for(i = 0; i < fifoPool->fifoCount; i++) {
+  for(i = 0; i < fifoPool->fifoCount; i+=2) {
     pthread_join(workers[i], NULL);    
+    pthread_join(workers[i+1], NULL);    
   }
 
   for(i = 0; i < NUM_INSERTS; i++) {
