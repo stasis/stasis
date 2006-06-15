@@ -8,7 +8,6 @@
 #include <lladd/consumer.h>
 #include <lladd/lockManager.h>
 #include <lladd/compensations.h>
-
 #include "page.h"
 #include <lladd/logger/logger2.h>
 #include <lladd/truncation.h>
@@ -111,6 +110,7 @@ int Tinit() {
 	  pageOperationsInit();
 	} end_ret(compensation_error());
 	initNestedTopActions();
+	TallocInit();
 	ThashInit();
 	LinearHashNTAInit();
 	LinkedListNTAInit();

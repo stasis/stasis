@@ -87,7 +87,7 @@ void * workerThreadWriting(void * q) {
   int offset = *(int*)q;
   recordid rids[RECORDS_PER_THREAD];
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
-    Page * tmp;
+    /*    Page * tmp;
     pthread_mutex_lock(&ralloc_mutex);
     rids[i] = slottedPreRalloc(1, sizeof(int), &tmp);
     slottedPostRalloc(-1, tmp, 1, rids[i]);
@@ -95,7 +95,8 @@ void * workerThreadWriting(void * q) {
     *lsn_ptr(tmp) = 0;
     releasePage(tmp);
     pthread_mutex_unlock(&ralloc_mutex);
-    
+    */
+    rids[i] = Talloc(-1, sizeof(int));
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */
 
@@ -239,7 +240,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("bufferManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
-
+  tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, pageSingleThreadTest); 

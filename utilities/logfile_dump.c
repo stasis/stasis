@@ -14,7 +14,7 @@ static char * logEntryToString(const LogEntry * le) {
     {
       recordid rid = le->contents.clr.rid;
       asprintf(&ret, "UPDATE\tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5lld}\tfuncId=%3d\targSize=%9d\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, rid.size, le->contents.update.funcID, le->contents.update.argSize );
+	       rid.page, rid.slot, (long long int)rid.size, le->contents.update.funcID, le->contents.update.argSize );
       
     }
     break;
@@ -44,7 +44,7 @@ static char * logEntryToString(const LogEntry * le) {
     {
       recordid rid = le->contents.clr.rid;
       asprintf(&ret, "CLR   \tlsn=%9ld\tprevlsn=%9ld\txid=%4d\trid={%8d %5d %5lld}\tthisUpdateLSN=%9ld\tundoNextLSN=%9ld\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, rid.size, (long int)le->contents.clr.thisUpdateLSN, (long int)le->contents.clr.undoNextLSN );
+	       rid.page, rid.slot, (long long int) rid.size, (long int)le->contents.clr.thisUpdateLSN, (long int)le->contents.clr.undoNextLSN );
     }
     break;
   }

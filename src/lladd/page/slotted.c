@@ -113,11 +113,11 @@ void slottedCompact(Page * page) {
 
 
 /*static pthread_mutex_t lastFreepage_mutex; */
-  static uint64_t lastFreepage = -10; 
+// static uint64_t lastFreepage = -10; 
 
 void slottedPageInit() {
   /*pthread_mutex_init(&lastFreepage_mutex , NULL);  */
-  lastFreepage = UINT64_MAX;
+  //lastFreepage = UINT64_MAX;
 }
 
 void slottedPageDeInit() {
@@ -201,35 +201,6 @@ compensated_function recordid slottedPreRalloc(int xid, unsigned long size, Page
   }
   assert(size < BLOB_THRESHOLD_SIZE);
 
-
-  /** @todo is ((unsigned int) foo) == -1 portable?  Gotta love C.*/
-
-  if(lastFreepage == UINT64_MAX) {
-    try_ret(NULLRID) {
-      lastFreepage = TpageAlloc(xid);
-    } end_ret(NULLRID);
-    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
-    assert(*page_type_ptr(*pp) == UNINITIALIZED_PAGE);
-    slottedPageInitialize(*pp);
-  } else {
-    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
-  }
-
-
-  if(slottedFreespace(*pp) < size ) { 
-    releasePage(*pp);
-    try_ret(NULLRID) {
-      lastFreepage = TpageAlloc(xid);
-    } end_ret(NULLRID);
-    try_ret(NULLRID) {
-      *pp = loadPage(xid, lastFreepage);
-    } end_ret(NULLRID);
-    slottedPageInitialize(*pp);
-  }
   assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
   ret = slottedRawRalloc(*pp, size);
   assert(ret.size == size);

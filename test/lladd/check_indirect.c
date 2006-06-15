@@ -132,7 +132,7 @@ START_TEST(indirectAlloc) {
   
 
 
-  printf("{page = %d, slot = %d, size = %lld}\n", rid.page, rid.slot, rid.size);
+  printf("{page = %d, slot = %d, size = %lld}\n", rid.page, rid.slot, (long long int)rid.size);
 
   releasePage(p);
 
@@ -156,7 +156,7 @@ START_TEST(indirectAlloc) {
  
 
 
-  printf("{page = %d, slot = %d, size = %lld}\n", rid.page, rid.slot, rid.size);
+  printf("{page = %d, slot = %d, size = %lld}\n", rid.page, rid.slot, (long long int)rid.size);
 
   releasePage(p);
   

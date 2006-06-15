@@ -71,12 +71,14 @@ START_TEST(operation_physical_do_undo) {
   int buf;
   int arg;
   LogEntry * setToTwo;
-  Page * p;
   
   Tinit();
   xid = -1;
+  Page * p = loadPage(xid, TpageAlloc(xid));
+  slottedPageInitialize(p);
   rid  = slottedPreRalloc(xid, sizeof(int), &p);
   releasePage(p);
+  //rid = Talloc(xid, sizeof(int));
   buf = 1;
   arg = 2;
 
@@ -530,8 +532,8 @@ START_TEST(operation_alloc_test) {
   Tcommit(xid);
   
   printf("rid1={%d,%d,%lld} rid2={%d,%d,%lld}\n", 
-	 rid1.page, rid1.slot, rid1.size,
-	 rid2.page, rid2.slot, rid2.size);  
+	 rid1.page, rid1.slot, (long long int)rid1.size,
+	 rid2.page, rid2.slot, (long long int)rid2.size);  
   
   
   

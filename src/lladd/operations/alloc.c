@@ -143,6 +143,12 @@ Operation getRealloc() {
   return o;
 }
 
+static uint64_t lastFreepage;
+
+void TallocInit() { 
+  lastFreepage = UINT64_MAX;
+}
+
 compensated_function recordid Talloc(int xid, long size) {
   recordid rid;
 
@@ -159,38 +165,43 @@ compensated_function recordid Talloc(int xid, long size) {
 
     begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
       pthread_mutex_lock(&talloc_mutex);
+
+      if(lastFreepage == UINT64_MAX) {
+	try_ret(NULLRID) {
+	  lastFreepage = TpageAlloc(xid);
+	} end_ret(NULLRID);
+	try_ret(NULLRID) {
+	  p = loadPage(xid, lastFreepage);
+	} end_ret(NULLRID);
+	assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
+	slottedPageInitialize(p);
+      } else {
+	try_ret(NULLRID) {
+	  p = loadPage(xid, lastFreepage);
+	} end_ret(NULLRID);
+      }
+
+
+      if(slottedFreespace(p) < size ) { 
+	releasePage(p);
+	try_ret(NULLRID) {
+	  lastFreepage = TpageAlloc(xid);
+	} end_ret(NULLRID);
+	try_ret(NULLRID) {
+	  p = loadPage(xid, lastFreepage);
+	} end_ret(NULLRID);
+	slottedPageInitialize(p);
+      }
+
       rid = slottedPreRalloc(xid, size, &p);
       Tupdate(xid, rid, NULL, OPERATION_ALLOC);
-      /** @todo does releasePage do the correct error checking? */
+      /** @todo does releasePage do the correct error checking? <- Why is this comment here?*/
       releasePage(p);
     } compensate_ret(NULLRID);
 
   }
   return rid;
 
-  /*  try_ret(NULL_RID) {
-    if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-      ///@todo is it OK that Talloc doesn't pin the page when a blob is alloced?
-      rid = pr eAllocBlob(xid, size);
-    } else {
-      pthread_mutex_lock(&talloc_mutex); 
-      rid = slottedPreRalloc(xid, size, &p);
-      assert(p != NULL);
-    }
-    
-    Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-  
-    if(p != NULL) {
-      /// release the page that preAllocBlob pinned for us. 
-      
-      /// @todo alloc.c pins multiple pages -> Will deadlock with small buffer sizes..
-      releasePage(p);
-      pthread_mutex_unlock(&talloc_mutex);  
-      
-    }
-  } end_ret(NULLRID);
-  return rid;*/
-  
 }
 
 compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {

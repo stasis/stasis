@@ -19,6 +19,8 @@ Operation getAlloc();
 Operation getDealloc();
 Operation getRealloc();
 
+void TallocInit();
+
 /** 
     Allocate a record.  
 
