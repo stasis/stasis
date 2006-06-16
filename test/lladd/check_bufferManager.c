@@ -87,15 +87,7 @@ void * workerThreadWriting(void * q) {
   int offset = *(int*)q;
   recordid rids[RECORDS_PER_THREAD];
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
-    /*    Page * tmp;
-    pthread_mutex_lock(&ralloc_mutex);
-    rids[i] = slottedPreRalloc(1, sizeof(int), &tmp);
-    slottedPostRalloc(-1, tmp, 1, rids[i]);
-    tmp->LSN = 0;
-    *lsn_ptr(tmp) = 0;
-    releasePage(tmp);
-    pthread_mutex_unlock(&ralloc_mutex);
-    */
+
     rids[i] = Talloc(-1, sizeof(int));
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */

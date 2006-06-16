@@ -193,7 +193,8 @@ compensated_function recordid Talloc(int xid, long size) {
 	slottedPageInitialize(p);
       }
 
-      rid = slottedPreRalloc(xid, size, &p);
+      //      rid = slottedPreRalloc(xid, size, &p);
+      rid = slottedRawRalloc(p, size);
       Tupdate(xid, rid, NULL, OPERATION_ALLOC);
       /** @todo does releasePage do the correct error checking? <- Why is this comment here?*/
       releasePage(p);

@@ -76,7 +76,8 @@ START_TEST(operation_physical_do_undo) {
   xid = -1;
   Page * p = loadPage(xid, TpageAlloc(xid));
   slottedPageInitialize(p);
-  rid  = slottedPreRalloc(xid, sizeof(int), &p);
+  //  rid  = slottedPreRalloc(xid, sizeof(int), &p);
+  rid = slottedRawRalloc(p, sizeof(int));
   releasePage(p);
   //rid = Talloc(xid, sizeof(int));
   buf = 1;

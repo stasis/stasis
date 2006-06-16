@@ -2,7 +2,7 @@
 
 
 #include "../page.h"
-#include "../blobManager.h"  /** So that we can call sizeof(blob_record_t) */
+//#include "../blobManager.h"  /** So that we can call sizeof(blob_record_t) */
 #include "slotted.h"
 #include <assert.h>
 
@@ -192,57 +192,69 @@ size_t slottedFreespace(Page * page) {
 
     @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
 */
-compensated_function recordid slottedPreRalloc(int xid, unsigned long size, Page ** pp) {
+/*compensated_function recordid slottedPreRalloc(int xid, unsigned long size, Page ** pp) {
   recordid ret;
-  int isBlob = 0;
-  if(size == BLOB_SLOT) {
-    isBlob = 1;
-    size = sizeof(blob_record_t);
-  }
-  assert(size < BLOB_THRESHOLD_SIZE);
+  //  int isBlob = 0;
+  //if(size == BLOB_SLOT) {
+  //  isBlob = 1;
+  //  size = sizeof(blob_record_t);
+  //  }
+  //  assert(size < BLOB_THRESHOLD_SIZE);
 
-  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
+  //  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
   ret = slottedRawRalloc(*pp, size);
-  assert(ret.size == size);
+  //  assert(ret.size == size);
   
-  if(isBlob) {
-    *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
-  }
+  //  if(isBlob) {
+  //  *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
+  //  } 
 
   DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
 
   return ret;
-}
+}*/
 
 
 recordid slottedRawRalloc(Page * page, int size) {
 
-	writelock(page->rwlatch, 342);
+  int type = size;
+  if(type >= SLOT_TYPE_BASE) {
+    assert(type < SLOT_TYPE_END);
+    size = SLOT_TYPE_LENGTHS[type-SLOT_TYPE_BASE];
+  }
+  assert(type != INVALID_SLOT);
+  assert(size < SLOT_TYPE_BASE && size >= 0);
 
-	recordid rid;
+  writelock(page->rwlatch, 342);
+  assert(*page_type_ptr(page) == SLOTTED_PAGE);
 
-	rid.page = page->id;
-	rid.slot = *numslots_ptr(page);
-	rid.size = size;
+  recordid rid;
+  
+  rid.page = page->id;
+  rid.slot = *numslots_ptr(page);
+  rid.size = size;
+  
+  /* The freelist_ptr points to the first free slot number, which 
+     is the head of a linked list of free slot numbers.*/
+  if(*freelist_ptr(page) != INVALID_SLOT) {
+    rid.slot = *freelist_ptr(page);
+    *freelist_ptr(page) = *slot_length_ptr(page, rid.slot);
+    *slot_length_ptr(page, rid.slot) = 0;
+  }  
+  
+  really_do_ralloc(page, rid);
 
-	/* The freelist_ptr points to the first free slot number, which 
-	   is the head of a linked list of free slot numbers.*/
-	if(*freelist_ptr(page) != INVALID_SLOT) {
-	  rid.slot = *freelist_ptr(page);
-	  *freelist_ptr(page) = *slot_length_ptr(page, rid.slot);
-	  *slot_length_ptr(page, rid.slot) = 0;
-	}  
-	  
-	really_do_ralloc(page, rid);
+  assert(size == *slot_length_ptr(page, rid.slot));
 
-	/*	DEBUG("slot: %d freespace: %d\n", rid.slot, freeSpace); */
+  *slot_length_ptr(page, rid.slot) = type;
+  
+  /*	DEBUG("slot: %d freespace: %d\n", rid.slot, freeSpace); */
+  
+  assert(slottedFreespaceUnlocked(page) >= 0);
 
-	assert(slottedFreespaceUnlocked(page) >= 0);
+  writeunlock(page->rwlatch);
 
-	writeunlock(page->rwlatch);
-
-
-	return rid;
+  return rid;
 }
 
 /** 
