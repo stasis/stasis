@@ -183,37 +183,6 @@ size_t slottedFreespace(Page * page) {
 }
 
 
-/** @todo slottedPreRalloc ignores it's xid parameter; change the
-    interface?  (The xid is there for now, in case it allows some
-    optimizations later.  Perhaps it's better to cluster allocations
-    from the same xid on the same page, or something...)
-
-    @todo slottedPreRalloc should understand deadlock, and try another page if deadlock occurs.
-
-    @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
-*/
-/*compensated_function recordid slottedPreRalloc(int xid, unsigned long size, Page ** pp) {
-  recordid ret;
-  //  int isBlob = 0;
-  //if(size == BLOB_SLOT) {
-  //  isBlob = 1;
-  //  size = sizeof(blob_record_t);
-  //  }
-  //  assert(size < BLOB_THRESHOLD_SIZE);
-
-  //  assert(*page_type_ptr(*pp) == SLOTTED_PAGE);
-  ret = slottedRawRalloc(*pp, size);
-  //  assert(ret.size == size);
-  
-  //  if(isBlob) {
-  //  *slot_length_ptr(*pp, ret.slot) = BLOB_SLOT;
-  //  } 
-
-  DEBUG("alloced rid = {%d, %d, %ld}\n", ret.page, ret.slot, ret.size); 
-
-  return ret;
-}*/
-
 
 recordid slottedRawRalloc(Page * page, int size) {
 

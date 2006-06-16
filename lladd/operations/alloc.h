@@ -28,6 +28,8 @@ void TallocInit();
     @param size The size of the new record to be allocated.  Talloc will allocate a
     blob if the record will not easily fit on a page.
 
+    @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
+
     @return the recordid of the new record.
 */
 compensated_function recordid Talloc(int xid, long size);

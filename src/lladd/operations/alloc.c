@@ -152,6 +152,12 @@ void TallocInit() {
 compensated_function recordid Talloc(int xid, long size) {
   recordid rid;
 
+
+  // @todo How should blobs be handled?  Should Talloc do it?  If not,
+  // it's hard for apps to to use it...  Similarly, with hints, Talloc
+  // may need to route certain sizes to certain types of pages (eg;
+  // small sizes go to fixed page implementations...)
+
   int isBlob = size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT;
 
   if(isBlob) {
@@ -160,6 +166,8 @@ compensated_function recordid Talloc(int xid, long size) {
       Tupdate(xid,rid, NULL, OPERATION_ALLOC);
     } end_ret(NULLRID);
   } else {
+
+   
 
     Page * p = NULL;
 
@@ -193,9 +201,8 @@ compensated_function recordid Talloc(int xid, long size) {
 	slottedPageInitialize(p);
       }
 
-      //      rid = slottedPreRalloc(xid, size, &p);
-      rid = slottedRawRalloc(p, size);
-      Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+      rid = slottedRawRalloc(p, size);          // <--- Important part.
+      Tupdate(xid, rid, NULL, OPERATION_ALLOC); // <--- This hardcodes "slotted"  Should we use TallocFromPage() instead?
       /** @todo does releasePage do the correct error checking? <- Why is this comment here?*/
       releasePage(p);
     } compensate_ret(NULLRID);
@@ -208,9 +215,13 @@ compensated_function recordid Talloc(int xid, long size) {
 compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
   recordid rid;
 
+  // Does TallocFromPage need to understand blobs?  This function
+  // seems to be too complex; all it does it delegate the allocation
+  // request to the page type's implementation.  (Does it really need
+  // to check for freespace?)
   if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
     try_ret(NULLRID) { 
-      rid = preAllocBlobFromPage(xid, page, size);
+      rid = preAllocBlobFromPage(xid, page, size);  // <--- ICK!!!  Kill this function.
       Tupdate(xid,rid, NULL, OPERATION_ALLOC);
     } end_ret(NULLRID);
   } else {
@@ -226,7 +237,7 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long s
       } else { 
 	rid = slottedRawRalloc(p, size);
 	assert(rid.size == size);
-	Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+	Tupdate(xid, rid, NULL, OPERATION_ALLOC); 
       }
       releasePage(p);
     } compensate_ret(NULLRID);
@@ -235,6 +246,8 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long s
 }
 
 compensated_function void Tdealloc(int xid, recordid rid) {
+  
+  // @todo this needs to garbage collect emptry pages / storage regions.
   void * preimage = malloc(rid.size);
   Page * p;
   try {

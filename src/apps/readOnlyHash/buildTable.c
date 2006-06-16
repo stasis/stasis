@@ -5,6 +5,8 @@
 #include <string.h>
 #include <lladd/transactional.h>
 #include <lladd/truncation.h>
+#include <sys/time.h>
+#include <time.h>
 
 int main(int argc, char** argv) { 
 
@@ -26,7 +28,8 @@ int main(int argc, char** argv) {
   gettimeofday(&start,0);
 
   int count = 0;
-  while(EOF != (ret=scanf("%as\t%as\n", &key, &value))) {
+  // bleah; gcc would warn without the casts, since it doesn't understand that %as = Allocate String
+  while(EOF != (ret=scanf("%as\t%as\n", (float*)&key, (float*)&value))) { 
     if(!ret) { 
       printf("Could not parse input!\n");
       Tabort(xid);
