@@ -26,24 +26,6 @@ static FILE * blobf0 = NULL, * blobf1 = NULL;
 */
 static pblHashTable_t * dirtyBlobs;
 
-/** Plays a nasty trick on bufferManager to force it to read and write
-    blob_record_t items for us.  Relies upon bufferManager (and
-    page.c's) trust in the rid.size field... */
-static void readRawRecord(int xid, Page * p, recordid rid, void * buf, int size) {
-  recordid blob_rec_rid = rid;
-  blob_rec_rid.size = size;
-  readRecord(xid, p, blob_rec_rid, buf);
-    /*  T read(xid, blob_rec_rid, buf); */
-}
-
-static void writeRawRecord(int xid, Page * p, recordid rid, lsn_t lsn, const void * buf, int size) {
-  recordid blob_rec_rid = rid;
-  blob_rec_rid.size = size;
-  writeRecord(xid, p, lsn, blob_rec_rid, buf); 
-  /*  T set(xid, blob_rec_rid, buf); - We no longer need to write a log
-      record out here, since we're called by something that is the
-      result of a log record.*/ 
-}
 static lsn_t * tripleHashLookup(int xid, recordid rid) {
   lsn_t * ret;
   pthread_mutex_lock(&blob_hash_mutex);
@@ -253,6 +235,8 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
 
   DEBUG("post Allocing blob (size %ld)\n", rid.size);
 
+  assert(rid.size > 0); /* Don't support zero length blobs right now... */
+
   /** Finally, fix up the fields in the record that points to the blob. 
       The rest of this also should go into alloc.c 
   */
@@ -270,8 +254,6 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   rid.size = blob_rec.size;
 
   /* Allocate space for the blob entry. */
-
-  assert(rid.size > 0); /* Don't support zero length blobs right now... */
 
   /* First in buffer manager. */
 
@@ -298,14 +280,13 @@ void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid) {
   funlockfile(blobf0);
   funlockfile(blobf1);
 
-  /* T set() needs to know to 'do the right thing' here, since we've
-     changed the size it has recorded for this record, and
-     writeRawRecord makes sure that that is the case. 
-
-     (This call must be after the files have been extended, and synced to disk, since it marks completion of the blob allocation.)
+  /* 
+     (This call must be after the files have been extended, and synced
+     to disk, since it marks completion of the blob allocation.)
   */
-  writeRawRecord  (xid, p, rid, lsn, &blob_rec, sizeof(blob_record_t));
-
+  rid.size = BLOB_SLOT;
+  assert(blob_rec.size);
+  writeRecord(xid, p, lsn, rid, &blob_rec);
 
 }
 
@@ -320,8 +301,10 @@ void readBlob(int xid, Page * p, recordid rid, void * buf) {
 
   assert(buf);
 
-  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
+  recordid blob_rec_rid = rid;
+  blob_rec_rid.size = BLOB_SLOT;
 
+  readRecord(xid, p, blob_rec_rid, &rec);
   fd = rec.fd ? blobf1 : blobf0;
 
 
@@ -355,8 +338,9 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
 
   /* First, determine if the blob is dirty. */
 
-  /* T read() raw record */
-  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
+  recordid tmp = rid;
+  tmp.size = BLOB_SLOT;
+  readRecord(xid, p, tmp, &rec);
 
   assert(rec.size == rid.size);
 
@@ -370,8 +354,8 @@ static FILE * getDirtyFD(int xid, Page * p, lsn_t lsn, recordid rid) {
     /* Flip the fd bit on the record. */
     rec.fd = rec.fd ? 0 : 1;
 
-    /* T set() raw record */
-    writeRawRecord(xid, p, rid, lsn, &rec, sizeof(blob_record_t));
+    rid.size = BLOB_SLOT;
+    writeRecord(xid, p, lsn, rid, &rec);
   }
 
   fd = rec.fd ? blobf1 : blobf0; /* rec's fd is up-to-date, so use it directly */
@@ -422,7 +406,10 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
   DEBUG("Writing blob (size %ld)\n", rid.size);
   
   fd = getDirtyFD(xid, p, lsn, rid);
-  readRawRecord(xid, p, rid, &rec, sizeof(blob_record_t));
+
+  recordid tmp = rid;
+  tmp.size = BLOB_SLOT;
+  readRecord(xid, p, tmp, &rec);
 
   DEBUG("Writing at offset = %d, size = %ld\n", rec.offset, rec.size);
  
@@ -452,8 +439,8 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
     @todo when writeBlob is fixed, add the fdatasync calls back into commitBlobs().
 */
 void commitBlobs(int xid) {
-  flockfile(blobf0);
   flockfile(blobf1);
+  flockfile(blobf0);
   /*  fdatasync(fileno(blobf0));
       fdatasync(fileno(blobf1)); */
   funlockfile(blobf0);

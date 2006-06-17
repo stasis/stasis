@@ -142,7 +142,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   writelock(p->rwlatch, 225);
   pageWriteLSN(xid, p, lsn);
   unlock(p->rwlatch);
-  
+
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid, p, lsn, rid, dat);
   } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
@@ -161,7 +161,7 @@ int readRecord(int xid, Page * p, recordid rid, void *buf) {
   
   int page_type = *page_type_ptr(p);
 
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
+  if(rid.size > BLOB_THRESHOLD_SIZE) { 
     readBlob(xid, p, rid, buf);
   } else if(page_type == SLOTTED_PAGE) {
     slottedRead(xid, p, rid, buf);

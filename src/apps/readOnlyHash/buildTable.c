@@ -29,7 +29,9 @@ int main(int argc, char** argv) {
 
   int count = 0;
   // bleah; gcc would warn without the casts, since it doesn't understand that %as = Allocate String
-  while(EOF != (ret=scanf("%as\t%as\n", (float*)&key, (float*)&value))) { 
+  char ** keyp = &key;     // The extra garbage is to avoid type punning warnings...
+  char ** valuep = &value;
+  while(EOF != (ret=scanf("%as\t%as\n", (float*)keyp, (float*)valuep))) { 
     if(!ret) { 
       printf("Could not parse input!\n");
       Tabort(xid);

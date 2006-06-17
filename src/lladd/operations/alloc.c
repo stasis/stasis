@@ -78,7 +78,9 @@
 //}end
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   
-  if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
+  if(rid.size >= BLOB_THRESHOLD_SIZE) {
+    //    printf("Calling allocBlob\n");
+    slottedPostRalloc(xid, p, lsn, rid);  // need to allocate record before writing to it (allocBlob writes to it.)
     allocBlob(xid, p, lsn, rid);
   } else {
     slottedPostRalloc(xid, p, lsn, rid); 
@@ -96,10 +98,10 @@ static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * da
 
 static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
 
-  if(rid.size >= BLOB_THRESHOLD_SIZE && rid.size != BLOB_SLOT) {
+  //  if(rid.size >= BLOB_THRESHOLD_SIZE) { // && rid.size != BLOB_SLOT) {
     //    rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
-    rid.size = sizeof(blob_record_t); 
-  } 
+  //    rid.size = BLOB_SLOT; //sizeof(blob_record_t); 
+    //  } 
 
   slottedPostRalloc(xid, p, lsn, rid); 
   /** @todo dat should be the pointer to the space in the blob store. */
@@ -149,7 +151,7 @@ void TallocInit() {
   lastFreepage = UINT64_MAX;
 }
 
-compensated_function recordid Talloc(int xid, long size) {
+compensated_function recordid TallocOld(int xid, long size) {
   recordid rid;
 
 
@@ -212,35 +214,105 @@ compensated_function recordid Talloc(int xid, long size) {
 
 }
 
+static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
+
+compensated_function recordid Talloc(int xid, unsigned long size) { 
+  short type;
+  if(size >= BLOB_THRESHOLD_SIZE) { 
+    type = BLOB_SLOT;
+  } else { 
+    type = size;
+  }
+  
+  recordid rid;
+
+  begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) { 
+    pthread_mutex_lock(&talloc_mutex);
+    Page * p;
+    if(lastFreepage == UINT64_MAX) {
+      try_ret(NULLRID) {
+	lastFreepage = TpageAlloc(xid);
+      } end_ret(NULLRID);
+      try_ret(NULLRID) {
+	p = loadPage(xid, lastFreepage);
+      } end_ret(NULLRID);
+      assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
+      slottedPageInitialize(p);
+    } else {
+      try_ret(NULLRID) {
+	p = loadPage(xid, lastFreepage);
+      } end_ret(NULLRID);
+    }
+    
+    
+    if(slottedFreespace(p) < physical_slot_length(type) ) { 
+      // XXX compact page?!?
+      releasePage(p);
+      try_ret(NULLRID) {
+	lastFreepage = TpageAlloc(xid);
+      } end_ret(NULLRID);
+      try_ret(NULLRID) {
+	p = loadPage(xid, lastFreepage);
+      } end_ret(NULLRID);
+      slottedPageInitialize(p);
+    }    
+    rid = TallocFromPageInternal(xid, p, size);
+  } compensate_ret(NULLRID);
+  return rid;
+}
+
 compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
+  Page * p = loadPage(xid, page);
+  recordid ret = TallocFromPageInternal(xid, p, size);
+  releasePage(p);
+  return ret;
+}
+
+static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size) {
   recordid rid;
 
   // Does TallocFromPage need to understand blobs?  This function
   // seems to be too complex; all it does it delegate the allocation
   // request to the page type's implementation.  (Does it really need
   // to check for freespace?)
-  if(size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT) { 
-    try_ret(NULLRID) { 
-      rid = preAllocBlobFromPage(xid, page, size);  // <--- ICK!!!  Kill this function.
-      Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-    } end_ret(NULLRID);
-  } else {
-    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
-      Page * p = loadPage(xid, page);
-      pthread_mutex_lock(&talloc_mutex); 
 
-      if(slottedFreespace(p) < size) { 
-	slottedCompact(p);
-      }
-      if(slottedFreespace(p) < size) { 
-	rid = NULLRID;
-      } else { 
-	rid = slottedRawRalloc(p, size);
-	assert(rid.size == size);
-	Tupdate(xid, rid, NULL, OPERATION_ALLOC); 
-      }
-      releasePage(p);
-    } compensate_ret(NULLRID);
+  short type;
+  if(size >= BLOB_THRESHOLD_SIZE) { 
+    type = BLOB_SLOT;
+  } else { 
+    type = size;
+  }
+
+  //  begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
+
+
+  unsigned long slotSize = INVALID_SLOT;
+  
+  //    pthread_mutex_lock(&talloc_mutex); 
+    
+  slotSize = physical_slot_length(type);
+  
+  assert(slotSize < PAGE_SIZE && slotSize > 0);
+  
+  if(slottedFreespace(p) < slotSize) { 
+    slottedCompact(p);
+  }
+  if(slottedFreespace(p) < slotSize) { 
+    rid = NULLRID;
+  } else { 
+    rid = slottedRawRalloc(p, type);
+    assert(rid.size == type);
+    rid.size = size;
+    Tupdate(xid, rid, NULL, OPERATION_ALLOC); 
+    rid.size = type;
+  }
+  //  } compensate_ret(NULLRID);
+  //  }
+  
+  if(rid.size == type &&  // otherwise TallocFromPage failed
+     type == BLOB_SLOT    // only special case blobs (for now)
+     ) { 
+    rid.size = size;
   }
   return rid;
 }

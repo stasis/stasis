@@ -9,9 +9,10 @@ int main(int argc, char** argv) {
   Tinit();
 
   recordid hash = {1, 0, 48};
-  char * val;
-  if(-1 != ThashLookup(-1, hash, (byte*)argv[1], strlen(argv[1]), (byte**)&val)) { 
-    printf("%s\n", val);
+  byte * val;
+  byte ** argvb = (byte**) argv;
+  if(-1 != ThashLookup(-1, hash, argvb[1], strlen(argv[1]), &val)) { 
+    printf("%s\n", (char*)val);
     free(val);
   }
   Tdeinit();

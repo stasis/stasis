@@ -352,7 +352,7 @@ int Tcommit(int xid);
  * @returns A new recordid.  On success, this recordid's size will be 
  *          the requested size.  On failure, its size will be zero.
  */
-recordid Talloc(int xid, long size);
+//recordid Talloc(int xid, long size);
 
 /* @function Tabort
  * @param xid transaction ID

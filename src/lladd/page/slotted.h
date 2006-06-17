@@ -79,6 +79,8 @@ void slottedPageInitialize(Page * p);
 #define record_ptr(page, n)      bytes_from_start((page), *slot_ptr((page), (n)))
 #define isValidSlot(page, n)   ((*slot_ptr((page), (n)) == INVALID_SLOT) ? 0 : 1)
 
+#define physical_slot_length(size) ((size) >= 0 ? (size) : SLOT_TYPE_LENGTHS[-1*size])
+
 /**
  * allocate a record.  This must be done in two phases.  The first
  * phase reserves a slot, and produces a log entry.  The second phase

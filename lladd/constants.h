@@ -144,16 +144,16 @@ terms specified in this license.
 /* number above should be less than number below */
 #define MAX_OPERATIONS 40
 
-#define SLOT_TYPE_BASE PAGE_SIZE
+//#define SLOT_TYPE_BASE PAGE_SIZE
 
 /** This constant is used as a placeholder to mark slot locations that are invalid.
     @see slotted.c, indirect.c
 */
-#define INVALID_SLOT  (SLOT_TYPE_BASE+0)
+#define INVALID_SLOT  (-1)
 /** This constant is used as a placeholder to mark slot locations that contain blobs. 
     @see slotted.c, indirect.c,  blobManager.c  */
-#define BLOB_SLOT     (SLOT_TYPE_BASE + 1)
-#define SLOT_TYPE_END (SLOT_TYPE_BASE + 2)
+#define BLOB_SLOT     (-2)
+#define SLOT_TYPE_END (-3)
 
 /** Initialized statically in transactional2.c */
 extern const short SLOT_TYPE_LENGTHS[];
