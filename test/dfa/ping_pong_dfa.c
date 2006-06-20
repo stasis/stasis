@@ -169,7 +169,7 @@ END_TEST
 
 state_name recv_ping(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   if((global_kill--) <= 0) {
-    printf("Done: %d\n", stateMachine->machine_id);
+    printf("Done: %ld\n", stateMachine->machine_id);
   //  while(1) { int i; i++; }
     exit(0);
   } else if(stateMachine != NULL) {
@@ -183,7 +183,7 @@ state_name recv_ping(void * dfaSet, StateMachine * stateMachine, Message * m, ch
 
 state_name recv_pong(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
   if((global_kill--) <= 0) {
-    printf("Done: %d\n", stateMachine->machine_id);
+    printf("Done: %ld\n", stateMachine->machine_id);
     exit(0);
   } else if(stateMachine != NULL) {
     DEBUG("%ld(%d): Got a pong from %s Machine %ld\n", stateMachine->machine_id, stateMachine->current_state, from, m->from_machine_id);

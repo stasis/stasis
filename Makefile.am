@@ -1,6 +1,6 @@
 EXTRA_DIST = reconf
 SUBDIRS = src test utilities benchmarks
-export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -Winline 
+export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -Winline -DPBL_COMPAT
 ## GOAL:  Make these not warn!
 #-Wextra -Wno-unused-parameter
 

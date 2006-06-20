@@ -4,6 +4,6 @@ LDADD=$(top_builddir)/src/2pc/lib2pc.a $(top_builddir)/src/libdfa/libdfa.a \
 bin_PROGRAMS=lhtableThreaded naiveHash logicalHash readLogicalHash naiveMultiThreaded logicalMultThreaded rawSet \
 	     arrayListSet logicalMultiReaders linearHashNTA linkedListNTA pageOrientedListNTA  \
 	     linearHashNTAThreaded linearHashNTAMultiReader linearHashNTAWriteRequests transitiveClosure zeroCopy
-AM_CFLAGS= -g -Wall -pedantic -std=gnu99
+AM_CFLAGS=${GLOBAL_CFLAGS}
 
 SUBDIRS=berkeleyDB

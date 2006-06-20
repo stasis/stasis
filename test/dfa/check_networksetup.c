@@ -49,6 +49,7 @@ terms specified in this license.
 #include <assert.h>
 #include <libdfa/networksetup.h>
 #include <libdfa/messages.h>
+#include <string.h>
 #define LOG_NAME   "check_networksetup.log"
 
 /** 
