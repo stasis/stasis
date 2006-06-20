@@ -50,7 +50,7 @@ terms specified in this license.
 #define THREAD_COUNT 25
 #define RECORDS_PER_THREAD 1000
 
-#define BLOBS_PER_THREAD 1000
+#define BLOBS_PER_THREAD 50
 
 void arraySet(int * array, int val) {
   int i;

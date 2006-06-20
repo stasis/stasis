@@ -183,7 +183,7 @@ struct Page_s {
 
 #define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
 
-
+#define physical_slot_length(size) ((size) >= 0 ? (size) : SLOT_TYPE_LENGTHS[-1*size])
 
 /**
  * initializes all the global variables needed by the functions

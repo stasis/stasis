@@ -216,6 +216,7 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
       } end;
     } 
   }
+
   /** @todo For logical undo logs, grabbing a lock makes no sense! */
   begin_action(releasePage, p) { 
     TupdateHelper(xid, rid, dat, op, p);

@@ -258,7 +258,7 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
 
 
   if(operationsTable[operation].sizeofData == SIZEOF_RECORD) {
-    argSize = rid.size;
+    argSize = physical_slot_length(rid.size);
   } else if(operationsTable[operation].sizeofData == SIZEIS_PAGEID) {
     argSize = rid.page;
  //   printf("argsize (page) %d, %d\n", argSize, sizeof(recordid) * 2 + sizeof(int) * 3);
@@ -267,8 +267,8 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   }
 
   if(operationsTable[operation].undo == NO_INVERSE) {
-    DEBUG("Creating %ld byte physical pre-image.\n", rid.size);
-    preImage = malloc(rid.size);
+    DEBUG("Creating %ld byte physical pre-image.\n", physical_slot_length(rid.size));
+    preImage = malloc(physical_slot_length(rid.size));
     if(!preImage) { perror("malloc"); abort(); }
     readRecord(l->xid, p, rid, preImage);
     DEBUG("got preimage");

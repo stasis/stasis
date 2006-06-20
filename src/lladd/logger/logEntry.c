@@ -42,6 +42,7 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
+#include <page.h> // For physical_slot_length()
 
 #include <lladd/transactional.h>
 
@@ -83,7 +84,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   int invertible = operationsTable[funcID].undo != NO_INVERSE;
   int whole_page_phys = operationsTable[funcID].undo == NO_INVERSE_WHOLE_PAGE;
   LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize +
-			  ((!invertible) ? rid.size : 0) + (whole_page_phys ? PAGE_SIZE : 0));
+			  ((!invertible) ? physical_slot_length(rid.size) : 0) + (whole_page_phys ? PAGE_SIZE : 0));
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
@@ -96,7 +97,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
     memcpy((void*)getUpdateArgs(ret), args, argSize);
   } 
   if(!invertible) {
-    memcpy((void*)getUpdatePreImage(ret), preImage, rid.size);
+    memcpy((void*)getUpdatePreImage(ret), preImage, physical_slot_length(rid.size));
   }
   if(whole_page_phys) {
     memcpy((void*)getUpdatePreImage(ret), preImage, PAGE_SIZE);
@@ -129,7 +130,7 @@ long sizeofLogEntry(const LogEntry * log) {
     return sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry);
   case UPDATELOG: 
     return sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + log->contents.update.argSize + 
-      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? log->contents.update.rid.size : 0) +
+      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? physical_slot_length(log->contents.update.rid.size) : 0) +
       ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0) ;
   default:
     return sizeof(struct __raw_log_entry);
