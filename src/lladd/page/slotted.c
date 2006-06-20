@@ -341,6 +341,9 @@ static void really_do_ralloc(Page * page, recordid rid) {
 recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   
 	writelock(page->rwlatch, 376);
+	if(rid.size >= BLOB_THRESHOLD_SIZE) { 
+	  rid.size = BLOB_SLOT;
+	}
 
 	if(*page_type_ptr(page) != SLOTTED_PAGE) {
 	  /* slottedPreRalloc calls this when necessary.  However, in
@@ -372,11 +375,8 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	// Make sure the slot is invalid.  If the slot has not been used yet, then 
 	// slot_length_ptr will still be zero, so we allow that too.
 	if((*slot_length_ptr(page, rid.slot) == 0) || (*slot_ptr(page, rid.slot) == INVALID_SLOT)) {
-	  recordid rid2 = rid;
-	  if(rid.size >= BLOB_THRESHOLD_SIZE) { 
-	    rid2.size = BLOB_SLOT;
-	  }
-	  really_do_ralloc(page, rid2);
+
+	  really_do_ralloc(page, rid);
 	
        	} else {
 
@@ -388,9 +388,11 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	  // (See comment above...)  
 	  // @todo Check to see that the blob is the right size?
 	  
-	  assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
+	  /*	  assert((rid.size == *slot_length_ptr(page, rid.slot)) ||
 		 (*slot_length_ptr(page, rid.slot) >= PAGE_SIZE) ||
-		 (rid.size >= BLOB_THRESHOLD_SIZE));
+		 (rid.size >= BLOB_THRESHOLD_SIZE)); */
+
+	  assert(rid.size == *slot_length_ptr(page, rid.slot));
 
 	}
 
@@ -502,20 +504,3 @@ void slottedWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const b
     abort();
   }
 }
-
-/*void slottedSetType(Page * p, int slot, int type) {
-  assert(type > PAGE_SIZE);
-  writelock(p->rwlatch, 686);
-  *slot_length_ptr(p, slot) = type;
-  unlock(p->rwlatch);
-}
-
-int slottedGetType(Page *  p, int slot) {
-  int ret; 
-  readlock(p->rwlatch, 693);
-  ret = *slot_length_ptr(p, slot);
-  unlock(p->rwlatch);
-
-  / * getSlotType does the locking for us. * /
-  return ret > PAGE_SIZE ? ret : NORMAL_SLOT;
-  }*/
