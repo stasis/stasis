@@ -436,7 +436,7 @@ void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf) {
     files when it's called (are there any dirty blobs associated with
     this transaction? 
 
-    @todo when writeBlob is fixed, add the fdatasync calls back into commitBlobs().
+    @todo when writeBlob is fixed, add the fdatasync calls back into commitBlobs()  Currently, it calls fdatasync on each blob write...
 */
 void commitBlobs(int xid) {
   flockfile(blobf1);

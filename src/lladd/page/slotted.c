@@ -230,6 +230,8 @@ recordid slottedRawRalloc(Page * page, int size) {
      - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
    (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
        be reused by aborting transactions...)
+
+  @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
 */
 static void really_do_ralloc(Page * page, recordid rid) {
 
@@ -333,7 +335,9 @@ static void really_do_ralloc(Page * page, recordid rid) {
   //} 
 
 }
-
+/**
+   @param rid with user-visible size.
+*/
 recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   
 	writelock(page->rwlatch, 376);
@@ -368,7 +372,11 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	// Make sure the slot is invalid.  If the slot has not been used yet, then 
 	// slot_length_ptr will still be zero, so we allow that too.
 	if((*slot_length_ptr(page, rid.slot) == 0) || (*slot_ptr(page, rid.slot) == INVALID_SLOT)) {
-	  really_do_ralloc(page, rid);
+	  recordid rid2 = rid;
+	  if(rid.size >= BLOB_THRESHOLD_SIZE) { 
+	    rid2.size = BLOB_SLOT;
+	  }
+	  really_do_ralloc(page, rid2);
 	
        	} else {
 

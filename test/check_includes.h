@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <config.h>
 
 #ifndef HAVE_TCASE_SET_TIMEOUT
@@ -13,5 +14,6 @@ void setup (void) {
 }
 
 void teardown(void) {
+  system("ls -lh *.txt*");
   setup();
 }
