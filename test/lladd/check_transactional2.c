@@ -50,6 +50,8 @@ terms specified in this license.
 #define THREAD_COUNT 25
 #define RECORDS_PER_THREAD 1000
 
+#define BLOBS_PER_THREAD 1000
+
 void arraySet(int * array, int val) {
   int i;
   for(i = 0; i < 1024; i++) {
@@ -70,16 +72,16 @@ int arrayCmp(int * array, int * array2) {
 /** Allocate a bunch of blobs, set them, read them, commit them, and read it again, chang them, abort, and read again. */
 void * writingAbortingBlobWorkerThread ( void * v ) { 
   int offset = * (int *) v;
-  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  recordid * rids = malloc(BLOBS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
-  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+  for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     rids[i] = Talloc(xid, 1024 * sizeof(int)); 
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
   }
 
-  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+  for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     int tmp[1024];/* = i + offset; */
     arraySet(tmp, i+ offset);
     Tset(xid, rids[i], tmp);
@@ -92,7 +94,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
   xid = Tbegin();
 
   
-  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+  for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     int j[1024];
     int k[1024];
     arraySet(k, i+offset);
@@ -109,7 +111,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
     
   xid = Tbegin();
 
-  for(int i = 0; i < RECORDS_PER_THREAD; i++) {
+  for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     int j[1024];
     int k[1024];
     arraySet(k, i+offset);
