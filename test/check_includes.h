@@ -14,6 +14,6 @@ void setup (void) {
 }
 
 void teardown(void) {
-  system("ls -lh *.txt*");
+  system("echo *.txt | grep -v \\* | xargs -n1 -r ls -lh");
   setup();
 }
