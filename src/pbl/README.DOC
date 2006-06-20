@@ -1,7 +1,0 @@
-
-The documentation for PBL was created with docpp.
-The command to create it is:
-
-docxx -H --dir doc pbl.dxx
-
-

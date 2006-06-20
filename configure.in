@@ -126,7 +126,6 @@ AC_CONFIG_FILES([Makefile
                  benchmarks/berkeleyDB/Makefile
                  libdfa/Makefile
                  lladd/Makefile
-                 pbl/Makefile
                  src/2pc/Makefile
                  src/Makefile
                  src/apps/Makefile
@@ -135,7 +134,6 @@ AC_CONFIG_FILES([Makefile
                  src/apps/cyrus/Makefile
                  src/libdfa/Makefile
                  src/lladd/Makefile
-                 src/pbl/Makefile
                  src/pobj/Makefile
                  src/timing/Makefile
                  test/2pc/Makefile
