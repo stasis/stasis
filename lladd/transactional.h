@@ -267,7 +267,7 @@ typedef struct {
 typedef struct {
   size_t offset;
   size_t size;
-  unsigned fd : 1;
+  // unsigned fd : 1;
 } blob_record_t;
 
 

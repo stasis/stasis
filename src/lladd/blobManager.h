@@ -83,7 +83,7 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
 
 */
 
-void allocBlob(int xid, Page * p, lsn_t lsn, recordid rid);
+void allocBlob(int xid, recordid rid);
 void openBlobStore();
 void closeBlobStore();
 

@@ -77,14 +77,7 @@
 */
 //}end
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  
-  if(rid.size >= BLOB_THRESHOLD_SIZE) {
-    //    printf("Calling allocBlob\n");
-    slottedPostRalloc(xid, p, lsn, rid);  // need to allocate record before writing to it (allocBlob writes to it.)
-    allocBlob(xid, p, lsn, rid);
-  } else {
-    slottedPostRalloc(xid, p, lsn, rid); 
-  }
+  slottedPostRalloc(xid, p, lsn, rid); 
 
   return 0;
 }
@@ -151,7 +144,7 @@ void TallocInit() {
   lastFreepage = UINT64_MAX;
 }
 
-compensated_function recordid TallocOld(int xid, long size) {
+/*compensated_function recordid TallocOld(int xid, long size) {
   recordid rid;
 
 
@@ -205,14 +198,14 @@ compensated_function recordid TallocOld(int xid, long size) {
 
       rid = slottedRawRalloc(p, size);          // <--- Important part.
       Tupdate(xid, rid, NULL, OPERATION_ALLOC); // <--- This hardcodes "slotted"  Should we use TallocFromPage() instead?
-      /** @todo does releasePage do the correct error checking? <- Why is this comment here?*/
+      // @todo does releasePage do the correct error checking? <- Why is this comment here?
       releasePage(p);
     } compensate_ret(NULLRID);
 
   }
   return rid;
 
-}
+}*/
 
 static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
 
@@ -283,13 +276,8 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
     type = size;
   }
 
-  //  begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
-
-
   unsigned long slotSize = INVALID_SLOT;
   
-  //    pthread_mutex_lock(&talloc_mutex); 
-    
   slotSize = physical_slot_length(type);
   
   assert(slotSize < PAGE_SIZE && slotSize > 0);
@@ -304,10 +292,14 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
     assert(rid.size == type);
     rid.size = size;
     Tupdate(xid, rid, NULL, OPERATION_ALLOC); 
+
+    if(type == BLOB_SLOT) { 
+      allocBlob(xid, rid);
+    }
+
     rid.size = type;
+
   }
-  //  } compensate_ret(NULLRID);
-  //  }
   
   if(rid.size == type &&  // otherwise TallocFromPage failed
      type == BLOB_SLOT    // only special case blobs (for now)
