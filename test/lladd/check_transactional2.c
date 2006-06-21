@@ -98,6 +98,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
     int j[1024];
     int k[1024];
     arraySet(k, i+offset);
+    arraySet(j, -1);
     Tread(xid, rids[i], j); 
     assert(arrayCmp(j,k));/*i + offset == j); */
     if(! (i %100)) {
@@ -447,8 +448,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, transactional_smokeTest);
   tcase_add_test(tc, transactional_blobSmokeTest);
+  tcase_add_test(tc, transactional_smokeTest);
   tcase_add_test(tc, transactional_nothreads_commit);
   tcase_add_test(tc, transactional_threads_commit);
   tcase_add_test(tc, transactional_nothreads_abort);
