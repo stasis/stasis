@@ -1,6 +1,6 @@
 #include "../page.h"
 #include <lladd/operations.h>
-
+/*
 #define REGION_BASE      (123)
 #define REGION_VACANT    (REGION_BASE + 0)
 #define REGION_ZONED     (REGION_BASE + 1)
@@ -104,3 +104,4 @@ Operation getRegionAlloc() {
 Operation getRegionFree() { 
 
 }
+*/
