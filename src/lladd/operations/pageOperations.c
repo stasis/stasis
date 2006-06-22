@@ -212,15 +212,12 @@ compensated_function int TpageDealloc(int xid, int pageid) {
     rid.page = pageid;
     rid.slot = 0;
     rid.size = 0;
-#endif
 
-
-#ifdef REUSE_PAGES
     assert(freelist != pageid);
     t.before = freelist;  
-    //#endif
+
     Tupdate(xid, rid, &freelist, OPERATION_FREE_PAGE);
-    //#ifdef REUSE_PAGES
+
     t.after = pageid;
     freelist = pageid;
     rid.page = 0;

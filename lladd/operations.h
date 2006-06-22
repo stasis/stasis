@@ -167,7 +167,7 @@ typedef struct {
 #include "operations/linkedListNTA.h"
 #include "operations/pageOrientedListNTA.h"
 #include "operations/linearHashNTA.h"
-
+#include "operations/regions.h"
 
 
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
