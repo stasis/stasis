@@ -30,8 +30,9 @@
 \newcommand{\yads}{Stasys'\xspace}
 \newcommand{\oasys}{Oasys\xspace}
 
-%\newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
-%\newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
+\newcommand{\diff}[1]{\textcolor{blue}{\bf #1}}
+\newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
+\newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 %\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
 \newcommand{\eat}[1]{}
@@ -261,10 +262,9 @@ routines into two broad modules: {\em conceptual
 mappings}~\cite{batoryConceptual} and {\em physical
 database models}~\cite{batoryPhysical}.
 
-A conceptual mapping might translate a relation into a set of keyed
-tuples.  A physical model would then translate a set of tuples into an
-on-disk B-Tree, and provide support for iterators and range-based query
-operations.
+%A physical model would then translate a set of tuples into an
+%on-disk B-Tree, and provide support for iterators and range-based query
+%operations.
 
 It is the responsibility of a database implementor to choose a set of
 conceptual mappings that implement the desired higher-level
@@ -272,8 +272,19 @@ abstraction (such as the relational model).  The physical data model
 is chosen to efficiently support the set of mappings that are built on
 top of it.
 
+\diff{A conceptual mapping based on the relational model might
+translate a relation into a set of keyed tuples.  If the database were
+going to be used for short, write-intensive and high-concurrency
+transactions (OLTP), the physical model would probably translate sets
+of tuples into an on-disk B-Tree.  In contrast, if the database needed
+to support long-running, read only aggregation queries (OLAP), a
+physical model tuned for such queries\rcs{be more concrete here} would
+be more appropriate.  While both OLTP and OLAP databases are based
+upon the relational model they make use of different physical models
+in order to serve different classes of applications.}
+
 A key observation of this paper is that no known physical data model
-can support more than a small percentage of today's applications.
+can efficiently support more than a small percentage of today's applications.  
 
 Instead of attempting to create such a model after decades of database
 research has failed to produce one, we opt to provide a transactional
@@ -515,7 +526,7 @@ redo the lost updates during recovery.
 
 For this to work, recovery must be able to decide which updates to
 re-apply.  This is solved by using a per-page sequence number called a
-{\em log sequence number}. Each log entry contains the sequence
+{\em log sequence number \diff{(LSN)}}. Each log entry contains the sequence
 number, and each page contains the sequence number of the last applied
 update.  Thus on recovery, we load a page, look at its sequence
 number, and re-apply all later updates.  Similarly, to restore a page
@@ -712,24 +723,45 @@ commit even if their containing transaction aborts; thus follow-on
 transactions can use the data structure without fear of cascading
 aborts.  
 
-The key idea is to distinguish between the logical operations of a
-data structure, such as inserting a key, and the physical operations
+The key idea is to distinguish between the {\em logical operations} of a
+data structure, such as inserting a key, and the {\em physical operations}
 such as splitting tree nodes or or rebalancing a tree. The physical
 operations do not need to be undone if the containing logical operation
-(insert) aborts.
+(insert) aborts.  \diff{We record such operations using {\em logical 
+logging} and {\em physical logging}, respectively.}
 
-Because nested top actions are easy to use and do not lead to 
-deadlock, we wrote a simple \yad extension that
-implements nested top actions.  The extension may be used as follows:
+\diff{Each nested top action performs a single logical operation by applying
+a number of physical operations to the page file.  Physical REDO log
+entries are stored in the log so that recovery can repair any
+temporary inconsistency that the nested top action introduces.
+Logical UNDO entries are recorded so that the nested top action can be
+rolled back even if concurrent transactions manipulate the data
+structure.  Finally, physical UNDO entries are recorded so that 
+the nested top action may be rolled back if the system crashes before 
+it completes.}
+
+\diff{When making use of nested top actions, we think of them as a
+special type of latch that hides temporary inconsistencies from the
+procedures executed during recovery.  Generally, such inconsistencies
+must be hidden from other transactions in a multithreaded environment;
+therefore we usually protect nested top actions with a mutex.}
+
+\diff{This observation leads to the following mechanical conversion of
+non-concurrent operations to thread-safe code that handles concurrent
+transactions correctly:}
+
+%Because nested top actions are easy to use and do not lead to 
+%deadlock, we wrote a simple \yad extension that
+%implements nested top actions.  The extension may be used as follows:
 
 \begin{enumerate}
 \item Wrap a mutex around each operation.  With care, it may be possible to use finer-grained locks, but it is rarely necessary.
 \item Define a {\em logical} UNDO for each operation (rather than just using
   a set of page-level UNDO's).  For example, this is easy for a
   hashtable: the UNDO for {\em insert} is {\em remove}.
-\item For mutating operations, (not read-only), add a ``begin nested
+\item Add a ``begin nested
   top action'' right after the mutex acquisition, and a ``commit
-  nested top action'' right before the mutex is released.
+  nested top action'' right before the mutex is released.  \diff{\yad provides a default nested top action implementation as an extension.}
 \end{enumerate}
 
 \noindent If the transaction that encloses the operation aborts, the logical
@@ -755,30 +787,32 @@ then they would not be written atomically with their page, which
 defeats their purpose.
 
 LSNs were introduced to prevent recovery from applying updates more
-than once. However, by constraining itself to a special type of idempotent redo and undo
-entries,\endnote{Idempotency does not guarantee that $f(g(x)) =
-  f(g(f(g(x))))$.  Therefore, idempotency does not guarantee that it is safe
-  to assume that a page is older than it is.}
-\yad can eliminate the LSN on each page.
+than once.  \diff{However, \yad can eliminate the LSN on each page by
+constraining itself to deterministic REDO log entries that do not read
+the contents of the page they update.}
+
+%However, by constraining itself to a special type of idempotent redo and undo
+%entries,\endnote{Idempotency does not guarantee that $f(g(x)) =
+%  f(g(f(g(x))))$.  Therefore, idempotency does not guarantee that it is safe
+%  to assume that a page is older than it is.}
+%\yad can eliminate the LSN on each page.
 
 Consider purely physical logging operations that overwrite a fixed
 byte range on the page regardless of the page's initial state.  
 We say that such operations perform ``blind writes.''
 If all
 operations that modify a page have this property, then we can remove
-the LSN field, and have recovery conservatively assume that it is
-dealing with a version of the page that is at least as old as the one
-on disk.  
+the LSN field, and have recovery \diff{use a conservative estimate 
+of the LSN of each page that it is dealing with.}
 
-\eat{
-This allows non-idempotent operations to be implemented.  For
-example, a log entry could simply tell recovery to increment a value
-on a page by some value, or to allocate a new record on the page.  
-If the recovery algorithm did not know exactly which
-version of a page it is dealing with, the operation could
-inadvertently be applied more than once, incrementing the value twice,
-or double allocating a record.
-}
+\diff{For example, it 
+could use the LSN of the most recent truncation point in the log, 
+or during normal operation, \yad could occasionally write the 
+LSN of the oldest dirty page to the log.}
+
+% conservatively assume that it is
+%dealing with a version of the page that is at least as old as the one
+%on disk.  
 
 To understand why this works, note that the log entries
 update some subset of the bits on the page.  If the log entries do not
@@ -803,14 +837,31 @@ log entry is thus a conservative but close estimate.
 Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
 approaches for recoverable virtual memory and for large object storage.  
 Section~\ref{sec:oasys} uses blind writes to efficiently update records 
-on pages that are manipulated using more general operations.
+on pages that are manipulated using more general operations.  \diff{We 
+have not yet implemented LSN-free pages, so our experimental setup mimics
+their behavior.}
+
+\diff{Also note that while LSN-free pages assume that only bits that
+are being updated will change, they do not assume that disk writes are
+atomic.  Most disks do not atomically update more a single 512-byte
+sector at a time.  However, most database systems make use of pages
+that are larger than 512 bytes.  Recovery schemes that rely upon LSN
+fields in pages must detect and deal with torn pages
+directly~\cite{tornPageStuffMohan}.  Because LSN-free page recovery
+does not assume page writes are atomic, it handles torn pages with no
+extra effort.}
+
 
 \subsection{Media recovery}
 
-Like ARIES, \yad can recover lost pages in the page file by
-reinitializing the page to zero, and playing back the entire log.  In
-practice, a system administrator would periodically back up the page file
-up, thus enabling log truncation and shortening recovery time.
+\diff{Hard drives may lose data due to hardware failures, or because a
+sector is being written when power is lost.  The drive hardware stores a
+checksum with each sector, and will issue a read error if the checksum
+does not match~\cite{something}.}  Like ARIES, \yad can recover lost pages in the page
+file by reinitializing the page to zero, and playing back the entire
+log.  In practice, a system administrator would periodically back up
+the page file up, thus enabling log truncation and shortening recovery
+time.
 
 \eat{  This is pretty redundant.
 \subsection{Modular operations semantics}
@@ -917,8 +968,8 @@ appropriate.
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
 using custom log operations.  In this section, we describe how to implement an
-``ARIES style'' concurrent, steal/no force operation using 
-full physiological logging and per-page LSN's.
+``ARIES style'' concurrent, steal/no-force operation using 
+\diff{physical redo, logical undo} and per-page LSN's.
 Such operations are typical of high-performance commercial database
 engines.
 
@@ -1283,10 +1334,14 @@ Database optimizers operate over relational algebra expressions that
 correspond to logical operations over streams of data.  \yad
 does not provide query languages, relational algebra, or other such query processing primitives.  
 
-However, it does include an extensible logging infrastructure.  Furthermore, many
-operations that make use of physiological logging implicitly
-implement UNDO (and often REDO) functions that interpret logical
-requests.
+However, it does include an extensible logging infrastructure.
+Furthermore, \diff{most operations that support concurrent transactions already
+provide logical UNDO (and therefore logical REDO, if each operation has an
+inverse).}
+%many
+%operations that make use of physiological logging implicitly
+%implement UNDO (and often REDO) functions that interpret logical
+%requests.
 
 Logical operations often have some nice properties that this section
 will exploit.  Because they can be invoked at arbitrary times in the
@@ -1314,8 +1369,9 @@ in non-transactional memory.
 %entries.  Therefore, applications may need to implement custom
 %operations to make use of the ideas in this section.
 
-Although \yad has rudimentary support for a two-phase commit based
-cluster hash table, we have not yet implemented networking primitives for logical logs.
+%Although \yad has rudimentary support for a \diff{cluster hash table\cite{cht}} that uses 
+%two-phase commit to recover from node crashes}, we have not yet implemented networking primitives for logical logs.
+\rcs{Cut sentence about two-phase commit cluster hash table, networking primitves for logical logs.}
 Therefore, we implemented a single node log-reordering scheme that increases request locality
 during the traversal of a random graph.  The graph traversal system
 takes a sequence of (read) requests, and partitions them using some
@@ -1364,12 +1420,14 @@ algorithm's outperforms the naive traversal.
 \subsection{LSN-Free pages}
 \label{sec:zeroCopy}
 In Section~\ref{sec:blindWrites}, we describe how operations can avoid recording
-LSN's on the pages they modify.  Essentially, operations that make use
-of purely physical logging need not heed page boundaries, as
-physiological operations must.  Recall that purely physical logging
+LSN's on the pages they modify.  Essentially, operations that update pages \diff{without examining their contents}
+% make use of purely physical logging 
+need not heed page boundaries.
+%, as physiological operations must.  
+Recall that purely physical logging
 interacts poorly with concurrent transactions that modify the same
 data structures or pages, so LSN-Free pages are not applicable in all
-situations.
+situations. \rcs{I think we can support physiological logging; once REDO is done, we know the LSN.  Why not do logical UNDO?}
 
 Consider the retrieval of a large (page spanning) object stored on
 pages that contain LSN's.  The object's data will not be contiguous.
