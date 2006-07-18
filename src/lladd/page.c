@@ -145,7 +145,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid, p, lsn, rid, dat);
-  } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
+  } else if(*page_type_ptr(p) == SLOTTED_PAGE || *page_type_ptr(p) == BOUNDARY_TAG_PAGE) {
     slottedWrite(xid, p, lsn, rid, dat);
   } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
     fixedWrite(p, rid, dat);
@@ -163,7 +163,7 @@ int readRecord(int xid, Page * p, recordid rid, void *buf) {
 
   if(rid.size > BLOB_THRESHOLD_SIZE) { 
     readBlob(xid, p, rid, buf);
-  } else if(page_type == SLOTTED_PAGE) {
+  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
     slottedRead(xid, p, rid, buf);
     /* FIXED_PAGES can function correctly even if they have not been
        initialized. */
@@ -186,7 +186,7 @@ int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     abort(); /* Unsupported for now. */
     readBlob(xid, p, rid, buf);
-  } else if(page_type == SLOTTED_PAGE) {
+  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
     slottedReadUnlocked(xid, p, rid, buf);
     /* FIXED_PAGES can function correctly even if they have not been
        initialized. */
@@ -207,7 +207,7 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
   if(page_type == UNINITIALIZED_PAGE) {
     return UNINITIALIZED_RECORD;	
     
-  } else if(page_type == SLOTTED_PAGE) {
+  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
     if(*numslots_ptr(p) <= rid.slot || *slot_ptr(p, rid.slot) == INVALID_SLOT) {
       return UNINITIALIZED_PAGE;
     } else if (*slot_length_ptr(p, rid.slot) == BLOB_SLOT) {
@@ -258,7 +258,7 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     abort();
     writeBlob(xid, p, lsn, rid, dat);
-  } else if(*page_type_ptr(p) == SLOTTED_PAGE) {
+  } else if(*page_type_ptr(p) == SLOTTED_PAGE || *page_type_ptr(p) == BOUNDARY_TAG_PAGE) {
     slottedWriteUnlocked(xid, p, lsn, rid, dat);
   } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
     fixedWriteUnlocked(p, rid, dat);

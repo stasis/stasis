@@ -9,9 +9,11 @@
    a newly allocated region are undefined.
 */
 
-int TregionAlloc(int xid, int pageCount);
+int TregionAlloc(int xid, int pageCount, int allocaionManager);
 void TregionFree(int xid, int firstPage);
 int TregionSize(int xid, int firstPage);
+
+Operation getAllocBoundaryTag();
 
 Operation getRegionAlloc();
 Operation getRegionFree();

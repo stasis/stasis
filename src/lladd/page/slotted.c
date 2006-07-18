@@ -191,7 +191,7 @@ recordid slottedRawRalloc(Page * page, int size) {
   assert(type != INVALID_SLOT);
 
   writelock(page->rwlatch, 342);
-  assert(*page_type_ptr(page) == SLOTTED_PAGE);
+  assert(*page_type_ptr(page) == SLOTTED_PAGE || *page_type_ptr(page) == BOUNDARY_TAG_PAGE);
 
   recordid rid;
   
@@ -345,7 +345,7 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	  rid.size = BLOB_SLOT;
 	}
 
-	if(*page_type_ptr(page) != SLOTTED_PAGE) {
+	if(*page_type_ptr(page) != SLOTTED_PAGE && *page_type_ptr(page) != BOUNDARY_TAG_PAGE) {
 	  /* slottedPreRalloc calls this when necessary.  However, in
 	     the case of a crash, it is possible that
 	     slottedPreRalloc's updates were lost, so we need to check

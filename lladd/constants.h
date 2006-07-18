@@ -132,17 +132,18 @@ terms specified in this license.
 #define OPERATION_SET_RAW    33
 #define OPERATION_INSTANT_SET_RAW 34
 
+#define OPERATION_ALLOC_BOUNDARY_TAG 35
 
 // these operations are specific to OASYS
-#define OPERATION_OASYS_DIFF_DO           35  
-#define OPERATION_OASYS_DIFF_REDO         36  
-#define OPERATION_OASYS_DIFF_UNDO         37  
-#define OPERATION_OASYS_SEMIDIFF_DO       38
-#define OPERATION_OASYS_SEMIDIFF_REDO     39
+#define OPERATION_OASYS_DIFF_DO           75  
+#define OPERATION_OASYS_DIFF_REDO         76  
+#define OPERATION_OASYS_DIFF_UNDO         77  
+#define OPERATION_OASYS_SEMIDIFF_DO       78
+#define OPERATION_OASYS_SEMIDIFF_REDO     79
 
 
 /* number above should be less than number below */
-#define MAX_OPERATIONS 40
+#define MAX_OPERATIONS 80
 
 //#define SLOT_TYPE_BASE PAGE_SIZE
 
@@ -194,6 +195,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define LLADD_FREE_PAGE     4
 #define FIXED_PAGE          5
 #define ARRAY_LIST_PAGE     6
+#define BOUNDARY_TAG_PAGE   7
 
 /* Record types */
 

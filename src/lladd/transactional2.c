@@ -82,6 +82,8 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_SET_RAW] = getSetRaw();
 	operationsTable[OPERATION_INSTANT_SET_RAW] = getInstantSetRaw();
 
+	operationsTable[OPERATION_ALLOC_BOUNDARY_TAG] = getAllocBoundaryTag();
+
 	/* 
 	   int i;
 
@@ -230,7 +232,7 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
   int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
+  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
@@ -259,7 +261,7 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
   int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || !page_type ) {
+  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     releasePage(p);
