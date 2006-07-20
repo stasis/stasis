@@ -125,10 +125,10 @@ int Tinit() {
 	
 	InitiateRecovery();
 	
-	/*truncationInit();
-		if(lladd_enableAutoTruncation) { 
+	truncationInit();
+	if(lladd_enableAutoTruncation) { 
 	  autoTruncate(); // should this be before InitiateRecovery?
-	  }*/
+	}
 	return 0;
 }
 
