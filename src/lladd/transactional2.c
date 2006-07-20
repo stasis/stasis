@@ -84,6 +84,8 @@ void setupOperationsTable() {
 
 	operationsTable[OPERATION_ALLOC_BOUNDARY_TAG] = getAllocBoundaryTag();
 
+	operationsTable[OPERATION_FIXED_PAGE_ALLOC] = getFixedPageAlloc();
+
 	/* 
 	   int i;
 
