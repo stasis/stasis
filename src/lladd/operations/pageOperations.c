@@ -299,6 +299,13 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 }
 
 
+int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
+  fixedPageInitialize(p, r.size, recordsPerPage(r.size));
+  pageWriteLSN(xid, p, lsn);
+  return 0;
+}
+
+
 /**
     @todo TfixedPageAlloc is a huge hack, and it writes an extra 4k to
     the log each time it is called.
@@ -309,7 +316,9 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 */
 recordid TfixedPageAlloc(int xid, int size) {
   int page = TpageAlloc(xid);
-  Page * p = loadPage(xid, page);
+  recordid rid = {page, recordsPerPage(size), size};
+  Tupdate(xid, rid, 0, OPERATION_FIXED_PAGE_ALLOC);
+  /*  Page * p = loadPage(xid, page);
   fixedPageInitialize(p , size, recordsPerPage(size));
   byte * tmpMemAddr = alloca(PAGE_SIZE);
   memcpy(tmpMemAddr, p->memAddr, PAGE_SIZE);
@@ -318,10 +327,19 @@ recordid TfixedPageAlloc(int xid, int size) {
   recordid rid;
   rid.page = page;
   rid.slot = recordsPerPage(size);
-  rid.size = size;
+  rid.size = size; */
   return rid;
 }
 
+Operation getFixedPageAlloc() { 
+  Operation o = {
+    OPERATION_FIXED_PAGE_ALLOC,
+    0,
+    OPERATION_NOOP,
+    &__fixedPageAlloc
+  };
+  return o;
+}
 
 compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
   /*  int firstPage = -1;

@@ -75,6 +75,8 @@ compensated_function int TpageGet(int xid, int pageid, byte* buf);
   Operation getPageDealloc(); */
 Operation getPageSet();
 
+Operation getFixedPageAlloc();
+
 Operation getUpdateFreespace();
 Operation getUpdateFreespaceInverse();
 Operation getUpdateFreelist();
