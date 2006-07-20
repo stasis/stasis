@@ -144,69 +144,6 @@ void TallocInit() {
   lastFreepage = UINT64_MAX;
 }
 
-/*compensated_function recordid TallocOld(int xid, long size) {
-  recordid rid;
-
-
-  // @todo How should blobs be handled?  Should Talloc do it?  If not,
-  // it's hard for apps to to use it...  Similarly, with hints, Talloc
-  // may need to route certain sizes to certain types of pages (eg;
-  // small sizes go to fixed page implementations...)
-
-  int isBlob = size >= BLOB_THRESHOLD_SIZE && size != BLOB_SLOT;
-
-  if(isBlob) {
-    try_ret(NULLRID) {
-      rid = preAllocBlob(xid, size);
-      Tupdate(xid,rid, NULL, OPERATION_ALLOC);
-    } end_ret(NULLRID);
-  } else {
-
-   
-
-    Page * p = NULL;
-
-    begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
-      pthread_mutex_lock(&talloc_mutex);
-
-      if(lastFreepage == UINT64_MAX) {
-	try_ret(NULLRID) {
-	  lastFreepage = TpageAlloc(xid);
-	} end_ret(NULLRID);
-	try_ret(NULLRID) {
-	  p = loadPage(xid, lastFreepage);
-	} end_ret(NULLRID);
-	assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
-	slottedPageInitialize(p);
-      } else {
-	try_ret(NULLRID) {
-	  p = loadPage(xid, lastFreepage);
-	} end_ret(NULLRID);
-      }
-
-
-      if(slottedFreespace(p) < size ) { 
-	releasePage(p);
-	try_ret(NULLRID) {
-	  lastFreepage = TpageAlloc(xid);
-	} end_ret(NULLRID);
-	try_ret(NULLRID) {
-	  p = loadPage(xid, lastFreepage);
-	} end_ret(NULLRID);
-	slottedPageInitialize(p);
-      }
-
-      rid = slottedRawRalloc(p, size);          // <--- Important part.
-      Tupdate(xid, rid, NULL, OPERATION_ALLOC); // <--- This hardcodes "slotted"  Should we use TallocFromPage() instead?
-      // @todo does releasePage do the correct error checking? <- Why is this comment here?
-      releasePage(p);
-    } compensate_ret(NULLRID);
-
-  }
-  return rid;
-
-}*/
-
 static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
 
 compensated_function recordid Talloc(int xid, unsigned long size) { 

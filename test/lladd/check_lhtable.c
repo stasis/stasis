@@ -110,8 +110,6 @@ long myrandom(long x) {
   return (long)((r/max));
 }
 
-//#define myrandom(x)( 
-//   (long)  ( ((double)x) * ((double)random()) / ((double)RAND_MAX) )  )
 
 #define MAXSETS   1000
 #define MAXSETLEN 10000
@@ -125,10 +123,11 @@ char * itoa(int i) {
 START_TEST(lhtableRandomized) {
  for(int jjj = 0; jjj < NUM_ITERS; jjj++) { 
   time_t seed = time(0);
-  printf("\nSeed = %ld\n", seed);
   if(jjj) { 
+    printf("\nSeed = %ld\n", seed);
     srandom(seed);
   } else { 
+    printf("\nSeed = %d\n", 1150241705);
     srandom(1150241705);  // This seed gets the random number generator to hit RAND_MAX, which makes a good test for myrandom()
   }
 

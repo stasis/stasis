@@ -84,7 +84,8 @@ terms specified in this license.
 /*#define MAX_BUFFER_SIZE 20029 */
 //#define MAX_BUFFER_SIZE 10007 
 //#define MAX_BUFFER_SIZE 5003
-#define MAX_BUFFER_SIZE 2003 
+//#define MAX_BUFFER_SIZE 2003 
+#define MAX_BUFFER_SIZE 4006 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 
@@ -142,6 +143,9 @@ terms specified in this license.
 #define OPERATION_OASYS_DIFF_UNDO         77  
 #define OPERATION_OASYS_SEMIDIFF_DO       78
 #define OPERATION_OASYS_SEMIDIFF_REDO     79
+
+#define STORAGE_MANAGER_NAIVE_PAGE_ALLOC  1
+
 
 
 /* number above should be less than number below */

@@ -51,14 +51,14 @@ void setupOperationsTable() {
 		operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc(); */
 	operationsTable[OPERATION_PAGE_SET] = getPageSet();
 
-	operationsTable[OPERATION_UPDATE_FREESPACE]         = getUpdateFreespace();
+	/*	operationsTable[OPERATION_UPDATE_FREESPACE]         = getUpdateFreespace();
 	operationsTable[OPERATION_UPDATE_FREESPACE_INVERSE] = getUpdateFreespaceInverse();
 	operationsTable[OPERATION_UPDATE_FREELIST]          = getUpdateFreelist();
 	operationsTable[OPERATION_UPDATE_FREELIST_INVERSE] = getUpdateFreelistInverse();
 	
 	operationsTable[OPERATION_FREE_PAGE] = getFreePageOperation();
 	operationsTable[OPERATION_ALLOC_FREED] = getAllocFreedPage();
-	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage();
+	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage(); */
 	operationsTable[OPERATION_NOOP] = getNoop();
 	operationsTable[OPERATION_INSTANT_SET] = getInstantSet();
 	operationsTable[OPERATION_ARRAY_LIST_ALLOC]  = getArrayListAlloc();
@@ -109,7 +109,6 @@ int Tinit() {
 
 	LogInit(loggerType);
 
-
 	try_ret(compensation_error()) { 
 	  pageOperationsInit();
 	} end_ret(compensation_error());
@@ -126,10 +125,10 @@ int Tinit() {
 	
 	InitiateRecovery();
 	
-	truncationInit();
-	if(lladd_enableAutoTruncation) { 
+	/*truncationInit();
+		if(lladd_enableAutoTruncation) { 
 	  autoTruncate(); // should this be before InitiateRecovery?
-	}
+	  }*/
 	return 0;
 }
 

@@ -29,7 +29,7 @@ void initializePages() {
   for(i = 0 ; i < NUM_PAGES; i++) {
     Page * p;
     recordid rid;
-    rid.page = i;
+    rid.page = i+1;
     rid.slot = 0;
     rid.size = sizeof(int);
     p = loadPage(-1, rid.page); 
@@ -61,7 +61,7 @@ void * workerThread(void * p) {
       printf("%d", i / 50); fflush(NULL);
     }
 
-    rid.page = k;
+    rid.page = k+1;
     rid.slot = 0;
     rid.size = sizeof(int);
 
@@ -69,7 +69,7 @@ void * workerThread(void * p) {
     
     readRecord(1, p, rid, &j);
 
-    assert(rid.page == k);
+    assert(rid.page == k+1);
     
     p->LSN = 0;
     *lsn_ptr(p) = 0;

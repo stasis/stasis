@@ -1,5 +1,6 @@
 
-void headerPageInitialize(Page * p);
+//void headerPageInitialize(Page * p);
+int headerPageInitialize();
 void freePageInitialize(Page * freepage, Page *headerpage);
 #define headerFreepage_ptr(page)       ints_from_end((page), 1)
 #define headerFreepagelist_ptr(page)   ints_from_end((page), 2)

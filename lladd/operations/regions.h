@@ -9,9 +9,28 @@
    a newly allocated region are undefined.
 */
 
-int TregionAlloc(int xid, int pageCount, int allocaionManager);
-void TregionFree(int xid, int firstPage);
-int TregionSize(int xid, int firstPage);
+typedef struct boundary_tag { 
+  unsigned int size;
+  unsigned int prev_size;
+  int status;
+  int region_xid;
+  int allocation_manager;
+} boundary_tag;
+
+#define REGION_BASE      (123)
+#define REGION_VACANT    (REGION_BASE + 0)
+#define REGION_ZONED     (REGION_BASE + 1)
+#define REGION_OCCUPIED  (REGION_BASE + 2)
+#define REGION_CONDEMNED (REGION_BASE + 3)
+
+void regionsInit();
+
+unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocaionManager);
+void TregionDealloc(int xid, unsigned int firstPage);
+unsigned int TregionSize(int xid, unsigned int firstPage);
+
+/** Currently, this function is O(n) in the number of regions, so be careful! */
+void TregionFindNthActive(int xid, unsigned int n, unsigned int * firstPage, unsigned int * size);
 
 Operation getAllocBoundaryTag();
 
