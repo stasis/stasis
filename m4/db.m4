@@ -29,7 +29,7 @@ dnl
 dnl Main macro for finding a usable db installation 
 dnl
 AC_DEFUN([AC_CONFIG_DB], [
-    ac_dbvers='4.3 4.2'
+    ac_dbvers='4.4 4.3 4.2'
     ac_dbdir='yes'
 
     AC_ARG_WITH(db,
