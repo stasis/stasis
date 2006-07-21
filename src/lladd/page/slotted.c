@@ -7,7 +7,7 @@
 #include <assert.h>
 
 static void really_do_ralloc(Page * page, recordid rid) ;
-
+size_t slottedFreespaceForSlot(Page * page, int slot);
 /**
    
 Move all of the records to the beginning of the page in order to 
@@ -92,6 +92,9 @@ void slottedCompact(Page * page) {
 	}
 
 	memcpy(page->memAddr, buffer, PAGE_SIZE);
+	
+	assert(slottedFreespaceForSlot(page, -1) || 1);
+
 }
 
 /**
@@ -128,7 +131,7 @@ void slottedPageDeInit() {
 void slottedPageInitialize(Page * page) {
   /*printf("Initializing page %d\n", page->id);
   fflush(NULL);  */
-  memset(page->memAddr, 0, PAGE_SIZE);
+  //  memset(page->memAddr, 0, PAGE_SIZE);
   *page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
@@ -144,10 +147,13 @@ size_t slottedFreespaceUnlocked(Page * page);
 size_t slottedFreespaceForSlot(Page * page, int slot) { 
   size_t slotOverhead;
 
-  if(slot >= 0 && slot < *numslots_ptr(page)) { 
+  if(slot == -1) { 
+    slotOverhead = (*freelist_ptr(page) == INVALID_SLOT) ? SLOTTED_PAGE_OVERHEAD_PER_RECORD : 0;
+  } else if(slot < *numslots_ptr(page)) { 
     slotOverhead = 0;
   } else { 
-    slotOverhead = SLOTTED_PAGE_OVERHEAD_PER_RECORD * (*numslots_ptr(page) - slot);
+    //    slotOverhead = SLOTTED_PAGE_OVERHEAD_PER_RECORD * (*numslots_ptr(page) - slot);
+    slotOverhead = SLOTTED_PAGE_OVERHEAD_PER_RECORD * ((slot+1) - *numslots_ptr(page));
   }
   // end_of_free_space points to the beginning of the slot header at the bottom of the page header.
   byte* end_of_free_space = (byte*)slot_length_ptr(page, (*numslots_ptr(page))-1); 
@@ -204,7 +210,7 @@ recordid slottedRawRalloc(Page * page, int size) {
   if(*freelist_ptr(page) != INVALID_SLOT) {
     rid.slot = *freelist_ptr(page);
     *freelist_ptr(page) = *slot_length_ptr(page, rid.slot);
-    *slot_length_ptr(page, rid.slot) = 0;
+    *slot_length_ptr(page, rid.slot) = INVALID_SLOT;
   }  
   
   really_do_ralloc(page, rid);
@@ -237,13 +243,6 @@ static void really_do_ralloc(Page * page, recordid rid) {
 
   short freeSpace;
   
-  /*  int isBlob = 0;
-
-  if(rid.size == BLOB_SLOT) {
-    isBlob = 1;
-    rid.size = sizeof(blob_record_t);
-    } */
-
   // Compact the page if we don't have enough room.
   if(slottedFreespaceForSlot(page, rid.slot) < physical_slot_length(rid.size)) {
     slottedCompact(page);
@@ -269,6 +268,8 @@ static void really_do_ralloc(Page * page, recordid rid) {
     }
     while(next != INVALID_SLOT && next != rid.slot) { 
       last = next;
+      short next_slot_ptr = *slot_ptr(page, next);
+      assert(next_slot_ptr == INVALID_SLOT);
       next = *slot_length_ptr(page, next);
     }
     if(next == rid.slot) { 
@@ -285,40 +286,51 @@ static void really_do_ralloc(Page * page, recordid rid) {
   // promote the reuse of free slot numbers, we go out of our way to make sure
   // that we put them in the list in increasing order.  (Note:  slottedCompact's 
   // correctness depends on this behavior!)
-  short lastFree = INVALID_SLOT;
-  while(*numslots_ptr(page) < rid.slot) {
-    int slot = *numslots_ptr(page);
-    short successor;
-    if(lastFree == INVALID_SLOT) { 
 
-      // The first time through, get our successor pointer from the 
-      // page's freelist pointer.
+  
+  if(rid.slot > *numslots_ptr(page)) { 
+    short lastSlot;
+    short numSlots = *numslots_ptr(page);
+    if(*freelist_ptr(page) == INVALID_SLOT) { 
 
-      // @todo Grab this from the *end* of the freelist, since we 
-      // know that each slot we are about to insert has a higher number
-      // than anything in the list.
+      *freelist_ptr(page) = numSlots;
+      lastSlot = numSlots;
 
-      successor = *freelist_ptr(page);
-      *freelist_ptr(page) = slot;
-    } else { 
-      // Put this page after the last page we inserted into the list
-      successor = *slot_length_ptr(page, lastFree);
-      *slot_length_ptr(page, lastFree) = slot;
+      *slot_ptr(page, lastSlot) = INVALID_SLOT;
+      // will set slot_length_ptr on next iteration.
 
-      // Make sure that we didn't just find an allocated page on the free list.
-      assert(*slot_ptr(page, lastFree) == INVALID_SLOT);
+
+      (*numslots_ptr(page))++;
+    } else {
+      lastSlot = INVALID_SLOT;
+      short next = *freelist_ptr(page);
+      while(next != INVALID_SLOT) { 
+	lastSlot = next;
+	next = *slot_length_ptr(page, lastSlot);
+	assert(lastSlot < *numslots_ptr(page));
+	assert(*slot_ptr(page, lastSlot) == INVALID_SLOT);
+      }
+      *slot_ptr(page, lastSlot) = INVALID_SLOT;
+
     }
 
-    // Update the pointers in the new slot header.
-    *slot_length_ptr(page, slot) = successor;
-    *slot_ptr(page, slot) = INVALID_SLOT;
-    (*numslots_ptr(page))++;
-    lastFree = slot;
+    // lastSlot now contains the tail of the free list.  We can start adding slots to the list starting at *numslots_ptr.
+    
+    while(*numslots_ptr(page) < rid.slot) { 
+      *slot_length_ptr(page, lastSlot) = *numslots_ptr(page);
+      lastSlot = *numslots_ptr(page);
+      *slot_ptr(page, lastSlot) = INVALID_SLOT;
+      (*numslots_ptr(page))++;
+    }
+
+    // Terminate the end of the list.
+    *slot_length_ptr(page, lastSlot) = INVALID_SLOT;
+
   }
-  // Increment numslots_ptr if necessary.
+
   if(*numslots_ptr(page) == rid.slot) { 
-    (*numslots_ptr(page))++;
-  } 
+    *numslots_ptr(page) = rid.slot+1;
+  }
 
   DEBUG("Num slots %d\trid.slot %d\n", *numslots_ptr(page), rid.slot);
   
@@ -333,6 +345,7 @@ static void really_do_ralloc(Page * page, recordid rid) {
   //} else {
   *slot_length_ptr(page, rid.slot) = rid.size; 
   //} 
+  assert(slottedFreespaceForSlot(page, -1) || 1);
 
 }
 /**
@@ -398,7 +411,10 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 
 	pageWriteLSN(xid, page, lsn);
 
+	assert(slottedFreespaceForSlot(page, -1) || 1);
+
 	writeunlock(page->rwlatch);
+
 
 	return rid;
 }
@@ -408,6 +424,7 @@ void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   // readlock(page->rwlatch, 443);
   size_t oldFreeLen = slottedFreespaceUnlocked(page);
   *slot_ptr(page, rid.slot) =  INVALID_SLOT;
+  assert(*freelist_ptr(page) < *numslots_ptr(page));
   *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
   *freelist_ptr(page) = rid.slot;  
   /*  *slot_length_ptr(page, rid.slot) = 0; */

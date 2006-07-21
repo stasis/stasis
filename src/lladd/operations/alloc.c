@@ -187,6 +187,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
       slottedPageInitialize(p);
     }    
     rid = TallocFromPageInternal(xid, p, size);
+    releasePage(p);
   } compensate_ret(NULLRID);
   return rid;
 }
@@ -221,7 +222,7 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
   
   if(slottedFreespace(p) < slotSize) { 
     slottedCompact(p);
-  }
+  } 
   if(slottedFreespace(p) < slotSize) { 
     rid = NULLRID;
   } else { 

@@ -30,10 +30,10 @@ static void TreadBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
   //  printf("Reading boundary tag at %d\n", page);
   recordid rid = { page, 0, sizeof(boundary_tag) };
   Tread(xid, rid, tag);
-  Page * p = loadPage(xid, page);
+  //  Page * p = loadPage(xid, page);
   //  printf("regions.c: %d\n", *page_type_ptr(p)); fflush(NULL);
-  assert(*page_type_ptr(p) == BOUNDARY_TAG_PAGE);
-  releasePage(p);
+  //  assert(*page_type_ptr(p) == BOUNDARY_TAG_PAGE);
+  //  releasePage(p);
 }
 static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
   //  printf("Writing boundary tag at %d\n", page);
@@ -44,7 +44,6 @@ static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
 void regionsInit() { 
   Page * p = loadPage(-1, 0);
   int pageType = *page_type_ptr(p);
-  releasePage(p);
   if(pageType != BOUNDARY_TAG_PAGE) {
     boundary_tag t;
     t.size = UINT32_MAX;
@@ -61,10 +60,9 @@ void regionsInit() {
     // after a crash.
     recordid rid = {0,0,sizeof(boundary_tag)};
 
-    Page * p = loadPage (-1, 0);
     operate_alloc_boundary_tag(0,p,0,rid,&t);
-    releasePage(p);
   }
+  releasePage(p);
 }
 
 pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;

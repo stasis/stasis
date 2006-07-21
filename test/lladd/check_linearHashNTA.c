@@ -133,7 +133,7 @@ START_TEST(linearHashNTAVariableSizetest)
   recordid hashHeader = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   recordid * val2;
   int i;
-  printf("\n"); fflush(stdout);
+  printf("\nstart test\n"); fflush(stdout);
   for(i = 0; i < NUM_ENTRIES; i++) {
     if(!(i % (NUM_ENTRIES/10))) {
       printf("."); fflush(stdout);
@@ -141,21 +141,25 @@ START_TEST(linearHashNTAVariableSizetest)
     val.page = i * NUM_ENTRIES;
     val.slot = val.page * NUM_ENTRIES;
     val.size = val.slot * NUM_ENTRIES;
-    val2 = 0;
+    val2 = 0; 
     int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
     assert(-1 == found);
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
     val2 =0;
     int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)&val2);
+
     assert(sizeof(recordid) == ret);
     assert(val2->page == i * NUM_ENTRIES);
     assert(val2->slot == val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
-  
+  printf("\nCalling commit"); fflush(NULL);
+
+
   Tcommit(xid);
   printf("\n"); fflush(stdout);
+  printf("committed\n"); fflush(NULL);
 
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i+=10){
@@ -186,8 +190,10 @@ START_TEST(linearHashNTAVariableSizetest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
+  printf("Begin shutdown.\n"); fflush(NULL);
   Tcommit(xid);
   Tdeinit();
+  printf("Test completed.\n"); fflush(NULL);
 } END_TEST
 
 
@@ -416,7 +422,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linearHashNTAIteratortest);
   tcase_add_test(tc, linearHashNTAtest);
   tcase_add_test(tc, linearHashNTAThreadedTest);
-  
+
   /* --------------------------------------------- */
   
   tcase_add_checked_fixture(tc, setup, teardown);

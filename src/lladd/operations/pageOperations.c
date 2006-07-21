@@ -38,6 +38,8 @@ compensated_function int TpageSet(int xid, int pageid, byte * memAddr) {
   return 0;
 }
 
+/** @todo this should be dynamic. */
+#define TALLOC_PAGE_REGION_SIZE 128 // 512K
 
 /** 
     This calls loadPage and releasePage directly, and bypasses the
@@ -46,6 +48,12 @@ compensated_function int TpageSet(int xid, int pageid, byte * memAddr) {
 compensated_function void pageOperationsInit() {
 
   regionsInit();
+
+  boundary_tag t;
+  recordid rid = {0, 0, sizeof(boundary_tag)};
+  // Need to find a region with some free pages in it.
+  Tread(-1, rid, &t);
+  
 
   pthread_mutex_init(&pageAllocMutex, NULL);
 }
