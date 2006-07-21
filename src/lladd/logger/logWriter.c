@@ -138,7 +138,8 @@ int openLogWriter() {
      synchronous disk writes.  Therefore, all read accesses (and
      therefore all seeks) run through the second descriptor.  */
 
-  int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  //  int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
   if(logFD == -1) {
     perror("Couldn't open log file for append.\n");
     abort();
@@ -224,6 +225,8 @@ int openLogWriter() {
     nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);;
     FreeLogEntry(le);
   }
+  // If there was a short write at the end of the log, just reuse its lsn, and overwrite it. 
+  fseek(log, nextAvailableLSN, SEEK_SET);
 
   return 0;
 }
@@ -375,8 +378,17 @@ static LogEntry * readLogEntry() {
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
+      lsn_t newSize = size - bytesRead;
+      lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
+
+      if(newBytesRead == 0) { 
+	return NULL;
+      }
       fprintf(stderr, "short read from log.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", sizeof(lsn_t), bytesRead);
       fflush(stderr);
+      fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
+      fflush(stderr);
+
       abort();  // really abort here.  This code should attempt to piece together short log reads...
     }
   }
@@ -398,12 +410,18 @@ static LogEntry * readLogEntry() {
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
-      fprintf(stderr, "short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
-      fflush(stderr);
       lsn_t newSize = size - bytesRead;
       lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
+
+      if(newBytesRead == 0) { 
+	return NULL;
+      }
+
+      fprintf(stderr, "short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
+      fflush(stderr);
       fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
       fflush(stderr);
+
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
     } 
