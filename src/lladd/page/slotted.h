@@ -65,7 +65,11 @@ Slotted page layout:
 #define SLOTTED_PAGE_HEADER_OVERHEAD (3 * sizeof(short))
 
 //#define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
-#define SLOTTED_PAGE_SKIP_SANITY_CHECKS 1
+//#define SLOTTED_PAGE_SKIP_SANITY_CHECKS 1
+
+#ifdef LONG_TEST
+#define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
+#endif
 
 void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
 void slottedRead(int xid, Page * page, recordid rid, byte *buff);
