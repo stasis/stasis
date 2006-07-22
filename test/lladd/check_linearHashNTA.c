@@ -133,7 +133,6 @@ START_TEST(linearHashNTAVariableSizetest)
   recordid hashHeader = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   recordid * val2;
   int i;
-  printf("\nstart test\n"); fflush(stdout);
   for(i = 0; i < NUM_ENTRIES; i++) {
     if(!(i % (NUM_ENTRIES/10))) {
       printf("."); fflush(stdout);
@@ -154,12 +153,8 @@ START_TEST(linearHashNTAVariableSizetest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
-  printf("\nCalling commit"); fflush(NULL);
-
 
   Tcommit(xid);
-  printf("\n"); fflush(stdout);
-  printf("committed\n"); fflush(NULL);
 
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i+=10){
