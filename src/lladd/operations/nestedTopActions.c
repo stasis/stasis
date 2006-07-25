@@ -51,7 +51,7 @@ terms specified in this license.
 #include <pbl/pbl.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include "../latches.h"
 #include <assert.h>
 /** @todo Remove extern declaration of transactional_2_mutex from nestedTopActions.c */
 extern pthread_mutex_t transactional_2_mutex;

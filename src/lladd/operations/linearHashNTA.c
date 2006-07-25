@@ -1,6 +1,6 @@
 #define __USE_GNU
 #define _GNU_SOURCE
-#include <pthread.h>
+#include "../latches.h"
 #include <lladd/transactional.h>
 #include <lladd/hash.h>
 #include "../page.h"

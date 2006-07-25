@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <pthread.h>
+#include "latches.h"
 /**
    @todo Look up the balls + bins stuff, and pick FILL_FACTOR in a
    principled way...

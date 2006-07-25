@@ -3,7 +3,7 @@
 #include <lladd/compensations.h>
 #include <sys/time.h>
 #include <time.h>
-#include <pthread.h>
+#include "latches.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>

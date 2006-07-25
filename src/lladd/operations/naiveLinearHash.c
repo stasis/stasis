@@ -2,7 +2,7 @@
 #include <lladd/hash.h>
 #include <limits.h>
 #include <assert.h>
-#include <pthread.h>
+#include "../latches.h"
 /**
 
    A from-scratch implementation of linear hashing.  Uses the
