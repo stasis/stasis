@@ -17,6 +17,8 @@
 #undef pthread_cond_timedwait
 #undef pthread_cond_wait
 
+/*
+
 int __lladd_pthread_mutex_init(lladd_pthread_mutex_t  *mutex,  const  pthread_mutexattr_t *mutexattr, 
 			       const char * file, int line, const char * name) {
   
@@ -39,7 +41,7 @@ int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int li
   char * location;
   int location_length = asprintf(&location, "%s %d", file, line);
 
-  /* DEBUG("Acquire mutex:  %s %d\n", file, line);*/
+  // DEBUG("Acquire mutex:  %s %d\n", file, line);
 
   while(EBUSY == (ret = pthread_mutex_trylock(&(mutex->mutex)))) {
     blockCount ++;
@@ -86,7 +88,7 @@ int __lladd_pthread_mutex_unlock(lladd_pthread_mutex_t *mutex) {
 }
 int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
 
-  /* Dump profiling info to stdout */
+  // Dump profiling info to stdout 
 
   profile_tuple * tup;
 
@@ -94,7 +96,7 @@ int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
   print_profile_tuple(&(mutex->tup));
   printf("\n  Lock points: [mean, stddev, max] \n");
 
-  /* Now, iterate over all of the lockpoints: */
+  // Now, iterate over all of the lockpoints: 
 
   for(tup = pblHtFirst(mutex->lockpoints); tup; tup = pblHtNext(mutex->lockpoints)) {
     printf("\t%s ", (char*)pblHtCurrentKey(mutex->lockpoints)); 
@@ -110,9 +112,7 @@ int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex) {
 
 }
 
-/**
-   @todo The profiled version of pthread_cond_wait isn't really implemented, so it throws off the mutex statistics. 
-*/
+//   @todo The profiled version of pthread_cond_wait isn't really implemented, so it throws off the mutex statistics. 
 int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, 
 			      char * file, int line, char * cond_name, char * mutex_name) {
   int ret;
@@ -154,6 +154,7 @@ int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *
   return pthread_cond_timedwait(cond, &mutex->mutex, abstime);
 }
 
+*/
 
 #undef rwl
 #undef initlock
@@ -188,16 +189,50 @@ __profile_rwl *__profile_rw_initlock (char * file, int line) {
 */
 void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
 
+  char * location;
+  //  pthread_t self = pthread_self();
+  //  int location_length = asprintf(&location, "readLock() %s:%d pid=%ld", file, line, self);
+  int location_length = asprintf(&location, "readLock() %s:%d", file, line);
+
+  profile_tuple * tup;
+
   /*  DEBUG("Read lock:  %s %d\n", file, line); */
 
+
+  /** @todo Should we spin instead of using the more efficient rwl
+      implementation, or should we see how many times we were woken
+      before obtaining the lock? */
+
   readlock(lock->lock, d);
+
+  /*  pthread_mutex_lock(__profile_rwl_mutex); */
+
+  tup = pblHtLookup(lock->lockpoints, location, location_length+1);
+
+  lock->last_acquired_at = location;
+
+  if(!tup) {
+    tup = malloc(sizeof(profile_tuple));
+
+    init_tuple(tup);
+
+    pblHtInsert(lock->lockpoints, location, location_length+1, tup);
+
+  }
+
+  acquired_lock(&(lock->tup), -1);
+  acquired_lock(tup, -1);
+
+  /*  pthread_mutex_unlock(__profile_rwl_mutex);*/
+
 
 
 }
 void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
 
   char * location;
-  int location_length = asprintf(&location, "write %s %d", file, line);
+  //  pthread_t self = pthread_self();
+  int location_length = asprintf(&location, "writeLock() %s:%d", file, line);
 
   profile_tuple * tup;
 
