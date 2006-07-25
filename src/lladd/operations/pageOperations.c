@@ -24,6 +24,9 @@ compensated_function int TpageGet(int xid, int pageid, byte *memAddr) {
     q = loadPage(xid, pageid);
     memcpy(memAddr, q->memAddr, PAGE_SIZE);
   } end_ret(compensation_error());
+  try_ret(compensation_error()) {
+    releasePage(q);
+  } end_ret(compensation_error());
   return 0;
 }
 
