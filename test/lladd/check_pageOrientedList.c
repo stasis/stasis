@@ -60,9 +60,11 @@ START_TEST(emptyIterator) {
   int keySize;
   int valueSize;
   int * key = 0;
+  int ** bkey = &key;
   recordid * value = 0;
-  
-  while(TpagedListNext(xid, it, (byte**)&key, &keySize, (byte**)&value, &valueSize)) {
+  recordid ** bvalue = &value;
+
+  while(TpagedListNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
     abort();
   }
   Tcommit(xid);
@@ -97,7 +99,8 @@ START_TEST(pagedListCheck) {
     assert(!ret);
     
     recordid * bb;
-    ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)&bb);
+    recordid ** bbb = &bb;
+    ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
   
     assert(ret == sizeof(recordid));
     assert(!memcmp(bb, &b, sizeof(recordid)));
@@ -117,7 +120,8 @@ START_TEST(pagedListCheck) {
     b.size = i+3;
     
     recordid * bb;
-    int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)&bb);
+    recordid ** bbb = &bb;
+    int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
     
     assert(ret == sizeof(recordid));
     assert(!memcmp(bb, &b, sizeof(recordid)));
@@ -131,8 +135,8 @@ START_TEST(pagedListCheck) {
       
       free(bb);
       bb = 0;
-      
-      ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)&bb);
+            
+      ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
       
       assert(-1==ret);
       assert(!bb);
@@ -154,7 +158,8 @@ START_TEST(pagedListCheck) {
     b.size = i+3;
     
     recordid * bb;
-    int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)&bb);
+    recordid ** bbb = &bb;
+    int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
 
     assert(ret == sizeof(recordid));
     assert(!memcmp(bb, &b, sizeof(recordid)));
@@ -167,9 +172,11 @@ START_TEST(pagedListCheck) {
   int keySize;
   int valueSize;
   int * key = 0;
+  int ** bkey = &key;
   recordid * value = 0;
+  recordid ** bvalue = &value;
   
-  while(TpagedListNext(xid, it, (byte**)&key, &keySize, (byte**)&value, &valueSize)) {
+  while(TpagedListNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
     assert(!seen[*key]);
     seen[*key] = 1;
 

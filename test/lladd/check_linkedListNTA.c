@@ -67,10 +67,11 @@ START_TEST(linkedListNTAtest)
     val.page = i * 1000;
     val.slot = val.page * 1000;
     val.size = val.slot * 1000;
-    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2); 
+    recordid ** bval2 = &val2;
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2); 
     assert(-1==found);
     TlinkedListInsert(xid, linkedList, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
-    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
     assert(sizeof(recordid)==found);
     assert(!memcmp(&val, val2, sizeof(recordid)));
     free(val2);
@@ -81,7 +82,8 @@ START_TEST(linkedListNTAtest)
   xid = Tbegin();
   for(i = 0; i < 1000; i+=10) {
     recordid * val2 = NULL;
-    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    recordid ** bval2 = &val2;
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
     assert(sizeof(recordid)==found);
     assert(val2->page == i * 1000);
     assert(val2->slot == i * 1000 * 1000);
@@ -90,7 +92,7 @@ START_TEST(linkedListNTAtest)
     
     found = TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int));
     assert(found);
-    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
     assert(-1==found);
     found = TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int));
     assert(!found);
@@ -99,7 +101,8 @@ START_TEST(linkedListNTAtest)
   xid = Tbegin();
   for(i = 0; i < 1000; i++) {
     recordid * val2;
-    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)&val2);
+    recordid ** bval2 = &val2;
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
     assert(sizeof(recordid)==found);
     assert(val2->page == i * 1000);
     assert(val2->slot == i * 1000 * 1000);
@@ -149,7 +152,8 @@ static void * worker(void * arg) {
   for(i = 0; i < NUM_T_ENTRIES; i++) {
     recordid key = makekey(thread, i);
     int * value;
-    int ret = TlinkedListFind(xid, listRoot, (byte*)&key, sizeof(recordid), (byte**)&value);
+    int ** bvalue = &value;
+    int ret = TlinkedListFind(xid, listRoot, (byte*)&key, sizeof(recordid), (byte**)bvalue);
     assert(ret == sizeof(int));
     assert(*value == i+thread*NUM_THREADS);
     free(value);

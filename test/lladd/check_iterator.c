@@ -134,9 +134,11 @@ START_TEST(iteratorTest)
   i = 0;
   while(Titerator_next(-1, arrayIt)) {
     unsigned int * key;
+    unsigned int ** bkey = &key;
     unsigned char * value;
-    int keySize   = Titerator_key(-1, arrayIt, (byte**)&key);
-    int valueSize = Titerator_value(-1, arrayIt, (byte**)&value);
+    unsigned char ** bvalue = &value;
+    int keySize   = Titerator_key(-1, arrayIt, (byte**)bkey);
+    int valueSize = Titerator_value(-1, arrayIt, (byte**)bvalue);
     assert(keySize == sizeof(unsigned int));
     assert(valueSize == sizeof(unsigned char));
     assert(*key == i);

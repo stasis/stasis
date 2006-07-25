@@ -145,8 +145,9 @@ static void * go2( void * arg) {
   while((itRet = Titerator_next(-1, it))) {
 
     lladdFifo_t ** dirtyFifo_ptr;
+    lladdFifo_t *** bdirtyFifo_ptr = &dirtyFifo_ptr;
     lladdFifo_t *  dirtyFifo;
-    int dirtyFifoSize = Titerator_value(-1, it, (byte**)&dirtyFifo_ptr);
+    int dirtyFifoSize = Titerator_value(-1, it, (byte**)bdirtyFifo_ptr);
     
     dirtyFifo = * dirtyFifo_ptr;
 
