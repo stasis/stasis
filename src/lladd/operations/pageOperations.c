@@ -133,7 +133,13 @@ Operation getFixedPageAlloc() {
 
 compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
   return TregionAlloc(xid, count, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
-  //  return 0;//newpage;
+}
+
+int TpageGetType(int xid, int pageid) { 
+  Page * p = loadPage(xid, pageid);
+  int ret = *page_type_ptr(p);
+  releasePage(p);
+  return ret;
 }
 
 /** Safely allocating and freeing pages is suprisingly complex.  Here is a summary of the process:
