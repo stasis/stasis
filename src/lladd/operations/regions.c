@@ -28,7 +28,6 @@ static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid
 
 static int operate_alloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
   pthread_mutex_lock(&region_mutex);
-  assert(!p);
   regionAllocArg *dat = (regionAllocArg*)datP;
   TregionAllocHelper(xid, dat->startPage, dat->pageCount, dat->allocationManager);
   pthread_mutex_unlock(&region_mutex);
@@ -37,7 +36,6 @@ static int operate_alloc_region(int xid, Page * p, lsn_t lsn, recordid rid, cons
 
 static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
   regionAllocArg *dat = (regionAllocArg*)datP;
-  assert(!p);
   TregionDealloc(xid, dat->startPage+1);
   return 0;
 }
