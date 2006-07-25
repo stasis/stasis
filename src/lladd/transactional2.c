@@ -86,6 +86,9 @@ void setupOperationsTable() {
 
 	operationsTable[OPERATION_FIXED_PAGE_ALLOC] = getFixedPageAlloc();
 
+	operationsTable[OPERATION_ALLOC_REGION] = getAllocRegion();
+	operationsTable[OPERATION_DEALLOC_REGION] = getDeallocRegion();
+
 	/* 
 	   int i;
 

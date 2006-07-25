@@ -80,11 +80,11 @@ terms specified in this license.
 
 #define PAGE_SIZE 4096
 
-#define MAX_BUFFER_SIZE 100003 
+//#define MAX_BUFFER_SIZE 100003 
 /*#define MAX_BUFFER_SIZE 20029 */
 //#define MAX_BUFFER_SIZE 10007 
 //#define MAX_BUFFER_SIZE 5003
-//#define MAX_BUFFER_SIZE 2003 
+#define MAX_BUFFER_SIZE 2003 
 //#define MAX_BUFFER_SIZE 4006 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
@@ -136,6 +136,9 @@ terms specified in this license.
 #define OPERATION_ALLOC_BOUNDARY_TAG 35
 
 #define OPERATION_FIXED_PAGE_ALLOC 36
+
+#define OPERATION_ALLOC_REGION 37
+#define OPERATION_DEALLOC_REGION 38
 
 // these operations are specific to OASYS
 #define OPERATION_OASYS_DIFF_DO           75  

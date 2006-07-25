@@ -34,7 +34,7 @@ void TregionFindNthActive(int xid, unsigned int n, unsigned int * firstPage, uns
 
 Operation getAllocBoundaryTag();
 
-Operation getRegionAlloc();
-Operation getRegionFree();
+Operation getAllocRegion();
+Operation getDeallocRegion();
 
 // XXX need callbacks to handle transaction commit/abort.

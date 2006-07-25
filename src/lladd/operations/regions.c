@@ -5,14 +5,40 @@
 
 #define INVALID_XID (-1)
 
+typedef struct regionAllocLogArg{
+  int startPage;
+  unsigned int pageCount;
+  int allocationManager;
+} regionAllocArg;
+
 #define boundary_tag_ptr(p) (((byte*)end_of_usable_space_ptr((p)))-sizeof(boundary_tag_t))
 
+pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager);
 
 static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { 
   slottedPageInitialize(p);
   *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
   slottedPostRalloc(xid, p, lsn, rid);
   slottedWrite(xid, p, lsn, rid, dat);
+  return 0;
+}
+
+static int operate_alloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
+  pthread_mutex_lock(&region_mutex);
+  assert(!p);
+  regionAllocArg *dat = (regionAllocArg*)datP;
+  TregionAllocHelper(xid, dat->startPage, dat->pageCount, dat->allocationManager);
+  pthread_mutex_unlock(&region_mutex);
+  return 0;
+}
+
+static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
+  regionAllocArg *dat = (regionAllocArg*)datP;
+  assert(!p);
+  TregionDealloc(xid, dat->startPage+1);
   return 0;
 }
 
@@ -27,13 +53,8 @@ static void TdeallocBoundaryTag(int xid, unsigned int page) {
 }
  
 static void TreadBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
-  //  printf("Reading boundary tag at %d\n", page);
   recordid rid = { page, 0, sizeof(boundary_tag) };
   Tread(xid, rid, tag);
-  //  Page * p = loadPage(xid, page);
-  //  printf("regions.c: %d\n", *page_type_ptr(p)); fflush(NULL);
-  //  assert(*page_type_ptr(p) == BOUNDARY_TAG_PAGE);
-  //  releasePage(p);
 }
 static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
   //  printf("Writing boundary tag at %d\n", page);
@@ -65,30 +86,10 @@ void regionsInit() {
   releasePage(p);
 }
 
-pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocationManager) { 
-  // Initial implementation.  Naive first fit.
-
-  pthread_mutex_lock(&region_mutex);
-
-  unsigned int pageid = 0;
+static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager) {
   boundary_tag t;
-  unsigned int prev_size = UINT32_MAX;
+  TreadBoundaryTag(xid, pageid, &t);
 
-
-  TreadBoundaryTag(xid, pageid, &t); // XXX need to check if there is a boundary tag there or not!
-
-  while(t.status != REGION_VACANT || t.size < pageCount) { // TODO: This while loop and the boundary tag manipulation below should be factored into two submodules.
-    //    printf("t.status = %d, REGION_VACANT = %d, t.size = %d, pageCount = %d\n", t.status, REGION_VACANT, t.size, pageCount);
-    assert(t.prev_size == prev_size);
-    prev_size = t.size;
-    pageid += ( t.size + 1 );
-    TreadBoundaryTag(xid, pageid, &t);
-  }
-  //  printf("page = %d, t.status = %d, REGION_VACANT = %d, t.size = %d, pageCount = %d (alloced)\n", pageid, t.status, REGION_VACANT, t.size, pageCount);
-
-  assert(t.prev_size == prev_size);
   if(t.size != pageCount) { 
     // need to split region
     // allocate new boundary tag.
@@ -130,6 +131,39 @@ unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocationManager
   t.size = pageCount;
 
   TsetBoundaryTag(xid, pageid, &t);
+
+}
+
+unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocationManager) { 
+  // Initial implementation.  Naive first fit.
+
+  
+  pthread_mutex_lock(&region_mutex);
+
+  unsigned int pageid = 0;
+  boundary_tag t;
+  unsigned int prev_size = UINT32_MAX;
+
+  TreadBoundaryTag(xid, pageid, &t); // XXX need to check if there is a boundary tag there or not!
+
+  while(t.status != REGION_VACANT || t.size < pageCount) { // TODO: This while loop and the boundary tag manipulation below should be factored into two submodules.
+    //    printf("t.status = %d, REGION_VACANT = %d, t.size = %d, pageCount = %d\n", t.status, REGION_VACANT, t.size, pageCount);
+    assert(t.prev_size == prev_size);
+    prev_size = t.size;
+    pageid += ( t.size + 1 );
+    TreadBoundaryTag(xid, pageid, &t);
+  }
+  //  printf("page = %d, t.status = %d, REGION_VACANT = %d, t.size = %d, pageCount = %d (alloced)\n", pageid, t.status, REGION_VACANT, t.size, pageCount);
+
+  assert(t.prev_size == prev_size);
+
+  regionAllocArg arg = { pageid, pageCount, allocationManager };
+
+  void * ntaHandle = TbeginNestedTopAction(xid, OPERATION_ALLOC_REGION, (const byte*)&arg, sizeof(regionAllocArg));
+
+  TregionAllocHelper(xid, pageid, pageCount, allocationManager);
+
+  TendNestedTopAction(xid, ntaHandle);
 
   pthread_mutex_unlock(&region_mutex);
   
@@ -234,6 +268,26 @@ Operation getAllocBoundaryTag() {
     sizeof(boundary_tag),
     OPERATION_NOOP,
     &operate_alloc_boundary_tag
+  };
+  return o;
+}
+
+Operation getAllocRegion() { 
+  Operation o = { 
+    OPERATION_ALLOC_REGION,
+    sizeof(regionAllocArg),
+    OPERATION_DEALLOC_REGION,
+    &operate_alloc_region
+  };
+  return o;
+}
+
+Operation getDeallocRegion() { 
+  Operation o = { 
+    OPERATION_DEALLOC_REGION,
+    sizeof(regionAllocArg),
+    OPERATION_ALLOC_REGION,
+    &operate_dealloc_region
   };
   return o;
 }
