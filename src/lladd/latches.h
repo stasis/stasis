@@ -46,15 +46,15 @@ typedef struct {
 
 #ifdef PROFILE_LATCHES
 
-#define pthread_mutex_t lladd_pthread_mutex_t
+/*#define pthread_mutex_t lladd_pthread_mutex_t
 
 #define pthread_mutex_init(x, y) __lladd_pthread_mutex_init((x), (y), __FILE__, __LINE__, #x)
 #define pthread_mutex_destroy(x) __lladd_pthread_mutex_destroy((x))
 #define pthread_mutex_lock(x) __lladd_pthread_mutex_lock((x), __FILE__, __LINE__)
 #define pthread_mutex_unlock(x) __lladd_pthread_mutex_unlock((x))
 #define pthread_mutex_trylock(x) NO_PROFILING_EQUIVALENT_TO_PTHREAD_TRYLOCK
-#define pthread_cond_wait(x, y) __lladd_pthread_cond_wait((x), (y), __FILE__, __LINE__, #x, #y);
-#define pthread_cond_timedwait(x, y, z) __lladd_pthread_cond_timedwait((x), (y), (z), __FILE__, __LINE__, #x, #y);
+#define pthread_cond_wait(x, y) __lladd_pthread_cond_wait((x), (y), __FILE__, __LINE__, #x, #y)
+#define pthread_cond_timedwait(x, y, z) __lladd_pthread_cond_timedwait((x), (y), (z), __FILE__, __LINE__, #x, #y)
 
 int __lladd_pthread_mutex_init(lladd_pthread_mutex_t  *mutex,  const  pthread_mutexattr_t *mutexattr, const char * file, int line, const char * mutex_name);
 int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int line);
@@ -62,10 +62,10 @@ int __lladd_pthread_mutex_unlock(lladd_pthread_mutex_t *mutex);
 int __lladd_pthread_mutex_destroy(lladd_pthread_mutex_t *mutex);
 int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, 
 			      char * file, int line, char * cond_name, char * mutex_name);
-/** @param abstime should be const struct timespec, but GCC won't take that. */
+// @param abstime should be const struct timespec, but GCC won't take that. 
 int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex, void *abstime,
 				   char * file, int line, char * cond_name, char * mutex_name);
-
+*/
 #define initlock() __profile_rw_initlock(__FILE__, __LINE__)
 #define readlock(x, y) __profile_readlock((x),(y), __FILE__, __LINE__)
 #define writelock(x, y) __profile_writelock((x), (y), __FILE__, __LINE__)
