@@ -37,12 +37,10 @@ void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
   for(chunk = 0; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) { 
     TpageGet(xid, rec.offset+chunk, pbuf);
     memcpy(buf + (chunk * USABLE_SIZE_OF_PAGE), pbuf, USABLE_SIZE_OF_PAGE);
-    TpageSet(xid, rec.offset+chunk, pbuf);
   }
 
   TpageGet(xid, rec.offset+chunk, pbuf);
   memcpy(buf + (chunk * USABLE_SIZE_OF_PAGE), pbuf, rid.size % USABLE_SIZE_OF_PAGE);
-  TpageSet(xid, rec.offset+chunk, pbuf);
   //  printf("Chunk = %d\n", chunk);
 
 }
