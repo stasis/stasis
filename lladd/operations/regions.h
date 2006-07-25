@@ -37,4 +37,12 @@ Operation getAllocBoundaryTag();
 Operation getAllocRegion();
 Operation getDeallocRegion();
 
+/** This function checks the regions in the page file for consistency.
+    It makes sure that the doublly linked list is consistent (eg
+    this->next->prev == this), and it makes sure that all boundary
+    tags pages (that are marked REGION_ZONED) occur somewhere in the
+    linked list. */
+
+void fsckRegions(int xid);
+
 // XXX need callbacks to handle transaction commit/abort.

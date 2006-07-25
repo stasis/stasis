@@ -106,6 +106,9 @@ START_TEST(regions_smokeTest) {
       max_page = new_page + 2;
     }
   }
+
+  fsckRegions(xid);
+
   Tcommit(xid);
 
   printf("\nMaximum space usage = %d, best possible = %d\n", max_page, 104); // peak storage usage = 100 pages + 1 page + 3 boundary pages.
@@ -128,6 +131,11 @@ START_TEST(regions_randomizedTest) {
   unsigned int max_size = 0;
   unsigned int max_ideal_size = 0;
   for(int i = 0; i < 10000; i++) { 
+
+    if(!(i % 100)) { 
+      fsckRegions(xid);
+    }
+
     if(myrandom(2)) { 
       unsigned int size = myrandom(100);
       TregionAlloc(xid, size, 1);
@@ -175,6 +183,7 @@ START_TEST(regions_randomizedTest) {
       }
     }
   }
+  fsckRegions(xid);
   Tcommit(xid);
   Tdeinit();
   if((double)max_size/(double)max_ideal_size > 5) {  

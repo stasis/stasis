@@ -11,10 +11,7 @@ typedef struct regionAllocLogArg{
   int allocationManager;
 } regionAllocArg;
 
-#define boundary_tag_ptr(p) (((byte*)end_of_usable_space_ptr((p)))-sizeof(boundary_tag_t))
-
 pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 
 static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager);
 
@@ -42,24 +39,29 @@ static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, co
 
 // TODO: Implement these four functions.
 static void TallocBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
-  //  printf("Alloc boundary tag at %d\n", page);
+  //  printf("Alloc boundary tag at %d = { %d, %d, %d }\n", page, tag->size, tag->prev_size, tag->status);
   recordid rid = {page, 0, sizeof(boundary_tag)};
   Tupdate(xid, rid, tag, OPERATION_ALLOC_BOUNDARY_TAG);
 }
-static void TdeallocBoundaryTag(int xid, unsigned int page) {
-  //no-op
-}
- 
+
 static void TreadBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
   recordid rid = { page, 0, sizeof(boundary_tag) };
   Tread(xid, rid, tag);
+  //  printf("Read boundary tag at %d = { %d, %d, %d }\n", page, tag->size, tag->prev_size, tag->status);
 }
 static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
-  //  printf("Writing boundary tag at %d\n", page);
+  //  printf("Write boundary tag at %d = { %d, %d, %d }\n", page, tag->size, tag->prev_size, tag->status);
   recordid rid = { page, 0, sizeof(boundary_tag) };
   Tset(xid, rid, tag);
 }
 
+static void TdeallocBoundaryTag(int xid, unsigned int page) {
+  boundary_tag t;
+  TreadBoundaryTag(xid, page, &t);
+  t.status = REGION_CONDEMNED;
+  TsetBoundaryTag(xid, page, &t);
+}
+ 
 void regionsInit() { 
   Page * p = loadPage(-1, 0);
   int pageType = *page_type_ptr(p);
@@ -82,6 +84,51 @@ void regionsInit() {
     operate_alloc_boundary_tag(0,p,0,rid,&t);
   }
   releasePage(p);
+}
+
+void fsckRegions(int xid) { 
+
+  // Ignore region_xid, allocation_manager for now.
+
+  int pageType;
+  boundary_tag tag;
+  boundary_tag prev_tag;
+  prev_tag.size = UINT32_MAX;
+  int tagPage = 0;
+  pageType = TpageGetType(xid, tagPage);
+  assert(pageType == BOUNDARY_TAG_PAGE);
+  TreadBoundaryTag(xid, tagPage, &tag);
+
+  assert(tag.prev_size == UINT32_MAX);
+
+  while(tag.size != UINT32_MAX) { 
+    // Ignore region_xid, allocation_manager for now.
+    assert(tag.status == REGION_VACANT || tag.status == REGION_ZONED);
+    assert(prev_tag.size == tag.prev_size);
+
+    for(int i = 0; i < tag.size; i++) { 
+      int thisPage = tagPage + 1 + i;
+      pageType = TpageGetType(xid, thisPage);
+
+      if(pageType == BOUNDARY_TAG_PAGE) { 
+	boundary_tag orphan;
+	TreadBoundaryTag(xid, thisPage, &orphan);
+	assert(orphan.status == REGION_CONDEMNED);
+	Page * p  = loadPage(xid, thisPage);
+	fsckSlottedPage(p);
+	releasePage(p);
+      } else if (pageType == SLOTTED_PAGE) { 
+	Page * p = loadPage(xid, thisPage);
+	fsckSlottedPage(p);
+	releasePage(p);
+      }
+    }
+    prev_tag = tag;
+    tagPage = tagPage + 1 + prev_tag.size;
+    TreadBoundaryTag(xid, tagPage, &tag);
+  }
+
+  assert(tag.status == REGION_VACANT);  // space at EOF better be vacant!
 }
 
 static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager) {
@@ -191,12 +238,12 @@ void TregionDealloc(int xid, unsigned int firstPage) {
     TreadBoundaryTag(xid, succ_page, &succ_tag);
 
     // TODO: Check page_type_ptr()...
+
     if(succ_tag.size == UINT32_MAX) { 
       t.size = UINT32_MAX;
-
+      assert(succ_tag.status == REGION_VACANT);
       // TODO: Truncate page file.
       TdeallocBoundaryTag(xid, succ_page);
-
     } else if(succ_tag.status == REGION_VACANT) { 
 
       t.size = t.size + succ_tag.size + 1;
@@ -207,9 +254,8 @@ void TregionDealloc(int xid, unsigned int firstPage) {
       TreadBoundaryTag(xid, succ_succ_page, &succ_succ_tag);
       succ_succ_tag.prev_size = t.size;
       TsetBoundaryTag(xid, succ_succ_page, &succ_succ_tag);
-      
-      TsetBoundaryTag(xid, succ_page, &succ_tag);
-      
+    
+      TdeallocBoundaryTag(xid, succ_page);
     }
   }
 
@@ -225,7 +271,10 @@ void TregionDealloc(int xid, unsigned int firstPage) {
     boundary_tag pred_tag;
     TreadBoundaryTag(xid, pred_page, &pred_tag);
     
-    if(pred_tag.status == REGION_VACANT) {
+    if(pred_tag.status == REGION_VACANT) { 
+
+      TdeallocBoundaryTag(xid, firstPage -1);
+
       if(t.size == UINT32_MAX) { 
 	pred_tag.size = UINT32_MAX;
 	
@@ -248,7 +297,6 @@ void TregionDealloc(int xid, unsigned int firstPage) {
       }
       
       TsetBoundaryTag(xid, pred_page, &pred_tag);
-      TdeallocBoundaryTag(xid, firstPage -1);
       
     } else { 
       TsetBoundaryTag(xid, firstPage - 1, &t);
