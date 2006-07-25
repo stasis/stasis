@@ -20,7 +20,6 @@
 static pthread_mutex_t mutexes[MUTEX_COUNT];
 
 static pthread_mutex_t xid_table_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t rid_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t * getMutex(byte * dat, int datLen) {
   return &mutexes[hash(dat, datLen, MUTEX_BITS, MUTEX_EXT)];
 }
@@ -103,13 +102,11 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
   pthread_mutex_t * mut = getMutex(dat, datLen);
 
   pthread_mutex_lock(mut);
-  pthread_mutex_lock(&rid_table_mutex);
   lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
 
   if(!ridLock) {
     ridLock = createLock(dat, datLen);
   }
-  pthread_mutex_unlock(&rid_table_mutex);
   ridLock->active++;
 
   if(ridLock->writers || ridLock->waiting) {
@@ -168,12 +165,10 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     pthread_mutex_t * mut = getMutex(dat, datLen);
 
   pthread_mutex_lock(mut);
-  pthread_mutex_lock(&rid_table_mutex);
   lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
   if(!ridLock) {
     ridLock = createLock(dat, datLen);
   }
-  pthread_mutex_unlock(&rid_table_mutex);
 
   ridLock->active++;
   ridLock->waiting++;
@@ -217,34 +212,13 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
   return 0;
 }
 
-int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
-
-
-  if(xid == -1) { return 0; }
-  //  printf("xid %d unlock\n", xid);
-
-  pthread_mutex_lock(&xid_table_mutex);
-
-  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
-
-  if(!xidLocks) {
-    xidLocks = lockManagerBeginTransactionUnlocked(xid);
-  }
-
-  long currentLevel = (long)pblHtLookup(xidLocks, dat, datLen);
-
-  if(currentLevel) {
-    pblHtRemove(xidLocks, dat, datLen);
-  }
-
-  pthread_mutex_unlock(&xid_table_mutex);
+static int decrementLock(void * dat, int datLen, int currentLevel) {
+  //  pthread_mutex_unlock(&xid_table_mutex);
   pthread_mutex_t * mut = getMutex(dat, datLen);
   pthread_mutex_lock(mut);
-  pthread_mutex_lock(&rid_table_mutex);
   lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
   assert(ridLock);
   ridLock->active++;
-  pthread_mutex_unlock(&rid_table_mutex);
   if(currentLevel == LM_WRITELOCK) {
     ridLock->writers--;
     ridLock->readers--;
@@ -267,14 +241,16 @@ int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
   } else {
     //    printf("(%d %d %d %d)", ridLock->active, ridLock->waiting, ridLock->readers, ridLock->writers);
   }
-
   pthread_mutex_unlock(mut);
-
   return 0;
 }
 
-int lockManagerCommitHashed(int xid, int datLen) {
+int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
+
+
   if(xid == -1) { return 0; }
+  //  printf("xid %d unlock\n", xid);
+
   pthread_mutex_lock(&xid_table_mutex);
 
   pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
@@ -284,20 +260,39 @@ int lockManagerCommitHashed(int xid, int datLen) {
   }
 
   pthread_mutex_unlock(&xid_table_mutex);
-  void * data;
+
+  long currentLevel = (long)pblHtLookup(xidLocks, dat, datLen);
+
+  assert(currentLevel);
+  pblHtRemove(xidLocks, dat, datLen);
+  decrementLock(dat, datLen, currentLevel);
+
+  return 0;
+}
+
+int lockManagerCommitHashed(int xid, int datLen) {
+  if(xid == -1) { return 0; }
+  pthread_mutex_lock(&xid_table_mutex);
+
+  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
+  pblHtRemove(xidLockTable, &xid, sizeof(int));
+  if(!xidLocks) {
+    xidLocks = lockManagerBeginTransactionUnlocked(xid);
+  }
+
+  pthread_mutex_unlock(&xid_table_mutex);
+  long currentLevel;
   int ret = 0;
-  byte * dat = malloc(datLen);
-  for(data = pblHtFirst(xidLocks); data; data = pblHtNext(xidLocks)) {
-    memcpy(dat, pblHtCurrentKey(xidLocks), datLen);
-    int tmpret = lockManagerUnlockHashed(xid, dat, datLen);
+  for(currentLevel = (long)pblHtFirst(xidLocks); currentLevel; currentLevel  = (long)pblHtNext(xidLocks)) {
+    void * currentKey = pblHtCurrentKey(xidLocks);
+    int tmpret = decrementLock(currentKey, datLen, currentLevel);
     // Pass any error(s) up to the user.
     // (This logic relies on the fact that currently it only returns 0 and LLADD_INTERNAL_ERROR)
     if(tmpret) {  
       ret = tmpret;
     }
-    pblHtRemove(xidLocks, dat, datLen);
   }
-  free(dat);
+  pblHtDelete(xidLocks);
   return ret;
 }
 
