@@ -80,6 +80,7 @@ terms specified in this license.
 
 #define PAGE_SIZE 4096
 
+#ifndef MAX_BUFFER_SIZE
 //#define MAX_BUFFER_SIZE 100003 
 /*#define MAX_BUFFER_SIZE 20029 */
 //#define MAX_BUFFER_SIZE 10007 
@@ -88,6 +89,7 @@ terms specified in this license.
 //#define MAX_BUFFER_SIZE 4006 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
+#endif
 
 #define MAX_TRANSACTIONS 1000
 
