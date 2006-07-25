@@ -61,6 +61,11 @@ terms specified in this license.
 #include <pbl/pbl.h>
 #include <lladd/truncation.h>
 
+#ifdef LONG_TEST
+pthread_mutex_t pinCount_mutex = PTHREAD_MUTEX_INITIALIZER;
+int pinCount = 0;
+#endif
+
 static pblHashTable_t *activePages; /* page lookup */
 /*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
 
@@ -117,7 +122,11 @@ void bufDeinit() {
 	closePageFile();
 	
 	pageDeInit();
-
+#ifdef LONG_TEST
+	if(pinCount != 0) { 
+	  printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
+	}
+#endif
 	return;
 }
 /**
@@ -127,10 +136,19 @@ void bufDeinit() {
 void simulateBufferManagerCrash() {
   closeBlobStore();
   closePageFile();
+#ifdef LONG_TEST
+  pinCount = 0;
+#endif
 }
 
 void releasePage (Page * p) {
   unlock(p->loadlatch);
+#ifdef LONG_TEST
+  pthread_mutex_lock(&pinCount_mutex);
+  pinCount --;
+  pthread_mutex_unlock(&pinCount_mutex);
+#endif
+
 }
 
 int bufTransCommit(int xid, lsn_t lsn) {
@@ -269,9 +287,17 @@ static Page * getPage(int pageid, int locktype) {
 }
 
 compensated_function Page *loadPage(int xid, int pageid) {
+
   try_ret(NULL) {
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
   } end_ret(NULL);
   Page * ret = getPage(pageid, RO);
+
+#ifdef LONG_TEST
+  pthread_mutex_lock(&pinCount_mutex);
+  pinCount ++;
+  pthread_mutex_unlock(&pinCount_mutex);
+#endif
+
   return ret;
 }
