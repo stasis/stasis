@@ -559,6 +559,10 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	     updating the storefile without first locking any pages
 	     that suffer from this problem.
 
+	     Also, this only works because pages that are of type
+	     BOUNDARY_TAG_PAGE are guaranteed to have their page type
+	     set before recovery calls this function.
+
 	  */
 
 	  slottedPageInitialize(page);  
