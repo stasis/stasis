@@ -166,7 +166,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
       try_ret(NULLRID) {
 	p = loadPage(xid, lastFreepage);
       } end_ret(NULLRID);
-      assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
+      //      assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
       slottedPageInitialize(p);
     } else {
       try_ret(NULLRID) {
