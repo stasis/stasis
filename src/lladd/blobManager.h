@@ -56,21 +56,6 @@ void readBlob(int xid, Page * p,  recordid rid, void * buf);
 */
 void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf);
 
-
-/**
-   Atomicly (with respect to recovery) make the dirty version of the
-   blob the primary copy and mark it not-dirty.
-*/
-
-void commitBlobs(int xid);
-
-/**
-   Revert the blob to the last clean version.
-*/
-
-void abortBlobs(int xid);
-
-
 compensated_function recordid preAllocBlob(int xid, long blobsize);
 compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobsize);
 

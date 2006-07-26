@@ -68,10 +68,3 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
 
 }
 
-void commitBlobs(int xid) {
-
-}
-
-void abortBlobs(int xid) { 
-
-}

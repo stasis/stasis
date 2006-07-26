@@ -299,7 +299,7 @@ int Tcommit(int xid) {
 #endif
 
   lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
-  bufTransCommit(xid, lsn); /* unlocks pages */
+  if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
   pthread_mutex_lock(&transactional_2_mutex);
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
@@ -319,7 +319,7 @@ int Tabort(int xid) {
 
   /** @todo is the order of the next two calls important? */
   undoTrans(*t/*XactionTable[xid%MAX_TRANSACTIONS]*/); 
-  bufTransAbort(xid, lsn); 
+  if(globalLockManager.abort) { globalLockManager.abort(xid); }
 
   pthread_mutex_lock(&transactional_2_mutex);
   
@@ -390,5 +390,12 @@ lsn_t transactions_minRecLSN() {
   }
   pthread_mutex_unlock(&transactional_2_mutex);
   return minRecLSN;
+}
+
+int TisActiveTransaction(int xid) { 
+  pthread_mutex_lock(&transactional_2_mutex);
+  int ret = XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
+  pthread_mutex_unlock(&transactional_2_mutex);
+  return ret;
 }
 

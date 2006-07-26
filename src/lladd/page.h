@@ -253,14 +253,6 @@ int readRecord(int xid, Page * page, recordid rid, void *dat);
  *  The same as readRecord, but does not obtain a latch.
  */
 int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
-/**
-   Should be called when transaction xid commits.
-*/
-void pageCommit(int xid);
-/**
-   Should be called when transaction xid aborts.
-*/
-void pageAbort(int xid);
 
 /** 
     Allocate memory to hold a new page.

@@ -151,23 +151,6 @@ void releasePage (Page * p) {
 
 }
 
-int bufTransCommit(int xid, lsn_t lsn) {
-  commitBlobs(xid);
-  pageCommit(xid);
-  if(globalLockManager.commit) { globalLockManager.commit(xid);} 
-
-  return 0;
-}
-
-int bufTransAbort(int xid, lsn_t lsn) {
-
-  abortBlobs(xid);  /* abortBlobs doesn't write any log entries, so it doesn't need the lsn. */
-  pageAbort(xid);
-  if(globalLockManager.abort) { globalLockManager.abort(xid);} 
-
-  return 0;
-}
-
 static Page * getPage(int pageid, int locktype) {
   Page * ret;
   int spin  = 0;

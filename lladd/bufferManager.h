@@ -121,35 +121,6 @@ int bufInit();
  */
 void bufDeinit();
 
-/**
- * all actions necessary when committing a transaction. Can assume that the log
- * has been written as well as any other udpates that do not depend on the
- * buffer manager
- *
- * @param xid transaction ID
- * @param lsn the lsn at which the transaction aborted.  (Currently
- * unused, but may be useful for other implementations of the buffer
- * manager.)
- * @return 0 on success
- * @return error code on failure
- */
-int bufTransCommit(int xid, lsn_t lsn);
-
-/**
- * 
- * Currently identical to bufTransCommit.
- * 
- * @param xid transaction ID 
- * 
- * @param lsn the lsn at which the transaction aborted.  (Currently
- * unused, but may be useful for other implementations of the buffer
- * manager.)
- *
- * @return 0 on success
- * @return error code on failure
- */
-int bufTransAbort(int xid, lsn_t lsn);
-
 END_C_DECLS
 
 #endif

@@ -129,12 +129,6 @@ void pageDeInit() {
   slottedPageDeInit();
 }
 
-void pageCommit(int xid) {
-}
-
-void pageAbort(int xid) {
-}
-
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	

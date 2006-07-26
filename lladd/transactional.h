@@ -386,6 +386,14 @@ void Trevive(int xid, long lsn);
  */
 void TsetXIDCount(int xid);
 
+/**
+ * Checks to see if a transaction is still active.
+ *
+ * @param xid The transaction id to be tested.
+ * @return true if the transacation is still running, false otherwise.
+ */
+int TisActiveTransaction(int xid);
+
 /** 
     This is used by log truncation.
 */
