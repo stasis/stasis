@@ -158,6 +158,8 @@ terms specified in this license.
 
 //#define SLOT_TYPE_BASE PAGE_SIZE
 
+#define INVALID_XID (-1)
+
 /** This constant is used as a placeholder to mark slot locations that are invalid.
     @see slotted.c, indirect.c
 */
