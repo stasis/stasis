@@ -57,7 +57,6 @@ long myrandom(long x) {
 }
 
 
-
 /**
    @test
 */
@@ -78,15 +77,18 @@ START_TEST(regions_smokeTest) {
   }
   TregionDealloc(xid, page);
 
+  unsigned int pages[50];
+
   for(int i = 0; i < 50; i++) { 
     new_page = TregionAlloc(xid, 1, 1);
+    pages[i] = new_page;
     if(new_page + 2 > max_page) { 
       max_page = new_page + 2;
     }
   }
 
   for(int i = 0; i < 50; i+=2) { 
-    TregionDealloc(xid, i*2+1);
+    TregionDealloc(xid, pages[i]);
   }
 
   Tcommit(xid);
@@ -131,7 +133,10 @@ START_TEST(regions_randomizedTest) {
   unsigned int max_size = 0;
   unsigned int max_ideal_size = 0;
   for(int i = 0; i < 10000; i++) { 
-
+    if(!(i % 100)) { 
+      Tcommit(xid);
+      xid = Tbegin();
+    }
     if(!(i % 100)) { 
       fsckRegions(xid);
     }
@@ -148,7 +153,6 @@ START_TEST(regions_randomizedTest) {
 	unsigned int victimPage;
 	TregionFindNthActive(xid, victim, &victimPage, &victimSize);
 	TregionDealloc(xid, victimPage);
-	//	assert(victimSize >= 0 && victimSize < 100);
 	pagesAlloced -= victimSize;
 	regionsAlloced --;
       } else { 
@@ -185,6 +189,7 @@ START_TEST(regions_randomizedTest) {
   }
   fsckRegions(xid);
   Tcommit(xid);
+
   Tdeinit();
   if((double)max_size/(double)max_ideal_size > 5) {  
     // max_blowup isn't what we want here; it measures the peak
@@ -200,6 +205,110 @@ START_TEST(regions_randomizedTest) {
 	 (double)max_size/(double)max_ideal_size);
   //	 ((double)max_waste * PAGE_SIZE)/(1024.0*1024.0), 
   //	 max_blowup);
+
+} END_TEST
+
+START_TEST(regions_lockSmokeTest) {
+  Tinit();
+  int xid = Tbegin();
+  int pageid = TregionAlloc(xid, 100,1);
+  fsckRegions(xid);
+  Tcommit(xid);
+  
+
+  xid = Tbegin();
+  int xid2 = Tbegin();
+
+  TregionDealloc(xid, pageid);
+  
+  for(int i = 0; i < 50; i++) {
+    TregionAlloc(xid2, 1, 1);
+  }
+
+  fsckRegions(xid);
+  Tabort(xid);
+  fsckRegions(xid2);
+  Tcommit(xid2);
+  Tdeinit();
+} END_TEST
+
+START_TEST(regions_lockRandomizedTest) { 
+  Tinit();
+  
+  const int NUM_XACTS = 100;
+  const int NUM_OPS   = 10000;
+  const int FUDGE = 10;
+  int xids[NUM_XACTS];
+
+  int * xidRegions[NUM_XACTS + FUDGE];
+  int xidRegionCounts[NUM_XACTS + FUDGE];
+  
+  int longXid = Tbegin();
+
+  time_t seed = time(0);
+  printf("\nSeed = %ld\n", seed);
+  srandom(seed);
+
+  for(int i = 0; i < NUM_XACTS; i++) { 
+    xids[i] = Tbegin();
+    assert(xids[i] < NUM_XACTS + FUDGE);
+    xidRegions[xids[i]] = malloc(sizeof(int) * NUM_OPS);
+    xidRegionCounts[xids[i]] = 0;
+  }
+  int activeXacts = NUM_XACTS;
+
+  for(int i = 0; i < NUM_OPS; i++) { 
+    int j;
+    if(!(i % (NUM_OPS/NUM_XACTS))) { 
+      // abort or commit one transaction randomly.
+      activeXacts --;
+      j = myrandom(activeXacts);
+
+      if(myrandom(2)) {
+	Tcommit(xids[j]);
+      } else { 
+	Tabort(xids[j]);
+      }
+
+      if(activeXacts == 0) { 
+	break;
+      }
+      for(; j < activeXacts; j++) { 
+	xids[j] = xids[j+1];
+      }
+      fsckRegions(longXid);
+    }
+
+    j = myrandom(activeXacts);
+
+    if(myrandom(2)) {
+      // alloc
+      xidRegions[xids[j]][xidRegionCounts[xids[j]]] = TregionAlloc(xids[j], myrandom(100), 1);
+	xidRegionCounts[xids[j]]++;
+    } else {
+      // free
+      if(xidRegionCounts[xids[j]]) {
+	int k = myrandom(xidRegionCounts[xids[j]]); 
+	
+	TregionDealloc(xids[j], xidRegions[xids[j]][k]);
+	
+	xidRegionCounts[xids[j]]--;
+      
+	for(; k < xidRegionCounts[xids[j]]; k++) { 
+	  xidRegions[xids[j]][k] = xidRegions[xids[j]][k+1];
+	}
+      }
+    }
+  }
+
+  for(int i = 0; i < activeXacts; i++) { 
+    Tabort(i);
+    fsckRegions(longXid);
+  }
+
+  Tcommit(longXid);
+
+  Tdeinit();
 } END_TEST
 
 /** 
@@ -214,6 +323,8 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */  
   tcase_add_test(tc, regions_smokeTest);
   tcase_add_test(tc, regions_randomizedTest);
+  tcase_add_test(tc, regions_lockSmokeTest);
+  tcase_add_test(tc, regions_lockRandomizedTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
