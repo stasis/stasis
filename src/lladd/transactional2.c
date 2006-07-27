@@ -32,8 +32,8 @@ const short SLOT_TYPE_LENGTHS[] = { 0, 0, sizeof(blob_record_t), -1};
 */
 pthread_mutex_t transactional_2_mutex;
 
-#define INVALID_XTABLE_XID -1
-#define PENDING_XTABLE_XID -2
+#define INVALID_XTABLE_XID INVALID_XID
+#define PENDING_XTABLE_XID (-2)
 /** Needed for debugging -- sometimes we don't want to run all of Tinit() */
 
 void setupOperationsTable() {
@@ -335,8 +335,8 @@ int Tdeinit() {
 
 	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
 		if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
-			Tabort(XactionTable[i].xid);
 			fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", XactionTable[i].xid);
+			Tabort(XactionTable[i].xid);
 		}
 	}
 	assert( numActiveXactions == 0 );
@@ -394,7 +394,7 @@ lsn_t transactions_minRecLSN() {
 
 int TisActiveTransaction(int xid) { 
   pthread_mutex_lock(&transactional_2_mutex);
-  int ret = XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
+  int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
   pthread_mutex_unlock(&transactional_2_mutex);
   return ret;
 }
