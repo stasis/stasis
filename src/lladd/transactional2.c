@@ -104,8 +104,10 @@ void setupOperationsTable() {
 int Tinit() {
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
-        setupOperationsTable();
 
+	compensations_init();
+
+        setupOperationsTable();
 	dirtyPagesInit();
 	
 	bufInit();
@@ -115,12 +117,14 @@ int Tinit() {
 	try_ret(compensation_error()) { 
 	  pageOperationsInit();
 	} end_ret(compensation_error());
+
 	initNestedTopActions();
+
 	TallocInit();
+
 	ThashInit();
 	LinearHashNTAInit();
 	LinkedListNTAInit();
-	compensations_init();
 	iterator_init();
 	consumer_init();
 	setupLockManagerCallbacksNil();
