@@ -107,8 +107,9 @@ void redoUpdate(const LogEntry * e) {
     } else {
       DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
     }
-
-    releasePage(p);
+    if(p) { 
+      releasePage(p);
+    }
     FreeLogEntry(f); 
   } else {
     assert(0);
