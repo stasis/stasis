@@ -70,4 +70,5 @@ recordid dereferenceArrayListRid(Page * p, int offset);
 #define dereferenceArrayListRidUnlocked(x, y) dereferenceArrayListRid((x),(y))
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
 compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
+compensated_function int TarrayListLength(int xid, recordid rid); 
 #endif

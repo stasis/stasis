@@ -191,6 +191,12 @@ compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slot
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
   return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET_RAW);
 }
+compensated_function int TarrayListLength(int xid, recordid rid) { 
+ Page * p = loadPage(xid, rid.page);
+ TarrayListParameters tlp = pageToTLP(p);
+ releasePage(p);
+ return tlp.maxOffset+1;
+}
 
 static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   
