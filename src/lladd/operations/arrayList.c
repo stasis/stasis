@@ -198,7 +198,7 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
  return tlp.maxOffset+1;
 }
 
-static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+/*static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   
   fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
   pageWriteLSN(xid, p, lsn);
@@ -214,8 +214,9 @@ static int operateUnInitPage(int xid, Page * p, lsn_t lsn, recordid rid, const v
 Operation getInitFixed() {
   Operation o = {
     OPERATION_INITIALIZE_FIXED_PAGE,
-    0,  /* The necessary parameters are hidden in the rid */
-    /*OPERATION_UNINITIALIZE_PAGE,*/  OPERATION_NOOP, 
+    0,  // The necessary parameters are hidden in the rid 
+    //OPERATION_UNINITIALIZE_PAGE,
+    OPERATION_NOOP, 
     &operateInitFixed
   };
   return o;
@@ -224,11 +225,11 @@ Operation getUnInitPage() {
   Operation o = {
     OPERATION_UNINITIALIZE_PAGE,
     PAGE_SIZE,
-    NO_INVERSE_WHOLE_PAGE, /* OPERATION_NOOP,*/
+    NO_INVERSE_WHOLE_PAGE, //OPERATION_NOOP,
     &operateUnInitPage
   };
   return o;
-}
+}*/
 
 /*----------------------------------------------------------------------------*/
 
