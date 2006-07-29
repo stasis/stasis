@@ -18,6 +18,10 @@
 Operation getAlloc();
 Operation getDealloc();
 Operation getRealloc();
+Operation getInitializePage();
+
+void allocTransactionAbort(int xid);
+void allocTransactionCommit(int xid);
 
 void TallocInit();
 
@@ -71,5 +75,8 @@ compensated_function int TrecordSize(int xid, recordid rid);
 
 /** Return the number of records stored in page pageid */
 compensated_function int TrecordsInPage(int xid, int pageid);
+
+compensated_function void TinitializeSlottedPage(int xid, int pageid);
+compensated_function void TinitializeFixedPage(int xid, int pageid, int slotLength);
 
 #endif

@@ -119,8 +119,8 @@ terms specified in this license.
 #define OPERATION_NOOP        18
 #define OPERATION_INSTANT_SET 19
 #define OPERATION_ARRAY_LIST_ALLOC 20
-#define OPERATION_INITIALIZE_FIXED_PAGE 21
-#define OPERATION_UNINITIALIZE_PAGE 22
+#define OPERATION_INITIALIZE_PAGE 21
+// #define OPERATION_UNINITIALIZE_PAGE 22
 #define OPERATION_LINEAR_INSERT 23
 #define OPERATION_UNDO_LINEAR_INSERT 24
 #define OPERATION_LINEAR_DELETE 25
@@ -149,9 +149,9 @@ terms specified in this license.
 #define OPERATION_OASYS_SEMIDIFF_DO       78
 #define OPERATION_OASYS_SEMIDIFF_REDO     79
 
+/* Storage managers */
+#define STORAGE_MANAGER_TALLOC 1
 #define STORAGE_MANAGER_NAIVE_PAGE_ALLOC  1
-
-
 
 /* number above should be less than number below */
 #define MAX_OPERATIONS 80
@@ -216,5 +216,8 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define BLOB_RECORD          1
 #define SLOTTED_RECORD       2
 #define FIXED_RECORD         3
+
+#define TALLOC_REGION_SIZE 100  // Pages
+
 
 #endif

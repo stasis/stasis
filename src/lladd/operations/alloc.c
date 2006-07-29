@@ -4,9 +4,11 @@
 #include <lladd/operations.h>
 #include <lladd/transactional.h>
 #include <lladd/bufferManager.h>
+#include <lladd/allocationPolicy.h>
 #include "../blobManager.h"
 #include "../page.h"
 #include "../page/slotted.h"
+#include "../page/fixed.h"
 
 #include <assert.h>
 //try{
@@ -106,7 +108,6 @@ static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat
 static pthread_mutex_t talloc_mutex;
 
 Operation getAlloc() {
-  pthread_mutex_init(&talloc_mutex, NULL);
   Operation o = {
     OPERATION_ALLOC, /* ID */
     0,
@@ -139,12 +140,43 @@ Operation getRealloc() {
 }
 
 static uint64_t lastFreepage;
+static int initialFreespace = -1;
+static allocationPolicy * allocPolicy;
 
 void TallocInit() { 
   lastFreepage = UINT64_MAX;
+  allocPolicy = allocationPolicyInit();
+  pthread_mutex_init(&talloc_mutex, NULL);
 }
 
 static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
+
+static void reserveNewRegion(int xid) {
+     int firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);
+     
+     void* nta = TbeginNestedTopAction(xid, OPERATION_NOOP, 0,0);
+
+     availablePage ** newPages = malloc(sizeof(availablePage**)*(TALLOC_REGION_SIZE+1));
+     if(initialFreespace == -1) { 
+       Page * p = loadPage(xid, firstPage);
+       initialFreespace = slottedFreespace(p);
+       releasePage(p);
+     }
+     for(int i = 0; i < TALLOC_REGION_SIZE; i++) { 
+       availablePage * next = malloc(sizeof(availablePage) * TALLOC_REGION_SIZE);
+       
+       next->pageid = firstPage + i;
+       next->freespace = initialFreespace;
+       newPages[i] = next;
+       TinitializeSlottedPage(xid, firstPage + i);
+     }
+     newPages[TALLOC_REGION_SIZE]= 0;
+     allocationPolicyAddPages(allocPolicy, newPages);
+     free(newPages); // Don't free the structs it points to; they are in use by the allocation policy.
+
+     TendNestedTopAction(xid, nta);
+
+}
 
 compensated_function recordid Talloc(int xid, unsigned long size) { 
   short type;
@@ -159,7 +191,41 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
   begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) { 
     pthread_mutex_lock(&talloc_mutex);
     Page * p;
-    if(lastFreepage == UINT64_MAX) {
+
+    availablePage * ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+
+    if(!ap) {
+      reserveNewRegion(xid);
+      ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+    }
+    lastFreepage = ap->pageid;
+
+    p = loadPage(xid, lastFreepage);
+
+    while(slottedFreespace(p) < physical_slot_length(type)) { 
+      slottedCompact(p);
+      int newFreespace = slottedFreespace(p);
+      if(newFreespace >= physical_slot_length(type)) { 
+	break;
+      }
+      allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
+
+      releasePage(p);
+      
+      ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+
+      if(!ap) { 
+	reserveNewRegion(xid);
+	ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+      }
+      
+      lastFreepage = ap->pageid;
+      
+      p = loadPage(xid, lastFreepage);
+
+    }
+    
+    /*    if(lastFreepage == UINT64_MAX) {
       try_ret(NULLRID) {
 	lastFreepage = TpageAlloc(xid);
       } end_ret(NULLRID);
@@ -172,10 +238,10 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
       try_ret(NULLRID) {
 	p = loadPage(xid, lastFreepage);
       } end_ret(NULLRID);
-    }
+      } */
     
     
-    if(slottedFreespace(p) < physical_slot_length(type) ) { 
+    /*    if(slottedFreespace(p) < physical_slot_length(type) ) { 
       // XXX compact page?!?
       releasePage(p);
       try_ret(NULLRID) {
@@ -185,11 +251,28 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 	p = loadPage(xid, lastFreepage);
       } end_ret(NULLRID);
       slottedPageInitialize(p);
-    }    
+      }  */   
     rid = TallocFromPageInternal(xid, p, size);
+    
+    int newFreespace = slottedFreespace(p);
+    allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
+
     releasePage(p);
   } compensate_ret(NULLRID);
   return rid;
+}
+
+void allocTransactionAbort(int xid) { 
+  begin_action(pthread_mutex_unlock, &talloc_mutex) { 
+    pthread_mutex_lock(&talloc_mutex);
+    allocationPolicyTransactionCompleted(allocPolicy, xid);
+  } compensate;
+}
+void allocTransactionCommit(int xid) { 
+  begin_action(pthread_mutex_unlock, &talloc_mutex) { 
+    pthread_mutex_lock(&talloc_mutex);
+    allocationPolicyTransactionCompleted(allocPolicy, xid);
+  } compensate;
 }
 
 compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
@@ -296,3 +379,40 @@ compensated_function int TrecordsInPage(int xid, int pageid) {
   releasePage(p);
   return ret;
 }
+
+void TinitializeSlottedPage(int xid, int pageid) {
+  recordid rid = { pageid, SLOTTED_PAGE, 0 };
+  Tupdate(xid, rid, NULL, OPERATION_INITIALIZE_PAGE);
+}
+void TinitializeFixedPage(int xid, int pageid, int slotLength) {
+  recordid rid = { pageid, FIXED_PAGE, slotLength };
+  Tupdate(xid, rid, NULL, OPERATION_INITIALIZE_PAGE);
+}
+
+static int operate_initialize_page(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+  switch(rid.slot) { 
+  case SLOTTED_PAGE:
+    slottedPageInitialize(p);
+    break;
+  case FIXED_PAGE: 
+    fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
+    break;
+  default:
+    abort();
+  }
+  pageWriteLSN(xid, p, lsn);
+  return 0;
+}
+
+
+Operation getInitializePage() { 
+  Operation o = { 
+    OPERATION_INITIALIZE_PAGE,
+    0,
+    OPERATION_NOOP,
+    &operate_initialize_page
+  };
+  return o;
+}
+
+

@@ -445,9 +445,9 @@ static struct RB_ENTRY(node) *
 RB_ENTRY(_lookup)(int mode, const RB_ENTRY(data_t) *key, struct RB_ENTRY(tree) *rbinfo)
 {
 	struct RB_ENTRY(node) *x,*y;
-	int cmp;
+	int cmp=0;
 	int found=0;
-
+	int first = 1;
 	y=RBNULL; /* points to the parent of x */
 	x=rbinfo->rb_root;
 
@@ -492,7 +492,11 @@ RB_ENTRY(_lookup)(int mode, const RB_ENTRY(data_t) *key, struct RB_ENTRY(tree) *
 			x=x->right;
 		else
 			found=1;
+		
+		first = 0;
 	}
+	
+	assert(!first);
 
 	if (found && (mode==RB_LUEQUAL || mode==RB_LUGTEQ || mode==RB_LULTEQ))
 		return(x);
@@ -1087,6 +1091,10 @@ RB_ENTRY(dumptree)(struct RB_ENTRY(node) *x, int n)
 
 /*
  * $Log$
+ * Revision 1.2  2006/07/29 00:56:53  sears
+ * Talloc() now reuses space when possible.  It still needs to call slottedCompact() intelligentally.  Also, allocationPolicy should support an extra tier
+ * of pages, so it doesn't suggest ones that aren't already in the buffer pool unless it has to.
+ *
  * Revision 1.1  2006/07/28 00:01:57  sears
  * Initial import of redblack implementation.
  *

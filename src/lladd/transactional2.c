@@ -62,8 +62,9 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_NOOP] = getNoop();
 	operationsTable[OPERATION_INSTANT_SET] = getInstantSet();
 	operationsTable[OPERATION_ARRAY_LIST_ALLOC]  = getArrayListAlloc();
-	operationsTable[OPERATION_INITIALIZE_FIXED_PAGE] = getInitFixed();
-	operationsTable[OPERATION_UNINITIALIZE_PAGE] = getUnInitPage();
+	//	operationsTable[OPERATION_INITIALIZE_FIXED_PAGE] = getInitFixed();
+	operationsTable[OPERATION_INITIALIZE_PAGE] = getInitializePage();
+	//	operationsTable[OPERATION_UNINITIALIZE_PAGE] = getUnInitPage();
 
 	operationsTable[OPERATION_LINEAR_INSERT] = getLinearInsert();
 	operationsTable[OPERATION_UNDO_LINEAR_INSERT] = getUndoLinearInsert();
@@ -305,7 +306,10 @@ int Tcommit(int xid) {
   lsn = LogTransCommit(&XactionTable[xid % MAX_TRANSACTIONS]);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
+  allocTransactionCommit(xid);
+
   pthread_mutex_lock(&transactional_2_mutex);
+
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
@@ -324,6 +328,8 @@ int Tabort(int xid) {
   /** @todo is the order of the next two calls important? */
   undoTrans(*t/*XactionTable[xid%MAX_TRANSACTIONS]*/); 
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
+
+  allocTransactionAbort(xid);
 
   pthread_mutex_lock(&transactional_2_mutex);
   
