@@ -64,7 +64,7 @@ UC Berkeley
 
 %\subsection*{Abstract}
 
-{\em An increasing range of applications require robust support for atomic, durable and concurrent
+{\em An increasing range of applications requires robust support for atomic, durable and concurrent
 transactions.  Databases provide the default solution, but force
 applications to interact via SQL and to forfeit control over data
 layout and access mechanisms.  We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
@@ -110,7 +110,7 @@ easy to implement and significantly improve performance.
 \section{Introduction}
 
 As our reliance on computing infrastructure increases, a wider range of 
-applications require robust data management.  Traditionally, data management
+applications requires robust data management.  Traditionally, data management
 has been the province of database management systems (DBMSs), which are
 well-suited to enterprise applications, but lead to poor support for
 systems such as web services, search engines, version systems, work-flow 
@@ -186,10 +186,11 @@ possible.  The library can support special purpose, transactional
 storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
 (e.g. write-ahead-logging) and systems (e.g. zero-copy techniques).
+
+
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work with the complete semantics
 that exemplify the database field.
-
 By {\em flexible} we mean that \yad{}  can implement a wide
 range of transactional data structures, that it can support a variety
 of policies for locking, commit, clusters and buffer management.
@@ -215,13 +216,11 @@ persistent objects, graph or XML based applications, and recoverable
 virtual memory~\cite{lrvm}.  
 
 For example, on an object serialization workload, we provide up to 
-a 4x speedup over an in-process 
-MySQL implementation and a 3x speedup over Berkeley DB while 
+a 4x speedup over an in-process MySQL implementation and a 3x speedup over Berkeley DB, while 
 cutting memory usage in half (Section~\ref{sec:oasys}). 
-
 We implemented this extension in 150 lines of C, including comments and boilerplate.  We did not have this type of optimization
-in mind when we wrote \yad.  In fact, the idea came from a potential 
-user that is not familiar with \yad.
+in mind when we wrote \yad, and in fact the idea came from a potential 
+user unfamiliar with \yad.
 
 %\e ab{others?  CVS, windows registry, berk DB, Grid FS?}
 %\r cs{maybe in related work?}
@@ -296,11 +295,13 @@ structured physical model or abstract conceptual mappings.
 
 \subsection{Extensible transaction systems} 
 \label{sec:otherDBs}
-This section contains discussion of database systems with goals similar to ours.
+This section contains discussion of transaction systems with goals similar to ours.
 Although these projects were
-successful in many respects, they fundamentally aimed to implement a
+successful in many respects, they fundamentally aimed to implement an
 extensible data model, rather than build transactions from the bottom up.
 In each case, this limits the applicability of their implementations.
+
+\eab{add Argus and Camelot}
 
 \subsubsection{Extensible databases}
 
@@ -364,7 +365,7 @@ applications presented in Section~\ref{sec:extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
 assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB's data model, and write-ahead-logging system are too specialized to support \yad.
+Berkeley DB's data model and write-ahead-logging system are too specialized to support \yad.
 
 
 
@@ -405,16 +406,13 @@ toolkit's internal components, allowing multiple organizations to
 compete to improve each module.  The idea is to produce a research
 platform that enables specialization and shares the effort required to build a full database~\cite{riscDB}.
 
-We agree with the motivations behind RISC databases, and to build 
-databases from interchangeable modules exists.  In fact, is our hope
-that our system will mature to the point where it can support 
+We agree with the motivations behind RISC databases and the goal
+of highly modular database implementations.  In fact, we  hope
+ our system will mature to the point where it can support 
 a competitive relational database.  However this is
-not our primary goal.  
-%Instead, we are interested in supporting applications that derive
-%little benefit from database abstractions, but that need reliable
-%storage.  Therefore, 
-Instead of building a modular database, we seek
-to build a system that enables a wider range of data management options.
+not our primary goal, as we seek instead to enable a wider range of data management options.
+
+\eab{discuss "wider range"}
 
 %For example, large scale application such as web search, map services,
 %e-mail use databases to store unstructured binary data, if at all.
@@ -1046,12 +1044,13 @@ must be pinned until the transaction commits to avoid ``dirty'' data
 block writes are atomic, this ensures that we provide the ``A'' and ``D''
 of ACID.
 
-This approach scales poorly to multiple pages since we must {\em force} pages to disk
-on commit and wait for a (random access) synchronous write to
-complete. By using a write-ahead log, we can support {\em no force}
-transactions: we write (sequential) ``redo'' information to the log on commit, and
-then can write the  pages later. If we crash, we can use the log to
-redo the lost updates during recovery.
+This approach scales poorly to multi-page transactions since we must
+{\em force} pages to disk on commit and wait for a (random access)
+synchronous write to complete. By using a write-ahead log, we can
+support {\em no force} transactions: we write (sequential) ``redo''
+information to the log on commit, and then can write the pages
+later. If we crash, we can use the log to redo the lost updates during
+recovery.
 
 For this to work, recovery must be able to decide which updates to
 re-apply.  This is solved by using a per-page sequence number called a
@@ -1070,10 +1069,9 @@ any updates.  Therefore recovery simply plays back unapplied redo records from
 transactions that have commit records.
 
 However, pinning the pages of active transactions in memory is problematic.
-First, a single transaction may need more pages than can be pinned at
-one time. Second, under concurrent transactions, a given page may be
-pinned forever as long as it has at least one active transaction in
-progress all the time.  To avoid these problems, transaction systems
+First, under concurrent transactions, a given page may be pinned forever as long as it has at least one active transaction in progress all the time.
+Secone, for multi-page transactions, a single transaction may need more pages than can be pinned at
+one time.  To avoid these problems, transaction systems
 support {\em steal}, which means that pages can be written back
 before a transaction commits. 
 
@@ -1315,7 +1313,7 @@ are aware, transactional pages use LSNs on each page.  This makes it
 difficult to map large objects onto multiple pages, as the LSNs break
 up the object.  It is tempting to try to move the LSNs elsewhere, but
 then they would not be written atomically with their page, which
-defeats their purpose.
+defeats their purpose. \eab{fit in RVM?}
 
 LSNs were introduced to prevent recovery from applying updates more
 than once.  \diff{However, \yad can eliminate the LSN on each page by
@@ -1391,7 +1389,7 @@ checksum with each sector, and will issue a read error if the checksum
 does not match~\cite{something}.}  Like ARIES, \yad can recover lost pages in the page
 file by reinitializing the page to zero, and playing back the entire
 log.  In practice, a system administrator would periodically back up
-the page file up, thus enabling log truncation and shortening recovery
+the page file, thus enabling log truncation and shortening recovery
 time.
 
 \eat{  This is pretty redundant.
@@ -1516,13 +1514,10 @@ described, and the semantics provided by the levels it builds upon.}
 %appropriate.
 
 \subsection{Adding log operations}
-\rcs{This section needs to be merged into the new section 3, because that is where we discuss how to add new log operations.  (In with the new nested top action stuff, probably).  That will leave a section to focus on LSN-free pages, and other things that break the ARIES assumptions.  That way, blind writes and lsn-free pages can be in the same place.}
 \label{sec:wal}
-\begin{figure}
-\includegraphics[%
-   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
-\end{figure}
+
+\rcs{This section needs to be merged into the new section 3, because that is where we discuss how to add new log operations.  (In with the new nested top action stuff, probably).  That will leave a section to focus on LSN-free pages, and other things that break the ARIES assumptions.  That way, blind writes and lsn-free pages can be in the same place.}
+
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
 using custom log operations.  In this section, we describe how to implement an
@@ -1536,6 +1531,12 @@ functions.  Figure~\ref{fig:structure} describes the environment that
 schedules and invokes these functions.  The first step in implementing
 a new set of log interfaces is to decide upon an interface that these log
 interfaces will export to callers outside of \yad.  
+
+\begin{figure}
+\includegraphics[%
+   width=1\columnwidth]{figs/structure.pdf}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
+\end{figure}
 
 The externally visible interface is implemented by wrapper functions
 and read-only access methods.  The wrapper function modifies the state
