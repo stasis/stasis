@@ -431,8 +431,6 @@ not our primary goal, as we seek instead to enable a wider range of data managem
 
 \section{Conventional Transactions in \yad}
 
-\rcs{This whole section is new, and is intended to replace what is now section 4.}
-
 \rcs{This section is missing references to prior work.  Bill mentioned
 PhD theses that talk about this layering, but I've been too busy
 coding to read them.}
@@ -443,6 +441,13 @@ to providing a review of how modern transactional systems function,
 this section lays out the functionality that \yad provides to the
 operations built on top of it.  It also explains how \yads
 operations are roughly structured as two levels of abstraction.  
+
+The transcational algorithms described in this section are not at all
+novel, and are in fact based on ARIES~\cite{aries}.  However, they
+provide important background.  Also, there is a large body of literature
+explaining optimizations and implementation techniques related to this
+type of recovery algorithm.  Any good database textbook would cover these
+issues in more detail.
 
 The lower level of a \yad operation provides atomic
 updates to regions of the disk.  These updates do not have to deal
@@ -570,7 +575,7 @@ committed.
 
 \subsection{Concurrent Transactions}
 
-Two factors make it more difficult to write operations that may be
+\diff{Two factors make it more difficult to write operations that may be
 used in concurrent transactions.  The first is familiar to anyone that
 has written multi-threaded code: Accesses to shared data structures
 must be protected by latches (mutexes).  The second problem stems from
@@ -578,63 +583,71 @@ the fact that concurrent transactions prevent abort from simply
 rolling back the physical updates that a transaction made.
 Fortunately, it is straightforward to reduce this second,
 transaction-specific, problem to the familiar problem of writing
-multi-threaded software.
+multi-threaded software.}
 
-To understand why redo cannot simply revert each page to the state it
-was in before a transaction began, consider an operation that inserts
-data into a tree, and the following sequence of events: 
-\begin{itemize}
-  \item Transaction A inserts data, causing a node to be
-    split
-  \item Transaction B inserts data into one of the newly
-    created nodes
-  \item Transaction A calls abort
-\end{itemize}
-If abort simply restored the pages to the state they were in before A
-updated them, then the data item that transaction B inserted would be
-lost.  Operations that apply changes to pages without an understanding
-of the data they manipulate are called {\em physical operations}.
+\rcs{This text needs to make the following two points: (1)Multi-page transactions break the
+atomicity assumption because their results are not applied to disk
+atomically.  (2) Concurrent transactions break the assumption that a
+series of physical undos is the inverse of a transaction.  Nested top
+actions restore these two broken invariants, but are orthoganol to the
+mechanisms that apply the atomic updates.}
 
-If we constrain the tree structure to fit on a single page, then the
-``insert'' operation's inverse could be a ``remove'' operation.  Such
-operations are called {\em logical operations}.  In this case, both
-operations would traverse tree nodes to determine what updates should
-be applied and modify the tree accordingly.  This would allow abort to
-remove A's data from the tree without losing B's updates.  
-
-The problem becomes more complex if we allow the tree to span multiple
-pages.  If we use a single log entry to record the update and the
-system crashes, then there is no guarantee that the LSNs of the pages
-that the log entry manipulates will match, or that the two pages will
-contain physically consistent portions of the tree structure.
-
-In general, physical operations cause concurrent transactions to
-violate the physical consistency of data structures during abort.
-Logical operations that span more than one page cannot safely be
-redone during recovery.
-
-{\em Nested Top Actions} provide an elegant solution to this problem.
-A nested top action uses physical undo while a data structure is being
-upated, and then atomically switches to logical undo once the data
-structure is internally consistent.  Nested top actions work by
+\rcs{Work this in too:  Nested top actions work by
 performing physical operations on a data structure, and then
 registering a CLR.  The CLR contains a logical undo entry for the
 operation.  When recovery and abort encounter a CLR they skip the
-physical undo entries, and instead apply the logical undo.
+physical undo entries, and instead apply the logical undo.}
 
-From the perspective of an operation implementation, a nested top
-action protects logical undo functions from seeing temporary
-inconsistencies introduced by operations that span pages.  Since
-latches protect other threads from the same set of inconsistencies,
-the proper use of nested top actions is similar to the development of
-thread-safe code.
+To understand the problems that arise with concurrent transactions,
+consider what would happen if one transaction, A, rearranged the
+layout of a data structure.  Next, assume a second transaction, B,
+modified that structure, and then A aborted.  When A rolls back, its
+UNDO entries will undo the rearrangement that it made to the data
+structure, without regard to B's modifications.  This is likely to
+cause corruption.
+
+Two common solutions to this problem are {\em total isolation} and
+{\em nested top actions}.  Total isolation simply prevents any
+transaction from accessing a data structure that has been modified by
+another in-progress transaction.  An application can achieve this
+using its own concurrency control mechanisms, or by holding a lock on
+each data structure until the end of the transaction.  Releasing the
+lock after the modification, but before the end of the transaction,
+increases concurrency.  However, it means that follow-on transactions that use
+that data may need to abort if a current transaction aborts ({\em
+cascading aborts}).  %Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
+
+Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
+data structures.
+Nested top actions are essentially mini-transactions that can
+commit even if their containing transaction aborts; thus follow-on
+transactions can use the data structure without fear of cascading
+aborts.  
+
+The key idea is to distinguish between the {\em logical operations} of a
+data structure, such as inserting a key, and the {\em physical operations}
+such as splitting tree nodes or or rebalancing a tree. The physical
+operations do not need to be undone if the containing logical operation
+(insert) aborts.  \diff{We record such operations using {\em logical 
+logging} and {\em physical logging}, respectively.}
+
+\diff{Each nested top action performs a single logical operation by applying
+a number of physical operations to the page file.  Physical REDO log
+entries are stored in the log so that recovery can repair any
+temporary inconsistency that the nested top action introduces.
+Logical UNDO entries are recorded so that the nested top action can be
+rolled back even if concurrent transactions manipulate the data
+structure.  Finally, physical UNDO entries are recorded so that 
+the nested top action may be rolled back if the system crashes before 
+it completes.}
 
 This leads to a mechanical approach that converts non-reentrant
 operations that do not support concurrent transactions into reentrant,
 concurrent operations:
 
 \begin{enumerate}
-\item Wrap a mutex around each operation.  With care, it may be possible to use finer-grained locks, but it is rarely necessary.
+\item Wrap a mutex around each operation.  With care, it is possible 
+  to use finer-grained latches in a \yad operation, but it is rarely necessary.
 \item Define a {\em logical} UNDO for each operation (rather than just
   using a set of page-level UNDO's).  For example, this is easy for a
   hashtable: the UNDO for {\em insert} is {\em remove}.  \diff{This logical
@@ -656,16 +669,22 @@ until the updates eventually reach disk.
 
 This section described how concurrent, thread-safe operations can be
 developed.  These operations provide building blocks for concurrent
-transactions, and are fairly easy to develop.  Interestingly, any
-mechanism that applies atomic physical updates to the page file can be
-used as the basis of a nested top action.  However, concurrent
-operations are of little help if an application is not able to safely
-combine them to create concurrent transactions.  
+transactions, and are fairly easy to develop.  Therefore, they are
+used throughout \yads default data structure implementations.  
+
+Interestingly, any mechanism that applies atomic physical updates to
+the page file can be used as the basis of a nested top action.
+However, concurrent operations are of little help if an application is
+not able to safely combine them to create concurrent transactions.
 
 \subsection{Application-specific Locking}
 
 Note that the transactions described above only provide the
-``Atomicity'' and ``Durability'' properties of ACID.  ``Isolation'' is
+``Atomicity'' and ``Durability'' properties of ACID.\endnote{The ``A'' in ACID really means atomic persistence
+of data, rather than atomic in-memory updates, as the term is normally
+used in systems work; %~\cite{GR97}; 
+the latter is covered by ``C'' and
+``I''.}  ``Isolation'' is
 typically provided by locking, which is a higher-level (but
 comaptible) layer.  ``Consistency'' is less well defined but comes in
 part from low-level mutexes that avoid races, and partially from
@@ -675,7 +694,12 @@ Latches are provided using operating system mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
 way that avoids deadlock.  This section will describe the latching
 protocols that \yad makes use of, and describes two custom lock
-managers that \yads allocation routines use to implement layout policies and provide deadlock avoidance.
+managers that \yads allocation routines use to implement layout 
+policies and provide deadlock avoidance.  Applications that want
+conventional transactional isolation (serializability) can make 
+use of a lock manager.  Alternatively, applications may follow 
+the example of \yads default data structures, and implement 
+deadlock avoidance, or other custom lock management schemes.\rcs{Citations here?}
 
 This allows higher level code to treat \yad as a conventional
 reentrant data structure library.  It is the application's
@@ -714,37 +738,13 @@ level code in the remainder of this discussion.
 
 \section{LSN-free pages.}
 \label{sec:lsn-free}
-\rcs{After working through the torn page argument, I realized that
-this style of transaction allows you to produce log entries that make
-non-localized updates to the page file.  I think this means that we
-can avoid writing out physical undo information for our nested top
-actions, and write the redo in a single entry.  This is particularly
-interesting because LSN-free recovery will break horribly if the
-logical undo of a nested transaction reads or writes bytes that happen
-to be written or read by a partial nested top action that is being
-physically rolled back.  If nested top actions are atomic log
-entities, the problem cannot occur.  Of course, this approach has its
-limits; the longer a log entry is, the more transactions will block
-waiting for it to be appended to the end of the log.  Also, if we mix
-LSN and LSN-free operations in the same nested top action, we need the
-physical undo.}
-
-\rcs{ Do something with this text... Logical operations that are constrained to a single page are often
-called {\em physiological operations}, and are used throughout \yad.
-Note that physioloical operations are not necessarily idempotent, and
-they rely upon the consistency of the page they modify.  In
-Section~\ref{XXX}, \yad used page LSN's to guarantee that the
-operations recorded in the log are atomically applied exactly
-once. The recovery scheme described in this section does not provide
-these guarantees and is incompatible with physiological operations.}
-
 The recovery algorithm described above uses LSN's to determine the
 version number of each page during recovery.  This is a common
 technique.  As far as we know, is used by all database systems that
 update data in place.  Unfortunately, this makes it difficult to map
 large objects onto pages, as the LSN's break up the object.  It
 is tempting to store the LSN's elsewhere, but then they would not be
-written atomically with their page, which defeats their purpose.  
+written atomically with their page, which defeats their purpose.~\eab{Fit in RVM?}
 
 This section explains how we can avoid storing LSN's on pages in \yad
 without giving up durable transactional updates.  In the process, we
@@ -766,29 +766,39 @@ Recall that LSN's were introduced to prevent recovery from applying
 updates more than once, and to prevent recovery from applying old
 updates to newer versions of pages.  This was necessary because some
 operations that manipulate pages are not idempotent, or simply make
-use of state stored in the page.  We can avoid such problems by
-eliminating such operations and instead making use of deterministic
-REDO operations that do not examine page state.  We call such
-operations ``blind writes.''
+use of state stored in the page.  
 
-For concreteness, assume that all physical operations produce log
-entries that contain a set of byte ranges, and the pre- and
-post-value of each byte in the range.  
+For example, logical operations that are constrained to a single page
+(physiological operations) are often used in conventional transaction
+systems, but are often not idempotent, and rely upon the consistency
+of the page they modify.  The recovery scheme described in this
+section does not guarantee that such operations will be applied
+exactly once, or even that they will be presented with a consistent
+version of a page.  Therefore, it is incompatible with physiological
+operations.
+
+Therefore, in this section we eliminate such operations and instead
+make use of deterministic REDO operations that do not examine page
+state.  We call such operations ``blind writes.''  For concreteness,
+assume that all physical operations produce log entries that contain a
+set of byte ranges, and the pre- and post-value of each byte in the
+range.
 
 Recovery works the same way as it does above, except that is computes
 a lower bound of each page LSN instead of reading the LSN from the
 page.  One possible lower bound is the LSN of the most recent log
 truncation or checkpoint.  Alternatively, \yad could occasionally
-write information about the state of the buffer manager to the log.
+write information about the state of the buffer manager to the log. \rcs{This would be a good place for a figure}
 
 Although the mechanism used for recovery is similar, the invariants
 maintained during recovery have changed.  With conventional
 transactions, if a page in the page file is internally consistent
 immediately after a crash, then the page will remain internally
 consistent throughout the recovery process.  This is not the case with
-our LSN-free scheme.  If a consistent, relatively new, version of a
-page is on disk immediately after a crash, then that page may be
-overwritten using physical log entries that are older than it.
+our LSN-free scheme.  Internal page inconsistecies may be introduced
+because recovery has no way of knowing which version of a page it is
+dealing with.  Therefore, it may overwrite new portions of a page with
+older data from the log.
 Therefore, the page will contain a mixture of new and old bytes, and
 any data structures stored on the page may be inconsistent.  However,
 once the redo phase is complete, any old bytes will be overwritten by
@@ -796,51 +806,50 @@ their most recent values, so the page will contain an internally
 consistent, up-to-date version of itself.
 (Section~\ref{sec:torn-page} explains this in more detail.)
 
-Undo can then proceed normally as long as the operations that it logs
-to disk only perform blind-writes.  Since this restriction also
-applies to normal operations, we suspect this will not pose many
-practical problems.
+Once Redo completes, Undo can proceed normally, with one exception.
+Like normal forward operation, the redo operations that it logs may
+only perform blind-writes.  Since logical undo operations are
+generally implemented by producing a series of redo log entries
+similar to those produced at runtime, we do not think this will be a
+practical problem.
 
-As long as operations are limited to blind writes we do not need to
-store LSN's in pages.  The rest of this section describes how this
-allows standard filesystem and database optimizations to be easily
+The rest of this section describes how concurrent, LSN-free pages 
+allow standard filesystem and database optimizations to be easily
 combined, and shows that the removal of LSN's from pages actually
 simplifies some aspects of recovery.
 
 \subsection{Zero-copy I/O} 
 
 We originally developed LSN-free pages as an efficient method for
-storing large (multi-page) objects in the filesystem.  If a large
-object is stored in pages that contain LSN's, then in order to read
-that large object the system must read each page individually, and
-then use the CPU to copy the portions of the page that contain data
-into a second buffer.  
+transactionally storing and updating large (multi-page) objects.  If a
+large object is stored in pages that contain LSN's, then in order to
+read that large object the system must read each page individually,
+and then use the CPU to perform a byte-by-byte copy of the portions of
+the page that contain object data into a second buffer.
 
-Compare
-this approach to a modern filesystem, which allows applications to
+Compare this approach to modern filesystems, which allow applications to
 perform a DMA copy of the data into memory, avoiding the expensive
-byte-by-byte copy of the data, and allowing the CPU to be used for
+byte-by-byte copy, and allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
 network services to use DMA and network adaptor hardware to read data
 from disk, and send it over a network socket without passing it
 through the CPU.  Again, this frees the CPU, allowing it to perform
 other tasks.
 
-We believe that LSN free pages will allow reads to make use of such
+We believe that LSN-free pages will allow reads to make use of such
 optimizations in a straightforward fashion.  Zero copy writes are more challenging, but could be
 performed by performing a DMA write to a portion of the log file.
 However, doing this complicates log truncation, and does not address
 the problem of updating the page file.  We suspect that contributions
-from the log based filesystem~\cite{lfs} literature can address these problems in
-a straightforward fashion.  In particular, we imagine storing 
+from the log based filesystem~\cite{lfs} literature can address these problems.
+In particular, we imagine storing 
 portions of the log (the portion that stores the blob) in the 
 page file, or other addressable storage.  In the worst case, 
 the blob would have to be relocated in order to defragment the 
 storage.  Assuming the blob was relocated once, this would amount 
 to a total of three, mostly sequential disk operations.  (Two 
-writes and one read.)  However, in the best case, the blob would only need to written once.
-In contrast, a conventional atomic blob implementation would always need 
-to write the blob twice.
+writes and one read.)  However, in the best case, the blob would only be written once.
+In contrast, conventional blob implementations generally write the blob twice. 
 
 Alternatively, we could use DMA to overwrite the blob in the page file
 in a non-atomic fashion, providing filesystem style semantics.
@@ -859,6 +868,10 @@ logging and LSN-free pages so that it could use mmap() to map portions
 of the page file into application memory\cite{lrvm}.  However, without
 support for logical log entries and nested top actions, it would be
 difficult to implement a concurrent, durable data structure using RVM.
+
+In contrast, LSN-free pages allow for logical undo, allowing for the
+use of nested top actions and concurrent transactions.
+
 We plan to add RVM style transactional memory to \yad in a way that is
 compatible with fully concurrent collections such as hash tables and
 tree structures.  Of course, since \yad will support coexistance of
@@ -871,7 +884,11 @@ use of per-page LSN's assume that each page is written to disk
 atomically even though that is generally not the case.  Such schemes
 deal with this problem by using page formats that allow partially
 written pages to be detected.  Media recovery allows them to recover
-these pages.
+these pages.  \rcs{This would be a good place to explain exactly how media recovery works.  Old text: Like ARIES, \yad can recover lost pages in the page
+file by reinitializing the page to zero, and playing back the entire
+log.  In practice, a system administrator would periodically back up
+the page file, thus enabling log truncation and shortening recovery
+time.}
 
 The Redo phase of the LSN-free recovery algorithm actually creates a
 torn page each time it applies an old log entry to a new page.
@@ -924,432 +941,27 @@ Since LSN-free recovery only relies upon atomic updates at the bit
 level, it prevents pages from becoming a limit to the size of atomic
 page file updates.  This allows operations to atomically manipulate
 (potentially non-contiguous) regions of arbitrary size by producing a
-single log entry.
-
-This is particularly convenient when dealing with nested top actions.
-Normally, a nested top action performs a number of updates to the page
-file, and logs a physical undo entry for each one.  Upon completion,
-it writes a logical undo entry.  The physical undo entries take up
-space in the log, and reduce the amount of log bandwidth available for
-other tasks.  In cases where a nested top action can be completed by
-only logging blind writes, the logical undo that would normally
-complete the nested top action can replace the physical undo entries.
-This only works because the log entry and its logical undo are
-atomically applied to the page file.  With conventional transactions,
-this technique is limited to operations that update a single page.
-LSN-free pages remove this limitation.
+single log entry.  If this log entry includes a logical undo function
+(rather than a physical undo), then it can serve the purpose of a
+nested top action without incurring the extra log bandwidth of storing
+physical undo information.  Such optimizations can be implemented
+using conventional transactions, but they appear to be easier to
+implement and reason about when applied to LSN-free pages.
 
 \section{Transactional Pages}
 
-\rcs{I plan to cut out all of section 4 as it currently exists, but it
-still contains stuff that needs to be in section 3.}
-
-\rcs{I think we should avoid the term ``transactional pages''.  In the
-LSN-free pages discussion, we rely upon the atomicity of the
-application of each log operation after REDO.  We should say that we
-will start by talking about updates that are within a single page (and
-assumed to be applied to disk atomically), but that there are other
-ways to atomically update storage.  Multi-page transactions break the
-atomicity assumption because their results are not applied to disk
-atomically.  Concurrent transactions break the assumption that a
-series of physical undos is the inverse of a transaction.  Nested top
-actions restore these two broken invariants, but are orthoganol to the
-mechanisms that apply the atomic updates.  (This is why LSN free pages
-are compatible with Nested Top Actions.)  I think this section should
-do three things.  (1)Explain the distinction between lower level
-atomicity and nested top actions, (2) Explain how recovery works. (3)
-Tease out aspects of transactional storage that recovery doesn't need
-to worry about.}
-
-Section~\ref{sec:notDB} described the ways in which a top-down data model
+\rcs{This was weak, but we still don't explain what we mean by ``bottom up'' approach.'' Section~\ref{sec:notDB} described the ways in which a top-down data model
 limits the generality and flexibility of databases.  In this section,
 we cover the basic bottom-up approach of \yad: {\em transactional
 pages}. Although similar to the underlying write-ahead-logging
 approaches of databases, particularly ARIES~\cite{aries}, \yads
-bottom-up approach yields unexpected flexibility.
-
-Transactional pages provide the properties of transactions, but
-only allow updates within a single page in the simplest case.  After
-covering the single-page case, we explore multi-page transactions,
-which enable a complete transaction system.
-
-In this model, pages are the in-memory representation of disk blocks
-and thus must be the same size.  Pages are a convenient abstraction
-because the write back of a page (disk block) is normally atomic,
-giving us a foundation for larger atomic actions. In practice, disk
-blocks are not always atomic, but the disk can detect partial writes
-via checksums.  Thus, we actually depend only on detection of
-non-atomicity, which we treat as media failure.  One nice property of
-\yad is that we can roll forward an individual page from an archive copy to
-recover from media failures.\rcs{Torn page detection...}
-
-A subtlety of transactional pages is that they technically only
-provide the ``atomicity'' and ``durability'' of ACID
-transactions.\endnote{The ``A'' in ACID really means atomic persistence
-of data, rather than atomic in-memory updates, as the term is normally
-used in systems work; %~\cite{GR97}; 
-the latter is covered by ``C'' and
-``I''.}  This is because ``isolation'' comes typically from locking, which
-is a higher (but compatible) layer. ``Consistency'' is less well defined
-but comes in part from transactional pages (from mutexes to avoid race
-conditions), and in part from higher layers (e.g. unique key
-requirements). To support these, \yad distinguishes between {\em
-latches} and {\em locks}.  A latch corresponds to an OS mutex, and is
-held for a short period of time.  All of \yads default data structures
-use latches in a way that avoids deadlock. This allows
-multithreaded code to treat \yad as a conventional reentrant data structure
-library.  Applications that want conventional isolation
-(serializability) can make use of a lock manager.
-
-\eat{
-\yad uses write-ahead-logging to support the
-four properties of transactional storage: Atomicity, Consistency,
-Isolation and Durability.  Like existing transactional storage systems,
-\yad allows applications to disable or choose different variants of each
-property.
-
-However, \yad takes customization of transactional semantics one step
-further, allowing applications to add support for transactional
-semantics that we have not anticipated.  We do not believe that
-we can anticipate every possible variation of write-ahead-logging.  
-However, we
-have observed that most changes that we are interested in making
-involve a few common underlying primitives.  
-
-As we have
-implemented new extensions, we have located portions of the system
-that are prone to change, and have extended the API accordingly.  Our
-goal is to allow applications to implement their own modules to
-replace our implementations of each of the major write-ahead-logging
-components.
-}
-
-
-\subsection{Single-page Transactions}
-
-In this section we show how to implement single-page transactions.
-This is not at all novel, and is in fact based on ARIES~\cite{aries},
-but it forms important background.  We also gloss over many important
-and well-known optimizations that \yad exploits, such as group
-commit.%~\cite{group-commit}.  
-These aspects of recovery algorithms are
-described in the literature, and in any good textbook that describes
-database implementations.  They are not particularly important to our
-discussion, so we do not cover them.
-
-The trivial way to achieve single-page transactions is simply to apply
-all the updates to the page and then write it out on commit. The page
-must be pinned until the transaction commits to avoid ``dirty'' data
-(uncommitted data on disk), but no logging is required.  As disk
-block writes are atomic, this ensures that we provide the ``A'' and ``D''
-of ACID.
-
-This approach scales poorly to multi-page transactions since we must
-{\em force} pages to disk on commit and wait for a (random access)
-synchronous write to complete. By using a write-ahead log, we can
-support {\em no force} transactions: we write (sequential) ``redo''
-information to the log on commit, and then can write the pages
-later. If we crash, we can use the log to redo the lost updates during
-recovery.
-
-For this to work, recovery must be able to decide which updates to
-re-apply.  This is solved by using a per-page sequence number called a
-{\em log sequence number \diff{(LSN)}}. Each log entry contains the sequence
-number, and each page contains the sequence number of the last applied
-update.  Thus on recovery, we load a page, look at its sequence
-number, and re-apply all later updates.  Similarly, to restore a page
-from archive we use the same process, but with likely many more
-updates to apply.
-
-We also need to make sure that only the results of committed
-transactions still exist after recovery.  This is best done by writing
-a commit record to the log during the commit.  If the system pins uncommitted
-dirty pages in memory, recovery does not need to worry about undoing 
-any updates.  Therefore recovery simply plays back unapplied redo records from 
-transactions that have commit records.
-
-However, pinning the pages of active transactions in memory is problematic.
-First, under concurrent transactions, a given page may be pinned forever as long as it has at least one active transaction in progress all the time.
-Secone, for multi-page transactions, a single transaction may need more pages than can be pinned at
-one time.  To avoid these problems, transaction systems
-support {\em steal}, which means that pages can be written back
-before a transaction commits. 
-
-Thus, on recovery a page may contain data that never committed and the
-corresponding updates must be rolled back.  To enable this, ``undo'' log
-entries for uncommitted updates must be on disk before the page can be
-stolen (written back).  On recovery, the LSN on the page reveals which
-UNDO entries to apply to roll back the page. We use the absence of
-commit records to figure out which transactions to roll back.
-
-Thus, the single-page transactions of \yad work as follows.  An {\em
-operation} consists of both a redo and an undo function, both of which
-take one argument. An update is always the redo function applied to
-the page (there is no ``do'' function), and it always ensures that the
-redo log entry (with its LSN and argument) reaches the disk before
-commit.  Similarly, an undo log entry, with its LSN and argument,
-always reaches the disk before a page is stolen.  ARIES works
-essentially the same way, but hard-codes recommended page 
-formats and index structures~\cite{ariesIM}.
-
-To manually abort a transaction, \yad could either reload the page
-from disk and roll it forward to reflect committed transactions (this would imply ``no steal''), or it
-could roll back the page using the undo entries applied in reverse LSN
-order. (It currently does the latter.)
-
-
-\eat{
-Write-ahead-logging algorithms are quite simple if each operation
-applied to the page file can be applied atomically.  This section will
-describe a write ahead logging scheme that can transactionally update
-a single page of storage that is guaranteed to be written to disk
-atomically.  We refer the readers to the large body of literature
-discussing write ahead logging if more detail is required.  Also, for
-brevity, this section glosses over many standard write ahead logging
-optimizations that \yad implements.
-
-
-Assume an application wishes to transactionally apply a series of
-functions to a piece of persistent storage.  For simplicity, we will
-assume we have two deterministic functions, {\em undo}, and {\em
-redo}.  Both functions take the contents of a page and a second
-argument, and return a modified page.
-
-As long as their second arguments match, undo and redo are inverses of
-each other.  Normally, only calls to abort and recovery will invoke undo, so
-we will assume that transactions consist of repeated applications of
-the redo function.
-
-Following the lead of ARIES (the write-ahead-logging system \yad
-originally set out to implement), assume that the function is also
-passed a distinct, monotonically increasing number each time it is
-invoked, and that it records that number in an LSN (log sequence number)
-field of the page.  In section~\ref{lsnFree}, we do away with this requirement.
-
-We assume that while undo and redo are being executed, the
-page they are modifying is pinned in memory.  Between invocations of
-the two functions, the write-ahead-logging system may write the page
-back to disk.  Also, multiple transactions may be interleaved, but
-undo and redo must be executed atomically.  (However, \yad supports concurrent execution of operations.)
-
-Finally, we assume that each invocation of redo and undo is recorded
-in the log, along with a transaction id, LSN, and the argument passed into the redo or undo function.
-(For efficiency, the page contents are not stored in the log.)
-
-If abort is called during normal operation, the system will iterate
-backwards over the log, invoking undo once for each invocation of redo
-performed by the aborted transaction.  It should be clear that, in the
-single transaction case, abort will restore the page to the state it
-was in before the transaction began.  Note that each call to undo is
-assigned a new LSN so the page LSN will be different.  Also, each undo
-is also written to the log.
-}
-
-This section very briefly described how a simplified
-write-ahead-logging algorithm might work, and glossed over many
-details.  Like ARIES, \yad actually implements recovery in three
-phases: Analysis, Redo and Undo.  
-
-%Recovery is handled by playing the log forward, and only applying log
-%entries that are newer than the version of the page on disk.  Once the
-%end of the log is reached, recovery proceeds to abort any transactions
-%that did not commit before the system crashed.\endnote{Like ARIES,
-%\yad actually implements recovery in three phases, Analysis, Redo and
-%Undo.}  Recovery arranges to continue any outstanding aborts where
-%they left off, instead of rolling back the abort, only to restart it
-%again.
-
-\eat{
-Note that recovery relies on the fact that it knows which version of
-the page is recorded on disk, and that the page itself is
-self-consistent.  If it passes an unknown version of a page into undo
-(which is an arbitrary function), it has no way of predicting what
-will happen.
-}
-
-
-\subsection{Multi-page transactions}
-
-Of course, in practice, we wish to support transactions that span more
-than one page.  Given a no-force/steal single-page transaction, this
-is relatively easy.
-
-First, we need to ensure that all log entries have a transaction ID
- so that we can tell that updates to different pages are part of
-the same transaction (we need this in the single page case as well).
-  Given single-page recovery, we can just apply it to
-all of the pages touched by a transaction to recover a multi-page
-transaction.  This works because steal and no-force already imply
-that pages can be written back early or late (respectively), so there
-is no need to write a group of pages back atomically.  In fact, we
-need only ensure that redo entries for all pages reach the disk before
-the commit record (and before commit returns).
-
-\eat{
-\subsection{Write-ahead-logging invariants}
-
-In order to support recovery, a write-ahead-logging algorithm must
-identify pages that {\em may} be written back to disk, and those that
-{\em must} be written back to disk.  \yad provides full support for
-Steal/no-Force write-ahead-logging, due to its generally favorable
-performance properties.  ``Steal'' refers to the fact that pages may
-be written back to disk before a transaction completes.  ``No-Force''
-means that a transaction may commit before the pages it modified are
-written back to disk.  
-
-In a Steal/no-Force system, a page may be written to disk once the log
-entries corresponding to the updates it contains are written to the
-log file.  A page must be written to disk if the log file is full, and
-the version of the page on disk is so old that deleting the beginning
-of the log would lose redo information that may be needed at recovery.
-
-Steal is desirable because it allows a single transaction to modify
-more data than is present in memory.  Also, it provides more
-opportunities for the buffer manager to write pages back to disk.
-Otherwise, in the face of concurrent transactions that all modify the
-same page, it may never be legal to write the page back to disk.  Of
-course, if these problems would never come up in practice, an
-application could opt for a no-Steal policy, possibly allowing it to
-write less undo information to the log file.
-
-No-Force is often desirable for two reasons.  First, forcing pages
-modified by a transaction to disk can be extremely slow if the updates
-are not near each other on disk.  Second, if many transactions update
-a page, Force could cause that page to be written once for each transaction
-that touched the page.  However, a Force policy could reduce the
-amount of redo information that must be written to the log file.
-}
-
-
-\subsection{Nested top actions}
-\label{sec:nta}
-So far, we have glossed over the behavior of our system when concurrent
-transactions modify the same data structure.  To understand the problems that
-arise in this case, consider what
-would happen if one transaction, A, rearranged the layout of a data
-structure.  Next, assume a second transaction, B, modified that
-structure, and then A aborted.  When A rolls back, its UNDO entries
-will undo the rearrangement that it made to the data structure, without
-regard to B's modifications.  This is likely to cause corruption.
-
-Two common solutions to this problem are {\em total isolation} and
-{\em nested top actions}.  Total isolation simply prevents any
-transaction from accessing a data structure that has been modified by
-another in-progress transaction.  An application can achieve this
-using its own concurrency control mechanisms, or by holding a lock on
-each data structure until the end of the transaction.  Releasing the
-lock after the modification, but before the end of the transaction,
-increases concurrency.  However, it means that follow-on transactions that use
-that data may need to abort if a current transaction aborts ({\em
-cascading aborts}).  %Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
-
-Unfortunately, the long locks held by total isolation cause bottlenecks when applied to key
-data structures.
-Nested top actions are essentially mini-transactions that can
-commit even if their containing transaction aborts; thus follow-on
-transactions can use the data structure without fear of cascading
-aborts.  
-
-The key idea is to distinguish between the {\em logical operations} of a
-data structure, such as inserting a key, and the {\em physical operations}
-such as splitting tree nodes or or rebalancing a tree. The physical
-operations do not need to be undone if the containing logical operation
-(insert) aborts.  \diff{We record such operations using {\em logical 
-logging} and {\em physical logging}, respectively.}
-
-\diff{Each nested top action performs a single logical operation by applying
-a number of physical operations to the page file.  Physical REDO log
-entries are stored in the log so that recovery can repair any
-temporary inconsistency that the nested top action introduces.
-Logical UNDO entries are recorded so that the nested top action can be
-rolled back even if concurrent transactions manipulate the data
-structure.  Finally, physical UNDO entries are recorded so that 
-the nested top action may be rolled back if the system crashes before 
-it completes.}
-
-\diff{When making use of nested top actions, we think of them as a
-special type of latch that hides temporary inconsistencies from the
-procedures executed during recovery.  Generally, such inconsistencies
-must be hidden from other transactions in a multithreaded environment;
-therefore we usually protect nested top actions with a mutex.}
-
-\diff{This observation leads to the following mechanical conversion of
-non-concurrent operations to thread-safe code that handles concurrent
-transactions correctly:}
-
-%Because nested top actions are easy to use and do not lead to 
-%deadlock, we wrote a simple \yad extension that
-%implements nested top actions.  The extension may be used as follows:
-
-\begin{enumerate}
-\item Wrap a mutex around each operation.  With care, it may be possible to use finer-grained locks, but it is rarely necessary.
-\item Define a {\em logical} UNDO for each operation (rather than just
-  using a set of page-level UNDO's).  For example, this is easy for a
-  hashtable: the UNDO for {\em insert} is {\em remove}.  \diff{This logical
-  undo function should arrange to acquire the mutex when invoked by
-  abort or recovery.}
-\item Add a ``begin nested
-  top action'' right after the mutex acquisition, and a ``commit
-  nested top action'' right before the mutex is released.  \diff{\yad provides a default nested top action implementation as an extension.}
-\end{enumerate}
-
-\noindent If the transaction that encloses the operation aborts, the logical
-undo will {\em compensate} for its effects, leaving the structural
-changes intact. 
-% Note that this recipe does not ensure ISO transactional
-%consistency and is largely orthogonal to the use of a lock manager.
-
-We have found that it is easy to protect operations that make
-structural changes to data structures with this recipe.
-Therefore, we use them throughout our default data structure
-implementations, although \yad does not preclude the use of more
-complex schemes that lead to higher concurrency.
-
+bottom-up approach yields unexpected flexibility.}
 
 \subsection{Blind Writes}
 \label{sec:blindWrites}
-As described above, and in all database implementations of which we
-are aware, transactional pages use LSNs on each page.  This makes it
-difficult to map large objects onto multiple pages, as the LSNs break
-up the object.  It is tempting to try to move the LSNs elsewhere, but
-then they would not be written atomically with their page, which
-defeats their purpose. \eab{fit in RVM?}
+\rcs{Somewhere in the description of conventional transactions, emphasize existing transactional storage systems' tendancy to hard code recommended page formats, data structures, etc.}
 
-LSNs were introduced to prevent recovery from applying updates more
-than once.  \diff{However, \yad can eliminate the LSN on each page by
-constraining itself to deterministic REDO log entries that do not read
-the contents of the page they update.}
-
-%However, by constraining itself to a special type of idempotent redo and undo
-%entries,\endnote{Idempotency does not guarantee that $f(g(x)) =
-%  f(g(f(g(x))))$.  Therefore, idempotency does not guarantee that it is safe
-%  to assume that a page is older than it is.}
-%\yad can eliminate the LSN on each page.
-
-Consider purely physical logging operations that overwrite a fixed
-byte range on the page regardless of the page's initial state.  
-We say that such operations perform ``blind writes.''
-If all
-operations that modify a page have this property, then we can remove
-the LSN field, and have recovery \diff{use a conservative estimate 
-of the LSN of each page that it is dealing with.}
-
-\diff{For example, it 
-could use the LSN of the most recent truncation point in the log, 
-or during normal operation, \yad could occasionally write the 
-LSN of the oldest dirty page to the log.}
-
-% conservatively assume that it is
-%dealing with a version of the page that is at least as old as the one
-%on disk.  
-
-To understand why this works, note that the log entries
-update some subset of the bits on the page.  If the log entries do not
-update a bit, then its value was correct before recovery began, so it
-must be correct after recovery.  Otherwise, we know that recovery will
-update the bit.  Furthermore, after all REDOs, the bit's value will be the
-last value it contained before the crash, so we know that undo will behave
-properly.
+\rcs{All the text in this section is orphaned, but should be worked in elsewhere.}
 
 We call such pages ``LSN-free'' pages.  Although this technique is
 novel for databases, it resembles the mechanism used by
@@ -1380,143 +992,22 @@ directly~\cite{tornPageStuffMohan}.  Because LSN-free page recovery
 does not assume page writes are atomic, it handles torn pages with no
 extra effort.}
 
-
-\subsection{Media recovery}
-
-\diff{Hard drives may lose data due to hardware failures, or because a
-sector is being written when power is lost.  The drive hardware stores a
-checksum with each sector, and will issue a read error if the checksum
-does not match~\cite{something}.}  Like ARIES, \yad can recover lost pages in the page
-file by reinitializing the page to zero, and playing back the entire
-log.  In practice, a system administrator would periodically back up
-the page file, thus enabling log truncation and shortening recovery
-time.
-
-\eat{  This is pretty redundant.
-\subsection{Modular operations semantics}
-
-The smallest unit of a \yad transaction is the {\em operation}.  An
-operation consists of a {\em redo} function, {\em undo} function, and
-a log format.  At runtime or if recovery decides to reapply the
-operation, the redo function is invoked with the contents of the log
-entry as an argument.  During abort, or if recovery decides to undo
-the operation, the undo function is invoked with the contents of the
-log as an argument.  Like Berkeley DB, and most database toolkits, we
-allow system designers to define new operations.  Unlike earlier
-systems, we have based our library of operations on object oriented
-collection libraries, and have built complex index structures from
-simpler structures.  These modules are all directly available,
-providing a wide range of data structures to applications, and
-facilitating the develop of more complex structures through reuse.  We
-compare the performance of our modular approach with a monolithic
-implementation on top of \yad, using Berkeley DB as a baseline.
-}
-
-\eat{ \subsection{Buffer manager policy}
-
-Generally, write ahead logging algorithms ensure that the most recent
-version of each memory-resident page is stored in the buffer manager,
-and the most recent version of other pages is stored in the page file.
-This allows the buffer manager to present a uniform view of the stored
-data to the application.  The buffer manager uses a cache replacement
-policy (\yad currently uses LRU-2 by default) to decide which pages
-should be written back to disk.
-
-Section~\ref{sec:oasys}, we will provide example where the most recent
-version of application data is not managed by \yad at all, and
-Section~\ref{zeroCopy} explains why efficiency may force certain
-operations to bypass the buffer manager entirely.
-
-
-\subsection{Durability}
-
-\eat{\yad makes use of the same basic recovery strategy as existing
-write-ahead-logging schemes such as ARIES.  Recovery consists of three
-stages, {\em analysis}, {\em redo}, and {\em undo}.  Analysis is
-essentially a performance optimization, and makes use of information
-left during forward operation to reduce the cost of redo and undo.  It
-also decides which transactions committed, and which aborted.  The
-redo phase iterates over the log, applying the redo function of each
-logged operation if necessary.  Once the log has been played forward,
-the page file and buffer manager are in the same conceptual state they
-were in at crash.  The undo phase simply aborts each transaction that
-does not have a commit entry, exactly as it would during normal
-operation.
-}
-%From the application's perspective, logging and durability are interesting for a
-%number of reasons.  First, 
-If full transactional durability is
-unneeded, the log can be flushed to disk less frequently, improving
-performance.  In fact, \yad allows applications to store the
-transaction log in memory, reducing disk activity at the expense of
-recovery.  We are in the process of optimizing the system to handle
-fully in-memory workloads efficiently.  Of course, durability is closely
-tied to system management issues such as reliability, replication and so on.  
-These issues are beyond the scope of this discussion.  Section~\ref{logReordering} will describe why applications might decide to manipulate the log directly.
-}
-\subsection{Summary of Transactional Pages}
-
-This section provided an extremely brief overview of transactional
-pages and write-ahead-logging.  Transactional pages are a valuable
-building block for a wide variety of data management systems, as we
-show in the next section.  Nested top actions and LSN-free pages
-enable important optimizations.  In particular, \yad allows general 
-custom operations using LSNs, or custom blind-write operations
-without LSNs.  This enables transactional manipulation of large, 
-contiguously stored objects.
-
-\eat{
+\rcs{ (Why was this marked to be deleted?  It needs to be moved somewhere else....)
 Although the extensions that it proposes
 require a fair amount of knowledge about transactional logging
 schemes, our initial experience customizing the system for various
 applications is positive.  We believe that the time spent customizing
 the library is less than amount of time that it would take to work
 around typical problems with existing transactional storage systems.
-
-%However, we do not yet have a good understanding of the practical testing and
-%reliability issues that arise as the system is modified in
-%this fashion.
 }
 
 
 
 \section{Extending \yad}
-\label{sec:extensions}
-
-\diff{The previous section described how \yad implements conventional
-transactional storage.  In this section we discuss ways in which \yad
-can be customized to provide more specialized transactions.  First,
-the mechanisms that allow new operations will be discussed.  These
-mechanisms provide the base of \yads customizable page formats and
-ability to support application-specific transactional data structures.
-Next, an example of how \yads recovery mechanism can be changed will
-be discussed.}
-
-\diff{In this section we break some of the typical assumptions made by
-transactional storage algorithms.  The discussion of custom log
-operations updates pages at the byte level, and describes how one
-might implement functions that organize pages into records, or to
-provide more exotic semantics.}
-
-\diff{The customized recovery algorithm removes LSN's from pages, and
-instead opts to estimate LSN's during recovery, and recalculate them
-during normal forward operation.  This in turn breaks the reliance on
-pages as an atomic unit of recovery, but prevents us from using most
-conventional database page layout techniques.}
-
-\diff{This section discusses changes that are made at multiple levels
-of abstraction.  We will attempt to describe which level is being
-described, and the semantics provided by the levels it builds upon.}
-
-%This section describes proof-of-concept extensions to \yad.
-%Performance figures accompany the extensions that we have implemented.
-%We discuss existing approaches to the systems presented here when
-%appropriate.
-
 \subsection{Adding log operations}
 \label{sec:wal}
 
-\rcs{This section needs to be merged into the new section 3, because that is where we discuss how to add new log operations.  (In with the new nested top action stuff, probably).  That will leave a section to focus on LSN-free pages, and other things that break the ARIES assumptions.  That way, blind writes and lsn-free pages can be in the same place.}
+\rcs{This section needs to be merged into the new text.  For now, it's an orphan.}
 
 \yad allows application developers to easily add new operations to the
 system.  Many of the customizations described below can be implemented
@@ -1563,70 +1054,6 @@ implementation must obey a few more invariants:
   concurrent attempts to allocate log entries that update the data).
 \item Nested top actions (and logical undo), or ``big locks'' (total isolation but lower concurrency) should be used to implement multi-page updates. (Section~\ref{sec:nta})
 \end{itemize}
-
-\subsection{LSN-Free pages}
-\label{sec:zeroCopy}
-In Section~\ref{sec:blindWrites}, we describe how operations can avoid recording
-LSN's on the pages they modify.  Essentially, operations that update pages \diff{without examining their contents}
-% make use of purely physical logging 
-need not heed page boundaries.
-%, as physiological operations must.  
-Recall that purely physical logging
-interacts poorly with concurrent transactions that modify the same
-data structures or pages, so LSN-Free pages are not applicable in all
-situations. \rcs{I think we can support physiological logging; once REDO is done, we know the LSN.  Why not do logical UNDO?}
-
-Consider the retrieval of a large (page spanning) object stored on
-pages that contain LSN's.  The object's data will not be contiguous.
-Therefore, in order to retrieve the object, the transaction system must
-load the pages contained on disk into memory, and perform a byte-by-byte copy of the
-portions of the pages that contain the large object's data into a second buffer.  
-
-Compare
-this approach to a modern filesystem, which allows applications to
-perform a DMA copy of the data into memory, avoiding the expensive
-byte-by-byte copy of the data, and allowing the CPU to be used for
-more productive purposes.  Furthermore, modern operating systems allow
-network services to use DMA and network adaptor hardware to read data
-from disk, and send it over a network socket without passing it
-through the CPU.  Again, this frees the CPU, allowing it to perform
-other tasks.
-
-We believe that LSN free pages will allow reads to make use of such
-optimizations in a straightforward fashion.  Zero copy writes are more challenging, but could be
-performed by performing a DMA write to a portion of the log file.
-However, doing this complicates log truncation, and does not address
-the problem of updating the page file.  We suspect that contributions
-from the log based filesystem~\cite{lfs} literature can address these problems in
-a straightforward fashion.  In particular, we imagine storing 
-portions of the log (the portion that stores the blob) in the 
-page file, or other addressable storage.  In the worst case, 
-the blob would have to be relocated in order to defragment the 
-storage.  Assuming the blob was relocated once, this would amount 
-to a total of three, mostly sequential disk operations.  (Two 
-writes and one read.)  However, in the best case, the blob would only need to written once.
-In contrast, a conventional atomic blob implementation would always need 
-to write the blob twice. %but also may need to create complex 
-%structures such as B-Trees, or may evict a large number of 
-%unrelated pages from the buffer pool as the blob is being written 
-%to disk.  
-
-Alternatively, we could use DMA to overwrite the blob in the page file
-in a non-atomic fashion, providing filesystem style semantics.
-(Existing database servers often provide this mode based on the
-observation that many blobs are static data that does not really need
-to be updated transactionally.~\cite{sqlserver}) Of course, \yad could
-also support other approaches to blob storage, such as B-Tree layouts
-that allow arbitrary insertions and deletions in the middle of
-objects~\cite{esm}.
-
-Finally, RVM, recoverable virtual memory, made use of LSN-free pages
-so that it could use mmap() to map portions of the page file into
-application memory\cite{lrvm}.  However, without support for logical log entries
-and nested top actions, it would be difficult to implement a
-concurrent, durable data structure using RVM.  We plan to add RVM
-style transactional memory to \yad in a way that is compatible with
-fully concurrent collections such as hash tables and tree structures.
 
 \section{Experiments}
 \subsection{Experimental setup}
