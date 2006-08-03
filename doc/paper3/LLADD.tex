@@ -161,32 +161,12 @@ abstraction upon their users will restrict system designs and
 implementations.
 }
 
-%In short, reliable data management has become as unavoidable as any
-%other operating system service.  As this has happened, database
-%designs have not incorporated this decade-old lesson from operating
-%systems research:
-%
-%\begin{quote} The defining tragedy of the operating systems community
-%  has been the definition of an operating system as software that both
-%  multiplexes and {\em abstracts} physical resources...The solution we
-%  propose is simple: complete elimination of operating systems
-%  abstractions by lowering the operating system interface to the
-%  hardware level~\cite{engler95}.
-%\end{quote}
-
-%The widespread success of lower-level transactional storage libraries
-%(such as Berkeley DB) is a sign of these trends.  However, the level
-%of abstraction provided by these systems is well above the hardware
-%level, and applications that resort to ad-hoc storage mechanisms are
-%still common.
-
 This paper presents \yad, a library that provides transactional
 storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
 storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
 (e.g. write-ahead-logging) and systems (e.g. zero-copy techniques).
-
 
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work with the complete semantics
@@ -254,12 +234,11 @@ hierarchical datasets, and so on.  Before the relational model,
 navigational databases implemented pointer- and record-based data models.
 
 An early survey of database implementations sought to enumerate the
-fundamental components used by database system implementors.  This
+fundamental components used by database system implementors~\cite{batoryConceptual,batoryPhysical}.  This
 survey was performed due to difficulties in extending database systems
 into new application domains.  It divided internal database
-routines into two broad modules: {\em conceptual
-mappings}~\cite{batoryConceptual} and {\em physical
-database models}~\cite{batoryPhysical}.
+routines into two broad modules: {\em conceptual mappings} and {\em physical
+database models}.
 
 %A physical model would then translate a set of tuples into an
 %on-disk B-Tree, and provide support for iterators and range-based query
@@ -277,7 +256,7 @@ going to be used for short, write-intensive and high-concurrency
 transactions (OLTP), the physical model would probably translate sets
 of tuples into an on-disk B-Tree.  In contrast, if the database needed
 to support long-running, read only aggregation queries (OLAP) over high 
-dimensional data, a physical model that stores the data in sparse array format would
+dimensional data, a physical model that stores the data in a sparse array format would
 be more appropriate~\cite{molap}.  While both OLTP and OLAP databases are based
 upon the relational model they make use of different physical models
 in order to serve different classes of applications.}
@@ -295,13 +274,31 @@ structured physical model or abstract conceptual mappings.
 
 \subsection{Extensible transaction systems} 
 \label{sec:otherDBs}
-This section contains discussion of transaction systems with goals similar to ours.
-Although these projects were
-successful in many respects, they fundamentally aimed to implement an
-extensible data model, rather than build transactions from the bottom up.
-In each case, this limits the applicability of their implementations.
+This section contains discussion of transaction systems with goals
+similar to ours.  Although these projects were successful in many
+respects, they fundamentally aimed to implement an extensible abstract
+data model, rather than take a bottom-up approach and allow
+applications to customize the physical model in order to support new
+high level abstractions.  In each case, this limits these systems to
+applications their physical models support well.
 
 \eab{add Argus and Camelot}
+
+\rcs{ Notes on these: Camelot focues more on language support for
+distributed transactions.  Its recovery mechanism is probably very
+close to RVM's, as it does pure physical logging with transcation
+duration page locks (really 'region' locks). }
+
+\rcs{ I think Argus makes use of shadow copies for durability, and for
+in-memory transactions.  A tree of shadow copies exists, and is handled as
+follows (I think): All transaction locks are commit duration, per
+object.  There are read locks and write locks, and it uses strict 2PL.
+Each transaction is a tree of ``subactions'' that can get R/W locks
+according to the 2PL rules.  Two subactions in the same action cannot
+get a write lock on the same object because each one gets its own copy
+of the object to write to.  If a subaction or transaction abort their
+local copy is simply discarded.  At commit, the local copy replaces
+the global copy.}
 
 \subsubsection{Extensible databases}
 
@@ -335,7 +332,7 @@ both types of systems aim to extend a high-level data model with new
 abstract data types, and thus are quite limited in the range of new 
 applications they support.  In hindsight, it is not surprising that this kind of 
 extensibility has had little impact on the range of applications 
-we listed above.
+we listed above. \rcs{This could be more clear.  Perhaps ``... on applications that are not naturally supported by queries over sets of tuples, or other data items''?}
 
 \subsubsection{Berkeley DB}
 
@@ -346,8 +343,8 @@ we listed above.
 %databases.
 
 Berkeley DB is a highly successful alternative to conventional
-databases.  At its core, it provides the physical database
-(relational storage system) of a conventional database server.
+databases~\cite{libtp}.  At its core, it provides the physical database model
+(relational storage system~\cite{systemR}) of a conventional database server.
 %It is based on the
 %observation that the storage subsystem is a more general (and less
 %abstract) component than a monolithic database, and provides a
@@ -357,7 +354,7 @@ In particular,
 it provides fully transactional (ACID) operations over B-Trees, 
 hashtables, and other access methods.  It provides flags that 
 let its users tweak various aspects of the performance of these
-primitives, and selectively disable the features it provides~\cite{libtp}.
+primitives, and selectively disable the features it provides.
 
 With the
 exception of the benchmark designed to fairly compare the two systems, none of the \yad 
@@ -396,9 +393,8 @@ situation.
 %implementations are generally incomprehensible and
 %irreproducible, hindering further research.  
 The study concludes 
-by suggesting the adoption of {\em RISC} database architectures, both as a resource for researchers and as a 
-real-world database system.
-
+by suggesting the adoption of highly modular, {\em RISC}, database architectures, both as a resource for researchers and as a 
+real-world database system.  
 RISC databases have many elements in common with
 database toolkits.  However, they take the database toolkit idea one
 step further, and suggest standardizing the interfaces of the
@@ -444,7 +440,7 @@ operations are roughly structured as two levels of abstraction.
 
 The transcational algorithms described in this section are not at all
 novel, and are in fact based on ARIES~\cite{aries}.  However, they
-provide important background.  Also, there is a large body of literature
+provide important background.  There is a large body of literature
 explaining optimizations and implementation techniques related to this
 type of recovery algorithm.  Any good database textbook would cover these
 issues in more detail.
@@ -454,10 +450,10 @@ updates to regions of the disk.  These updates do not have to deal
 with concurrency, but the portion of the page file that they read and
 write must be atomically updated, even if the system crashes.
 
-The higher level atomically applies operations
-to the page file to provide operations that span multiple pages and
-copes with concurrency issues.  Surprisingly, the implementations
-of these two layers are only loosely coupled.
+The higher level provides operations that span multiple pages by
+atomically applying sets of operations to the page file and coping
+with concurrency issues.  Surprisingly, the implementations of these
+two layers are only loosely coupled.
 
 Finally, this section describes how \yad manages transaction-duration
 locks and discusses the alternatives \yad provides to application developers.
@@ -533,11 +529,12 @@ a non-atomic disk write, then such operations would fail during recovery.
 Note that we could implement a limited form of transactions by
 limiting each transaction to a single operation, and by forcing the
 page that each operation updates to disk in order.  This would not
-require any sort of logging, but is quite inefficient in practice.
-The rest of this section describes how recovery can be extended, first
-to efficiently support multiple operations per transaction, and then
-to allow more than one transaction to modify the same data before
-committing.
+require any sort of logging, but is quite inefficient in practice, is
+it foces the disk to perform a potentially random write each time the
+page file is updated.  The rest of this section describes how recovery
+can be extended, first to efficiently support multiple operations per
+transaction, and then to allow more than one transaction to modify the
+same data before committing.
 
 \subsubsection{\yads Recovery Algorithm}
 
