@@ -300,6 +300,11 @@ of the object to write to.  If a subaction or transaction abort their
 local copy is simply discarded.  At commit, the local copy replaces
 the global copy.}
 
+\rcs{This should rpobably get its own subsection; ``Transactional
+programming models.''  Most research systems were backed with
+non-concurrent transactional storage; current commercial systems (eg:
+EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section.}
+
 \subsubsection{Extensible databases}
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
@@ -970,13 +975,6 @@ using conventional transactions, but they appear to be easier to
 implement and reason about when applied to LSN-free pages.
 
 \section{Transactional Pages}
-
-\rcs{This was weak, but we still don't explain what we mean by ``bottom up'' approach.'' Section~\ref{sec:notDB} described the ways in which a top-down data model
-limits the generality and flexibility of databases.  In this section,
-we cover the basic bottom-up approach of \yad: {\em transactional
-pages}. Although similar to the underlying write-ahead-logging
-approaches of databases, particularly ARIES~\cite{aries}, \yads
-bottom-up approach yields unexpected flexibility.}
 
 \subsection{Blind Writes}
 \label{sec:blindWrites}
