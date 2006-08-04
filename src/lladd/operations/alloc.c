@@ -105,7 +105,7 @@ static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat
   return 0;
 }
 
-static pthread_mutex_t talloc_mutex;
+static pthread_mutex_t talloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 Operation getAlloc() {
   Operation o = {
@@ -146,7 +146,7 @@ static allocationPolicy * allocPolicy;
 void TallocInit() { 
   lastFreepage = UINT64_MAX;
   allocPolicy = allocationPolicyInit();
-  pthread_mutex_init(&talloc_mutex, NULL);
+  //  pthread_mutex_init(&talloc_mutex, NULL);
 }
 
 static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
@@ -225,33 +225,6 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
     }
     
-    /*    if(lastFreepage == UINT64_MAX) {
-      try_ret(NULLRID) {
-	lastFreepage = TpageAlloc(xid);
-      } end_ret(NULLRID);
-      try_ret(NULLRID) {
-	p = loadPage(xid, lastFreepage);
-      } end_ret(NULLRID);
-      //      assert(*page_type_ptr(p) == UNINITIALIZED_PAGE);
-      slottedPageInitialize(p);
-    } else {
-      try_ret(NULLRID) {
-	p = loadPage(xid, lastFreepage);
-      } end_ret(NULLRID);
-      } */
-    
-    
-    /*    if(slottedFreespace(p) < physical_slot_length(type) ) { 
-      // XXX compact page?!?
-      releasePage(p);
-      try_ret(NULLRID) {
-	lastFreepage = TpageAlloc(xid);
-      } end_ret(NULLRID);
-      try_ret(NULLRID) {
-	p = loadPage(xid, lastFreepage);
-      } end_ret(NULLRID);
-      slottedPageInitialize(p);
-      }  */   
     rid = TallocFromPageInternal(xid, p, size);
     
     int newFreespace = slottedFreespace(p);
@@ -303,10 +276,10 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
   
   assert(slotSize < PAGE_SIZE && slotSize > 0);
   
-  if(slottedFreespace(p) < slotSize) { 
+  /*  if(slottedFreespace(p) < slotSize) { 
     slottedCompact(p);
-  } 
-  if(slottedFreespace(p) < slotSize) { 
+    }  */
+  if(slottedFreespace(p) < slotSize) {
     rid = NULLRID;
   } else { 
     rid = slottedRawRalloc(p, type);
@@ -333,6 +306,17 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
 compensated_function void Tdealloc(int xid, recordid rid) {
   
   // @todo this needs to garbage collect emptry pages / storage regions.
+
+  // XXX This is BROKEN.  It needs to lock the page that it's
+  // deallocating from.  A shared/exclusive lock doesn't quite do it.
+  // If dealloc got a shared lock, then alloc could get an exclusive
+  // lock when it allocs, but then alloc would need to free the lock,
+  // since deallocation is always safe (assuming the app isn't
+  // deallocating something that hasn't committed yet, which is its
+  // fault, not ours.  Also, we don't want to prevent a transaction
+  // from allocating to a page if it is the only transaction that's
+  // freed something on that page.
+
   void * preimage = malloc(rid.size);
   Page * p;
   try {

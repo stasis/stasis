@@ -108,6 +108,14 @@ compensated_function Page * loadPage(int xid, int pageid);
 */
 void releasePage(Page * p);
 
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+#define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)
+#define releasePage(x) __profile_releasePage((x))
+compensated_function void  __profile_releasePage(Page * p);
+compensated_function Page * __profile_loadPage(int xid, int pageid, char * file, int line);
+#endif
+
+
 /**
  * initialize buffer manager
  * @return 0 on success

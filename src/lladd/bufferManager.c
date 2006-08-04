@@ -46,11 +46,21 @@ terms specified in this license.
  * *************************************************/
 
 #include <config.h>
+
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+
+#define _GNU_SOURCE   
+#include <stdio.h>  // Need _GNU_SOURCE for asprintf
+#include <lladd/lhtable.h>
+
+#endif
+
 #include <lladd/common.h>
 #include <latches.h>
 #include <assert.h>
 
 #include <lladd/bufferManager.h>
+
 #include <lladd/bufferPool.h>
 
 #include <lladd/lockManager.h>
@@ -59,9 +69,31 @@ terms specified in this license.
 #include <lladd/pageCache.h>
 #include "pageFile.h"
 #include <pbl/pbl.h>
+
 #include <lladd/truncation.h>
 
-#ifdef LONG_TEST
+#undef loadPage
+#undef releasePage
+#undef Page
+
+#ifdef LONG_TEST 
+#define PIN_COUNT
+#endif
+
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+
+// These should only be defined if PROFILE_LATCHES_WRITE_ONLY is set.
+
+#undef loadPage
+#undef releasePage
+
+pthread_mutex_t profile_load_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct LH_ENTRY(table) * profile_load_hash = 0;
+struct LH_ENTRY(table) * profile_load_pins_hash = 0;
+
+#endif
+
+#ifdef PIN_COUNT
 pthread_mutex_t pinCount_mutex = PTHREAD_MUTEX_INITIALIZER;
 int pinCount = 0;
 #endif
@@ -96,7 +128,10 @@ int bufInit() {
 	pageCacheInit(first);
 
 	assert(activePages);
-
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    profile_load_hash = LH_ENTRY(create)(10);
+    profile_load_pins_hash = LH_ENTRY(create)(10);
+#endif
 	return 0;
 }
 
@@ -122,7 +157,7 @@ void bufDeinit() {
 	closePageFile();
 	
 	pageDeInit();
-#ifdef LONG_TEST
+#ifdef PIN_COUNT
 	if(pinCount != 0) { 
 	  printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
 	}
@@ -136,14 +171,14 @@ void bufDeinit() {
 void simulateBufferManagerCrash() {
   closeBlobStore();
   closePageFile();
-#ifdef LONG_TEST
+#ifdef PIN_COUNT
   pinCount = 0;
 #endif
 }
 
 void releasePage (Page * p) {
   unlock(p->loadlatch);
-#ifdef LONG_TEST
+#ifdef PIN_COUNT
   pthread_mutex_lock(&pinCount_mutex);
   pinCount --;
   pthread_mutex_unlock(&pinCount_mutex);
@@ -159,11 +194,30 @@ static Page * getPage(int pageid, int locktype) {
   ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
   if(ret) {
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    // "holder" will contain a \n delimited list of the sites that
+    // called loadPage() on the pinned page since the last time it was
+    // completely unpinned.  One such site is responsible for the
+    // leak.
+    
+    char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
+    int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
+    char * holderD =0;
+    int pinsD = 0;
+    if(holder) {
+      holderD = strdup(holder);
+      pinsD = *pins; 
+    }
+#endif
     if(locktype == RW) {
       writelock(ret->loadlatch, 217);
     } else {
       readlock(ret->loadlatch, 217);
     }
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    if(holderD) 
+      free(holderD);
+#endif
   }
 
   while (ret && (ret->id != pageid)) {
@@ -174,11 +228,31 @@ static Page * getPage(int pageid, int locktype) {
     ret = pblHtLookup(activePages, &pageid, sizeof(int));
 
     if(ret) {
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+      // "holder" will contain a \n delimited list of the sites that
+      // called loadPage() on the pinned page since the last time it was
+      // completely unpinned.  One such site is responsible for the
+      // leak.
+      
+      char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
+      int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
+      
+      char * holderD = 0;
+      int pinsD = 0;
+      if(holder) { 
+	holderD = strdup(holder);
+	pinsD = *pins;
+      }
+#endif
       if(locktype == RW) {
 	writelock(ret->loadlatch, 217);
       } else {
 	readlock(ret->loadlatch, 217);
       }
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+      if(holderD)
+	free(holderD);
+#endif
     }
     spin++;
     if(spin > 10000) {
@@ -220,7 +294,30 @@ static Page * getPage(int pageid, int locktype) {
       ret->inCache = 0;
     }
 
+    // If you leak a page, and it eventually gets evicted, and reused, the system deadlocks here.
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    // "holder" will contain a \n delimited list of the sites that
+    // called loadPage() on the pinned page since the last time it was
+    // completely unpinned.  One such site is responsible for the
+    // leak.
+
+    char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
+    int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
+
+    char * holderD = 0;
+    int pinsD = 0;
+    if(holder) { 
+      holderD = strdup(holder);
+      pinsD = *pins;
+    }
+    
+#endif
+
     writelock(ret->loadlatch, 217); 
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    if(holderD)
+      free(holderD);
+#endif
 
     /* Inserting this into the cache before releasing the mutex
        ensures that constraint (b) above holds. */
@@ -252,12 +349,29 @@ static Page * getPage(int pageid, int locktype) {
     cacheInsertPage(ret);
 
     pthread_mutex_unlock(&loadPagePtr_mutex);
-
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    // "holder" will contain a \n delimited list of the sites that
+    // called loadPage() on the pinned page since the last time it was
+    // completely unpinned.  One such site is responsible for the
+    // leak.
+    
+    holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
+    pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
+    
+    if(holder) {
+      holderD = strdup(holder);
+      pinsD = *pins;
+    }
+#endif
     if(locktype == RW) {
       writelock(ret->loadlatch, 217);
     } else {
       readlock(ret->loadlatch, 217);
     }
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+    if(holderD)
+      free(holderD);
+#endif
     if(ret->id != pageid) {
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n"); 
@@ -269,14 +383,80 @@ static Page * getPage(int pageid, int locktype) {
   return ret;
 }
 
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+
+compensated_function Page * __profile_loadPage(int xid, int pageid, char * file, int line) { 
+
+  Page * ret = loadPage(xid, pageid);
+
+
+  pthread_mutex_lock(&profile_load_mutex);
+
+  char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
+  int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
+
+  if(!pins) { 
+    pins = malloc(sizeof(int));
+    *pins = 0;
+    LH_ENTRY(insert)(profile_load_pins_hash, &ret, sizeof(void*), pins);
+  }
+
+  if(*pins) { 
+    assert(holder);
+    char * newHolder;
+    asprintf(&newHolder, "%s\n%s:%d", holder, file, line);
+    free(holder);
+    holder = newHolder;
+  } else { 
+    assert(!holder);
+    asprintf(&holder, "%s:%d", file, line);
+  }
+  (*pins)++;
+  LH_ENTRY(insert)(profile_load_hash, &ret, sizeof(void*), holder);
+  pthread_mutex_unlock(&profile_load_mutex);
+
+  return ret;
+
+}
+
+
+compensated_function void  __profile_releasePage(Page * p) { 
+  pthread_mutex_lock(&profile_load_mutex);
+
+  //  int pageid = p->id;
+  int * pins = LH_ENTRY(find)(profile_load_pins_hash, &p, sizeof(void*));
+
+  assert(pins);
+
+  if(*pins == 1) {
+    
+    char * holder = LH_ENTRY(remove)(profile_load_hash, &p, sizeof(void*));
+    assert(holder);
+    free(holder); 
+
+  }
+
+  (*pins)--;
+
+  pthread_mutex_unlock(&profile_load_mutex);
+
+  releasePage(p);
+
+
+}
+
+#endif
+
 compensated_function Page *loadPage(int xid, int pageid) {
 
   try_ret(NULL) {
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
   } end_ret(NULL);
+
+
   Page * ret = getPage(pageid, RO);
 
-#ifdef LONG_TEST
+#ifdef PIN_COUNT
   pthread_mutex_lock(&pinCount_mutex);
   pinCount ++;
   pthread_mutex_unlock(&pinCount_mutex);
@@ -284,3 +464,4 @@ compensated_function Page *loadPage(int xid, int pageid) {
 
   return ret;
 }
+

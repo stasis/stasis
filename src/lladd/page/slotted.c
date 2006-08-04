@@ -7,7 +7,6 @@
 
 static void really_do_ralloc(Page * page, recordid rid) ;
 size_t slottedFreespaceForSlot(Page * page, int slot);
-
 void fsckSlottedPage(const Page const * page) {
 
 #ifndef SLOTTED_PAGE_SKIP_SANITY_CHECKS
@@ -322,7 +321,7 @@ size_t slottedFreespaceUnlocked(Page * page);
 size_t slottedFreespaceForSlot(Page * page, int slot) { 
   size_t slotOverhead;
 
-  if(slot == -1) { 
+  if(slot == INVALID_SLOT) { 
     slotOverhead = (*freelist_ptr(page) == INVALID_SLOT) ? SLOTTED_PAGE_OVERHEAD_PER_RECORD : 0;
   } else if(slot < *numslots_ptr(page)) { 
     slotOverhead = 0;
@@ -352,7 +351,7 @@ size_t slottedFreespaceForSlot(Page * page, int slot) {
     then write a randomized test that confirms the model matches the
     implementation's behavior. */
 size_t slottedFreespaceUnlocked(Page * page) { 
-  return slottedFreespaceForSlot(page, -1);
+  return slottedFreespaceForSlot(page, INVALID_SLOT);
 }
 
 size_t slottedFreespace(Page * page) {
@@ -523,8 +522,6 @@ static void really_do_ralloc(Page * page, recordid rid) {
 
   *slot_length_ptr(page, rid.slot) = rid.size; 
 
-  assert(slottedFreespaceForSlot(page, -1) || 1);
-
 }
 /**
    @param rid with user-visible size.
@@ -585,8 +582,6 @@ recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 	}
 
 	pageWriteLSN(xid, page, lsn);
-
-	assert(slottedFreespaceForSlot(page, -1) || 1);
 
         fsckSlottedPage(page);
 	writeunlock(page->rwlatch);

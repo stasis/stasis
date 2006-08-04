@@ -7,6 +7,7 @@
 
 #include <pbl/pbl.h>
 #include <errno.h>
+#include <assert.h>
 
 #undef pthread_mutex_t
 #undef pthread_mutex_init
@@ -177,16 +178,14 @@ __profile_rwl *__profile_rw_initlock (char * file, int line) {
   ret->lockpoints = pblHtCreate();
   
   ret->lock = initlock();
-
+  ret->holder = 0;
+  ret->readCount = 0;
   return ret;
 
 }
 
 /*static pthread_mutex_t __profile_rwl_mutex = PTHREAD_MUTEX_INITIALIZER;*/
 
-/** 
-    @todo For now, we only profile write locks...
-*/
 void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
 
   char * location;
@@ -203,7 +202,16 @@ void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
       implementation, or should we see how many times we were woken
       before obtaining the lock? */
 
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+  pthread_t self = pthread_self();
+  if(lock->holder != self) {
+    writelock(lock->lock, d);
+    lock->holder = self;
+  }
+  lock->readCount++;
+#else
   readlock(lock->lock, d);
+#endif
 
   /*  pthread_mutex_lock(__profile_rwl_mutex); */
 
@@ -226,8 +234,8 @@ void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
   /*  pthread_mutex_unlock(__profile_rwl_mutex);*/
 
 
-
 }
+
 void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
 
   char * location;
@@ -242,7 +250,6 @@ void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
   /** @todo Should we spin instead of using the more efficient rwl
       implementation, or should we see how many times we were woken
       before obtaining the lock? */
-
   writelock(lock->lock, d);
 
   /*  pthread_mutex_lock(__profile_rwl_mutex); */
@@ -270,8 +277,23 @@ void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
 }
 void __profile_readunlock (__profile_rwl *lock) {
 
-  readunlock(lock->lock);
+  profile_tuple * tup = pblHtLookup(lock->lockpoints, lock->last_acquired_at, strlen(lock->last_acquired_at)+1);
 
+  released_lock(tup);
+  released_lock(&(lock->tup));
+
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+  pthread_t self = pthread_self();
+  assert(lock->holder == self);
+  lock->readCount--;
+  if(!lock->readCount) { 
+    lock->holder = 0;
+    free(lock->last_acquired_at);  // last_acquired_at gets leaked by readunlock.
+    writeunlock(lock->lock);
+  }
+#else
+  readunlock(lock->lock);
+#endif
 }
 void __profile_writeunlock (__profile_rwl *lock) {
 
@@ -287,7 +309,11 @@ void __profile_writeunlock (__profile_rwl *lock) {
 }
 
 void __profile_unlock (__profile_rwl * lock) {
+#ifdef PROFILE_LATCHES_WRITE_ONLY
+  if(!lock->readCount) { 
+#else
   if(lock->lock->writers) {
+#endif
     __profile_writeunlock(lock);
   } else {
     __profile_readunlock(lock);
@@ -309,17 +335,23 @@ void __profile_deletelock (__profile_rwl *lock) {
 
   profile_tuple * tup;
 
-  printf("Free rwl init: %s %d\n   ", lock->file, lock->line);
+#ifdef PROFILE_LATCHES_VERBOSE
+  printf("Free rwl init: %s %d\t   ", lock->file, lock->line);
   print_profile_tuple(&(lock->tup));
-  printf("\n  Lock points: [mean, stddev, max] \n");
+  printf("\n");
+  printf("Lock points: [mean, stddev, max] \n");  
   
   for(tup = pblHtFirst(lock->lockpoints); tup; tup = pblHtNext(lock->lockpoints)) {
     printf("\t%s ", (char*)pblHtCurrentKey(lock->lockpoints)); 
     print_profile_tuple(tup);
     printf("\n");
     free(tup);
-  }
-  
+  } 
+#else
+  for(tup = pblHtFirst(lock->lockpoints); tup; tup = pblHtNext(lock->lockpoints)) {
+    free(tup);
+  } 
+#endif
   pblHtDelete(lock->lockpoints);
 
   deletelock(lock->lock);

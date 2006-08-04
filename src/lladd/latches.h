@@ -42,6 +42,8 @@ typedef struct {
   char * last_acquired_at;
   /* pblHashTable_t * lockpoints; */
   void * lockpoints;
+  pthread_t holder;
+  int readCount;
 } __profile_rwl;
 
 #ifdef PROFILE_LATCHES
