@@ -35,6 +35,13 @@
 
 static pblHashTable_t * transactionLSN;
 static LinkedListPtr rollbackLSNs = NULL;
+/** @todo There is no real reason to have this mutex (which prevents
+    concurrent aborts, except that we need to protect rollbackLSNs's
+    from concurrent modifications. */
+static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+
 /** 
     Determines which transactions committed, and which need to be redone.
 
@@ -287,15 +294,23 @@ void InitiateRecovery() {
   /** @todo Should we manually empty the hash table? */
   pblHtDelete(transactionLSN);
   
+  destroyList(rollbackLSNs);
+  rollbackLSNs=0;
+
   /** @todo CleanUp(); */
 }
 
 
 void undoTrans(TransactionLog transaction) { 
-  if(rollbackLSNs) {
+
+  pthread_mutex_lock(&rollback_mutex);
+  /*  if(rollbackLSNs) {
     destroyList(rollbackLSNs);
-  }
-  rollbackLSNs = 0;
+    } */
+  //  rollbackLSNs = 0;
+  
+  assert(!rollbackLSNs);
+
   if(transaction.prevLSN > 0) {
     DEBUG("scheduling lsn %ld for undo.\n", transaction.prevLSN);
     addSortedVal(&rollbackLSNs, transaction.prevLSN);
@@ -304,4 +319,10 @@ void undoTrans(TransactionLog transaction) {
   }
 
   Undo(0);
+  if(rollbackLSNs) {
+    destroyList(rollbackLSNs);
+  }
+  rollbackLSNs = 0;
+  pthread_mutex_unlock(&rollback_mutex);
+
 }
