@@ -754,7 +754,7 @@ each transaction, and keeps track of deallocation events, making sure
 that space on a page is never over reserved.  Providing each
 transaction with a seperate pool of freespace should increase
 concurrency and locality.  This allocation strategy was inspired by
-Hoard, a malloc implementation for SMP machines.
+Hoard, a malloc implementation for SMP machines~\cite{hoard}.
 
 Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
@@ -1391,7 +1391,7 @@ handled in any order, improving locality and merging opportunities.}
 \begin{figure}[t]
 \includegraphics[width=1\columnwidth]{figs/oo7.pdf}
 \vspace{-15pt}
-\caption{\sf\label{fig:oo7} oo7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
+\caption{\sf\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
 \end{figure}
 
 \begin{figure}[t]
@@ -1442,9 +1442,6 @@ in non-transactional memory.
 %entries.  Therefore, applications may need to implement custom
 %operations to make use of the ideas in this section.
 
-%Although \yad has rudimentary support for a \diff{cluster hash table\cite{cht}} that uses 
-%two-phase commit to recover from node crashes}, we have not yet implemented networking primitives for logical logs.
-\rcs{Cut sentence about two-phase commit cluster hash table, networking primitves for logical logs.}
 Therefore, we implemented a single node log-reordering scheme that increases request locality
 during the traversal of a random graph.  The graph traversal system
 takes a sequence of (read) requests, and partitions them using some
@@ -1466,7 +1463,7 @@ We ran two experiments.  Both stored a graph of fixed size objects in
 the growable array implementation that is used as our linear
 hashtable's bucket list.
 The first experiment (Figure~\ref{fig:oo7})
-is loosely based on the oo7 database benchmark.~\cite{oo7}.  We
+is loosely based on the OO7 database benchmark.~\cite{oo7}.  We
 hard-code the out-degree of each node, and use a directed graph.  OO7
 constructs graphs by first connecting nodes together into a ring.
 It then randomly adds edges between the nodes until the desired
@@ -1513,6 +1510,7 @@ objects exist as well. Relational databases allow users to specify the order
 in which tuples will be layed out, and often leave portions of pages
 unallocated to reduce fragmentation as new records are allocated.
 
+\rcs{The new allocator is written + working, so this should be reworded. We have one that is based on hoard; support for other possibilities would be nice.}
 Memory allocation routines also address this problem.  For example, the Hoard memory
 allocator is a highly concurrent version of malloc that
 makes use of thread context to allocate memory in a way that favors
