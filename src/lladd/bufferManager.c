@@ -68,9 +68,10 @@ terms specified in this license.
 #include "blobManager.h"
 #include <lladd/pageCache.h>
 #include "pageFile.h"
-#include <pbl/pbl.h>
 
 #include <lladd/truncation.h>
+
+#include <lladd/lhtable.h>
 
 #undef loadPage
 #undef releasePage
@@ -98,13 +99,15 @@ pthread_mutex_t pinCount_mutex = PTHREAD_MUTEX_INITIALIZER;
 int pinCount = 0;
 #endif
 
-static pblHashTable_t *activePages; /* page lookup */
+static struct LH_ENTRY(table) *activePages; /* page lookup */
 /*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
 
 
 static pthread_mutex_t loadPagePtr_mutex;
 
 static Page * dummy_page;
+
+pthread_key_t lastPage;
 
 int bufInit() {
 
@@ -114,18 +117,21 @@ int bufInit() {
 
 	pthread_mutex_init(&loadPagePtr_mutex, NULL);
 
-	activePages = pblHtCreate(); 
+	activePages = LH_ENTRY(create)(16);
 
 	dummy_page = pageMalloc();
 	pageFree(dummy_page, -1);
 	Page *first;
 	first = pageMalloc();
 	pageFree(first, 0);
-	pblHtInsert(activePages, &first->id, sizeof(int), first); 
+	LH_ENTRY(insert)(activePages, &first->id, sizeof(int), first);
 
 	openBlobStore();
 
 	pageCacheInit(first);
+
+	int err = pthread_key_create(&lastPage, 0);
+	assert(!err);
 
 	assert(activePages);
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -139,20 +145,21 @@ void bufDeinit() {
 
 	closeBlobStore();
 
-	Page *p;
 	DEBUG("pageCacheDeinit()");
 
-	for( p = (Page*)pblHtFirst( activePages ); p; p = (Page*)pblHtNext(activePages)) { 
+	struct LH_ENTRY(list) iter;
+	const struct LH_ENTRY(pair_t) * next;
+	LH_ENTRY(openlist(activePages, &iter));
 
-	  pblHtRemove( activePages, 0, 0 );
+	while((next = LH_ENTRY(readlist)(&iter))) { 
+	  pageWrite((Page*)next->value);
 	  DEBUG("+");
-	  pageWrite(p);
-
 	}
 	
+	LH_ENTRY(destroy)(activePages);
+
 	pthread_mutex_destroy(&loadPagePtr_mutex);
 	
-	pblHtDelete(activePages);
 	pageCacheDeinit();
 	closePageFile();
 	
@@ -191,7 +198,7 @@ static Page * getPage(int pageid, int locktype) {
   int spin  = 0;
 
   pthread_mutex_lock(&loadPagePtr_mutex);
-  ret = pblHtLookup(activePages, &pageid, sizeof(int));
+  ret = LH_ENTRY(find)(activePages, &pageid, sizeof(int));
 
   if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -225,7 +232,7 @@ static Page * getPage(int pageid, int locktype) {
     pthread_mutex_unlock(&loadPagePtr_mutex);
     sched_yield();
     pthread_mutex_lock(&loadPagePtr_mutex);
-    ret = pblHtLookup(activePages, &pageid, sizeof(int));
+    ret = LH_ENTRY(find)(activePages, &pageid, sizeof(int));
 
     if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -321,8 +328,7 @@ static Page * getPage(int pageid, int locktype) {
 
     /* Inserting this into the cache before releasing the mutex
        ensures that constraint (b) above holds. */
-    pblHtInsert(activePages, &pageid, sizeof(int), ret); 
-
+    LH_ENTRY(insert)(activePages, &pageid, sizeof(int), ret);
     pthread_mutex_unlock(&loadPagePtr_mutex); 
 
     /* Could writelock(ret) go here? */
@@ -340,7 +346,7 @@ static Page * getPage(int pageid, int locktype) {
  
     pthread_mutex_lock(&loadPagePtr_mutex);
 
-    pblHtRemove(activePages, &(oldid), sizeof(int)); 
+    LH_ENTRY(remove)(activePages, &(oldid), sizeof(int));
 
     /* @todo Put off putting this back into cache until we're done with
        it. -- This could cause the cache to empty out if the ratio of
@@ -454,7 +460,25 @@ compensated_function Page *loadPage(int xid, int pageid) {
   } end_ret(NULL);
 
 
-  Page * ret = getPage(pageid, RO);
+  Page * ret = pthread_getspecific(lastPage);
+
+  if(ret && ret->id == pageid) { 
+    pthread_mutex_lock(&loadPagePtr_mutex);
+    readlock(ret->loadlatch, 1);
+    if(ret->id != pageid) { 
+      unlock(ret->loadlatch);
+      ret = 0;
+    } else { 
+      cacheHitOnPage(ret);
+      pthread_mutex_unlock(&loadPagePtr_mutex);
+    }
+  } else { 
+    ret = 0;
+  }
+  if(!ret) { 
+    ret = getPage(pageid, RO);
+    pthread_setspecific(lastPage, ret);
+  }
 
 #ifdef PIN_COUNT
   pthread_mutex_lock(&pinCount_mutex);
