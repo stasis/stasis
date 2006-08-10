@@ -9,7 +9,7 @@ static void really_do_ralloc(Page * page, recordid rid) ;
 size_t slottedFreespaceForSlot(Page * page, int slot);
 void fsckSlottedPage(const Page const * page) {
 
-#ifndef SLOTTED_PAGE_SKIP_SANITY_CHECKS
+#ifdef SLOTTED_PAGE_SANITY_CHECKS
   Page dummy;
 
   dummy.id = -1;
@@ -116,10 +116,13 @@ void fsckSlottedPage(const Page const * page) {
     }
   }
 #endif // SLOTTED_PAGE_CHECK_FOR_OVERLAP
-#endif // SLOTTED_PAGE_SKIP_SANITY_CHECKS
+#endif // SLOTTED_PAGE_SANITY_CHECKS
 
 }
 
+#ifndef SLOTTED_PAGE_SANITY_CHECKS
+#define fsckSlottedPage(x) ((void)0)
+#endif
 
 /**
    
