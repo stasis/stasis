@@ -165,6 +165,8 @@ void deleteLogWriter();
 */
 LogEntry * readLSNEntry(lsn_t LSN);
 
+extern int logWriter_isDurable;
+
 END_C_DECLS
 
 #endif /* __LLADD_LOGGER_LOGWRITER_H */
