@@ -30,6 +30,7 @@ static long myLseekNoLock(int f, long offset, int whence);
 
 static int oldOffset = -1;
 
+int pageFile_isDurable = 1;
 
 void pageRead(Page *ret) {
 
@@ -122,13 +123,24 @@ void pageWrite(Page * ret) {
 
   pthread_mutex_unlock(&stable_mutex);
 }
+//#define PAGE_FILE_O_DIRECT
+
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
 void openPageFile() {
-
   DEBUG("Opening storefile.\n");
 
-  stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
-
+  if(pageFile_isDurable) { 
+#ifdef PAGE_FILE_O_DIRECT
+    stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
+#else
+    stable = open (STORE_FILE, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+#endif
+  } else { 
+    fprintf(stderr, "\n**********\n");
+    fprintf  (stderr, "pageFile.c: pageFile_isDurable==0; the page file will not force writes to disk.\n");
+    fprintf  (stderr, "            Transactions will not be durable if the system crashes.\n**********\n");
+    stable = open (STORE_FILE, O_CREAT | O_RDWR , S_IRWXU | S_IRWXG | S_IRWXO);
+  }
   if(stable == -1) {
     perror("couldn't open storefile");
     fflush(NULL);
@@ -138,8 +150,19 @@ void openPageFile() {
   pthread_mutex_init(&stable_mutex, NULL);
 
 }
-void closePageFile() {
 
+void forcePageFile() { 
+#ifndef PAGE_FILE_O_DIRECT
+#ifdef HAVE_FDATASYNC
+  fdatasync(stable);
+#else
+  fsync(stable);
+#endif // HAVE_FDATASYNC
+#endif // PAGE_FILE_O_DIRECT
+}
+
+void closePageFile() {
+  forcePageFile();
   int ret = close(stable);
 
   if(-1 == ret) { 

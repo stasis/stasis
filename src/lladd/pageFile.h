@@ -20,6 +20,7 @@
  */
 void pageWrite(Page * dat); 
 
+extern int pageFile_isDurable;
 
 /**
    Read a page from disk. This bypassess the cache, and should only be
