@@ -166,7 +166,7 @@ storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
 storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
-(e.g. write-ahead-logging) and systems (e.g. zero-copy techniques).
+(e.g. write-ahead-logging) and operating systems (e.g. zero-copy techniques).
 
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work with the complete semantics
@@ -308,7 +308,7 @@ EJB) tend to make use of object relational mappings.  Bill's stuff would be a go
 \subsubsection{Extensible databases}
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
-of a physical data model and the conceptual mappings described above.
+of a physical data model and the conceptual mappings described above. \rcs{I think they say this is an explicit design choice.}
 It is designed to allow database implementors to easily swap out
 implementations of the various components defined by its framework.
 Like subsequent systems (including \yad), it allows its users to
@@ -398,7 +398,7 @@ situation.
 %implementations are generally incomprehensible and
 %irreproducible, hindering further research.  
 The study concludes 
-by suggesting the adoption of highly modular, {\em RISC}, database architectures, both as a resource for researchers and as a 
+by suggesting the adoption of highly modular {\em RISC} database architectures, both as a resource for researchers and as a 
 real-world database system.  
 RISC databases have many elements in common with
 database toolkits.  However, they take the database toolkit idea one
@@ -475,13 +475,14 @@ file.
 \subsubsection{Hard drive behavior during a crash}
 In practice, a write to a disk page is not atomic.  Two common failure
 modes exist.  The first occurs when the disk writes a partial sector
-to disk during a crash.  In this case, the drive maintains an internal
+during a crash.  In this case, the drive maintains an internal
 checksum, detects a mismatch, and reports it when the page is read.
 The second case occurs because pages span multiple sectors.  Drives
 may reorder writes on sector boundaries, causing an arbitrary subset
-of a page's sectors to be updated during a crash.  
+of a page's sectors to be updated during a crash.  {\em Torn page
+detection} can be used to detect this phenomonon.
 
-{\em Torn page detection} can be used to detect this phenomonon.  Torn
+Torn
 and corrupted pages may be recovered by using {\em media recovery} to
 restore the page from backup.  Media recovery works by reinitializing
 the page to zero, and playing back the REDO entries in the log that
@@ -533,8 +534,9 @@ a non-atomic disk write, then such operations would fail during recovery.
 
 Note that we could implement a limited form of transactions by
 limiting each transaction to a single operation, and by forcing the
-page that each operation updates to disk in order.  This would not
-require any sort of logging, but is quite inefficient in practice, is
+page that each operation updates to disk in order.  If we ignore torn 
+pages and failed sectors, this does not
+require any sort of logging, but is quite inefficient in practice, as
 it foces the disk to perform a potentially random write each time the
 page file is updated.  The rest of this section describes how recovery
 can be extended, first to efficiently support multiple operations per
@@ -617,7 +619,10 @@ the fact that concurrent transactions prevent abort from simply
 rolling back the physical updates that a transaction made.
 Fortunately, it is straightforward to reduce this second,
 transaction-specific, problem to the familiar problem of writing
-multi-threaded software.
+multi-threaded software.  \diff{In this paper, ``concurrent transactions''
+are transactions that perform interleaved operations.  They do not
+necessarily exploit the parallelism provided by multiprocessor
+systems.}
 
 To understand the problems that arise with concurrent transactions,
 consider what would happen if one transaction, A, rearranged the
@@ -658,12 +663,13 @@ REDO and UNDO log entries are stored in the log so that recovery can
 repair any temporary inconsistency that the nested top action
 introduces.  Once the nested top action has completed, a logical UNDO
 entry is recorded, and a CLR is used to tell recovery to ignore the
-physical UNDO entries.  The logical UNDO can be safely applied even if
-concurrent transactions manipulate the data structure, and physical
-UNDO can safely roll back incomplete attempts to manipulate the data
-structure.  Therefore, as long as the physical updates are protected
-from other transactions, the nested top action can always be rolled
-back.}
+physical UNDO entries.  This logical UNDO can then be safely applied
+even after other transactions manipulate the data structure.  If the
+nested transaction does not complete, physical UNDO can safely roll
+back the changes.  Therefore, nested transactions can always be rolled
+back as long as the physical updates are protected from other
+transactions and complete nested transactions perserve the integrity
+of the structures they manipulate.}
 
 This leads to a mechanical approach that converts non-reentrant
 operations that do not support concurrent transactions into reentrant,
@@ -677,9 +683,10 @@ concurrent operations:
   hashtable: the UNDO for {\em insert} is {\em remove}.  This logical
   undo function should arrange to acquire the mutex when invoked by
   abort or recovery.
-\item Add a ``begin nested
-  top action'' right after the mutex acquisition, and an ``end
-  nested top action'' right before the mutex is released.  \yad provides operations to implement nested top actions.
+\item Add a ``begin nested top action'' right after the mutex
+  acquisition, and an ``end nested top action'' right before the mutex
+  is released.  \yad includes operations that provide nested top
+  actions.
 \end{enumerate}
 
 If the transaction that encloses a nested top action aborts, the
@@ -787,9 +794,15 @@ ranges of the page file to be updated by a single physical operation.
 described in this section.  However, \yad avoids hard-coding most of
 the relevant subsytems.  LSN-free pages are essentially an alternative
 protocol for atomically and durably applying updates to the page file.
-We plan to eventually support the coexistance of LSN-free pages,
-traditional pages, and similar third-party modules within the same
-page file, log, transactions, and even logical operations.
+This will require the addition of a new page type (\yad currently has
+3 such types, not including a few minor variants).  The new page type
+will need to communicate with the logger and recovery modules in order
+to estimate page LSN's, which will need to make use of callbacks in
+those modules.  Of course, upon providing support for LSN free pages,
+we will want to add operations to \yad that make use of them.  We plan
+to eventually support the coexistance of LSN-free pages, traditional
+pages, and similar third-party modules within the same page file, log,
+transactions, and even logical operations.
 
 \subsection{Blind writes}
 Recall that LSN's were introduced to prevent recovery from applying
@@ -812,7 +825,8 @@ make use of deterministic REDO operations that do not examine page
 state.  We call such operations ``blind writes.''  For concreteness,
 assume that all physical operations produce log entries that contain a
 set of byte ranges, and the pre- and post-value of each byte in the
-range.
+range.  \diff{Note that we still allow code that invokes operations to
+examine the page file.}
 
 Recovery works the same way as it does above, except that is computes
 a lower bound of each page LSN instead of reading the LSN from the
@@ -885,7 +899,7 @@ Alternatively, we could use DMA to overwrite the blob in the page file
 in a non-atomic fashion, providing filesystem style semantics.
 (Existing database servers often provide this mode based on the
 observation that many blobs are static data that does not really need
-to be updated transactionally.~\cite{sqlserver}) Of course, \yad could
+to be updated transactionally.\rcs{SQL Server doesn't do this.... Remove this parenthetical statement?}~\cite{sqlserver}) Of course, \yad could
 also support other approaches to blob storage, such as B-Tree layouts
 that allow arbitrary insertions and deletions in the middle of
 objects~\cite{esm}.
@@ -893,7 +907,7 @@ objects~\cite{esm}.
 \subsection{Concurrent recoverable virtual memory}
 
 Our LSN-free pages are somewhat similar to the recovery scheme used by
-RVM, recoverable virtual memory.  That system used purely physical
+RVM, recoverable virtual memory.  \rcs{, and camelot, argus(?)} That system used purely physical
 logging and LSN-free pages so that it could use mmap() to map portions
 of the page file into application memory\cite{lrvm}.  However, without
 support for logical log entries and nested top actions, it would be
@@ -909,6 +923,7 @@ conventional and LSN-free pages, applications would be free to use the
 \yad data structure implementations as well.
 
 \subsection{Page-independent transactions}
+\label{sec:torn-page}
 \rcs{I don't like this section heading...}  Recovery schemes that make
 use of per-page LSN's assume that each page is written to disk
 atomically even though that is generally not the case.  Such schemes
@@ -950,7 +965,7 @@ of the log entries that Redo will play back.  Therefore, their value
 is unchanged in both versions of the page.  Since Redo will not change
 them, we know that they will have the correct value when it completes.
 The remainder of the sectors are overwritten at some point in the log.
-If we constrain the updates to overwrite an entire page at once, then
+If we constrain the updates to overwrite an entire sector at once, then
 the initial on-disk value of these sectors would not have any affect
 on the outcome of Redo.  Furthermore, since the redo entries are
 played back in order, each sector would contain the most up to date
@@ -964,8 +979,8 @@ redo.  Since all operations performed by redo are blind writes, they
 can be applied regardless of whether the page is logically consistent.
 
 Since LSN-free recovery only relies upon atomic updates at the bit
-level, it prevents pages from becoming a limit to the size of atomic
-page file updates.  This allows operations to atomically manipulate
+level, it decouples page boundaries from atomicity and recovery.  
+This allows operations to atomically manipulate
 (potentially non-contiguous) regions of arbitrary size by producing a
 single log entry.  If this log entry includes a logical undo function
 (rather than a physical undo), then it can serve the purpose of a
@@ -996,19 +1011,7 @@ log entry is thus a conservative but close estimate.
 Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
 approaches for recoverable virtual memory and for large object storage.  
 Section~\ref{sec:oasys} uses blind writes to efficiently update records 
-on pages that are manipulated using more general operations.  \diff{We 
-have not yet implemented LSN-free pages, so our experimental setup mimics
-their behavior.}
-
-\diff{Also note that while LSN-free pages assume that only bits that
-are being updated will change, they do not assume that disk writes are
-atomic.  Most disks do not atomically update more a single 512-byte
-sector at a time.  However, most database systems make use of pages
-that are larger than 512 bytes.  Recovery schemes that rely upon LSN
-fields in pages must detect and deal with torn pages
-directly~\cite{tornPageStuffMohan}.  Because LSN-free page recovery
-does not assume page writes are atomic, it handles torn pages with no
-extra effort.}
+on pages that are manipulated using more general operations.  
 
 \rcs{ (Why was this marked to be deleted?  It needs to be moved somewhere else....)
 Although the extensions that it proposes
@@ -1082,9 +1085,10 @@ implementation must obey a few more invariants:
 
 We chose Berkeley DB in the following experiments because, among
 commonly used systems, it provides transactional storage primitives
-that are most similar to \yad.  Also, Berkeley DB is designed to provide high
-performance and high concurrency.  For all tests, the two libraries
-provide the same transactional semantics, unless explicitly noted.
+that are most similar to \yad.  Also, Berkeley DB is commercially
+supported and is designed to provide high performance and high
+concurrency.  For all tests, the two libraries provide the same
+transactional semantics, unless explicitly noted.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
 10K RPM SCSI drive formatted using with ReiserFS~\cite{reiserfs}.\endnote{We found that the
@@ -1213,7 +1217,7 @@ second,\endnote{The concurrency test was run without lock managers, and the
 double Berkeley DB's throughput (up to 50 threads).  We do not report
 the data here, but we implemented a simple load generator that makes
 use of a fixed pool of threads with a fixed think time.  We found that
-the latency of Berkeley DB and \yad were similar, showing that \yad is 
+the latencies of Berkeley DB and \yad were similar, showing that \yad is 
 not simply trading latency for throughput during the concurrency benchmark.
 
 
@@ -1272,8 +1276,6 @@ updates the page file.
 
 The reason it would be difficult to do this with Berkeley DB is that
 we still need to generate log entries as the object is being updated.
-Otherwise, commit would not be durable, unless we queued up log 
-entries, and wrote them all before committing.  
   This would cause Berkeley DB to write data back to the
 page file, increasing the working set of the program, and increasing
 disk activity.
@@ -1303,7 +1305,8 @@ the object during REDO then it must have been written back to disk
 after the object was deleted.  Therefore, we do not need to apply the
 REDO.)  This means that the system can ``forget'' about objects that 
 were freed by committed transactions, simplifying space reuse 
-tremendously.
+tremendously.  (Because LSN-free pages and recovery are not yet implemented, 
+this benchmark mimics their behavior at runtime, but does not support recovery.) 
 
 The third \yad plugin, ``delta'' incorporates the buffer
 manager optimizations.  However, it only writes the changed portions of
@@ -1596,7 +1599,7 @@ extended in the future to support a larger range of systems.
 
 The idea behind the \oasys buffer manager optimization is from Mike
 Demmer.  He and Bowei Du implemented \oasys.  Gilad Arnold and Amir Kamil implemented
- for pobj.  Jim Blomo, Jason Bayer, and Jimmy
+ pobj.  Jim Blomo, Jason Bayer, and Jimmy
 Kittiyachavalit worked on an early version of \yad.
 
 Thanks to C. Mohan for pointing out the need for tombstones with
