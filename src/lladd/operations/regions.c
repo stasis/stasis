@@ -10,13 +10,14 @@ typedef struct regionAllocLogArg{
 } regionAllocArg;
 
 static pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_t holding_mutex;
 static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager);
 
 // This doesn't need a latch since it is only initiated within nested
 // top actions (and is local to this file.  During abort(), the nested
 // top action's logical undo grabs the necessary latches.
 static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { 
+  assert(holding_mutex == pthread_self());
   slottedPageInitialize(p);
   *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
   slottedPostRalloc(xid, p, lsn, rid);
@@ -26,13 +27,17 @@ static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid
 
 static int operate_alloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
   pthread_mutex_lock(&region_mutex);
+  assert(0 == holding_mutex);
+  holding_mutex = pthread_self();
   regionAllocArg *dat = (regionAllocArg*)datP;
   TregionAllocHelper(xid, dat->startPage, dat->pageCount, dat->allocationManager);
+  holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
   return 0;
 }
 
 static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
+  assert(holding_mutex == pthread_self());
   regionAllocArg *dat = (regionAllocArg*)datP;
   TregionDealloc(xid, dat->startPage+1);
   return 0;
@@ -40,11 +45,13 @@ static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, co
 
 static void TallocBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
   //printf("Alloc boundary tag at %d = { %d, %d, %d }\n", page, tag->size, tag->prev_size, tag->status);
+  assert(holding_mutex == pthread_self());
   recordid rid = {page, 0, sizeof(boundary_tag)};
   Tupdate(xid, rid, tag, OPERATION_ALLOC_BOUNDARY_TAG);
 }
 
 static void TreadBoundaryTag(int xid, unsigned int page, boundary_tag* tag) { 
+  assert(holding_mutex == pthread_self());
   recordid rid = { page, 0, sizeof(boundary_tag) };
   assert(TpageGetType(xid, rid.page) == BOUNDARY_TAG_PAGE);
   Tread(xid, rid, tag);
@@ -56,6 +63,7 @@ static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
   
   // Sanity checking:
   assert((page == 0 && tag->prev_size == UINT32_MAX) || (page != 0 && tag->prev_size < UINT32_MAX/2));
+  assert(holding_mutex == pthread_self());
 
   boundary_tag t2;
   TreadBoundaryTag(xid, page, &t2);
@@ -68,6 +76,7 @@ static void TsetBoundaryTag(int xid, unsigned int page, boundary_tag* tag) {
 
 static void TdeallocBoundaryTag(int xid, unsigned int page) {
   boundary_tag t;
+  assert(holding_mutex == pthread_self());
 
   TreadBoundaryTag(xid, page, &t);
   t.status = REGION_CONDEMNED;
@@ -80,6 +89,9 @@ static void TdeallocBoundaryTag(int xid, unsigned int page) {
 void regionsInit() { 
   Page * p = loadPage(-1, 0);
   int pageType = *page_type_ptr(p);
+
+
+  holding_mutex = pthread_self();
   if(pageType != BOUNDARY_TAG_PAGE) {
     boundary_tag t;
     t.size = UINT32_MAX;
@@ -98,6 +110,7 @@ void regionsInit() {
 
     operate_alloc_boundary_tag(0,p,0,rid,&t);
   }
+  holding_mutex = 0;
   releasePage(p);
 }
 
@@ -303,6 +316,8 @@ void TregionDealloc(int xid, unsigned int firstPage) {
   // Deferred coalescing would probably make sense...
 
   pthread_mutex_lock(&region_mutex);
+  assert(0 == holding_mutex);
+  holding_mutex = pthread_self();
 
   boundary_tag t;
   TreadBoundaryTag(xid, firstPage-1, &t);
@@ -324,7 +339,7 @@ void TregionDealloc(int xid, unsigned int firstPage) {
   //  consolidateRegions(xid, &firstPage, &t);
 
   TendNestedTopAction(xid, handle);
-
+  holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
 }
 
@@ -332,6 +347,8 @@ unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocationManager
   // Initial implementation.  Naive first fit.
   
   pthread_mutex_lock(&region_mutex);
+  assert(0 == holding_mutex);
+  holding_mutex = pthread_self();
 
   void * ntaHandle = TbeginNestedTopAction(xid, OPERATION_NOOP, 0, 0);
 
@@ -371,6 +388,7 @@ unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocationManager
 
   TendNestedTopAction(xid, ntaHandle);
 
+  holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
   
   return pageid+1;
@@ -410,6 +428,7 @@ Operation getDeallocRegion() {
 void TregionFindNthActive(int xid, unsigned int regionNumber, unsigned int * firstPage, unsigned int * size) { 
   boundary_tag t;
   recordid rid = {0, 0, sizeof(boundary_tag)};
+  assert(holding_mutex == pthread_self());
   Tread(xid, rid, &t);
   unsigned int prevSize = 0;
   while(t.status == REGION_VACANT) { 
