@@ -6,20 +6,23 @@
 #include <lladd/transactional.h>
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"
+#include "../../src/lladd/pageFile.h"
 #include "../../src/lladd/page/slotted.h" 
 #include <lladd/bufferManager.h>
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"
 
-#define LOG_NAME   "check_bufferMananger.log"
-
-#define NUM_PAGES 1000
-#define THREAD_COUNT 10
-#define READS_PER_THREAD 100
-#define RECORDS_PER_THREAD 100
-
-#define RECORD_THREAD_COUNT 25
+#define LOG_NAME   "check_bufferManager.log"
+#ifdef LONG_TEST
+#define THREAD_COUNT 100
+#define NUM_PAGES (MAX_BUFFER_SIZE * 10)
+#else 
+#define THREAD_COUNT 25
+#define NUM_PAGES (MAX_BUFFER_SIZE * 3)
+#endif
+#define READS_PER_THREAD NUM_PAGES * 5
+#define RECORDS_PER_THREAD (NUM_PAGES * 5)
 void initializePages() {
   
   int i; 
@@ -57,8 +60,8 @@ void * workerThread(void * p) {
 
     int k = (int) (((double)NUM_PAGES)*rand()/(RAND_MAX+1.0));
     Page * p;
-    if(! (i % 50) ) {
-      printf("%d", i / 50); fflush(NULL);
+    if(! (i % (READS_PER_THREAD / 10)) ) {
+      printf("%d", i / (READS_PER_THREAD / 10)); fflush(NULL);
     }
 
     rid.page = k+1;
@@ -92,8 +95,8 @@ void * workerThreadWriting(void * q) {
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */
 
-    if(! (i % 100) ) {
-      printf("A%d", i / 100); fflush(NULL);
+    if(! (i % (RECORDS_PER_THREAD/10)) ) {
+      printf("A%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
 
     }
 
@@ -118,8 +121,8 @@ void * workerThreadWriting(void * q) {
     *lsn_ptr(p) = 0;
     releasePage(p);
 
-    if(! (i % 100) ) {
-      printf("W%d", i / 100); fflush(NULL);
+    if(! (i % (RECORDS_PER_THREAD/10)) ) {
+      printf("W%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
     }
 
     /*    sched_yield(); */
@@ -137,8 +140,8 @@ void * workerThreadWriting(void * q) {
     *lsn_ptr(p) = 0;
     releasePage(p);
 
-    if(! (i % 100) ) {
-      printf("R%d", i / 100); fflush(NULL);
+    if(! (i % (RECORDS_PER_THREAD/10))) {
+      printf("R%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
     }
 
 
@@ -211,17 +214,17 @@ START_TEST(pageSingleThreadWriterTest) {
 }END_TEST
 
 START_TEST(pageThreadedWritersTest) {
-  pthread_t workers[RECORD_THREAD_COUNT];
+  pthread_t workers[THREAD_COUNT];
   int i;
 
   Tinit();
   pthread_mutex_init(&ralloc_mutex, NULL);
-  for(i = 0; i < RECORD_THREAD_COUNT; i++) {
+  for(i = 0; i < THREAD_COUNT; i++) {
     int * j = malloc(sizeof(int));
     *j = i;
     pthread_create(&workers[i], NULL, workerThreadWriting, j);
   }
-  for(i = 0; i < RECORD_THREAD_COUNT; i++) {
+  for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
   }
   pthread_mutex_destroy(&ralloc_mutex);
