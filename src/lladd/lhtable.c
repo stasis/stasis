@@ -12,6 +12,14 @@
 */
 #define FILL_FACTOR (0.5)
 
+//#define MEASURE_GLOBAL_BUCKET_LENGTH
+
+#ifdef MEASURE_GLOBAL_BUCKET_LENGTH
+static int totalIters = 0;
+static int totalFinds = 0;
+static pthread_mutex_t stat_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 /**
 
   @file
@@ -41,22 +49,38 @@ struct LH_ENTRY(table) {
 #endif
 };
 
-
 //===================================================== Static helper functions
 
 static struct LH_ENTRY(pair_t) * 
 findInLinkedList(const void * key, int len, 
 		 struct LH_ENTRY(pair_t)* list, 
 		 struct LH_ENTRY(pair_t)** predecessor) { 
+  int iters = 1;
   *predecessor = 0;
   while(list) { 
     if(len == list->keyLength && !memcmp(key, list->key, len)) { 
+#ifdef MEASURE_GLOBAL_BUCKET_LENGTH
+      pthread_mutex_lock(&stat_mutex);
+      totalIters += iters;
+      totalFinds++;
+      pthread_mutex_unlock(&stat_mutex);
+
+#endif
       return list;
     } else {
       *predecessor = list;
       list = list->next;
     }
+    iters++;
   }
+
+#ifdef MEASURE_GLOBAL_BUCKET_LENGTH
+  pthread_mutex_lock(&stat_mutex);
+  totalIters += iters;
+  totalFinds++;
+  pthread_mutex_unlock(&stat_mutex);
+#endif
+
   return 0;
 }
 
@@ -209,7 +233,6 @@ struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
 		       &(ret->bucketListNextExtension));
   ret->bucketListLength = initialSize;
   ret->occupancy = 0;
-  //  printf("Table: {size = %d, bits = %d, ext = %d\n", ret->bucketListLength, ret->bucketListBits, ret->bucketListNextExtension);
 #ifdef NAIVE_LOCKING
   pthread_mutex_init(&(ret->lock), 0);
 #endif
@@ -228,24 +251,9 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
   struct LH_ENTRY(pair_t) * thePair = 0;
   struct LH_ENTRY(pair_t) * junk;
   LH_ENTRY(value_t) * ret;
-  /*  if(table->bucketList[bucket].key == 0) { 
-    // XXX just call findInLinkedList, and then call
-    // insertIntoLinkedList if it fails.  
-    
-    // The bucket's empty 
-    // Sanity checks...
-    assert(table->bucketList[bucket].keyLength == 0);
-    assert(table->bucketList[bucket].value     == 0);
-    assert(table->bucketList[bucket].next      == 0);
-    thePair = &(table->bucketList[bucket]);
-    thePair->key = malloc(len);
-    thePair->keyLength = len;
-    memcpy(((void*)thePair->key), key, len);
-    thePair->value = value;
-    table->occupancy++;
-    } else { */
+
   if((thePair = findInLinkedList(key, len, &(table->bucketList[bucket]), 
-				 &junk))) { 
+				 &junk))) { // , &iters))) { 
     // In this bucket.
     ret = thePair->value;
     thePair->value = value;
@@ -256,9 +264,8 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
     ret = 0;
     table->occupancy++;
   }
-  //  }
 
-  { // more sanity checks
+  /*  { // more sanity checks
     // Did we set thePair correctly?
     assert(thePair->value == value);
     assert(thePair->keyLength == len);
@@ -272,7 +279,7 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
     assert(pairInBucket == thePair);
     // Exactly one time?
     assert(!findInLinkedList(key, len, pairInBucket->next, &junk));
-  }
+    } */
 
   if(FILL_FACTOR < (  ((double)table->occupancy) / 
                       ((double)table->bucketListLength)
@@ -296,6 +303,7 @@ LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
 		     table->bucketListBits, table->bucketListNextExtension);
 
   LH_ENTRY(value_t) * ret = removeFromLinkedList(table, bucket, key, len);
+  if(ret) { table->occupancy--; }
 #ifdef NAIVE_LOCKING
   pthread_mutex_unlock(&(table->lock));
 #endif
@@ -312,9 +320,11 @@ LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
 		    table->bucketListBits, table->bucketListNextExtension);
   struct LH_ENTRY(pair_t) * predecessor;
   struct LH_ENTRY(pair_t) * thePair;
+  //  int iters;
   thePair = findInLinkedList(key, len, 
 			     &(table->bucketList[bucket]), 
 			     &predecessor);
+
 #ifdef NAIVE_LOCKING
   pthread_mutex_unlock(&(table->lock));
 #endif
@@ -399,10 +409,19 @@ void LH_ENTRY(destroy) (struct LH_ENTRY(table) * t) {
   free(t);
 }
 
+void LH_ENTRY(stats)(){ 
+
+#ifdef MEASURE_GLOBAL_BUCKET_LENGTH
+  pthread_mutex_lock(&stat_mutex);
+  fprintf(stderr, "%d / %d = %f avg bucket length\n", totalIters, totalFinds, ((double)totalIters)/((double)totalFinds));
+  pthread_mutex_unlock(&stat_mutex);
+#endif
+}
 
 #ifdef  PBL_COMPAT
 
 // ============ Legacy PBL compatibility functions.  There are defined in pbl.h
+
 
 pblHashTable_t * pblHtCreate( ) {
   //  return (pblHashTable_t*)LH_ENTRY(create)(2048);
@@ -412,6 +431,9 @@ int    pblHtDelete  ( pblHashTable_t * h ) {
   LH_ENTRY(destroy)((struct LH_ENTRY(table)*)h);
   return 0;
 }
+
+static int firstPBLinsert = 1;
+
 int    pblHtInsert  ( pblHashTable_t * h, const void * key, size_t keylen,
 		      void * dataptr) {
   // return values:
@@ -419,6 +441,10 @@ int    pblHtInsert  ( pblHashTable_t * h, const void * key, size_t keylen,
   // 0  -> inserted successfully
 
   if(LH_ENTRY(find)((struct LH_ENTRY(table)*)h, key, keylen)) {
+    if(firstPBLinsert) { 
+      fprintf(stderr, "lhtable.c: This code relies on PBL insert semantics...\n");
+      firstPBLinsert = 0;
+    }
     return -1;
   } else { 
     LH_ENTRY(insert)((struct LH_ENTRY(table)*)h, key, keylen, dataptr);

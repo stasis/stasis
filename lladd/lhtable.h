@@ -51,6 +51,12 @@ struct LH_ENTRY(list) {
   long currentBucket;
 };
 
+/**
+   Print out stats regarding the lhtable implementation.  Currently,
+   only prints anything if MEASURE_GLOBAL_BUCKET_LENGTH is defined.
+*/
+void LH_ENTRY(stats)();
+
 void LH_ENTRY(openlist)(const struct LH_ENTRY(table) * table,
 			struct LH_ENTRY(list) * newList);
 /**
