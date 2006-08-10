@@ -71,6 +71,8 @@ terms specified in this license.
 static FILE * log = 0;
 static int roLogFD = 0;
 
+int logWriter_isDurable = 1;
+
 /**
    @see flushedLSN()
 */
@@ -139,7 +141,15 @@ int openLogWriter() {
      therefore all seeks) run through the second descriptor.  */
 
   //  int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_APPEND | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
-  int logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  int logFD;
+  if(logWriter_isDurable) { 
+    logFD = open (LOG_FILE, O_CREAT | O_WRONLY | O_SYNC, S_IRWXU | S_IRWXG | S_IRWXO);
+  } else { 
+    fprintf(stderr, "\n**********\n");
+    fprintf  (stderr, "logWriter.c: logWriter_isDurable==0; the logger will not force writes to disk.\n");
+    fprintf  (stderr, "             Transactions will not be durable if the system crashes.\n**********\n");
+    logFD = open (LOG_FILE, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO);
+  }
   if(logFD == -1) {
     perror("Couldn't open log file for append.\n");
     abort();
