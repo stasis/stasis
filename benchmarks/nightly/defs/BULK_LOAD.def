@@ -17,7 +17,7 @@ Y-Label: Seconds
 ### into a perl expression:
 ### 100, 200 ... 1000
 
-X-Range: 10, 100, 1000, 10000
+X-Range: 10, 100, 1000, 10000, 50000, 100000, 150000, 200000, 250000
 
 ### For each command, the first argument is the number of 
 ### transactions (fixed), while the second is the number 
