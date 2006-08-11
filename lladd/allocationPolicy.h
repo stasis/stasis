@@ -18,5 +18,5 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid);
 void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availablePage * key, int newFree);
 void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, availablePage * key, int newFree);
 void allocationPolicyLockPage(allocationPolicy * ap, int xid, int pageid);
-
+void allocationPolicyAllocedFromPage(allocationPolicy * ap, int xid, int pageid); 
 #endif // ALLOCATION_POLICY_H
