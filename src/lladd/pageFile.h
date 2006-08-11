@@ -44,6 +44,8 @@ void pageRead(Page * ret);
 */
 long pageCount();
 
+void forcePageFile();
+
 void openPageFile();
 void closePageFile();
 
