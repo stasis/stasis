@@ -167,6 +167,7 @@ static void reserveNewRegion(int xid) {
        
        next->pageid = firstPage + i;
        next->freespace = initialFreespace;
+       next->lockCount = 0;
        newPages[i] = next;
        TinitializeSlottedPage(xid, firstPage + i);
      }
@@ -249,9 +250,12 @@ void allocTransactionCommit(int xid) {
 }
 
 compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
+  pthread_mutex_lock(&talloc_mutex);
   Page * p = loadPage(xid, page);
   recordid ret = TallocFromPageInternal(xid, p, size);
   releasePage(p);
+  pthread_mutex_unlock(&talloc_mutex);
+
   return ret;
 }
 
@@ -319,15 +323,22 @@ compensated_function void Tdealloc(int xid, recordid rid) {
 
   void * preimage = malloc(rid.size);
   Page * p;
+  pthread_mutex_lock(&talloc_mutex);
   try {
     p = loadPage(xid, rid.page);
   } end;
+
+  allocationPolicyLockPage(allocPolicy, xid, rid.page); // XXX shouldn't this do something with dereferenceRid()?!?
+  
   begin_action(releasePage, p) {
     readRecord(xid, p, rid, preimage);
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
     Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
   } compensate;
+  pthread_mutex_unlock(&talloc_mutex);
+
   free(preimage);
+
 }
 
 compensated_function int TrecordType(int xid, recordid rid) {
