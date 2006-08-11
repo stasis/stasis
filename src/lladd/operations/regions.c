@@ -13,11 +13,15 @@ static pthread_mutex_t region_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t holding_mutex;
 static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager);
 
-// This doesn't need a latch since it is only initiated within nested
-// top actions (and is local to this file.  During abort(), the nested
-// top action's logical undo grabs the necessary latches.
+/** This doesn't need a latch since it is only initiated within nested
+    top actions (and is local to this file.  During abort(), the nested 
+    top action's logical undo grabs the necessary latches.
+    
+    @todo opearate_alloc_boundary_tag is executed without holding the
+    proper mutex during REDO.  For now this doesn't matter, but it
+    could matter in the future.
+*/
 static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { 
-  assert(holding_mutex == pthread_self());
   slottedPageInitialize(p);
   *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
   slottedPostRalloc(xid, p, lsn, rid);
@@ -37,7 +41,6 @@ static int operate_alloc_region(int xid, Page * p, lsn_t lsn, recordid rid, cons
 }
 
 static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, const void * datP) { 
-  assert(holding_mutex == pthread_self());
   regionAllocArg *dat = (regionAllocArg*)datP;
   TregionDealloc(xid, dat->startPage+1);
   return 0;
@@ -117,7 +120,8 @@ void regionsInit() {
 void fsckRegions(int xid) { 
 
   // Ignore region_xid, allocation_manager for now.
-
+  pthread_mutex_lock(&region_mutex);
+  holding_mutex = pthread_self();
   int pageType;
   boundary_tag tag;
   boundary_tag prev_tag;
@@ -158,6 +162,9 @@ void fsckRegions(int xid) {
   }
 
   assert(tag.status == REGION_VACANT);  // space at EOF better be vacant!
+  holding_mutex = 0;
+  pthread_mutex_unlock(&region_mutex);
+
 }
 
 static void TregionAllocHelper(int xid, unsigned int pageid, unsigned int pageCount, int allocationManager) {
@@ -428,7 +435,8 @@ Operation getDeallocRegion() {
 void TregionFindNthActive(int xid, unsigned int regionNumber, unsigned int * firstPage, unsigned int * size) { 
   boundary_tag t;
   recordid rid = {0, 0, sizeof(boundary_tag)};
-  assert(holding_mutex == pthread_self());
+  pthread_mutex_lock(&region_mutex);
+  holding_mutex = pthread_self();
   Tread(xid, rid, &t);
   unsigned int prevSize = 0;
   while(t.status == REGION_VACANT) { 
@@ -450,5 +458,7 @@ void TregionFindNthActive(int xid, unsigned int regionNumber, unsigned int * fir
   }
   *firstPage = rid.page+1;
   *size = t.size;
+  holding_mutex = 0;
+  pthread_mutex_unlock(&region_mutex);
 }
 
