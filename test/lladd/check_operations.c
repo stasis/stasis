@@ -532,9 +532,9 @@ START_TEST(operation_alloc_test) {
   recordid rid2 = Talloc(xid, 100);
   Tcommit(xid);
   
-  printf("rid1={%d,%d,%lld} rid2={%d,%d,%lld}\n", 
-	 rid1.page, rid1.slot, (long long int)rid1.size,
-	 rid2.page, rid2.slot, (long long int)rid2.size);  
+  printf("rid1={%ld,%d,%ld} rid2={%ld,%d,%ld}\n", 
+	 (int64_t)rid1.page, rid1.slot, (int64_t)rid1.size,
+	 (int64_t)rid2.page, rid2.slot, (int64_t)rid2.size);  
   
   
   

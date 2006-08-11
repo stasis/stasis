@@ -16,13 +16,20 @@
 #define LOG_NAME   "check_bufferManager.log"
 #ifdef LONG_TEST
 #define THREAD_COUNT 100
-#define NUM_PAGES (MAX_BUFFER_SIZE * 10)
+#define NUM_PAGES (MAX_BUFFER_SIZE * 2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
+#define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
+
 #else 
 #define THREAD_COUNT 25
 #define NUM_PAGES (MAX_BUFFER_SIZE * 3)
+#define PAGE_MULT 1000
+
+
+
 #endif
 #define READS_PER_THREAD NUM_PAGES * 5
 #define RECORDS_PER_THREAD (NUM_PAGES * 5)
+
 void initializePages() {
   
   int i; 
@@ -32,7 +39,7 @@ void initializePages() {
   for(i = 0 ; i < NUM_PAGES; i++) {
     Page * p;
     recordid rid;
-    rid.page = i+1;
+    rid.page = PAGE_MULT * (i+1);
     rid.slot = 0;
     rid.size = sizeof(int);
     p = loadPage(-1, rid.page); 
@@ -64,7 +71,7 @@ void * workerThread(void * p) {
       printf("%d", i / (READS_PER_THREAD / 10)); fflush(NULL);
     }
 
-    rid.page = k+1;
+    rid.page = PAGE_MULT * (k+1);
     rid.slot = 0;
     rid.size = sizeof(int);
 
@@ -72,7 +79,7 @@ void * workerThread(void * p) {
     
     readRecord(1, p, rid, &j);
 
-    assert(rid.page == k+1);
+    assert(rid.page == PAGE_MULT * (k+1));
     
     p->LSN = 0;
     *lsn_ptr(p) = 0;

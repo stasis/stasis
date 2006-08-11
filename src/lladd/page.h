@@ -99,8 +99,7 @@ BEGIN_C_DECLS
     @todo The Page struct should be tuned for better memory utilization.
 */
 struct Page_s {
-  /** @todo Shouldn't Page.id be a long? */
-  int id;
+  pageid_t id;
   lsn_t LSN;
   byte *memAddr;
   byte dirty;
