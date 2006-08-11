@@ -23,6 +23,8 @@
    ignores the overhead of tree / hash lookups and mutex acquisition
    for now.  
 
+   @todo: Right now, allocation policies lump all nested top actions within a transaction into a single allocation group.  It could do better if it knew when NTA's began and committed.
+
 */
 
 #include <assert.h>
@@ -85,11 +87,10 @@ inline static availablePage* getAvailablePage(allocationPolicy * ap, int pageid)
 inline static void insert_xidAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
 
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
-  assert(pages);
-  /*  if(!pages) { 
+  if(!pages) { 
     pages = RB_ENTRY(init)(cmpFreespace, 0);
-    LH_ENTRY(insert)(ap->xidAlloced, &xid, sizeof(xid), p);
-    }*/
+    LH_ENTRY(insert)(ap->xidAlloced, &xid, sizeof(xid), pages);
+  }
   const availablePage * check = RB_ENTRY(search)(p, pages);
   assert(check == p);
 }
@@ -166,9 +167,28 @@ inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage *
     lockAlloced(ap, xid, p);
   } else if(p->lockCount == 1) {
     int * xidp = LH_ENTRY(find)(ap->pageOwners, &(p->pageid), sizeof(int));
-    if(*xidp != xid) {
-      // if not this xid, remove from current owner, increment lock count
-      remove_xidAlloced(ap, xid, p);
+    if(!xidp) { 
+      
+      // The only active transaction that touched this page deallocated from it, 
+      // so just add the page to our dealloced table.
+
+      p->lockCount++;
+      insert_xidDealloced(ap, xid, p);
+
+    } else if(*xidp != xid) {
+
+      // Remove from the other transaction's "alloced" table.
+      remove_xidAlloced(ap, *xidp, p);
+      assert(p->lockCount == 1);
+
+      // Place in other transaction's "dealloced" table.
+      insert_xidDealloced(ap, *xidp, p);
+
+      // This page no longer has an owner
+      LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
+      free(xidp);
+
+      // Add to our "dealloced" table, increment lockCount.
       p->lockCount++;
       insert_xidDealloced(ap, xid, p);
     }
@@ -176,7 +196,7 @@ inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage *
     // not owned by anyone... is it already in this xid's Dealloced table? 
     if(!find_xidDealloced(ap, xid, p)) { 
       p->lockCount++;
-      find_xidDealloced(ap, xid, p);
+      insert_xidDealloced(ap, xid, p);
     }
   }
 }
@@ -274,6 +294,17 @@ availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int fre
   return (availablePage*) ret; 
 }
 
+void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, int pageid) { 
+  availablePage * p = getAvailablePage(ap, pageid);
+  const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
+  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(pageid), sizeof(pageid));
+  assert(xidp || check1);
+  if(check1) {
+    assert(p->lockCount == 0);
+    lockAlloced(ap, xid, (availablePage*)p);
+  }
+}
+
 void allocationPolicyLockPage(allocationPolicy *ap, int xid, int pageid) { 
 
   availablePage * p = getAvailablePage(ap, pageid);
@@ -291,7 +322,7 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
     const availablePage * next;
 
     while(( next = RB_ENTRY(min)(locks) )) { 
-      unlockAlloced(ap, xid, next);           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
+      unlockAlloced(ap, xid, (availablePage*)next);           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 
     LH_ENTRY(remove)(ap->xidAlloced, &xid, sizeof(int));
@@ -305,7 +336,7 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
     const availablePage * next;
     
     while(( next = RB_ENTRY(min)(locks) )) { 
-      unlockDealloced(ap, xid, next);         // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
+      unlockDealloced(ap, xid, (availablePage*)next);         // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 
     LH_ENTRY(remove)(ap->xidDealloced, &xid, sizeof(int));

@@ -253,6 +253,9 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long s
   pthread_mutex_lock(&talloc_mutex);
   Page * p = loadPage(xid, page);
   recordid ret = TallocFromPageInternal(xid, p, size);
+  if(ret.size != INVALID_SLOT) {
+    allocationPolicyAllocedFromPage(allocPolicy, xid, page);
+  }
   releasePage(p);
   pthread_mutex_unlock(&talloc_mutex);
 
@@ -309,17 +312,7 @@ static compensated_function recordid TallocFromPageInternal(int xid, Page * p, u
 
 compensated_function void Tdealloc(int xid, recordid rid) {
   
-  // @todo this needs to garbage collect emptry pages / storage regions.
-
-  // XXX This is BROKEN.  It needs to lock the page that it's
-  // deallocating from.  A shared/exclusive lock doesn't quite do it.
-  // If dealloc got a shared lock, then alloc could get an exclusive
-  // lock when it allocs, but then alloc would need to free the lock,
-  // since deallocation is always safe (assuming the app isn't
-  // deallocating something that hasn't committed yet, which is its
-  // fault, not ours.  Also, we don't want to prevent a transaction
-  // from allocating to a page if it is the only transaction that's
-  // freed something on that page.
+  // @todo this needs to garbage collect empty storage regions.
 
   void * preimage = malloc(rid.size);
   Page * p;
@@ -328,7 +321,9 @@ compensated_function void Tdealloc(int xid, recordid rid) {
     p = loadPage(xid, rid.page);
   } end;
 
-  allocationPolicyLockPage(allocPolicy, xid, rid.page); // XXX shouldn't this do something with dereferenceRid()?!?
+  
+  recordid newrid = interpretRid(xid, rid, p);
+  allocationPolicyLockPage(allocPolicy, xid, newrid.page);
   
   begin_action(releasePage, p) {
     readRecord(xid, p, rid, preimage);
