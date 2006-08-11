@@ -80,7 +80,7 @@ START_TEST(allocationPolicy_smokeTest)
 
   p.pageid = 0;
   p.freespace = 100;
-
+  p.lockCount = 0;
   (*pages[0]) = p;
   
   p.pageid = 1;
@@ -138,7 +138,11 @@ START_TEST(allocationPolicy_smokeTest)
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p8, 0);
   
   allocationPolicyTransactionCompleted(ap, 2);
-  
+
+  allocationPolicyDeinit(ap);
+
+  free(pages);
+
 
 } END_TEST
 
