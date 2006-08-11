@@ -278,6 +278,9 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
  */
 int getRecordLength(int xid, Page * p, recordid rid);
 
+recordid interpretRid(int xid, recordid rid, Page * p);
+recordid interpretRidUnlocked(int xid, recordid rid, Page * p);
+
 END_C_DECLS
 
 #endif

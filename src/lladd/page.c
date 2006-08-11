@@ -88,6 +88,8 @@ terms specified in this license.
 #include <lladd/compensations.h>
 #include "page/slotted.h"
 #include "page/fixed.h"
+#include "page/indirect.h"
+#include <lladd/operations/arrayList.h>
 #include <lladd/bufferPool.h>
 #include <lladd/truncation.h>
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
@@ -263,3 +265,31 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
   
 
 }
+
+recordid interpretRidUnlocked(int xid, recordid rid, Page * p) { 
+  int page_type = *page_type_ptr(p);
+  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
+
+  } else if(page_type == INDIRECT_PAGE) {
+    rid = dereferenceRIDUnlocked(xid, rid);
+  } else if(page_type == ARRAY_LIST_PAGE) {
+    rid = dereferenceArrayListRidUnlocked(p, rid.slot);
+  } else {
+    abort();
+  }
+  return rid;
+}
+recordid interpretRid(int xid, recordid rid, Page * p) { 
+  int page_type = *page_type_ptr(p);
+  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
+
+  } else if(page_type == INDIRECT_PAGE) {
+    rid = dereferenceRID(xid, rid);
+  } else if(page_type == ARRAY_LIST_PAGE) {
+    rid = dereferenceArrayListRid(p, rid.slot);
+  } else {
+    abort();
+  }
+  return rid;
+}
+

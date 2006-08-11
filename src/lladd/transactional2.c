@@ -214,7 +214,7 @@ compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op
 	rid = dereferenceRID(xid, rid);
 	p = loadPage(xid, rid.page); 
       } end;
-      /** @todo Kludge! Shouldn't special case operations in transactional2. */
+      // @todo Kludge! Shouldn't special case operations in transactional2. 
     } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
 	      op != OPERATION_LINEAR_INSERT && 
 	      op != OPERATION_UNDO_LINEAR_INSERT &&
@@ -240,25 +240,11 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
   try { 
     p = loadPage(xid, rid.page);
   } end;
-  int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
-  } else if(page_type == INDIRECT_PAGE) {
+  rid = interpretRidUnlocked(xid, rid, p);
+  if(rid.page != p->id) { 
     releasePage(p);
-
-    try {
-      rid = dereferenceRIDUnlocked(xid, rid);
-      p = loadPage(xid, rid.page);
-    } end;
-  } else if(page_type == ARRAY_LIST_PAGE) {
-    rid = dereferenceArrayListRidUnlocked(p, rid.slot);
-    releasePage(p);
-    try { 
-      p = loadPage(xid, rid.page);
-    } end;
-
-  } else {
-    abort();
+    p = loadPage(xid, rid.page);
   }
   readRecordUnlocked(xid, p, rid, dat);
   releasePage(p);
@@ -269,27 +255,11 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
   try { 
     p = loadPage(xid, rid.page);
   } end;
-  int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE  || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
-  } else if(page_type == INDIRECT_PAGE) {
+  rid = interpretRid(xid, rid, p);
+  if(rid.page != p->id) { 
     releasePage(p);
-    try { 
-      rid = dereferenceRID(xid, rid);
-    } end;
-    try {
-      p = loadPage(xid, rid.page);
-    } end;
-
-  } else if(page_type == ARRAY_LIST_PAGE) {
-    rid = dereferenceArrayListRid(p, rid.slot);
-    releasePage(p);
-    try { 
-      p = loadPage(xid, rid.page);
-    } end;
-
-  } else {
-    abort();
+    p = loadPage(xid, rid.page);
   }
   readRecord(xid, p, rid, dat);
   releasePage(p);
