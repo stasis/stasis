@@ -247,7 +247,7 @@ database models}.
 It is the responsibility of a database implementor to choose a set of
 conceptual mappings that implement the desired higher-level
 abstraction (such as the relational model).  The physical data model
-is chosen to efficiently support the set of mappings that are built on
+is chosen to support efficiently the set of mappings that are built on
 top of it.
 
 \diff{A conceptual mapping based on the relational model might
@@ -261,9 +261,13 @@ be more appropriate~\cite{molap}.  Although both OLTP and OLAP databases are bas
 upon the relational model they make use of different physical models
 in order to serve different classes of applications.}
 
-\eab{need to expand the following and add evidence.}
-A key observation of this paper is that no known physical data model
-can efficiently support more than a small percentage of today's applications.  
+\diff{ A basic claim of
+this paper is that no single known physical data model can efficiently
+support the wide range of conceptual mappings that are in use today.
+In addition to sets, objects, and XML, such a model would need
+to cover search engines, version-control systems, work-flow
+applications, and scientific computing, as examples.
+}
 
 Instead of attempting to create such a model after decades of database
 research has failed to produce one, we opt to provide a transactional
@@ -275,13 +279,15 @@ structured physical model or abstract conceptual mappings.
 
 \subsection{Extensible transaction systems} 
 \label{sec:otherDBs}
-This section contains discussion of transaction systems with goals
+
+\diff{This section contains discussion of transaction systems with goals
 similar to ours.  Although these projects were successful in many
-respects, they fundamentally aimed to implement an extensible abstract
-data model, rather than take a bottom-up approach and allow
-applications to customize the physical model in order to support new
-high-level abstractions.  In each case, this limits these systems to
-applications their physical models support well.\eab{expand this claim}
+respects, they fundamentally aimed to extend the range of their
+abstract data model, which in the end still has limited overall range.
+In contrast, \yad follows a bottom-up approach that enables can
+implement (in theory) any of these abstract models and their extensions.
+}
+
 
 \subsubsection{Extensible databases}
 
@@ -311,11 +317,10 @@ extensible database servers in terms of early and late binding.  With
 a database toolkit, new types are defined when the database server is
 compiled.  In today's object-relational database systems, new types
 are defined at runtime.  Each approach has its advantages.  However,
-both types of systems aim to extend a high-level data model with new 
-abstract data types, and thus are quite limited in the range of new 
-applications they support.  In hindsight, it is not surprising that this kind of 
-extensibility has had little impact on the range of applications 
-we listed above. \rcs{This could be more clear.  Perhaps ``... on applications that are not naturally supported by queries over sets of tuples, or other data items''?}
+both types of systems aim to extend a high-level data model with new
+abstract data types, and thus are quite limited in the range of new
+applications they support, essentially queries over sets of a wider
+range of elements.
 
 \subsubsection{Transactional Programming Models}
 
@@ -331,7 +336,7 @@ high-level transactional interfaces.
 
 
 
-\eab{add Argus and Camelot}
+\eab{add Argus and Camelot; also we are getting pretty technical here -- maybe move some of this later???}
 
 \rcs{ I think Argus makes use of shadow copies for durability, and for
 in-memory transactions.  A tree of shadow copies exists, and is handled as
@@ -455,9 +460,10 @@ platform that enables specialization and shares the effort required to build a f
 
 We agree with the motivations behind RISC databases and the goal
 of highly modular database implementations.  In fact, we  hope
- our system will mature to the point where it can support 
-a competitive relational database.  However this is
-not our primary goal, as we seek instead to enable a wider range of data management options.\eab{expand on ``wider''}
+ our system will mature to the point where it can support a
+competitive relational database.  However this is not our primary
+goal, which is to enable a wide range of transactional systems, and
+explore those applications that are a weaker fit for DMBSs.
 
 %For example, large scale application such as web search, map services,
 %e-mail use databases to store unstructured binary data, if at all.
@@ -617,8 +623,8 @@ However, Undo does write log entries.  In order to prevent repeated
 crashes during recovery from causing the log to grow excessively, the
 entries that Undo writes tell future invocations of Undo to skip
 portions of the transaction that have already been undone.  These log
-entries are usually called {\em Compensation Log Records (CLR's)}.
-Note that CLR's only cause Undo to skip log entries.  Redo will apply
+entries are usually called {\em Compensation Log Records (CLRs)}.
+Note that CLRs only cause Undo to skip log entries.  Redo will apply
 log entries protected by the CLR, guaranteeing that those updates are
 applied to the page file.
 
