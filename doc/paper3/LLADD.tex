@@ -191,7 +191,7 @@ that implement complete transactions.
 
 Through examples and their good performance, we show how \yad{}
 efficiently supports a wide range of uses that fall in the gap between 
-database and filesystem technologies, including
+database and file system technologies, including
 persistent objects, graph- or XML-based applications, and recoverable
 virtual memory~\cite{lrvm}.  
 
@@ -813,7 +813,7 @@ provide none of these features, supporting the idea that special
 purpose lock managers are a useful abstraction.\rcs{This would be a
 good place to cite Bill and others on higher-level locking protocols}
 
-Locking is largely orthoganol to the concepts desribed in this paper.
+Locking is largely orthogonal to the concepts desribed in this paper.
 We make no assumptions regarding lock managers being used by higher-level code in the remainder of this discussion.
 
 \section{LSN-free pages.}
@@ -907,7 +907,7 @@ similar to those produced at runtime, we do not think this will be a
 practical problem.
 
 The rest of this section describes how concurrent, LSN-free pages 
-allow standard filesystem and database optimizations to be easily
+allow standard file system and database optimizations to be easily
 combined, and shows that the removal of LSN's from pages actually
 simplifies some aspects of recovery.
 
@@ -920,7 +920,7 @@ read that large object the system must read each page individually,
 and then use the CPU to perform a byte-by-byte copy of the portions of
 the page that contain object data into a second buffer.
 
-Compare this approach to modern filesystems, which allow applications to
+Compare this approach to modern file systems, which allow applications to
 perform a DMA copy of the data into memory, avoiding the expensive
 byte-by-byte copy, and allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
@@ -934,7 +934,7 @@ optimizations in a straightforward fashion.  Zero copy writes are more challengi
 performed by performing a DMA write to a portion of the log file.
 However, doing this complicates log truncation, and does not address
 the problem of updating the page file.  We suspect that contributions
-from the log based filesystem~\cite{lfs} literature can address these problems.
+from the log based file system~\cite{lfs} literature can address these problems.
 In particular, we imagine storing 
 portions of the log (the portion that stores the blob) in the 
 page file, or other addressable storage.  In the worst case, 
@@ -945,7 +945,7 @@ writes and one read.)  However, in the best case, the blob would only be written
 In contrast, conventional blob implementations generally write the blob twice. 
 
 Alternatively, we could use DMA to overwrite the blob in the page file
-in a non-atomic fashion, providing filesystem style semantics.
+in a non-atomic fashion, providing file system style semantics.
 (Existing database servers often provide this mode based on the
 observation that many blobs are static data that does not really need
 to be updated transactionally.\rcs{SQL Server doesn't do this.... Remove this parenthetical statement?}~\cite{sqlserver}) Of course, \yad could
@@ -1142,9 +1142,9 @@ transactional semantics, unless explicitly noted.
 All benchmarks were run on an Intel Xeon 2.8 GHz with 1GB of RAM and a
 10K RPM SCSI drive formatted using with ReiserFS~\cite{reiserfs}.\endnote{We found that the
   relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
-  filesystem choice, and we plan to investigate the reasons why the
+  file system choice, and we plan to investigate the reasons why the
   performance of \yad under ext3 is degraded. However, the results
-  relating to the \yad optimizations are consistent across filesystem
+  relating to the \yad optimizations are consistent across file system
   types.}  All results correspond to the mean of multiple runs with a
 95\% confidence interval with a half-width of 5\%.
 
@@ -1254,10 +1254,10 @@ monolithic implementations.
 
 Both Berkeley DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.\endnote{The multi-threaded benchmarks
-  presented here were performed using an ext3 filesystem, as high
+  presented here were performed using an ext3 file system, as high
   concurrency caused both Berkeley DB and \yad to behave unpredictably
   when ReiserFS was used.  However, \yads multi-threaded throughput
-  was significantly better that Berkeley DB's under both filesystems.}
+  was significantly better that Berkeley DB's under both file systems.}
 \yad scaled quite well, delivering over 6000 transactions per
 second,\endnote{The concurrency test was run without lock managers, and the
   transactions obeyed the A, C, and D properties.  Since each
@@ -1546,14 +1546,14 @@ goals similar to our own is in Section~\ref{sec:otherDBs}.
 
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
-pages~\cite{sqlserver} within the object, while typical filesystems
+pages~\cite{sqlserver} within the object, while typical file systems
 provide append-only storage allocation~\cite{ffs}.
 Record-oriented file systems are an older, but still-used~\cite{gfs}
 alternative. Each of these API's addresses 
 different workloads.
 
-Although most filesystems attempt to lay out data in logically sequential
-order, write-optimized filesystems lay files out in the order they
+Although most file systems attempt to lay out data in logically sequential
+order, write-optimized file systems lay files out in the order they
 were written~\cite{lfs}.  Schemes to improve locality between small
 objects exist as well. Relational databases allow users to specify the order
 in which tuples will be layed out, and often leave portions of pages
@@ -1569,7 +1569,7 @@ cache locality~\cite{hoard}.  %Other work makes use of the caller's stack to inf
 
 Finally, many systems take a hybrid approach to allocation.  Examples include
 databases with blob support, and a number of
-filesystems~\cite{reiserfs,ffs}.
+file systems~\cite{reiserfs,ffs}.
 
 We are interested in allowing applications to store records in
 the transaction log.  Assuming log fragmentation is kept to a
