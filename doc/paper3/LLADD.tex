@@ -122,12 +122,12 @@ onto SQL or the monolithic approach of current databases.
 Simply providing
 access to a database system's internal storage module is an improvement.
 However, many of these applications require special transactional properties 
-that general purpose transactional storage systems do not provide.  In
+that general-purpose transactional storage systems do not provide.  In
 fact, DBMSs are often not used for these systems, which instead
 implement custom, ad-hoc data management tools on top of file
 systems.
 
-A typical example of this mismatch is in the support for
+An example of this mismatch is in the support for
 persistent objects.
 % in Java, called {\em Enterprise Java Beans}
 %(EJB). 
@@ -136,9 +136,9 @@ mapping each object to a row in a table (or sometimes multiple
 tables)~\cite{hibernate} and then issuing queries to keep the objects and
 rows consistent. An update must confirm it has the current
 version, modify the object, write out a serialized version using the
-SQL update command and commit.  Also, for efficiency, most systems must 
+SQL update command, and commit.  Also, for efficiency, most systems must 
 buffer two copies of the application's working set in memory.  
-This is an awkward and slow mechanism.
+This is an awkward and inefficient mechanism, and hence we claim that DBMSs do not support this task well.
 
 Bioinformatics systems perform complex scientific
 computations over large, semi-structured databases with rapidly evolving schemas.  Versioning and
@@ -154,7 +154,7 @@ photo and video repositories, bioinformatics, version control systems,
 work-flow applications, CAD/VLSI applications and directory services.
 
 In short, we believe that a fundamental architectural shift in
-transactional storage is necessary before general purpose storage
+transactional storage is necessary before general-purpose storage
 systems are of practical use to modern applications.
 Until this change occurs, databases' imposition of unwanted
 abstraction upon their users will restrict system designs and
@@ -166,13 +166,13 @@ storage at a level of abstraction as close to the hardware as
 possible.  The library can support special purpose, transactional
 storage interfaces in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
-(e.g. write-ahead-logging) and operating systems (e.g. zero-copy techniques).
+(e.g. write-ahead logging) and operating systems (e.g. zero-copy techniques).
 
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work with the complete semantics
 that exemplify the database field.
-By {\em flexible} we mean that \yad{}  can implement a wide
-range of transactional data structures, that it can support a variety
+By {\em flexible} we mean that \yad{}  can support a wide
+range of transactional data structures {\em efficiently}, and that it can support a variety
 of policies for locking, commit, clusters and buffer management.
 Also, it is extensible for new core operations
 and new data structures. It is this flexibility that allows the
@@ -190,16 +190,16 @@ delivers these properties as reusable building blocks for systems
 that implement complete transactions.
 
 Through examples and their good performance, we show how \yad{}
-supports a wide range of uses that fall in the gap between 
+efficiently supports a wide range of uses that fall in the gap between 
 database and filesystem technologies, including
-persistent objects, graph or XML based applications, and recoverable
+persistent objects, graph- or XML-based applications, and recoverable
 virtual memory~\cite{lrvm}.  
 
 For example, on an object serialization workload, we provide up to 
 a 4x speedup over an in-process MySQL implementation and a 3x speedup over Berkeley DB, while 
 cutting memory usage in half (Section~\ref{sec:oasys}). 
 We implemented this extension in 150 lines of C, including comments and boilerplate.  We did not have this type of optimization
-in mind when we wrote \yad, and in fact the idea came from a potential 
+in mind when we wrote \yad, and in fact the idea came from a
 user unfamiliar with \yad.
 
 %\e ab{others?  CVS, windows registry, berk DB, Grid FS?}
@@ -207,14 +207,14 @@ user unfamiliar with \yad.
 
 This paper begins by contrasting \yads approach with that of
 conventional database and transactional storage systems.  It proceeds
-to discuss write-ahead-logging, and describe ways in which \yad can be
-customized to implement many existing (and some new) write-ahead-logging variants.  Implementations of some of these variants are
-presented, and benchmarked against popular real-world systems.  We
-conclude with a survey of the technologies the \yad implementation is
-based upon.
+to discuss write-ahead logging, and describe ways in which \yad can be
+customized to implement many existing (and some new) write-ahead
+logging variants.  We present implementations of some of these variants and
+benchmark them against popular real-world systems.  We
+conclude with a survey of the technologies upon which \yad is based.
 
 An (early) open-source implementation of
-the ideas presented here is available.
+the ideas presented here is available at \eab{where?}.
 
 \section{\yad is not a Database}
 \label{sec:notDB}
@@ -261,6 +261,7 @@ be more appropriate~\cite{molap}.  While both OLTP and OLAP databases are based
 upon the relational model they make use of different physical models
 in order to serve different classes of applications.}
 
+\eab{need to expand the following and add evidence.}
 A key observation of this paper is that no known physical data model
 can efficiently support more than a small percentage of today's applications.  
 
@@ -279,8 +280,8 @@ similar to ours.  Although these projects were successful in many
 respects, they fundamentally aimed to implement an extensible abstract
 data model, rather than take a bottom-up approach and allow
 applications to customize the physical model in order to support new
-high level abstractions.  In each case, this limits these systems to
-applications their physical models support well.
+high-level abstractions.  In each case, this limits these systems to
+applications their physical models support well.\eab{expand this claim}
 
 \subsubsection{Extensible databases}
 
@@ -343,7 +344,7 @@ of the object to write to.  If a subaction or transaction abort their
 local copy is simply discarded.  At commit, the local copy replaces
 the global copy.}
 
-\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high level point:  Most research systems were backed with
+\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high-level point:  Most research systems were backed with
 non-concurrent transactional storage; current commercial systems (eg:
 EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section, along with work describing how to let multiple threads / machines handle locking in an easy to reason about fashion.}
 
@@ -414,7 +415,7 @@ applications presented in Section~\ref{sec:extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
 assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB's data model and write-ahead-logging system are too specialized to support \yad.
+Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
 
 %cover P2 (the old one, not Pier 2 if there is time...
 
@@ -456,9 +457,7 @@ We agree with the motivations behind RISC databases and the goal
 of highly modular database implementations.  In fact, we  hope
  our system will mature to the point where it can support 
 a competitive relational database.  However this is
-not our primary goal, as we seek instead to enable a wider range of data management options.
-
-\eab{discuss "wider range"}
+not our primary goal, as we seek instead to enable a wider range of data management options.\eab{expand on ``wider''}
 
 %For example, large scale application such as web search, map services,
 %e-mail use databases to store unstructured binary data, if at all.
@@ -513,7 +512,7 @@ locks and discusses the alternatives \yad provides to application developers.
 Transactional storage algorithms work because they are able to
 atomically update portions of durable storage.  These small atomic
 updates are used to bootstrap transactions that are too large to be
-applied atomically.  In particular, write ahead logging (and therefore
+applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to atomically write entries to the log
 file.
 
@@ -761,10 +760,10 @@ of data, rather than atomic in-memory updates, as the term is normally
 used in systems work; %~\cite{GR97}; 
 the latter is covered by ``C'' and
 ``I''.}  ``Isolation'' is
-typically provided by locking, which is a higher-level (but
-comaptible) layer.  ``Consistency'' is less well defined but comes in
+typically provided by locking, which is a higher-level but
+comaptible layer.  ``Consistency'' is less well defined but comes in
 part from low-level mutexes that avoid races, and partially from
-higher level constructs such as unique key requirements.  \yad
+higher-level constructs such as unique key requirements.  \yad
 supports this by distinguishing between {\em latches} and {\em locks}.
 Latches are provided using operating system mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
@@ -777,7 +776,7 @@ use of a lock manager.  Alternatively, applications may follow
 the example of \yads default data structures, and implement 
 deadlock avoidance, or other custom lock management schemes.\rcs{Citations here?}
 
-This allows higher level code to treat \yad as a conventional
+This allows higher-level code to treat \yad as a conventional
 reentrant data structure library.  It is the application's
 responsibility to provide locking, whether it be via a database-style
 lock manager, or an application-specific locking protocol.  Note that
@@ -803,14 +802,13 @@ Hoard, a malloc implementation for SMP machines~\cite{hoard}.
 
 Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
-transparent to higher layers.  General purpose database lock managers
+transparent to higher layers.  General-purpose database lock managers
 provide none of these features, supporting the idea that special
 purpose lock managers are a useful abstraction.\rcs{This would be a
-good place to cite Bill and others on higher level locking protocols}
+good place to cite Bill and others on higher-level locking protocols}
 
 Locking is largely orthoganol to the concepts desribed in this paper.
-We make no assumptions regarding lock managers being used by higher
-level code in the remainder of this discussion.
+We make no assumptions regarding lock managers being used by higher-level code in the remainder of this discussion.
 
 \section{LSN-free pages.}
 \label{sec:lsn-free}
@@ -1017,7 +1015,7 @@ played back in order, each sector would contain the most up to date
 version after redo.
 
 Of course, we do not want to constrain log entries to update entire
-sectors at once.  In order to support finer grained logging, we simply
+sectors at once.  In order to support finer-grained logging, we simply
 repeat the above argument on the byte or bit level.  Each bit is
 either overwritten by redo, or has a known, correct, value before
 redo.  Since all operations performed by redo are blind writes, they
@@ -1327,7 +1325,7 @@ disk activity.
 
 Furthermore, objects may be written to disk in an
 order that differs from the order in which they were updated, 
-violating one of the write-ahead-logging invariants.  One way to 
+violating one of the write-ahead logging invariants.  One way to 
 deal with this is to maintain multiple LSN's per page.  This means we would need to register a
 callback with the recovery routine to process the LSN's (a similar
 callback will be needed in Section~\ref{sec:zeroCopy}), and 
@@ -1609,7 +1607,7 @@ is a common pattern in system software design, and manages
 dependencies and ordering constraints between sets of components.
 Over time, we hope to shrink \yads core to the point where it is
 simply a resource manager and a set of implementations of a few unavoidable
-algorithms related to write-ahead-logging.  For instance, 
+algorithms related to write-ahead logging.  For instance, 
 we suspect that support for appropriate callbacks will 
 allow us to hard-code a generic recovery algorithm into the 
 system.  Similarly, any code that manages book-keeping information, such as 
