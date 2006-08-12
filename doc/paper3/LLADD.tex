@@ -228,9 +228,9 @@ database systems and research projects for at least 25 years.
 
 Database systems are often thought of in terms of the high-level
 abstractions they present.  For instance, relational database systems
-implement the relational model~\cite{codd}, object oriented
-databases implement object abstractions, XML databases implement
-hierarchical datasets, and so on.  Before the relational model,
+implement the relational model~\cite{codd}, object-oriented
+databases implement object abstractions \eab{[?]}, XML databases implement
+hierarchical datasets~\eab{[?]}, and so on.  Before the relational model,
 navigational databases implemented pointer- and record-based data models.
 
 An early survey of database implementations sought to enumerate the
@@ -257,7 +257,7 @@ transactions (OLTP), the physical model would probably translate sets
 of tuples into an on-disk B-Tree.  In contrast, if the database needed
 to support long-running, read only aggregation queries (OLAP) over high 
 dimensional data, a physical model that stores the data in a sparse array format would
-be more appropriate~\cite{molap}.  While both OLTP and OLAP databases are based
+be more appropriate~\cite{molap}.  Although both OLTP and OLAP databases are based
 upon the relational model they make use of different physical models
 in order to serve different classes of applications.}
 
