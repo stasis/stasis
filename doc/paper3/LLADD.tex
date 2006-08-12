@@ -282,29 +282,6 @@ applications to customize the physical model in order to support new
 high level abstractions.  In each case, this limits these systems to
 applications their physical models support well.
 
-\eab{add Argus and Camelot}
-
-\rcs{ Notes on these: Camelot focues more on language support for
-distributed transactions.  Its recovery mechanism is probably very
-close to RVM's, as it does pure physical logging with transcation
-duration page locks (really 'region' locks). }
-
-\rcs{ I think Argus makes use of shadow copies for durability, and for
-in-memory transactions.  A tree of shadow copies exists, and is handled as
-follows (I think): All transaction locks are commit duration, per
-object.  There are read locks and write locks, and it uses strict 2PL.
-Each transaction is a tree of ``subactions'' that can get R/W locks
-according to the 2PL rules.  Two subactions in the same action cannot
-get a write lock on the same object because each one gets its own copy
-of the object to write to.  If a subaction or transaction abort their
-local copy is simply discarded.  At commit, the local copy replaces
-the global copy.}
-
-\rcs{This should rpobably get its own subsection; ``Transactional
-programming models.''  Most research systems were backed with
-non-concurrent transactional storage; current commercial systems (eg:
-EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section.}
-
 \subsubsection{Extensible databases}
 
 Genesis~\cite{genesis}, an early database toolkit, was built in terms
@@ -321,7 +298,7 @@ execution engines based upon abstract data type definitions, access
 methods and cost models provided by its users.
 
 Although further discussion is beyond the scope of this paper,
-object-oriented database systems and relational databases with
+object-oriented database systems (\rcs{cite something?}) and relational databases with
 support for user-definable abstract data types (such as in
 Postgres~\cite{postgres}) were the primary competitors to extensible
 database toolkits.  Ideas from all of these systems have been
@@ -339,13 +316,83 @@ applications they support.  In hindsight, it is not surprising that this kind of
 extensibility has had little impact on the range of applications 
 we listed above. \rcs{This could be more clear.  Perhaps ``... on applications that are not naturally supported by queries over sets of tuples, or other data items''?}
 
-\subsubsection{Berkeley DB}
+\subsubsection{Transactional Programming Models}
+
+Special purpose languages for transaction processing allow programmers
+to express transactional operations naturally.  However, programs
+written in these languages are generally limited to a particular
+concurrency model and transactional storage system.  Therefore, these
+systems address a different problem than \yad; each provides one
+high-level interface that implements a particular programming model
+and storage infrastructure.  In contrast, \yad provides low-level
+primitives that make it easier to implement and support new types of
+high-level transactional interfaces.
+
+
+
+\eab{add Argus and Camelot}
+
+\rcs{ I think Argus makes use of shadow copies for durability, and for
+in-memory transactions.  A tree of shadow copies exists, and is handled as
+follows (I think): All transaction locks are commit duration, per
+object.  There are read locks and write locks, and it uses strict 2PL.
+Each transaction is a tree of ``subactions'' that can get R/W locks
+according to the 2PL rules.  Two subactions in the same action cannot
+get a write lock on the same object because each one gets its own copy
+of the object to write to.  If a subaction or transaction abort their
+local copy is simply discarded.  At commit, the local copy replaces
+the global copy.}
+
+\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high level point:  Most research systems were backed with
+non-concurrent transactional storage; current commercial systems (eg:
+EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section, along with work describing how to let multiple threads / machines handle locking in an easy to reason about fashion.}
+
 
 %System R was one of the first relational database implementations, and
 %defined a clean separation between its query processor and its storage
 %subsystem.  In fact, it supported a simple navigational interface to
 %the storage subsystem, which remains the architecture for modern
 %databases.
+
+Camelot was a distributed transaction processing system.  It provides
+two physical logging modes; redo only (no-Steal, no-Force), and
+redo-undo (Steal, no-Force), but does not contain provisions for
+logical logging or compensations.  Therefore, commit duration locks
+are required to protect data structures from concurrent
+transactions, 
+\rcs{This sentence is problematic for two reasons: (1)
+Camelot allowed hybrid atomicity and other schemes in addition to 2PL.
+(2) According to \cite{camelot}, pg 433 ``Logical locks, implemented
+within servers, and support for hybrid atomicity provide the
+possibilty of high concurrency.''  I think this is a mistake in their
+paper; logical locking isn't very helpful when ``This [Camelot's
+Nested Transaction] model states that if one transaction modifies a
+region, the region cannot be modified by another transacion unless
+that transaction is an active descendant of original transaction or
+the original transaction compeletes... If comodification does occur,
+no guarantees concerning data integrity are given'' (Camelot + Avalon
+book, pg 117)'' I think the same mistake is repeated in the RVM
+paper, when they discuss multi-threaded code.} 
+limiting the applicability of Camelot to high-concurrency applications
+or its scalability to multi-processor systems.
+
+However, Camelot introduced a nested transaction model that allows
+concurrency within a single transaction.  In Camelot, nested
+transactions can run in parallel and make use of locks acquired by the
+transaction that spawned them.  Parent transactions are suspended
+until children transactions complete, and children are protected from
+each other using locks, or other similar methods.  We beleive that
+\yads support for logical undo would allow it to support such
+transactions with more concurrency than Camelot allowed.  Camelot is
+an early example of a C library that provides transactional semantics
+over custom data types.  Also, it introduced a number of features,
+such as distributed logging and commit semantics, and transactional
+RPC that we plan to integrate into \yad as we add support for
+multi-node transactions.  Avalon, which was built on top of Camelot is
+a persistent version of C++ that introduced the idea of persistent
+programming language types.
+
+\subsubsection{Transaction Libraries}
 
 Berkeley DB is a highly successful alternative to conventional
 databases~\cite{libtp}.  At its core, it provides the physical database model
@@ -368,8 +415,6 @@ supported by Berkeley DB.   This is a result of Berkeley DB's
 assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
 Berkeley DB's data model and write-ahead-logging system are too specialized to support \yad.
-
-
 
 %cover P2 (the old one, not Pier 2 if there is time...
 
