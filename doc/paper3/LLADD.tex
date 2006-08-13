@@ -109,42 +109,57 @@ easy to implement and significantly improve performance.
 
 \section{Introduction}
 
-As our reliance on computing infrastructure increases, a wider range of 
-applications requires robust data management.  Traditionally, data management
-has been the province of database management systems (DBMSs), which are
-well-suited to enterprise applications, but lead to poor support for
-systems such as web services, search engines, version systems, work-flow 
-applications, bioinformatics, grid computing and scientific computing.  These 
-applications have complex transactional storage requirements
-but do not fit well
-onto SQL or the monolithic approach of current databases.  
+As our reliance on computing infrastructure increases, a wider range
+of applications requires robust data management.  Traditionally, data
+management has been the province of database management systems
+(DBMSs), which are well-suited to enterprise applications, but lead to
+poor support for systems such as web services, search engines, version
+systems, work-flow applications, bioinformatics, and
+scientific computing.  These applications have complex transactional
+storage requirements, but do not fit well onto SQL or the monolithic
+approach of current databases.  In fact, when performance matters
+these applications often avoid DBMSs and instead implement ad-hoc data
+management solutions on top of file systems.
 
-Simply providing
-access to a database system's internal storage module is an improvement.
-However, many of these applications require special transactional properties 
-that general-purpose transactional storage systems do not provide.  In
-fact, DBMSs are often not used for these systems, which instead
-implement custom, ad-hoc data management tools on top of file
-systems.
-
-An example of this mismatch is in the support for
-persistent objects.
-% in Java, called {\em Enterprise Java Beans}
-%(EJB). 
-In a typical usage, an array of objects is made persistent by
-mapping each object to a row in a table (or sometimes multiple
-tables)~\cite{hibernate} and then issuing queries to keep the objects and
-rows consistent. An update must confirm it has the current
+An example of this mismatch is in the support for persistent objects.
+In a typical usage, an array of objects is made persistent by mapping
+each object to a row in a table (or sometimes multiple
+tables)~\cite{hibernate} and then issuing queries to keep the objects
+and rows consistent. An update must confirm it has the current
 version, modify the object, write out a serialized version using the
-SQL update command, and commit.  Also, for efficiency, most systems must 
-buffer two copies of the application's working set in memory.  
-This is an awkward and inefficient mechanism, and hence we claim that DBMSs do not support this task well.
+SQL update command, and commit.  Also, for efficiency, most systems
+must buffer two copies of the application's working set in memory.
+This is an awkward and inefficient mechanism, and hence we claim that
+DBMSs do not support this task well.
 
-Bioinformatics systems perform complex scientific
-computations over large, semi-structured databases with rapidly evolving schemas.  Versioning and
-lineage tracking are also key concerns.  Relational databases support
-none of these requirements well.  Instead, office suites, ad-hoc
-text-based formats and Perl scripts are used for data management~\cite{perl} (with mixed success~\cite{excel}).
+Bioinformatics systems perform complex scientific computations over
+large, semi-structured databases with rapidly evolving schemas.
+Versioning and lineage tracking are also key concerns.  Relational
+databases support none of these requirements well.  Instead, office
+suites, ad-hoc text-based formats and Perl scripts are used for data
+management~\cite{perl}, with mixed success~\cite{excel}.
+
+Our hypothesis is that 1) each of these areas has a distinct top-down
+conceptual model (which may not map well to the relational model); and
+2) there exists a bottom-up layering that can better support all of these
+models and others. 
+
+Just within databases, relational, object-oriented, XML, and streaming
+databases all have distinct conceptual models.  Scientific computing,
+bioinformatics and version-control systems tend to avoid
+update-in-place and track provenance and thus have a distinct
+conceptual model.  Search engines and data warehouses in theory can
+use the relational model, but in practice need a very different
+implementation.
+
+
+%Simply providing
+%access to a database system's internal storage module is an improvement.
+%However, many of these applications require special transactional properties 
+%that general-purpose transactional storage systems do not provide.  In
+%fact, DBMSs are often not used for these systems, which instead
+%implement custom, ad-hoc data management tools on top of file
+%systems.
 
 \eat{
 Examples of real world systems that currently fall into this category
@@ -161,10 +176,10 @@ abstraction upon their users will restrict system designs and
 implementations.
 }
 
-This paper presents \yad, a library that provides transactional
+To explore this hypothesis, we present \yad, a library that provides transactional
 storage at a level of abstraction as close to the hardware as
-possible.  The library can support special purpose, transactional
-storage interfaces in addition to ACID database-style interfaces to
+possible.  The library can support special-purpose, transactional
+storage models in addition to ACID database-style interfaces to
 abstract data models.  \yad incorporates techniques from databases
 (e.g. write-ahead logging) and operating systems (e.g. zero-copy techniques).
 
@@ -176,7 +191,7 @@ range of transactional data structures {\em efficiently}, and that it can suppor
 of policies for locking, commit, clusters and buffer management.
 Also, it is extensible for new core operations
 and new data structures. It is this flexibility that allows the
-support of a wide range of systems.
+support of a wide range of systems and models.
 
 By {\em complete} we mean full redo/undo logging that supports
 both {\em no force}, which provides durability with only log writes,
@@ -218,13 +233,14 @@ the ideas presented here is available at \eab{where?}.
 
 \section{\yad is not a Database}
 \label{sec:notDB}
+
 Database research has a long history, including the development of
 many technologies that our system builds upon.  This section explains
 why databases are fundamentally inappropriate tools for system
 developers.  The problems we present here have been the focus of
-database systems and research projects for at least 25 years.
+database and systems researchers for at least 25 years.
 
-\subsection{The database abstraction}
+\subsection{The Database View}
 
 Database systems are often thought of in terms of the high-level
 abstractions they present.  For instance, relational database systems
@@ -269,138 +285,39 @@ to cover search engines, version-control systems, work-flow
 applications, and scientific computing, as examples.
 }
 
+The database community approaches the limited range of DBMSs by either
+creating new top-down models, such as XML databases or streaming
+databases, or by extending the relational model along some axis, such
+as new data types.  We cover these attempts in
+Section~\ref{related-work}.
+
 Instead of attempting to create such a model after decades of database
-research has failed to produce one, we opt to provide a transactional
-storage model that mimics the primitives provided by modern hardware.
+research has failed to produce one, we opt to provide a bottom-up transactional
+toolbox that supports many different models efficiently, somewhat similar in spirit to Exokernel and Nemesis~\cite{xxx,xxx}.
 This makes it easy for system designers to implement most of the data
 models that the underlying hardware can support, or to
 abandon the database approach entirely, and forgo the use of a
 structured physical model or abstract conceptual mappings.
 
-\subsection{Extensible transaction systems} 
-\label{sec:otherDBs}
+\subsection{The Systems View}
 
-\diff{This section contains discussion of transaction systems with goals
-similar to ours.  Although these projects were successful in many
-respects, they fundamentally aimed to extend the range of their
-abstract data model, which in the end still has limited overall range.
-In contrast, \yad follows a bottom-up approach that enables can
-implement (in theory) any of these abstract models and their extensions.
-}
+The systems community has also worked on this mismatch for 20 years,
+which has led to many interesting projects.  Examples include
+alternative durability models such as Quicksilver or LRVM, persistent
+objects systems such as Argus, and cluster hash tables [add cites].
+We expect that \yad would simplify the implementation of most if not
+all of these systems.  We look at these in more detail in
+Section~\ref{related=work}.
 
+In some sense, our hypothesis is trivially true in that there exists a
+bottom-up layering called the ``operating system'' that can implement
+all of the models. A famous database paper argues that it does so
+poorly (Stonebraker 1980~\cite{Stonebraker80}). Our task is really to
+simplify the implementation of transactional systems through more
+powerful primitives that enable concurrent transactions with a variety
+of performance/robustness tradeoffs.
 
-\subsubsection{Extensible databases}
-
-Genesis~\cite{genesis}, an early database toolkit, was built in terms
-of a physical data model and the conceptual mappings described above. \rcs{I think they say this is an explicit design choice.}
-It is designed to allow database implementors to easily swap out
-implementations of the various components defined by its framework.
-Like subsequent systems (including \yad), it allows its users to
-implement custom operations.
-
-Subsequent extensible database work builds upon these foundations.
-The Exodus~\cite{exodus} database toolkit is the successor to
-Genesis. It supports the automatic generation of query optimizers and
-execution engines based upon abstract data type definitions, access
-methods and cost models provided by its users.
-
-Although further discussion is beyond the scope of this paper,
-object-oriented database systems (\rcs{cite something?}) and relational databases with
-support for user-definable abstract data types (such as in
-Postgres~\cite{postgres}) were the primary competitors to extensible
-database toolkits.  Ideas from all of these systems have been
-incorporated into the mechanisms that support user-definable types in
-current database systems.
-
-One can characterize the difference between database toolkits and
-extensible database servers in terms of early and late binding.  With
-a database toolkit, new types are defined when the database server is
-compiled.  In today's object-relational database systems, new types
-are defined at runtime.  Each approach has its advantages.  However,
-both types of systems aim to extend a high-level data model with new
-abstract data types, and thus are quite limited in the range of new
-applications they support, essentially queries over sets of a wider
-range of elements.
-
-\subsubsection{Transactional Programming Models}
-
-Special purpose languages for transaction processing allow programmers
-to express transactional operations naturally.  However, programs
-written in these languages are generally limited to a particular
-concurrency model and transactional storage system.  Therefore, these
-systems address a different problem than \yad; each provides one
-high-level interface that implements a particular programming model
-and storage infrastructure.  In contrast, \yad provides low-level
-primitives that make it easier to implement and support new types of
-high-level transactional interfaces.
-
-
-
-\eab{add Argus and Camelot; also we are getting pretty technical here -- maybe move some of this later???}
-
-\rcs{ I think Argus makes use of shadow copies for durability, and for
-in-memory transactions.  A tree of shadow copies exists, and is handled as
-follows (I think): All transaction locks are commit duration, per
-object.  There are read locks and write locks, and it uses strict 2PL.
-Each transaction is a tree of ``subactions'' that can get R/W locks
-according to the 2PL rules.  Two subactions in the same action cannot
-get a write lock on the same object because each one gets its own copy
-of the object to write to.  If a subaction or transaction abort their
-local copy is simply discarded.  At commit, the local copy replaces
-the global copy.}
-
-\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high-level point:  Most research systems were backed with
-non-concurrent transactional storage; current commercial systems (eg:
-EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section, along with work describing how to let multiple threads / machines handle locking in an easy to reason about fashion.}
-
-
-%System R was one of the first relational database implementations, and
-%defined a clean separation between its query processor and its storage
-%subsystem.  In fact, it supported a simple navigational interface to
-%the storage subsystem, which remains the architecture for modern
-%databases.
-
-Camelot was a distributed transaction processing system.  It provides
-two physical logging modes; redo only (no-Steal, no-Force), and
-redo-undo (Steal, no-Force), but does not contain provisions for
-logical logging or compensations.  Therefore, commit duration locks
-are required to protect data structures from concurrent
-transactions, 
-\rcs{This sentence is problematic for two reasons: (1)
-Camelot allowed hybrid atomicity and other schemes in addition to 2PL.
-(2) According to \cite{camelot}, pg 433 ``Logical locks, implemented
-within servers, and support for hybrid atomicity provide the
-possibilty of high concurrency.''  I think this is a mistake in their
-paper; logical locking isn't very helpful when ``This [Camelot's
-Nested Transaction] model states that if one transaction modifies a
-region, the region cannot be modified by another transacion unless
-that transaction is an active descendant of original transaction or
-the original transaction compeletes... If comodification does occur,
-no guarantees concerning data integrity are given'' (Camelot + Avalon
-book, pg 117)'' I think the same mistake is repeated in the RVM
-paper, when they discuss multi-threaded code.} 
-limiting the applicability of Camelot to high-concurrency applications
-or its scalability to multi-processor systems.
-
-However, Camelot introduced a nested transaction model that allows
-concurrency within a single transaction.  In Camelot, nested
-transactions can run in parallel and make use of locks acquired by the
-transaction that spawned them.  Parent transactions are suspended
-until children transactions complete, and children are protected from
-each other using locks, or other similar methods.  We beleive that
-\yads support for logical undo would allow it to support such
-transactions with more concurrency than Camelot allowed.  Camelot is
-an early example of a C library that provides transactional semantics
-over custom data types.  Also, it introduced a number of features,
-such as distributed logging and commit semantics, and transactional
-RPC that we plan to integrate into \yad as we add support for
-multi-node transactions.  Avalon, which was built on top of Camelot is
-a persistent version of C++ that introduced the idea of persistent
-programming language types.
-
-\subsubsection{Transaction Libraries}
-
-Berkeley DB is a highly successful alternative to conventional
+The closest system to ours in spirit is Berkley DB,  a highly successful alternative to conventional
 databases~\cite{libtp}.  At its core, it provides the physical database model
 (relational storage system~\cite{systemR}) of a conventional database server.
 %It is based on the
@@ -418,67 +335,12 @@ With the
 exception of the benchmark designed to fairly compare the two systems, none of the \yad 
 applications presented in Section~\ref{sec:extensions} are efficiently
 supported by Berkeley DB.   This is a result of Berkeley DB's  
-assumptions regarding workloads and decisions regarding low level data
+assumptions regarding workloads and decisions regarding low-level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
 Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
 
-%cover P2 (the old one, not Pier 2 if there is time...
 
-\subsubsection{Better databases}
 
-The database community is also aware of this gap. 
-A recent survey~\cite{riscDB} enumerates problems that plague users of
-state-of-the-art database systems, and finds that database implementations fail to support the
-needs of modern applications.  Essentially, it argues that modern 
-databases are too complex to be implemented (or understood) 
-as a monolithic entity.
-
-It supports this argument with real-world evidence that suggests
-database servers are too unpredictable and unmanagable to
-scale up the size of today's systems.  Similarly, they are a poor fit
-for small devices.  SQL's declarative interface only complicates the
-situation.
-
-%In large systems, this manifests itself as
-%manageability and tuning issues that prevent databases from predictably
-%servicing diverse, large scale, declarative, workloads.  
-%On small devices, footprint, predictable performance, and power consumption are
-%primary concerns that database systems do not address.
-
-%The survey argues that these problems cannot be adequately addressed without a fundamental shift in the architectures that underly database systems.  Complete, modern database
-%implementations are generally incomprehensible and
-%irreproducible, hindering further research.  
-The study concludes 
-by suggesting the adoption of highly modular {\em RISC} database architectures, both as a resource for researchers and as a 
-real-world database system.  
-RISC databases have many elements in common with
-database toolkits.  However, they take the database toolkit idea one
-step further, and suggest standardizing the interfaces of the
-toolkit's internal components, allowing multiple organizations to
-compete to improve each module.  The idea is to produce a research
-platform that enables specialization and shares the effort required to build a full database~\cite{riscDB}.
-
-We agree with the motivations behind RISC databases and the goal
-of highly modular database implementations.  In fact, we  hope
- our system will mature to the point where it can support a
-competitive relational database.  However this is not our primary
-goal, which is to enable a wide range of transactional systems, and
-explore those applications that are a weaker fit for DMBSs.
-
-%For example, large scale application such as web search, map services,
-%e-mail use databases to store unstructured binary data, if at all.
-
-%More recently, WinFS, Microsoft's database based
-%file meta data management system, has been replaced in favor of an
-%embedded indexing engine that imposes less structure (and provides
-%fewer consistency guarantees) than the original
-%proposal~\cite{needtocitesomething}.
-
-%Scaling to the very large doesn't work (SAP used DB2 as a hash table
-%for years), search engines, cad/VLSI didn't happen.  scalable GIS
-%systems use shredded blobs (terraserver, google maps), scaling to many
-%was more difficult than implementing from scratch (winfs), scaling
-%down doesn't work (variance in performance, footprint),
 
 \section{Conventional Transactions in \yad}
 
@@ -1537,12 +1399,237 @@ algorithm's outperforms the naive traversal.
 
 
 \section{Related Work}
+\label{related-work}
 
-This paper has described a number of custom transactional storage
-extensions, and explained why can \yad support them.  This section
+
+\eab{moved text here from section 2 to make it smaller and less technical}
+
+\subsection{Database Variations} 
+\label{sec:otherDBs}
+
+This section discusses transaction systems with goals
+similar to ours.  Although these projects were successful in many
+respects, they fundamentally aimed to extend the range of their
+abstract data model, which in the end still has limited overall range.
+In contrast, \yad follows a bottom-up approach that enables can
+implement (in theory) any of these abstract models and their extensions.
+
+\subsubsection{Extensible databases}
+
+Genesis~\cite{genesis}, an early database toolkit, was built in terms
+of a physical data model and the conceptual mappings described above. \rcs{I think they say this is an explicit design choice.}
+It is designed to allow database implementors to easily swap out
+implementations of the various components defined by its framework.
+Like subsequent systems (including \yad), it allows its users to
+implement custom operations.
+
+Subsequent extensible database work builds upon these foundations.
+The Exodus~\cite{exodus} database toolkit is the successor to
+Genesis. It supports the automatic generation of query optimizers and
+execution engines based upon abstract data type definitions, access
+methods and cost models provided by its users.
+
+Although further discussion is beyond the scope of this paper,
+object-oriented database systems (\rcs{cite something?}) and relational databases with
+support for user-definable abstract data types (such as in
+Postgres~\cite{postgres}) were the primary competitors to extensible
+database toolkits.  Ideas from all of these systems have been
+incorporated into the mechanisms that support user-definable types in
+current database systems.
+
+One can characterize the difference between database toolkits and
+extensible database servers in terms of early and late binding.  With
+a database toolkit, new types are defined when the database server is
+compiled.  In today's object-relational database systems, new types
+are defined at runtime.  Each approach has its advantages.  However,
+both types of systems aim to extend a high-level data model with new
+abstract data types, and thus are quite limited in the range of new
+applications they support, essentially queries over sets of a wider
+range of elements.
+
+\subsubsection{Modular databases}
+
+The database community is also aware of this gap.  A recent
+survey~\cite{riscDB} enumerates problems that plague users of
+state-of-the-art database systems, and finds that database
+implementations fail to support the needs of modern applications.
+Essentially, it argues that modern databases are too complex to be
+implemented (or understood) as a monolithic entity.
+
+It supports this argument with real-world evidence that suggests
+database servers are too unpredictable and unmanagable to
+scale up the size of today's systems.  Similarly, they are a poor fit
+for small devices.  SQL's declarative interface only complicates the
+situation.
+
+%In large systems, this manifests itself as
+%manageability and tuning issues that prevent databases from predictably
+%servicing diverse, large scale, declarative, workloads.  
+%On small devices, footprint, predictable performance, and power consumption are
+%primary concerns that database systems do not address.
+
+%The survey argues that these problems cannot be adequately addressed without a fundamental shift in the architectures that underly database systems.  Complete, modern database
+%implementations are generally incomprehensible and
+%irreproducible, hindering further research.  
+
+The study concludes by suggesting the adoption of highly modular {\em
+RISC} database architectures, both as a resource for researchers and
+as a real-world database system.  RISC databases have many elements in
+common with database toolkits.  However, they take the database
+toolkit idea one step further, and suggest standardizing the
+interfaces of the toolkit's internal components, allowing multiple
+organizations to compete to improve each module.  The idea is to
+produce a research platform that enables specialization and shares the
+effort required to build a full database~\cite{riscDB}.
+
+We agree with the motivations behind RISC databases and the goal
+of highly modular database implementations.  In fact, we  hope
+ our system will mature to the point where it can support a
+competitive relational database.  However this is not our primary
+goal, which is to enable a wide range of transactional systems, and
+explore those applications that are a weaker fit for DMBSs.
+
+%For example, large scale application such as web search, map services,
+%e-mail use databases to store unstructured binary data, if at all.
+
+
+
+\subsection{Transactional Programming Models}
+
+Special-purpose languages for transaction processing allow programmers
+to express transactional operations naturally.  However, programs
+written in these languages are generally limited to a particular
+concurrency model and transactional storage system.  Therefore, these
+systems address a different problem than \yad; each provides one
+high-level interface that implements a particular programming model
+and storage infrastructure.  In contrast, \yad provides low-level
+primitives that make it easier to implement and support new types of
+high-level transactional interfaces.
+
+
+
+\eab{add Argus and Camelot; also we are getting pretty technical here -- maybe move some of this later???}
+
+\rcs{ I think Argus makes use of shadow copies for durability, and for
+in-memory transactions.  A tree of shadow copies exists, and is handled as
+follows (I think): All transaction locks are commit duration, per
+object.  There are read locks and write locks, and it uses strict 2PL.
+Each transaction is a tree of ``subactions'' that can get R/W locks
+according to the 2PL rules.  Two subactions in the same action cannot
+get a write lock on the same object because each one gets its own copy
+of the object to write to.  If a subaction or transaction abort their
+local copy is simply discarded.  At commit, the local copy replaces
+the global copy.}
+
+\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high-level point:  Most research systems were backed with
+non-concurrent transactional storage; current commercial systems (eg:
+EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section, along with work describing how to let multiple threads / machines handle locking in an easy to reason about fashion.}
+
+
+%System R was one of the first relational database implementations, and
+%defined a clean separation between its query processor and its storage
+%subsystem.  In fact, it supported a simple navigational interface to
+%the storage subsystem, which remains the architecture for modern
+%databases.
+
+Camelot was a distributed transaction processing system.  It provides
+two physical logging modes; redo only (no-Steal, no-Force), and
+redo-undo (Steal, no-Force), but does not contain provisions for
+logical logging or compensations.  Therefore, commit duration locks
+are required to protect data structures from concurrent
+transactions, 
+\rcs{This sentence is problematic for two reasons: (1)
+Camelot allowed hybrid atomicity and other schemes in addition to 2PL.
+(2) According to \cite{camelot}, pg 433 ``Logical locks, implemented
+within servers, and support for hybrid atomicity provide the
+possibilty of high concurrency.''  I think this is a mistake in their
+paper; logical locking isn't very helpful when ``This [Camelot's
+Nested Transaction] model states that if one transaction modifies a
+region, the region cannot be modified by another transacion unless
+that transaction is an active descendant of original transaction or
+the original transaction compeletes... If comodification does occur,
+no guarantees concerning data integrity are given'' (Camelot + Avalon
+book, pg 117)'' I think the same mistake is repeated in the RVM
+paper, when they discuss multi-threaded code.} 
+limiting the applicability of Camelot to high-concurrency applications
+or its scalability to multi-processor systems.
+
+However, Camelot introduced a nested transaction model that allows
+concurrency within a single transaction.  In Camelot, nested
+transactions can run in parallel and make use of locks acquired by the
+transaction that spawned them.  Parent transactions are suspended
+until children transactions complete, and children are protected from
+each other using locks, or other similar methods.  We beleive that
+\yads support for logical undo would allow it to support such
+transactions with more concurrency than Camelot allowed.  Camelot is
+an early example of a C library that provides transactional semantics
+over custom data types.  Also, it introduced a number of features,
+such as distributed logging and commit semantics, and transactional
+RPC that we plan to integrate into \yad as we add support for
+multi-node transactions.  Avalon, which was built on top of Camelot is
+a persistent version of C++ that introduced the idea of persistent
+programming language types.
+
+\subsection{Berkeley DB}
+
+\eab{this text is also in Sec 2; need a new comparison}
+
+Berkeley DB is a highly successful alternative to conventional
+databases~\cite{libtp}.  At its core, it provides the physical database model
+(relational storage system~\cite{systemR}) of a conventional database server.
+%It is based on the
+%observation that the storage subsystem is a more general (and less
+%abstract) component than a monolithic database, and provides a
+%stand-alone implementation of the storage primitives built into 
+%most relational database systems~\cite{libtp}.  
+In particular, 
+it provides fully transactional (ACID) operations over B-Trees, 
+hashtables, and other access methods.  It provides flags that 
+let its users tweak various aspects of the performance of these
+primitives, and selectively disable the features it provides.
+
+With the
+exception of the benchmark designed to fairly compare the two systems, none of the \yad 
+applications presented in Section~\ref{sec:extensions} are efficiently
+supported by Berkeley DB.   This is a result of Berkeley DB's  
+assumptions regarding workloads and decisions regarding low level data
+representation.  Thus, although Berkeley DB could be built on top of \yad,
+Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
+
+
+\subsection{stuff to add somewhere}
+
+cover P2 (the old one, not Pier 2 if there is time...
+
+
+
+
+
+More recently, WinFS, Microsoft's database based
+file meta data management system, has been replaced in favor of an
+embedded indexing engine that imposes less structure (and provides
+fewer consistency guarantees) than the original
+proposal~\cite{needtocitesomething}.
+
+Scaling to the very large doesn't work (SAP used DB2 as a hash table
+for years), search engines, cad/VLSI didn't happen.  scalable GIS
+systems use shredded blobs (terraserver, google maps), scaling to many
+was more difficult than implementing from scratch (winfs), scaling
+down doesn't work (variance in performance, footprint),
+
+
+---- old related work start ---
+\subsection{Implementation Ideas}
+
+%This paper has described a number of custom transactional storage
+%extensions, and explained why can \yad support them. 
+
+This section
 will describe existing ideas in the literature that we would like to
-incorporate into \yad.  An overview of database systems that have 
-goals similar to our own is in Section~\ref{sec:otherDBs}.
+incorporate into \yad. 
+
+% An overview of database systems that have 
+%goals similar to our own is in Section~\ref{sec:otherDBs}.
 
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
@@ -1589,6 +1676,9 @@ focus on multiple node systems.  In particular, it would be
 interesting to explore extensions to the Boxwood approach that make
 use of \yads customizable semantics (Section~\ref{sec:wal}), and fully logical logging
 mechanism. (Section~\ref{sec:logging})
+
+
+
 
 \section{Future Work}
 
