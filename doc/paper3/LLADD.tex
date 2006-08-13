@@ -237,17 +237,24 @@ the ideas presented here is available at \eab{where?}.
 Database research has a long history, including the development of
 many technologies that our system builds upon.  This section explains
 why databases are fundamentally inappropriate tools for system
-developers.  The problems we present here have been the focus of
+developers, and covers some of the preivous responses of the systems
+community.  The problems we present here have been the focus of
 database and systems researchers for at least 25 years.
 
 \subsection{The Database View}
 
-Database systems are often thought of in terms of the high-level
-abstractions they present.  For instance, relational database systems
-implement the relational model~\cite{codd}, object-oriented
-databases implement object abstractions \eab{[?]}, XML databases implement
-hierarchical datasets~\eab{[?]}, and so on.  Before the relational model,
-navigational databases implemented pointer- and record-based data models.
+The database community approaches the limited range of DBMSs by either
+creating new top-down models, such as XML databases or streaming
+databases, or by extending the relational model~\cite{codd} along some axis, such
+as new data types.  (We cover these attempts in more detail in
+Section~\ref{related-work}.) \eab{add cites}
+
+%Database systems are often thought of in terms of the high-level
+%abstractions they present.  For instance, relational database systems
+%implement the relational model~\cite{codd}, object-oriented
+%databases implement object abstractions \eab{[?]}, XML databases implement
+%hierarchical datasets~\eab{[?]}, and so on.  Before the relational model,
+%navigational databases implemented pointer- and record-based data models.
 
 An early survey of database implementations sought to enumerate the
 fundamental components used by database system implementors~\cite{batoryConceptual,batoryPhysical}.  This
@@ -266,38 +273,32 @@ abstraction (such as the relational model).  The physical data model
 is chosen to support efficiently the set of mappings that are built on
 top of it.
 
-\diff{A conceptual mapping based on the relational model might
-translate a relation into a set of keyed tuples.  If the database were
-going to be used for short, write-intensive and high-concurrency
-transactions (OLTP), the physical model would probably translate sets
-of tuples into an on-disk B-Tree.  In contrast, if the database needed
-to support long-running, read only aggregation queries (OLAP) over high 
-dimensional data, a physical model that stores the data in a sparse array format would
-be more appropriate~\cite{molap}.  Although both OLTP and OLAP databases are based
-upon the relational model they make use of different physical models
-in order to serve different classes of applications.}
+A conceptual mapping based on the relational model might translate a
+relation into a set of keyed tuples.  If the database were going to be
+used for short, write-intensive and high-concurrency transactions
+(OLTP), the physical model would probably translate sets of tuples
+into an on-disk B-Tree.  In contrast, if the database needed to
+support long-running, read-only aggregation queries (OLAP) over high
+dimensional data, a physical model that stores the data in a sparse
+array format would be more appropriate~\cite{molap}.  Although both
+OLTP and OLAP databases are based upon the relational model they make
+use of different physical models in order to serve different classes
+of applications.
 
-\diff{ A basic claim of
+A basic claim of
 this paper is that no single known physical data model can efficiently
 support the wide range of conceptual mappings that are in use today.
 In addition to sets, objects, and XML, such a model would need
 to cover search engines, version-control systems, work-flow
 applications, and scientific computing, as examples.
-}
 
-The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as XML databases or streaming
-databases, or by extending the relational model along some axis, such
-as new data types.  We cover these attempts in
-Section~\ref{related-work}.
-
-Instead of attempting to create such a model after decades of database
-research has failed to produce one, we opt to provide a bottom-up transactional
-toolbox that supports many different models efficiently, somewhat similar in spirit to Exokernel and Nemesis~\cite{xxx,xxx}.
-This makes it easy for system designers to implement most of the data
-models that the underlying hardware can support, or to
-abandon the database approach entirely, and forgo the use of a
-structured physical model or abstract conceptual mappings.
+Instead of attempting to create such a unified model after decades of
+database research has failed to produce one, we opt to provide a
+bottom-up transactional toolbox that supports many different models
+efficiently.  This makes it easy for system designers to
+implement most of the data models that the underlying hardware can
+support, or to abandon the database approach entirely, and forgo the
+use of a structured physical model and abstract conceptual mappings.
 
 \subsection{The Systems View}
 
@@ -331,13 +332,13 @@ hashtables, and other access methods.  It provides flags that
 let its users tweak various aspects of the performance of these
 primitives, and selectively disable the features it provides.
 
-With the
-exception of the benchmark designed to fairly compare the two systems, none of the \yad 
-applications presented in Section~\ref{sec:extensions} are efficiently
-supported by Berkeley DB.   This is a result of Berkeley DB's  
-assumptions regarding workloads and decisions regarding low-level data
-representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
+With the exception of the benchmark designed to fairly compare the two
+systems, none of the \yad applications presented in
+Section~\ref{sec:extensions} are efficiently supported by Berkeley DB.
+This is a result of Berkeley DB's assumptions regarding workloads and
+decisions regarding low-level data representation.  Thus, although
+Berkeley DB could be built on top of \yad, Berkeley DB's data model
+and write-ahead logging system are too specialized to support \yad.
 
 
 
