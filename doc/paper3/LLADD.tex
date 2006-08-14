@@ -366,9 +366,9 @@ issues in more detail.
 The lower level of a \yad operation provides atomic
 updates to regions of the disk.  These updates do not have to deal
 with concurrency, but the portion of the page file that they read and
-write must be atomically updated, even if the system crashes.
+write must be updated atomically, even if the system crashes.
 
-The higher level provides operations that span multiple pages by
+The higher-level provides operations that span multiple pages by
 atomically applying sets of operations to the page file and coping
 with concurrency issues.  Surprisingly, the implementations of these
 two layers are only loosely coupled.
@@ -379,7 +379,7 @@ locks and discusses the alternatives \yad provides to application developers.
 \subsection{Atomic page file operations}
 
 Transactional storage algorithms work because they are able to
-atomically update portions of durable storage.  These small atomic
+update atomically portions of durable storage.  These small atomic
 updates are used to bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to atomically write entries to the log
@@ -405,8 +405,8 @@ shortening recovery time.
 
 For simplicity, this section ignores mechanisms that detect
 and restore torn pages, and assumes that page writes are atomic.
-While the techniques described in this section rely on the ability to
-atomically update disk pages, this restriction is relaxed by other 
+Although the techniques described in this section rely on the ability to
+update disk pages atomically, this restriction is relaxed by other 
 recovery mechanisms.
 
 
@@ -450,7 +450,7 @@ limiting each transaction to a single operation, and by forcing the
 page that each operation updates to disk in order.  If we ignore torn 
 pages and failed sectors, this does not
 require any sort of logging, but is quite inefficient in practice, as
-it foces the disk to perform a potentially random write each time the
+it forces the disk to perform a potentially random write each time the
 page file is updated.  The rest of this section describes how recovery
 can be extended, first to efficiently support multiple operations per
 transaction, and then to allow more than one transaction to modify the
@@ -461,9 +461,9 @@ same data before committing.
 Recovery relies upon the fact that each log entry is assigned a {\em
 Log Sequence Number (LSN)}.  The LSN is monitonically increasing and
 unique.  The LSN of the log entry that was most recently applied to
-each page is stored with the page, allowing recovery to selectively
+each page is stored with the page, which allows recovery to selectively
 replay log entries.  This only works if log entries change exactly one
-page, and if they are applied to the page atomically.
+page and if they are applied to the page atomically.
 
 Recovery occurs in three phases, Analysis, Redo and Undo.
 ``Analysis'' is beyond the scope of this paper.  ``Redo'' plays the
@@ -491,7 +491,7 @@ Note that CLRs only cause Undo to skip log entries.  Redo will apply
 log entries protected by the CLR, guaranteeing that those updates are
 applied to the page file.
 
-There are many other schemes for page level recovery that we could
+There are many other schemes for page-level recovery that we could
 have chosen.  The scheme desribed above has two particularly nice
 properties.  First, pages that were modified by active transactions
 may be {\em stolen}; they may be written to disk before a transaction
@@ -565,9 +565,9 @@ aborts.
 
 The key idea is to distinguish between the {\em logical operations} of a
 data structure, such as inserting a key, and the {\em physical operations}
-such as splitting tree nodes or or rebalancing a tree. The physical
+such as splitting tree nodes or rebalancing a tree. The physical
 operations do not need to be undone if the containing logical operation
-(insert) aborts.  \diff{We record such operations using {\em logical 
+(e.g. {\em insert}) aborts.  \diff{We record such operations using {\em logical 
 logging} and {\em physical logging}, respectively.}
 
 \diff{Each nested top action performs a single logical operation by
@@ -581,7 +581,7 @@ even after other transactions manipulate the data structure.  If the
 nested transaction does not complete, physical UNDO can safely roll
 back the changes.  Therefore, nested transactions can always be rolled
 back as long as the physical updates are protected from other
-transactions and complete nested transactions perserve the integrity
+transactions and complete nested transactions preserve the integrity
 of the structures they manipulate.}
 
 This leads to a mechanical approach that converts non-reentrant
@@ -636,8 +636,8 @@ higher-level constructs such as unique key requirements.  \yad
 supports this by distinguishing between {\em latches} and {\em locks}.
 Latches are provided using operating system mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
-way that avoids deadlock.  This section will describe the latching
-protocols that \yad makes use of, and describes two custom lock
+way that avoids deadlock.  This section will describe \yads latching
+protocols and describes two custom lock
 managers that \yads allocation routines use to implement layout 
 policies and provide deadlock avoidance.  Applications that want
 conventional transactional isolation (serializability) can make 
@@ -650,22 +650,20 @@ reentrant data structure library.  It is the application's
 responsibility to provide locking, whether it be via a database-style
 lock manager, or an application-specific locking protocol.  Note that
 locking schemes may be layered.  For example, when \yad allocates a
-record, it first calls a region allocator that allocates contiguous
+record, it first calls a region allocator, which allocates contiguous
 sets of pages, and then it allocates a record on one of those pages.
 
 The record allocator and the region allocator each contain custom lock
 management.  If transaction A frees some storage, transaction B reuses
 the storage and commits, and then transaction A aborts, then the
-storage would be double allocated.  The region allocator (which is
-infrequently called, and not concerned with locality) records the id
+storage would be double allocated.  The region allocator, which allocates large chunks infrequently, records the id
 of the transaction that created a region of freespace, and does not
 coalesce or reuse any storage associated with an active transaction.
 
-On the other hand, the record allocator is called frequently, and is
-concerned with locality.  Therefore, it associates a set of pages with
+In contrast, the record allocator is called frequently and must enable locality.  Therefore, it associates a set of pages with
 each transaction, and keeps track of deallocation events, making sure
 that space on a page is never over reserved.  Providing each
-transaction with a seperate pool of freespace should increase
+transaction with a separate pool of freespace should increase
 concurrency and locality.  This allocation strategy was inspired by
 Hoard, a malloc implementation for SMP machines~\cite{hoard}.
 
@@ -861,7 +859,7 @@ persistent storage must be either:
 \end{enumerate}
 
 Modern drives provide these properties at a sector level: Each sector
-is atomically updated, or it fails a checksum when read, triggering an
+is updated atomically, or it fails a checksum when read, triggering an
 error.  If a sector is found to be corrupt, then media recovery can be
 used to restore the sector from the most recent backup.
 
@@ -1070,8 +1068,8 @@ obtaining reasonable performance in such a system under \yad is
 straightforward.  We then compare our simple, straightforward 
 implementation to our hand-tuned version and Berkeley DB's implementation.
 
-The simple hash table uses nested top actions to atomically update its
-internal structure.  It uses a {\em linear} hash function~\cite{lht}, allowing
+The simple hash table uses nested top actions to update its
+internal structure atomically.  It uses a {\em linear} hash function~\cite{lht}, allowing
 it to incrementally grow its buffer list.  It is based on a number of
 modular subcomponents.  Notably, its bucket list is a growable array
 of fixed length entries (a linkset, in the terms of the physical
@@ -1381,7 +1379,7 @@ constructs graphs by first connecting nodes together into a ring.
 It then randomly adds edges between the nodes until the desired
 out-degree is obtained.  This structure ensures graph connectivity.
 If the nodes are laid out in ring order on disk then it also ensures that
-one edge from each node has good locality while the others generally
+one edge from each node has good locality, while the others generally
 have poor locality.
 
 The second experiment explicitly measures the effect of graph locality
