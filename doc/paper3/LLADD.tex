@@ -304,8 +304,8 @@ use of a structured physical model and abstract conceptual mappings.
 
 The systems community has also worked on this mismatch for 20 years,
 which has led to many interesting projects.  Examples include
-alternative durability models such as Quicksilver or LRVM, persistent
-objects systems such as Argus, and cluster hash tables [add cites].
+alternative durability models such as Quicksilver or RVM, persistent
+objects systems such as Argus~\cite{argus}, and cluster hash tables [add cites].
 We expect that \yad would simplify the implementation of most if not
 all of these systems.  We look at these in more detail in
 Section~\ref{related=work}.
@@ -689,7 +689,7 @@ This section explains how we can avoid storing LSNs on pages in \yad
 without giving up durable transactional updates.  The techniques here
 are similar to those used by RVM~\cite{lrvm}, a system that supports
 transactional updates to virtual memory.  However, \yad generalizes
-the concept, allowing it to co-exist with traditional pages and fully
+the concept, allowing it to co-exist with traditional pages and more easily
 support concurrent transactions.
 
 In the process of removing LSNs from pages, we
@@ -703,11 +703,8 @@ described in this section.  However, \yad avoids hard-coding most of
 the relevant subsytems.  LSN-free pages are essentially an alternative
 protocol for atomically and durably applying updates to the page file.
 This will require the addition of a new page type (\yad currently has
-3 such types, not including a few minor variants).  The new page type
-will need to communicate with the logger and recovery modules in order
-to estimate page LSNs, which will need to make use of callbacks in
-those modules.  Of course, upon providing support for LSN free pages,
-we will want to add operations to \yad that make use of them.  We plan
+3 such types, not including a few minor variants) that will estimate 
+LSN's by communicating with the logger and recovery modules.  We plan
 to eventually support the coexistance of LSN-free pages, traditional
 pages, and similar third-party modules within the same page file, log,
 transactions, and even logical operations.
@@ -725,16 +722,15 @@ systems, but are often not idempotent, and rely upon the consistency
 of the page they modify.  The recovery scheme described in this
 section does not guarantee that such operations will be applied
 exactly once, or even that they will be presented with a consistent
-version of a page.  Therefore, it is incompatible with physiological
-operations.
+version of a page.
 
 Therefore, in this section we eliminate such operations and instead
 make use of deterministic REDO operations that do not examine page
-state.  We call such operations ``blind writes.''  For concreteness,
+state.  We call such operations ``blind writes.''  Note that we still
+allow code that invokes operations to examine the page file.  For concreteness,
 assume that all physical operations produce log entries that contain a
 set of byte ranges, and the pre- and post-value of each byte in the
-range.  \diff{Note that we still allow code that invokes operations to
-examine the page file.}
+range.  
 
 Recovery works the same way as it does above, except that is computes
 a lower bound of each page LSN instead of reading the LSN from the
@@ -803,32 +799,34 @@ to a total of three, mostly sequential disk operations.  (Two
 writes and one read.)  However, in the best case, the blob would only be written once.
 In contrast, conventional blob implementations generally write the blob twice. 
 
-Alternatively, we could use DMA to overwrite the blob in the page file
-in a non-atomic fashion, providing file system style semantics.
-(Existing database servers often provide this mode based on the
-observation that many blobs are static data that does not really need
-to be updated transactionally.\rcs{SQL Server doesn't do this.... Remove this parenthetical statement?}~\cite{sqlserver}) Of course, \yad could
-also support other approaches to blob storage, such as B-Tree layouts
-that allow arbitrary insertions and deletions in the middle of
-objects~\cite{esm}.
+Of course, \yad could also support other approaches to blob storage,
+such as using DMA and update in place to provide file system style
+semantics, or by using B-Tree layouts that allow arbitrary insertions
+and deletions in the middle of objects~\cite{esm}.
 
 \subsection{Concurrent recoverable virtual memory}
 
 Our LSN-free pages are somewhat similar to the recovery scheme used by
-RVM, recoverable virtual memory.  \rcs{, and camelot, argus(?)} That system used purely physical
-logging and LSN-free pages so that it could use mmap() to map portions
-of the page file into application memory~\cite{lrvm}.  However, without
-support for logical log entries and nested top actions, it would be
-difficult to implement a concurrent, durable data structure using RVM.
+RVM, recoverable virtual memory, and Camelot~\cite{camelot}. RVM
+used purely physical logging and LSN-free pages so that it
+could use mmap() to map portions of the page file into application
+memory\cite{lrvm}.  However, without support for logical log entries
+and nested top actions, it would be extremely difficult to implement a
+concurrent, durable data structure using RVM or Camelot.  (The description of
+Argus in Section~\ref{sec:transactionalProgramming} sketches the
+general approach.)  
 
-In contrast, LSN-free pages allow for logical undo, allowing for the
-use of nested top actions and concurrent transactions.
+In contrast, LSN-free pages allow for logical
+undo, allowing for the use of nested top actions and concurrent
+transactions; the concurrent data structure needs only provide \yad
+with an appropriate inverse each time its logical state changes.
 
-We plan to add RVM-style transactional memory to \yad in a way that is
-compatible with fully concurrent collections such as hash tables and
-tree structures.  Of course, since \yad will support coexistance of
-conventional and LSN-free pages, applications would be free to use the
-\yad data structure implementations as well.
+We plan to add RVM style transactional memory to \yad in a way that is
+compatible with fully concurrent in-memory data structures such as
+hash tables and trees.  Of course, since \yad will support coexistance
+of conventional and LSN-free pages, applications will be free to use
+the \yad data structure implementations as well.
+
 
 \subsection{Page-independent transactions}
 \label{sec:torn-page}
@@ -1434,8 +1432,9 @@ implement (in theory) any of these abstract models and their extensions.
 
 \subsubsection{Extensible databases}
 
-Genesis~\cite{genesis}, an early database toolkit, was built in terms
-of a physical data model and the conceptual mappings described above. \rcs{I think they say this is an explicit design choice.}
+Genesis~\cite{genesis}, an early database toolkit was explicitly
+structured in terms of the physical data models and conceptual 
+mappings described above.
 It is designed to allow database implementors to easily swap out
 implementations of the various components defined by its framework.
 Like subsequent systems (including \yad), it allows its users to
@@ -1461,9 +1460,9 @@ a database toolkit, new types are defined when the database server is
 compiled.  In today's object-relational database systems, new types
 are defined at runtime.  Each approach has its advantages.  However,
 both types of systems aim to extend a high-level data model with new
-abstract data types, and thus are quite limited in the range of new
+abstract data types, and are quite limited in the range of new
 applications they support, essentially queries over sets of a wider
-range of elements.
+range of elements.~\rcs{fix wording}
 
 \subsubsection{Modular databases}
 
@@ -1476,7 +1475,7 @@ implemented (or understood) as a monolithic entity.
 
 It supports this argument with real-world evidence that suggests
 database servers are too unpredictable and unmanagable to
-scale up the size of today's systems.  Similarly, they are a poor fit
+scale up to the size of today's systems.  Similarly, they are a poor fit
 for small devices.  SQL's declarative interface only complicates the
 situation.
 
@@ -1514,34 +1513,61 @@ explore those applications that are a weaker fit for DMBSs.
 
 \subsection{Transactional Programming Models}
 
+\label{sec:transactionalProgramming}
+
+\rcs{\ref{sec:transactionalProgramming} is too long.}
+
 Special-purpose languages for transaction processing allow programmers
 to express transactional operations naturally.  However, programs
 written in these languages are generally limited to a particular
 concurrency model and transactional storage system.  Therefore, these
-systems address a different problem than \yad; each provides one
-high-level interface that implements a particular programming model
-and storage infrastructure.  In contrast, \yad provides low-level
-primitives that make it easier to implement and support new types of
-high-level transactional interfaces.
+systems are complementary to \yad; they provide a specialized
+high-level interface that hard-codes a particular programming model
+and specialized storage infrastructure.  In contrast, \yad is a
+general-purpose storage infrastructure that avoids hardcoding
+programming model assumptions.  \yad provides a substrate that makes
+it easier to implement transactional programming models.
 
+\subsubsection{Nested Transactions}
 
+{\em Nested transactions} form trees of transactions, where children
+were spawned by their parents.  They can be used to increase
+concurrency, provide partial rollback, and improve fault tolerance.
+{\em Linear} nesting occurs when transactions are nested to arbitrary
+depths, but have at most one child.  In {\em closed} nesting, child
+transactions are rolled back when the parent
+aborts~\cite{nestedTransactionBook}.  With {\em open} nesting, child
+transactions are not rolled back if the parent aborts.  
 
-\eab{add Argus and Camelot; also we are getting pretty technical here -- maybe move some of this later???}
+Closed nesting aids in intra-transaction concurrency and fault
+tolerance.  Increased fault tolerance is achieved by isolating each
+child transaction from the others, and automatically retrying failed
+transactions.  This technique is similar to the one used by MapReduce,
+which isolates subtasks by restricting the data that each unit of work
+may read and write, and which provides atomicity by ensuring
+exactly-once execution of each unit of work~\cite{mapReduce}.
 
-\rcs{ I think Argus makes use of shadow copies for durability, and for
-in-memory transactions.  A tree of shadow copies exists, and is handled as
-follows (I think): All transaction locks are commit duration, per
-object.  There are read locks and write locks, and it uses strict 2PL.
-Each transaction is a tree of ``subactions'' that can get R/W locks
-according to the 2PL rules.  Two subactions in the same action cannot
-get a write lock on the same object because each one gets its own copy
-of the object to write to.  If a subaction or transaction abort their
-local copy is simply discarded.  At commit, the local copy replaces
-the global copy.}
+\yads nested top actions, and support for custom lock managers also
+allow for inter-transcation concurrency.  In some respect, nested top
+actions implement a form of open, linear nesting.  Actions performed
+inside the nested top are not rolled back because a parent aborts.
+However, the logical undo gives the programmer the option to
+compensate for the nested top action in aborted transactions.  We are
+interested in determining whether nested transactions
+could be implemented as a layer on top of \yad.
 
-\rcs{Still need to mention CORBA / EJB + ORDBMS here. Also, missing a high-level point:  Most research systems were backed with
-non-concurrent transactional storage; current commercial systems (eg:
-EJB) tend to make use of object relational mappings.  Bill's stuff would be a good fit for that section, along with work describing how to let multiple threads / machines handle locking in an easy to reason about fashion.}
+\subsubsection{Distributed Programming Models}
+
+%\rcs{ I think Argus makes use of shadow copies for durability, and for
+%in-memory transactions~\cite{argusImplementation}.  A tree of shadow
+%copies exists, and is handled as follows (I think): All transaction
+%locks are commit duration, per object.  There are read locks and write
+%locks, and it uses strict 2PL.  Each transaction is a tree of
+%``subactions'' that can get R/W locks according to the 2PL rules.  Two
+%subactions in the same action cannot get a write lock on the same
+%object because each one gets its own copy of the object to write to.
+%If a subaction or transaction abort their local copy is simply
+%discarded.  At commit, the local copy replaces the global copy.}
 
 
 %System R was one of the first relational database implementations, and
@@ -1550,43 +1576,171 @@ EJB) tend to make use of object relational mappings.  Bill's stuff would be a go
 %the storage subsystem, which remains the architecture for modern
 %databases.
 
-Camelot was a distributed transaction processing system.  It provides
-two physical logging modes; redo only (no-Steal, no-Force), and
-redo-undo (Steal, no-Force), but does not contain provisions for
-logical logging or compensations.  Therefore, commit duration locks
-are required to protect data structures from concurrent
-transactions, 
-\rcs{This sentence is problematic for two reasons: (1)
-Camelot allowed hybrid atomicity and other schemes in addition to 2PL.
-(2) According to \cite{camelot}, pg 433 ``Logical locks, implemented
-within servers, and support for hybrid atomicity provide the
-possibilty of high concurrency.''  I think this is a mistake in their
-paper; logical locking isn't very helpful when ``This [Camelot's
-Nested Transaction] model states that if one transaction modifies a
-region, the region cannot be modified by another transacion unless
-that transaction is an active descendant of original transaction or
-the original transaction compeletes... If comodification does occur,
-no guarantees concerning data integrity are given'' (Camelot + Avalon
-book, pg 117)'' I think the same mistake is repeated in the RVM
-paper, when they discuss multi-threaded code.} 
-limiting the applicability of Camelot to high-concurrency applications
-or its scalability to multi-processor systems.
+Transactions provide a number of properties that are attractive to
+distributed systems; they provide isolation between nodes, protecting
+live systems when other nodes crash.  Atomicity and durability
+simplify recovery after a node crashes.  Finally, nested transactions
+allow for concurrency within a single transaction, allow partial
+rollback, and isolate working subtransactions from those that must be
+rolled back and retried due to node failure.
 
-However, Camelot introduced a nested transaction model that allows
-concurrency within a single transaction.  In Camelot, nested
-transactions can run in parallel and make use of locks acquired by the
-transaction that spawned them.  Parent transactions are suspended
-until children transactions complete, and children are protected from
-each other using locks, or other similar methods.  We beleive that
-\yads support for logical undo would allow it to support such
-transactions with more concurrency than Camelot allowed.  Camelot is
-an early example of a C library that provides transactional semantics
-over custom data types.  Also, it introduced a number of features,
-such as distributed logging and commit semantics, and transactional
-RPC that we plan to integrate into \yad as we add support for
-multi-node transactions.  Avalon, which was built on top of Camelot is
-a persistent version of C++ that introduced the idea of persistent
-programming language types.
+Argus is a language for reliable distributed applications.  An Argus
+program consists of guardians, which are essentially objects that
+encapsulate persistent and atomic data.  Persistent data allows
+concurrent operations to be implemented, while accesses to atomic data
+are serializable~\cite{argus}.  Typically, the data structure that is being
+implemented is stored in persistent storage, but is agumented with
+extra information in atomic storage.  This extra data tracks the
+status of each item stored in the structure.  Conceptually, in a hash
+table, atomic storage would contain the values ``Not present'',
+``Committed'' or ``Aborted; Old Value = x'' for each key in (or
+missing from) the hash.  Before accessing the hash, the operation
+implementation would consult the appropriate piece of atomic data, and
+update the persitent storage if necessary.  Because the atomic data is
+protected by a lock manager, attempts to update the hashtable are serializable.
+Therefore, clever use of atomic storage can be used to provide logical locking~\rcs{Double check this}
+
+Note that implementation of efficient data structures using this
+method forces each operation implementation to track a great deal of
+extra state (they suggest implementing a log structure to support a
+concurrent hash table), and to set policies regarding the granularity
+with which the data structures should be written to
+disk~\cite{argusImplementation}.  \yad avoids these problems by
+forcing operation implementors to provide logical undos, and by
+leaving lock managment to higher-level code.  We argue that logical
+undos are easily provided in most circumstances, while higher-level
+lock management decouples data structure implementations from
+application concurrency models.
+
+%The Argus designers assumed that only a few core concurrent
+%transactional data structures would be implemented, and that higher
+%level code would make use of these structures.  Also, Argus assumed
+%that transactions should be serializable.  
+
+Camelot, a successor to Argus made a number of important
+contributions, both in system design, and in algorithms for
+distributed transactions~\cite{camelot}.  It left locking to application level code,
+and updated data in place.  (Argus used shadow copies to provide
+atomic updates.)  Camelot provided two logging modes: Redo only
+(no-Steal,no-Force) and Undo/Redo (Steal, no-Force).  It was
+implemented using Mach, and provided recoverable virtual memory.  It
+was decoupled from Avalon, which used Camelot to provide a
+higher-level (C++) programming model.  Camelot provided a lower-level
+C interface that allowed other programming models to be
+implemented.  It provided a limited form of closed nested transactions
+where parents are suspended while children are active.  Camelot also
+provided mechanisms for distributed transactions and transactional
+RPC.  However, concurrent operations in Camelot were similar to those
+in Argus since Camelot did not provide logical undo.  Camelot's focus
+was upon support for distributed transactions, therefore, it hardcoded
+assumptions regarding the structure of nested transactions, consensus
+algorithms, communication mechanisms, and so on.  In contrast, \yads
+goal is to efficiently support a wide range of such mechanisms.
+
+More recent transactional programming schemes allow for more multiple
+transaction implementations to cooperate as part of the same
+distributed transaction.  For example, X/Open DTP provides a standard
+networking protocol that allows multiple transactional systems to be
+controlled by a single transaction manager~\cite{something}.
+Enterprise Java Beans is a standard for developing transactional
+middleware that may make use of heterogenous storage.  Its
+transactions may not be nested~\cite{something}.  This simplifies its
+semantics somewhat, and leads to many, short transactions, which
+improves concurrency.  However, it is somewhat rigid, and may lead to
+situations where committed transactions have to be manually rolled
+back by other transactions after the fact~\cite{ejbCritique}.  Open
+Multithreaded Transactions provide a model for nested transactions
+that incorporates exception handling, and allows parents to execute
+concurrently with their children.
+
+%Argus transactions use shadow copies to provide atomic updates.
+%Instead of making use of logical undo, concurrent guardians make use
+%of two types of persistant state.  One type behaves transactionally,
+%and will be rolled back at abort, while the other type can be
+%atomically written to disk, but is not automatically modified at
+%commit or abort.  The transactional portions of the state can be
+%provided by built-in atomic types, or by another guardian.
+
+%A transactional Argus hashtable could consist of a simple,
+%non-transactional, hashtable that is written back to disk atomically
+%each time it is updated and a set of transactional flags that are
+%automatically updated each time a transaction accesses the table,
+%commits or aborts.  During a lookup, the hashtable would consult these
+%flags to determine the status of the key in question.  To minimize the
+%amount of data written to disk, one could use a log to emulate
+%explicit per-key flags, and partition the hashtable and logfile into
+%multiple atomically updated regions~\cite{argusImplementation}.
+
+%While this approach does allow the layout and implementation of the
+%data structure to be completely independent from the mechanisms used
+%for transactional updates, it forces the operation implementor to
+%provide a module that explicitly tracks the relationship between
+%object states and transactions.  Some of this information is required
+%for locking, making it easier to provide a logical lock mananger.
+%However, taking that approach couples the data structure
+%implementation to the application's concurrency model.  
+
+%The Argus also work provides high-level models for atomicity,
+%reconfiguration, and other issues faced by developers of transactional
+%systems.  These models do not depend on the low-level Argus
+%implementation, and may be useful to applications built on top of
+%\yad.~\rcs{citations here?}  
+
+%Camelot is a distributed transaction processing system.  It provides
+%two physical logging modes; redo only (no-Steal, no-Force), and
+%redo-undo (Steal, no-Force), but does not contain provisions for
+%logical logging or compensations.  It supports nested transactions,
+%which makes it possible to implement concurrent data structures in a
+%style similar to concurrent guardians in Argus.
+
+%Therefore, commit duration locks are required to protect data
+%structures from concurrent transactions, \rcs{This sentence is
+%problematic for two reasons: (1) Camelot allowed hybrid atomicity and
+%other schemes in addition to 2PL.  (2) According to \cite{camelot}, pg
+%433 ``Logical locks, implemented within servers, and support for
+%hybrid atomicity provide the possibilty of high concurrency.''  I
+%think this is a mistake in their paper; logical locking isn't very
+%helpful when ``This [Camelot's Nested Transaction] model states that
+%if one transaction modifies a region, the region cannot be modified by
+%another transacion unless that transaction is an active descendant of
+%original transaction or the original transaction compeletes... If
+%comodification does occur, no guarantees concerning data integrity are
+%given'' (Camelot + Avalon book, pg 117)'' I think the same mistake is
+%repeated in the RVM paper, when they discuss multi-threaded code.
+%Also, see the discussion on Argus; you could do concurrency that way
+%on Camelot...}  limiting the applicability of Camelot to
+%high-concurrency applications or its scalability to multi-processor
+%systems.
+
+%Camelot makes use of a nested transaction model that allows
+%concurrency within a single transaction.  In Camelot, nested
+%transactions can run in parallel and make use of locks acquired by the
+%transaction that spawned them.  Parent transactions are suspended
+%until children transactions complete, and children are protected from
+%each other using locks, or other similar methods.  We beleive that
+%\yads support for logical undo would allow it to support such
+%transactions with more concurrency than Camelot allowed.  Camelot is
+%an early example of a C library that provides transactional semantics
+%over custom data types.  Also, it introduced a number of features,
+%such as distributed logging and commit semantics, and transactional
+%RPC that we plan to integrate into \yad as we add support for
+%multi-node transactions.  Avalon, which was built on top of Camelot is
+%a persistent version of C++ that introduced the idea of persistent
+%programming language types.
+
+%Both Argus and Camelot make use of {\em closed} nested transactions.
+%In this context, ``closed'' means that subtransactions must abort if
+%their parents abort.  In contrast, \yads nested transactions provide a
+%limited form of {\em open} nested transactions, in that they are able
+%to commit even if their parents abort.  Currently, \yad limits each
+%transaction (or nested top action) to have a single child (although
+%these may be nested to arbitrary depths).  This limitation is sometimes
+%called {\em linear nesting}.  Schemes to naturally integrate linear
+%and open nesting of transactions with modern languages such as Java
+%have recently been been proposed~\cite{nestedTransactionPoster}.
+
+%\rcs{More information on nested transcations is available in this book
+%(which I haven't looked at yet)\cite{nestedTransactionBook}.}
 
 \subsection{Berkeley DB}
 
@@ -1650,8 +1804,8 @@ incorporate into \yad.
 %goals similar to our own is in Section~\ref{sec:otherDBs}.
 
 Different large object storage systems provide different API's.
-Some allow arbitrary insertion and deletion of bytes~\cite{esm} or
-pages~\cite{sqlserver} within the object, while typical file systems
+Some allow arbitrary insertion and deletion of bytes~\cite{esm}
+within the object, while typical file systems
 provide append-only storage allocation~\cite{ffs}.
 Record-oriented file systems are an older, but still-used~\cite{gfs}
 alternative. Each of these API's addresses 
@@ -1664,11 +1818,22 @@ objects exist as well. Relational databases allow users to specify the order
 in which tuples will be laid out, and often leave portions of pages
 unallocated to reduce fragmentation as new records are allocated.
 
-\rcs{The new allocator is written + working, so this should be reworded. We have one that is based on hoard; support for other possibilities would be nice.}
-Memory allocation routines also address this problem.  For example, the Hoard memory
-allocator is a highly concurrent version of malloc that
-makes use of thread context to allocate memory in a way that favors
-cache locality~\cite{hoard}. 
+Memory allocation routines address this problem, although with limited
+information.  For example, the Hoard memory allocator is a highly
+concurrent version of malloc that makes use of thread context to
+allocate memory in a way that favors cache locality~\cite{hoard}.
+%Essentially, each thread allocates memory from its own pool of
+%freespace, and consecutive memory allocations are a good predictor of
+%clustered access patterns and deallocations.  
+McRT-malloc is non-blocking and extends the ideas
+presented in Hoard for software transactional memory~\cite{mcrt}.
+
+Allocation of records that must fit within pages and be persisted to
+disk raises concerns regarding locality and page layouts.  Depending
+on the application, data may be arranged based upon
+hints~\cite{cricket}, pointer values and write order~\cite{starburst},
+data type~\cite{orion}, or regoranization based on access
+patterns~\cite{storageReorganization}.
 
 %Other work makes use of the caller's stack to infer
 %information about memory management.~\cite{xxx} \rcs{Eric, do you have
@@ -1683,6 +1848,12 @@ the transaction log.  Assuming log fragmentation is kept to a
 minimum, this is particularly attractive on a single disk system.  We
 plan to use ideas from LFS~\cite{lfs} and POSTGRES~\cite{postgres}
 to implement this.
+
+\yads record allocation currently implements a policy that is similar
+to Hoard and McRT, although it has not been as heavily optmized for
+CPU utilization.  The record allocator obtains pages from a region
+allocator that provides contiguous regions of space to other
+allocators.
 
 Starburst~\cite{starburst} provides a flexible approach to index
 management and database trigger support, as well as hints for small
