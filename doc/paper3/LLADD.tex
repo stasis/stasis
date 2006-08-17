@@ -210,7 +210,7 @@ database and file system technologies, including
 persistent objects, graph- or XML-based applications, and recoverable
 virtual memory~\cite{lrvm}.  
 
-For example, on an object serialization workload, we provide up to 
+For example, on an object persistence workload, we provide up to 
 a 4x speedup over an in-process MySQL implementation and a 3x speedup over Berkeley DB, while 
 cutting memory usage in half (Section~\ref{sec:oasys}). 
 We implemented this extension in 150 lines of C, including comments and boilerplate.  We did not have this type of optimization
@@ -531,10 +531,11 @@ the fact that concurrent transactions prevent abort from simply
 rolling back the physical updates that a transaction made.
 Fortunately, it is straightforward to reduce this second,
 transaction-specific, problem to the familiar problem of writing
-multi-threaded software.  \diff{In this paper, ``concurrent transactions''
-are transactions that perform interleaved operations.  They do not
-necessarily exploit the parallelism provided by multiprocessor
-systems.}
+multi-threaded software.  \diff{In this paper, ``concurrent
+transactions'' are transactions that perform interleaved operations.
+They do not necessarily exploit the parallelism provided by
+multiprocessor systems.  We are in the process of removing concurrency
+bottlenecks in \yads implementation.}
 
 To understand the problems that arise with concurrent transactions,
 consider what would happen if one transaction, A, rearranged the
@@ -555,32 +556,28 @@ increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
 cascading aborts}).  %Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
 
-Unfortunately, the long locks held by total isolation cause
-bottlenecks when applied to key data structures.  Nested top actions
-are essentially mini-transactions that can commit even if their
-containing transaction aborts; thus follow-on transactions can use the
-data structure without fear of cascading aborts.
+Nested top actions avoid this problem.  The key idea is to distinguish
+between the {\em logical operations} of a data structure, such as
+adding an item to a set, and the {\em physical operations} such as
+splitting tree nodes or storing the item on a page.  We record such
+operations using {\em logical logging} and {\em physical logging},
+respectively.  The physical operations do not need to be undone if the
+containing transaction aborts; instead of removing the data item from
+the page, and merging any nodes that the insertion split, we simply
+remove the item from the set as application code would; we call the
+data structure's {\em remove} method.  That way, we can undo the
+insertion even if the nodes that were split no longer exist, or if the
+data that was inserted has been relocated to a different page.  This
+lets other transactions manipulate the data structure before the first
+transaction commits.
 
-The key idea is to distinguish between the {\em logical operations} of a
-data structure, such as inserting a key, and the {\em physical operations}
-such as splitting tree nodes or rebalancing a tree. The physical
-operations do not need to be undone if the containing logical operation
-(e.g. {\em insert}) aborts.  \diff{We record such operations using {\em logical 
-logging} and {\em physical logging}, respectively.}
-
-\diff{Each nested top action performs a single logical operation by
-applying a number of physical operations to the page file.  Physical
-REDO and UNDO log entries are stored in the log so that recovery can
-repair any temporary inconsistency that the nested top action
-introduces.  Once the nested top action has completed, a logical UNDO
-entry is recorded, and a CLR is used to tell recovery to ignore the
-physical UNDO entries.  This logical UNDO can then be safely applied
-even after other transactions manipulate the data structure.  If the
-nested transaction does not complete, physical UNDO can safely roll
-back the changes.  Therefore, nested transactions can always be rolled
-back as long as the physical updates are protected from other
-transactions and complete nested transactions preserve the integrity
-of the structures they manipulate.}
+\rcs{Cut this paragraph?  If we do, then we won't explain how nested top actions are implemented.} Each nested top action performs a single logical operation by applying
+a number of physical operations to the page file.  Physical REDO and
+UNDO log entries are stored in the log so that recovery can repair any
+temporary inconsistency that the nested top action introduces.  Once
+the nested top action has completed, a logical UNDO entry is recorded,
+and a CLR is used to tell recovery and abort to ignore the physical
+UNDO entries.
 
 This leads to a mechanical approach that converts non-reentrant
 operations that do not support concurrent transactions into reentrant,
@@ -1141,15 +1138,15 @@ throughput during the concurrency benchmark.
 \includegraphics[width=1\columnwidth]{figs/mem-pressure.pdf}
 \vspace{-.15in}
 \caption{\sf \label{fig:OASYS}
-The effect of \yad object serialization optimizations under low and high memory pressure.}
+The effect of \yad object persistence optimizations under low and high memory pressure.}
 \end{figure*}
 
 
 \subsection{Object persistence}
 \label{sec:oasys}
 
-Numerous schemes are used for object serialization.  Support for two
-different styles of object serialization has been implemented in
+Numerous schemes are used for object persistence.  Support for two
+different styles of object persistence has been implemented in
 \yad.  We could have just as easily implemented a persistence
 mechanism for a statically typed functional programming language, a
 dynamically typed scripting language, or a particular application,
@@ -1162,7 +1159,7 @@ Titanium, a Java variant.  It transparently loads and persists
 entire graphs of objects, but will not be discussed in further detail.
 
 The second variant was built on top of a C++ object
-serialization library, \oasys.  \oasys makes use of pluggable storage
+persistence library, \oasys.  \oasys makes use of pluggable storage
 modules that implement persistent storage, and includes plugins
 for Berkeley DB and MySQL.  
 
@@ -1297,7 +1294,7 @@ systems, which is not surprising, since it is not providing the A
 property of ACID transactions.  (Although it is applying each individual operation atomically.)
 
 In non-memory bound systems, the optimizations nearly double \yads
-performance by reducing the CPU overhead of object serialization and
+performance by reducing the CPU overhead of object serialization{\rcs different word?} and
 the number of log entries written to disk.  In the memory bound test,
 we see that update/flush indeed improves memory utilization.
 
