@@ -1418,9 +1418,6 @@ algorithm's outperforms the naive traversal.
 \section{Related Work}
 \label{related-work}
 
-
-\eab{moved text here from section 2 to make it smaller and less technical}
-
 \subsection{Database Variations} 
 \label{sec:otherDBs}
 
@@ -1428,14 +1425,14 @@ This section discusses transaction systems with goals
 similar to ours.  Although these projects were successful in many
 respects, they fundamentally aimed to extend the range of their
 abstract data model, which in the end still has limited overall range.
-In contrast, \yad follows a bottom-up approach that enables can
-implement (in theory) any of these abstract models and their extensions.
+In contrast, \yad follows a bottom-up approach that can support (in 
+theory) any of these abstract models and their extensions.
 
 \subsubsection{Extensible databases}
 
-Genesis~\cite{genesis}, an early database toolkit was explicitly
+Genesis is an early database toolkit that was explicitly
 structured in terms of the physical data models and conceptual 
-mappings described above.
+mappings described above~\cite{genesis}.
 It is designed to allow database implementors to easily swap out
 implementations of the various components defined by its framework.
 Like subsequent systems (including \yad), it allows its users to
@@ -1461,9 +1458,8 @@ a database toolkit, new types are defined when the database server is
 compiled.  In today's object-relational database systems, new types
 are defined at runtime.  Each approach has its advantages.  However,
 both types of systems aim to extend a high-level data model with new
-abstract data types, and are thus limited in the range of new
-applications they support, which remain essentially queries over sets.
-
+abstract data types.  This is of limited use to applications that are 
+not naturally structured in terms of queries over sets.
 
 \subsubsection{Modular databases}
 
@@ -1522,17 +1518,13 @@ Special-purpose languages for transaction processing allow programmers
 to express transactional operations naturally.  However, programs
 written in these languages are generally limited to a particular
 concurrency model and transactional storage system.  Therefore, these
-systems are complementary to \yad; they provide a specialized
-high-level interface that hard-codes a particular programming model
-and specialized storage infrastructure.  In contrast, \yad is a
-general-purpose storage infrastructure that avoids hardcoding
-programming model assumptions.  \yad provides a substrate that makes
+systems are complementary to our work; \yad provides a substrate that makes
 it easier to implement transactional programming models.
 
 \subsubsection{Nested Transactions}
 
 {\em Nested transactions} form trees of transactions, where children
-were spawned by their parents.  They can be used to increase
+are spawned by their parents.  They can be used to increase
 concurrency, provide partial rollback, and improve fault tolerance.
 {\em Linear} nesting occurs when transactions are nested to arbitrary
 depths, but have at most one child.  In {\em closed} nesting, child
@@ -1543,33 +1535,24 @@ transactions are not rolled back if the parent aborts.
 Closed nesting aids in intra-transaction concurrency and fault
 tolerance.  Increased fault tolerance is achieved by isolating each
 child transaction from the others, and automatically retrying failed
-transactions.  This technique is similar to the one used by MapReduce,
-which isolates subtasks by restricting the data that each unit of work
-may read and write, and which provides atomicity by ensuring
-exactly-once execution of each unit of work~\cite{mapReduce}.
+transactions.  This technique is similar to the one used by MapReduce
+to provide exactly-once execution on very large computing 
+clusters~\cite{mapReduce}.
 
-\yads nested top actions, and support for custom lock managers also
+%which isolates subtasks by restricting the data that each unit of work
+%may read and write, and which provides atomicity by ensuring
+%exactly-once execution of each unit of work~\cite{mapReduce}.
+
+\yads nested top actions, and support for custom lock managers
 allow for inter-transaction concurrency.  In some respect, nested top
 actions implement a form of open, linear nesting.  Actions performed
-inside the nested top are not rolled back when the parent aborts.
+inside the nested top action are not rolled back when the parent aborts.
 However, the logical undo gives the programmer the option to
 compensate for the nested top action in aborted transactions.  We expect
 that nested transactions
 could be implemented as a layer on top of \yad.
 
 \subsubsection{Distributed Programming Models}
-
-%\rcs{ I think Argus makes use of shadow copies for durability, and for
-%in-memory transactions~\cite{argusImplementation}.  A tree of shadow
-%copies exists, and is handled as follows (I think): All transaction
-%locks are commit duration, per object.  There are read locks and write
-%locks, and it uses strict 2PL.  Each transaction is a tree of
-%``subactions'' that can get R/W locks according to the 2PL rules.  Two
-%subactions in the same action cannot get a write lock on the same
-%object because each one gets its own copy of the object to write to.
-%If a subaction or transaction abort their local copy is simply
-%discarded.  At commit, the local copy replaces the global copy.}
-
 
 %System R was one of the first relational database implementations, and
 %defined a clean separation between its query processor and its storage
@@ -1587,161 +1570,75 @@ rolled back and retried due to node failure.
 
 Argus is a language for reliable distributed applications.  An Argus
 program consists of guardians, which are essentially objects that
-encapsulate persistent and atomic data.  Persistent data allows
-concurrent operations to be implemented, while accesses to atomic data
-are serializable~\cite{argus}.  Typically, the data structure that is being
-implemented is stored in persistent storage, but is agumented with
+encapsulate persistent and atomic data.  Accesses to atomic data are 
+serializable; persistent data is not protected by the lock manager, 
+and is used to implement concurrent data structures~\cite{argus}.  
+Typically, the data structure is stored in persistent storage, but is agumented with
 extra information in atomic storage.  This extra data tracks the
-status of each item stored in the structure.  Conceptually, in a hash
-table, atomic storage would contain the values ``Not present'',
+status of each item stored in the structure.  Conceptually, atomic 
+storage used by a hashtable would contain the values ``Not present'',
 ``Committed'' or ``Aborted; Old Value = x'' for each key in (or
 missing from) the hash.  Before accessing the hash, the operation
 implementation would consult the appropriate piece of atomic data, and
 update the persitent storage if necessary.  Because the atomic data is
 protected by a lock manager, attempts to update the hashtable are serializable.
-Therefore, clever use of atomic storage can be used to provide logical locking~\rcs{Double check this}
+Therefore, clever use of atomic storage can be used to provide logical locking.
 
-Note that implementation of efficient data structures using this
-method forces each operation implementation to track a great deal of
-extra state (they suggest implementing a log structure to support a
-concurrent hash table), and to set policies regarding the granularity
-with which the data structures should be written to
-disk~\cite{argusImplementation}.  \yad avoids these problems by
-forcing operation implementors to provide logical undos, and by
-leaving lock managment to higher-level code.  We argue that logical
-undos are easily provided in most circumstances, while higher-level
-lock management decouples data structure implementations from
-application concurrency models.
+Note that operations that implement concurrent data structures using
+this method must track a great deal of extra state.  Efficiently
+tracking such state is not straightforward.  For example, the Argus
+hashtable implementation made use of its own log structure to
+efficiently track the status of each key that had been touched by an
+active transaction.  Also, the hashtable is responsible for setting
+policies regarding when, and with what granularity it would be written
+back to disk~\cite{argusImplementation}.  \yad operations avoid this
+complexity by providing logical undos, and by leaving lock managment
+to higher-level code.  This also separates write-back and concurrency
+control policies from data structure implementations.
 
 %The Argus designers assumed that only a few core concurrent
 %transactional data structures would be implemented, and that higher
 %level code would make use of these structures.  Also, Argus assumed
 %that transactions should be serializable.  
 
-Camelot, a successor to Argus made a number of important
+Camelot made a number of important
 contributions, both in system design, and in algorithms for
-distributed transactions~\cite{camelot}.  It left locking to application level code,
-and updated data in place.  (Argus used shadow copies to provide
-atomic updates.)  Camelot provided two logging modes: Redo only
-(no-Steal,no-Force) and Undo/Redo (Steal, no-Force).  It was
-implemented using Mach, and provided recoverable virtual memory.  It
-was decoupled from Avalon, which used Camelot to provide a
-higher-level (C++) programming model.  Camelot provided a lower-level
-C interface that allowed other programming models to be
-implemented.  It provided a limited form of closed nested transactions
+distributed transactions~\cite{camelot}.  It leaves locking to application level code,
+and updates data in place.  (Argus uses shadow copies to provide
+atomic updates.)  Camelot provides two logging modes: Redo only
+(no-Steal,no-Force) and Undo/Redo (Steal, no-Force).  It uses 
+facilities of Mach to provide recoverable virtual memory.  It
+is decoupled from Avalon, which uses Camelot to provide a
+higher-level (C++) programming model.  Camelot provides a lower-level
+C interface that allows other programming models to be
+implemented.  It provides a limited form of closed nested transactions
 where parents are suspended while children are active.  Camelot also
-provided mechanisms for distributed transactions and transactional
-RPC.  However, concurrent operations in Camelot were similar to those
-in Argus since Camelot did not provide logical undo.  Camelot's focus
-was upon support for distributed transactions, therefore, it hardcoded
+provides mechanisms for distributed transactions and transactional
+RPC.  While Camelot does allow appliactions to provide their own lock 
+managers, implementation strategies for concurrent operations 
+in Camelot are similar to those
+in Argus since Camelot does not provide logical undo.  Camelot focuses
+on distributed transactions, and hardcodes
 assumptions regarding the structure of nested transactions, consensus
 algorithms, communication mechanisms, and so on.  In contrast, \yads
-goal is to efficiently support a wide range of such mechanisms.
+goal is to efficiently support a wide range of such mechanisms without  
+providing any built in support for distributed transactions.
 
-More recent transactional programming schemes allow for more multiple
+More recent transactional programming schemes allow for multiple
 transaction implementations to cooperate as part of the same
 distributed transaction.  For example, X/Open DTP provides a standard
 networking protocol that allows multiple transactional systems to be
 controlled by a single transaction manager~\cite{something}.
 Enterprise Java Beans is a standard for developing transactional
-middleware that may make use of heterogenous storage.  Its
+middleware on top of heterogenous storage.  Its
 transactions may not be nested~\cite{something}.  This simplifies its
-semantics somewhat, and leads to many, short transactions, which
-improves concurrency.  However, it is somewhat rigid, and may lead to
+semantics somewhat, and leads to many, short transactions, 
+improving concurrency.  However, flat transactions are somewhat rigid, and lead to
 situations where committed transactions have to be manually rolled
-back by other transactions after the fact~\cite{ejbCritique}.  Open
-Multithreaded Transactions provide a model for nested transactions
-that incorporates exception handling, and allows parents to execute
-concurrently with their children.
-
-%Argus transactions use shadow copies to provide atomic updates.
-%Instead of making use of logical undo, concurrent guardians make use
-%of two types of persistant state.  One type behaves transactionally,
-%and will be rolled back at abort, while the other type can be
-%atomically written to disk, but is not automatically modified at
-%commit or abort.  The transactional portions of the state can be
-%provided by built-in atomic types, or by another guardian.
-
-%A transactional Argus hashtable could consist of a simple,
-%non-transactional, hashtable that is written back to disk atomically
-%each time it is updated and a set of transactional flags that are
-%automatically updated each time a transaction accesses the table,
-%commits or aborts.  During a lookup, the hashtable would consult these
-%flags to determine the status of the key in question.  To minimize the
-%amount of data written to disk, one could use a log to emulate
-%explicit per-key flags, and partition the hashtable and logfile into
-%multiple atomically updated regions~\cite{argusImplementation}.
-
-%While this approach does allow the layout and implementation of the
-%data structure to be completely independent from the mechanisms used
-%for transactional updates, it forces the operation implementor to
-%provide a module that explicitly tracks the relationship between
-%object states and transactions.  Some of this information is required
-%for locking, making it easier to provide a logical lock mananger.
-%However, taking that approach couples the data structure
-%implementation to the application's concurrency model.  
-
-%The Argus also work provides high-level models for atomicity,
-%reconfiguration, and other issues faced by developers of transactional
-%systems.  These models do not depend on the low-level Argus
-%implementation, and may be useful to applications built on top of
-%\yad.~\rcs{citations here?}  
-
-%Camelot is a distributed transaction processing system.  It provides
-%two physical logging modes; redo only (no-Steal, no-Force), and
-%redo-undo (Steal, no-Force), but does not contain provisions for
-%logical logging or compensations.  It supports nested transactions,
-%which makes it possible to implement concurrent data structures in a
-%style similar to concurrent guardians in Argus.
-
-%Therefore, commit duration locks are required to protect data
-%structures from concurrent transactions, \rcs{This sentence is
-%problematic for two reasons: (1) Camelot allowed hybrid atomicity and
-%other schemes in addition to 2PL.  (2) According to \cite{camelot}, pg
-%433 ``Logical locks, implemented within servers, and support for
-%hybrid atomicity provide the possibilty of high concurrency.''  I
-%think this is a mistake in their paper; logical locking isn't very
-%helpful when ``This [Camelot's Nested Transaction] model states that
-%if one transaction modifies a region, the region cannot be modified by
-%another transacion unless that transaction is an active descendant of
-%original transaction or the original transaction compeletes... If
-%comodification does occur, no guarantees concerning data integrity are
-%given'' (Camelot + Avalon book, pg 117)'' I think the same mistake is
-%repeated in the RVM paper, when they discuss multi-threaded code.
-%Also, see the discussion on Argus; you could do concurrency that way
-%on Camelot...}  limiting the applicability of Camelot to
-%high-concurrency applications or its scalability to multi-processor
-%systems.
-
-%Camelot makes use of a nested transaction model that allows
-%concurrency within a single transaction.  In Camelot, nested
-%transactions can run in parallel and make use of locks acquired by the
-%transaction that spawned them.  Parent transactions are suspended
-%until children transactions complete, and children are protected from
-%each other using locks, or other similar methods.  We beleive that
-%\yads support for logical undo would allow it to support such
-%transactions with more concurrency than Camelot allowed.  Camelot is
-%an early example of a C library that provides transactional semantics
-%over custom data types.  Also, it introduced a number of features,
-%such as distributed logging and commit semantics, and transactional
-%RPC that we plan to integrate into \yad as we add support for
-%multi-node transactions.  Avalon, which was built on top of Camelot is
-%a persistent version of C++ that introduced the idea of persistent
-%programming language types.
-
-%Both Argus and Camelot make use of {\em closed} nested transactions.
-%In this context, ``closed'' means that subtransactions must abort if
-%their parents abort.  In contrast, \yads nested transactions provide a
-%limited form of {\em open} nested transactions, in that they are able
-%to commit even if their parents abort.  Currently, \yad limits each
-%transaction (or nested top action) to have a single child (although
-%these may be nested to arbitrary depths).  This limitation is sometimes
-%called {\em linear nesting}.  Schemes to naturally integrate linear
-%and open nesting of transactions with modern languages such as Java
-%have recently been been proposed~\cite{nestedTransactionPoster}.
-
-%\rcs{More information on nested transactions is available in this book
-%(which I haven't looked at yet)\cite{nestedTransactionBook}.}
+back by other transactions after the fact~\cite{ejbCritique}.  The Open
+Multithreaded Transactions model is based on nested transactions,
+incorporates exception handling, and allows parents to execute
+concurrently with their children~\cite{omtt}.
 
 \subsection{Berkeley DB}
 
