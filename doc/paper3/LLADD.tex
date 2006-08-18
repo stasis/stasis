@@ -70,11 +70,11 @@ applications to interact via SQL and to forfeit control over data
 layout and access mechanisms.  We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
 
 \yad is a storage framework that incorporates ideas from traditional
-write-ahead-logging storage algorithms and file systems.
+write-ahead logging algorithms and file systems.
 It provides applications with flexible control over data structures, data layout, performance and robustness properties.
 \yad enables the development of
 unforeseen variants on transactional storage by generalizing
-write-ahead-logging algorithms.  Our partial implementation of these
+write-ahead logging algorithms.  Our partial implementation of these
 ideas already provides specialized (and cleaner) semantics to applications.
 
 We evaluate the performance of a traditional transactional storage
@@ -119,9 +119,9 @@ scientific computing.  These applications have complex transactional
 storage requirements, but do not fit well onto SQL or the monolithic
 approach of current databases.  In fact, when performance matters
 these applications often avoid DBMSs and instead implement ad-hoc data
-management solutions on top of file systems.
+management solutions on top of file systems~\cite{SNS}.
 
-An example of this mismatch is in the support for persistent objects.
+An example of this mismatch occurs with DBMS support for persistent objects.
 In a typical usage, an array of objects is made persistent by mapping
 each object to a row in a table (or sometimes multiple
 tables)~\cite{hibernate} and then issuing queries to keep the objects
@@ -176,12 +176,13 @@ abstraction upon their users will restrict system designs and
 implementations.
 }
 
-To explore this hypothesis, we present \yad, a library that provides transactional
-storage at a level of abstraction as close to the hardware as
-possible.  The library can support special-purpose, transactional
-storage models in addition to ACID database-style interfaces to
-abstract data models.  \yad incorporates techniques from databases
-(e.g. write-ahead logging) and operating systems (e.g. zero-copy techniques).
+To explore this hypothesis, we present \yad, a library that provides
+transactional storage at a level of abstraction as close to the
+hardware as possible.  The library can support special-purpose
+transactional storage models in addition to ACID database-style
+interfaces to abstract data models.  \yad incorporates techniques from both
+databases (e.g. write-ahead logging) and operating systems
+(e.g. zero-copy techniques).
 
 Our goal is to combine the flexibility and layering of low-level
 abstractions typical for systems work with the complete semantics
@@ -226,7 +227,7 @@ to discuss write-ahead logging, and describe ways in which \yad can be
 customized to implement many existing (and some new) write-ahead
 logging variants.  We present implementations of some of these variants and
 benchmark them against popular real-world systems.  We
-conclude with a survey of the technologies upon which \yad is based.
+conclude with a survey of related and future work.
 
 An (early) open-source implementation of
 the ideas presented here is available at \eab{where?}.
@@ -264,7 +265,7 @@ routines into two broad modules: {\em conceptual mappings} and {\em physical
 database models}.
 
 %A physical model would then translate a set of tuples into an
-%on-disk B-Tree, and provide support for iterators and range-based query
+%on-disk B-tree, and provide support for iterators and range-based query
 %operations.
 
 It is the responsibility of a database implementor to choose a set of
@@ -277,7 +278,7 @@ A conceptual mapping based on the relational model might translate a
 relation into a set of keyed tuples.  If the database were going to be
 used for short, write-intensive and high-concurrency transactions
 (OLTP), the physical model would probably translate sets of tuples
-into an on-disk B-Tree.  In contrast, if the database needed to
+into an on-disk B-tree.  In contrast, if the database needed to
 support long-running, read-only aggregation queries (OLAP) over high
 dimensional data, a physical model that stores the data in a sparse
 array format would be more appropriate~\cite{molap}.  Although both
@@ -302,13 +303,15 @@ use of a structured physical model and abstract conceptual mappings.
 
 \subsection{The Systems View}
 
+\eab{check quicksilver}
+
 The systems community has also worked on this mismatch for 20 years,
 which has led to many interesting projects.  Examples include
-alternative durability models such as Quicksilver or RVM, persistent
-objects systems such as Argus~\cite{argus}, and cluster hash tables [add cites].
-We expect that \yad would simplify the implementation of most if not
-all of these systems.  We look at these in more detail in
-Section~\ref{related=work}.
+alternative durability models such as Quicksilver~\cite{Quicksilver}
+or LRVM~\cite{lrvm}, persistent object~\cite{argus}, and
+cluster hash tables~\cite{DDS}.  We expect that \yad would simplify
+the implementation of most if not all of these systems.  We look at
+these in more detail in Section~\ref{related-work}.
 
 In some sense, our hypothesis is trivially true in that there exists a
 bottom-up framework called the ``operating system'' that can implement
@@ -327,7 +330,7 @@ databases~\cite{libtp}.  At its core, it provides the physical database model
 %stand-alone implementation of the storage primitives built into 
 %most relational database systems~\cite{libtp}.  
 In particular, 
-it provides fully transactional (ACID) operations over B-Trees, 
+it provides fully transactional (ACID) operations over B-trees, 
 hash tables, and other access methods.  It provides flags that 
 let its users tweak various aspects of the performance of these
 primitives, and selectively disable the features it provides.
@@ -356,7 +359,7 @@ this section lays out the functionality that \yad provides to the
 operations built on top of it.  It also explains how \yads
 operations are roughly structured as two levels of abstraction.  
 
-The transcational algorithms described in this section are not at all
+The transactional algorithms described in this section are not at all
 novel, and are in fact based on ARIES~\cite{aries}.  However, they
 provide important background.  There is a large body of literature
 explaining optimizations and implementation techniques related to this
@@ -368,7 +371,7 @@ updates to regions of the disk.  These updates do not have to deal
 with concurrency, but the portion of the page file that they read and
 write must be updated atomically, even if the system crashes.
 
-The higher-level provides operations that span multiple pages by
+The higher level provides operations that span multiple pages by
 atomically applying sets of operations to the page file and coping
 with concurrency issues.  Surprisingly, the implementations of these
 two layers are only loosely coupled.
@@ -382,8 +385,8 @@ Transactional storage algorithms work because they are able to
 update atomically portions of durable storage.  These small atomic
 updates are used to bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
-\yad) relies on the ability to atomically write entries to the log
-file.
+\yad) relies on the ability to write entries to the log
+file atomically.
 
 \subsubsection{Hard drive behavior during a crash}
 In practice, a write to a disk page is not atomic.  Two common failure
@@ -427,18 +430,16 @@ Tupdate()} to invoke the operation at runtime.
 Each operation should be deterministic, provide an inverse, and
 acquire all of its arguments from a struct that is passed via
 Tupdate() and from the page it updates.  The callbacks that are used
-during forward opertion are also used during recovery.  Therefore
+during forward operation are also used during recovery.  Therefore
 operations provide a single redo function and a single undo function.
 (There is no ``do'' function.)  This reduces the amount of
 recovery-specific code in the system.  Tupdate() writes the struct
 that is passed to it to the log before invoking the operation's
-implementation.  Recovery simply reads the struct from disk and passes
-it into the operation implementation.
+implementation.  Recovery simply reads the struct from disk and invokes the operation.
 
-In this portion of the discussion, operations are limited
-to a single page, and provide an undo function.  Operations that
-affect multiple pages or do not provide inverses will be
-discussed later.
+In this portion of the discussion, operations are limited to a single
+page, and provide an undo function.  Operations that affect multiple
+pages or do not provide inverses will be discussed later. \eab{where?}
 
 Operations are limited to a single page because their results must be
 applied to the page file atomically.  Some operations use the data
@@ -447,14 +448,15 @@ a non-atomic disk write, then such operations would fail during recovery.
 
 Note that we could implement a limited form of transactions by
 limiting each transaction to a single operation, and by forcing the
-page that each operation updates to disk in order.  If we ignore torn 
-pages and failed sectors, this does not
-require any sort of logging, but is quite inefficient in practice, as
-it forces the disk to perform a potentially random write each time the
-page file is updated.  The rest of this section describes how recovery
-can be extended, first to support multiple operations per
-transaction efficiently, and then to allow more than one transaction to modify the
-same data before committing.
+page that each operation updates to disk in order.  If we ignore torn
+pages and failed sectors, this does not require any sort of logging,
+but is quite inefficient in practice, as it forces the disk to perform
+a potentially random write each time the page file is updated.
+
+The rest of this section describes how recovery can be extended,
+first to support multiple operations per transaction efficiently, and
+then to allow more than one transaction to modify the same data before
+committing.
 
 \subsubsection{\yads Recovery Algorithm}
 
@@ -530,12 +532,13 @@ must be protected by latches (mutexes).  The second problem stems from
 the fact that concurrent transactions prevent abort from simply
 rolling back the physical updates that a transaction made.
 Fortunately, it is straightforward to reduce this second,
-transaction-specific, problem to the familiar problem of writing
-multi-threaded software.  \diff{In this paper, ``concurrent
-transactions'' are transactions that perform interleaved operations.
-They do not necessarily exploit the parallelism provided by
-multiprocessor systems.  We are in the process of removing concurrency
-bottlenecks in \yads implementation.}
+transaction-specific problem to the familiar problem of writing
+multi-threaded software.  In this paper, ``concurrent
+transactions'' are transactions that perform interleaved operations; they may also exploit parallism in multiprocessors.
+
+%They do not necessarily exploit the parallelism provided by
+%multiprocessor systems.  We are in the process of removing concurrency
+%bottlenecks in \yads implementation.}
 
 To understand the problems that arise with concurrent transactions,
 consider what would happen if one transaction, A, rearranged the
@@ -550,18 +553,20 @@ Two common solutions to this problem are {\em total isolation} and
 transaction from accessing a data structure that has been modified by
 another in-progress transaction.  An application can achieve this
 using its own concurrency control mechanisms, or by holding a lock on
-each data structure until the end of the transaction.  Releasing the
+each data structure until the end of the transaction (``strict two-phase locking'').  Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
 cascading aborts}).  %Related issues are studied in great detail in terms of optimistic concurrency control~\cite{optimisticConcurrencyControl, optimisticConcurrencyPerformance}.
 
 Nested top actions avoid this problem.  The key idea is to distinguish
-between the {\em logical operations} of a data structure, such as
-adding an item to a set, and the {\em physical operations} such as
-splitting tree nodes or storing the item on a page.  We record such
-operations using {\em logical logging} and {\em physical logging},
-respectively.  The physical operations do not need to be undone if the
+between the logical operations of a data structure, such as
+adding an item to a set, and the internal physical operations such as
+splitting tree nodes. 
+% We record such
+%operations using {\em logical logging} and {\em physical logging},
+%respectively.  
+The internal operations do not need to be undone if the
 containing transaction aborts; instead of removing the data item from
 the page, and merging any nodes that the insertion split, we simply
 remove the item from the set as application code would; we call the
@@ -601,16 +606,16 @@ If the transaction that encloses a nested top action aborts, the
 logical undo will {\em compensate} for the effects of the operation,
 leaving structural changes intact.  If a transaction should perform
 some action regardless of whether or not it commits, a nested top
-action with a ``no-op'' as its inverse is a convenient way of applying
-the change.  Nested top actions do not cause the log to be forced to disk, so
-such changes will not be durable until the log is manually forced, or
-until the updates eventually reach disk.
+action with a ``no op'' as its inverse is a convenient way of applying
+the change.  Nested top actions do not cause the log to be forced to
+disk, so such changes are not durable until the log is manually forced
+or the enclosing transaction commits.
 
-This section described how concurrent, thread-safe operations can be
-developed.  These operations provide building blocks for concurrent
-transactions, and are fairly easy to develop.  Therefore, they are
-used throughout \yads default data structure implementations.  
+Using this recipe, it is relatively easy to implement thread-safe
+concurrent transactions.  Therefore, they are used throughout \yads
+default data structure implementations.
 
+\eab{vote to remove this paragraph} 
 Interestingly, any mechanism that applies atomic physical updates to
 the page file can be used as the basis of a nested top action.
 However, concurrent operations are of little help if an application is
@@ -618,7 +623,7 @@ not able to safely combine them to create concurrent transactions.
 
 \subsection{Application-specific Locking}
 
-Note that the transactions described above only provide the
+The transactions described above only provide the
 ``Atomicity'' and ``Durability'' properties of ACID.\endnote{The ``A'' in ACID really means atomic persistence
 of data, rather than atomic in-memory updates, as the term is normally
 used in systems work~\cite{GR97}; 
@@ -626,12 +631,12 @@ the latter is covered by ``C'' and
 ``I''.}  ``Isolation'' is
 typically provided by locking, which is a higher-level but
 comaptible layer.  ``Consistency'' is less well defined but comes in
-part from low-level mutexes that avoid races, and partially from
+part from low-level mutexes that avoid races, and in part from
 higher-level constructs such as unique key requirements.  \yad
 supports this by distinguishing between {\em latches} and {\em locks}.
 Latches are provided using operating system mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
-way that avoids deadlock.  This section will describe \yads latching
+way that avoids deadlock.  This section describes \yads latching
 protocols and describes two custom lock
 managers that \yads allocation routines use to implement layout 
 policies and provide deadlock avoidance.  Applications that want
@@ -699,10 +704,9 @@ ranges of the page file to be updated by a single physical operation.
 described in this section.  However, \yad avoids hard-coding most of
 the relevant subsytems.  LSN-free pages are essentially an alternative
 protocol for atomically and durably applying updates to the page file.
-This will require the addition of a new page type (\yad currently has
-3 such types, not including a few minor variants) that will estimate 
-LSN's by communicating with the logger and recovery modules.  We plan
-to eventually support the coexistance of LSN-free pages, traditional
+This will require the addition of a new page type that calls the logger to estimate LSNs; \yad currently has
+three such types, not including a few minor variants. We plan
+to support the coexistance of LSN-free pages, traditional
 pages, and similar third-party modules within the same page file, log,
 transactions, and even logical operations.
 
@@ -798,7 +802,7 @@ In contrast, conventional blob implementations generally write the blob twice.
 
 Of course, \yad could also support other approaches to blob storage,
 such as using DMA and update in place to provide file system style
-semantics, or by using B-Tree layouts that allow arbitrary insertions
+semantics, or by using B-tree layouts that allow arbitrary insertions
 and deletions in the middle of objects~\cite{esm}.
 
 \subsection{Concurrent recoverable virtual memory}
@@ -806,7 +810,7 @@ and deletions in the middle of objects~\cite{esm}.
 Our LSN-free pages are somewhat similar to the recovery scheme used by
 RVM, recoverable virtual memory, and Camelot~\cite{camelot}. RVM
 used purely physical logging and LSN-free pages so that it
-could use mmap() to map portions of the page file into application
+could use {\tt mmap()} to map portions of the page file into application
 memory\cite{lrvm}.  However, without support for logical log entries
 and nested top actions, it would be extremely difficult to implement a
 concurrent, durable data structure using RVM or Camelot.  (The description of
@@ -1283,7 +1287,7 @@ the implementation is encouraging.
 In this experiment, Berkeley DB was configured as described above.  We
 ran MySQL using InnoDB for the table engine.  For this benchmark, it
 is the fastest engine that provides similar durability to \yad. We
-linked the benchmark's executable to the libmysqld daemon library,
+linked the benchmark's executable to the {\tt libmysqld} daemon library,
 bypassing the RPC layer. In experiments that used the RPC layer, test
 completion times were orders of magnitude slower.
 
@@ -1545,12 +1549,12 @@ may read and write, and which provides atomicity by ensuring
 exactly-once execution of each unit of work~\cite{mapReduce}.
 
 \yads nested top actions, and support for custom lock managers also
-allow for inter-transcation concurrency.  In some respect, nested top
+allow for inter-transaction concurrency.  In some respect, nested top
 actions implement a form of open, linear nesting.  Actions performed
-inside the nested top are not rolled back because a parent aborts.
+inside the nested top are not rolled back when the parent aborts.
 However, the logical undo gives the programmer the option to
-compensate for the nested top action in aborted transactions.  We are
-interested in determining whether nested transactions
+compensate for the nested top action in aborted transactions.  We expect
+that nested transactions
 could be implemented as a layer on top of \yad.
 
 \subsubsection{Distributed Programming Models}
@@ -1736,7 +1740,7 @@ concurrently with their children.
 %and open nesting of transactions with modern languages such as Java
 %have recently been been proposed~\cite{nestedTransactionPoster}.
 
-%\rcs{More information on nested transcations is available in this book
+%\rcs{More information on nested transactions is available in this book
 %(which I haven't looked at yet)\cite{nestedTransactionBook}.}
 
 \subsection{Berkeley DB}
@@ -1752,7 +1756,7 @@ databases~\cite{libtp}.  At its core, it provides the physical database model
 %stand-alone implementation of the storage primitives built into 
 %most relational database systems~\cite{libtp}.  
 In particular, 
-it provides fully transactional (ACID) operations over B-Trees, 
+it provides fully transactional (ACID) operations over B-trees, 
 hash tables, and other access methods.  It provides flags that 
 let its users tweak various aspects of the performance of these
 primitives, and selectively disable the features it provides.
@@ -1857,7 +1861,7 @@ management and database trigger support, as well as hints for small
 object layout.
 
 The Boxwood system provides a networked, fault-tolerant transactional
-B-Tree and ``Chunk Manager.''  We believe that \yad is an interesting
+B-tree and ``Chunk Manager.''  We believe that \yad is an interesting
 complement to such a system, especially given \yads focus on
 intelligence and optimizations within a single node, and Boxwood's
 focus on multiple node systems.  In particular, it would be
