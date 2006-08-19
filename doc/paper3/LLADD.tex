@@ -303,13 +303,11 @@ use of a structured physical model and abstract conceptual mappings.
 
 \subsection{The Systems View}
 
-\eab{check quicksilver}
-
 The systems community has also worked on this mismatch for 20 years,
 which has led to many interesting projects.  Examples include
-alternative durability models such as Quicksilver~\cite{Quicksilver}
-or LRVM~\cite{lrvm}, persistent object~\cite{argus}, and
-cluster hash tables~\cite{DDS}.  We expect that \yad would simplify
+alternative durability models such as QuickSilver~\cite{experienceWithQuickSilver},
+RVM~\cite{lrvm}, persistent objects~\cite{argus}, 
+cluster hash tables~\cite{DDS}, and Boxwood~\cite{boxwood}.  We expect that \yad would simplify
 the implementation of most if not all of these systems.  We look at
 these in more detail in Section~\ref{related-work}.
 
@@ -1640,6 +1638,25 @@ Multithreaded Transactions model is based on nested transactions,
 incorporates exception handling, and allows parents to execute
 concurrently with their children~\cite{omtt}.
 
+QuickSilver is a distributed transactional operating system.  It
+provided an IPC mechanism that mandated the use of transactions, and
+allowed varying degrees of isolation, both to support legacy code, and
+to implement servers that require special isolation properties.  It
+supported transactions over durable and volatile state, and included a
+number of different commit protocols for applications to choose
+between.  It provided a flexible, shared logging facility that did not
+hardcode log format, or recovery algorithms.  The shared log
+essentially provided an API that other write ahead logging systems to
+could make use of.  Underneath this interface, it supported a number
+of interesting optimizations such as distributed
+logging~\cite{recoveryInQuickSilver}.  The QuickSilver project found
+that transactions are general enough to meet the demands of most
+applications, provided that long running transactions do not exhaust
+sytem resources, and that flexible concurrency control policies are
+available to applications.  In QuickSilver, nested transactions would
+have been most useful when composing a series of program invocations
+into a larger logical unit~\cite{experienceWithQuickSilver}.
+
 \subsection{Berkeley DB}
 
 \eab{this text is also in Sec 2; need a new comparison}
@@ -1666,6 +1683,9 @@ assumptions regarding workloads and decisions regarding low level data
 representation.  Thus, although Berkeley DB could be built on top of \yad,
 Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
 
+\subsection{Transactional storage servers}
+
+\rcs{Boxwood, cluster hash tables here.}
 
 \subsection{stuff to add somewhere}
 
@@ -1763,8 +1783,8 @@ complement to such a system, especially given \yads focus on
 intelligence and optimizations within a single node, and Boxwood's
 focus on multiple node systems.  In particular, it would be
 interesting to explore extensions to the Boxwood approach that make
-use of \yads customizable semantics (Section~\ref{sec:wal}) and fully logical logging
-mechanisms (Section~\ref{sec:logging}).
+use of \yads customizable semantics (Section~\ref{sec:wal}) and fully
+logical logging mechanisms (Section~\ref{sec:logging}).
 
 
 
