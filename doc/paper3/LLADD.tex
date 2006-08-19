@@ -1360,7 +1360,7 @@ is used by RVM's log-merging operations~\cite{lrvm}.
 
 Furthermore, application-specific
 procedures that are analogous to standard relational algebra methods
-(join, project and select) could be used to efficiently transform the data
+(join, project and select) could be used to transform the data efficiently
 while it is still laid out sequentially
 in non-transactional memory.
 
@@ -1604,7 +1604,7 @@ contributions, both in system design, and in algorithms for
 distributed transactions~\cite{camelot}.  It leaves locking to application level code,
 and updates data in place.  (Argus uses shadow copies to provide
 atomic updates.)  Camelot provides two logging modes: Redo only
-(no-Steal,no-Force) and Undo/Redo (Steal, no-Force).  It uses 
+(no-Steal, no-Force) and Undo/Redo (Steal, no-Force).  It uses 
 facilities of Mach to provide recoverable virtual memory.  It
 is decoupled from Avalon, which uses Camelot to provide a
 higher-level (C++) programming model.  Camelot provides a lower-level
@@ -1612,15 +1612,15 @@ C interface that allows other programming models to be
 implemented.  It provides a limited form of closed nested transactions
 where parents are suspended while children are active.  Camelot also
 provides mechanisms for distributed transactions and transactional
-RPC.  While Camelot does allow appliactions to provide their own lock 
+RPC.  Although Camelot does allow appliactions to provide their own lock 
 managers, implementation strategies for concurrent operations 
 in Camelot are similar to those
 in Argus since Camelot does not provide logical undo.  Camelot focuses
 on distributed transactions, and hardcodes
 assumptions regarding the structure of nested transactions, consensus
 algorithms, communication mechanisms, and so on.  In contrast, \yads
-goal is to efficiently support a wide range of such mechanisms without  
-providing any built in support for distributed transactions.
+goal is to support a wide range of such mechanisms efficiently without  
+providing any built-in support for distributed transactions.
 
 More recent transactional programming schemes allow for multiple
 transaction implementations to cooperate as part of the same
