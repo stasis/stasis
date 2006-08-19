@@ -809,40 +809,39 @@ ranges of the page file to be updated by a single physical operation.
 described in this section.  However, \yad avoids hard-coding most of
 the relevant subsytems.  LSN-free pages are essentially an alternative
 protocol for atomically and durably applying updates to the page file.
-This will require the addition of a new page type that calls the logger to estimate LSNs; \yad currently has
-three such types, not including a few minor variants. We plan
-to support the coexistance of LSN-free pages, traditional
-pages, and similar third-party modules within the same page file, log,
-transactions, and even logical operations.
+This will require the addition of a new page type that calls the
+logger to estimate LSNs; \yad currently has three such types, not
+including some minor variants. We plan to support the coexistance of
+LSN-free pages, traditional pages, and similar third-party modules
+within the same page file, log, transactions, and even logical
+operations.
 
-\subsection{Blind writes}
+\subsection{Blind Updates}
+
 Recall that LSNs were introduced to prevent recovery from applying
 updates more than once, and to prevent recovery from applying old
 updates to newer versions of pages.  This was necessary because some
 operations that manipulate pages are not idempotent, or simply make
 use of state stored in the page.  
 
-For example, logical operations that are constrained to a single page
-(physiological operations) are often used in conventional transaction
-systems, but are often not idempotent, and rely upon the consistency
-of the page they modify.  The recovery scheme described in this
-section does not guarantee that such operations will be applied
-exactly once, or even that they will be presented with a consistent
-version of a page.
+As described above, \yad operations may make use of page contents to
+compute the updated value, and \yad ensures that each operation is
+applied exactly once in the right order. The recovery scheme described
+in this section does not guarantee that such operations will be
+applied exactly once, or even that they will be presented with a
+consistent version of a page during recovery.
 
-Therefore, in this section we eliminate such operations and instead
-make use of deterministic REDO operations that do not examine page
-state.  We call such operations ``blind writes.''  Note that we still
-allow code that invokes operations to examine the page file.  For concreteness,
-assume that all physical operations produce log entries that contain a
-set of byte ranges, and the pre- and post-value of each byte in the
-range.  
+Therefore, in this section we focus on operations that produce
+deterministic, idempotent redo entries that do not examine page state.
+We call such operations ``blind updates.''  Note that we still allow
+code that invokes operations to examine the page file, just not during
+recovery.  For concreteness, assume that these operations produce log
+entries that contain a set of byte ranges, and the pre- and post-value
+of each byte in the range.
 
-Recovery works the same way as it does above, except that is computes
-a lower bound of each page LSN instead of reading the LSN from the
-page.  One possible lower bound is the LSN of the most recent log
-truncation or checkpoint.  Alternatively, \yad could occasionally
-write information about the state of the buffer manager to the log. \rcs{This would be a good place for a figure}
+Recovery works the same way as before, except that it now computes
+a lower bound for the LSN of each page, rather than reading it from the page.
+One possible lower bound is the LSN of the most recent checkpoint.  Alternatively, \yad could occasionally write (page number, LSN) pairs to the log after it writes out pages.\rcs{This would be a good place for a figure}
 
 Although the mechanism used for recovery is similar, the invariants
 maintained during recovery have changed.  With conventional
@@ -850,19 +849,18 @@ transactions, if a page in the page file is internally consistent
 immediately after a crash, then the page will remain internally
 consistent throughout the recovery process.  This is not the case with
 our LSN-free scheme.  Internal page inconsistecies may be introduced
-because recovery has no way of knowing which version of a page it is
-dealing with.  Therefore, it may overwrite new portions of a page with
-older data from the log.
-Therefore, the page will contain a mixture of new and old bytes, and
-any data structures stored on the page may be inconsistent.  However,
-once the redo phase is complete, any old bytes will be overwritten by
-their most recent values, so the page will contain an internally
-consistent, up-to-date version of itself.
+because recovery has no way of knowing the exact version of a page.
+Therefore, it may overwrite new portions of a page with older data
+from the log.  Therefore, the page will contain a mixture of new and
+old bytes, and any data structures stored on the page may be
+inconsistent.  However, once the redo phase is complete, any old bytes
+will be overwritten by their most recent values, so the page will
+return to an internally consistent up-to-date state.
 (Section~\ref{sec:torn-page} explains this in more detail.)
 
-Once Redo completes, Undo can proceed normally, with one exception.
+Once redo completes, undo can proceed normally, with one exception.
 Like normal forward operation, the redo operations that it logs may
-only perform blind-writes.  Since logical undo operations are
+only perform blind updates.  Since logical undo operations are
 generally implemented by producing a series of redo log entries
 similar to those produced at runtime, we do not think this will be a
 practical problem.
@@ -875,15 +873,12 @@ simplifies some aspects of recovery.
 \subsection{Zero-copy I/O} 
 
 We originally developed LSN-free pages as an efficient method for
-transactionally storing and updating large (multi-page) objects.  If a
-large object is stored in pages that contain LSNs, then in order to
-read that large object the system must read each page individually,
-and then use the CPU to perform a byte-by-byte copy of the portions of
-the page that contain object data into a second buffer.
+transactionally storing and updating multi-page objects, called {\em
+blobs}.  If a large object is stored in pages that contain LSNs, then it is not contiguous on disk, and must be gathered together using the CPU to do an expensive copy into a second buffer.
 
 Compare this approach to modern file systems, which allow applications to
 perform a DMA copy of the data into memory, avoiding the expensive
-byte-by-byte copy, and allowing the CPU to be used for
+ copy, and allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
 network services to use DMA and network adaptor hardware to read data
 from disk, and send it over a network socket without passing it
@@ -891,32 +886,33 @@ through the CPU.  Again, this frees the CPU, allowing it to perform
 other tasks.
 
 We believe that LSN-free pages will allow reads to make use of such
-optimizations in a straightforward fashion.  Zero copy writes are more challenging, but could be
-performed by performing a DMA write to a portion of the log file.
-However, doing this complicates log truncation, and does not address
-the problem of updating the page file.  We suspect that contributions
-from the log based file system~\cite{lfs} literature can address these problems.
-In particular, we imagine storing 
-portions of the log (the portion that stores the blob) in the 
-page file, or other addressable storage.  In the worst case, 
-the blob would have to be relocated in order to defragment the 
-storage.  Assuming the blob was relocated once, this would amount 
-to a total of three, mostly sequential disk operations.  (Two 
-writes and one read.)  However, in the best case, the blob would only be written once.
-In contrast, conventional blob implementations generally write the blob twice. 
+optimizations in a straightforward fashion.  Zero-copy writes are
+ more challenging, but could be performed by performing a DMA write to
+a portion of the log file. However, doing this complicates log
+truncation, and does not address the problem of updating the page
+file.  We suspect that contributions from log-based file
+system~\cite{lfs} can address these problems. In
+particular, we imagine storing portions of the log (the portion that
+stores the blob) in the page file, or other addressable storage.  In
+the worst case, the blob would have to be relocated in order to
+defragment the storage.  Assuming the blob was relocated once, this
+would amount to a total of three, mostly sequential disk operations.
+(Two writes and one read.)  However, in the best case, the blob would
+only be written once.  In contrast, conventional blob implementations
+generally write the blob twice.
 
 Of course, \yad could also support other approaches to blob storage,
 such as using DMA and update in place to provide file system style
 semantics, or by using B-tree layouts that allow arbitrary insertions
 and deletions in the middle of objects~\cite{esm}.
 
-\subsection{Concurrent recoverable virtual memory}
+\subsection{Concurrent RVM}
 
 Our LSN-free pages are somewhat similar to the recovery scheme used by
-RVM, recoverable virtual memory, and Camelot~\cite{camelot}. RVM
+recoverable virtual memory (RVM) and Camelot~\cite{camelot}. RVM
 used purely physical logging and LSN-free pages so that it
 could use {\tt mmap()} to map portions of the page file into application
-memory\cite{lrvm}.  However, without support for logical log entries
+memory~\cite{lrvm}.  However, without support for logical log entries
 and nested top actions, it would be extremely difficult to implement a
 concurrent, durable data structure using RVM or Camelot.  (The description of
 Argus in Section~\ref{sec:transactionalProgramming} sketches the
@@ -924,35 +920,39 @@ general approach.)
 
 In contrast, LSN-free pages allow for logical
 undo, allowing for the use of nested top actions and concurrent
-transactions; the concurrent data structure needs only provide \yad
+transactions; the concurrent data structure need only provide \yad
 with an appropriate inverse each time its logical state changes.
 
-We plan to add RVM style transactional memory to \yad in a way that is
+We plan to add RVM-style transactional memory to \yad in a way that is
 compatible with fully concurrent in-memory data structures such as
 hash tables and trees.  Of course, since \yad will support coexistance
 of conventional and LSN-free pages, applications will be free to use
 the \yad data structure implementations as well.
 
 
-\subsection{Page-independent transactions}
+\subsection{Transactions without Boundaries}
 \label{sec:torn-page}
-\rcs{I don't like this section heading...}  Recovery schemes that make
-use of per-page LSNs assume that each page is written to disk
-atomically even though that is generally not the case.  Such schemes
-deal with this problem by using page formats that allow partially
-written pages to be detected.  Media recovery allows them to recover
-these pages.  
 
-The Redo phase of the LSN-free recovery algorithm actually creates a
-torn page each time it applies an old log entry to a new page.
-However, it guarantees that all such torn pages will be repaired by
-the time Redo completes.  In the process, it also repairs any pages
-that were torn by a crash.  Instead of relying upon atomic page
-updates, LSN-free recovery relies upon a weaker property.
+Recovery schemes that make use of per-page LSNs assume that each page
+is written to disk atomically even though that is generally no longer
+the case in modern disk drives.  Such schemes deal with this problem
+by using page formats that allow partially written pages to be
+detected.  Media recovery allows them to recover these pages.
 
-For LSN-free recovery to work properly after a crash, each bit in
-persistent storage must be either:
+Transactions based on blind updates do not require atomic page writes
+and thus have no meaningful boundaries for atomic updates.  We still
+use pages to simplify integration into the rest of the system, but
+need not wory about torn pages.  In fact, the redo phase of the
+LSN-free recovery algorithm actually creates a torn page each time it
+applies an old log entry to a new page.  However, it guarantees that
+all such torn pages will be repaired by the time Redo completes.  In
+the process, it also repairs any pages that were torn by a crash.
+This also implies that blind-update transactions work with disks with
+different units of atomicity.
 
+Instead of relying upon atomic page updates, LSN-free recovery relies
+on a weaker property, which is that each bit in the page file must
+be either:
 \begin{enumerate}
 \item The old version of a bit that was being overwritten during a crash.
 \item The newest version of the bit written to storage.
@@ -965,10 +965,21 @@ is updated atomically, or it fails a checksum when read, triggering an
 error.  If a sector is found to be corrupt, then media recovery can be
 used to restore the sector from the most recent backup.
 
-Figure~\ref{fig:todo} provides an example page, and a number of log
-entries that were applied to it.  Assume that the initial version of
-the page, with LSN $0$, is on disk, and the disk is in the process of
-writing out the version with LSN $2$ when the system crashes.  When
+To ensure that we correctly update all of the old bits, we simply
+start rollback from a point in time that is know to be older than the
+LSN of the page (which we don't know for sure).  For bits that are
+overwritten, we end up with the correct version, since we apply the
+updates in order.  For bits that are not overwritten, they must have
+been correct before and remain correct after recovery.  Since all
+operations performed by redo are blind updates, they can be applied
+regardless of whether the intial page was the correct version or even
+logically consistent.
+
+
+\eat{ Figure~\ref{fig:todo} provides an example page, and a number of
+log entries that were applied to it.  Assume that the initial version
+of the page, with LSN $0$, is on disk, and the disk is in the process
+of writing out the version with LSN $2$ when the system crashes.  When
 recovery reads the page from disk, it may encounter any combination of
 sectors from these two versions.
 
@@ -987,20 +998,29 @@ Of course, we do not want to constrain log entries to update entire
 sectors at once.  In order to support finer-grained logging, we simply
 repeat the above argument on the byte or bit level.  Each bit is
 either overwritten by redo, or has a known, correct, value before
-redo.  Since all operations performed by redo are blind writes, they
-can be applied regardless of whether the page is logically consistent.
+redo.
+}
 
 Since LSN-free recovery only relies upon atomic updates at the bit
-level, it decouples page boundaries from atomicity and recovery.  
-This allows operations to atomically manipulate
-(potentially non-contiguous) regions of arbitrary size by producing a
-single log entry.  If this log entry includes a logical undo function
-(rather than a physical undo), then it can serve the purpose of a
-nested top action without incurring the extra log bandwidth of storing
-physical undo information.  Such optimizations can be implemented
-using conventional transactions, but they appear to be easier to
-implement and reason about when applied to LSN-free pages.
+level, it decouples page boundaries from atomicity and recovery.  This
+allows operations to atomically manipulate (potentially
+non-contiguous) regions of arbitrary size by producing a single log
+entry.  If this log entry includes a logical undo function (rather
+than a physical undo), then it can serve the purpose of a nested top
+action without incurring the extra log bandwidth of storing physical
+undo information.  Such optimizations can be implemented using
+conventional transactions, but they appear to be easier to implement
+and reason about when applied to LSN-free pages.
 
+\subsection{Summary}
+
+In this section, we explored some of the flexibility of \yad. This
+includes user-defined operations, any combination of steal and force on
+a per-transaction basis, flexible locking options, and a new class of
+transactions based on blind updates that enables better support for
+DMA, large objects, and multi-page operations.  In the next section,
+we show through experiments how this flexbility enables important
+optimizations and a wide-range of transactional systems.
 
 
 
