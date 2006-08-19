@@ -228,9 +228,8 @@ customized to implement many existing (and some new) write-ahead
 logging variants.  We present implementations of some of these variants and
 benchmark them against popular real-world systems.  We
 conclude with a survey of related and future work.
-
 An (early) open-source implementation of
-the ideas presented here is available at \eab{where?}.
+the ideas presented here is available (see Section~\ref{sec:avail}).
 
 \section{\yad is not a Database}
 \label{sec:notDB}
@@ -399,8 +398,11 @@ update disk pages atomically, we relax this restriction in Section~\cite{sec:lsn
 
 \subsection{Single-Page Transactions}
 
-Transactional pages provide the "A" and "D" properties
-of ACID transactions, but only within a single page.  We cover
+Transactional pages provide the ``A'' and ``D'' properties
+of ACID transactions, but only within a single page.\endnote{The ``A'' in ACID really means atomic persistence
+of data, rather than atomic in-memory updates, as the term is normally
+used in systems work~\cite{GR97}; the latter is covered by ``C'' and ``I''.}
+We cover
 multi-page transactions in the next section, and the rest of ACID in
 Section~\ref{locking}.  The insight behind transactional pages was
 that atomic page writes form a good foundation for full transactions;
@@ -414,8 +416,8 @@ but no logging is required.
 
 This approach performs poorly because we {\em force} the page to disk
 on commit, which leads to a large number of synchronous non-sequential
-writes.  By writing "redo" information to the log before committing
-(write-ahead logging), we get "no force" transactions and better
+writes.  By writing ``redo'' information to the log before committing
+(write-ahead logging), we get {\em no force} transactions and better
 performance, since the synchronous writes to the log are sequential.
 The pages themselves can be written out later asynchronously and often
 as part of a larger sequential write.
@@ -457,7 +459,7 @@ The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations.  An {\em operation}
 consists of both a redo and an undo function, both of which take one
 argument. An update is always the redo function applied to a page;
-there is no "do" function, which ensures that updates behave the same
+there is no ``do'' function, which ensures that updates behave the same
 on recovery.  The redo log entry consists of the LSN and the argument.
 The undo entry is analagous.  \yad ensures the correct ordering and
 timing of all log entries and page writes.  We desribe operations in
@@ -580,39 +582,84 @@ default data structure implementations.  This approach also works with the varia
 
 
 
-\subsection{Extending \yad with new operations}
+\subsection{User-Defined Operations}
 
+The first kind of extensibility enabled by \yad is user-defined operations.
 Figure~\ref{fig:structure} shows how operations interact with \yad.  A
 number of default operations come with \yad.  These include operations
 that allocate and manipulate records, operations that implement hash
 tables, and a number of methods that add functionality to recovery.
+Many of the customizations described below are implemented using
+custom operations. 
 
-If an operation does not need to be used by concurrent
-transactions, directly manipulating the page file is as simple as
-ensuring that each update to the page file occurs inside of the
-operation's implementation.  Operation implementations must be invoked
-by registering a callback with \yad at startup, and then calling {\em
-Tupdate()} to invoke the operation at runtime.  
+In this portion of the discussion, operations are limited to a single
+page, as they must be applied atomically. We remove the single-page
+constraint in Setion~\ref{sec:lsn-free}.
 
-Each operation should be deterministic, provide an inverse, and
-acquire all of its arguments from a struct that is passed via
-Tupdate() and from the page it updates.  The callbacks that are used
+Operations are invoked by registering a callback with \yad at
+startup, and then calling {\tt Tupdate()} to invoke the operation at
+runtime.
+
+ \yad ensures that operations follow the
+write-ahead logging rules required for steal/no-force transactions by
+controlling the timing and ordering of log and page writes.  Each
+operation should be deterministic, provide an inverse, and acquire all
+of its arguments from a struct that is passed via {\tt Tupdate()} or from
+the page it updates (or typically both).  The callbacks used
 during forward operation are also used during recovery.  Therefore
 operations provide a single redo function and a single undo function.
 (There is no ``do'' function.)  This reduces the amount of
-recovery-specific code in the system.  Tupdate() writes the struct
+recovery-specific code in the system.  {\tt Tupdate()} writes the struct
 that is passed to it to the log before invoking the operation's
-implementation.  Recovery simply reads the struct from disk and invokes the operation.
+implementation.  Recovery simply reads the struct from disk and
+invokes the operation at the appropriate time.
 
-In this portion of the discussion, operations are limited to a single
-page, and provide an undo function.  Operations that affect multiple
-pages or do not provide inverses will be discussed later. \eab{where?}
+\begin{figure}
+\includegraphics[%
+   width=1\columnwidth]{figs/structure.pdf}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
+\end{figure}
 
-Operations are limited to a single page because their results must be
-applied to the page file atomically.  Some operations use the data
-stored on the page to update the page.  If this data were corrupted by
-a non-atomic disk write, then such operations would fail during recovery.
+The first step in implementing a new operation is to decide upon an
+external interace, which is typically cleaner than using the redo/undo
+functions directly.  The externally visible interface is implemented
+by wrapper functions and read-only access methods.  The wrapper
+function modifies the state of the page file by packaging the
+information that will be needed for redo/undo into a data format
+of its choosing.  This data structure is passed into {\tt Tupdate()}, which then writes a log entry and invokes the redo function.
+ 
+The redo function modifies the page file directly (or takes some other
+action).  It is essentially an interpreter for its log entries.  Undo
+works analogously, but is invoked when an operation must be undone
+(due to an abort).
 
+This pattern applies in many cases.  In
+order to implement a ``typical'' operation, the operation's
+implementation must obey a few more invariants:
+\begin{itemize}
+\item Pages should only be updated inside redo/undo functions.
+\item Page updates atomically update the page's LSN by pinning the page.
+\item If the data seen by a wrapper function must match data seen
+  during REDO, then the wrapper should use a latch to protect against
+  concurrent attempts to update the sensitive data (and against
+  concurrent attempts to allocate log entries that update the data).
+\item Nested top actions (and logical undo) or ``big locks'' (total isolation) should be used to manage concurrency (Section~\ref{sec:nta}).
+\end{itemize}
+
+Although these restrictions are not trivial, they are not a problem in
+practice. Most read-modify-write actions can be implemented as
+user-defined operations, including common DBMS optimizations such as
+increment operations.  The power of \yad is that by following these
+local restrictions, we enable new operations that meet the global
+
+Finally, for some applications, the overhead of logging information for redo or
+undo may outweigh their benefits.  Operations that wish to avoid undo
+logging can call an API that pins the page until commit, and use an
+empty undo function.  Similarly we provide an API that causes a page
+to be written out on commit, which avoids redo logging.
+
+
+\eat{
 Note that we could implement a limited form of transactions by
 limiting each transaction to a single operation, and by forcing the
 page that each operation updates to disk in order.  If we ignore torn
@@ -624,7 +671,7 @@ The rest of this section describes how recovery can be extended,
 first to support multiple operations per transaction efficiently, and
 then to allow more than one transaction to modify the same data before
 committing.
-
+}
 
 
 \eat{
@@ -676,41 +723,19 @@ needs to be forced to disk once.
 }
 
 
-\subsection{Alternatives to Steal/no-Force}
-
-Note that the redo logging allows \yad to avoid forcing
-pages to disk, while undo logging allows pages to be stolen.  For some
-applications, the overhead of logging information for redo or undo may
-outweigh their benefits.  \yads logging discipline provides a simple
-solution to this problem.  If a special-purpose operation wants to
-avoid writing either the Redo or the Undo information to the log then
-it can have the buffer manager pin the page or flush it at commit, and
-simply omit the pertinent information from the log entries it
-generates.
-
-\eab{poor paragraph}
-Recovery's undo and redo phases both will process the log entry, but
-one of them will have no effect.  If an operation chooses not to
-provide a redo implementation, then during undo the implementation will need
-to determine whether or not the redo was applied.  If it omits undo,
-then redo must consult recovery to see if it is part of a transaction that
-committed.
 
 
 \subsection{Application-specific Locking}
 
 The transactions described above only provide the
-``Atomicity'' and ``Durability'' properties of ACID.\endnote{The ``A'' in ACID really means atomic persistence
-of data, rather than atomic in-memory updates, as the term is normally
-used in systems work~\cite{GR97}; 
-the latter is covered by ``C'' and
-``I''.}  ``Isolation'' is
+``Atomicity'' and ``Durability'' properties of ACID.
+  ``Isolation'' is
 typically provided by locking, which is a higher-level but
 comaptible layer.  ``Consistency'' is less well defined but comes in
 part from low-level mutexes that avoid races, and in part from
-higher-level constructs such as unique key requirements.  \yad
+higher-level constructs such as unique key requirements.  \yad, as with DBMSs,
 supports this by distinguishing between {\em latches} and {\em locks}.
-Latches are provided using operating system mutexes, and are held for
+Latches are provided using OS mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
 way that avoids deadlock.  This section describes \yads latching
 protocols and describes two custom lock
@@ -739,24 +764,26 @@ coalesce or reuse any storage associated with an active transaction.
 In contrast, the record allocator is called frequently and must enable locality.  Therefore, it associates a set of pages with
 each transaction, and keeps track of deallocation events, making sure
 that space on a page is never over reserved.  Providing each
-transaction with a separate pool of freespace should increase
+transaction with a separate pool of freespace increases 
 concurrency and locality.  This allocation strategy was inspired by
 Hoard, a malloc implementation for SMP machines~\cite{hoard}.
 
 Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
 transparent to higher layers.  General-purpose database lock managers
-provide none of these features, supporting the idea that special
-purpose lock managers are a useful abstraction.\rcs{This would be a
-good place to cite Bill and others on higher-level locking protocols}
+provide none of these features, supporting the idea that
+special-purpose lock managers are a useful abstraction.\rcs{This would
+be a good place to cite Bill and others on higher-level locking
+protocols}
 
 Locking is largely orthogonal to the concepts desribed in this paper.
 We make no assumptions regarding lock managers being used by higher-level code in the remainder of this discussion.
 
 
 
-\section{LSN-free pages.}
+\section{LSN-free Pages}
 \label{sec:lsn-free}
+
 The recovery algorithm described above uses LSNs to determine the
 version number of each page during recovery.  This is a common
 technique.  As far as we know, is used by all database systems that
@@ -973,93 +1000,6 @@ nested top action without incurring the extra log bandwidth of storing
 physical undo information.  Such optimizations can be implemented
 using conventional transactions, but they appear to be easier to
 implement and reason about when applied to LSN-free pages.
-
-\section{Transactional Pages}
-
-\subsection{Blind Writes}
-\label{sec:blindWrites}
-\rcs{Somewhere in the description of conventional transactions, emphasize existing transactional storage systems' tendancy to hard code recommended page formats, data structures, etc.}
-
-\rcs{All the text in this section is orphaned, but should be worked in elsewhere.}
-
-Regarding LSN-free pages:
-
-Furthermore, efficient recovery and
-log truncation require only minor modifications to our recovery
-algorithm.  In practice, this is implemented by providing a buffer manager callback
-for LSN free pages.  The callback computes a
-conservative estimate of the page's LSN whenever the page is read from disk.
-For a less conservative estimate, it suffices to write a page's LSN to
-the log shortly after the page itself is written out; on recovery the
-log entry is thus a conservative but close estimate.
-
-Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
-approaches for recoverable virtual memory and for large object storage.  
-Section~\ref{sec:oasys} uses blind writes to efficiently update records 
-on pages that are manipulated using more general operations.  
-
-\rcs{ (Why was this marked to be deleted?  It needs to be moved somewhere else....)
-Although the extensions that it proposes
-require a fair amount of knowledge about transactional logging
-schemes, our initial experience customizing the system for various
-applications is positive.  We believe that the time spent customizing
-the library is less than amount of time that it would take to work
-around typical problems with existing transactional storage systems.
-}
-
-
-
-\section{Extending \yad}
-\subsection{Adding log operations}
-\label{sec:wal}
-
-\rcs{This section needs to be merged into the new text.  For now, it's an orphan.}
-
-\yad allows application developers to easily add new operations to the
-system.  Many of the customizations described below can be implemented
-using custom log operations.  In this section, we describe how to implement an
-``ARIES style'' concurrent, steal/no-force operation using 
-\diff{physical redo, logical undo} and per-page LSNs.
-Such operations are typical of high-performance commercial database
-engines.
-
-As we mentioned above, \yad operations must implement a number of
-functions.  Figure~\ref{fig:structure} describes the environment that
-schedules and invokes these functions.  The first step in implementing
-a new set of log interfaces is to decide upon an interface that these log
-interfaces will export to callers outside of \yad.  
-
-\begin{figure}
-\includegraphics[%
-   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
-\end{figure}
-
-The externally visible interface is implemented by wrapper functions
-and read-only access methods.  The wrapper function modifies the state
-of the page file by packaging the information that will be needed for
-undo and redo into a data format of its choosing.  This data structure
-is passed into Tupdate().  Tupdate() copies the data to the log, and
-then passes the data into the operation's REDO function.
- 
-REDO modifies the page file directly (or takes some other action).  It
-is essentially an interpreter for the log entries it is associated
-with.  UNDO works analogously, but is invoked when an operation must
-be undone (usually due to an aborted transaction, or during recovery).
-
-This pattern applies in many cases.  In
-order to implement a ``typical'' operation, the operation's
-implementation must obey a few more invariants:
-
-\begin{itemize}
-\item Pages should only be updated inside REDO and UNDO functions.
-\item Page updates atomically update the page's LSN by pinning the page.
-\item If the data seen by a wrapper function must match data seen
-  during REDO, then the wrapper should use a latch to protect against
-  concurrent attempts to update the sensitive data (and against
-  concurrent attempts to allocate log entries that update the data).
-\item Nested top actions (and logical undo) or ``big locks'' (total isolation but lower concurrency) should be used to manage concurrency (Section~\ref{sec:nta}).
-\end{itemize}
 
 
 
@@ -1947,6 +1887,7 @@ dependencies within \yads API.  Joe Hellerstein and Mike Franklin
 provided us with invaluable feedback.
 
 \section{Availability}
+\label{sec:avail}
 
 Additional information, and \yads source code is available at:
 
@@ -1961,8 +1902,96 @@ Additional information, and \yads source code is available at:
 \bibliography{LLADD}}
 
 \theendnotes
+\section{Orphaned Stuff}
+
+\subsection{Blind Writes}
+\label{sec:blindWrites}
+\rcs{Somewhere in the description of conventional transactions, emphasize existing transactional storage systems' tendancy to hard code recommended page formats, data structures, etc.}
+
+\rcs{All the text in this section is orphaned, but should be worked in elsewhere.}
+
+Regarding LSN-free pages:
+
+Furthermore, efficient recovery and
+log truncation require only minor modifications to our recovery
+algorithm.  In practice, this is implemented by providing a buffer manager callback
+for LSN free pages.  The callback computes a
+conservative estimate of the page's LSN whenever the page is read from disk.
+For a less conservative estimate, it suffices to write a page's LSN to
+the log shortly after the page itself is written out; on recovery the
+log entry is thus a conservative but close estimate.
+
+Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
+approaches for recoverable virtual memory and for large object storage.  
+Section~\ref{sec:oasys} uses blind writes to efficiently update records 
+on pages that are manipulated using more general operations.  
+
+\rcs{ (Why was this marked to be deleted?  It needs to be moved somewhere else....)
+Although the extensions that it proposes
+require a fair amount of knowledge about transactional logging
+schemes, our initial experience customizing the system for various
+applications is positive.  We believe that the time spent customizing
+the library is less than amount of time that it would take to work
+around typical problems with existing transactional storage systems.
+}
+
+
+\eat{
+\section{Extending \yad}
+\subsection{Adding log operations}
+\label{sec:wal}
+
+\rcs{This section needs to be merged into the new text.  For now, it's an orphan.}
+
+\yad allows application developers to easily add new operations to the
+system.  Many of the customizations described below can be implemented
+using custom log operations.  In this section, we describe how to implement an
+``ARIES style'' concurrent, steal/no-force operation using 
+\diff{physical redo, logical undo} and per-page LSNs.
+Such operations are typical of high-performance commercial database
+engines.
+
+As we mentioned above, \yad operations must implement a number of
+functions.  Figure~\ref{fig:structure} describes the environment that
+schedules and invokes these functions.  The first step in implementing
+a new set of log interfaces is to decide upon an interface that these log
+interfaces will export to callers outside of \yad.  
+
+\begin{figure}
+\includegraphics[%
+   width=1\columnwidth]{figs/structure.pdf}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
+\end{figure}
+
+The externally visible interface is implemented by wrapper functions
+and read-only access methods.  The wrapper function modifies the state
+of the page file by packaging the information that will be needed for
+undo and redo into a data format of its choosing.  This data structure
+is passed into Tupdate().  Tupdate() copies the data to the log, and
+then passes the data into the operation's REDO function.
+ 
+REDO modifies the page file directly (or takes some other action).  It
+is essentially an interpreter for the log entries it is associated
+with.  UNDO works analogously, but is invoked when an operation must
+be undone (usually due to an aborted transaction, or during recovery).
+
+This pattern applies in many cases.  In
+order to implement a ``typical'' operation, the operation's
+implementation must obey a few more invariants:
+
+\begin{itemize}
+\item Pages should only be updated inside REDO and UNDO functions.
+\item Page updates atomically update the page's LSN by pinning the page.
+\item If the data seen by a wrapper function must match data seen
+  during REDO, then the wrapper should use a latch to protect against
+  concurrent attempts to update the sensitive data (and against
+  concurrent attempts to allocate log entries that update the data).
+\item Nested top actions (and logical undo) or ``big locks'' (total isolation but lower concurrency) should be used to manage concurrency (Section~\ref{sec:nta}).
+\end{itemize}
+}
 
 \end{document}
+
 
 
 
