@@ -1369,17 +1369,27 @@ linked the benchmark's executable to the {\tt libmysqld} daemon library,
 bypassing the RPC layer. In experiments that used the RPC layer, test
 completion times were orders of magnitude slower.
 
-Figure~\ref{fig:OASYS} presents the performance of the three
-\yad optimizations, and the \oasys plugins implemented on top of other
-systems.  As we can see, \yad performs better than the baseline
-systems, which is not surprising, since it is not providing the A
-property of ACID transactions.  (Although it is applying each individual operation atomically.)
+Figure~\ref{fig:OASYS} presents the performance of the three \yad
+optimizations, and the \oasys plugins implemented on top of other
+systems.  In this test, none of the systems were memory bound.  As
+we can see, \yad performs better than the baseline systems, which is
+not surprising, since it is not providing the A property of ACID
+transactions.  (Although it is applying each individual operation
+atomically.)
 
 In non-memory bound systems, the optimizations nearly double \yads
-performance by reducing the CPU overhead of object serialization{\rcs different word?} and
-the number of log entries written to disk.  In the memory bound test,
-we see that update/flush indeed improves memory utilization.
+performance by reducing the CPU overhead of copying marshalling and
+unmarshalling objects, and by reducing the size of log entries written
+to disk.
 
+To determine the effect of the optimization in memory bound systems,
+we decreased \yads page cache size, and used O\_DIRECT to bypass the
+operating system's disk cache.  We then partitioned the set of objects
+so that 10\% fit in a {\em hot set} that is small enough to fit into
+memory.  We then measured \yads performance as we varied the
+percentage of object updates that manipulate the hot set.  In the
+memory bound test, we see that update/flush indeed improves memory
+utilization.
 
 \subsection{Manipulation of logical log entries}
 
