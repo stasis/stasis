@@ -108,7 +108,7 @@ easy to implement and significantly improve performance.
 
 
 \section{Introduction}
-
+\label{sec:intro}
 As our reliance on computing infrastructure increases, a wider range
 of applications requires robust data management.  Traditionally, data
 management has been the province of database management systems
@@ -302,7 +302,7 @@ support, or to abandon the database approach entirely, and forgo the
 use of a structured physical model and abstract conceptual mappings.
 
 \subsection{The Systems View}
-
+\label{sec:systems}
 The systems community has also worked on this mismatch for 20 years,
 which has led to many interesting projects.  Examples include
 alternative durability models such as QuickSilver~\cite{experienceWithQuickSilver},
@@ -1059,26 +1059,24 @@ We used Berkeley DB 4.2.52
 %as it existed in Debian Linux's testing branch during March of 2005, 
 with the flags DB\_TXN\_SYNC (sync log on commit), and
 DB\_THREAD (thread safety) enabled.  These flags were chosen to match Berkeley DB's
-configuration to \yads as closely as possible.  In cases where
-Berkeley DB implements a feature that is not provided by \yad, we
-only enable the feature if it improves Berkeley DB's performance on the benchmarks.
+configuration to \yads as closely as possible.  We 
+increased Berkeley DB's buffer cache and log buffer sizes to match
+\yads default sizes.  When 
+Berkeley DB implements a feature that \yad is missing, we enable the feature if it 
+improves benchmark performance.  
 
-Optimizations to Berkeley DB that we performed included disabling the
-lock manager, though we still use ``Free Threaded'' handles for all
-tests.  This yielded a significant increase in performance because it
-removed the possibility of transaction deadlock, abort, and
-repetition.  However, disabling the lock manager caused highly
+We disable Berkeley DB's lock manager for the benchmarks,
+though we still use ``Free Threaded'' handles for all
+tests.  This yields a significant increase in performance because it
+removes the possibility of transaction deadlock, abort, and
+repetition.  However, disabling the lock manager caused 
 concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
 
 With the lock manager enabled, Berkeley
 DB's performance in the multithreaded test in Section~\ref{sec:lht} strictly decreased with
-increased concurrency.  (The other tests were single-threaded.)  We also
-increased Berkeley DB's buffer cache and log buffer sizes to match
-\yads default sizes.
+increased concurrency.  (The other tests were single-threaded.)  
 
-We expended a considerable effort tuning Berkeley DB, and our efforts
-significantly improved Berkeley DB's performance on these tests.
 Although further tuning by Berkeley DB experts would probably improve
 Berkeley DB's numbers, we think that we have produced a reasonably
 fair comparison.  The results presented here have been reproduced on
@@ -1109,14 +1107,21 @@ test is run as a single transaction, minimizing overheads due to synchronous log
 }
 \end{figure}
 
-Although the beginning of this paper describes the limitations of
-physical database models and relational storage systems in great
-detail, these systems are the basis of most common transactional
-storage routines.  Therefore, we implement a key-based access method
-in this section. We argue that obtaining reasonable performance in
-such a system under \yad is straightforward.  We then compare our
-straightforward, modular implementation to our hand-tuned version and
-Berkeley DB's implementation.
+This section presents two hashtable implementations built on top of
+\yad, and compares them with the hashtable provided by Berkeley DB.
+One of the \yad implementations is simple and modular, while
+the other is monolithic and hand-tuned.  Our experiments show that
+\yads performance is competitive, both with single threaded, and
+high-concurency transactions.
+
+%Although the beginning of this paper describes the limitations of
+%physical database models and relational storage systems in great
+%detail, these systems are the basis of most common transactional
+%storage routines.  Therefore, we implement a key-based access method
+%in this section. We argue that obtaining reasonable performance in
+%such a system under \yad is straightforward.  We then compare our
+%straightforward, modular implementation to our hand-tuned version and
+%Berkeley DB's implementation.
 
 The modular hash table uses nested top actions to update its internal
 structure atomically.  It uses a {\em linear} hash
@@ -1222,7 +1227,7 @@ customizes the behavior of the buffer manager. Finally, the
 between versions of objects.
 
 The update/flush variant avoids maintaining an up-to-date
-version of each object in the buffer manager or page file: it allows
+version of each object in the buffer manager or page file.  Instead, it allows
 the buffer manager's view of live application objects to become stale.
 This is safe since the system is always able to reconstruct the
 appropriate page entry from the live copy of the object.
@@ -1232,10 +1237,10 @@ number of times the \yad \oasys plugin must update serialized objects in the buf
 %  Reducing the number of serializations decreases
 %CPU utilization, and it also
 This allows us to drastically decrease the
-amount of memory used by the buffer manager.  In turn this allows us to increase the size of
+amount of memory used by the buffer manager, and increase the size of
 the application's cache of live objects.
 
-We implemented the \yad buffer-pool optimization by adding two new
+We implemented the \yad buffer pool optimization by adding two new
 operations, update(), which updates the log when objects are modified, and flush(), which
 updates the page when an object is eviced from the application's cache.  
 
@@ -1250,75 +1255,34 @@ are evicted from cache, not the order in which they are udpated.
 Therefore, the version of each object on a page cannot be determined
 from a single LSN.
 
-We solve this problem by using blind writes\rcs{term?} to update
+We solve this problem by using blind updates to modify
 objects in place, but maintain a per-page LSN that is updated whenever
 an object is allocated or deallocated.  At recovery, we apply
-allocations and deallocations as usual.  To redo an update, we first
-decide whether the object that is being updated exists on the page.
-If so, we apply the blind write.  If not, then we know that the
-version of the page we have was written to disk after the applicable
-object was freed, so do not apply the update. (Because support for
-blind writes is not yet implemented, our benchmarks mimic this
-behavior at runtime, but do not support recovery.)
+allocations and deallocations based on the page LSN.  To redo an
+update, we first decide whether the object that is being updated
+exists on the page.  If so, we apply the blind update.  If not, then
+the object must have already been freed, so we do not apply the
+update. Because support for blind updates is not yet implemented, the
+experiments presented below mimic this behavior at runtime, but do not
+support recovery.
 
 Before we came to this solution, we considered storing multiple LSNs
 per page, but this would force us to register a callback with recovery
 to process the LSNs, and extend one of \yads page format so contain
-per-record LSNs More importantly, the storage allocation routine need
+per-record LSNs.  More importantly, the storage allocation routine need
 to avoid overwriting the per-object LSN of deleted objects that may be
 manipulated during REDO.
-
-%One way to 
-%deal with this is to maintain multiple LSNs per page.  This means we would need to register a
-%callback with the recovery routine to process the LSNs (a similar
-%callback will be needed in Section~\ref{sec:zeroCopy}), and 
-%extend \yads page format to contain per-record LSNs.  
-%Also, we must prevent \yads storage allocation routine from overwriting the per-object 
-%LSNs of deleted objects that may still be addressed during abort or recovery.\eab{tombstones discussion here?}  
 
 \eab{we should at least implement this callback if we have not already}
 
 Alternatively, we could arrange for the object pool to cooperate 
 further with the buffer pool by atomically updating the buffer 
 manager's copy of all objects that share a given page.
-%, removing the 
-%need for multiple LSNs per page, and simplifying storage allocation.
-
-%However, the simplest solution, and the one we take here, is based on
-%the observation that updates (not allocations or deletions) of
-%fixed-length objects are blind writes.  This allows us to do away with
-%per-object LSNs entirely.  Allocation and deletion can then be
-%handled as updates to normal LSN containing pages.  At recovery time,
-%object updates are executed based on the existence of the object on
-%the page and a conservative estimate of its LSN.  (If the page doesn't
-%contain the object during REDO then it must have been written back to
-%disk after the object was deleted.  Therefore, we do not need to apply
-%the REDO.)  This means that the system can ``forget'' about objects
-%that were freed by committed transactions, simplifying space reuse
-%tremendously.  
 
 The third plugin variant, ``delta'', incorporates the update/flush
 optimizations, but only writes the changed portions of
 objects to the log.  Because of \yads support for custom log-entry
 formats, this optimization is straightforward.
-
-%In addition to the buffer-pool optimizations, \yad provides several 
-%options to handle UNDO records in the context
-%of object serialization. The first is to use a single transaction for
-%each object modification, avoiding the cost of generating or logging
-%any UNDO records. The second option is to assume that the
-%application will provide a custom UNDO for the delta, 
-%which increases the size of the log entry generated by each update, 
-%but still avoids the need to read or update the page
-%file.
-%
-%The third option is to relax the atomicity requirements for a set of
-%object updates and again avoid generating any UNDO records. This
-%assumes that the application cannot abort individual updates, 
-%and is willing to
-%accept that some prefix of logged but uncommitted updates may 
-%be applied to the page
-%file after recovery. 
 
 \oasys does not provide a transactional interface to its callers.
 Instead, it is designed to be used in systems that stream objects over
@@ -1360,7 +1324,7 @@ transactions.  (Although it is applying each individual operation
 atomically.)
 
 In non-memory bound systems, the optimizations nearly double \yads
-performance by reducing the CPU overhead of copying marshalling and
+performance by reducing the CPU overhead of marshalling and
 unmarshalling objects, and by reducing the size of log entries written
 to disk.
 
@@ -1371,7 +1335,7 @@ so that 10\% fit in a {\em hot set} that is small enough to fit into
 memory.  We then measured \yads performance as we varied the
 percentage of object updates that manipulate the hot set.  In the
 memory bound test, we see that update/flush indeed improves memory
-utilization.
+utilization. \rcs{Graph axis should read ``percent of updates in hot set''}
 
 \subsection{Request reordering}
 
@@ -1401,10 +1365,13 @@ In the cases where depth first search performs well, the
 reordering is inexpensive.}
 \end{figure}
 
-Logical operations often have some convenient properties that this section
-will exploit.  Because they can be invoked at arbitrary times in the
-future, they tend to be independent of the database's physical state.
-Often, they correspond application-level operations
+We are interested in using \yad to directly manipulate sequences of
+application requests.  By translating these requests into the logical
+operations that are used for logical undo, we can use parts of \yad to
+manipulate and interpret such requests.  Because logical operations
+can be invoked at arbitrary times in the future, they tend to be
+independent of the database's physical state.  Also, they generally
+correspond to application-level operations.
 
 Because of this, application developers can easily determine whether
 logical operations may be reordered, transformed, or even dropped from
@@ -1412,10 +1379,10 @@ the stream of requests that \yad is processing.  For example, if
 requests manipulate disjoint sets of data, they can be split across
 many nodes, providing load balancing.  If many requests perform
 duplicate work, or repeatedly update the same piece of information,
-they can be merged into a single requests (RVM's ``log-merging''
-implements this type of optimization~\cite{lrvm}).  Stream operators
-and relational albebra operators could be used to efficiently
-transform data while it is still laid out sequentially in
+they can be merged into a single request (RVM's ``log-merging''
+implements this type of optimization~\cite{lrvm}).  Stream aggregation
+techniques and relational albebra operators could be used to
+efficiently transform data while it is still laid out sequentially in
 non-transactional memory.
 
 To experiment with the potenial of such optimizations, we implemented
@@ -1446,7 +1413,7 @@ of a hot set to graph generation.  Each node has a distinct hot set
 that includes the 10\% of the nodes that are closest to it in ring
 order.  The remaining nodes are in the cold set.  We use random edges
 instead of ring edges for this test.  This does not ensure graph
-connectivity, but we use the same random seeds for the two systems.
+connectivity, but we use the same set of graphs when evaluating the two systems.
 
 When the graph has good locality, a normal depth first search
 traversal and the prioritized traversal both perform well.  The
@@ -1701,69 +1668,37 @@ available to applications.  In QuickSilver, nested transactions would
 have been most useful when composing a series of program invocations
 into a larger logical unit~\cite{experienceWithQuickSilver}.
 
-\subsection{Berkeley DB}
+\subsection{Transactional data structures}
 
-\eab{this text is also in Sec 2; need a new comparison}
+\rcs{Better section name?}
 
-Berkeley DB is a highly successful alternative to conventional
-databases~\cite{libtp}.  At its core, it provides the physical database model
-(relational storage system~\cite{systemR}) of a conventional database server.
-%It is based on the
-%observation that the storage subsystem is a more general (and less
-%abstract) component than a monolithic database, and provides a
-%stand-alone implementation of the storage primitives built into 
-%most relational database systems~\cite{libtp}.  
-In particular, 
-it provides fully transactional (ACID) operations over B-trees, 
-hash tables, and other access methods.  It provides flags that 
-let its users tweak various aspects of the performance of these
-primitives, and selectively disable the features it provides.
+As mentioned in Section~\ref{sec:system}, Berkeley DB is a system
+quite similar to \yad, and essentially provides raw access to
+transactional data structures for application
+programmers~\cite{libtp}.  As we mentioned earlier, we beleive that
+\yad is general enough to support a library like Berkeley DB, but that
+Berkeley DB is too specialized to be useful to a reimplementation of
+\yad.
 
-With the
-exception of the benchmark designed to fairly compare the two systems, none of the \yad 
-applications presented in Section~\ref{sec:extensions} are efficiently
-supported by Berkeley DB.   This is a result of Berkeley DB's  
-assumptions regarding workloads and decisions regarding low level data
-representation.  Thus, although Berkeley DB could be built on top of \yad,
-Berkeley DB's data model and write-ahead logging system are too specialized to support \yad.
+Cluster hash tables provide scalable, replicated hashtable
+implementation by partitioning the hash's buckets across multiple
+systems.  Boxwood treats each system in a cluster of machines as a
+``chunk store,'' and builds a transactional, fault tolerant B-Tree on
+top of the chunks that these machines export.  
 
-\subsection{Transactional storage servers}
+\yad is complementary to Boxwood and cluster hash tables; those
+systems intelligentally compose a set of systems for scalability and
+fault tolerance.  In contrast, \yad makes it easy to push intelligence
+into the individual nodes, allowing them to provide primitives that
+are appropriate for the higher level service.  
 
-\rcs{Boxwood, cluster hash tables here.}
+\subsection{Data layout policies}
 
-\subsection{stuff to add somewhere}
-
-cover P2 (the old one, not Pier 2 if there is time...
-
-
-
-
-
-More recently, WinFS, Microsoft's database based
-file meta data management system, has been replaced in favor of an
-embedded indexing engine that imposes less structure (and provides
-fewer consistency guarantees) than the original
-proposal~\cite{needtocitesomething}.
-
-Scaling to the very large doesn't work (SAP used DB2 as a hash table
-for years), search engines, cad/VLSI didn't happen.  scalable GIS
-systems use shredded blobs (terraserver, google maps), scaling to many
-was more difficult than implementing from scratch (winfs), scaling
-down doesn't work (variance in performance, footprint),
-
-
----- old related work start ---
-\subsection{Implementation Ideas}
-
-%This paper has described a number of custom transactional storage
-%extensions, and explained why can \yad support them. 
-
-This section
-will describe existing ideas in the literature that we would like to
-incorporate into \yad. 
-
-% An overview of database systems that have 
-%goals similar to our own is in Section~\ref{sec:otherDBs}.
+Data layout policies typically make decisions that have significant
+impacts upon performace.  Generally, these decisions are based upon
+assumptions about the application.  Allowing \yad operations to make
+use of application-specific layout policies would increase their
+flexibilty.\rcs{Fix sentence.}
 
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm}
@@ -1811,28 +1746,6 @@ the transaction log.  Assuming log fragmentation is kept to a
 minimum, this is particularly attractive on a single disk system.  We
 plan to use ideas from LFS~\cite{lfs} and POSTGRES~\cite{postgres}
 to implement this.
-
-\yads record allocation currently implements a policy that is similar
-to Hoard and McRT, although it has not been as heavily optmized for
-CPU utilization.  The record allocator obtains pages from a region
-allocator that provides contiguous regions of space to other
-allocators.
-
-Starburst~\cite{starburst} provides a flexible approach to index
-management and database trigger support, as well as hints for small
-object layout.
-
-The Boxwood system provides a networked, fault-tolerant transactional
-B-tree and ``Chunk Manager.''  We believe that \yad is an interesting
-complement to such a system, especially given \yads focus on
-intelligence and optimizations within a single node, and Boxwood's
-focus on multiple node systems.  In particular, it would be
-interesting to explore extensions to the Boxwood approach that make
-use of \yads customizable semantics (Section~\ref{sec:wal}) and fully
-logical logging mechanisms (Section~\ref{sec:logging}).
-
-
-
 
 \section{Future Work}
 
@@ -1895,11 +1808,13 @@ Gilad Arnold and Amir Kamil implemented
  pobj.  Jim Blomo, Jason Bayer, and Jimmy
 Kittiyachavalit worked on an early version of \yad.
 
-Thanks to C. Mohan for pointing out the need for tombstones with
-per-object LSNs.  Jim Gray provided feedback on an earlier version of
-this paper, and suggested we use a resource manager to manage
-dependencies within \yads API.  Joe Hellerstein and Mike Franklin
-provided us with invaluable feedback.
+Thanks to C. Mohan for pointing out that per-object LSNs may be
+inadvertantly overwritten during recovery.  Jim Gray suggested we use
+a resource manager to track dependencies within \yad and provided
+feedback on the LSN-free recovery algorithms.  Joe Hellerstein and
+Mike Franklin provided us with invaluable feedback.
+
+Intel Research Berkeley supported portions of this work.
 
 \section{Availability}
 \label{sec:avail}
@@ -2004,5 +1919,22 @@ implementation must obey a few more invariants:
 \item Nested top actions (and logical undo) or ``big locks'' (total isolation but lower concurrency) should be used to manage concurrency (Section~\ref{sec:nta}).
 \end{itemize}
 }
+
+\subsection{stuff to add somewhere}
+
+cover P2 (the old one, not Pier 2 if there is time...
+
+More recently, WinFS, Microsoft's database based
+file meta data management system, has been replaced in favor of an
+embedded indexing engine that imposes less structure (and provides
+fewer consistency guarantees) than the original
+proposal~\cite{needtocitesomething}.
+
+Scaling to the very large doesn't work (SAP used DB2 as a hash table
+for years), search engines, cad/VLSI didn't happen.  scalable GIS
+systems use shredded blobs (terraserver, google maps), scaling to many
+was more difficult than implementing from scratch (winfs), scaling
+down doesn't work (variance in performance, footprint),
+
 
 \end{document}
