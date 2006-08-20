@@ -649,7 +649,7 @@ practice. Most read-modify-write actions can be implemented as
 user-defined operations, including common DBMS optimizations such as
 increment operations.  The power of \yad is that by following these
 local restrictions, we enable new operations that meet the global
-properties for correct, concurrent transactions.~\rcs{What was supposed to come after ``global''?}
+invariants for correct, concurrent transactions.
 
 Finally, for some applications, the overhead of logging information for redo or
 undo may outweigh their benefits.  Operations that wish to avoid undo
@@ -729,7 +729,7 @@ needs to be forced to disk once.
 The transactions described above only provide the
 ``Atomicity'' and ``Durability'' properties of ACID.
   ``Isolation'' is
-typically provided by locking, which is a higher-level but
+typically provided by locking, which is a higher level but
 compatible layer.  ``Consistency'' is less well defined but comes in
 part from low-level mutexes that avoid races, and in part from
 higher-level constructs such as unique key requirements.  \yad, as with DBMSs,
@@ -1033,7 +1033,7 @@ optimizations and a wide-range of transactional systems.
 routines and recovery semantics.  In this section, we show that this
 flexibility does not come with a significant performance cost for
 general purpose transactional primitives, and show how a number of
-special purpose interfaces aid in the development of higher level 
+special purpose interfaces aid in the development of higher-level 
 code while significantly improving application performance.
 
 \subsection{Experimental setup}
@@ -1075,7 +1075,7 @@ bug or misuse of the feature.
 
 With the lock manager enabled, Berkeley
 DB's performance in the multithreaded test in Section~\ref{sec:lht} strictly decreased with
-increased concurrency.  (The other tests were single-threaded.)  
+increased concurrency.  (The other tests were single threaded.)  
 
 Although further tuning by Berkeley DB experts would probably improve
 Berkeley DB's numbers, we think that we have produced a reasonably
@@ -1111,8 +1111,8 @@ This section presents two hashtable implementations built on top of
 \yad, and compares them with the hashtable provided by Berkeley DB.
 One of the \yad implementations is simple and modular, while
 the other is monolithic and hand-tuned.  Our experiments show that
-\yads performance is competitive, both with single threaded, and
-high-concurency transactions.
+\yads performance is competitive, both with single-threaded and
+high-concurrency transactions.
 
 %Although the beginning of this paper describes the limitations of
 %physical database models and relational storage systems in great
@@ -1379,7 +1379,7 @@ the stream of requests that \yad is processing.  For example, if
 requests manipulate disjoint sets of data, they can be split across
 many nodes, providing load balancing.  If many requests perform
 duplicate work, or repeatedly update the same piece of information,
-they can be merged into a single request (RVM's ``log-merging''
+they can be merged into a single request (RVM's ``log merging''
 implements this type of optimization~\cite{lrvm}).  Stream aggregation
 techniques and relational albebra operators could be used to
 efficiently transform data while it is still laid out sequentially in
@@ -1675,7 +1675,7 @@ into a larger logical unit~\cite{experienceWithQuickSilver}.
 As mentioned in Section~\ref{sec:system}, Berkeley DB is a system
 quite similar to \yad, and essentially provides raw access to
 transactional data structures for application
-programmers~\cite{libtp}.  As we mentioned earlier, we beleive that
+programmers~\cite{libtp}.  As we mentioned earlier, we believe that
 \yad is general enough to support a library like Berkeley DB, but that
 Berkeley DB is too specialized to be useful to a reimplementation of
 \yad.
@@ -1690,7 +1690,7 @@ top of the chunks that these machines export.
 systems intelligentally compose a set of systems for scalability and
 fault tolerance.  In contrast, \yad makes it easy to push intelligence
 into the individual nodes, allowing them to provide primitives that
-are appropriate for the higher level service.  
+are appropriate for the higher-level service.  
 
 \subsection{Data layout policies}
 
