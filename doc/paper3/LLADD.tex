@@ -191,7 +191,7 @@ By {\em flexible} we mean that \yad{}  can support a wide
 range of transactional data structures {\em efficiently}, and that it can support a variety
 of policies for locking, commit, clusters and buffer management.
 Also, it is extensible for new core operations
-and new data structures. It is this flexibility that allows the
+and new data structures. It is this flexibility that allows it to
 support of a wide range of systems and models.
 
 By {\em complete} we mean full redo/undo logging that supports
@@ -238,17 +238,17 @@ the ideas presented here is available (see Section~\ref{sec:avail}).
 Database research has a long history, including the development of
 many technologies that our system builds upon.  This section explains
 why databases are fundamentally inappropriate tools for system
-developers, and covers some of the preivous responses of the systems
-community.  The problems we present here have been the focus of
+developers, and covers some of the previous responses of the systems
+community.  These problems have been the focus of
 database and systems researchers for at least 25 years.
 
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as XML databases or streaming
-databases, or by extending the relational model~\cite{codd} along some axis, such
+creating new top-down models, such as XML or probablistic databases, 
+or by extending the relational model~\cite{codd} along some axis, such
 as new data types.  (We cover these attempts in more detail in
-Section~\ref{related-work}.) \eab{add cites}
+Section~\ref{sec:related-work}.) \eab{add cites}
 
 %Database systems are often thought of in terms of the high-level
 %abstractions they present.  For instance, relational database systems
@@ -287,7 +287,7 @@ use of different physical models in order to serve different classes
 of applications.
 
 A basic claim of
-this paper is that no single known physical data model can efficiently
+this paper is that no known physical data model can efficiently
 support the wide range of conceptual mappings that are in use today.
 In addition to sets, objects, and XML, such a model would need
 to cover search engines, version-control systems, work-flow
@@ -298,18 +298,18 @@ database research has failed to produce one, we opt to provide a
 bottom-up transactional toolbox that supports many different models
 efficiently.  This makes it easy for system designers to
 implement most of the data models that the underlying hardware can
-support, or to abandon the database approach entirely, and forgo the
-use of a structured physical model and abstract conceptual mappings.
+support, or to abandon the database approach entirely, and forgo 
+structured physical models and abstract conceptual mappings.
 
 \subsection{The Systems View}
 \label{sec:systems}
-The systems community has also worked on this mismatch for 20 years,
+The systems community has also worked on this mismatch,
 which has led to many interesting projects.  Examples include
 alternative durability models such as QuickSilver~\cite{experienceWithQuickSilver},
 RVM~\cite{lrvm}, persistent objects~\cite{argus}, 
 cluster hash tables~\cite{DDS}, and Boxwood~\cite{boxwood}.  We expect that \yad would simplify
 the implementation of most if not all of these systems.  We look at
-these in more detail in Section~\ref{related-work}.
+these in more detail in Section~\ref{sec:related-work}.
 
 In some sense, our hypothesis is trivially true in that there exists a
 bottom-up framework called the ``operating system'' that can implement
@@ -328,7 +328,7 @@ databases~\cite{libtp}.  At its core, it provides the physical database model
 %stand-alone implementation of the storage primitives built into 
 %most relational database systems~\cite{libtp}.  
 In particular, 
-it provides fully transactional (ACID) operations over B-trees, 
+it provides transactional (ACID) operations on B-trees, 
 hash tables, and other access methods.  It provides flags that 
 let its users tweak various aspects of the performance of these
 primitives, and selectively disable the features it provides.
@@ -764,10 +764,9 @@ In contrast, the record allocator is called frequently and must enable locality.
 each transaction, and keeps track of deallocation events, making sure
 that space on a page is never over reserved.  Providing each
 transaction with a separate pool of freespace increases 
-concurrency and locality.  This allocation strategy was inspired by
-Hoard, a malloc implementation for SMP machines~\cite{hoard}.  Also, 
-our allocator implements a policy similar to 
-McRT-malloc~\cite{mcrt-malloc}, but is much less efficient.
+concurrency and locality.  This is 
+similar to Hoard~\cite{hoard} and 
+McRT-malloc~\cite{mcrt} (Section~\ref{sec:malloc}).
 
 Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
@@ -835,8 +834,8 @@ consistent version of a page during recovery.
 Therefore, in this section we focus on operations that produce
 deterministic, idempotent redo entries that do not examine page state.
 We call such operations ``blind updates.''  Note that we still allow
-code that invokes operations to examine the page file, just not during
-recovery.  For concreteness, assume that these operations produce log
+code that invokes operations to examine the page file, just not during the redo phase of recovery.
+For concreteness, assume that these operations produce log
 entries that contain a set of byte ranges, and the pre- and post-value
 of each byte in the range.
 
@@ -892,7 +891,7 @@ optimizations in a straightforward fashion.  Zero-copy writes are
 a portion of the log file. However, doing this complicates log
 truncation, and does not address the problem of updating the page
 file.  We suspect that contributions from log-based file
-system~\cite{lfs} can address these problems. In
+systems~\cite{lfs} can address these problems. In
 particular, we imagine storing portions of the log (the portion that
 stores the blob) in the page file, or other addressable storage.  In
 the worst case, the blob would have to be relocated in order to
@@ -900,16 +899,12 @@ defragment the storage.  Assuming the blob was relocated once, this
 would amount to a total of three, mostly sequential disk operations.
 (Two writes and one read.)  However, in the best case, the blob would
 only be written once.  In contrast, conventional blob implementations
-generally write the blob twice.
-
-Of course, \yad could also support other approaches to blob storage,
-such as using DMA and update in place to provide file system style
-semantics, or by using B-tree layouts that allow arbitrary insertions
-and deletions in the middle of objects~\cite{esm}.
+generally write the blob twice.  \yad could also provide 
+file system style semantics, and use DMA to update blobs in place.
 
 \subsection{Concurrent RVM}
 
-Our LSN-free pages are somewhat similar to the recovery scheme used by
+Our LSN-free pages are similar to the recovery scheme used by
 recoverable virtual memory (RVM) and Camelot~\cite{camelot}. RVM
 used purely physical logging and LSN-free pages so that it
 could use {\tt mmap()} to map portions of the page file into application
@@ -919,15 +914,15 @@ concurrent, durable data structure using RVM or Camelot.  (The description of
 Argus in Section~\ref{sec:transactionalProgramming} sketches the
 general approach.)  
 
-In contrast, LSN-free pages allow for logical
-undo, allowing for the use of nested top actions and concurrent
+In contrast, LSN-free pages allow logical
+undo and can easily support nested top actions and concurrent
 transactions; the concurrent data structure need only provide \yad
 with an appropriate inverse each time its logical state changes.
 
 We plan to add RVM-style transactional memory to \yad in a way that is
 compatible with fully concurrent in-memory data structures such as
-hash tables and trees.  Of course, since \yad will support coexistance
-of conventional and LSN-free pages, applications will be free to use
+hash tables and trees.  Since \yad supports coexistance
+of multiple page types, applications will be free to use
 the \yad data structure implementations as well.  
 
 
@@ -967,7 +962,7 @@ error.  If a sector is found to be corrupt, then media recovery can be
 used to restore the sector from the most recent backup.
 
 To ensure that we correctly update all of the old bits, we simply
-start rollback from a point in time that is know to be older than the
+start rollback from a point in time that is known to be older than the
 LSN of the page (which we don't know for sure).  For bits that are
 overwritten, we end up with the correct version, since we apply the
 updates in order.  For bits that are not overwritten, they must have
@@ -1061,14 +1056,14 @@ with the flags DB\_TXN\_SYNC (sync log on commit), and
 DB\_THREAD (thread safety) enabled.  These flags were chosen to match Berkeley DB's
 configuration to \yads as closely as possible.  We 
 increased Berkeley DB's buffer cache and log buffer sizes to match
-\yads default sizes.  When 
-Berkeley DB implements a feature that \yad is missing, we enable the feature if it 
-improves benchmark performance.  
+\yads default sizes.  If
+Berkeley DB implements a feature that \yad is missing we enable it if it 
+improves performance.  
 
 We disable Berkeley DB's lock manager for the benchmarks,
 though we still use ``Free Threaded'' handles for all
-tests.  This yields a significant increase in performance because it
-removes the possibility of transaction deadlock, abort, and
+tests.  This significantly increases performance by
+removing the possibility of transaction deadlock, abort, and
 repetition.  However, disabling the lock manager caused 
 concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
@@ -1078,9 +1073,9 @@ DB's performance in the multithreaded test in Section~\ref{sec:lht} strictly dec
 increased concurrency.  (The other tests were single threaded.)  
 
 Although further tuning by Berkeley DB experts would probably improve
-Berkeley DB's numbers, we think that we have produced a reasonably
-fair comparison.  The results presented here have been reproduced on
-multiple machines and file systems.
+Berkeley DB's numbers, we think our comparison show that the systems'
+performance is comparable.  The results presented here have been
+reproduced on multiple machines and file systems, but vary over time as \yad matures.
 
 \subsection{Linear hash table}
 \label{sec:lht}
@@ -1425,7 +1420,7 @@ algorithm outperforms the naive traversal.
 ``Percent local edges''.}
 
 \section{Related Work}
-\label{related-work}
+\label{sec:related-work}
 
 \subsection{Database Variations} 
 \label{sec:otherDBs}
@@ -1673,12 +1668,9 @@ into a larger logical unit~\cite{experienceWithQuickSilver}.
 \rcs{Better section name?}
 
 As mentioned in Section~\ref{sec:system}, Berkeley DB is a system
-quite similar to \yad, and essentially provides raw access to
+quite similar to \yad, and provides raw access to
 transactional data structures for application
-programmers~\cite{libtp}.  As we mentioned earlier, we believe that
-\yad is general enough to support a library like Berkeley DB, but that
-Berkeley DB is too specialized to be useful to a reimplementation of
-\yad.
+programmers~\cite{libtp}.  
 
 Cluster hash tables provide scalable, replicated hashtable
 implementation by partitioning the hash's buckets across multiple
@@ -1693,20 +1685,21 @@ into the individual nodes, allowing them to provide primitives that
 are appropriate for the higher-level service.  
 
 \subsection{Data layout policies}
-
-Data layout policies typically make decisions that have significant
-impacts upon performace.  Generally, these decisions are based upon
-assumptions about the application.  Allowing \yad operations to make
-use of application-specific layout policies would increase their
-flexibilty.\rcs{Fix sentence.}
+\label{sec:malloc}
+Data layout policies typically make decisions that have a significant
+impact on performace.  Generally, these decisions are based upon
+assumptions about the application.  \yad operations that make use of
+application-specific layout policies can be reused by a wider range of
+applications.  This section describes existing strategies for data
+layout.  Each addresses a distinct class of applications, and we
+beleieve that \yad could eventually support most of them.
 
 Different large object storage systems provide different API's.
 Some allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only storage allocation~\cite{ffs}.
 Record-oriented file systems are an older, but still-used~\cite{gfs}
-alternative. Each of these API's addresses 
-different workloads.
+alternative. 
 
 Although most file systems attempt to lay out data in logically sequential
 order, write-optimized file systems lay files out in the order they
@@ -1822,9 +1815,7 @@ Intel Research Berkeley supported portions of this work.
 Additional information, and \yads source code is available at:
 
 \begin{center}
-%{\tt http://www.cs.berkeley.edu/sears/\yad/}
 {\small{\tt http://www.cs.berkeley.edu/\ensuremath{\sim}sears/\yad/}}
-%{\tt http://www.cs.berkeley.edu/sears/\yad/}
 \end{center}
 
 {\footnotesize \bibliographystyle{acm}
