@@ -371,7 +371,7 @@ two layers are only loosely coupled.
 \subsection{Atomic Disk Operations}
 
 Transactional storage algorithms work because they are able to
-update atomically portions of durable storage.  These small atomic
+atomically update portions of durable storage.  These small atomic
 updates are used to bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to write entries to the log
@@ -457,7 +457,8 @@ entries are usually called {\em Compensation Log Records (CLRs)}.
 
 
 The primary difference between \yad and ARIES for basic transactions
-is that \yad allows user-defined operations.  An {\em operation}
+is that \yad allows user-defined operations, while ARIES defines a set 
+of operations that support relational database systems.  An {\em operation}
 consists of both a redo and an undo function, both of which take one
 argument. An update is always the redo function applied to a page;
 there is no ``do'' function, which ensures that updates behave the same
@@ -476,14 +477,10 @@ together; this is needed for multiple updates within a single page as
 well.  To recover a multi-page transaction, we simply recover each of
 the pages individually.  This works because steal/no-force completely
 decouples the pages: any page can be written back early (steal) or
-late (no force).  The only requirement is that all of the redo entries
-reach the disk before the commit record, which happens naturally with
-a single log.
-
-
+late (no force).  
 
 \subsection{Concurrent Transactions}
-\label{nta}
+\label{sec:nta}
 
 Two factors make it more difficult to write operations that may be
 used in concurrent transactions.  The first is familiar to anyone that
@@ -593,7 +590,7 @@ tables, and a number of methods that add functionality to recovery.
 Many of the customizations described below are implemented using
 custom operations. 
 
-In this portion of the discussion, operations are limited to a single
+In this portion of the discussion, physical operations are limited to a single
 page, as they must be applied atomically. We remove the single-page
 constraint in Setion~\ref{sec:lsn-free}.
 
@@ -652,6 +649,7 @@ practice. Most read-modify-write actions can be implemented as
 user-defined operations, including common DBMS optimizations such as
 increment operations.  The power of \yad is that by following these
 local restrictions, we enable new operations that meet the global
+properties for correct, concurrent transactions.~\rcs{What was supposed to come after ``global''?}
 
 Finally, for some applications, the overhead of logging information for redo or
 undo may outweigh their benefits.  Operations that wish to avoid undo
@@ -727,12 +725,12 @@ needs to be forced to disk once.
 
 
 \subsection{Application-specific Locking}
-
+\label{sec:locking}
 The transactions described above only provide the
 ``Atomicity'' and ``Durability'' properties of ACID.
   ``Isolation'' is
 typically provided by locking, which is a higher-level but
-comaptible layer.  ``Consistency'' is less well defined but comes in
+compatible layer.  ``Consistency'' is less well defined but comes in
 part from low-level mutexes that avoid races, and in part from
 higher-level constructs such as unique key requirements.  \yad, as with DBMSs,
 supports this by distinguishing between {\em latches} and {\em locks}.
@@ -745,7 +743,7 @@ policies and provide deadlock avoidance.  Applications that want
 conventional transactional isolation (serializability) can make 
 use of a lock manager.  Alternatively, applications may follow 
 the example of \yads default data structures, and implement 
-deadlock avoidance, or other custom lock management schemes.\rcs{Citations here?}
+deadlock avoidance, or other custom lock management schemes.\rcs{Citations here? Hybrid atomicity, optimistic/pessimistic concurrency control, something that leverages application semantics?}
 
 This allows higher-level code to treat \yad as a conventional
 reentrant data structure library.  It is the application's
@@ -767,7 +765,9 @@ each transaction, and keeps track of deallocation events, making sure
 that space on a page is never over reserved.  Providing each
 transaction with a separate pool of freespace increases 
 concurrency and locality.  This allocation strategy was inspired by
-Hoard, a malloc implementation for SMP machines~\cite{hoard}.
+Hoard, a malloc implementation for SMP machines~\cite{hoard}.  Also, 
+our allocator implements a policy similar to 
+McRT-malloc~\cite{mcrt-malloc}, but is much less efficient.
 
 Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
@@ -787,7 +787,7 @@ We make no assumptions regarding lock managers being used by higher-level code i
 
 The recovery algorithm described above uses LSNs to determine the
 version number of each page during recovery.  This is a common
-technique.  As far as we know, is used by all database systems that
+technique.  As far as we know, it is used by all database systems that
 update data in place.  Unfortunately, this makes it difficult to map
 large objects onto pages, as the LSNs break up the object.  It
 is tempting to store the LSNs elsewhere, but then they would not be
@@ -928,7 +928,7 @@ We plan to add RVM-style transactional memory to \yad in a way that is
 compatible with fully concurrent in-memory data structures such as
 hash tables and trees.  Of course, since \yad will support coexistance
 of conventional and LSN-free pages, applications will be free to use
-the \yad data structure implementations as well.
+the \yad data structure implementations as well.  
 
 
 \subsection{Transactions without Boundaries}
@@ -943,13 +943,13 @@ detected.  Media recovery allows them to recover these pages.
 Transactions based on blind updates do not require atomic page writes
 and thus have no meaningful boundaries for atomic updates.  We still
 use pages to simplify integration into the rest of the system, but
-need not wory about torn pages.  In fact, the redo phase of the
+need not worry about torn pages.  In fact, the redo phase of the
 LSN-free recovery algorithm actually creates a torn page each time it
 applies an old log entry to a new page.  However, it guarantees that
 all such torn pages will be repaired by the time Redo completes.  In
 the process, it also repairs any pages that were torn by a crash.
-This also implies that blind-update transactions work with disks with
-different units of atomicity.
+This also implies that blind-update transactions work with storage technologies with
+different (and varying or unknown) units of atomicity.
 
 Instead of relying upon atomic page updates, LSN-free recovery relies
 on a weaker property, which is that each bit in the page file must
@@ -1033,9 +1033,8 @@ optimizations and a wide-range of transactional systems.
 routines and recovery semantics.  In this section, we show that this
 flexibility does not come with a significant performance cost for
 general purpose transactional primitives, and show how a number of
-optimizations can significantly improve application performance while
-providing special-purpose interfaces that aid in the development of
-higher level code.
+special purpose interfaces aid in the development of higher level 
+code while significantly improving application performance.
 
 \subsection{Experimental setup}
 \label{sec:experimental_setup}
@@ -1789,7 +1788,8 @@ allocate memory in a way that favors cache locality~\cite{hoard}.
 %freespace, and consecutive memory allocations are a good predictor of
 %clustered access patterns and deallocations.  
 McRT-malloc is non-blocking and extends the ideas
-presented in Hoard for software transactional memory~\cite{mcrt}.
+presented in Hoard for software transactional memory~\cite{mcrt}.  
+\yads current record allocator is based on these ideas (Section~\ref{sec:locking}).
 
 Allocation of records that must fit within pages and be persisted to
 disk raises concerns regarding locality and page layouts.  Depending
