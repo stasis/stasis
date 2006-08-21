@@ -1258,7 +1258,7 @@ We also considered storing multiple LSNs per page and registering a
 callback with recovery to process the LSNs.  However, in such a
 scheme, the object allocation routine would need to track objects that
 were deleted but still may be manipulated during REDO.  Otherwise, it
-could inadvertantly overwrite per-object LSNs that would be needed
+could inadvertently overwrite per-object LSNs that would be needed
 during recovery.
 
 \eab{we should at least implement this callback if we have not already}
@@ -1484,7 +1484,7 @@ substrate that makes it easier to implement such systems.
 
 \subsubsection{Nested Transactions}
 
-{\em Nested transactions} allow transactions to spawn subtransactions,
+{\em Nested transactions} allow transactions to spawn sub-transactions,
 forming a tree.  {\em Linear} nesting
 restricts transactions to a single child.  {\em Closed} nesting rolls
 children back when the parent aborts~\cite{nestedTransactionBook}.
@@ -1512,21 +1512,15 @@ transactions could be implemented on top of \yad.
 %the storage subsystem, which remains the architecture for modern
 %databases.
 
-Transactions provide a number of properties that are attractive to
-distributed systems; they provide isolation between nodes, protecting
-live systems when other nodes crash.  Atomicity and durability
-simplify recovery after a node crashes.  Finally, nested transactions
-allow for concurrency within a single transaction, allow partial
-rollback, and isolate working subtransactions from those that must be
-rolled back and retried due to node failure.
-
-Argus is a language for reliable distributed applications.  An Argus
+Nested transactions simplify distributed systems; they isolate
+failures, manage concurrency, and provide durability.  In fact, they
+were developed as part of Argus, a language for reliable distributed applications.  An Argus
 program consists of guardians, which are essentially objects that
-encapsulate persistent and atomic data.  Accesses to atomic data are 
-serializable; persistent data is not protected by the lock manager, 
+encapsulate persistent and atomic data.  While accesses to {\em atomic} data are 
+serializable {\em persistent} data is not protected by the lock manager, 
 and is used to implement concurrent data structures~\cite{argus}.  
 Typically, the data structure is stored in persistent storage, but is augmented with
-extra information in atomic storage.  This extra data tracks the
+information in atomic storage.  This extra data tracks the
 status of each item stored in the structure.  Conceptually, atomic 
 storage used by a hashtable would contain the values ``Not present'',
 ``Committed'' or ``Aborted; Old Value = x'' for each key in (or
@@ -1536,16 +1530,14 @@ update the persistent storage if necessary.  Because the atomic data is
 protected by a lock manager, attempts to update the hashtable are serializable.
 Therefore, clever use of atomic storage can be used to provide logical locking.
 
-Note that operations that implement concurrent data structures using
-this method must track a great deal of extra state.  Efficiently
+Efficiently
 tracking such state is not straightforward.  For example, the Argus
-hashtable implementation made use of its own log structure to
-efficiently track the status of each key that had been touched by an
-active transaction.  Also, the hashtable is responsible for setting
-policies regarding when, and with what granularity it would be written
-back to disk~\cite{argusImplementation}.  \yad operations avoid this
+hashtable implementation uses a log structure to
+track the status of keys that have been touched by 
+active transactions.  Also, the hashtable is responsible for setting disk write back
+policies regarding granularity of atomic writes, and the timing of such writes~\cite{argusImplementation}.  \yad operations avoid this
 complexity by providing logical undos, and by leaving lock management
-to higher-level code.  This also separates write-back and concurrency
+to higher-level code.  This separates write-back and concurrency
 control policies from data structure implementations.
 
 %The Argus designers assumed that only a few core concurrent
@@ -1560,7 +1552,7 @@ and updates data in place.  (Argus uses shadow copies to provide
 atomic updates.)  Camelot provides two logging modes: Redo only
 (no-Steal, no-Force) and Undo/Redo (Steal, no-Force).  It uses 
 facilities of Mach to provide recoverable virtual memory.  It
-is decoupled from Avalon, which uses Camelot to provide a
+supports Avalon, which uses Camelot to provide a
 higher-level (C++) programming model.  Camelot provides a lower-level
 C interface that allows other programming models to be
 implemented.  It provides a limited form of closed nested transactions
@@ -1572,9 +1564,7 @@ in Camelot are similar to those
 in Argus since Camelot does not provide logical undo.  Camelot focuses
 on distributed transactions, and hardcodes
 assumptions regarding the structure of nested transactions, consensus
-algorithms, communication mechanisms, and so on.  In contrast, \yads
-goal is to support a wide range of such mechanisms efficiently without  
-providing any built-in support for distributed transactions.
+algorithms, communication mechanisms, and so on.
 
 More recent transactional programming schemes allow for multiple
 transaction implementations to cooperate as part of the same
@@ -1582,34 +1572,31 @@ distributed transaction.  For example, X/Open DTP provides a standard
 networking protocol that allows multiple transactional systems to be
 controlled by a single transaction manager~\cite{something}.
 Enterprise Java Beans is a standard for developing transactional
-middleware on top of heterogeneous storage.  Its
+middle ware on top of heterogeneous storage.  Its
 transactions may not be nested~\cite{something}.  This simplifies its
-semantics somewhat, and leads to many, short transactions, 
+semantics, and leads to many, short transactions, 
 improving concurrency.  However, flat transactions are somewhat rigid, and lead to
 situations where committed transactions have to be manually rolled
-back by other transactions after the fact~\cite{ejbCritique}.  The Open
+back by other transactions~\cite{ejbCritique}.  The Open
 Multithreaded Transactions model is based on nested transactions,
 incorporates exception handling, and allows parents to execute
 concurrently with their children~\cite{omtt}.
 
 QuickSilver is a distributed transactional operating system.  It
-provided an IPC mechanism that mandated the use of transactions, and
-allowed varying degrees of isolation, both to support legacy code, and
+provides a transactional IPC mechanism, and
+allows varying degrees of isolation, both to support legacy code, and
 to implement servers that require special isolation properties.  It
-supported transactions over durable and volatile state, and included a
-number of different commit protocols for applications to choose
-between.  It provided a flexible, shared logging facility that did not
-hardcode log format, or recovery algorithms.  The shared log
-essentially provided an API that other write ahead logging systems to
-could make use of.  Underneath this interface, it supported a number
+supports transactions over durable and volatile state, and includes a
+number of different commit protocols.  Its shared logging facility does not
+hardcode log format or recovery algorithms, and supports a number
 of interesting optimizations such as distributed
 logging~\cite{recoveryInQuickSilver}.  The QuickSilver project found
-that transactions are general enough to meet the demands of most
+that transactions meet the demands of most
 applications, provided that long running transactions do not exhaust
 system resources, and that flexible concurrency control policies are
-available to applications.  In QuickSilver, nested transactions would
-have been most useful when composing a series of program invocations
-into a larger logical unit~\cite{experienceWithQuickSilver}.
+available.  In QuickSilver, nested transactions would
+be most useful when a series of program invocations
+form a larger logical unit~\cite{experienceWithQuickSilver}.
 
 \subsection{Transactional data structures}
 
@@ -1627,44 +1614,36 @@ systems.  Boxwood treats each system in a cluster of machines as a
 top of the chunks that these machines export.  
 
 \yad is complementary to Boxwood and cluster hash tables; those
-systems intelligentally compose a set of systems for scalability and
+systems intelligently compose a set of systems for scalability and
 fault tolerance.  In contrast, \yad makes it easy to push intelligence
 into the individual nodes, allowing them to provide primitives that
 are appropriate for the higher-level service.  
 
 \subsection{Data layout policies}
 \label{sec:malloc}
-Data layout policies typically make decisions that have a significant
-impact on performance.  Generally, these decisions are based upon
-assumptions about the application.  \yad operations that make use of
-application-specific layout policies can be reused by a wider range of
-applications.  This section describes existing strategies for data
-layout.  Each addresses a distinct class of applications, and we
-believe that \yad could eventually support most of them.
+Data layout policies make decisions based upon
+assumptions about the application.  Ideally, \yad would allow
+application-specific layout policies to be used interchangeably, 
+This section describes existing strategies for data
+layout that we believe \yad could eventually support.
 
-Different large object storage systems provide different APIs.
-Some allow arbitrary insertion and deletion of bytes~\cite{esm}
+Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
-provide append-only storage allocation~\cite{ffs}.
-Record-oriented file systems are an older, but still-used~\cite{gfs}
-alternative. 
+provide append-only allocation~\cite{ffs}.
+Record-oriented allocation is an older~\cite{multics}, but still-used~\cite{gfs}
+alternative.  Write-optimized file systems lay files out in the order they
+were written rather than in logically sequential order~\cite{lfs}.  
 
-Although most file systems attempt to lay out data in logically sequential
-order, write-optimized file systems lay files out in the order they
-were written~\cite{lfs}.  Schemes to improve locality between small
+Schemes to improve locality between small
 objects exist as well. Relational databases allow users to specify the order
 in which tuples will be laid out, and often leave portions of pages
 unallocated to reduce fragmentation as new records are allocated.
 
-Memory allocation routines address this problem, although with limited
-information.  For example, the Hoard memory allocator is a highly
-concurrent version of malloc that makes use of thread context to
-allocate memory in a way that favors cache locality~\cite{hoard}.
-%Essentially, each thread allocates memory from its own pool of
-%freespace, and consecutive memory allocations are a good predictor of
-%clustered access patterns and deallocations.  
-McRT-malloc is non-blocking and extends the ideas
-presented in Hoard for software transactional memory~\cite{mcrt}.  
+Memory allocation routines such as Hoard~\cite{hoard} and
+McRT-malloc~\cite{mcrt} address this problem by grouping allocated
+data by thread or transaction, respectively.  This increases
+locality, and reduces contention created by unrelated objects stored
+in the same location.
 \yads current record allocator is based on these ideas (Section~\ref{sec:locking}).
 
 Allocation of records that must fit within pages and be persisted to
@@ -1677,10 +1656,6 @@ patterns~\cite{storageReorganization}.
 %Other work makes use of the caller's stack to infer
 %information about memory management.~\cite{xxx} \rcs{Eric, do you have
 %  a reference for this?}
-
-Finally, many systems take a hybrid approach to allocation.  Examples include
-databases with blob support, and a number of
-file systems~\cite{reiserfs,ffs}.
 
 We are interested in allowing applications to store records in
 the transaction log.  Assuming log fragmentation is kept to a
@@ -1702,20 +1677,15 @@ systems
 \end{itemize}
 
 The complexity of the core of \yad is our primary concern, as it
-contains the hard-coded policies and assumptions.  Over time, the core has
-shrunk as functionality has been moved into extensions.  We expect
+contains the hard-coded policies and assumptions.  Over time, it has
+shrunk as functionality has moved into extensions.  We expect
 this trend to continue as development progresses.  
 
-A resource manager
-is a common pattern in system software design, and manages
-dependencies and ordering constraints between sets of components.
-Over time, we hope to shrink \yads core to the point where it is
-simply a resource manager and a set of implementations of a few unavoidable
-algorithms related to write-ahead logging.  For instance, 
-we suspect that support for appropriate callbacks will 
-allow us to hard-code a generic recovery algorithm into the 
-system.  Similarly, any code that manages book-keeping information, such as 
-LSNs may be general enough to be hard-coded.  
+A resource manager is a common pattern in system software design, and
+manages dependencies and ordering constraints between sets of
+components.  Over time, we hope to shrink \yads core to the point
+where it is simply a resource manager that coordinates interchangeable
+implementations of the other components.
 
 Of course, we also plan to provide \yads current functionality, including the algorithms
 mentioned above as modular, well-tested extensions.
