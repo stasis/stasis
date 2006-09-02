@@ -606,6 +606,8 @@ recovery-specific code in the system.
 \caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
 \end{figure}
 
+
+
 The first step in implementing a new operation is to decide upon an
 external interface, which is typically cleaner than directly calling {\tt Tupdate()} to invoke the redo/undo operations.
 The externally visible interface is implemented
@@ -964,31 +966,35 @@ operations performed by redo are blind updates, they can be applied
 regardless of whether the initial page was the correct version or even
 logically consistent.
 
+\begin{figure}
+\includegraphics[%
+  bb=0bp 0bp 445bp 275bp,
+  clip,
+  width=1\columnwidth]{figs/torn-page.pdf}
+\caption{\sf\label{fig:torn}Torn pages and LSN-free recovery.
+The page is torn during the crash, but consistent once redo completes.
+Overwritten and stale torn sectors are shaded.}
+\end{figure}
 
-\eat{ Figure~\ref{fig:todo} provides an example page, and a number of
-log entries that were applied to it.  Assume that the initial version
+\rcs{Next 3 paragraphs are new; check flow, etc}
+Figure~\ref{fig:torn} describes a page that is torn during crash, and the actions performed by redo that repair it.  Assume that the initial version
 of the page, with LSN $0$, is on disk, and the disk is in the process
 of writing out the version with LSN $2$ when the system crashes.  When
 recovery reads the page from disk, it may encounter any combination of
 sectors from these two versions.
 
-Note that the first and last two sectors are not overwritten by any
-of the log entries that Redo will play back.  Therefore, their value
-is unchanged in both versions of the page.  Since Redo will not change
-them, we know that they will have the correct value when it completes.
-The remainder of the sectors are overwritten at some point in the log.
-If we constrain the updates to overwrite an entire sector at once, then
-the initial on-disk value of these sectors would not have any affect
-on the outcome of Redo.  Furthermore, since the redo entries are
-played back in order, each sector would contain the most up to date
-version after redo.
+Note that the first and last two sectors are not overwritten by any of
+the log entries that Redo will play back.  Therefore, their values are
+unchanged in both versions of the page.  In the example, two of these
+sectors are overwritten during the crash, while the shaded one is left
+over from the old version of the page. 
 
-Of course, we do not want to constrain log entries to update entire
-sectors at once.  In order to support finer-grained logging, we simply
-repeat the above argument on the byte or bit level.  Each bit is
-either overwritten by redo, or has a known, correct, value before
-redo.
-}
+Redoing LSN 1 is unnecessary, since all of its sectors happened to
+make it to disk.  However, recovery has no way of knowing this and
+applies the entry to the page, replacing a up-to-date sector with a
+stale one.  When LSN 2 is applied, it brings this sector up to date,
+and also overwrites one of the two sectors that did not make it to
+disk.  At this point, the page is internally consistent.
 
 Since LSN-free recovery only relies upon atomic updates at the bit
 level, it decouples page boundaries from atomicity and recovery.  This
