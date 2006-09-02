@@ -221,7 +221,7 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as XML or probabilistic databases, 
+creating new top-down models, such as XML databases, 
 or by extending the relational model~\cite{codd} along some axis, such
 as new data types.  (We cover these attempts in more detail in
 Section~\ref{sec:related-work}.) \eab{add cites}
@@ -350,7 +350,9 @@ atomically updating portions of durable storage.  These small atomic
 updates are used to bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to write entries to the log
-file atomically.
+file atomically.  Transaction systems that store LSNs on pages to 
+track version information also rely on the ability to atomically 
+write pages to disk.
 
 In practice, a write to a disk page is not atomic (in modern drives).  Two common failure
 modes exist.  The first occurs when the disk writes a partial sector
@@ -369,20 +371,24 @@ replaying the log.
 
 For simplicity, this section ignores mechanisms that detect
 and restore torn pages, and assumes that page writes are atomic.
-Although the techniques described in this section rely on the ability to
-update disk pages atomically, we relax this restriction in Section~\cite{sec:lsn-free}.
+We relax this restriction in Section~\ref{sec:lsn-free}.
 
-\subsection{Single-Page Transactions}
+\subsection{Non-concurrent Transactions}
 
-Transactional pages provide the ``A'' and ``D'' properties
-of ACID transactions, but only within a single page.\endnote{The ``A'' in ACID really means atomic persistence
+This section provides the ``Atomicity'' and ``Durability'' properties
+for a single ACID transaction.\endnote{The ``A'' in ACID really means atomic persistence
 of data, rather than atomic in-memory updates, as the term is normally
 used in systems work~\cite{GR97}; the latter is covered by ``C'' and ``I''.}
-We cover
-multi-page transactions in the next section, and the rest of ACID in
-Section~\ref{locking}.  The insight behind transactional pages was
-that atomic page writes form a good foundation for full transactions;
-however, since page writes are not really atomic anymore, it might be
+First we describe single-page transactions, then multi-page transactions.
+``Consistency'' and ``Isolation'' are covered with 
+concurrent transactions in the next section.
+%We cover
+%multi-page transactions in the next section, and the rest of ACID in
+%Section~\ref{locking}.  
+
+The insight behind transactional pages was
+that atomic page writes form a good foundation for full transactions.
+However, since page writes are no longer atomic, it might be
 better to think of these as transactional sectors.
 
 The trivial way to achieve single-page transactions is to apply all of
@@ -400,7 +406,7 @@ as part of a larger sequential write.
 
 After a crash, we have to apply the REDO entries to those pages that
 were not updated on disk.  To decide which updates to reapply, we use
-a per-page sequence number called the {\em log-sequence number} or
+a per-page version number called the {\em log-sequence number} or
 {\em LSN}. Each update to a page increments the LSN, writes it on the
 page, and includes it in the log entry.  On recovery, we simply
 load the page and look at the LSN to figure out which updates are missing
@@ -447,8 +453,7 @@ the same parameters.}  \yad ensures the correct ordering and timing
 of all log entries and page writes.  We describe operations in more
 detail in Section~\ref{operations}
 
-
-\subsection{Multi-page Transactions}
+%\subsection{Multi-page Transactions}
 
 Given steal/no-force single-page transactions, it is relatively easy
 to build full transactions. 
@@ -489,7 +494,8 @@ Two common solutions to this problem are {\em total isolation} and
 transaction from accessing a data structure that has been modified by
 another in-progress transaction.  An application can achieve this
 using its own concurrency control mechanisms, or by holding a lock on
-each data structure until the end of the transaction (``strict two-phase locking'').  Releasing the
+each data structure until the end of the transaction (by performing {\em strict two-phase locking} on the entire data structure).  
+Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
 that data may need to abort if a current transaction aborts ({\em
@@ -616,7 +622,11 @@ This pattern applies in many cases.  In
 order to implement a ``typical'' operation, the operation's
 implementation must obey a few more invariants:
 \begin{itemize}
-\item Pages should only be updated inside redo/undo functions.
+\item Pages should only be updated inside physical redo/undo operation implementations.
+\item Logical operation implementations may invoke other operations
+      via {\tt Tupdate()}.  Recovery does not support logical redo,
+      and physical operation implementations may not invoke {\tt
+      Tupdate()}.
 \item Page updates atomically update the page's LSN by pinning the page.
 %\item If the data seen by a wrapper function must match data seen
 %  during REDO, then the wrapper should use a latch to protect against
@@ -793,14 +803,13 @@ ranges of the page file to be updated by a single physical operation.
 
 \yads implementation does not currently support the recovery algorithm
 described in this section.  However, \yad avoids hard-coding most of
-the relevant subsystems.  LSN-free pages are essentially an alternative
-protocol for atomically and durably applying updates to the page file.
-This will require the addition of a new page type that calls the
-logger to estimate LSNs; \yad currently has three such types, not
-including some minor variants. We plan to support the coexistence of
-LSN-free pages, traditional pages, and similar third-party modules
-within the same page file, log, transactions, and even logical
-operations.
+the relevant subsystems.  LSN-free pages are essentially an
+alternative protocol for atomically and durably applying updates to
+the page file.  This will require the addition of a new page type that
+calls the logger to estimate LSNs; \yad currently has three such
+types, not including some minor variants, and already supports the
+coexistence of multiple page types within the same page file and
+logical operation.
 
 \subsection{Blind Updates}
 
@@ -861,9 +870,8 @@ We originally developed LSN-free pages as an efficient method for
 transactionally storing and updating multi-page objects, called {\em
 blobs}.  If a large object is stored in pages that contain LSNs, then it is not contiguous on disk, and must be gathered together using the CPU to do an expensive copy into a second buffer.
 
-Compare this approach to modern file systems, which allow applications to
-perform a DMA copy of the data into memory, avoiding the expensive
- copy, and allowing the CPU to be used for
+In contrast, modern file systems allow applications to
+perform a DMA copy of the data into memory, allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
 network services to use DMA and network adaptor hardware to read data
 from disk, and send it over a network socket without passing it
@@ -877,14 +885,16 @@ a portion of the log file. However, doing this does not address the problem of u
 file.  We suspect that contributions from log-based file
 systems~\cite{lfs} can address these problems. In
 particular, we imagine storing portions of the log (the portion that
-stores the blob) in the page file, or other addressable storage.  In
-the worst case, the blob would have to be relocated in order to
-defragment the storage.  Assuming the blob is relocated once, this
-would amount to a total of three, mostly sequential zero-copy disk operations.
-(Two writes and one read.)  However, in the best case, the blob would
-only be written once.  In contrast, conventional blob implementations
-generally write the blob twice, and use the CPU to copy the data onto pages.  \yad could also provide 
-file system semantics, and use DMA to update blobs in place.
+stores the blob) in the page file, or other addressable storage.  
+
+%In
+%the worst case, the blob would have to be relocated in order to
+%defragment the storage.  Assuming the blob is relocated once, this
+%would amount to a total of three, mostly sequential zero-copy disk operations.
+%(Two writes and one read.)  However, in the best case, the blob would
+%only be written once.  In contrast, conventional blob implementations
+%generally write the blob twice, and use the CPU to copy the data onto pages.  \yad could also provide 
+%file system semantics, and use DMA to update blobs in place.
 
 \subsection{Concurrent RVM}
 
@@ -905,21 +915,21 @@ with an appropriate inverse each time its logical state changes.
 
 We plan to add RVM-style transactional memory to \yad in a way that is
 compatible with fully concurrent in-memory data structures such as
-hash tables and trees.  Since \yad supports coexistence
-of multiple page types, applications will be free to use
-the \yad data structure implementations as well.  
+hash tables and trees, and with existing
+\yad data structure implementations.
 
 
 \subsection{Unbounded Atomicity}
 \label{sec:torn-page}
 
-Recovery schemes that make use of per-page LSNs assume that each page
-is written to disk atomically even though that is generally no longer
-the case in modern disk drives.  Such schemes deal with this problem
-by using page formats that allow partially written pages to be
-detected.  Media recovery allows them to recover these pages.
+%Recovery schemes that make use of per-page LSNs assume that each page
+%is written to disk atomically even though that is generally no longer
+%the case in modern disk drives.  Such schemes deal with this problem
+%by using page formats that allow partially written pages to be
+%detected.  Media recovery allows them to recover these pages.
 
-Transactions based on blind updates do not require atomic page writes
+Unlike transactions with per-page LSNs, transactions based on blind 
+updates do not require atomic page writes
 and thus impose no meaningful boundaries on atomic updates.  We still
 use pages to simplify integration into the rest of the system, but
 need not worry about torn pages.  In fact, the redo phase of the
@@ -995,8 +1005,8 @@ and reason about when applied to LSN-free pages.
 \subsection{Summary}
 
 In this section, we explored some of the flexibility of \yad. This
-includes user-defined operations, any combination of steal and force on
-a per-transaction basis, flexible locking options, and a new class of
+includes user-defined operations, combinations of steal and force on
+a per-operation basis, flexible locking options, and a new class of
 transactions based on blind updates that enables better support for
 DMA, large objects, and multi-page operations.  In the next section,
 we show through experiments how this flexibility enables important
@@ -1046,7 +1056,7 @@ improves performance.
 We disable Berkeley DB's lock manager for the benchmarks,
 though we use ``Free Threaded'' handles for all
 tests.  This significantly increases performance by
-removing the possibility of transaction deadlock, abort, and
+eliminating transaction deadlock, abort, and
 repetition.  However, disabling the lock manager caused 
 concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
@@ -1127,8 +1137,7 @@ loads the tables by repeatedly inserting $(key, value)$ pairs
 %to Berkeley DB.  Instead, this test shows that \yad is comparable to
 %existing systems, and that its modular design does not introduce gross
 %inefficiencies at runtime.
-The comparison between the \yad  implementations is more
-enlightening.  The performance of the modular hash table shows that
+The performance of the modular hash table shows that
 data structure implementations composed from
 simpler structures can perform comparably to the implementations included 
 in existing monolithic systems.  The hand-tuned
@@ -1144,17 +1153,18 @@ optimize important primitives.
 %the transactional data structure implementation.
 
 Figure~\ref{fig:TPS} describes the performance of the two systems under
-highly concurrent workloads.  For this test, we used the modular
+highly concurrent workloads using the ext3 filesystem.endnote{The multi-threaded benchmarks
+  presented here were performed using an ext3 file system, as high
+  concurrency caused both Berkeley DB and \yad to behave unpredictably
+  when ReiserFS was used.  However, \yads multi-threaded throughput
+  was significantly better that Berkeley DB's under both file systems.}
+  For this test, we used the modular
 hash table, since we are interested in the performance of a 
 simple, clean data structure implementation that a typical system implementor might
 produce, not the performance of our own highly tuned implementation.
 
 Both Berkeley DB and \yad can service concurrent calls to commit with
-a single synchronous I/O.\endnote{The multi-threaded benchmarks
-  presented here were performed using an ext3 file system, as high
-  concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when ReiserFS was used.  However, \yads multi-threaded throughput
-  was significantly better that Berkeley DB's under both file systems.}
+a single synchronous I/O.
 \yad scaled quite well, delivering over 6000 transactions per
 second,\endnote{The concurrency test was run without lock managers, and the
   transactions obeyed the A, C, and D properties.  Since each
@@ -1244,9 +1254,9 @@ scheme, the object allocation routine would need to track objects that
 were deleted but still may be manipulated during REDO.  Otherwise, it
 could inadvertently overwrite per-object LSNs that would be needed
 during recovery.
-
-\eab{we should at least implement this callback if we have not already}
-
+%
+%\eab{we should at least implement this callback if we have not already}
+%
 Alternatively, we could arrange for the object pool 
 to atomically update the buffer 
 manager's copy of all objects that share a given page.
@@ -1302,8 +1312,8 @@ to disk.
 To determine the effect of the optimization in memory bound systems,
 we decreased \yads page cache size, and used O\_DIRECT to bypass the
 operating system's disk cache.  We partitioned the set of objects
-so that 10\% fit in a {\em hot set} that is small enough to fit into
-memory.  Figure~\ref{fig:OASYS} presents \yads performance as we varied the
+so that 10\% fit in a {\em hot set} \rcs{This doesn't make sense: that is small enough to fit into
+memory}.  Figure~\ref{fig:OASYS} presents \yads performance as we varied the
 percentage of object updates that manipulate the hot set.  In the
 memory bound test, we see that update/flush indeed improves memory
 utilization. \rcs{Graph axis should read ``percent of updates in hot set''}
