@@ -119,7 +119,7 @@ scientific computing.  These applications have complex transactional
 storage requirements, but do not fit well onto SQL or the monolithic
 approach of current databases.  In fact, when performance matters
 these applications often avoid DBMSs and instead implement ad-hoc data
-management solutions~\cite{SNS}.
+management solutions~\cite{mapReduce,SNS}.
 
 An example of this mismatch occurs with DBMS support for persistent objects.
 In a typical usage, an array of objects is made persistent by mapping
@@ -221,9 +221,9 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as object oriented or XML databases~\cite{OOdb, XMLdb}, 
+creating new top-down models, such as object-oriented, XML or streaming databases~\cite{OOdb, XMLdb, streaming}, 
 or by extending the relational model~\cite{codd} along some axis, such
-as new data types.  We cover these attempts in more detail in
+as new data types~\cite{newDBtypes}.  We cover these attempts in more detail in
 Section~\ref{sec:related-work}.
 
 %Database systems are often thought of in terms of the high-level
@@ -255,12 +255,11 @@ relation into a set of keyed tuples.  If the database were going to be
 used for short, write-intensive and high-concurrency transactions
 (OLTP), the physical model would probably translate sets of tuples
 into an on-disk B-tree.  In contrast, if the database needed to
-support long-running, read-only aggregation queries (OLAP) over high
-dimensional data, a physical model that stores the data in a sparse
-array format would be more appropriate~\cite{molap}.  Although both
+support long-running, read-only aggregation queries (OLAP) over high-dimensional data, a physical model that stores the data in a sparse
+array format would be more appropriate~\cite{OLAP,molap}.  Although both
 OLTP and OLAP databases are based upon the relational model they make
-use of different physical models in order to efficiently serve
-different classes of applications.
+use of different physical models in order to serve
+different classes of applications efficiently.
 
 A basic claim of
 this paper is that no known physical data model can efficiently
@@ -276,6 +275,9 @@ efficiently.  This makes it easy for system designers to
 implement most of the data models that the underlying hardware can
 support, or to abandon the database approach entirely, and forgo 
 structured physical models and abstract conceptual mappings.
+
+\eab{add OneSizeFitsAll paragraph}
+
 
 \subsection{The Systems View}
 \label{sec:systems}
@@ -350,8 +352,8 @@ atomically updating portions of durable storage.  These small atomic
 updates bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to write entries to the log
-file atomically.  Transaction systems that store LSNs on pages to 
-track version information rely on atomic page writes as well. 
+file atomically.  Transaction systems that store sequence numbers on pages to 
+track version information also rely on atomic page writes. 
 
 In practice, a write to a disk page is not atomic (in modern drives).  Two common failure
 modes exist.  The first occurs when the disk writes a partial sector
@@ -432,12 +434,11 @@ On recovery, the redo phase applies all updates (even those from
 aborted transactions).  Then, an undo phase corrects stolen pages for
 aborted transactions.  Each operation that undo performs is recorded
 in the log, and the per-page LSN is updated accordingly.  In order to
-prevent repeated crashes during recovery from causing the log to grow
-excessively, the entries written during the undo phase tell future
-undo phases to skip portions of the transaction that have already been
-undone.  These log entries are usually called {\em Compensation Log
-Records (CLRs)}.
-
+ensure progress even with crashes during recovery, special log records
+mark which actions have been undone, so they may be skipped during
+recovery in the future.  We also use these records, called {\em
+Compensation Log Records (CLRs)} to avoid undoing actions that we
+intend to keep even when transactions abort.
 
 The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations, while ARIES defines a set
@@ -539,9 +540,9 @@ operations:
   hash table: the undo for {\em insert} is {\em remove}.  This logical
   undo function should arrange to acquire the mutex when invoked by
   abort or recovery.
-\item Add a ``begin nested top action'' right after the mutex
-  acquisition, and an ``end nested top action'' right before the mutex
-  is released.  \yad includes operations that provide nested top
+\item Add a ``begin nested top action'' right after mutex
+  acquisition, and an ``end nested top action'' right before mutex
+  release.  \yad includes operations that provide nested top
   actions.
 \end{enumerate}
 
@@ -608,7 +609,7 @@ recovery-specific code in the system.
 
 
 The first step in implementing a new operation is to decide upon an
-external interface, which is typically cleaner than directly calling {\tt Tupdate()} to invoke the redo/undo operations.
+external interface, which is typically cleaner than directly calling {\tt Tupdate()} to invoke the operation(s).
 The externally visible interface is implemented
 by wrapper functions and read-only access methods.  The wrapper
 function modifies the state of the page file by packaging the
@@ -629,6 +630,8 @@ implementation must obey a few more invariants:
       and physical operation implementations may not invoke {\tt
       Tupdate()}.
 \item Page updates atomically update the page's LSN by pinning the page.
+\eab{``pinning'' is not quite right here; we could use latch, but we haven't devined it yet; could swict sections 3.4 and 3.5}
+
 %\item If the data seen by a wrapper function must match data seen
 %  during redo, then the wrapper should use a latch to protect against
 %  concurrent attempts to update the sensitive data (and against
@@ -758,7 +761,7 @@ of the transaction that created a region of freespace, and does not
 coalesce or reuse any storage associated with an active transaction.
 In contrast, the record allocator is called frequently and must enable locality.  It associates a set of pages with
 each transaction, and keeps track of deallocation events, making sure
-that space on a page is never over reserved.  Providing each
+that space on a page is never overbooked.  Providing each
 transaction with a separate pool of freespace increases 
 concurrency and locality.  This is 
 similar to Hoard~\cite{hoard} and 
@@ -772,8 +775,10 @@ special-purpose lock managers are a useful abstraction.\rcs{This would
 be a good place to cite Bill and others on higher-level locking
 protocols}
 
-Locking is largely orthogonal to the concepts described in this paper.
-We make no assumptions regarding lock managers being used by higher-level code in the remainder of this discussion.
+Although custom locking is important for flexiblity, it is largely
+orthogonal to the concepts described in this paper.  We make no
+assumptions regarding lock managers being used by higher-level code in
+the remainder of this discussion.
 
 
 
@@ -830,8 +835,7 @@ deterministic, idempotent redo entries that do not examine page state.
 We call such operations ``blind updates.''  Note that we still allow
 code that invokes operations to examine the page file, just not during the redo phase of recovery.
 For example, these operations could be invoked by log
-entries that contain a set of byte ranges, and the new value
-of each byte in the range.
+entries that contain a set of byte ranges with their new values.
 
 Recovery works the same way as before, except that it now computes
 a lower bound for the LSN of each page, rather than reading it from the page.
@@ -886,8 +890,7 @@ optimizations in a straightforward fashion.  Zero-copy writes are
 a portion of the log file. However, doing this does not address the problem of updating the page
 file.  We suspect that contributions from log-based file
 systems~\cite{lfs} can address these problems. In
-particular, we imagine storing portions of the log (the portion that
-stores the blob) in the page file, or other addressable storage.  
+particular, we imagine writing large blobs to a distinct log segment and just entering metadata in the primary log.
 
 %In
 %the worst case, the blob would have to be relocated in order to
@@ -908,7 +911,7 @@ memory~\cite{lrvm}.  However, without support for logical log entries
 and nested top actions, it is difficult to implement a
 concurrent, durable data structure using RVM or Camelot.  (The description of
 Argus in Section~\ref{sec:transactionalProgramming} sketches the
-general approach.)  
+general approach.)\eab{check this last sentence}  
 
 In contrast, LSN-free pages allow logical
 undo and therefore nested top actions and concurrent
@@ -935,7 +938,7 @@ updates do not require atomic page writes
 and thus impose no meaningful boundaries on atomic updates.  We still
 use pages to simplify integration into the rest of the system, but
 need not worry about torn pages.  In fact, the redo phase of the
-LSN-free recovery algorithm actually creates a torn page each time it
+LSN-free recovery algorithm effectively creates a torn page each time it
 applies an old log entry to a new page.  However, it guarantees that
 all such torn pages will be repaired by the time redo completes.  In
 the process, it also repairs any pages that were torn by a crash.
@@ -999,7 +1002,7 @@ disk.  At this point, the page is internally consistent.
 
 Since LSN-free recovery only relies upon atomic updates at the bit
 level, it decouples page boundaries from atomicity and recovery.  This
-allows operations to atomically manipulate (potentially
+allows operations to manipulate atomically (potentially
 non-contiguous) regions of arbitrary size by producing a single log
 entry.  If this log entry includes a logical undo function (rather
 than a physical undo), then it can serve the purpose of a nested top
@@ -1010,7 +1013,7 @@ and reason about when applied to LSN-free pages.
 
 \subsection{Summary}
 
-In this section, we explored some of the flexibility of \yad. This
+In these last two sections, we explored some of the flexibility of \yad. This
 includes user-defined operations, combinations of steal and force on
 a per-operation basis, flexible locking options, and a new class of
 transactions based on blind updates that enables better support for
@@ -1071,7 +1074,7 @@ With the lock manager enabled, Berkeley
 DB's performance in the multithreaded benchmark (Section~\ref{sec:lht}) strictly decreased with
 increased concurrency.  
 
-We expended a considerable effort tuning Berkeley DB, and our efforts
+We expended a considerable effort tuning Berkeley DB and our efforts
 significantly improved Berkeley DB's performance on these tests.
 Although further tuning by Berkeley DB experts would probably improve
 Berkeley DB's numbers, we think our comparison shows that the systems'
@@ -1213,7 +1216,7 @@ persistence library, \oasys.  \oasys makes use of pluggable storage
 modules that implement persistent storage, and includes plugins
 for Berkeley DB and MySQL.  
 
-This section describes how the \yads plugin supports optimizations that reduce the
+This section describes how the \yad plugin supports optimizations that reduce the
 amount of data written to log and halve the amount of RAM required.
 We present three variants of the \yad plugin.  The basic one treats
 \yad like Berkeley DB.  The ``update/flush'' variant
@@ -1224,9 +1227,9 @@ between versions.
 The update/flush variant allows the buffer manager's view of live
 application objects to become stale.  This is safe since the system is
 always able to reconstruct the appropriate page entry from the live
-copy of the object.  This reduces the number of times the \oasys
+copy of the object.  This reduces the number of times the
 plugin must update serialized objects in the buffer manager, and
-allows us to drastically decrease the amount of memory used by the
+allows us to decrease drastically the amount of memory used by the
 buffer manager.  
 
 We implemented the \yad buffer pool optimization by adding two new
@@ -1236,8 +1239,7 @@ updates the page when an object is evicted from the application's cache.
 The reason it would be difficult to do this with Berkeley DB is that
 we still need to generate log entries as the object is being updated.
   This would cause Berkeley DB to write data to pages,
-increasing the working set of the program, and increasing disk
-activity.
+increasing the working set of the program and the amount of disk activity.
 
 Furthermore, \yads copy of the objects is updated in the order objects
 are evicted from cache, not the order in which they are updated.
@@ -1265,7 +1267,7 @@ during recovery.
 %\eab{we should at least implement this callback if we have not already}
 %
 Alternatively, we could arrange for the object pool 
-to atomically update the buffer 
+to update atomically the buffer 
 manager's copy of all objects that share a given page.
 
 The third plugin variant, ``delta'', incorporates the update/flush
