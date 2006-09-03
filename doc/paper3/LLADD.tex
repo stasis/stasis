@@ -379,7 +379,7 @@ We relax this restriction in Section~\ref{sec:lsn-free}.
 This section provides the ``Atomicity'' and ``Durability'' properties
 for a single ACID transaction.\endnote{The ``A'' in ACID really means atomic persistence
 of data, rather than atomic in-memory updates, as the term is normally
-used in systems work~\cite{GR97}; the latter is covered by ``C'' and ``I''.}
+used in systems work; the latter is covered by ``C'' and ``I''~\cite{GR97}.}
 First we describe single-page transactions, then multi-page transactions.
 ``Consistency'' and ``Isolation'' are covered with 
 concurrent transactions in the next section.
@@ -1354,7 +1354,7 @@ handled in any order, improving locality and merging opportunities.}
 \begin{figure}[t]
 \includegraphics[width=1\columnwidth]{figs/trans-closure-hotset.pdf}
 \vspace{-12pt}
-\caption{\sf\label{fig:hotGraph} Hot set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
+\caption{\sf\label{fig:hotGraph} Hot-set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
 we see that the multiplexer helps when the graph has poor locality.
 In the cases where depth first search performs well, the
 reordering is inexpensive.}
@@ -1372,7 +1372,7 @@ many nodes, providing load balancing.  Requests that update the same piece of in
 can be merged into a single request (RVM's ``log merging''
 implements this type of optimization~\cite{lrvm}).  Stream aggregation
 techniques and relational algebra operators could be used to
-efficiently transform data while it is laid out sequentially in
+ transform data efficiently while it is laid out sequentially in
 non-transactional memory.
 
 To experiment with the potential of such optimizations, we implemented
@@ -1636,8 +1636,8 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation is an older~\cite{multics}\rcs{Is comparing to multic accurate? Did it have variable length records?}, but still-used~\cite{gfs}
-alternative.  Write-optimized file systems lay files out in the order they
+Record-oriented allocation, including Multics' segments~\cite{multics} and GFS~\cite{GFS}, is an alternative.
+Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
 Schemes to improve locality between small
@@ -1656,7 +1656,7 @@ Allocation of records that must fit within pages and be persisted to
 disk raises concerns regarding locality and page layouts.  Depending
 on the application, data may be arranged based upon
 hints~\cite{cricket}, pointer values and write order~\cite{starburst},
-data type~\cite{orion}, or reorganization based on access
+data type~\cite{orion}, or access
 patterns~\cite{storageReorganization}.
 
 %Other work makes use of the caller's stack to infer
@@ -1701,26 +1701,28 @@ by reusing \yads default extensions and implementing new ones.
 
 \section{Conclusion}
 
-We have presented \yad, a transactional storage library that addresses
+We presented \yad, a transactional storage library that addresses
 the needs of system developers.  \yad provides more opportunities for
 specialization than existing systems.  The effort required to extend
 \yad to support a new type of system is reasonable, especially when
-compared to currently common practices, such as working around
+compared to current practices, such as working around
 limitations of existing systems, breaking guarantees regarding data
 integrity, or reimplementing the entire storage infrastructure from
 scratch.
 
-We have demonstrated that \yad provides fully
-concurrent, high performance transactions, and explained how it can
+We demonstrated that \yad provides fully
+concurrent, high-performance transactions, and explored how it can
 support a number of systems that currently make use of suboptimal or
-ad-hoc storage approaches.  Finally, we have explained how \yad can be
+ad-hoc storage approaches.  Finally, we described how \yad can be
 extended in the future to support a larger range of systems.
+
+
 
 \section{Acknowledgements}
 
 Thanks to shepherd Bill Weihl for helping us present these ideas well,
 or at least better. The idea behind the \oasys buffer manager
-optimization is from Mike Demmer.  He and Bowei Du implemented \oasys.
+optimization is from Mike Demmer; he and Bowei Du implemented \oasys.
 Gilad Arnold and Amir Kamil implemented
  pobj.  Jim Blomo, Jason Bayer, and Jimmy
 Kittiyachavalit worked on an early version of \yad.
