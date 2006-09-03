@@ -600,8 +600,10 @@ system.
 
 \begin{figure}
 \includegraphics[%
-   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations. \rcs{Get newer version from HPTS, make sure text is consistent with new version.} \rcs{Tweak figure column aligmnent and gaps.}}
+  viewport=0bp 0bp 458bp 225bp,
+  clip,
+  width=1\columnwidth]{figs/structure.pdf}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.\rcs{Tweak figure column aligmnent and gaps.}}
 \end{figure}
 
 
@@ -973,7 +975,7 @@ logically consistent.
 
 \begin{figure}
 \includegraphics[%
-  viewport=0bp 0bp 445bp 275bp,
+  viewport=0bp 0bp 445bp 365bp,
   clip,
   width=1\columnwidth]{figs/torn-page.pdf}
 \caption{\sf\label{fig:torn}Torn pages and LSN-free recovery.
@@ -1633,7 +1635,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation, including Multics' segments~\cite{multics} and GFS~\cite{gfs}, is an alternative.
+Record-oriented allocation, including Multics' segments~\cite{multics}\rcs{remove multics comment?} and GFS~\cite{gfs}, is an alternative.
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
