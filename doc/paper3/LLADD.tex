@@ -221,7 +221,7 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as XML databases~\cite{XMLdb}, 
+creating new top-down models, such as object oriented or XML databases~\cite{OOdb, XMLdb}, 
 or by extending the relational model~\cite{codd} along some axis, such
 as new data types.  We cover these attempts in more detail in
 Section~\ref{sec:related-work}.
@@ -347,12 +347,11 @@ two layers are only loosely coupled.
 
 Transactional storage algorithms work by
 atomically updating portions of durable storage.  These small atomic
-updates are used to bootstrap transactions that are too large to be
+updates bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to write entries to the log
 file atomically.  Transaction systems that store LSNs on pages to 
-track version information also rely on the ability to atomically 
-write pages to disk.
+track version information rely on atomic page writes as well. 
 
 In practice, a write to a disk page is not atomic (in modern drives).  Two common failure
 modes exist.  The first occurs when the disk writes a partial sector
@@ -408,9 +407,9 @@ After a crash, we have to apply the redo entries to those pages that
 were not updated on disk.  To decide which updates to reapply, we use
 a per-page version number called the {\em log-sequence number} or
 {\em LSN}. Each update to a page increments the LSN, writes it on the
-page, and includes it in the log entry.  On recovery, we simply
-load the page and look at the LSN to figure out which updates are missing
-(all of those with higher LSNs), and reapply them.
+page, and includes it in the log entry.  On recovery, we 
+load the page, use the LSN to figure out which updates are missing
+(those with higher LSNs), and reapply them.
 
 Updates from aborted transactions should not be applied, so we also
 need to log commit records; a transaction commits when its commit
@@ -442,7 +441,7 @@ Records (CLRs)}.
 
 The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations, while ARIES defines a set
-of operations that support relational database systems.  An {\em
+of operations that support relational database systems.  \rcs{merge with 3.4->}An {\em
 operation} consists of both a redo and an undo function, both of which
 take one argument. An update is always the redo function applied to a
 page; there is no ``do'' function.  This ensures that updates behave
@@ -450,7 +449,7 @@ the same on recovery.  The redo log entry consists of the LSN and the
 argument.  The undo entry is analogous.\endnote{For efficiency, undo
 and redo operations are packed into a single log entry.  Both must take
 the same parameters.}  \yad ensures the correct ordering and timing
-of all log entries and page writes.  We describe operations in more
+of all log entries and page writes.\rcs{<--}  We describe operations in more
 detail in Section~\ref{sec:operations}
 
 %\subsection{Multi-page Transactions}
@@ -485,7 +484,7 @@ To understand the problems that arise with concurrent transactions,
 consider what would happen if one transaction, A, rearranges the
 layout of a data structure.  Next, a second transaction, B,
 modifies that structure and then A aborts.  When A rolls back, its
-undo entries will undo the rearrangement that it made to the data
+undo entries will undo the changes that it made to the data
 structure, without regard to B's modifications.  This is likely to
 cause corruption.
 
@@ -498,7 +497,7 @@ each data structure until the end of the transaction (by performing {\em strict 
 Releasing the
 lock after the modification, but before the end of the transaction,
 increases concurrency.  However, it means that follow-on transactions that use
-that data may need to abort if a current transaction aborts ({\em
+the data may need to abort if this transaction aborts ({\em
 cascading aborts}). 
 
 %Related issues are studied in great detail in terms of optimistic
@@ -537,7 +536,7 @@ operations:
   to use finer-grained latches in a \yad operation, but it is rarely necessary.
 \item Define a {\em logical} undo for each operation (rather than just
   using a set of page-level undos).  For example, this is easy for a
-  hash table: the undoS for {\em insert} is {\em remove}.  This logical
+  hash table: the undo for {\em insert} is {\em remove}.  This logical
   undo function should arrange to acquire the mutex when invoked by
   abort or recovery.
 \item Add a ``begin nested top action'' right after the mutex
@@ -586,7 +585,7 @@ and then calling {\tt Tupdate()} to invoke the operation at runtime.
 
  \yad ensures that operations follow the
 write-ahead logging rules required for steal/no-force transactions by
-controlling the timing and ordering of log and page writes.  Each
+controlling the timing and ordering of log and page writes.  \rcs{3.2 stuff goes here} Each
 operation should be deterministic, provide an inverse, and acquire all
 of its arguments from a struct that is passed via {\tt Tupdate()}, from
 the page it updates, or both.  The callbacks used
@@ -675,7 +674,7 @@ unique.  The LSN of the log entry that was most recently applied to
 each page is stored with the page, which allows recovery to replay log entries selectively.  This only works if log entries change exactly one
 page and if they are applied to the page atomically.
 
-Recovery occurs in three phases, Analysis, Redo and Undo.
+Recovery occurs in three phases, Analysis, Redo and Undo.\rcs{Need to make capitalization on analysis phases consistent.}
 ``Analysis'' is beyond the scope of this paper, but essentially determines the commit/abort status of every transaction.  ``Redo'' plays the
 log forward in time, applying any updates that did not make it to disk
 before the system crashed.  ``Undo'' runs the log backwards in time,
@@ -830,13 +829,15 @@ Therefore, in this section we focus on operations that produce
 deterministic, idempotent redo entries that do not examine page state.
 We call such operations ``blind updates.''  Note that we still allow
 code that invokes operations to examine the page file, just not during the redo phase of recovery.
-For concreteness, assume that these operations produce log
-entries that contain a set of byte ranges, and the pre- and post-value
+For example, these operations could be invoked by log
+entries that contain a set of byte ranges, and the new value
 of each byte in the range.
 
 Recovery works the same way as before, except that it now computes
 a lower bound for the LSN of each page, rather than reading it from the page.
-One possible lower bound is the LSN of the most recent checkpoint.  Alternatively, \yad could occasionally write $(page number, LSN)$ pairs to the log after it writes out pages.\rcs{This would be a good place for a figure}
+One possible lower bound is the LSN of the most recent checkpoint.  
+Alternatively, \yad could occasionally store a list of dirty pages 
+and their LSNs to the log (Figure~\ref{fig:todo}).\rcs{add a figure}
 
 Although the mechanism used for recovery is similar, the invariants
 maintained during recovery have changed.  With conventional
@@ -846,7 +847,7 @@ consistent throughout the recovery process.  This is not the case with
 our LSN-free scheme.  Internal page inconsistencies may be introduced
 because recovery has no way of knowing the exact version of a page.
 Therefore, it may overwrite new portions of a page with older data
-from the log.  Therefore, the page will contain a mixture of new and
+from the log.  The page will then contain a mixture of new and
 old bytes, and any data structures stored on the page may be
 inconsistent.  However, once the redo phase is complete, any old bytes
 will be overwritten by their most recent values, so the page will
@@ -881,7 +882,7 @@ other tasks.
 
 We believe that LSN-free pages will allow reads to make use of such
 optimizations in a straightforward fashion.  Zero-copy writes are
- more challenging, but could be performed by performing a DMA write to
+ more challenging, but could be performed as a DMA write to
 a portion of the log file. However, doing this does not address the problem of updating the page
 file.  We suspect that contributions from log-based file
 systems~\cite{lfs} can address these problems. In
@@ -936,7 +937,7 @@ use pages to simplify integration into the rest of the system, but
 need not worry about torn pages.  In fact, the redo phase of the
 LSN-free recovery algorithm actually creates a torn page each time it
 applies an old log entry to a new page.  However, it guarantees that
-all such torn pages will be repaired by the time Redo completes.  In
+all such torn pages will be repaired by the time redo completes.  In
 the process, it also repairs any pages that were torn by a crash.
 This also implies that blind-update transactions work with storage technologies with
 different (and varying or unknown) units of atomicity.
@@ -945,7 +946,7 @@ Instead of relying upon atomic page updates, LSN-free recovery relies
 on a weaker property, which is that each bit in the page file must
 be either:
 \begin{enumerate}
-\item The old version of a bit that was being overwritten during a crash.
+\item The old version that was being overwritten during a crash.
 \item The newest version of the bit written to storage.
 \item Detectably corrupt (the storage hardware issues an error when the
   bit is read).
@@ -1070,6 +1071,8 @@ With the lock manager enabled, Berkeley
 DB's performance in the multithreaded benchmark (Section~\ref{sec:lht}) strictly decreased with
 increased concurrency.  
 
+We expended a considerable effort tuning Berkeley DB, and our efforts
+significantly improved Berkeley DB's performance on these tests.
 Although further tuning by Berkeley DB experts would probably improve
 Berkeley DB's numbers, we think our comparison shows that the systems'
 performance is comparable.  As we add functionality, optimizations,
@@ -1124,7 +1127,7 @@ function~\cite{lht}, allowing it to increase capacity incrementally.
 It is based on a number of modular subcomponents.  Notably, the
 physical location of each bucket is stored in a growable array of
 fixed-length entries.  The bucket lists are provided by the user's
-choice of two different linked-list implementations.
+choice of two different linked-list implementations.\rcs{Expand on this}
 
 The hand-tuned hash table is also built on \yad and also uses a linear hash
 function.  However, it is monolithic and uses carefully ordered writes to
@@ -1215,7 +1218,7 @@ amount of data written to log and halve the amount of RAM required.
 We present three variants of the \yad plugin.  The basic one treats
 \yad like Berkeley DB.  The ``update/flush'' variant
 customizes the behavior of the buffer manager. Finally, the 
-``delta'' variant, uses update/flush, but only logs the differences
+``delta'' variant uses update/flush, but only logs the differences
 between versions.
 
 The update/flush variant allows the buffer manager's view of live
@@ -1374,7 +1377,7 @@ To experiment with the potential of such optimizations, we implemented
 a single node log-reordering scheme that increases request locality
 during a graph traversal.  The graph traversal produces a sequence of
 read requests that are partitioned according to their physical
-location in the page file.  Partitions sizes are chosen to fit inside
+location in the page file.  Partition sizes are chosen to fit inside
 the buffer pool.  Each partition is processed until there are no more
 outstanding requests to read from it.  The process iterates until the
 traversal is complete.
@@ -1423,7 +1426,7 @@ Genesis is an early database toolkit that was explicitly structured in
 terms of the physical data models and conceptual mappings described
 above~\cite{genesis}.  It allows database implementors to swap out
 implementations of the components defined by its framework.  Like
-subsequent systems (including \yad), it supports custom operations.
+later systems (including \yad), it supports custom operations.
 
 Subsequent extensible database work builds upon these foundations.
 The Exodus~\cite{exodus} database toolkit is the successor to
@@ -1477,8 +1480,6 @@ explore applications that are a weaker fit for DBMSs.
 
 \label{sec:transactionalProgramming}
 
-\rcs{\ref{sec:transactionalProgramming} is too long.}
-
 Transactional programming environments provide semantic guarantees to
 the programs they support.  To achieve this goal, they provide a
 single approach to concurrency and transactional storage.
@@ -1517,7 +1518,7 @@ transactions could be implemented with \yad.
 
 Nested transactions simplify distributed systems; they isolate
 failures, manage concurrency, and provide durability.  In fact, they
-were developed as part of Argus, a language for reliable distributed applications.  An Argus
+were developed as part of Argus, a language for reliable distributed applications.  \rcs{This text confuses argus and bill's follow on work.} An Argus
 program consists of guardians, which are essentially objects that
 encapsulate persistent and atomic data.  Although accesses to {\em atomic} data are 
 serializable,  {\em persistent} data is not protected by the lock manager, 
@@ -1533,7 +1534,7 @@ update the persistent storage if necessary.  Because the atomic data is
 protected by a lock manager, attempts to update the hashtable are serializable.
 Therefore, clever use of atomic storage can be used to provide logical locking.
 
-Efficiently
+\rcs{More confusion...} Efficiently
 tracking such state is not straightforward.  For example, the Argus
 hashtable implementation uses a log structure to
 track the status of keys that have been touched by 
@@ -1552,8 +1553,8 @@ Camelot made a number of important
 contributions, both in system design, and in algorithms for
 distributed transactions~\cite{camelot}.  It leaves locking to application level code,
 and updates data in place.  (Argus uses shadow copies to provide
-atomic updates.)  Camelot provides two logging modes: Redo only
-(no-Steal, no-Force) and Undo/Redo (Steal, no-Force).  It uses 
+atomic updates.)  Camelot provides two logging modes: redo only
+(no-steal, no-force) and undo/redo (steal, no-force).  It uses 
 facilities of Mach to provide recoverable virtual memory.  It
 supports Avalon, which uses Camelot to provide a
 higher-level (C++) programming model.  Camelot provides a lower-level
@@ -1603,16 +1604,16 @@ form a larger logical unit~\cite{experienceWithQuickSilver}.
 
 \subsection{Data Structure Frameworks}
 
-As mentioned in Section~\ref{sec:system}, Berkeley DB is a system
+As mentioned in Section~\ref{sec:systems}, Berkeley DB is a system
 quite similar to \yad, and provides raw access to
 transactional data structures for application
 programmers~\cite{libtp}.  \eab{summary?}
 
 Cluster hash tables provide scalable, replicated hashtable
 implementation by partitioning the table's buckets across multiple
-systems.  Boxwood treats each system in a cluster of machines as a
+systems~\cite{DDS}.  Boxwood treats each system in a cluster of machines as a
 ``chunk store,'' and builds a transactional, fault tolerant B-Tree on
-top of the chunks that these machines export.  
+top of the chunks that these machines export~\cite{boxwood}.  
 
 \yad is complementary to Boxwood and cluster hash tables; those
 systems intelligently compose a set of systems for scalability and
@@ -1633,7 +1634,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation is an older~\cite{multics}, but still-used~\cite{gfs}
+Record-oriented allocation is an older~\cite{multics}\rcs{Is comparing to multic accurate? Did it have variable length records?}, but still-used~\cite{gfs}
 alternative.  Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
@@ -1728,7 +1729,7 @@ a resource manager to track dependencies within \yad and provided
 feedback on the LSN-free recovery algorithms.  Joe Hellerstein and
 Mike Franklin provided us with invaluable feedback.
 
-Intel Research Berkeley supported portions of this work.
+Portions of this work were performed at Intel Research Berkeley.
 
 \section{Availability}
 \label{sec:avail}
@@ -1740,113 +1741,12 @@ Additional information, and \yads source code is available at:
 \end{center}
 
 {\footnotesize \bibliographystyle{acm}
+
+\rcs{Check the nocite * for un-referenced references.}
+
 \nocite{*}
 \bibliography{LLADD}}
 
 \theendnotes
-\section{Orphaned Stuff}
-
-\subsection{Blind Writes}
-\label{sec:blindWrites}
-\rcs{Somewhere in the description of conventional transactions, emphasize existing transactional storage systems' tendency to hard code recommended page formats, data structures, etc.}
-
-\rcs{All the text in this section is orphaned, but should be worked in elsewhere.}
-
-Regarding LSN-free pages:
-
-Furthermore, efficient recovery and
-log truncation require only minor modifications to our recovery
-algorithm.  In practice, this is implemented by providing a buffer manager callback
-for LSN free pages.  The callback computes a
-conservative estimate of the page's LSN whenever the page is read from disk.
-For a less conservative estimate, it suffices to write a page's LSN to
-the log shortly after the page itself is written out; on recovery the
-log entry is thus a conservative but close estimate.
-
-Section~\ref{sec:zeroCopy} explains how LSN-free pages led us to new 
-approaches for recoverable virtual memory and for large object storage.  
-Section~\ref{sec:oasys} uses blind writes to efficiently update records 
-on pages that are manipulated using more general operations.  
-
-\rcs{ (Why was this marked to be deleted?  It needs to be moved somewhere else....)
-Although the extensions that it proposes
-require a fair amount of knowledge about transactional logging
-schemes, our initial experience customizing the system for various
-applications is positive.  We believe that the time spent customizing
-the library is less than amount of time that it would take to work
-around typical problems with existing transactional storage systems.
-}
-
-
-\eat{
-\section{Extending \yad}
-\subsection{Adding log operations}
-\label{sec:wal}
-
-\rcs{This section needs to be merged into the new text.  For now, it's an orphan.}
-
-\yad allows application developers to easily add new operations to the
-system.  Many of the customizations described below can be implemented
-using custom log operations.  In this section, we describe how to implement an
-``ARIES style'' concurrent, steal/no-force operation using 
-\diff{physical redo, logical undo} and per-page LSNs.
-Such operations are typical of high-performance commercial database
-engines.
-
-As we mentioned above, \yad operations must implement a number of
-functions.  Figure~\ref{fig:structure} describes the environment that
-schedules and invokes these functions.  The first step in implementing
-a new set of log interfaces is to decide upon an interface that these log
-interfaces will export to callers outside of \yad.  
-
-\begin{figure}
-\includegraphics[%
-   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.}
-\end{figure}
-
-The externally visible interface is implemented by wrapper functions
-and read-only access methods.  The wrapper function modifies the state
-of the page file by packaging the information that will be needed for
-undo and redo into a data format of its choosing.  This data structure
-is passed into Tupdate().  Tupdate() copies the data to the log, and
-then passes the data into the operation's redo function.
- 
-Redo modifies the page file directly (or takes some other action).  It
-is essentially an interpreter for the log entries it is associated
-with.  Undo works analogously, but is invoked when an operation must
-be undone (usually due to an aborted transaction, or during recovery).
-
-This pattern applies in many cases.  In
-order to implement a ``typical'' operation, the operation's
-implementation must obey a few more invariants:
-
-\begin{itemize}
-\item Pages should only be updated inside redo and undo functions.
-\item Page updates atomically update the page's LSN by pinning the page.
-\item If the data seen by a wrapper function must match data seen
-  during redo, then the wrapper should use a latch to protect against
-  concurrent attempts to update the sensitive data (and against
-  concurrent attempts to allocate log entries that update the data).
-\item Nested top actions (and logical undo) or ``big locks'' (total isolation but lower concurrency) should be used to manage concurrency (Section~\ref{sec:nta}).
-\end{itemize}
-}
-
-\subsection{stuff to add somewhere}
-
-cover P2 (the old one, not Pier 2 if there is time...
-
-More recently, WinFS, Microsoft's database based
-file meta data management system, has been replaced in favor of an
-embedded indexing engine that imposes less structure (and provides
-fewer consistency guarantees) than the original
-proposal~\cite{needtocitesomething}.
-
-Scaling to the very large doesn't work (SAP used DB2 as a hash table
-for years), search engines, cad/VLSI didn't happen.  scalable GIS
-systems use shredded blobs (terraserver, google maps), scaling to many
-was more difficult than implementing from scratch (winfs), scaling
-down doesn't work (variance in performance, footprint),
-
 
 \end{document}
