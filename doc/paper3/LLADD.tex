@@ -975,12 +975,12 @@ logically consistent.
 
 \begin{figure}
 \includegraphics[%
-  viewport=0bp 0bp 445bp 365bp,
+  viewport=0bp 0bp 445bp 308bp,
   clip,
   width=1\columnwidth]{figs/torn-page.pdf}
 \caption{\sf\label{fig:torn}Torn pages and LSN-free recovery.
 The page is torn during the crash, but consistent once redo completes.
-Overwritten and stale torn sectors are shaded.}
+Overwritten sectors are shaded.}
 \end{figure}
 
 \rcs{Next 3 paragraphs are new; check flow, etc}
@@ -990,17 +990,17 @@ of writing out the version with LSN $2$ when the system crashes.  When
 recovery reads the page from disk, it may encounter any combination of
 sectors from these two versions.
 
-Note that the first and last two sectors are not overwritten by any of
+Note that sectors zero, six and seven are not overwritten by any of
 the log entries that Redo will play back.  Therefore, their values are
-unchanged in both versions of the page.  In the example, two of these
-sectors are overwritten during the crash, while the shaded one is left
-over from the old version of the page. 
+unchanged in both versions of the page.  In the example, zero and seven 
+are overwritten during the crash, while six is left
+over from the old version of the page.
 
 Redoing LSN 1 is unnecessary, since all of its sectors happened to
 make it to disk.  However, recovery has no way of knowing this and
-applies the entry to the page, replacing a up-to-date sector with a
-stale one.  When LSN 2 is applied, it brings this sector up to date,
-and also overwrites one of the two sectors that did not make it to
+applies the entry to the page, replacing sector three with an older 
+version.  When LSN 2 is applied, it brings this sector up to date,
+and also overwrites sector four, which did not make it to
 disk.  At this point, the page is internally consistent.
 
 Since LSN-free recovery only relies upon atomic updates at the bit
