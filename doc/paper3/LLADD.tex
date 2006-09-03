@@ -221,7 +221,7 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as object-oriented, XML or streaming databases~\cite{OOdb, XMLdb, streaming}, 
+creating new top-down models, such as object-oriented, XML or streaming databases~\cite{objectstore, streaming}, \rcs{which xml database should we cite?} 
 or by extending the relational model~\cite{codd} along some axis, such
 as new data types~\cite{newDBtypes}.  We cover these attempts in more detail in
 Section~\ref{sec:related-work}.
@@ -442,16 +442,10 @@ intend to keep even when transactions abort.
 
 The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations, while ARIES defines a set
-of operations that support relational database systems.  \rcs{merge with 3.4->}An {\em
-operation} consists of both a redo and an undo function, both of which
-take one argument. An update is always the redo function applied to a
-page; there is no ``do'' function.  This ensures that updates behave
-the same on recovery.  The redo log entry consists of the LSN and the
-argument.  The undo entry is analogous.\endnote{For efficiency, undo
-and redo operations are packed into a single log entry.  Both must take
-the same parameters.}  \yad ensures the correct ordering and timing
-of all log entries and page writes.\rcs{<--}  We describe operations in more
-detail in Section~\ref{sec:operations}
+of operations that support relational database systems.  An {\em
+Operation} consists of an undo and a redo function.  Each time an
+operation is invoked, a corrseponding log entry is generated.  We
+describe operations in more detail in Section~\ref{sec:operations}
 
 %\subsection{Multi-page Transactions}
 
@@ -583,17 +577,21 @@ constraint in Section~\ref{sec:lsn-free}.
 Operations are invoked by registering a callback (the ``operation
 implementation'' in Figure~\ref{fig:structure}) with \yad at startup,
 and then calling {\tt Tupdate()} to invoke the operation at runtime.
+\yad ensures that operations follow the write-ahead logging rules
+required for steal/no-force transactions by controlling the timing and
+ordering of log and page writes.  
 
- \yad ensures that operations follow the
-write-ahead logging rules required for steal/no-force transactions by
-controlling the timing and ordering of log and page writes.  \rcs{3.2 stuff goes here} Each
+The redo log entry consists of the
+LSN and an argument that will be passed to redo.  The undo entry is
+analogous.\endnote{For efficiency, undo and redo operations are packed
+into a single log entry.  Both must take the same parameters.} Each
 operation should be deterministic, provide an inverse, and acquire all
-of its arguments from a struct that is passed via {\tt Tupdate()}, from
-the page it updates, or both.  The callbacks used
-during forward operation are also used during recovery.  Therefore
-operations provide a single redo function and a single undo function.
-There is no ``do'' function, which reduces the amount of
-recovery-specific code in the system.  
+of its arguments from the argument passed via {\tt Tupdate()},
+from the page it updates, or both.  The callbacks used during forward
+operation are also used during recovery.  Therefore operations provide
+a single redo function and a single undo function.  There is no ``do''
+function, which reduces the amount of recovery-specific code in the
+system.
 
 %{\tt Tupdate()} writes the struct
 %that is passed to it to the log before invoking the operation's
@@ -629,8 +627,11 @@ implementation must obey a few more invariants:
       via {\tt Tupdate()}.  Recovery does not support logical redo,
       and physical operation implementations may not invoke {\tt
       Tupdate()}.
-\item Page updates atomically update the page's LSN by pinning the page.
-\eab{``pinning'' is not quite right here; we could use latch, but we haven't devined it yet; could swict sections 3.4 and 3.5}
+\item The page's LSN should be updated to reflect the changes (this is
+      generally handled by passing the LSN to the page implementation).
+\eab{``pinning'' is not quite right here; we could use latch, but we
+haven't devined it yet; could swict sections 3.4 and 3.5} \rcs{We can
+ignore atomicity here. \yad pins the page for the operation.  The new description is more accurate.}
 
 %\item If the data seen by a wrapper function must match data seen
 %  during redo, then the wrapper should use a latch to protect against
@@ -910,8 +911,8 @@ could use {\tt mmap()} to map portions of the page file into application
 memory~\cite{lrvm}.  However, without support for logical log entries
 and nested top actions, it is difficult to implement a
 concurrent, durable data structure using RVM or Camelot.  (The description of
-Argus in Section~\ref{sec:transactionalProgramming} sketches the
-general approach.)\eab{check this last sentence}  
+Argus in Section~\ref{sec:argus} sketches the
+general approach.)
 
 In contrast, LSN-free pages allow logical
 undo and therefore nested top actions and concurrent
@@ -972,7 +973,7 @@ logically consistent.
 
 \begin{figure}
 \includegraphics[%
-  bb=0bp 0bp 445bp 275bp,
+  viewport=0bp 0bp 445bp 275bp,
   clip,
   width=1\columnwidth]{figs/torn-page.pdf}
 \caption{\sf\label{fig:torn}Torn pages and LSN-free recovery.
@@ -1129,8 +1130,11 @@ structure atomically.  It uses a {\em linear} hash
 function~\cite{lht}, allowing it to increase capacity incrementally.
 It is based on a number of modular subcomponents.  Notably, the
 physical location of each bucket is stored in a growable array of
-fixed-length entries.  The bucket lists are provided by the user's
-choice of two different linked-list implementations.\rcs{Expand on this}
+fixed-length entries.  The bucket lists can be provided by either of
+\yads linked list implementations.  One provides fixed length entries,
+yielding a hash table with fixed length keys and values.  The list
+(and therefore hash table) used in our experiments provides variable
+length entries.
 
 The hand-tuned hash table is also built on \yad and also uses a linear hash
 function.  However, it is monolithic and uses carefully ordered writes to
@@ -1163,11 +1167,11 @@ optimize important primitives.
 %the transactional data structure implementation.
 
 Figure~\ref{fig:TPS} describes the performance of the two systems under
-highly concurrent workloads using the ext3 filesystem.\endnote{The multi-threaded benchmarks
-  presented here were performed using an ext3 file system, as high
-  concurrency caused both Berkeley DB and \yad to behave unpredictably
-  when ReiserFS was used.  However, \yads multi-threaded throughput
-  was significantly better that Berkeley DB's under both file systems.}
+highly concurrent workloads using the ext3 filesystem.\endnote{Multi-threaded benchmarks
+  were performed using an ext3 file system. 
+  Concurrency caused both Berkeley DB and \yad to behave unpredictably
+  under ReiserFS was used.  \yads multi-threaded throughput
+  was significantly better than Berkeley DB's with both file systems.}
   For this test, we used the modular
 hash table, since we are interested in the performance of a 
 simple, clean data structure implementation that a typical system implementor might
@@ -1321,16 +1325,11 @@ to disk.
 To determine the effect of the optimization in memory bound systems,
 we decreased \yads page cache size, and used O\_DIRECT to bypass the
 operating system's disk cache.  We partitioned the set of objects
-so that 10\% fit in a {\em hot set} \rcs{This doesn't make sense: that is small enough to fit into
-memory}.  Figure~\ref{fig:OASYS} also presents \yads performance as we varied the
+so that 10\% fit in a {\em hot set}.
+Figure~\ref{fig:OASYS} also presents \yads performance as we varied the
 percentage of object updates that manipulate the hot set.  In the
 memory bound test, we see that update/flush indeed improves memory
 utilization.
-
-
-
-
-
 
 \subsection{Request reordering}
 
@@ -1436,7 +1435,7 @@ Genesis. It uses abstract data type definitions, access methods and
 cost models to  generate query optimizers and execution
 engines automatically.
 
-Object-oriented database systems (\rcs{cite something?}) and
+Object-oriented database systems~\cite{objectstore} and
 relational databases with support for user-definable abstract data
 types (such as in Postgres~\cite{postgres}) provide functionality
 similar to extensible database toolkits.  In contrast to database
@@ -1511,7 +1510,7 @@ the option to compensate for nested top action. We expect that nested
 transactions could be implemented with \yad.
 
 \subsubsection{Distributed Programming Models}
-
+\label{sec:argus}
 %System R was one of the first relational database implementations, and
 %defined a clean separation between its query processor and its storage
 %subsystem.  In fact, it supported a simple navigational interface to
@@ -1520,24 +1519,27 @@ transactions could be implemented with \yad.
 
 Nested transactions simplify distributed systems; they isolate
 failures, manage concurrency, and provide durability.  In fact, they
-were developed as part of Argus, a language for reliable distributed applications.  \rcs{This text confuses argus and bill's follow on work.} An Argus
-program consists of guardians, which are essentially objects that
-encapsulate persistent and atomic data.  Although accesses to {\em atomic} data are 
-serializable,  {\em persistent} data is not protected by the lock manager, 
-and is used to implement concurrent data structures~\cite{argus}.  
-Typically, the data structure is stored in persistent storage, but is augmented with
+were developed as part of Argus, a language for reliable distributed
+applications.  An Argus program consists of guardians, which are essentially
+objects that encapsulate persistent and atomic data.  Accesses to {\em
+atomic} data are serializable, while {\em persistent} data is atomic
+data that is stored on disk~\cite{argus}.
+
+Originally, Argus only supported limited concurrency via total
+isolation, but was extended to support high concurrency data
+structures.  Concurrent data structures are stored in non-atomic storage, but are augmented with
 information in atomic storage.  This extra data tracks the
 status of each item stored in the structure.  Conceptually, atomic 
 storage used by a hashtable would contain the values ``Not present'',
 ``Committed'' or ``Aborted; Old Value = x'' for each key in (or
 missing from) the hash.  Before accessing the hash, the operation
 implementation would consult the appropriate piece of atomic data, and
-update the persistent storage if necessary.  Because the atomic data is
+update the non-atomic data if necessary.  Because the atomic data is
 protected by a lock manager, attempts to update the hashtable are serializable.
 Therefore, clever use of atomic storage can be used to provide logical locking.
 
-\rcs{More confusion...} Efficiently
-tracking such state is not straightforward.  For example, the Argus
+Efficiently
+tracking such state is not straightforward.  For example, their
 hashtable implementation uses a log structure to
 track the status of keys that have been touched by 
 active transactions.  Also, the hashtable is responsible for setting disk write back
@@ -1545,11 +1547,6 @@ policies regarding granularity of atomic writes, and the timing of such writes~\
 complexity by providing logical undos, and by leaving lock management
 to higher-level code.  This separates write-back and concurrency
 control policies from data structure implementations.
-
-%The Argus designers assumed that only a few core concurrent
-%transactional data structures would be implemented, and that higher
-%level code would make use of these structures.  Also, Argus assumed
-%that transactions should be serializable.  
 
 Camelot made a number of important
 contributions, both in system design, and in algorithms for
@@ -1567,7 +1564,7 @@ provides mechanisms for distributed transactions and transactional
 RPC.  Although Camelot does allow applications to provide their own lock 
 managers, implementation strategies for concurrent operations 
 in Camelot are similar to those
-in Argus since Camelot does not provide logical undo.  Camelot focuses
+built using Argus since Camelot does not provide logical undo.  Camelot focuses
 on distributed transactions, and hardcodes
 assumptions regarding the structure of nested transactions, consensus
 algorithms, communication mechanisms, and so on.
@@ -1576,10 +1573,10 @@ More recent transactional programming schemes allow for multiple
 transaction implementations to cooperate as part of the same
 distributed transaction.  For example, X/Open DTP provides a standard
 networking protocol that allows multiple transactional systems to be
-controlled by a single transaction manager~\cite{something}.
+controlled by a single transaction manager~\cite{dtp}.
 Enterprise Java Beans is a standard for developing transactional
 middle ware on top of heterogeneous storage.  Its
-transactions may not be nested~\cite{something}.  This simplifies its
+transactions may not be nested.  This simplifies its
 semantics, and leads to many, short transactions, 
 improving concurrency.  However, flat transactions are somewhat rigid, and lead to
 situations where committed transactions have to be manually rolled
@@ -1636,7 +1633,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation, including Multics' segments~\cite{multics} and GFS~\cite{GFS}, is an alternative.
+Record-oriented allocation, including Multics' segments~\cite{multics} and GFS~\cite{gfs}, is an alternative.
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
@@ -1726,7 +1723,6 @@ optimization is from Mike Demmer; he and Bowei Du implemented \oasys.
 Gilad Arnold and Amir Kamil implemented
  pobj.  Jim Blomo, Jason Bayer, and Jimmy
 Kittiyachavalit worked on an early version of \yad.
-\rcs{colleen} 
 
 Thanks to C. Mohan for pointing out that per-object LSNs may be
 inadvertently overwritten during recovery.  Jim Gray suggested we use
