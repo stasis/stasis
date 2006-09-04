@@ -30,12 +30,17 @@
 \newcommand{\yads}{Stasis'\xspace}
 \newcommand{\oasys}{Oasys\xspace}
 
+%\newcommand{\graphdbg}[1]{\fbox{#1}}
+\newcommand{\graphdbg}[1]{#1}
+
 \newcommand{\diff}[1]{\textcolor{blue}{\bf #1}}
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 %\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
 
 \newcommand{\eat}[1]{}
+
+\renewcommand\figurename{\sf \small Figure}
 
 \begin{document}
 
@@ -61,11 +66,10 @@ UC Berkeley
 
 % Use the following at camera-ready time to suppress page numbers.
 % Comment it out when you first submit the paper for review.
-%\thispagestyle{empty}
+\thispagestyle{empty}
 
-
+%\abstract
 %\subsection*{Abstract}
-
 \rcs{Spell check, look at end notes and figure captions.  Spell check / cannonicalize bibtex.  Embed graph fonts.}
 
 {\em An increasing range of applications requires robust support for atomic, durable and concurrent
@@ -602,7 +606,8 @@ system.
   viewport=0bp 0bp 458bp 225bp,
   clip,
   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.\rcs{Tweak figure column alignment and gaps.}}
+{\caption{\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.\rcs{Tweak figure column alignment and gaps.}}}
+\vspace{-12pt}
 \end{figure}
 
 
@@ -650,73 +655,6 @@ undo may outweigh their benefits.  Operations that wish to avoid undo
 logging can call an API that pins the page until commit, and use an
 empty undo function.  Similarly, forcing a page
 to be written out on commit avoids redo logging.
-
-
-\eat{
-Note that we could implement a limited form of transactions by
-limiting each transaction to a single operation, and by forcing the
-page that each operation updates to disk in order.  If we ignore torn
-pages and failed sectors, this does not require any sort of logging,
-but is quite inefficient in practice, as it forces the disk to perform
-a potentially random write each time the page file is updated.
-
-The rest of this section describes how recovery can be extended,
-first to support multiple operations per transaction efficiently, and
-then to allow more than one transaction to modify the same data before
-committing.
-}
-
-
-\eat{
-\subsubsection{\yads Recovery Algorithm}
-
-Recovery relies upon the fact that each log entry is assigned a {\em
-Log Sequence Number (LSN)}.  The LSN is monotonically increasing and
-unique.  The LSN of the log entry that was most recently applied to
-each page is stored with the page, which allows recovery to replay log entries selectively.  This only works if log entries change exactly one
-page and if they are applied to the page atomically.
-
-Recovery occurs in three phases, Analysis, Redo and Undo.\rcs{Need to make capitalization on analysis phases consistent.}
-``Analysis'' is beyond the scope of this paper, but essentially determines the commit/abort status of every transaction.  ``Redo'' plays the
-log forward in time, applying any updates that did not make it to disk
-before the system crashed.  ``Undo'' runs the log backwards in time,
-only applying portions that correspond to aborted transactions.  This
-section only considers physical undo.  Section~\ref{sec:nta} describes
-the distinction between physical and logical undo.
-A summary of the stages of recovery and the invariants
-they establish is presented in Figure~\ref{fig:conventional-recovery}.
-
-Redo is the only phase that makes use of LSNs stored on pages.
-It simply compares the page LSN to the LSN of each log entry.  If the
-log entry's LSN is higher than the page LSN, then the log entry is
-applied.  Otherwise, the log entry is skipped.  Redo does not write
-log entries to disk, as it is replaying events that have already been
-recorded.  
-
-However, Undo does write log entries.  In order to prevent repeated
-crashes during recovery from causing the log to grow excessively, the
-entries that Undo writes tell future invocations of Undo to skip
-portions of the transaction that have already been undone.  These log
-entries are usually called {\em Compensation Log Records (CLRs)}.
-Note that CLRs only cause Undo to skip log entries.  Redo will apply
-log entries protected by the CLR, guaranteeing that those updates are
-applied to the page file.
-
-There are many other schemes for page-level recovery that we could
-have chosen.  The scheme described above has two particularly nice
-properties.  First, pages that were modified by active transactions
-may be {\em stolen}; they may be written to disk before a transaction
-completes.  This allows transactions to use more memory than is
-physically available, and makes it easier to flush frequently written
-pages to disk.  Second, pages do not need to be {\em forced}; a
-transaction commits simply by flushing the log.  If it had to force
-pages to disk it would incur the cost of random I/O.  Also, if
-multiple transactions commit in a small window of time, the log only
-needs to be forced to disk once.
-}
-
-
-
 
 \subsection{Application-specific Locking}
 \label{sec:locking}
@@ -848,7 +786,8 @@ and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
   viewport=0bp 0bp 460bp 225bp,
   clip,
   width=1\columnwidth]{figs/lsn-estimation.pdf}
-\caption{\sf\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the checkpoint, it must be up to date on disk.}
+\caption{\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the checkpoint, it must be up to date on disk.}
+\vspace{-12pt}
 \end{figure}
 
 
@@ -983,9 +922,10 @@ logically consistent.
   viewport=0bp 0bp 445bp 308bp,
   clip,
   width=1\columnwidth]{figs/torn-page.pdf}
-\caption{\sf\label{fig:torn}Torn pages and LSN-free recovery.
+\caption{\label{fig:torn}Torn pages and LSN-free recovery.
 The page is torn during the crash, but consistent once redo completes.
 Overwritten sectors are shaded.}
+\vspace{-12pt}
 \end{figure}
 
 Figure~\ref{fig:torn} describes a page that is torn during crash, and the actions performed by redo that repair it.  Assume that the initial version
@@ -1093,12 +1033,13 @@ perform similarly to comparable monolithic implementations.
 \label{sec:lht}
 
 \begin{figure}[t]
-\includegraphics[%
-   width=1\columnwidth]{figs/bulk-load.pdf}
+\graphdbg{\includegraphics[%
+    viewport=-23bp 28bp 625bp 360bp, 
+    clip,
+   width=1\columnwidth]{figs/bulk-load.pdf}}
 %\includegraphics[%
 %   width=1\columnwidth]{bulk-load-raw.pdf}1
-\vspace{-30pt}
-\caption{\sf\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hash table implementations.  The
+\caption{\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hash table implementations.  The
 test is run as a single transaction, minimizing overheads due to synchronous log writes.}
 \end{figure}
 
@@ -1106,11 +1047,12 @@ test is run as a single transaction, minimizing overheads due to synchronous log
 %\hspace*{18pt}
 %\includegraphics[%
 %   width=1\columnwidth]{tps-new.pdf}
-\vspace{18pt}
-\includegraphics[%
-   width=1\columnwidth]{figs/tps-extended.pdf}
-\vspace{-36pt}
-\caption{\sf\label{fig:TPS} High concurrency hash table performance of Berkeley DB and \yad.  We were unable to get Berkeley DB to work correctly with more than 50 threads (see text).
+\graphdbg{\includegraphics[%
+    viewport=-43bp 50bp 490bp 370bp, 
+    clip,
+   width=1\columnwidth]{figs/tps-extended.pdf}}
+\caption{\label{fig:TPS} High concurrency hash table performance of Berkeley DB and \yad.  We were unable to get Berkeley DB to work correctly with more than 50 threads (see text).
+\vspace{-12pt}
 }
 \end{figure}
 
@@ -1194,12 +1136,19 @@ similar.
 
 
 \begin{figure*}
-\includegraphics[width=1\columnwidth]{figs/object-diff.pdf}
+\graphdbg{\includegraphics[%
+    viewport=-15bp 19bp 650bp 400bp, 
+    clip,
+    width=1\columnwidth]{figs/object-diff.pdf}}
 \hspace{.2in}
-\includegraphics[width=1\columnwidth]{figs/mem-pressure.pdf}
-\vspace{-.15in}
-\caption{\sf \label{fig:OASYS}
+\graphdbg{\includegraphics[%
+%    viewport=-25bp 23bp 425bp 330bp, 
+    viewport=-50bp 28bp 460bp 315bp, 
+    clip,
+    width=1\columnwidth]{figs/mem-pressure.pdf}}
+\caption{\label{fig:OASYS}
 The effect of \yad object persistence optimizations under low and high memory pressure.}
+\vspace{-12pt}
 \end{figure*}
 
 
@@ -1339,25 +1288,32 @@ utilization.
 
 \label{sec:logging}
 \begin{figure}
-\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}
-\vspace{-24pt}
-\caption{\sf\label{fig:multiplexor} Locality-based request reordering.
+\graphdbg{\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}}
+\vspace{-12pt}
+\caption{\label{fig:multiplexor} Locality-based request reordering.
 Requests are partitioned into queues.  Queue are handled
 independently, improving locality and allowing requests to be merged.}
 \end{figure}
 \begin{figure}[t]
-\includegraphics[width=1\columnwidth]{figs/oo7.pdf}
-\vspace{-15pt}
-\caption{\sf\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
+\graphdbg{\includegraphics[%
+    viewport=-13bp 19bp 600bp 280bp, 
+    width=1\columnwidth]{figs/oo7.pdf}}
+\vspace{-12pt}
+\caption{\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
+\vspace{-12pt}
 \end{figure}
 
 \begin{figure}[t]
-\includegraphics[width=1\columnwidth]{figs/trans-closure-hotset.pdf}
+\graphdbg{\includegraphics[%
+  viewport=-5bp 15bp 525bp 336bp,
+  clip,
+width=1\columnwidth]{figs/trans-closure-hotset.pdf}}
 \vspace{-12pt}
-\caption{\sf\label{fig:hotGraph} Hot-set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
+\caption{\label{fig:hotGraph} Hot-set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
 we see that the multiplexer helps when the graph has poor locality.
 In the cases where depth first search performs well, the
 reordering is inexpensive.}
+\vspace{-12pt}
 \end{figure}
 
 We are interested in enabling \yad to manipulate sequences of
