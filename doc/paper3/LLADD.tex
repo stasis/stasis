@@ -258,7 +258,14 @@ support long-running, read-only aggregation queries (OLAP) over high-dimensional
 array format would be more appropriate~\cite{OLAP,molap}.  Although both
 OLTP and OLAP databases are based upon the relational model they make
 use of different physical models in order to serve
-different classes of applications efficiently.
+different classes of applications efficiently.  
+
+Streaming databases have the opposite problem; a set of relatively
+straightfoward primitives apply to many streaming data systems, but
+current conceptual mappings do not generalize across
+applications.  The authors of StreamBase argue that ``one size fits
+all'' interfaces are inappropriate for today's
+diverse applications~\cite{oneSizeFitsAll}.
 
 A basic claim of this paper is that no known physical data model can
 efficiently support the wide range of conceptual mappings that are in
@@ -270,12 +277,12 @@ DBMSs no longer works~\cite{OneSize}.
 
 Instead of attempting to create such a unified model after decades of
 database research has failed to produce one, we opt to provide a
-bottom-up transactional toolbox that supports many different models
-efficiently.  This makes it easy for system designers to implement
-most of the data models that the underlying hardware can support, or
-to abandon the database approach entirely, and forgo a top-down model.
-
-
+bottom-up transactional toolbox that supports many models
+efficiently.  This makes it easy for system designers to
+implement most data models that the underlying hardware can
+support, or to abandon the database approach entirely, and forgo 
+%structured physical models and abstract conceptual mappings.
+a top down model.
 
 \subsection{The Systems View}
 \label{sec:systems}
@@ -735,7 +742,8 @@ managers that \yads allocation routines use.  Applications that want
 conventional transactional isolation (serializability) can make 
 use of a lock manager.  Alternatively, applications may follow 
 the example of \yads default data structures, and implement 
-deadlock prevention, or other custom lock management schemes.\rcs{Citations here? Hybrid atomicity, optimistic/pessimistic concurrency control, something that leverages application semantics?}
+deadlock prevention, or other custom lock management 
+schemes~\cite{hybridAtomicity, optimisticConcurrencyControl}.
 
 Note that locking schemes may be
 layered as long as no legal sequence of calls to the lower level
@@ -769,16 +777,15 @@ Note that both lock managers have implementations that are tied to the
 code they service, both implement deadlock avoidance, and both are
 transparent to higher layers.  General-purpose database lock managers
 provide none of these features, supporting the idea that
-special-purpose lock managers are a useful abstraction.\rcs{This would
-be a good place to cite Bill and others on higher-level locking
-protocols}
+special-purpose lock managers are a useful abstraction.  Locking
+schemes that interact well with object oriented programming
+schemes~\cite{billOOlockingProtocols} and exception
+handling~\cite{omtt} extend these ideas to larger systems.
 
 Although custom locking is important for flexiblity, it is largely
 orthogonal to the concepts described in this paper.  We make no
 assumptions regarding lock managers being used by higher-level code in
 the remainder of this discussion.
-
-
 
 \section{LSN-free Pages}
 \label{sec:lsn-free}
@@ -1449,7 +1456,7 @@ not naturally structured in terms of queries over sets.
 \subsubsection{Modular databases}
 
 \eab{shorten and combine with one size fits all}
-
+\rcs{already worked one size fits all in above; merge them, and place here?}
 The database community is also aware of this gap.  A recent
 survey~\cite{riscDB} enumerates problems that plague users of
 state-of-the-art database systems, and finds that database
@@ -1634,7 +1641,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation, including Multics' segments~\cite{multics}\rcs{remove multics comment?} and GFS~\cite{gfs}, is an alternative.
+Record-oriented allocation, such as in VMS Record Managment Services~\cite{vms} and GFS~\cite{gfs}, is an alternative.
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
@@ -1746,7 +1753,7 @@ Additional information, and \yads source code is available at:
 {\footnotesize \bibliographystyle{acm}
 
 \rcs{Check the nocite * for un-referenced references.}
-
+\rcs{What's ``SIGMOD International Conference on Management of Data'' vs ``SIGMOD Record''?}
 \nocite{*}
 \bibliography{LLADD}}
 
