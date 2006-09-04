@@ -844,7 +844,16 @@ Recovery works the same way as before, except that it now computes
 a lower bound for the LSN of each page, rather than reading it from the page.
 One possible lower bound is the LSN of the most recent checkpoint.  
 Alternatively, \yad could occasionally store a list of dirty pages 
-and their LSNs to the log (Figure~\ref{fig:todo}).\rcs{add a figure}
+and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
+\begin{figure}
+\includegraphics[%
+  viewport=0bp 0bp 460bp 225bp,
+  clip,
+  width=1\columnwidth]{figs/lsn-estimation.pdf}
+\caption{\sf\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the chekpoint, it must be up to date on disk.}
+\end{figure}
+
+
 
 Although the mechanism used for recovery is similar, the invariants
 maintained during recovery have changed.  With conventional
