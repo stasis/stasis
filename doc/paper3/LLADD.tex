@@ -260,20 +260,13 @@ OLTP and OLAP databases are based upon the relational model they make
 use of different physical models in order to serve
 different classes of applications efficiently.  
 
-Streaming databases have the opposite problem; a set of relatively
-straightfoward primitives apply to many streaming data systems, but
-current conceptual mappings do not generalize across
-applications.  The authors of StreamBase argue that ``one size fits
-all'' interfaces are inappropriate for today's
-diverse applications~\cite{oneSizeFitsAll}.
-
 A basic claim of this paper is that no known physical data model can
 efficiently support the wide range of conceptual mappings that are in
 use today.  In addition to sets, objects, and XML, such a model would
 need to cover search engines, version-control systems, work-flow
 applications, and scientific computing, as examples.  Similarly, a
 recent database paper argues that the "one size fits all" approach of
-DBMSs no longer works~\cite{OneSize}.
+DBMSs no longer works~\cite{oneSizeFitsAll}.
 
 Instead of attempting to create such a unified model after decades of
 database research has failed to produce one, we opt to provide a
@@ -382,8 +375,8 @@ We relax this restriction in Section~\ref{sec:lsn-free}.
 \subsection{Non-concurrent Transactions}
 
 This section provides the ``Atomicity'' and ``Durability'' properties
-for a single ACID transaction.\endnote{The ``A'' in ACID really means atomic persistence
-of data, rather than atomic in-memory updates, as the term is normally
+for a single ACID transaction.\endnote{The ``A'' in ACID really means ``atomic persistence
+of data,'' rather than ``atomic in-memory updates,'' as the term is normally
 used in systems work; the latter is covered by ``C'' and ``I''~\cite{GR97}.}
 First we describe single-page transactions, then multi-page transactions.
 ``Consistency'' and ``Isolation'' are covered with 
@@ -516,7 +509,7 @@ splitting tree nodes.
 The internal operations do not need to be undone if the
 containing transaction aborts; instead of removing the data item from
 the page, and merging any nodes that the insertion split, we simply
-remove the item from the set as application code would --- we call the
+remove the item from the set as application code would---we call the
 data structure's {\em remove} method.  That way, we can undo the
 insertion even if the nodes that were split no longer exist, or if the
 data item has been relocated to a different page.  This
@@ -607,7 +600,7 @@ system.
   viewport=0bp 0bp 458bp 225bp,
   clip,
   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.\rcs{Tweak figure column aligmnent and gaps.}}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.\rcs{Tweak figure column aligmnent and gaps.}}
 \end{figure}
 
 
@@ -748,7 +741,7 @@ schemes~\cite{hybridAtomicity, optimisticConcurrencyControl}.
 Note that locking schemes may be
 layered as long as no legal sequence of calls to the lower level
 results in deadlock, or the higher level is prepared to handle
-deadlocks reported by the lower levels.
+deadlocks reported by the lower levels~\cite{layering}.
 
 When \yad allocates a
 record, it first calls a region allocator, which allocates contiguous
@@ -837,15 +830,16 @@ self-consistent version of a page during recovery.
 
 Therefore, in this section we focus on operations that produce
 deterministic, idempotent redo entries that do not examine page state.
-We call such operations ``blind updates.''  Note that we still allow
-code that invokes operations to examine the page file, just not during the redo phase of recovery.
-For example, these operations could be invoked by log
-entries that contain a set of byte ranges with their new values.
+We call such operations {\em blind updates}.  For example, a
+blind update's operation could use log entries that contain a
+set of byte ranges with their new values.  Note that we still allow
+code that invokes operations to examine the page file, just not during
+the redo phase of recovery.
 
 Recovery works the same way as before, except that it now computes
 a lower bound for the LSN of each page, rather than reading it from the page.
 One possible lower bound is the LSN of the most recent checkpoint.  
-Alternatively, \yad could occasionally store a list of dirty pages 
+Alternatively, \yad could occasionally store its list of dirty pages 
 and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
 \begin{figure}
 \includegraphics[%
@@ -877,14 +871,14 @@ a practical problem.
 
 The rest of this section describes how concurrent, LSN-free pages 
 allow standard file system and database optimizations to be easily
-combined, and shows that the removal of LSNs from pages actually
-simplifies and increases the flexibility of recovery.
+combined, and shows that the removal of LSNs from pages
+simplifies recovery while increasing its flexibility.
 
 \subsection{Zero-copy I/O} 
 
 We originally developed LSN-free pages as an efficient method for
 transactionally storing and updating multi-page objects, called {\em
-blobs}.  If a large object is stored in pages that contain LSNs, then it is not contiguous on disk, and must be gathered together using the CPU to do an expensive copy into a second buffer.
+blobs}.  If a large object is stored in pages that contain LSNs, then it is not contiguous on disk, and must be gathered together by using the CPU to do an expensive copy into a second buffer.
 
 In contrast, modern file systems allow applications to
 perform a DMA copy of the data into memory, allowing the CPU to be used for
@@ -1118,8 +1112,8 @@ test is run as a single transaction, minimizing overheads due to synchronous log
 }
 \end{figure}
 
-This section presents two hashtable implementations built on top of
-\yad, and compares them with the hashtable provided by Berkeley DB.
+This section presents two hash table implementations built on top of
+\yad, and compares them with the hash table provided by Berkeley DB.
 One of the \yad implementations is simple and modular, while
 the other is monolithic and hand-tuned.  Our experiments show that
 \yads performance is competitive, both with single-threaded and
@@ -1175,7 +1169,7 @@ optimize important primitives.
 %the transactional data structure implementation.
 
 Figure~\ref{fig:TPS} describes the performance of the two systems under
-highly concurrent workloads using the ext3 filesystem.\endnote{Multi-threaded benchmarks
+highly concurrent workloads using the ext3 file system.\endnote{Multi-threaded benchmarks
   were performed using an ext3 file system. 
   Concurrency caused both Berkeley DB and \yad to behave unpredictably
   under ReiserFS was used.  \yads multi-threaded throughput
@@ -1345,10 +1339,9 @@ utilization.
 \begin{figure}
 \includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}
 \vspace{-24pt}
-\caption{\sf\label{fig:multiplexor} Because pages are independent, we
-can reorder requests among different pages. Using a log demultiplexer,
-we partition requests into independent queues, which can be 
-handled in any order, improving locality and merging opportunities.}
+\caption{\sf\label{fig:multiplexor} Locality-based request reordering.
+Requests are partitioned into queues.  Queue are handled
+independently, improving locality and allowing requests to be merged.}
 \end{figure}
 \begin{figure}[t]
 \includegraphics[width=1\columnwidth]{figs/oo7.pdf}
@@ -1455,35 +1448,40 @@ not naturally structured in terms of queries over sets.
 
 \subsubsection{Modular databases}
 
-\eab{shorten and combine with one size fits all}
-\rcs{already worked one size fits all in above; merge them, and place here?}
-The database community is also aware of this gap.  A recent
+ The database community is also aware of this gap.  A recent
 survey~\cite{riscDB} enumerates problems that plague users of
-state-of-the-art database systems, and finds that database
-implementations fail to support the needs of modern applications.
-Essentially, it argues that modern databases are too complex to be
-implemented (or understood) as a monolithic entity.
+state-of-the-art database systems.  Essentially, it finds that modern
+databases are too complex to be implemented or understood as a
+monolithic entity.  Instead, they have become unpredictible and
+unmanagable, preventing them from serving large-scale applications and
+small devices.  Rather than concealing performance issues, SQL's
+declarative interface prevents developers from diagnosing and
+correcting underlying problems.
 
-It provides real-world evidence that suggests database servers are too
-unpredictable and unmanageable to scale up to the size of today's
-systems.  Similarly, they are a poor fit for small devices.  SQL's
-declarative interface only complicates the situation.
+The study suggests that researchers and the industry adopt a highly
+modular ``RISC'' database architecture.  This architecture would be
+similar to a database toolkit, but would standardize the interfaces of
+the toolkit's components.  This would allow competition and
+specialization among module implementors, and distribute the effort
+required to build a full database~\cite{riscDB}.
 
-The study suggests the adoption of highly modular ``RISC'' database
-architectures, both as a resource for researchers and as a real-world
-database system.  RISC databases have many elements in common with
-database toolkits.  However, they would take the idea one step
-further, and standardize the interfaces of the toolkit's components.
-This would allow competition and specialization among module
-implementors, and distribute the effort required to build a full
-database~\cite{riscDB}.
+Streaming applications face many of the problems that RISC databases
+could address.  However, it is unclear whether a single interface or
+conceptual mapping would meet their needs.  Based on experiences with
+their system, the authors of StreamBase argue that ``one size fits
+all'' interfaces are no longer appropriate.  Instead, they argue that
+the manual composition of a small number of relatively straightforward
+primitives leads to cleaner, more scalable
+systems~\cite{oneSizeFitsAll}.  This is in contrast to the RISC
+approach, which attempts to build a database in terms of
+interchangable parts.
 
-We agree with the motivations behind RISC databases and the goal
-of highly modular database implementations.  In fact, we  hope
- our system will mature to the point where it can support a
-competitive relational database.  However this is not our primary
-goal, which is to enable a wide range of transactional systems, and
-explore applications that are a weaker fit for DBMSs.
+We agree with the motivations behind RISC databases and StreamBase,
+and believe they complement each other (and \yad) well.  However, or
+goal differs from these systems; we want to support applications that
+are a poor fit for database systems.  However, as \yad matures we we
+hope that it will enable a wide range of transactional systems,
+including improved DBMSs.
 
 \subsection{Transactional Programming Models}
 
@@ -1506,7 +1504,7 @@ aborts.
 
 Closed nesting uses database-style lock managers to allow concurrency
 within a transaction.  It increases fault tolerance by isolating each
-child transaction from the others, and automatically retrying failed
+child transaction from the others, and retrying failed
 transactions.  (MapReduce is similar, but uses language constructs to
 statically enforce isolation~\cite{mapReduce}.)
 
@@ -1538,20 +1536,20 @@ isolation, but was extended to support high concurrency data
 structures.  Concurrent data structures are stored in non-atomic storage, but are augmented with
 information in atomic storage.  This extra data tracks the
 status of each item stored in the structure.  Conceptually, atomic 
-storage used by a hashtable would contain the values ``Not present'',
+storage used by a hash table would contain the values ``Not present'',
 ``Committed'' or ``Aborted; Old Value = x'' for each key in (or
 missing from) the hash.  Before accessing the hash, the operation
 implementation would consult the appropriate piece of atomic data, and
 update the non-atomic data if necessary.  Because the atomic data is
-protected by a lock manager, attempts to update the hashtable are serializable.
+protected by a lock manager, attempts to update the hash table are serializable.
 Therefore, clever use of atomic storage can be used to provide logical locking.
 
 Efficiently
 tracking such state is not straightforward.  For example, their
-hashtable implementation uses a log structure to
+hash table implementation uses a log structure to
 track the status of keys that have been touched by 
-active transactions.  Also, the hash table is responsible for setting disk write back
-policies regarding granularity and timing of atomic writes~\cite{argusImplementation}.  \yad operations avoid this
+active transactions.  Also, the hash table is responsible for setting 
+policies regarding granularity and timing of disk writes~\cite{argusImplementation}.  \yad operations avoid this
 complexity by providing logical undos, and by leaving lock management
 to higher-level code.  This separates write-back and concurrency
 control policies from data structure implementations.
@@ -1616,7 +1614,7 @@ quite similar to \yad, and provides raw access to
 transactional data structures for application
 programmers~\cite{libtp}.  \eab{summary?}
 
-Cluster hash tables provide scalable, replicated hashtable
+Cluster hash tables provide a scalable, replicated hash table
 implementation by partitioning the table's buckets across multiple
 systems~\cite{DDS}.  Boxwood treats each system in a cluster of machines as a
 ``chunk store,'' and builds a transactional, fault tolerant B-Tree on
@@ -1641,7 +1639,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation, such as in VMS Record Managment Services~\cite{vms} and GFS~\cite{gfs}, is an alternative.
+Record-oriented allocation, such as in VMS Record Managment Services~\cite{vms} and GFS~\cite{gfs}, breaks files into addressible units.
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
@@ -1694,16 +1692,9 @@ this trend to continue as development progresses.
 
 A resource manager is a common pattern in system software design, and
 manages dependencies and ordering constraints between sets of
-components.  Over time, we hope to shrink \yads core to the point
+components~\cite{resourceManager}.  Over time, we hope to shrink \yads core to the point
 where it is simply a resource manager that coordinates interchangeable
 implementations of the other components.
-
-Of course, we also plan to provide \yads current functionality,
-including the algorithms mentioned above as modular, well-tested
-extensions.  Highly specialized \yad extensions, and other systems,
-can be built by reusing \yads default extensions and implementing
-new ones.\eab{weak sentence}
-
 
 \section{Conclusion}
 
@@ -1747,7 +1738,7 @@ Portions of this work were performed at Intel Research Berkeley.
 Additional information, and \yads source code is available at:
 
 \begin{center}
-{\small{\tt http://www.cs.berkeley.edu/\ensuremath{\sim}sears/\yad/}}
+{\small{\tt http://www.cs.berkeley.edu/\ensuremath{\sim}sears/stasis/}}
 \end{center}
 
 {\footnotesize \bibliographystyle{acm}
