@@ -66,6 +66,8 @@ UC Berkeley
 
 %\subsection*{Abstract}
 
+\rcs{Spell check, look at end notes and figure captions.  Spell check / cannonicalize bibtex.  Embed graph fonts.}
+
 {\em An increasing range of applications requires robust support for atomic, durable and concurrent
 transactions.  Databases provide the default solution, but force
 applications to interact via SQL and to forfeit control over data
@@ -397,7 +399,7 @@ but no logging is required.
 
 This approach performs poorly because we {\em force} the page to disk
 on commit, which leads to a large number of synchronous non-sequential
-writes.  By writing ``redo'' information to the log before committing
+writes.  By writing redo information to the log before committing
 (write-ahead logging), we get {\em no force} transactions and better
 performance, since the synchronous writes to the log are sequential.
 Later, the pages are written out asynchronously, often
@@ -442,7 +444,7 @@ The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations, while ARIES defines a set
 of operations that support relational database systems.  An {\em
 operation} consists of an undo and a redo function.  Each time an
-operation is invoked, a corrseponding log entry is generated.  We
+operation is invoked, a corresponding log entry is generated.  We
 describe operations in more detail in Section~\ref{sec:operations}
 
 %\subsection{Multi-page Transactions}
@@ -569,7 +571,7 @@ Many of the customizations described below are implemented using
 custom operations. 
 
 In this portion of the discussion, physical operations are limited to a single
-page, as they must be applied atomically. Section~\ref{sec:lsn-free} removes this contraint.
+page, as they must be applied atomically. Section~\ref{sec:lsn-free} removes this constraint.
 
 Operations are invoked by registering a callback (the ``operation
 implementation'' in Figure~\ref{fig:structure}) with \yad at startup,
@@ -600,7 +602,7 @@ system.
   viewport=0bp 0bp 458bp 225bp,
   clip,
   width=1\columnwidth]{figs/structure.pdf}
-\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.\rcs{Tweak figure column aligmnent and gaps.}}
+\caption{\sf\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.\rcs{Tweak figure column alignment and gaps.}}
 \end{figure}
 
 
@@ -775,7 +777,7 @@ schemes that interact well with object oriented programming
 schemes~\cite{billOOlockingProtocols} and exception
 handling~\cite{omtt} extend these ideas to larger systems.
 
-Although custom locking is important for flexiblity, it is largely
+Although custom locking is important for flexibility, it is largely
 orthogonal to the concepts described in this paper.  We make no
 assumptions regarding lock managers being used by higher-level code in
 the remainder of this discussion.
@@ -846,7 +848,7 @@ and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
   viewport=0bp 0bp 460bp 225bp,
   clip,
   width=1\columnwidth]{figs/lsn-estimation.pdf}
-\caption{\sf\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the chekpoint, it must be up to date on disk.}
+\caption{\sf\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the checkpoint, it must be up to date on disk.}
 \end{figure}
 
 
@@ -1051,7 +1053,7 @@ transactional semantics unless explicitly noted.
 
 All benchmarks were run on an Intel Xeon 2.8 GHz processor with 1GB of RAM and a
 10K RPM SCSI drive using ReiserFS~\cite{reiserfs}.\endnote{We found that the
-  relative performance of Berkeley DB and \yad under single threaded testing is sensitive to
+  relative performance of Berkeley DB and \yad under single-threaded testing is sensitive to
   file system choice, and we plan to investigate the reasons why the
   performance of \yad under ext3 is degraded. However, the results
   relating to the \yad optimizations are consistent across file system
@@ -1075,7 +1077,7 @@ repetition.  However, disabling the lock manager caused
 concurrent Berkeley DB benchmarks to become unstable, suggesting either a
 bug or misuse of the feature.  
 With the lock manager enabled, Berkeley
-DB's performance in the multithreaded benchmark (Section~\ref{sec:lht}) strictly decreased with
+DB's performance in the multi-threaded benchmark (Section~\ref{sec:lht}) strictly decreased with
 increased concurrency.  
 
 We expended a considerable effort tuning Berkeley DB and our efforts
@@ -1452,8 +1454,8 @@ not naturally structured in terms of queries over sets.
 survey~\cite{riscDB} enumerates problems that plague users of
 state-of-the-art database systems.  Essentially, it finds that modern
 databases are too complex to be implemented or understood as a
-monolithic entity.  Instead, they have become unpredictible and
-unmanagable, preventing them from serving large-scale applications and
+monolithic entity.  Instead, they have become unpredictable and
+unmanageable, preventing them from serving large-scale applications and
 small devices.  Rather than concealing performance issues, SQL's
 declarative interface prevents developers from diagnosing and
 correcting underlying problems.
@@ -1474,7 +1476,7 @@ the manual composition of a small number of relatively straightforward
 primitives leads to cleaner, more scalable
 systems~\cite{oneSizeFitsAll}.  This is in contrast to the RISC
 approach, which attempts to build a database in terms of
-interchangable parts.
+interchangeable parts.
 
 We agree with the motivations behind RISC databases and StreamBase,
 and believe they complement each other (and \yad) well.  However, or
@@ -1571,7 +1573,7 @@ RPC.  Although Camelot does allow applications to provide their own lock
 managers, implementation strategies for concurrent operations 
 in Camelot are similar to those
 built using Argus since Camelot does not provide logical undo.  Camelot focuses
-on distributed transactions, and hardcodes
+on distributed transactions, and hard-codes
 assumptions regarding the structure of nested transactions, consensus
 algorithms, communication mechanisms, and so on.
 
@@ -1597,7 +1599,7 @@ allows varying degrees of isolation, both to support legacy code, and
 to implement servers that require special isolation properties.  It
 supports transactions over durable and volatile state, and includes a
 number of different commit protocols.  Its shared logging facility does not
-hardcode log format or recovery algorithms, and supports a number
+hard-code log format or recovery algorithms, and supports a number
 of interesting optimizations such as distributed
 logging~\cite{recoveryInQuickSilver}.  The QuickSilver project found
 that transactions meet the demands of most
@@ -1639,7 +1641,7 @@ layout that we believe \yad could eventually support.
 Some large object storage systems allow arbitrary insertion and deletion of bytes~\cite{esm}
 within the object, while typical file systems
 provide append-only allocation~\cite{ffs}.
-Record-oriented allocation, such as in VMS Record Managment Services~\cite{vms} and GFS~\cite{gfs}, breaks files into addressible units.
+Record-oriented allocation, such as in VMS Record Management Services~\cite{vms} and GFS~\cite{gfs}, breaks files into addressable units.
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
