@@ -44,6 +44,7 @@
 
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+
 \title{\Large \bf \yad: System for Adaptable, Transactional Storage}
 
 %for single author (just remove % characters)
@@ -53,6 +54,7 @@ UC Berkeley
 \and
 {\rm Eric Brewer}\\
 UC Berkeley
+\vspace*{-.25in}
 } % end author
 
 \maketitle
@@ -204,7 +206,6 @@ customized to implement many existing (and some new) write-ahead
 logging variants.  We present implementations of some of these variants and
 benchmark them against popular real-world systems.  We
 conclude with a survey of related and future work.
-
 An (early) open-source implementation of
 the ideas presented here is available (see Section~\ref{sec:avail}).
 
@@ -221,7 +222,7 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as object-oriented, XML or streaming databases~\cite{streaming, objectstore}, \rcs{which xml database should we cite?} 
+creating new top-down models, such as object-oriented, XML or streaming databases~\cite{XMLdb, streaming},
 or by extending the relational model~\cite{codd} along some axis, such
 as new data types~\cite{newDBtypes}.  We cover these attempts in more detail in
 Section~\ref{sec:related-work}.
@@ -239,11 +240,9 @@ survey was performed due to difficulties in extending database systems
 into new application domains.  It divided internal database
 routines into two broad modules: {\em conceptual mappings} and {\em physical
 database models}.
-
 %A physical model would then translate a set of tuples into an
 %on-disk B-tree, and provide support for iterators and range-based query
 %operations.
-
 It is the responsibility of a database implementor to choose a set of
 conceptual mappings that implement the desired higher-level
 abstraction (such as the relational model).  The physical data model
@@ -261,33 +260,32 @@ OLTP and OLAP databases are based upon the relational model they make
 use of different physical models in order to serve
 different classes of applications efficiently.
 
-A basic claim of
-this paper is that no known physical data model can efficiently
-support the wide range of conceptual mappings that are in use today.
-In addition to sets, objects, and XML, such a model would need
-to cover search engines, version-control systems, work-flow
-applications, and scientific computing, as examples.
+A basic claim of this paper is that no known physical data model can
+efficiently support the wide range of conceptual mappings that are in
+use today.  In addition to sets, objects, and XML, such a model would
+need to cover search engines, version-control systems, work-flow
+applications, and scientific computing, as examples.  Similarly, a
+recent database paper argues that the "one size fits all" approach of
+DBMSs no longer works~\cite{OneSize}.
 
 Instead of attempting to create such a unified model after decades of
 database research has failed to produce one, we opt to provide a
 bottom-up transactional toolbox that supports many different models
-efficiently.  This makes it easy for system designers to
-implement most of the data models that the underlying hardware can
-support, or to abandon the database approach entirely, and forgo 
-structured physical models and abstract conceptual mappings.
+efficiently.  This makes it easy for system designers to implement
+most of the data models that the underlying hardware can support, or
+to abandon the database approach entirely, and forgo a top-down model.
 
-\eab{add OneSizeFitsAll paragraph}
 
 
 \subsection{The Systems View}
 \label{sec:systems}
-The systems community has also worked on this mismatch,
-which has led to many interesting projects.  Examples include
-alternative durability models such as QuickSilver~\cite{experienceWithQuickSilver},
-RVM~\cite{lrvm}, persistent objects~\cite{argus}, 
-cluster hash tables~\cite{DDS}, and Boxwood~\cite{boxwood}.  We expect that \yad would simplify
-the implementation of most if not all of these systems.  We look at
-these in more detail in Section~\ref{sec:related-work}.
+
+The systems community has also worked on this mismatch, which has led
+to many interesting projects.  Examples include alternative durability
+models such as QuickSilver~\cite{experienceWithQuickSilver},
+RVM~\cite{lrvm}, persistent objects~\cite{argus}, and persistent data structures~\cite{DDS,boxwood}.  We expect that \yad
+would simplify the implementation of most if not all of these systems.
+Section~\ref{sec:related-work} covers these in more detail.
 
 In some sense, our hypothesis is trivially true in that there exists a
 bottom-up framework called the ``operating system'' that can implement
@@ -315,7 +313,7 @@ With the exception of the benchmark designed to compare the two
 systems, none of the \yad applications presented in
 Section~\ref{experiments} are efficiently supported by Berkeley DB.
 This is a result of Berkeley DB's assumptions regarding workloads and
-decisions regarding low-level data representation.  Thus, although
+low-level data representations.  Thus, although
 Berkeley DB could be built on top of \yad, Berkeley DB's data model
 and write-ahead logging system are too specialized to support \yad.
 
@@ -443,7 +441,7 @@ intend to keep even when transactions abort.
 The primary difference between \yad and ARIES for basic transactions
 is that \yad allows user-defined operations, while ARIES defines a set
 of operations that support relational database systems.  An {\em
-Operation} consists of an undo and a redo function.  Each time an
+operation} consists of an undo and a redo function.  Each time an
 operation is invoked, a corrseponding log entry is generated.  We
 describe operations in more detail in Section~\ref{sec:operations}
 
@@ -468,8 +466,10 @@ the fact that abort cannot simply roll back physical updates.
 %rolling back the physical updates that a transaction made.
 Fortunately, it is straightforward to reduce this second,
 transaction-specific problem to the familiar problem of writing
-multi-threaded software.  In this paper, ``concurrent
-transactions'' are transactions that perform interleaved operations; they may also exploit parallelism in multiprocessors.
+multi-threaded software. 
+% In this paper, ``concurrent
+%transactions'' are transactions that perform interleaved operations;
+% they may also exploit parallelism in multiprocessors.
 
 %They do not necessarily exploit the parallelism provided by
 %multiprocessor systems.  We are in the process of removing concurrency
@@ -484,7 +484,7 @@ structure, without regard to B's modifications.  This is likely to
 cause corruption.
 
 Two common solutions to this problem are {\em total isolation} and
-{\em nested top actions}.  Total isolation simply prevents any
+{\em nested top actions}.  Total isolation prevents any
 transaction from accessing a data structure that has been modified by
 another in-progress transaction.  An application can achieve this
 using its own concurrency control mechanisms, or by holding a lock on
@@ -529,9 +529,8 @@ operations:
 \begin{enumerate}
 \item Wrap a mutex around each operation.  With care, it is possible 
   to use finer-grained latches in a \yad operation, but it is rarely necessary.
-\item Define a {\em logical} undo for each operation (rather than just
-  using a set of page-level undos).  For example, this is easy for a
-  hash table: the undo for {\em insert} is {\em remove}.  This logical
+\item Define a {\em logical} undo for each operation (rather than a set of page-level undos).  For example, this is easy for a
+  hash table: the undo for {\em insert} is {\em remove}.  The logical
   undo function should arrange to acquire the mutex when invoked by
   abort or recovery.
 \item Add a ``begin nested top action'' right after mutex
@@ -549,7 +548,6 @@ taking updates from concurrent transactions into account.
 %the change.  Nested top actions do not force the log to disk, so such
 %changes are not durable until the log is forced, perhaps manually, or
 %by a committing transaction.  
-
 Using this recipe, it is relatively easy to implement thread-safe
 concurrent transactions.  Therefore, they are used throughout \yads
 default data structure implementations.  This approach also works 
@@ -571,8 +569,7 @@ Many of the customizations described below are implemented using
 custom operations. 
 
 In this portion of the discussion, physical operations are limited to a single
-page, as they must be applied atomically. We remove the single-page
-constraint in Section~\ref{sec:lsn-free}.
+page, as they must be applied atomically. Section~\ref{sec:lsn-free} removes this contraint.
 
 Operations are invoked by registering a callback (the ``operation
 implementation'' in Figure~\ref{fig:structure}) with \yad at startup,
@@ -631,9 +628,6 @@ implementation must obey a few more invariants:
       Tupdate()}.
 \item The page's LSN should be updated to reflect the changes (this is
       generally handled by passing the LSN to the page implementation).
-\eab{``pinning'' is not quite right here; we could use latch, but we
-haven't devined it yet; could swict sections 3.4 and 3.5} \rcs{We can
-ignore atomicity here. \yad pins the page for the operation.  The new description is more accurate.}
 
 %\item If the data seen by a wrapper function must match data seen
 %  during redo, then the wrapper should use a latch to protect against
@@ -735,6 +729,7 @@ Latches are provided using OS mutexes, and are held for
 short periods of time.  \yads default data structures use latches in a
 way that does not deadlock.  This allows higher-level code to treat 
 \yad as a conventional reentrant data structure library.  
+
 This section describes \yads latching protocols and describes two custom lock
 managers that \yads allocation routines use.  Applications that want
 conventional transactional isolation (serializability) can make 
@@ -794,7 +789,7 @@ technique.  As far as we know, it is used by all database systems that
 update data in place.  Unfortunately, this makes it difficult to map
 large objects onto pages, as the LSNs break up the object.  It
 is tempting to store the LSNs elsewhere, but then they would not be
-written atomically with their page, which defeats their purpose.
+updated atomically, which defeats their purpose.
 
 This section explains how we can avoid storing LSNs on pages in \yad
 without giving up durable transactional updates.  The techniques here
@@ -815,8 +810,8 @@ the relevant subsystems.  LSN-free pages are essentially an
 alternative protocol for atomically and durably applying updates to
 the page file.  This will require the addition of a new page type that
 calls the logger to estimate LSNs; \yad currently has three such
-types, not including some minor variants, and already supports the
-coexistence of multiple page types within the same page file and
+types, and already supports the
+coexistence of multiple page types within the same page file or
 logical operation.
 
 \subsection{Blind Updates}
@@ -831,7 +826,7 @@ compute the updated value, and \yad ensures that each operation is
 applied exactly once in the right order. The recovery scheme described
 in this section does not guarantee that such operations will be
 applied exactly once, or even that they will be presented with a
-consistent version of a page during recovery.
+self-consistent version of a page during recovery.
 
 Therefore, in this section we focus on operations that produce
 deterministic, idempotent redo entries that do not examine page state.
@@ -852,7 +847,6 @@ and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
   width=1\columnwidth]{figs/lsn-estimation.pdf}
 \caption{\sf\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the chekpoint, it must be up to date on disk.}
 \end{figure}
-
 
 
 Although the mechanism used for recovery is similar, the invariants
