@@ -338,7 +338,7 @@ extensions and novel variants, which we cover in the next two
 sections.
 
 As with other systems, \yads transactions have a multi-level
-structure.  Multi-layered transactions were originally proposed as an
+structure.  Multi-layered transactions were originally proposed as a
 concurrency control strategy for database servers that support high
 level, application specific extensions~\cite{multiLayeredSystems}.
 In \yad, the lower level of an operation provides atomic updates to regions of
@@ -359,7 +359,7 @@ updates bootstrap transactions that are too large to be
 applied atomically.  In particular, write-ahead logging (and therefore
 \yad) relies on the ability to write entries to the log
 file atomically.  Transaction systems that store sequence numbers on pages to 
-track version information also rely on atomic page writes. 
+track versions rely on atomic page writes in addition to atomic log writes. 
 
 In practice, a write to a disk page is not atomic (in modern drives).  Two common failure
 modes exist.  The first occurs when the disk writes a partial sector
@@ -406,7 +406,7 @@ but no logging is required.
 This approach performs poorly because we {\em force} the page to disk
 on commit, which leads to a large number of synchronous non-sequential
 writes.  By writing redo information to the log before committing
-(write-ahead logging), we get {\em no force} transactions and better
+(write-ahead logging), we get {\em no-force} transactions and better
 performance, since the synchronous writes to the log are sequential.
 Later, the pages are written out asynchronously, often
 as part of a larger sequential write.
@@ -460,7 +460,7 @@ to build full transactions.
 To recover a multi-page transaction, we simply recover each of
 the pages individually.  This works because steal/no-force completely
 decouples the pages: any page can be written back early (steal) or
-late (no force).  
+late (no-force).  
 
 \subsection{Concurrent Transactions}
 \label{sec:nta}
@@ -689,7 +689,7 @@ The record allocator and the region allocator each contain custom lock
 management.  The lock management prevents one transaction from reusing 
 storage freed by another, active transaction.  If this storage were 
 reused and then the transaction that freed it aborted, then the 
-storage would be double allocated.
+storage would be double-allocated.
 %If transaction A frees some storage, transaction B reuses
 %the storage and commits, and then transaction A aborts, then the
 %storage would be double allocated.  
@@ -785,7 +785,7 @@ and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
   viewport=0bp 0bp 460bp 225bp,
   clip,
   width=1\columnwidth]{figs/lsn-estimation.pdf}
-\caption{\label{fig:lsn-estimation}LSN estimation.  If a page is not mentioned in the checkpoint, it must be up to date on disk.}
+\caption{\label{fig:lsn-estimation}LSN estimation.  If a page was not mentioned by the checkpoint, it must have been up-to-date on disk.}
 \vspace{-12pt}
 \end{figure}
 
@@ -1087,8 +1087,8 @@ reduce runtime overheads such as log bandwidth.  Berkeley DB's
 hash table is a popular, commonly deployed implementation, and serves
 as a baseline for our experiments.
 
-Both of our hash tables outperform Berkeley DB on a workload that bulk
-loads the tables by repeatedly inserting $(key, value)$ pairs
+Both of our hash tables outperform Berkeley DB on a workload that populates
+the tables by repeatedly inserting $(key, value)$ pairs
 (Figure~\ref{fig:BULK_LOAD}).
 %although we do not wish to imply this is always the case.
 %We do not claim that our partial implementation of \yad
@@ -1228,7 +1228,7 @@ Alternatively, we could arrange for the object pool
 to update atomically the buffer 
 manager's copy of all objects that share a given page.
 
-The third plugin variant, ``delta'', incorporates the update/flush
+The third plugin variant, ``delta,'' incorporates the update/flush
 optimizations, but only writes changed portions of
 objects to the log.  With \yads support for custom log
 formats, this optimization is straightforward.
@@ -1396,7 +1396,7 @@ engines automatically.
 
 Object-oriented database systems~\cite{objectstore} and
 relational databases with support for user-definable abstract data
-types (such as in Postgres~\cite{postgres}) provide functionality
+types (such as in POSTGRES~\cite{postgres}) provide functionality
 similar to extensible database toolkits.  In contrast to database
 toolkits, which leverage type information as the database server is
 compiled, object-oriented and object-relational databases allow types
@@ -1475,7 +1475,7 @@ when the parent aborts.  (We believe that recent proposals to use
 open, linear nesting for software transactional memory will lead to a
 programming style similar to \yads~\cite{nestedTransactionPoster}.)
 However, logical undo gives the programmer the option to compensate
-for nested top action. We expect that nested transactions could be
+for nested top actions. We expect that nested transactions could be
 implemented with \yad.
 
 \subsubsection{Distributed Programming Models}
