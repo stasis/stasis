@@ -52,7 +52,7 @@
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
 
-\title{\Large \bf \yad: System for Adaptable, Transactional Storage}
+\title{\Large \bf \yad: Flexible Transactional Storage}
 
 %for single author (just remove % characters)
 \author{
@@ -210,6 +210,7 @@ customized to implement many existing (and some new) write-ahead
 logging variants.  We present implementations of some of these variants and
 benchmark them against popular real-world systems.  We
 conclude with a survey of related and future work.
+
 An (early) open-source implementation of
 the ideas presented here is available (see Section~\ref{sec:avail}).
 
@@ -256,11 +257,11 @@ top of it.
 A conceptual mapping based on the relational model might translate a
 relation into a set of keyed tuples.  If the database were going to be
 used for short, write-intensive and high-concurrency transactions
-(OLTP), the physical model would probably translate sets of tuples
+(e.g. banking), the physical model would probably translate sets of tuples
 into an on-disk B-tree.  In contrast, if the database needed to
-support long-running, read-only aggregation queries (OLAP) over high-dimensional data, a physical model that stores the data in a sparse
+support long-running, read-only aggregation queries over high-dimensional data (e.g. data warehousing), a physical model that stores the data in a sparse
 array format would be more appropriate~\cite{OLAP,molap}.  Although both
-OLTP and OLAP databases are based upon the relational model they make
+kinds of databases are based upon the relational model they make
 use of different physical models in order to serve
 different classes of applications efficiently.  
 
@@ -269,7 +270,7 @@ efficiently support the wide range of conceptual mappings that are in
 use today.  In addition to sets, objects, and XML, such a model would
 need to cover search engines, version-control systems, work-flow
 applications, and scientific computing, as examples.  Similarly, a
-recent database paper argues that the "one size fits all" approach of
+recent database paper argues that the ``one size fits all'' approach of
 DBMSs no longer works~\cite{oneSizeFitsAll}.
 
 Instead of attempting to create such a unified model after decades of
@@ -279,7 +280,7 @@ efficiently.  This makes it easy for system designers to
 implement most data models that the underlying hardware can
 support, or to abandon the database approach entirely, and forgo 
 %structured physical models and abstract conceptual mappings.
-a top down model.
+a top-down model.
 
 \subsection{The Systems View}
 \label{sec:systems}
@@ -336,13 +337,12 @@ sections.
 
 As with other systems, \yads transactions have a multi-level
 structure.  Multi-layered transactions were originally proposed as a
-concurrency control strategy for database servers that support high
-level, application specific extensions~\cite{multiLayeredSystems}.
+concurrency control strategy for database servers that support high-level, application-specific extensions~\cite{multiLayeredSystems}.
 In \yad, the lower level of an operation provides atomic updates to regions of
 the disk.  These updates do not have to deal with concurrency, but
 must update the page file atomically, even if the system crashes.
 
-Higher level operations span multiple pages by
+Higher-level operations span multiple pages by
 atomically applying sets of operations to the page file, recording
 their actions in the log and coping with concurrency issues.  The
 loose coupling of these layers lets \yads users compose and reuse
@@ -448,7 +448,7 @@ is that \yad allows user-defined operations, while ARIES defines a set
 of operations that support relational database systems.  An {\em
 operation} consists of an undo and a redo function.  Each time an
 operation is invoked, a corresponding log entry is generated.  We
-describe operations in more detail in Section~\ref{sec:operations}
+describe operations in more detail in Section~\ref{sec:operations}.
 
 %\subsection{Multi-page Transactions}
 
@@ -697,7 +697,7 @@ code they service, both implement deadlock avoidance, and both are
 transparent to higher layers.  General-purpose database lock managers
 provide none of these features, supporting the idea that
 special-purpose lock managers are a useful abstraction.  Locking
-schemes that interact well with object oriented programming
+schemes that interact well with object-oriented programming
 schemes~\cite{sharedAbstractTypes} and exception
 handling~\cite{omtt} extend these ideas to larger systems.
 
@@ -750,7 +750,7 @@ use of state stored in the page.
 As described above, \yad operations may make use of page contents to
 compute the updated value, and \yad ensures that each operation is
 applied exactly once in the right order. The recovery scheme described
-in this section does not guarantee that such operations will be
+in this section does not guarantee that operations will be
 applied exactly once, or even that they will be presented with a
 self-consistent version of a page during recovery.
 
@@ -810,8 +810,8 @@ blobs}.  If a large object is stored in pages that contain LSNs, then it is not 
 In contrast, modern file systems allow applications to
 perform a DMA copy of the data into memory, allowing the CPU to be used for
 more productive purposes.  Furthermore, modern operating systems allow
-network services to use DMA and network adaptor hardware to read data
-from disk, and send it over a network socket without passing it
+network services to use DMA and network-interface cards to read data
+from disk, and send it over the network without passing it
 through the CPU.  Again, this frees the CPU, allowing it to perform
 other tasks.
 
@@ -915,7 +915,7 @@ Overwritten sectors are shaded.}
 \end{figure}
 
 Figure~\ref{fig:torn} describes a page that is torn during crash, and the actions performed by redo that repair it.  Assume that the initial version
-of the page, with LSN $0$, is on disk, and the disk is in the process
+of the page, with LSN $0$, is on disk, and the OS is in the process
 of writing out the version with LSN $2$ when the system crashes.  When
 recovery reads the page from disk, it may encounter any combination of
 sectors from these two versions.
@@ -1059,8 +1059,8 @@ function~\cite{lht}, allowing it to increase capacity incrementally.
 It is based on a number of modular subcomponents.  Notably, the
 physical location of each bucket is stored in a growable array of
 fixed-length entries.  The bucket lists can be provided by either of
-\yads linked list implementations.  One provides fixed-length entries,
-yielding a hash table with fixed-length keys and values.  The list
+\yads two linked list implementations.  One provides fixed-length entries,
+yielding a hash table with fixed-length keys and values.  The second list
 (and therefore hash table) used in our experiments provides variable-length entries.
 
 The hand-tuned hash table is also built on \yad and also uses a linear hash
@@ -1111,7 +1111,7 @@ second,%\endnote{The concurrency test was run without lock managers, and the
 %  transactions obeyed the A, C, and D properties.  Since each
 %  transaction performed exactly one hash table write and no reads, they also
 %  obeyed I (isolation) in a trivial sense.}  
-and provided roughly
+ and provided roughly
 double Berkeley DB's throughput (up to 50 threads).  Although not
 shown here, we found that the latencies of Berkeley DB and \yad were
 similar.
@@ -1129,7 +1129,7 @@ similar.
     clip,
     width=1\columnwidth]{figs/mem-pressure.pdf}}
 \caption{\label{fig:OASYS}
-The effect of \yad object persistence optimizations under low and high memory pressure.}
+The effect of \yad object-persistence optimizations under low and high memory pressure.}
 \vspace{-12pt}
 \end{figure*}
 
@@ -1250,8 +1250,7 @@ Figure~\ref{fig:OASYS} presents the performance of the three \yad
 variants, and the \oasys plugins implemented on top of other
 systems.  In this test, none of the systems were memory bound.  As
 we can see, \yad performs better than the baseline systems, which is
-not surprising, since it is not providing the A property of ACID
-transactions.
+not surprising, since it exploits the weaker durability requirements.
 
 In non-memory bound systems, the optimizations nearly double \yads
 performance by reducing the CPU overhead of marshalling and
@@ -1301,7 +1300,7 @@ has poor locality.}
 \end{figure}
 
 We are interested in enabling \yad to manipulate sequences of
-application requests.  By translating these requests into the logical
+application requests.  By translating these requests into logical
 operations (such as those used for logical undo),  we can 
 manipulate and optimize such requests.  Because logical operations generally
 correspond to application-level operations, application developers can easily determine whether
@@ -1329,10 +1328,10 @@ the growable array implementation that is used as our linear
 hash table's bucket list.
 The first experiment (Figure~\ref{fig:oo7})
 is loosely based on the OO7 database benchmark~\cite{oo7}.  We
-hard-code the out-degree of each node, and use a directed graph.  Like OO7, we
+hard-code the out-degree of each node and use a directed graph.  Like OO7, we
 construct graphs by first connecting nodes together into a ring.
-We then randomly add edges until the desired
-out-degree is obtained.  This structure ensures graph connectivity.
+We then randomly add edges until obtaining the desired
+out-degree.  This structure ensures graph connectivity.
 Nodes are laid out in ring order on disk so at least
 one edge from each node is local.
 
@@ -1411,15 +1410,13 @@ Streaming applications face many of the problems that RISC databases
 could address.  However, it is unclear whether a single interface or
 conceptual mapping would meet their needs.  Based on experiences with
 their system, the authors of StreamBase argue that ``one size fits
-all'' interfaces are no longer appropriate.  Instead, they argue that
-the manual composition of a small number of relatively straightforward
-primitives leads to cleaner, more scalable
-systems~\cite{oneSizeFitsAll}.  This is in contrast to the RISC
+all'' database engines are no longer appropriate.  Instead, they argue that
+the market will ``fracture into a collection of independent ... engines''~\cite{oneSizeFitsAll}.  This is in contrast to the RISC
 approach, which attempts to build a database in terms of
 interchangeable parts.
 
 We agree with the motivations behind RISC databases and StreamBase,
-and believe they complement each other (and \yad) well.  However, or
+and believe they complement each other and \yad well.  However, or
 goal differs from these systems; we want to support applications that
 are a poor fit for database systems.  However, as \yad matures we we
 hope that it will enable a wide range of transactional systems,
@@ -1507,9 +1504,8 @@ atomic updates.)  Camelot provides two logging modes: redo only
 (no-steal, no-force) and undo/redo (steal, no-force).  It uses 
 facilities of Mach to provide recoverable virtual memory.  It
 supports Avalon, which uses Camelot to provide a
-higher-level (C++) programming model.  Camelot provides a lower-level
-C interface that allows other programming models to be
-implemented.  It provides a limited form of closed nested transactions
+higher-level (C++) programming model;  Camelot provides a lower-level
+C interface that enables other programming models as well.  It provides a limited form of closed nested transactions
 where parents are suspended while children are active.  Camelot also
 provides mechanisms for distributed transactions and transactional
 RPC.  Although Camelot does allow applications to provide their own lock 
@@ -1526,7 +1522,7 @@ distributed transaction.  For example, X/Open DTP provides a standard
 networking protocol that allows multiple transactional systems to be
 controlled by a single transaction manager~\cite{dtp}.
 Enterprise Java Beans is a standard for developing transactional
-middle ware on top of heterogeneous storage.  Its
+middleware on top of heterogeneous storage.  Its
 transactions may not be nested.  This simplifies its
 semantics, and leads to many, short transactions, 
 improving concurrency.  However, flat transactions are somewhat rigid, and lead to
@@ -1546,22 +1542,22 @@ hard-code log format or recovery algorithms, and supports a number
 of interesting optimizations such as distributed
 logging~\cite{recoveryInQuickSilver}.  The QuickSilver project found
 that transactions meet the demands of most
-applications, provided that long running transactions do not exhaust
+applications, provided that long-running transactions do not exhaust
 system resources, and that flexible concurrency control policies are
 available.  In QuickSilver, nested transactions would
 be most useful when a series of program invocations
 form a larger logical unit~\cite{experienceWithQuickSilver}.
 
-Clouds is an object oriented, distributed transactional operating
-system.  It made use of shared abstract
+Clouds is an object-oriented, distributed transactional operating
+system.  It uses shared abstract
 types~\cite{sharedAbstractTypes} to provide concurrency control
-between the objects in the system~\cite{clouds}.  With the aid of
+among the objects in the system~\cite{clouds}.  With the aid of
 per-method atomicity specifications, it provides higher concurrency
 than QuickSilver, but is not designed for legacy applications.
 
 \subsection{Data Structure Frameworks}
 
-As mentioned in Section~\ref{sec:systems}, Berkeley DB is a system
+As mentioned in Sections~\ref{sec:systems} and~\ref{experiments}, Berkeley DB is a system
 quite similar to \yad, and gives application programmers raw access to
 transactional data structures such as a single-node B-Tree and hash
 table~\cite{libtp}.
@@ -1595,7 +1591,7 @@ Record-oriented allocation, such as in VMS Record Management Services~\cite{vms}
 Write-optimized file systems lay files out in the order they
 were written rather than in logically sequential order~\cite{lfs}.  
 
-Schemes to improve locality between small
+Schemes to improve locality among small
 objects exist as well. Relational databases allow users to specify the order
 in which tuples will be laid out, and often leave portions of pages
 unallocated to reduce fragmentation as new records are allocated.
@@ -1639,7 +1635,7 @@ shrunk as functionality has moved into extensions.  We expect
 this trend to continue as development progresses.  
 
 A resource manager is a common pattern in system software design, and
-manages dependencies and ordering constraints between sets of
+manages dependencies and ordering constraints among sets of
 components.  Over time, we hope to shrink \yads core to the point
 where it is simply a resource manager that coordinates interchangeable
 implementations of the other components.
