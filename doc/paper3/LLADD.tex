@@ -36,8 +36,8 @@
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
 
-%\newcommand{\eab}[1]{}
-%\newcommand{\rcs}[1]{}
+%\renewcommand{\eab}[1]{}
+%\renewcommand{\rcs}[1]{}
 
 
 \newcommand{\eat}[1]{}
@@ -63,7 +63,7 @@
 
 \maketitle
 
-\vspace*{-.25in}
+%\vspace*{-.25in}  % This was only moving the first column up.  Putting it in the \author block moves the title down, and putting it before \maketitle adds a blank page...
 
 % Use the following at camera-ready time to suppress page numbers.
 % Comment it out when you first submit the paper for review.
@@ -71,7 +71,7 @@
 
 %\abstract
 %\subsection*{Abstract}
-\rcs{Spell check, look at end notes and figure captions.  Spell check / cannonicalize bibtex.  Embed graph fonts. Make sure $a < b$ when we have cites like [a, b].  Check nocite *}
+%\rcs{Done, except graph fonts, but double check. Spell check, look at end notes and figure captions.  Spell check / canonicalize bib TeX.  Embed graph fonts. Make sure $a < b$ when we have cites like [a, b].  Check no cite *}
 
 {\em An increasing range of applications requires robust support for atomic, durable and concurrent
 transactions.  Databases provide the default solution, but force
@@ -297,7 +297,7 @@ Section~\ref{sec:related-work} covers these in more detail.
 In some sense, our hypothesis is trivially true in that there exists a
 bottom-up framework called the ``operating system'' that can implement
 all of the models. A famous database paper argues that it does so
-poorly (Stonebraker 1981~\cite{Stonebraker81}). Our task is really to
+poorly~\cite{Stonebraker81}. Our task is really to
 simplify the implementation of transactional systems through more
 powerful primitives that enable concurrent transactions with a variety
 of performance/robustness tradeoffs.
@@ -627,7 +627,7 @@ order to implement a ``typical'' operation, the operation's
 implementation must obey a few more invariants:
 \begin{itemize}
 \item Pages should only be updated inside physical redo/undo operation implementations.
-\item Logical operation implementations may invoke other operations
+\item Logical operations may invoke other operations
       via {\tt Tupdate()}.  Recovery does not support logical redo,
       and physical operation implementations may not invoke {\tt
       Tupdate()}.
@@ -644,7 +644,8 @@ implementation must obey a few more invariants:
 Although these restrictions are not trivial, they are not a problem in
 practice. Most read-modify-write actions can be implemented as
 user-defined operations, including common DBMS optimizations such as
-increment operations.  The power of \yad is that by following these
+increment operations, and many optimizations based on 
+ARIES~\cite{stableHeap, ariesIM}.  The power of \yad is that by following these
 local restrictions, operations meet the global
 invariants required by correct, concurrent transactions.
 
@@ -671,15 +672,15 @@ way that does not deadlock.  This allows higher-level code to treat
 This section describes \yads latching protocols and describes two custom lock
 managers that \yads allocation routines use.  Applications that want
 conventional transactional isolation (serializability) can make 
-use of a lock manager.  Alternatively, applications may follow 
+use of a lock manager or optimistic concurrency control~\cite{optimisticConcurrencyPerformance, optimisticConcurrencyControl}.  Alternatively, applications may follow 
 the example of \yads default data structures, and implement 
 deadlock prevention, or other custom lock management 
-schemes~\cite{hybridAtomicity, optimisticConcurrencyPerformance, optimisticConcurrencyControl}.
+schemes.
 
 Note that locking schemes may be
 layered as long as no legal sequence of calls to the lower level
 results in deadlock, or the higher level is prepared to handle
-deadlocks reported by the lower levels~\cite{someOtherLayeringPaper}.
+deadlocks reported by the lower levels.
 
 When \yad allocates a
 record, it first calls a region allocator, which allocates contiguous
@@ -710,7 +711,7 @@ transparent to higher layers.  General-purpose database lock managers
 provide none of these features, supporting the idea that
 special-purpose lock managers are a useful abstraction.  Locking
 schemes that interact well with object oriented programming
-schemes~\cite{sharedAbstractTypes,billOOlockingProtocols} and exception
+schemes~\cite{sharedAbstractTypes} and exception
 handling~\cite{omtt} extend these ideas to larger systems.
 
 Although custom locking is important for flexibility, it is largely
@@ -848,7 +849,7 @@ entering metadata in the primary log.
 
 \subsection{Concurrent RVM}
 
-Our LSN-free pages are similar to the recovery scheme used by
+LSN-free pages are similar to the recovery scheme used by
 recoverable virtual memory (RVM) and Camelot~\cite{camelot}. RVM
 used purely physical logging and LSN-free pages so that it
 could use {\tt mmap} to map portions of the page file into application
@@ -998,9 +999,9 @@ All benchmarks were run on an Intel Xeon 2.8 GHz processor with 1GB of RAM and a
   types.}  All results correspond to the mean of multiple runs with a
 95\% confidence interval with a half-width of 5\%.
 
-We used Berkeley DB 4.2.52 
+Our experiments use Berkeley DB 4.2.52 
 %as it existed in Debian Linux's testing branch during March of 2005, 
-with the flags DB\_TXN\_SYNC (sync log on commit), and
+with the flags DB\_TXN\_SYNC (force log to disk on commit), and
 DB\_THREAD (thread safety) enabled.  We 
 increased Berkeley DB's buffer cache and log buffer sizes to match
 \yads default sizes.  If
@@ -1163,13 +1164,15 @@ on top of \yad.
 %model would allow us to choose the representation and transactional
 %semantics that make the most sense for the system at hand.
 %
-The first object persistence mechanism, pobj, provides transactional updates to objects in
-Titanium, a Java variant.  It transparently loads and persists
-entire graphs of objects, but will not be discussed in further detail.
-The second variant was built on top of a C++ object
-persistence library, \oasys.  \oasys uses plug-in storage
-modules that implement persistent storage, and includes plugins
-for Berkeley DB and MySQL.  
+The first object persistence mechanism, pobj, provides transactional
+updates to objects in Titanium, a Java variant.  It transparently
+loads and persists entire graphs of objects, but will not be discussed
+in further detail.  The second variant was built on top of a C++
+object persistence library, \oasys.  \oasys uses plug-in storage
+modules that implement persistent storage, and includes plugins for
+Berkeley DB and MySQL.  Like C++ objects, \oasys objects are
+explicitly freed.  However, \yad could also support 
+concurrent and incremental atomic garbage collection~\cite{stableHeap}.
 
 This section describes how the \yad plugin supports optimizations that reduce the
 amount of data written to log and halve the amount of RAM required.
@@ -1184,7 +1187,7 @@ application objects to become stale.  This is safe since the system is
 always able to reconstruct the appropriate page entry from the live
 copy of the object.  This reduces the number of times the
 plugin must update serialized objects in the buffer manager, and
-allows us to decrease drastically the amount of memory used by the
+allows us to nearly eliminate the memory used by the
 buffer manager.  
 
 We implemented the \yad buffer pool optimization by adding two new
@@ -1308,10 +1311,10 @@ independently, improving locality and allowing requests to be merged.}
   clip,
 width=1\columnwidth]{figs/trans-closure-hotset.pdf}}
 \vspace{-12pt}
-\caption{\label{fig:hotGraph} Hot-set based graph traversal for random graphs with out-degrees of 3 and 9.  Here
-we see that the multiplexer helps when the graph has poor locality.
-In the cases where depth first search performs well, the
-reordering is inexpensive.}
+\caption{\label{fig:hotGraph} Hot-set based graph traversal for random
+graphs with out-degrees of 3 and 9.  Here we see that the multiplexer
+has relatively low overhead, and improves performance when the graph
+has poor locality.}
 \vspace{-12pt}
 \end{figure}
 
@@ -1331,7 +1334,7 @@ techniques and relational algebra operators could be used to
 non-transactional memory.
 
 To experiment with the potential of such optimizations, we implemented
-a single node log-reordering scheme that increases request locality
+a single-node log-reordering scheme that increases request locality
 during a graph traversal.  The graph traversal produces a sequence of
 read requests that are partitioned according to their physical
 location in the page file.  Partition sizes are chosen to fit inside
@@ -1355,8 +1358,8 @@ The second experiment measures the effect of graph locality
 (Figure~\ref{fig:hotGraph}).  Each node has a distinct hot set that
 includes the 10\% of the nodes that are closest to it in ring order.
 The remaining nodes are in the cold set.  We do not use ring edges for
-this test, so the graphs might not be connected. We use the same set
-of graphs for both systems.
+this test, so the graphs might not be connected. We use the same
+graphs for both systems.
 
 When the graph has good locality, a normal depth-first search
 traversal and the prioritized traversal both perform well.  As
@@ -1577,9 +1580,9 @@ than QuickSilver, but is not designed for legacy applications.
 \subsection{Data Structure Frameworks}
 
 As mentioned in Section~\ref{sec:systems}, Berkeley DB is a system
-quite similar to \yad, and provides raw access to
-transactional data structures for application
-programmers~\cite{libtp}.  \eab{summary?}
+quite similar to \yad, and gives application programmers raw access to
+transactional data structures such as a single-node B-Tree and hash
+table~\cite{libtp}.
 
 Cluster hash tables provide a scalable, replicated hash table
 implementation by partitioning the table's buckets across multiple
@@ -1629,10 +1632,6 @@ hints~\cite{cricket}, pointer values and write order~\cite{starburst},
 data type~\cite{orion}, or access
 patterns~\cite{storageReorganization}.
 
-%Other work makes use of the caller's stack to infer
-%information about memory management.~\cite{xxx} \rcs{Eric, do you have
-%  a reference for this?}
-
 We are interested in allowing applications to store records in
 the transaction log.  Assuming log fragmentation is kept to a
 minimum, this is particularly attractive on a single disk system.  We
@@ -1659,7 +1658,7 @@ this trend to continue as development progresses.
 
 A resource manager is a common pattern in system software design, and
 manages dependencies and ordering constraints between sets of
-components~\cite{resourceManager}.  Over time, we hope to shrink \yads core to the point
+components.  Over time, we hope to shrink \yads core to the point
 where it is simply a resource manager that coordinates interchangeable
 implementations of the other components.
 
@@ -1710,7 +1709,6 @@ Additional information, and \yads source code is available at:
 
 {\footnotesize \bibliographystyle{acm}
 
-\rcs{What's ``SIGMOD International Conference on Management of Data'' vs ``SIGMOD Record''?}
 %\nocite{*}
 \bibliography{LLADD}}
 
