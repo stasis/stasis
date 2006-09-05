@@ -33,10 +33,12 @@
 %\newcommand{\graphdbg}[1]{\fbox{#1}}
 \newcommand{\graphdbg}[1]{#1}
 
-\newcommand{\diff}[1]{\textcolor{blue}{\bf #1}}
 \newcommand{\eab}[1]{\textcolor{red}{\bf EAB: #1}}
 \newcommand{\rcs}[1]{\textcolor{green}{\bf RCS: #1}}
-%\newcommand{\mjd}[1]{\textcolor{blue}{\bf MJD: #1}}
+
+%\newcommand{\eab}[1]{}
+%\newcommand{\rcs}[1]{}
+
 
 \newcommand{\eat}[1]{}
 
@@ -70,7 +72,7 @@ UC Berkeley
 
 %\abstract
 %\subsection*{Abstract}
-\rcs{Spell check, look at end notes and figure captions.  Spell check / cannonicalize bibtex.  Embed graph fonts.}
+\rcs{Spell check, look at end notes and figure captions.  Spell check / cannonicalize bibtex.  Embed graph fonts. Make sure $a < b$ when we have cites like [a, b].  Check nocite *}
 
 {\em An increasing range of applications requires robust support for atomic, durable and concurrent
 transactions.  Databases provide the default solution, but force
@@ -328,8 +330,6 @@ and write-ahead logging system are too specialized to support \yad.
 
 \section{Transactional Pages}
 
-\rcs{still missing refs to PhDs on layering}
-
 This section describes how \yad implements transactions that are
 similar to those provided by relational database systems, which are
 based on transactional pages.  The algorithms described in this
@@ -338,16 +338,19 @@ ARIES~\cite{aries}.  However, they form the starting point for
 extensions and novel variants, which we cover in the next two
 sections.
 
-As with other systems, \yads transactions have a two-level structure.
-The lower level of an operation provides atomic updates to regions of
+As with other systems, \yads transactions have a multi-level
+structure.  Multi-layered transactions were originally proposed as an
+concurrency control strategy for database servers that support high
+level, application specific extensions~\cite{multiLayeredSystems}.
+In \yad, the lower level of an operation provides atomic updates to regions of
 the disk.  These updates do not have to deal with concurrency, but
 must update the page file atomically, even if the system crashes.
 
-The higher level provides operations that span multiple pages by
-atomically applying sets of operations to the page file and coping
-with concurrency issues.  Surprisingly, the implementations of these
-two layers are only loosely coupled.
-
+Higher level operations span multiple pages by
+atomically applying sets of operations to the page file, recording
+their actions in the log and coping with concurrency issues.  The
+loose coupling of these layers lets \yads users compose and reuse
+existing operations.
 
 \subsection{Atomic Disk Operations}
 
@@ -534,7 +537,7 @@ operations:
 
 \begin{enumerate}
 \item Wrap a mutex around each operation.  With care, it is possible 
-  to use finer-grained latches in a \yad operation, but it is rarely necessary.
+  to use finer-grained latches in a \yad operation~\cite{ariesIM}, but it is rarely necessary.
 \item Define a {\em logical} undo for each operation (rather than a set of page-level undos).  For example, this is easy for a
   hash table: the undo for {\em insert} is {\em remove}.  The logical
   undo function should arrange to acquire the mutex when invoked by
@@ -558,10 +561,6 @@ Using this recipe, it is relatively easy to implement thread-safe
 concurrent transactions.  Therefore, they are used throughout \yads
 default data structure implementations.  This approach also works 
 with the variable-sized atomic updates covered in Section~\ref{sec:lsn-free}.
-
-
-
-
 
 \subsection{User-Defined Operations}
 \label{sec:operations}
@@ -676,12 +675,12 @@ conventional transactional isolation (serializability) can make
 use of a lock manager.  Alternatively, applications may follow 
 the example of \yads default data structures, and implement 
 deadlock prevention, or other custom lock management 
-schemes~\cite{hybridAtomicity, optimisticConcurrencyControl}.
+schemes~\cite{hybridAtomicity, optimisticConcurrencyPerformance, optimisticConcurrencyControl}.
 
 Note that locking schemes may be
 layered as long as no legal sequence of calls to the lower level
 results in deadlock, or the higher level is prepared to handle
-deadlocks reported by the lower levels~\cite{layering}.
+deadlocks reported by the lower levels~\cite{someOtherLayeringPaper}.
 
 When \yad allocates a
 record, it first calls a region allocator, which allocates contiguous
@@ -712,7 +711,7 @@ transparent to higher layers.  General-purpose database lock managers
 provide none of these features, supporting the idea that
 special-purpose lock managers are a useful abstraction.  Locking
 schemes that interact well with object oriented programming
-schemes~\cite{billOOlockingProtocols} and exception
+schemes~\cite{sharedAbstractTypes,billOOlockingProtocols} and exception
 handling~\cite{omtt} extend these ideas to larger systems.
 
 Although custom locking is important for flexibility, it is largely
@@ -1126,10 +1125,11 @@ produce, not the performance of our own highly tuned implementation.
 Both Berkeley DB and \yad can service concurrent calls to commit with
 a single synchronous I/O.
 \yad scaled quite well, delivering over 6000 transactions per
-second,\endnote{The concurrency test was run without lock managers, and the
-  transactions obeyed the A, C, and D properties.  Since each
-  transaction performed exactly one hash table write and no reads, they also
-  obeyed I (isolation) in a trivial sense.}  and provided roughly
+second,%\endnote{The concurrency test was run without lock managers, and the
+%  transactions obeyed the A, C, and D properties.  Since each
+%  transaction performed exactly one hash table write and no reads, they also
+%  obeyed I (isolation) in a trivial sense.}  
+and provided roughly
 double Berkeley DB's throughput (up to 50 threads).  Although not
 shown here, we found that the latencies of Berkeley DB and \yad were
 similar.
@@ -1466,12 +1466,15 @@ child transaction from the others, and retrying failed
 transactions.  (MapReduce is similar, but uses language constructs to
 statically enforce isolation~\cite{mapReduce}.)
 
-Open nesting provides concurrency between transactions.  In
-some respect, nested top actions provide open, linear nesting, as the
+Open nesting provides concurrency between transactions.  In some
+respect, nested top actions provide open, linear nesting, as the
 actions performed inside the nested top action are not rolled back
-when the parent aborts.  However, logical undo gives the programmer
-the option to compensate for nested top action. We expect that nested
-transactions could be implemented with \yad.
+when the parent aborts.  (We believe that recent proposals to use
+open, linear nesting for software transactional memory will lead to a
+programming style similar to \yads~\cite{nestedTransactionPoster}.)
+However, logical undo gives the programmer the option to compensate
+for nested top action. We expect that nested transactions could be
+implemented with \yad.
 
 \subsubsection{Distributed Programming Models}
 \label{sec:argus}
@@ -1564,6 +1567,13 @@ system resources, and that flexible concurrency control policies are
 available.  In QuickSilver, nested transactions would
 be most useful when a series of program invocations
 form a larger logical unit~\cite{experienceWithQuickSilver}.
+
+Clouds is an object oriented, distributed transactional operating
+system.  It made use of shared abstract
+types~\cite{sharedAbstractTypes} to provide concurrency control
+between the objects in the system~\cite{clouds}.  With the aid of
+per-method atomicity specifications, it provides higher concurrency
+than QuickSilver, but is not designed for legacy applications.
 
 \subsection{Data Structure Frameworks}
 
@@ -1701,9 +1711,8 @@ Additional information, and \yads source code is available at:
 
 {\footnotesize \bibliographystyle{acm}
 
-\rcs{Check the nocite * for un-referenced references.}
 \rcs{What's ``SIGMOD International Conference on Management of Data'' vs ``SIGMOD Record''?}
-\nocite{*}
+%\nocite{*}
 \bibliography{LLADD}}
 
 \theendnotes
