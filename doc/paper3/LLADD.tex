@@ -203,9 +203,6 @@ We implemented this extension in 150 lines of C, including comments and boilerpl
 in mind when we wrote \yad, and in fact the idea came from a
 user unfamiliar with \yad.
 
-%\e ab{others?  CVS, windows registry, berk DB, Grid FS?}
-%\r cs{maybe in related work?}
-
 This paper begins by contrasting \yads approach with that of
 conventional database and transactional storage systems.  It proceeds
 to discuss write-ahead logging, and describe ways in which \yad can be
@@ -503,10 +500,6 @@ increases concurrency.  However, it means that follow-on transactions that use
 the data may need to abort if this transaction aborts ({\em
 cascading aborts}). 
 
-%Related issues are studied in great detail in terms of optimistic
-%concurrency control~\cite{optimisticConcurrencyControl,
-%optimisticConcurrencyPerformance}.
-
 Nested top actions avoid this problem.  The key idea is to distinguish
 between the logical operations of a data structure, such as
 adding an item to a set, and internal physical operations such as
@@ -550,12 +543,6 @@ operations:
 If the transaction that encloses a nested top action aborts, the
 logical undo will {\em compensate} for the effects of the operation, 
 taking updates from concurrent transactions into account.
-%If a transaction should perform
-%some action regardless of whether or not it commits, a nested top
-%action with a ``no op'' as its inverse is a convenient way of applying
-%the change.  Nested top actions do not force the log to disk, so such
-%changes are not durable until the log is forced, perhaps manually, or
-%by a committing transaction.  
 Using this recipe, it is relatively easy to implement thread-safe
 concurrent transactions.  Therefore, they are used throughout \yads
 default data structure implementations.  This approach also works 
@@ -734,7 +721,7 @@ This section explains how we can avoid storing LSNs on pages in \yad
 without giving up durable transactional updates.  The techniques here
 are similar to those used by RVM~\cite{lrvm}, a system that supports
 transactional updates to virtual memory.  However, \yad generalizes
-the concept, allowing it to co-exist with traditional pages and more easily
+the concept, allowing it to coexist with traditional pages and more easily
 support concurrent transactions.
 
 In the process of removing LSNs from pages, we
@@ -1036,16 +1023,11 @@ perform similarly to comparable monolithic implementations.
     viewport=-23bp 28bp 625bp 360bp, 
     clip,
    width=1\columnwidth]{figs/bulk-load.pdf}}
-%\includegraphics[%
-%   width=1\columnwidth]{bulk-load-raw.pdf}1
 \caption{\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hash table implementations.  The
 test is run as a single transaction, minimizing overheads due to synchronous log writes.}
 \end{figure}
 
 \begin{figure}[t]
-%\hspace*{18pt}
-%\includegraphics[%
-%   width=1\columnwidth]{tps-new.pdf}
 \graphdbg{\includegraphics[%
     viewport=-43bp 50bp 490bp 370bp, 
     clip,
