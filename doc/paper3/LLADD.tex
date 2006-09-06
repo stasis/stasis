@@ -148,7 +148,7 @@ model, but in practice need a very different implementation.
 Object-oriented, XML, and streaming databases all have distinct
 conceptual models and underlying implementations.
 
-Version-control, scientific computing and bioinformatics systems tend
+Scientific computing, bioinformatics and document management systems tend
 to preserve old versions and track provenance.  Thus they each have a
 distinct conceptual model.  Bioinformatics systems perform
 computations over large, semi-structured databases.  Relational
@@ -482,7 +482,7 @@ multi-threaded software.
 
 To understand the problems that arise with concurrent transactions,
 consider what would happen if one transaction, A, rearranges the
-layout of a data structure.  Next, a second transaction, B,
+layout of a data structure.  Next, another transaction, B,
 modifies that structure and then A aborts.  When A rolls back, its
 undo entries will undo the changes that it made to the data
 structure, without regard to B's modifications.  This is likely to
@@ -768,14 +768,14 @@ One possible lower bound is the LSN of the most recent checkpoint.
 Alternatively, \yad could occasionally store its list of dirty pages 
 and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).  
 
-If a page is present in the most recent list of dirty pages we use
-the LSN in the list as our estimate.  Otherwise, we use the LSN of the
-log entry.  This is safe because
+Each dirty list is an
+accurate sparse representation of the LSNs of the entire page file.
+If a page is present in the most recent list of dirty pages then we use
+the LSN in the list as our estimate.  If the page is not in the list then
 the page was not updated between the most recent update to the on-disk
 version (the ``true'' LSN of the page), and the point at which the
-list was written to log.  Therefore, each dirty list is an
-accurate sparse representation of the LSNs of the entire page file.  The
-buffer pool must maintain this information whether or not LSN-free
+list was written to log.  Therefore, we use the LSN of the log entry that contains the list.  
+The buffer pool must maintain the dirty list whether or not LSN-free
 pages are in use, so we expect the runtime overhead to be minimal.
 
 \begin{figure}
@@ -829,7 +829,7 @@ other tasks.
 We believe that LSN-free pages will allow reads to make use of such
 optimizations in a straightforward fashion.  Zero-copy writes are
  more challenging, but the goal would be to use one sequential write
-to put the new version on disk and then update meta data accordingly.
+to put the new version on disk and then update metadata accordingly.
 We need not put the blob in the log if we avoid update in place; most
 blob implementations already avoid update in place since the length may vary between writes.  We suspect that contributions from log-based file
 systems~\cite{lfs} can address these issues. In particular, we
@@ -1070,9 +1070,13 @@ function~\cite{lht}, allowing it to increase capacity incrementally.
 It is based on a number of modular subcomponents.  Notably, the
 physical location of each bucket is stored in a growable array of
 fixed-length entries.  This data structure is similar to Java's ArrayList.  The bucket lists can be provided by either of
-\yads two linked list implementations.  One provides fixed-length entries,
-yielding a hash table with fixed-length keys and values.  The second list
-(and therefore hash table) used in our experiments provides variable-length entries.
+\yads two linked list implementations.  The first provides fixed-length entries,
+yielding a hash table with fixed-length keys and values.  
+Our experiments use the second implementation, which 
+provides variable-length entries (and therefore variable-length
+keys and values).
+
+
 
 The hand-tuned hash table is also built on \yad and also uses a linear hash
 function.  However, it is monolithic and uses carefully ordered writes to
@@ -1307,7 +1311,7 @@ techniques and relational algebra operators could be used to
 non-transactional memory.
 
 To experiment with the potential of such optimizations, we implemented
-a single-node log-reordering scheme that increases request locality
+a single-node request-reordering scheme that increases request locality
 during a graph traversal.  The graph traversal produces a sequence of
 read requests that are partitioned according to their physical
 location in the page file.  Partition sizes are chosen to fit inside
@@ -1391,7 +1395,7 @@ engines automatically.
 
 Object-oriented database systems~\cite{objectstore} and
 relational databases with support for user-definable abstract data
-types (such as in POSTGRES~\cite{postgres}) provide functionality
+types (such as POSTGRES~\cite{postgres}) provide functionality
 similar to extensible database toolkits.  In contrast to database
 toolkits, which leverage type information as the database server is
 compiled, object-oriented and object-relational databases allow types
