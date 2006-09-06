@@ -1510,25 +1510,36 @@ complexity by providing logical undos, and by leaving lock management
 to higher-level code.  This separates write-back and concurrency
 control policies from data structure implementations.
 
-Camelot made a number of important
-contributions, both in system design, and in algorithms for
-distributed transactions~\cite{camelot}.  It leaves locking to application level code,
-and updates data in place.  (Argus uses shadow copies to provide
-atomic updates.)  Camelot provides two logging modes: redo only
-(no-steal, no-force) and undo/redo (steal, no-force).  It uses 
-facilities of Mach to provide recoverable virtual memory.  It
-supports Avalon, which uses Camelot to provide a
-higher-level (C++) programming model;  Camelot provides a lower-level
-C interface that enables other programming models as well.  It provides a limited form of closed nested transactions
-where parents are suspended while children are active.  Camelot also
-provides mechanisms for distributed transactions and transactional
-RPC.  Although Camelot does allow applications to provide their own lock 
-managers, implementation strategies for concurrent operations 
-in Camelot are similar to those
-built using Argus since Camelot does not provide logical undo.  Camelot focuses
-on distributed transactions, and hard-codes
-assumptions regarding the structure of nested transactions, consensus
-algorithms, communication mechanisms, and so on.
+Camelot made a number of important contributions, both in system
+design, and in algorithms for distributed transactions~\cite{camelot}.
+It leaves locking to application level code, and updates data in
+place.  (Argus uses shadow copies to provide atomic updates.)  Camelot
+provides two logging modes: physical redo-only (no-steal, no-force)
+and physical undo/redo (steal, no-force).  Because Camelot does not
+support logical undo, concurrent operations must be implemented
+similarly to those built with Argus.  Camelot is similar to \yad in
+that its low-level C interface is designed to enable multiple
+higher-level programming models, such as Avalon's C++ interface or an
+early version of RVM.  However, like other distributed programming
+models, Camelot focuses on a particular class of distributed
+transactions.  Therefore, it hard-codes assumptions regarding the
+structure of nested transactions, consensus algorithms, communication
+mechanisms, and so on.
+
+%It uses 
+%facilities of Mach to provide recoverable virtual memory.  It
+%supports Avalon, which uses Camelot to provide a
+%higher-level (C++) programming model;  Camelot provides a lower-level
+%C interface that enables other programming models as well.  It provides a limited form of closed nested transactions
+%where parents are suspended while children are active.  Camelot also
+%provides mechanisms for distributed transactions and transactional
+%RPC.  Although Camelot does allow applications to provide their own lock 
+%managers, implementation strategies for concurrent operations 
+%in Camelot are similar to those
+%built using Argus since Camelot does not provide logical undo.  Camelot focuses
+%on distributed transactions, and hard-codes
+%assumptions regarding the structure of nested transactions, consensus
+%algorithms, communication mechanisms, and so on.
 
 More recent transactional programming schemes allow for multiple
 transaction implementations to cooperate as part of the same
@@ -1549,25 +1560,28 @@ concurrently with their children~\cite{omtt}.
 QuickSilver is a distributed transactional operating system.  It
 provides a transactional IPC mechanism, and
 allows varying degrees of isolation, both to support legacy code, and
-to implement servers that require special isolation properties.  It
-supports transactions over durable and volatile state, and includes a
-number of different commit protocols.  Its shared logging facility does not
+to implement servers that require special isolation properties.  
+%It
+%supports transactions over durable and volatile state, and includes a
+%number of different commit protocols.  
+Interestingly, its shared logging facility does not
 hard-code log format or recovery algorithms, and supports a number
 of interesting optimizations such as distributed
-logging~\cite{recoveryInQuickSilver}.  The QuickSilver project found
-that transactions meet the demands of most
+logging~\cite{recoveryInQuickSilver}.  QuickSilver's logging mechanism 
+is general enough to support \yad.  
+
+The QuickSilver project showed that transactions meet the demands of most
 applications, provided that long-running transactions do not exhaust
 system resources, and that flexible concurrency control policies are
-available.  In QuickSilver, nested transactions would
-be most useful when a series of program invocations
+available.  Nested transactions are 
+particularly useful when a series of program invocations
 form a larger logical unit~\cite{experienceWithQuickSilver}.
 
 Clouds is an object-oriented, distributed transactional operating
-system.  It uses shared abstract
-types~\cite{sharedAbstractTypes} to provide concurrency control
-among the objects in the system~\cite{clouds}.  With the aid of
-per-method atomicity specifications, it provides higher concurrency
-than QuickSilver, but is not designed for legacy applications.
+system.  It uses shared abstract types~\cite{sharedAbstractTypes} and
+per-object atomicity specifications to provide concurrency control
+among the objects in the system~\cite{clouds}.  These formalisms could
+be used during the design of high-concurrency \yad operations.
 
 \subsection{Data Structure Frameworks}
 
