@@ -590,7 +590,7 @@ system.
 \includegraphics[%
   viewport=0bp 0bp 458bp 225bp,
   clip,
-  width=1\columnwidth]{figs/structure.pdf}
+  width=1\columnwidth]{figs/structure}
 {\caption{\label{fig:structure} The portions of \yad that directly interact with new operations.  Arrows point in the direction of data flow.}}
 \vspace{-12pt}
 \end{figure}
@@ -798,7 +798,7 @@ overhead to be negligible.
 \includegraphics[%
   viewport=-1bp 0bp 460bp 225bp,
   clip,
-  width=1\columnwidth]{figs/lsn-estimation.pdf}
+  width=1\columnwidth]{figs/lsn-estimation}
 \caption{\label{fig:lsn-estimation}LSN estimation.  If a page was not mentioned in the log, it must have been up-to-date on disk.  RecLSN is the LSN of the entry that caused the page to become dirty.  Subtracting one gives us a safe estimate of the page LSN.}
 \vspace{-12pt}
 \end{figure}
@@ -934,7 +934,7 @@ logically consistent.
 \includegraphics[%
   viewport=0bp 0bp 445bp 308bp,
   clip,
-  width=1\columnwidth]{figs/torn-page.pdf}
+  width=1\columnwidth]{figs/torn-page}
 \caption{\label{fig:torn}Torn pages and LSN-free recovery.
 The page is torn during the crash, but consistent once redo completes.
 Overwritten sectors are shaded.}
@@ -1049,7 +1049,7 @@ perform similarly to comparable monolithic implementations.
 \graphdbg{\includegraphics[%
     viewport=-26bp 28bp 625bp 360bp, 
     clip,
-   width=1\columnwidth]{figs/bulk-load.pdf}}
+   width=1\columnwidth]{figs/bulk-load}}
 \caption{\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hash table implementations.  The
 test is run as a single transaction, minimizing synchronous log writes.}
 \end{figure}
@@ -1058,7 +1058,7 @@ test is run as a single transaction, minimizing synchronous log writes.}
 \graphdbg{\includegraphics[%
     viewport=-43bp 45bp 490bp 370bp, 
     clip,
-   width=1\columnwidth]{figs/tps-extended.pdf}}
+   width=1\columnwidth]{figs/tps-extended}}
 \caption{\label{fig:TPS} High-concurrency hash table performance.  Our Berkeley DB test can only support 50 threads (see text).
 \vspace{-16pt}
 }
@@ -1104,13 +1104,13 @@ as a baseline for our experiments.
 \graphdbg{\includegraphics[%
     viewport=-25bp 19bp 625bp 400bp, 
     clip,
-    width=1\columnwidth]{figs/object-diff.pdf}}
+    width=1\columnwidth]{figs/object-diff}}
 \hspace{.2in}
 \graphdbg{\includegraphics[%
 %    viewport=-25bp 23bp 425bp 330bp, 
     viewport=-40bp 28bp 450bp 315bp, 
     clip,
-    width=1\columnwidth]{figs/mem-pressure.pdf}}
+    width=1\columnwidth]{figs/mem-pressure}}
 \caption{\label{fig:OASYS}
 The effect of \yad object-persistence optimizations under low and high memory pressure.}
 \vspace{-12pt}
@@ -1147,7 +1147,7 @@ Figure~\ref{fig:TPS} describes the performance of the two systems under
 highly concurrent workloads using the ext3 file system.\endnote{Multi-threaded benchmarks
   were performed using an ext3 file system. 
   Concurrency caused both Berkeley DB and \yad to behave unpredictably
-  under ReiserFS was used.  \yads multi-threaded throughput
+  under ReiserFS.  \yads multi-threaded throughput
   was significantly better than Berkeley DB's with both file systems.}
   For this test, we used the modular
 hash table, since we are interested in the performance of a 
@@ -1275,7 +1275,7 @@ the implementation is encouraging.
 
 \label{sec:logging}
 \begin{figure}
-\graphdbg{\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}}
+\graphdbg{\includegraphics[width=1\columnwidth]{figs/graph-traversal}}
 %\vspace{-12pt}
 \caption{\label{fig:multiplexor} Locality-based request reordering.
 Requests are partitioned into queues.  Queue are handled
@@ -1362,7 +1362,7 @@ the naive traversal.
 \begin{figure}[t]
 \graphdbg{\includegraphics[%
     viewport=-13bp 19bp 600bp 280bp, 
-    width=1\columnwidth]{figs/oo7.pdf}}
+    width=1\columnwidth]{figs/oo7}}
 %\vspace{-12pt}
 \caption{\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
 %\vspace{-12pt}
@@ -1372,7 +1372,7 @@ the naive traversal.
 \graphdbg{\includegraphics[%
   viewport=-10bp 10bp 525bp 346bp,
   clip,
-width=1\columnwidth]{figs/trans-closure-hotset.pdf}}
+width=1\columnwidth]{figs/trans-closure-hotset}}
 %\vspace{-12pt}
 \caption{\label{fig:hotGraph} Hot-set based graph traversal for random
 graphs with out-degrees of 3 and 9.  The multiplexer
