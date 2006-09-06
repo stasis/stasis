@@ -766,7 +766,18 @@ Recovery works the same way as before, except that it now computes
 a lower bound for the LSN of each page, rather than reading it from the page.
 One possible lower bound is the LSN of the most recent checkpoint.  
 Alternatively, \yad could occasionally store its list of dirty pages 
-and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
+and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).  
+
+If a page is present in the most recent list of dirty pages we use
+the LSN in the list as our estimate.  Otherwise, we use the LSN of the
+log entry.  This is safe because
+the page was not updated between the most recent update to the on-disk
+version (the ``true'' LSN of the page), and the point at which the
+list was written to log.  Therefore, each dirty list is an
+accurate sparse representation of the LSNs of the entire page file.  The
+buffer pool must maintain this information whether or not LSN-free
+pages are in use, so we expect the runtime overhead to be minimal.
+
 \begin{figure}
 \includegraphics[%
   viewport=0bp 0bp 460bp 225bp,
