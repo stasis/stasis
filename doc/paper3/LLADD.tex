@@ -148,7 +148,7 @@ model, but in practice need a very different implementation.
 Object-oriented, XML, and streaming databases all have distinct
 conceptual models and underlying implementations.
 
-Scientific computing, bioinformatics and version-control systems tend
+Version-control, scientific computing and bioinformatics systems tend
 to preserve old versions and track provenance.  Thus they each have a
 distinct conceptual model.  Bioinformatics systems perform
 computations over large, semi-structured databases.  Relational
@@ -227,7 +227,7 @@ database and systems researchers for at least 25 years.
 \subsection{The Database View}
 
 The database community approaches the limited range of DBMSs by either
-creating new top-down models, such as object-oriented, XML or streaming databases~\cite{streaming, XMLdb},
+creating new top-down models, such as object-oriented, XML or streaming databases~\cite{streaming, objectstore, XMLdb},
 or by extending the relational model~\cite{codd} along some axis, such
 as new data types~\cite{newDBtypes}.  We cover these attempts in more detail in
 Section~\ref{sec:related-work}.
@@ -240,7 +240,7 @@ Section~\ref{sec:related-work}.
 %navigational databases implemented pointer- and record-based data models.
 
 An early survey of database implementations sought to enumerate the
-fundamental components used by database system implementors~\cite{batoryConceptual,batoryPhysical}.  This
+components used by database system implementors~\cite{batoryConceptual,batoryPhysical}.  This
 survey was performed due to difficulties in extending database systems
 into new application domains.  It divided internal database
 routines into two broad modules: {\em conceptual mappings} and {\em physical
@@ -300,7 +300,7 @@ simplify the implementation of transactional systems through more
 powerful primitives that enable concurrent transactions with a variety
 of performance/robustness tradeoffs.
 
-The closest system to ours in spirit is Berkeley DB,  a highly successful alternative to conventional
+The closest system to ours in spirit is Berkeley DB, a highly successful lightweight alternative to conventional 
 databases~\cite{libtp}.  At its core, it provides the physical database model
 (relational storage system~\cite{systemR}) of a conventional database server.
 %It is based on the
@@ -591,7 +591,7 @@ system.
   viewport=0bp 0bp 458bp 225bp,
   clip,
   width=1\columnwidth]{figs/structure.pdf}
-{\caption{\label{fig:structure} The portions of \yad that directly interact with new operations.  The arrows point in the direction of data flow.}}
+{\caption{\label{fig:structure} The portions of \yad that directly interact with new operations.  Arrows point in the direction of data flow.}}
 \vspace{-12pt}
 \end{figure}
 
@@ -613,7 +613,7 @@ This pattern applies in many cases.  In
 order to implement a ``typical'' operation, the operation's
 implementation must obey a few more invariants:
 \begin{itemize}
-\item Pages should only be updated inside physical redo/undo operation implementations.
+\item Pages should only be updated inside physical redo and undo operation implementations.
 \item Logical operations may invoke other operations
       via {\tt Tupdate()}.  Recovery does not support logical redo,
       and physical operation implementations may not invoke {\tt
@@ -644,7 +644,7 @@ to be written out on commit avoids redo logging.
 
 \subsection{Application-specific Locking}
 \label{sec:locking}
-The transactions described above only provide the
+The transactions described above provide the
 ``Atomicity'' and ``Durability'' properties of ACID.
   ``Isolation'' is
 typically provided by locking, which is a higher level but
@@ -772,7 +772,7 @@ and their LSNs to the log (Figure~\ref{fig:lsn-estimation}).
   viewport=0bp 0bp 460bp 225bp,
   clip,
   width=1\columnwidth]{figs/lsn-estimation.pdf}
-\caption{\label{fig:lsn-estimation}LSN estimation.  If a page was not mentioned by the checkpoint, it must have been up-to-date on disk.}
+\caption{\label{fig:lsn-estimation}LSN estimation.  If a page was not mentioned in the log, it must have been up-to-date on disk.}
 \vspace{-12pt}
 \end{figure}
 
@@ -1024,7 +1024,7 @@ perform similarly to comparable monolithic implementations.
     clip,
    width=1\columnwidth]{figs/bulk-load.pdf}}
 \caption{\label{fig:BULK_LOAD} Performance of \yad and Berkeley DB hash table implementations.  The
-test is run as a single transaction, minimizing overheads due to synchronous log writes.}
+test is run as a single transaction, minimizing synchronous log writes.}
 \end{figure}
 
 \begin{figure}[t]
@@ -1032,8 +1032,8 @@ test is run as a single transaction, minimizing overheads due to synchronous log
     viewport=-43bp 50bp 490bp 370bp, 
     clip,
    width=1\columnwidth]{figs/tps-extended.pdf}}
-\caption{\label{fig:TPS} High concurrency hash table performance of Berkeley DB and \yad.  We were unable to get Berkeley DB to work correctly with more than 50 threads (see text).
-\vspace{-12pt}
+\caption{\label{fig:TPS} High-concurrency hash table performance.  Our Berkeley DB test can only support 50 threads (see text).
+\vspace{-16pt}
 }
 \end{figure}
 
@@ -1058,7 +1058,7 @@ structure atomically.  It uses a {\em linear} hash
 function~\cite{lht}, allowing it to increase capacity incrementally.
 It is based on a number of modular subcomponents.  Notably, the
 physical location of each bucket is stored in a growable array of
-fixed-length entries.  The bucket lists can be provided by either of
+fixed-length entries.  This data structure is similar to Java's ArrayList.  The bucket lists can be provided by either of
 \yads two linked list implementations.  One provides fixed-length entries,
 yielding a hash table with fixed-length keys and values.  The second list
 (and therefore hash table) used in our experiments provides variable-length entries.
@@ -1068,6 +1068,25 @@ function.  However, it is monolithic and uses carefully ordered writes to
 reduce runtime overheads such as log bandwidth.  Berkeley DB's
 hash table is a popular, commonly deployed implementation, and serves
 as a baseline for our experiments.
+
+\begin{figure*}
+\graphdbg{\includegraphics[%
+    viewport=-25bp 19bp 625bp 400bp, 
+    clip,
+    width=1\columnwidth]{figs/object-diff.pdf}}
+\hspace{.2in}
+\graphdbg{\includegraphics[%
+%    viewport=-25bp 23bp 425bp 330bp, 
+    viewport=-40bp 28bp 450bp 315bp, 
+    clip,
+    width=1\columnwidth]{figs/mem-pressure.pdf}}
+\caption{\label{fig:OASYS}
+The effect of \yad object-persistence optimizations under low and high memory pressure.}
+\vspace{-12pt}
+\end{figure*}
+
+
+
 
 Both of our hash tables outperform Berkeley DB on a workload that populates
 the tables by repeatedly inserting $(key, value)$ pairs
@@ -1115,23 +1134,6 @@ second,%\endnote{The concurrency test was run without lock managers, and the
 double Berkeley DB's throughput (up to 50 threads).  Although not
 shown here, we found that the latencies of Berkeley DB and \yad were
 similar.
-
-
-\begin{figure*}
-\graphdbg{\includegraphics[%
-    viewport=-15bp 19bp 650bp 400bp, 
-    clip,
-    width=1\columnwidth]{figs/object-diff.pdf}}
-\hspace{.2in}
-\graphdbg{\includegraphics[%
-%    viewport=-25bp 23bp 425bp 330bp, 
-    viewport=-50bp 28bp 460bp 315bp, 
-    clip,
-    width=1\columnwidth]{figs/mem-pressure.pdf}}
-\caption{\label{fig:OASYS}
-The effect of \yad object-persistence optimizations under low and high memory pressure.}
-\vspace{-12pt}
-\end{figure*}
 
 
 \subsection{Object persistence}
@@ -1240,6 +1242,16 @@ function registrations.\endnote{These figures do not include the
 to ensure the correctness of this optimization is complex, the simplicity of
 the implementation is encouraging.
 
+\label{sec:logging}
+\begin{figure}
+\graphdbg{\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}}
+%\vspace{-12pt}
+\caption{\label{fig:multiplexor} Locality-based request reordering.
+Requests are partitioned into queues.  Queue are handled
+independently, improving locality and allowing requests to be merged.}
+\vspace{-12pt}
+\end{figure}
+
 In this experiment, Berkeley DB was configured as described above.  We
 ran MySQL using InnoDB for the table engine.  For this benchmark, it
 is the fastest engine that provides similar durability to \yad. We
@@ -1267,37 +1279,6 @@ memory bound test, we see that update/flush indeed improves memory
 utilization.
 
 \subsection{Request reordering}
-
-
-\label{sec:logging}
-\begin{figure}
-\graphdbg{\includegraphics[width=1\columnwidth]{figs/graph-traversal.pdf}}
-\vspace{-12pt}
-\caption{\label{fig:multiplexor} Locality-based request reordering.
-Requests are partitioned into queues.  Queue are handled
-independently, improving locality and allowing requests to be merged.}
-\end{figure}
-\begin{figure}[t]
-\graphdbg{\includegraphics[%
-    viewport=-13bp 19bp 600bp 280bp, 
-    width=1\columnwidth]{figs/oo7.pdf}}
-\vspace{-12pt}
-\caption{\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
-\vspace{-12pt}
-\end{figure}
-
-\begin{figure}[t]
-\graphdbg{\includegraphics[%
-  viewport=-5bp 15bp 525bp 336bp,
-  clip,
-width=1\columnwidth]{figs/trans-closure-hotset.pdf}}
-\vspace{-12pt}
-\caption{\label{fig:hotGraph} Hot-set based graph traversal for random
-graphs with out-degrees of 3 and 9.  Here we see that the multiplexer
-has relatively low overhead, and improves performance when the graph
-has poor locality.}
-\vspace{-12pt}
-\end{figure}
 
 We are interested in enabling \yad to manipulate sequences of
 application requests.  By translating these requests into logical
@@ -1346,6 +1327,28 @@ When the graph has good locality, a normal depth-first search
 traversal and the prioritized traversal both perform well.  As
 locality decreases, the partitioned traversal algorithm outperforms
 the naive traversal.
+
+\begin{figure}[t]
+\graphdbg{\includegraphics[%
+    viewport=-13bp 19bp 600bp 280bp, 
+    width=1\columnwidth]{figs/oo7.pdf}}
+%\vspace{-12pt}
+\caption{\label{fig:oo7} OO7 benchmark style graph traversal.  The optimization performs well due to the presence of non-local nodes.}
+%\vspace{-12pt}
+\end{figure}
+
+\begin{figure}[t]
+\graphdbg{\includegraphics[%
+  viewport=-10bp 15bp 525bp 336bp,
+  clip,
+width=1\columnwidth]{figs/trans-closure-hotset.pdf}}
+%\vspace{-12pt}
+\caption{\label{fig:hotGraph} Hot-set based graph traversal for random
+graphs with out-degrees of 3 and 9.  The multiplexer
+has low overhead, and improves performance when the graph
+has poor locality.}
+\vspace{-12pt}
+\end{figure}
 
 
 
