@@ -28,5 +28,9 @@ all: LLADD.pdf
 	pdflatex $*.tex
 #	ps2pdf $< $@
 
+%.html: %.tex %.bib
+	htlatex $*.tex
+
 clean:
-	rm -f *.aux *.log *.dvi *.bbl *.blg *~ *.ent
+	rm -f *.aux *.log *.dvi *.bbl *.blg *~ *.ent *.4ct *.xref *.4tc *.lg *.idv LLADD*x.png *.tmp
+

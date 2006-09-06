@@ -1,0 +1,20 @@
+--- LLADD.css	2006-09-06 13:20:23.000000000 -0700
++++ LLADD.css.orig	2006-09-06 12:11:19.000000000 -0700
+@@ -1,6 +1,5 @@
+  
+ /* start css.sty */
+-body {background-color: white; text-align: justify;} 
+ .cmr-7{font-size:70%;}
+ .cmmi-10{font-style: italic;}
+ .ptmb7t-x-x-144{font-size:144%; font-weight: bold;}
+@@ -72,8 +71,8 @@
+ a span.TEX span.E {text-decoration: none; }
+ span.LATEX span.A{ position:relative; top:-0.5ex; left:-0.4em; font-size:85%;}
+ span.LATEX span.TEX{ position:relative; left: -0.4em; }
+-div.float img, div.float .caption {font-family: sans-serif; text-align:justify;}
+-div.figure img, div.figure .caption {font-family: sans-serif; text-align:justify;}
++div.float img, div.float .caption {text-align:center;}
++div.figure img, div.figure .caption {text-align:center;}
+ .marginpar {width:20%; float:right; text-align:left; margin-left:auto; margin-top:0.5em; font-size:85%; text-decoration:underline;}
+ .marginpar p{margin-top:0.4em; margin-bottom:0.4em;}
+ .equation td{text-align:center; }

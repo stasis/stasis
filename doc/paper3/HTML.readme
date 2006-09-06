@@ -1,0 +1,20 @@
+How to make html from LLADD.tex:
+
+The figures cause lots of trouble.  This seems to work:
+
+cd figs
+
+DENSITYA=72
+DENSITYB=50
+DENSITYC=38
+
+ls *.pdf | xargs -n 1 pdftops
+ls *.ps | xargs -n 1 ps2epsi
+ls *.epsi | grep -v graph-traversal | xargs -n 1 pstoimg -aaliastext -antialias -flip cw -density $DENSITYB
+pstoimg -aaliastext -antialias -density $DENSITYA graph-traversal.epsi
+pstoimg -aaliastext -antialias -flip cw -density $DENSITYC object-diff.epsi
+rm *.ps 
+rm *.epsi
+
+
+
