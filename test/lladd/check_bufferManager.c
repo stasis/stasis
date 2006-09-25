@@ -15,7 +15,8 @@
 
 #define LOG_NAME   "check_bufferManager.log"
 #ifdef LONG_TEST
-#define THREAD_COUNT 100
+
+#define THREAD_COUNT 50
 #define NUM_PAGES (MAX_BUFFER_SIZE * 2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
@@ -31,8 +32,9 @@
 #define READS_PER_THREAD (NUM_PAGES * 5)
 #define RECORDS_PER_THREAD (NUM_PAGES * 5)
 
-
 #endif
+
+#define MAX_TRANS_LENGTH 100 // Number of writes per transaction.  Keeping this low allows truncation.
 
 void initializePages() {
   
@@ -100,9 +102,13 @@ void * workerThreadWriting(void * q) {
 
   int offset = *(int*)q;
   recordid rids[RECORDS_PER_THREAD];
+
+  int xid = Tbegin();
+  int num_ops = 0;
+
   for(int i = 0 ; i < RECORDS_PER_THREAD; i++) {
 
-    rids[i] = Talloc(-1, sizeof(int));
+    rids[i] = Talloc(xid, sizeof(int));
     /*    printf("\nRID:\t%d,%d\n", rids[i].page, rids[i].slot);  */
     /*  fflush(NULL);  */
 
@@ -111,12 +117,19 @@ void * workerThreadWriting(void * q) {
 
     }
 
+    if(num_ops == MAX_TRANS_LENGTH) { 
+      num_ops = 0;
+      Tcommit(xid);
+      xid = Tbegin();
+    } else { 
+      num_ops++;
+    }
     /*    sched_yield(); */
   }
   for(int i = 0;  i < RECORDS_PER_THREAD; i++) {
     int val = (i * 10000) + offset;
     int k;
-    Page * p = loadPage(-1, rids[i].page);
+    Page * p = loadPage(xid, rids[i].page);
 
     assert(p->id == rids[i].page);
 
@@ -143,7 +156,7 @@ void * workerThreadWriting(void * q) {
     Page * p;
 
 
-    p = loadPage(-1, rids[i].page);
+    p = loadPage(xid, rids[i].page);
 
     readRecord(1, p, rids[i], &val); 
 
@@ -160,6 +173,8 @@ void * workerThreadWriting(void * q) {
 
     /*    sched_yield(); */
   }
+  
+  Tcommit(xid);
 
   return NULL;
 }
@@ -248,10 +263,10 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
-
+  
   tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageLoadTest);  
-  tcase_add_test(tc, pageSingleThreadWriterTest);   
+  tcase_add_test(tc, pageSingleThreadWriterTest);
   tcase_add_test(tc, pageThreadedWritersTest); 
 
   /* --------------------------------------------- */

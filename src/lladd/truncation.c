@@ -172,23 +172,24 @@ int truncateNow() {
 
   lsn_t log_trunc = LogTruncationPoint();
   if((xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
-    //printf("xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
+    //fprintf(stderr, "xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
-      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
+      //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
+      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
       forcePageFile();
       LogTruncate(rec_lsn);
       return 1;
     } else { 
       lsn_t flushed = LogFlushedLSN();
       if(flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
-	fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
+	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
 	dirtyPages_flush();
 	
 	page_rec_lsn = dirtyPages_minRecLSN();
 	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
 	rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 	
-	fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
+	fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
 	forcePageFile();
 	LogTruncate(rec_lsn);
