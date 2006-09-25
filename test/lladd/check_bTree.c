@@ -234,7 +234,7 @@ int SimpleExample(){
   
   Page *  p1 = loadPage(xid, pageid1);
 
-  if(DEBUGP) {  printf("\n**** page->id  = %d\n", p1->id);}
+  if(DEBUGP) {  printf("\n**** page->id  = %ld\n", p1->id);}
 
   /* check consistency between rid & page's values 
    * for number of slots and record size */
