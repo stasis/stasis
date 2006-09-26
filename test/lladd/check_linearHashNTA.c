@@ -281,8 +281,8 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
   gettimeofday(&tv, 0);
 
   srandom(tv.tv_sec * 1000000 + tv.tv_usec);
-  NUM_THREADS = (int)(((double)random()/(double)RAND_MAX)* ((double)DEFAULT_NUM_THREADS) * 5.0);
-  NUM_T_ENTRIES = (int)(((double)random()/(double)RAND_MAX) * ((double)DEFAULT_NUM_T_ENTRIES) * 5.0);
+  NUM_THREADS = (int)(((double)random()/(double)RAND_MAX)* ((double)DEFAULT_NUM_THREADS) * 2.0);
+  NUM_T_ENTRIES = (int)(((double)random()/(double)RAND_MAX) * ((double)DEFAULT_NUM_T_ENTRIES) * 1.0);
   
   printf("\n%d threads, %d entries", NUM_THREADS, NUM_T_ENTRIES);
 
@@ -411,6 +411,9 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
 #ifdef LONG_TEST
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
