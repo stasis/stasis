@@ -86,7 +86,7 @@ static void setup_log() {
     rid.slot = 0;
     rid.size = sizeof(unsigned long);
 
-    genericLogWrite(e);
+    LogWrite(e);
     prevLSN = e->LSN;
 
     f = LogReadLSN(prevLSN);
@@ -99,12 +99,12 @@ static void setup_log() {
 
     e = allocUpdateLogEntry(prevLSN, xid, 1, rid, args, args_size, (byte*) &preImage);
 
-    genericLogWrite(e);
+    LogWrite(e);
     prevLSN = e->prevLSN;
 
     LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
 
-    genericLogWrite(g);
+    LogWrite(g);
     assert (g->type == CLRLOG);
     prevLSN = g->LSN; 
 
@@ -320,7 +320,7 @@ static void* worker_thread(void * arg) {
     if(threshold < 3) {
     } else {
       le->xid = i+key;
-      genericLogWrite(le);
+      LogWrite(le);
       //printf("reportedLSN: %ld\n", le->LSN);
       lsns[i] = le->LSN;
       i++;
