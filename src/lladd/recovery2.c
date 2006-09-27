@@ -120,7 +120,7 @@ static void Analysis () {
 	 Therefore, we can skip redoing any of its operations.  (The
 	 timestamps on each page guarantee that the redo phase will
 	 not overwrite this transaction's work with stale data.)
-1
+
 	 The redo phase checks for a transaction's presence in
 	 transactionLSN before redoing its actions.  Therefore, if we
 	 remove this transaction from the hash, it will not be redone.
@@ -185,10 +185,6 @@ static void Undo(int recovery) {
   LogHandle lh;
   void * prepare_guard_state;
 
-
-  /*  printf("!"); fflush(NULL); */
-
-  
   while(rollbackLSNs != NULL) {
     const LogEntry * e;
     lsn_t rollback = popMaxVal(&rollbackLSNs);
@@ -205,10 +201,6 @@ static void Undo(int recovery) {
     } 
 
 
-    /* e = readLSNEntry(rollback);  (THIS STATEMENT HAD NO EFFECT)*/
-    /*    printf("#"); fflush(NULL); */
-    
-
     /*    printf("e->prev_offset: %ld\n", e->prevLSN);
 	  printf("prev_offset: %ld\n", lh.prev_offset); */
     int thisXid = -1;
@@ -222,19 +214,13 @@ static void Undo(int recovery) {
 	  /* Need write lock for undo.. (Why??) */
 	  if(e->contents.update.rid.size != -1) {
 
-	    //	    Page * p = getPage(e->contents.update.rid.page, RO); 
 	    Page * p = loadPage(thisXid, e->contents.update.rid.page);
-	    this_lsn= pageReadLSN(p); /* e->contents.update.rid.page);  */
-	    
-	    
-	    /*	printf("1"); fflush(NULL); */
+	    this_lsn= pageReadLSN(p);
 	    
 	    /* Sanity check.  If this fails, something is wrong with the
 	       redo phase or normal operation. */
 	    assert(e->LSN <= this_lsn);  
 	    
-	    /* printf("1a"); fflush(NULL); */
-	  	  
 	    /* Need to log a clr here. */
 	    
 	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, e->prevLSN);
@@ -243,8 +229,7 @@ static void Undo(int recovery) {
 	       update, but it will write the new clr_lsn if necessary.  */
 	    
 	    undoUpdate(e, p, clr_lsn);
-	    
-	    /*	printf("1b"); fflush(NULL); */
+
 	    releasePage(p);
 	  } else {
 	    // The log entry is not associated with a particular page.
@@ -257,8 +242,6 @@ static void Undo(int recovery) {
       case CLRLOG:  
 	/* Don't need to do anything special to handle CLR's.  
 	   Iterator will correctly jump to clr's previous undo record. */
-
-	/*	printf("2"); fflush(NULL); */
       break;
       case XABORT:
 	/* Since XABORT is a no-op, we can silentlt ignore it. (XABORT
@@ -275,8 +258,6 @@ static void Undo(int recovery) {
     if(!transactionWasPrepared && globalLockManager.abort) {
       globalLockManager.abort(thisXid);
     }
-
-    /*    printf("$"); fflush(NULL); */
   }
 }
 
@@ -291,24 +272,16 @@ void InitiateRecovery() {
   Undo(1);
   DEBUG("Recovery complete.\n");
 
-  /** @todo Should we manually empty the hash table? */
   pblHtDelete(transactionLSN);
   
   destroyList(rollbackLSNs);
   rollbackLSNs=0;
-
-  /** @todo CleanUp(); */
 }
 
 
 void undoTrans(TransactionLog transaction) { 
 
   pthread_mutex_lock(&rollback_mutex);
-  /*  if(rollbackLSNs) {
-    destroyList(rollbackLSNs);
-    } */
-  //  rollbackLSNs = 0;
-  
   assert(!rollbackLSNs);
 
   if(transaction.prevLSN > 0) {
