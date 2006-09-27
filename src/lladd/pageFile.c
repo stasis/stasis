@@ -25,7 +25,6 @@
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
 
-/* static long myLseek(int f, long offset, int whence); */
 static long myLseekNoLock(int f, long offset, int whence);
 
 static int oldOffset = -1;
@@ -54,13 +53,7 @@ void pageRead(Page *ret) {
   read_size = read(stable, ret->memAddr, PAGE_SIZE);
   if(read_size != PAGE_SIZE) {
     if (!read_size) {  /* Past EOF... */
-      /*      long fileSize = myLseekNoLock(stable, 0, SEEK_END);
-      offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
-      assert(offset == pageoffset); */
-      /*      if(fileSize <= pageoffset) { */
-	memset(ret->memAddr, 0, PAGE_SIZE);
-	/*	write(stable, ret->memAddr, PAGE_SIZE); */ /* all this does is extend the file..why would we bother doing that? :) 
-							      } */
+      memset(ret->memAddr, 0, PAGE_SIZE); // The file will be extended when we write to the new page.
     } else if(read_size == -1) { 
       perror("pageFile.c couldn't read");
       fflush(NULL);
@@ -173,14 +166,6 @@ void closePageFile() {
   stable = -1;
 }
 
-static long myLseek(int f, long offset, int whence) {
-  long ret;
-  pthread_mutex_lock(&stable_mutex);
-  ret = myLseekNoLock(f, offset, whence);
-  pthread_mutex_unlock(&stable_mutex);
-  return ret;
-}
-
 static long myLseekNoLock(int f, long offset, int whence) {
   assert(! ( offset % 4096 ));
   long ret = lseek(f, offset, whence);
@@ -192,25 +177,3 @@ static long myLseekNoLock(int f, long offset, int whence) {
   return ret;
 }
 
-/*void myFwrite(const void * dat, long size, FILE * f) {
-  int nmemb = fwrite(dat, size, 1, f); 
-  / * test * /
-  if(nmemb != 1) {
-    perror("myFwrite");
-    abort();
-    / *    return FILE_WRITE_OPEN_ERROR; * /
-  }
-  
-}*/
-
-long pageCount() {
-  pthread_mutex_lock(&stable_mutex);
-  printf(".");
-  long fileSize = myLseek(stable, 0, SEEK_END);
-
-  oldOffset = -1;
-
-  pthread_mutex_unlock(&stable_mutex);
-  assert(! (fileSize % PAGE_SIZE));
-  return fileSize / PAGE_SIZE;
-}

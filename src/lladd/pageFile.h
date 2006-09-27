@@ -39,10 +39,6 @@ extern int pageFile_isDurable;
    to call them.
 */
 void pageRead(Page * ret);
-/** 
-    @return the number of pages in the store file.
-*/
-long pageCount();
 
 void forcePageFile();
 
