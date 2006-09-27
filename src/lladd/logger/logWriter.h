@@ -93,7 +93,7 @@ int writeLogEntry(LogEntry * e);
 /**
   flush the entire log (tail) that is currently in memory to disk
 */
-void syncLog();
+void syncLog_LogWriter();
 
 /** 
    Return the highest LSN that is known to be on disk.  (Currently, we
@@ -106,7 +106,7 @@ void syncLog();
    and is less than the LSN of all log entries that might not have
    been forced to disk.
 */
-lsn_t flushedLSN();
+lsn_t flushedLSN_LogWriter();
 
 /**
    Truncates the log file.  In the single-threaded case, this works as
@@ -134,7 +134,7 @@ lsn_t flushedLSN();
 
 */
 
-int truncateLog(lsn_t);
+int truncateLog_LogWriter(lsn_t);
 
 
 /** 
@@ -163,7 +163,8 @@ void deleteLogWriter();
 
    @param LSN the LSN of the entry that will be read.
 */
-LogEntry * readLSNEntry(lsn_t LSN);
+LogEntry * readLSNEntry_LogWriter(lsn_t LSN);
+lsn_t nextEntry_LogWriter(const LogEntry * e);
 
 extern int logWriter_isDurable;
 

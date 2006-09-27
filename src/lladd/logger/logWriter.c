@@ -74,7 +74,7 @@ static int roLogFD = 0;
 int logWriter_isDurable = 1;
 
 /**
-   @see flushedLSN()
+   @see flushedLSN_LogWriter()
 */
 static lsn_t flushedLSN_val;
 
@@ -125,8 +125,6 @@ static char * buffer;
 /** The size of the in-memory log buffer.  When the buffer is full,
     the log is synchronously flushed to disk. */
 #define BUFSIZE (1024 * 1024)
-//#define BUFSIZE (1024*96)
-//#define BUFSIZE (512)
 
 int openLogWriter() {
 
@@ -270,24 +268,8 @@ int writeLogEntry(LogEntry * e) {
 
   pthread_mutex_lock(&log_write_mutex);  
   
-  /*  if(!nextAvailableLSN) { 
-
-    LogHandle lh;
-    const LogEntry * le;
-
-    nextAvailableLSN = sizeof(lsn_t);
-    lh = getLSNHandle(nextAvailableLSN);
-
-    while((le = nextInLog(&lh))) {
-      nextAvailableLSN = le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);;
-      FreeLogEntry(le);
-    }
-    }*/
-
   /* Set the log entry's LSN. */
   e->LSN = nextAvailableLSN;
-  //printf ("\nLSN: %ld\n", e->LSN);
-  //fflush(stdout);
 
   size_t nmemb = fwrite(&size, sizeof(lsn_t), 1, log);
   if(nmemb != 1) {
@@ -312,8 +294,6 @@ int writeLogEntry(LogEntry * e) {
     return LLADD_IO_ERROR;
   }
 
-  //fflush(log);
-
   pthread_mutex_lock(&log_read_mutex);
   nextAvailableLSN += (size + sizeof(lsn_t));
   pthread_mutex_unlock(&log_read_mutex);
@@ -324,11 +304,10 @@ int writeLogEntry(LogEntry * e) {
   return 0;
 }
 
-void syncLog() {
+void syncLog_LogWriter() {
   lsn_t newFlushedLSN;
 
   pthread_mutex_lock(&log_read_mutex);
-  // newFlushedLSN = ftell(log) + global_offset;
   newFlushedLSN = nextAvailableLSN;
   pthread_mutex_unlock(&log_read_mutex);
   // Wait to set the static variable until after the flush returns. 
@@ -343,7 +322,7 @@ void syncLog() {
   writeunlock(flushedLSN_lock);
 }
 
-lsn_t flushedLSN() {
+lsn_t flushedLSN_LogWriter() {
   readlock(flushedLSN_lock, 0);
   lsn_t ret = flushedLSN_val;
   readunlock(flushedLSN_lock);
@@ -352,7 +331,7 @@ lsn_t flushedLSN() {
 
 void closeLogWriter() {
   /* Get the whole thing to the disk before closing it. */
-  syncLog();  
+  syncLog_LogWriter();  
 
   fclose(log);
   close(roLogFD);
@@ -377,7 +356,7 @@ static LogEntry * readLogEntry() {
   lsn_t entrySize;
   
   ssize_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
-
+  
   if(bytesRead != sizeof(lsn_t)) { 
     if(bytesRead == 0) {
       //      fprintf(stderr, "eof on log entry size\n");
@@ -399,7 +378,7 @@ static LogEntry * readLogEntry() {
       fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
       fflush(stderr);
 
-      abort();  // really abort here.  This code should attempt to piece together short log reads...
+      abort();  // XXX really abort here.  This code should attempt to piece together short log reads...
     }
   }
   ret = malloc(size);
@@ -443,16 +422,16 @@ static LogEntry * readLogEntry() {
   return ret;
 }
 
-LogEntry * readLSNEntry(lsn_t LSN) {
+LogEntry * readLSNEntry_LogWriter(lsn_t LSN) {
   LogEntry * ret;
 
   /** Because we use two file descriptors to access the log, we need
       to flush the log write buffer before concluding we're at EOF. */
-  if(flushedLSN() <= LSN && LSN < nextAvailableLSN) {
-    //    fprintf(stderr, "Syncing log flushed = %d, requested = %d\n", flushedLSN(), LSN);
-    syncLog();
-    assert(flushedLSN() >= LSN);
-    //    fprintf(stderr, "Synced log flushed = %d, requested = %d\n", flushedLSN(), LSN);
+  if(flushedLSN_LogWriter() <= LSN && LSN < nextAvailableLSN) {
+    //    fprintf(stderr, "Syncing log flushed = %d, requested = %d\n", flushedLSN_LogWriter(), LSN);
+    syncLog_LogWriter();
+    assert(flushedLSN_LogWriter() >= LSN);
+    //    fprintf(stderr, "Synced log flushed = %d, requested = %d\n", flushedLSN_LogWriter(), LSN);
   }
 
   pthread_mutex_lock(&log_read_mutex);
@@ -478,7 +457,11 @@ LogEntry * readLSNEntry(lsn_t LSN) {
   
 }
 
-int truncateLog(lsn_t LSN) {
+lsn_t nextEntry_LogWriter(const LogEntry * e) { 
+  return e->LSN + sizeofLogEntry(e) + sizeof(lsn_t);
+}
+
+int truncateLog_LogWriter(lsn_t LSN) {
   FILE *tmpLog;
 
   const LogEntry * le;

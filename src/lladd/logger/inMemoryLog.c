@@ -24,12 +24,11 @@ int writeLogEntry_InMemoryLog(LogEntry *e) {
 
   int done = 0;
   do{ 
-    readlock(globalOffset_lock,0);
+    writelock(globalOffset_lock,0);
     bufferOffset = nextAvailableLSN - globalOffset;
     if(bufferOffset > bufferLen) { 
-      unlock(globalOffset_lock);
-      writelock(globalOffset_lock,0);
-      abort(); // really, need to extend log.
+      bufferLen *= 2;
+      buffer = realloc(buffer, bufferLen);
     } else {
       done = 1;
     }
@@ -38,8 +37,11 @@ int writeLogEntry_InMemoryLog(LogEntry *e) {
 
   e->LSN = nextAvailableLSN;
 
+  LogEntry * cpy = malloc(sizeofLogEntry(e));
+  memcpy(cpy, e, sizeofLogEntry(e));
+
   //  printf ("lsn: %ld\n", e->LSN);
-  buffer[bufferOffset] = e;
+  buffer[bufferOffset] = cpy;
 
   //  printf("lsn: %ld type: %d\n", e->LSN, e->type);
   nextAvailableLSN++;
@@ -53,8 +55,34 @@ lsn_t flushedLSN_InMemoryLog() {
   return nextAvailableLSN;
 }
 
+void syncLog_InMemoryLog() {
+  // no-op
+}
+
+lsn_t nextEntry_InMemoryLog(const LogEntry * e) { 
+  return e->LSN + 1;
+}
+
 int truncateLog_InMemoryLog(lsn_t lsn) {
-  abort();
+  writelock(flushedLSN_lock,1);
+  writelock(globalOffset_lock,1);
+ 
+  assert(lsn <= nextAvailableLSN);
+
+
+  if(lsn > globalOffset) { 
+    for(int i = globalOffset; i < lsn; i++) { 
+      free(buffer[i - globalOffset]);
+    }
+    assert((lsn-globalOffset) + (nextAvailableLSN -lsn) < bufferLen);
+    memmove(&(buffer[0]), &(buffer[lsn - globalOffset]), sizeof(LogEntry*) * (nextAvailableLSN - lsn));
+    globalOffset = lsn;
+  }
+
+  writeunlock(globalOffset_lock);
+  writeunlock(flushedLSN_lock);
+
+  return 0;
 }
 
 lsn_t firstLogEntry_InMemoryLog() {
@@ -78,15 +106,20 @@ void close_InMemoryLog() {
 
 }
 
-LogEntry * readLSNEntry_InMemoryLog(lsn_t LSN) { 
-  // printf("lsn: %ld\n", LSN);
-  if(LSN >= nextAvailableLSN) { return 0; } 
-  assert(LSN-globalOffset >= 0 && LSN-globalOffset< bufferLen);
+LogEntry * readLSNEntry_InMemoryLog(lsn_t lsn) { 
+  // printf("lsn: %ld\n", lsn);
+  if(lsn >= nextAvailableLSN) { return 0; } 
+  assert(lsn-globalOffset >= 0 && lsn-globalOffset< bufferLen);
   readlock(globalOffset_lock, 0);
-  LogEntry * ptr = buffer[LSN - globalOffset];
+  LogEntry * ptr = buffer[lsn - globalOffset];
   unlock(globalOffset_lock);
   assert(ptr);
-  assert(ptr->LSN == LSN);
+  assert(ptr->LSN == lsn);
+  
+  LogEntry * ret = malloc(sizeofLogEntry(ptr));
+
+  memcpy(ret, ptr, sizeofLogEntry(ptr));
+  
   //printf("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
-  return ptr;
+  return ret;
 }
