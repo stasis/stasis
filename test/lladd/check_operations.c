@@ -43,7 +43,6 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/transactional.h>
-#include "../../src/lladd/logger/logWriter.h"
 #include <lladd/logger/logger2.h>
 #include <lladd/bufferManager.h>
 #include <lladd/truncation.h>
@@ -65,7 +64,6 @@ extern int numActiveXactions;
    operations that use physical logging.
 */
 START_TEST(operation_physical_do_undo) {
-  int xid = 1;
   recordid rid;
   lsn_t lsn = 2;
   int buf;
@@ -73,7 +71,7 @@ START_TEST(operation_physical_do_undo) {
   LogEntry * setToTwo;
   
   Tinit();
-  xid = -1;
+  int  xid = -1;
   Page * p = loadPage(xid, TpageAlloc(xid));
   slottedPageInitialize(p);
   //  rid  = slottedPreRalloc(xid, sizeof(int), &p);
@@ -162,6 +160,9 @@ START_TEST(operation_physical_do_undo) {
  .......  and so on.
   */
 
+  // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
+  for(int i = 0; i < 10; i++) 
+    LogWrite(allocCommonLogEntry(-1, -1, -1));
 
   /** @todo need to re-think check_operations.  The test is pretty broken. */
   Tdeinit();
