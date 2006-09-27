@@ -16,11 +16,11 @@
 #define LOG_NAME   "check_bufferManager.log"
 #ifdef LONG_TEST
 
-#define THREAD_COUNT 50
+#define THREAD_COUNT 200
 #define NUM_PAGES (MAX_BUFFER_SIZE * 2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
-#define READS_PER_THREAD (NUM_PAGES * 2)
+#define READS_PER_THREAD (NUM_PAGES * 5)
 #define RECORDS_PER_THREAD (NUM_PAGES * 2)
 
 
@@ -85,10 +85,6 @@ void * workerThread(void * p) {
     
     readRecord(1, p, rid, &j);
 
-    assert(rid.page == PAGE_MULT * (k+1));
-    
-    p->LSN = 0;
-    *lsn_ptr(p) = 0;
     releasePage(p);
 
     assert(k == j);
@@ -141,8 +137,9 @@ void * workerThreadWriting(void * q) {
     writeRecord(1, p, 0, rids[i], &val); 
 
     assert(p->id == rids[i].page);
-    p->LSN = 0;
-    *lsn_ptr(p) = 0;
+    /*    p->LSN = 0;
+     *lsn_ptr(p) = 0;  */
+    /*    printf("LSN: %ld, %ld\n", p->LSN, *lsn_ptr(p)); */
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10)) ) {
@@ -160,8 +157,9 @@ void * workerThreadWriting(void * q) {
 
     readRecord(1, p, rids[i], &val); 
 
-    p->LSN = 0;
-    *lsn_ptr(p) = 0;
+    /*    p->LSN = 0;
+     *lsn_ptr(p) = 0;  */
+    /* printf("LSN: %ld, %ld\n", p->LSN, *lsn_ptr(p));*/
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10))) {
@@ -212,8 +210,6 @@ START_TEST(pageLoadTest) {
   pthread_t workers[THREAD_COUNT];
   int i;
 
-  /*   fail_unless(0, "Broken for now.");
-       assert(0); */
   Tinit();
 
   initializePages();
@@ -263,11 +259,11 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
-  
   tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageLoadTest);  
   tcase_add_test(tc, pageSingleThreadWriterTest);
   tcase_add_test(tc, pageThreadedWritersTest); 
+
 
   /* --------------------------------------------- */
   
