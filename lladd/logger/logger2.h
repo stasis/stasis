@@ -89,38 +89,42 @@ typedef struct {
 extern int loggerType;
 
 int  LogInit(int logType);
-
 int  LogDeinit();
-
-
 void LogForce(lsn_t lsn);
 void LogTruncate(lsn_t lsn);
+
 /** This function is guaranteed to return the LSN of the most recent
     log entry that has not been flushed to disk.  (If the entire log
     is flushed, this function returns the LSN of the entry that will
     be allocated the next time the log is appended to. */
 lsn_t LogFlushedLSN();
-
-
+/** Returns the LSN of the first entry of the log, or the LSN of the
+    next to be allocated if the log is empty) */
 lsn_t LogTruncationPoint();
-
+/** Read a log entry, given its LSN.
+    @param lsn  The lsn of the log entry to be read.
+*/
 const LogEntry * LogReadLSN(lsn_t lsn);
+/**
+   Given a log entry, return the LSN of the next entry.
+*/
+lsn_t LogNextEntry(const LogEntry * e);
 
 /**
-   Inform the logging layer that a new transaction has begun.
-   Currently a no-op.
+   Inform the logging layer that a new transaction has begun, and
+   obtain a handle.
 */
 TransactionLog LogTransBegin(int xid);
 
 /**
-  Write a transaction COMMIT to the log tail, then flush the log tail immediately to disk
+  Write a transaction COMMIT to the log tail.  Blocks until the commit record is stable.
 
   @return The lsn of the commit log entry.  
 */
 lsn_t LogTransCommit(TransactionLog * l);
 
 /**
-  Write a transaction ABORT to the log tail
+  Write a transaction ABORT to the log tail.
 
   @return The lsn of the abort log entry.
 */
@@ -132,16 +136,10 @@ lsn_t LogTransAbort(TransactionLog * l);
 LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, const byte * args);
 
 /**
-   Whenever a LogEntry is returned by a function that is defined by
-   logger2.h or logHandle.h, the caller should eventually call this
-   function to release any resources held by that entry.
-   
-   @todo The 'const' modifier on FreeLogEntry's parameter is a hack;
-   for some log types (in memory) it is very important that the caller
-   does not modify LogEntries returned by this API, so we always
-   return 'const' pointers to callers.  The implementation of
-   FreeLogEntry knows whether the const is important, and ignores it
-   if appropriate, so const isn't really the right concept...
+   Any LogEntry that is returned by a function in logger2.h or
+   logHandle.h should be freed using this function.
+
+   @param e The log entry to be freed.  (The "const" here is a hack that allows LogReadLSN to return a const *.
 */
 void FreeLogEntry(const LogEntry * e);
 
@@ -154,7 +152,6 @@ void FreeLogEntry(const LogEntry * e);
    (Needed so that the lsn slot of the page in question can be
    updated.)  
 */
-//lsn_t LogCLR (LogEntry * undone);
 lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
 
 /**
@@ -165,8 +162,8 @@ lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
 void LogEnd (TransactionLog * l);
 
 /** 
-  (For internal use only..)
+   For internal use only...  This would be static, but it is called by the test cases.
 */
-void genericLogWrite(LogEntry * e);
+void LogWrite(LogEntry * e);
 
 #endif
