@@ -108,6 +108,9 @@ compensated_function Page * loadPage(int xid, int pageid);
 */
 void releasePage(Page * p);
 
+//#define loadPage(xid, pageid) loadPage(xid, pageid); printf("%s %d: thread=%d loadPage(%d, %d)\n", __FILE__, __LINE__, pthread_self(), (xid), (pageid));
+//#define releasePage(pageid) releasePage(pageid); printf("%s,%d: thread=%d releasePage()\n", __FILE__, __LINE__, pthread_self()); 
+
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)
 #define releasePage(x) __profile_releasePage((x))
