@@ -55,6 +55,8 @@ terms specified in this license.
 #include "../check_includes.h"
 #include <lladd/truncation.h>
 
+void simulateBufferManagerCrash();
+extern int numActiveXactions;
 
 #define LOG_NAME   "check_logWriter.log"
 
@@ -132,7 +134,7 @@ static void setup_log() {
    @todo Test logHandle more thoroughly. (Still need to test the guard mechanism.)
 
 */
-START_TEST(logWriterTest)
+START_TEST(loggerTest)
 {
   const LogEntry * e;
   LogHandle h;
@@ -204,7 +206,7 @@ END_TEST
 
     Build a simple log, truncate it, and then test the logWriter routines against it.
 */
-START_TEST(logWriterTruncate) {
+START_TEST(loggerTruncate) {
   const LogEntry * le;
   const LogEntry * le2;
   const LogEntry * le3 = NULL;
@@ -350,7 +352,7 @@ static void* worker_thread(void * arg) {
   return 0;
 }
 
-START_TEST(logWriterCheckWorker) {
+START_TEST(loggerCheckWorker) {
   int four = 4;
 
   pthread_mutex_init(&random_mutex, NULL);
@@ -361,7 +363,7 @@ START_TEST(logWriterCheckWorker) {
 
 } END_TEST
 
-START_TEST(logWriterCheckThreaded) {
+START_TEST(loggerCheckThreaded) {
 
 #define  THREAD_COUNT 100
   pthread_t workers[THREAD_COUNT];
@@ -383,6 +385,49 @@ START_TEST(logWriterCheckThreaded) {
 
 } END_TEST
 
+static void reopenLogWorkload() { 
+  Tinit();
+  int xid1 = Tbegin();
+  int xid2 = Tbegin();
+  for(int i = 0; i < 1000; i++) { 
+    Talloc(xid1, sizeof(int));
+    Talloc(xid2, sizeof(int));
+  }
+  Tcommit(xid1);
+
+  truncationDeinit();
+  simulateBufferManagerCrash();
+  LogDeinit();
+  numActiveXactions = 0;
+
+  Tinit();
+
+  int xid3 = Tbegin();
+  for(int i = 0; i < 1000; i++) { 
+    Talloc(xid3, sizeof(int));
+  }
+  Tcommit(xid3);
+
+  Tdeinit();
+
+  Tinit();
+  Tdeinit();
+}
+
+START_TEST(loggerReopenTest) {
+  lladd_enableAutoTruncation = 0;
+  reopenLogWorkload();
+  lladd_enableAutoTruncation = 1;
+} END_TEST
+
+START_TEST(loggerTruncateReopenTest) { 
+  reopenLogWorkload();
+  Tinit();
+  truncateNow();
+  Tdeinit();
+  Tinit();
+  Tdeinit();
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
@@ -391,11 +436,16 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0);
   /* Sub tests are added, one per line, here */
   
-  tcase_add_test(tc, logWriterTest);
+  tcase_add_test(tc, loggerTest);
   tcase_add_test(tc, logHandleColdReverseIterator);
-  tcase_add_test(tc, logWriterTruncate);
-  tcase_add_test(tc, logWriterCheckWorker);
-  tcase_add_test(tc, logWriterCheckThreaded); 
+  tcase_add_test(tc, loggerTruncate);
+  tcase_add_test(tc, loggerCheckWorker);
+  tcase_add_test(tc, loggerCheckThreaded); 
+
+  if(loggerType != LOG_TO_MEMORY) {
+    tcase_add_test(tc, loggerReopenTest);
+    tcase_add_test(tc, loggerTruncateReopenTest);
+  }
 
   /* --------------------------------------------- */
   
