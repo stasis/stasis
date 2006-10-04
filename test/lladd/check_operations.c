@@ -74,10 +74,10 @@ START_TEST(operation_physical_do_undo) {
   int  xid = -1;
   Page * p = loadPage(xid, TpageAlloc(xid));
   slottedPageInitialize(p);
-  //  rid  = slottedPreRalloc(xid, sizeof(int), &p);
+
   rid = slottedRawRalloc(p, sizeof(int));
   releasePage(p);
-  //rid = Talloc(xid, sizeof(int));
+
   buf = 1;
   arg = 2;
 
@@ -243,7 +243,6 @@ START_TEST(operation_prepare) {
   Tcommit(winner);
   truncationDeinit();
   simulateBufferManagerCrash();
-  //  closeLogWriter();
   LogDeinit();
   numActiveXactions = 0;
 
@@ -301,7 +300,6 @@ START_TEST(operation_prepare) {
   Tcommit(winner);
   truncationDeinit();
   simulateBufferManagerCrash();
-  //  closeLogWriter();
   LogDeinit();
   numActiveXactions = 0;
 
@@ -340,36 +338,26 @@ START_TEST(operation_prepare) {
 */
 START_TEST(operation_nestedTopAction) {
   
-  printf("\nNested Top Action\n"); fflush(NULL);
-  
   Tinit();
   
   int xid= Tbegin();
   int *dat;
-  //printf("W"); fflush(NULL);
+
   dat = malloc(sizeof(int));
   recordid rid1 = Talloc(xid, sizeof(int));
- // printf("{%d,%d,%d}\n", rid1.page, rid1.slot, rid1.size); fflush(NULL);
   recordid rid2 = Talloc(xid, sizeof(int));
- // printf("{%d,%d,%d}\n", rid2.page, rid2.slot, rid2.size); fflush(NULL);
   recordid rid3 = Talloc(xid, sizeof(int));
-//  printf("{%d,%d,%d}\n", rid3.page, rid3.slot, rid3.size); fflush(NULL);
   recordid rid4 = Talloc(xid, sizeof(int));
-  //printf("{%d,%d,%d}\n", rid4.page, rid4.slot, rid4.size); fflush(NULL);
- // printf("E"); fflush(NULL);
+
   *dat = 1;
   Tset(xid, rid1, dat);
   *dat = 2;
   Tset(xid, rid2, dat);
- // printf("F"); fflush(NULL);
   *dat = 3;
   Tset(xid, rid3, dat);
- // printf("G"); fflush(NULL);
   *dat = 4;
   Tset(xid, rid4, dat);
- // printf("H"); fflush(NULL);
   Tcommit(xid);
- // printf("A"); fflush(NULL);
   xid = Tbegin(); // Loser xact.
   
   *dat = 10;
@@ -383,7 +371,6 @@ START_TEST(operation_nestedTopAction) {
   Tset(xid, rid3, dat);
   
   TendNestedTopAction(xid, handle);
- // printf("B"); fflush(NULL);
   *dat = 40;
 
   Tset(xid, rid4, dat);
@@ -395,7 +382,6 @@ START_TEST(operation_nestedTopAction) {
   int dat2;
   int dat3;
   int dat4;
- // printf("C"); fflush(NULL);
   Tread(xid, rid1, &dat1);
   Tread(xid, rid2, &dat2);
   Tread(xid, rid3, &dat3);
@@ -421,29 +407,21 @@ START_TEST(operation_instant_set) {
   Tinit();
 
   int xid = Tbegin();
-  
   recordid rid = Talloc(xid, sizeof(int));  /** @todo probably need an immediate version of TpageAlloc... */
   int one = 1;
   int two = 2;
   int three = 3;
   Tset(xid, rid, &one);
-
   Tcommit(xid);
 
   xid = Tbegin();
-
   TinstantSet(xid, rid, &two);
-
   Tset(xid, rid, &three);
-
   Tabort(xid);
   
   xid = Tbegin();
-
   Tread(xid, rid, &three);
-
   assert(two == three);
-
   Tcommit(xid);
  
   Tdeinit();
@@ -451,11 +429,8 @@ START_TEST(operation_instant_set) {
   Tinit();
 
   xid = Tbegin();
-
   Tread(xid, rid, &three);
-
   assert(two == three);
-
   Tcommit(xid);
  
   Tdeinit();
@@ -465,7 +440,6 @@ START_TEST(operation_instant_set) {
 } END_TEST
 
 START_TEST(operation_set_range) {
-  printf("Set Range");
   Tinit();
   
   int xid = Tbegin();
@@ -482,20 +456,17 @@ START_TEST(operation_set_range) {
   }
   
   Tset(xid, rid, buf1);
-  
   Tcommit(xid);
   
   xid = Tbegin();
-  
   Tread(xid, rid, buf2);
   for(int i = 0; i < 20; i++) {
     assert(buf2[i] == i);
   }
-  
   for(int i = 0; i < 5; i++) {
     range[i] = 100 + i;
   }
-  
+
   TsetRange(xid, rid, sizeof(int) * 10, sizeof(int) * 5, range);
   // Check forward action
   Tread(xid, rid, buf2);
@@ -511,14 +482,13 @@ START_TEST(operation_set_range) {
   Tabort(xid);
   
   xid = Tbegin();
-  
   Tread(xid, rid, buf2);
   //Check undo.
   for(int i = 0; i < 20; i++) {
     assert(buf2[i] == i);
   }
-  
   Tcommit(xid);
+
   Tdeinit();
 
 } END_TEST
@@ -533,13 +503,8 @@ START_TEST(operation_alloc_test) {
   recordid rid2 = Talloc(xid, 100);
   Tcommit(xid);
   
-  printf("rid1={%ld,%d,%ld} rid2={%ld,%d,%ld}\n", 
-	 (int64_t)rid1.page, rid1.slot, (int64_t)rid1.size,
-	 (int64_t)rid2.page, rid2.slot, (int64_t)rid2.size);  
-  
-  
-  
   Tdeinit();
+
 } END_TEST
 
 #define ARRAY_LIST_CHECK_ITER 10000
@@ -548,16 +513,9 @@ START_TEST(operation_array_list) {
   Tinit();
   
   int xid = Tbegin();
-
   recordid rid = TarrayListAlloc(xid, 4, 2, sizeof(int));
-
   TarrayListExtend(xid, rid, ARRAY_LIST_CHECK_ITER);
-  
-  printf("commit");
-  fflush(stdout);
   Tcommit(xid);
-  printf("done1\n");
-  fflush(stdout);
 
   xid = Tbegin();
 
@@ -578,11 +536,7 @@ START_TEST(operation_array_list) {
     assert(i == j);
   }
 
-  printf("commit");
-  fflush(stdout);
   Tcommit(xid);
-  printf("-done2\n");
-  fflush(stdout);
 
   xid = Tbegin();
 
@@ -599,12 +553,7 @@ START_TEST(operation_array_list) {
     Tread(xid, rid2, &k);
     assert(k == j);
   }
-
-  printf("abort");
-  fflush(stdout);
   Tabort(xid);
-  printf("-done\n");
-  fflush(stdout);
 
   xid = Tbegin();
   for(int i = 0; i < ARRAY_LIST_CHECK_ITER; i++) {
@@ -613,13 +562,7 @@ START_TEST(operation_array_list) {
     Tread(xid, rid2, &j);
     assert(i == j);
   }
-
-  printf("commit");
-  fflush(stdout);
   Tcommit(xid);
-  printf("done3\n");
-  fflush(stdout);
-
 
   Tdeinit();
 
