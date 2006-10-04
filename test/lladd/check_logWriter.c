@@ -70,12 +70,6 @@ static void setup_log() {
   lladd_enableAutoTruncation = 0;
   Tinit();
 
-  //  LogDeinit();
-  //deleteLogWriter();
-  //  openLogWriter();
-
-  //  LogInit(logType);
-  
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
     const LogEntry * f;
@@ -140,24 +134,16 @@ START_TEST(loggerTest)
   LogHandle h;
   int i = 0;
 
-
   setup_log();
-  //  syncLog();
-  //closeLogWriter();
-  //  LogDeinit();
-  //  openLogWriter();
-  //  LogInit(logType);
-  
   h = getLogHandle();
-  /*  LogReadLSN(sizeof(lsn_t)); */
 
   while((e = nextInLog(&h))) {
     FreeLogEntry(e);
     i++;
+    assert(i < 4000);
   }
 
-
-  fail_unless(i = 3000, "Wrong number of log entries!");
+  assert(i == 3000);
 
   deleteLogWriter();
   LogDeinit();
@@ -260,7 +246,9 @@ START_TEST(loggerTruncate) {
   FreeLogEntry(le3);
 
   while((le = nextInLog(&lh))) {
-    i++;
+    if(le->type != INTERNALLOG) { 
+      i++;
+    }
     FreeLogEntry(le);
   }
 
@@ -331,8 +319,11 @@ static void* worker_thread(void * arg) {
     pthread_mutex_lock(&random_mutex);
     if(lsns[entry] > truncated_to && entry < i) {
       /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
-      const LogEntry * e = LogReadLSN(lsns[entry]);
+      lsn_t lsn = lsns[entry];
       pthread_mutex_unlock(&random_mutex);
+
+      const LogEntry * e = LogReadLSN(lsn);
+
       assert(e->xid == entry+key);
       FreeLogEntry(e);
       /*      fail_unless(LogReadLSN(lsns[entry])->xid == entry+key, NULL); */
@@ -385,48 +376,116 @@ START_TEST(loggerCheckThreaded) {
 
 } END_TEST
 
-static void reopenLogWorkload() { 
-  Tinit();
-  int xid1 = Tbegin();
-  int xid2 = Tbegin();
-  for(int i = 0; i < 1000; i++) { 
-    Talloc(xid1, sizeof(int));
-    Talloc(xid2, sizeof(int));
-  }
-  Tcommit(xid1);
+void reopenLogWorkload(int truncating) { 
 
-  truncationDeinit();
-  simulateBufferManagerCrash();
-  LogDeinit();
+  lladd_enableAutoTruncation = 0;
+
+  const int ENTRY_COUNT = 1000;
+  const int SYNC_POINT = 900;
+  lladd_enableAutoTruncation = 0;
+
   numActiveXactions = 0;
+  dirtyPagesInit();
+  bufInit();
 
-  Tinit();
+  LogInit(loggerType);
+  int xid = 1;
+  TransactionLog l = LogTransBegin(xid);
+  lsn_t startLSN = 0;
 
-  int xid3 = Tbegin();
-  for(int i = 0; i < 1000; i++) { 
-    Talloc(xid3, sizeof(int));
+  LogEntry * entries[ENTRY_COUNT];
+
+  for(int i = 0; i < ENTRY_COUNT; i++) {
+
+    entries[i] = LogUpdate(&l, NULL, NULLRID, OPERATION_NOOP, NULL); 
+
+    if(i == SYNC_POINT) {
+      if(truncating) { 
+	//	printf("Called LogTruncate()");
+	//	fflush(stdout);
+	LogTruncate(entries[i]->LSN);
+	startLSN = entries[i]->LSN;
+      }
+    }
   }
-  Tcommit(xid3);
+  LogDeinit(loggerType);
+  
+  LogInit(loggerType);
+  LogHandle h;
+  int i;
 
-  Tdeinit();
+  if(truncating) { 
+    h = getLogHandle(); //getLSNHandle(startLSN);
+    i = SYNC_POINT;
+  } else { 
+    h = getLogHandle();
+    i = 0;
+  } 
 
-  Tinit();
-  Tdeinit();
+  const LogEntry * e;
+  while((e = nextInLog(&h))) { 
+    if(e->type != INTERNALLOG) { 
+      assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
+      assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
+      assert(i < ENTRY_COUNT);
+      i++;
+    }
+  }
+  
+  assert(i == (ENTRY_COUNT));
+
+  LogEntry * entries2[ENTRY_COUNT];
+  for(int i = 0; i < ENTRY_COUNT; i++) {
+    entries2[i] = LogUpdate(&l, NULL, NULLRID, OPERATION_NOOP, NULL); 
+    if(i == SYNC_POINT) { 
+      syncLog_LogWriter();
+    }
+  }
+
+
+  if(truncating) { 
+    h = getLSNHandle(startLSN);
+    i = SYNC_POINT;
+  } else { 
+    h = getLogHandle();
+    i = 0;
+  } 
+
+  while((e = nextInLog(&h))) { 
+    if(e->type != INTERNALLOG) { 
+      if( i < ENTRY_COUNT) { 
+	assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
+	assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
+      } else { 
+	assert(i < ENTRY_COUNT * 2);
+	assert(sizeofLogEntry(e) == sizeofLogEntry(entries2[i-ENTRY_COUNT]));
+	assert(!memcmp(e, entries2[i-ENTRY_COUNT], sizeofLogEntry(entries2[i-ENTRY_COUNT])));
+      }
+      i++;
+    }
+  }
+
+  assert(i == (ENTRY_COUNT * 2));  
+
+  lladd_enableAutoTruncation = 1;
+
 }
 
 START_TEST(loggerReopenTest) {
-  lladd_enableAutoTruncation = 0;
-  reopenLogWorkload();
-  lladd_enableAutoTruncation = 1;
+  
+  reopenLogWorkload(0);
+
 } END_TEST
 
 START_TEST(loggerTruncateReopenTest) { 
-  reopenLogWorkload();
+  deleteLogWriter();
+  reopenLogWorkload(1);
+  /*  reopenLogWorkload();
   Tinit();
   truncateNow();
   Tdeinit();
   Tinit();
-  Tdeinit();
+  Tdeinit(); */
 } END_TEST
 
 Suite * check_suite(void) {
@@ -440,8 +499,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, logHandleColdReverseIterator);
   tcase_add_test(tc, loggerTruncate);
   tcase_add_test(tc, loggerCheckWorker);
-  tcase_add_test(tc, loggerCheckThreaded); 
-
+  tcase_add_test(tc, loggerCheckThreaded);
   if(loggerType != LOG_TO_MEMORY) {
     tcase_add_test(tc, loggerReopenTest);
     tcase_add_test(tc, loggerTruncateReopenTest);
