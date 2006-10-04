@@ -48,7 +48,7 @@ terms specified in this license.
 
 #include <assert.h>
 #include <lladd/operations.h>
-
+#include <lladd/logger/logger2.h>
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = malloc(sizeof(struct __raw_log_entry));
   ret->LSN     = -1;
@@ -132,6 +132,8 @@ long sizeofLogEntry(const LogEntry * log) {
     return sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + log->contents.update.argSize + 
       ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? physical_slot_length(log->contents.update.rid.size) : 0) +
       ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0) ;
+  case INTERNALLOG:
+    return LoggerSizeOfInternalLogEntry(log);
   default:
     return sizeof(struct __raw_log_entry);
   }

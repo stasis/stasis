@@ -61,6 +61,16 @@ terms specified in this license.
 
 int loggerType = LOG_TO_FILE;
 
+long LoggerSizeOfInternalLogEntry(const LogEntry * e) {
+  if(loggerType == LOG_TO_FILE) { 
+    return sizeofInternalLogEntry_LogWriter(e);
+  } else if (loggerType == LOG_TO_MEMORY) {
+    return sizeofInternalLogEntry_InMemoryLog(e);   
+  } else {
+    abort(); // we dont have an appropriate implementation, or weren't initialized...
+  }
+}
+
 void LogWrite(LogEntry * e) { 
   if(loggerType == LOG_TO_FILE) { 
     writeLogEntry(e);

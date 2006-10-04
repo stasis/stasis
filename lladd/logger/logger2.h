@@ -91,6 +91,9 @@ extern int loggerType;
 int  LogInit(int logType);
 int  LogDeinit();
 void LogForce(lsn_t lsn);
+/** 
+    @param lsn The first lsn that will be available after truncation.
+*/ 
 void LogTruncate(lsn_t lsn);
 
 /** This function is guaranteed to return the LSN of the most recent
@@ -160,6 +163,11 @@ lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
    @todo Implement LogEnd
 */
 void LogEnd (TransactionLog * l);
+
+/**
+   Needed by sizeofLogEntry
+*/
+long LoggerSizeOfInternalLogEntry(const LogEntry * e);
 
 /** 
    For internal use only...  This would be static, but it is called by the test cases.

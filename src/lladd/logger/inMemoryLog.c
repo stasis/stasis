@@ -123,3 +123,6 @@ LogEntry * readLSNEntry_InMemoryLog(lsn_t lsn) {
   //printf("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
   return ret;
 }
+long sizeofInternalLogEntry_InMemoryLog(const LogEntry * e) {
+  abort();
+}
