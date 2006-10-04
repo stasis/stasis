@@ -122,7 +122,7 @@ END_TEST
 START_TEST(regions_randomizedTest) { 
   Tinit();
   time_t seed = time(0);
-  printf("\nSeed = %ld\n", seed);
+  printf("Seed = %ld: ", seed);
   srandom(seed);
   int xid = Tbegin();
   unsigned int pagesAlloced = 0;
