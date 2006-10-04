@@ -144,9 +144,12 @@ static void Analysis () {
     case XABORT: 
       /* Don't want this XID in the list of rolled back lsn's since
 	 this XACT will be rolled back during redo. */
-      break;      
+      break;  
+    case INTERNALLOG:
+      /* Created by the logger, just ignore it. */
+      break; 
     default:
-      assert (0);
+      abort();
     }
     FreeLogEntry(e);
   }
