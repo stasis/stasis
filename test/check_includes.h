@@ -9,11 +9,11 @@
 void setup (void) { 
   remove("logfile.txt");
   remove("storefile.txt");
-  remove("blob0_file.txt");
-  remove("blob1_file.txt");
 }
 
 void teardown(void) {
+#ifdef LONG_TEST
   system("echo *.txt | grep -v '*' | xargs -n1 -r ls -lh --full-time");
+#endif
   setup();
 }
