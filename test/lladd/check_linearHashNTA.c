@@ -86,7 +86,6 @@ START_TEST(linearHashNTAtest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
-  //  if(1) { return; }
   Tcommit(xid);
   printf("\n"); fflush(stdout);
 
@@ -157,7 +156,9 @@ START_TEST(linearHashNTAVariableSizetest)
   }
 
   Tcommit(xid);
-
+  
+  printf("\n");
+  
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i+=10){
     if(!(i % (NUM_ENTRIES/10))) {
@@ -187,10 +188,8 @@ START_TEST(linearHashNTAVariableSizetest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
-  printf("Begin shutdown.\n"); fflush(NULL);
   Tcommit(xid);
   Tdeinit();
-  printf("Test completed.\n"); fflush(NULL);
 } END_TEST
 
 
@@ -357,6 +356,7 @@ START_TEST(linearHashNTAIteratortest) {
 } END_TEST
 
 START_TEST(emptyHashIterator) {
+  printf("\n");
   Tinit();
   int xid = Tbegin();
   
@@ -410,6 +410,12 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, emptyHashIterator);
+  tcase_add_test(tc, emptyHashIterator2);
+  tcase_add_test(tc, linearHashNTAVariableSizetest);
+  tcase_add_test(tc, linearHashNTAIteratortest);
+  tcase_add_test(tc, linearHashNTAtest);
+  tcase_add_test(tc, linearHashNTAThreadedTest);
 #ifdef LONG_TEST
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
@@ -418,12 +424,6 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
 #endif
-  tcase_add_test(tc, emptyHashIterator);
-  tcase_add_test(tc, emptyHashIterator2);
-  tcase_add_test(tc, linearHashNTAVariableSizetest);
-  tcase_add_test(tc, linearHashNTAIteratortest);
-  tcase_add_test(tc, linearHashNTAtest);
-  tcase_add_test(tc, linearHashNTAThreadedTest);
 
   /* --------------------------------------------- */
   
