@@ -497,10 +497,10 @@ START_TEST(operation_alloc_test) {
   Tinit();
   
   int xid = Tbegin();
-  recordid rid1 = Talloc(xid, 100);
+  Talloc(xid, 100);
   Tcommit(xid);
   xid = Tbegin();
-  recordid rid2 = Talloc(xid, 100);
+  Talloc(xid, 100);
   Tcommit(xid);
   
   Tdeinit();
