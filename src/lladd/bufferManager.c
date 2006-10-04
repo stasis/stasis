@@ -262,7 +262,7 @@ static Page * getPage(int pageid, int locktype) {
 #endif
     }
     spin++;
-    if(spin > 10000) {
+    if(spin > 10000 && !(spin % 10000)) {
       printf("GetPage is stuck!");
     }
   } 
