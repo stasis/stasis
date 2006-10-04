@@ -146,12 +146,16 @@ int lladdFifoPool_iterator_value (int xid, void * it, byte ** val) {
   return impl->current->valSize;
 }
 
+static int firstWarn = 1;
 void lladdFifoPool_iterator_close(int xid, void * it) {
   pointerFifoImpl * impl = (pointerFifoImpl *) it;
   pthread_mutex_lock(&(impl->mutex));
   assert(impl->eof);
   assert((!impl->first) && (!impl->last));
-  printf("Leaking iterator in lladdFifoPool_iterator_close\n");
+  if(firstWarn) { 
+    printf("Leaking iterators in lladdFifoPool_iterator_close\n");
+    firstWarn = 0;
+  } 
   pthread_mutex_unlock(&(impl->mutex));
 }
 
