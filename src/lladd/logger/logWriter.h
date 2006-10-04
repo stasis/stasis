@@ -164,9 +164,13 @@ void deleteLogWriter();
    @param LSN the LSN of the entry that will be read.
 */
 LogEntry * readLSNEntry_LogWriter(lsn_t LSN);
-lsn_t nextEntry_LogWriter(const LogEntry * e);
+static inline lsn_t nextEntry_LogWriter(const LogEntry * e) { 
+  return e->LSN + sizeofLogEntry(e) + sizeof(lsn_t);
+}
 
 extern int logWriter_isDurable;
+
+long sizeofInternalLogEntry_LogWriter(const LogEntry * e);
 
 END_C_DECLS
 
