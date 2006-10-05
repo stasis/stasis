@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-/** For O_DIRECT.  It's unclear that this is the correct thing to #define, but it works under linux. */
+/** For O_DIRECT.  It's unclear that this is the correct thing to \#define, but it works under linux. */
 #define __USE_GNU
 
 #include <fcntl.h>
@@ -122,17 +122,15 @@ void pageWrite(Page * ret) {
 void openPageFile() {
   DEBUG("Opening storefile.\n");
 
-  if(pageFile_isDurable) { 
 #ifdef PAGE_FILE_O_DIRECT
-    stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, S_IRWXU | S_IRWXG | S_IRWXO);
+  stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, FILE_PERM); //S_IRWXU | S_IRWXG | S_IRWXO);
 #else
-    stable = open (STORE_FILE, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+  stable = open (STORE_FILE, O_CREAT | O_RDWR, FILE_PERM);//S_IRWXU | S_IRWXG | S_IRWXO);
 #endif
-  } else { 
+  if(!pageFile_isDurable) { 
     fprintf(stderr, "\n**********\n");
     fprintf  (stderr, "pageFile.c: pageFile_isDurable==0; the page file will not force writes to disk.\n");
     fprintf  (stderr, "            Transactions will not be durable if the system crashes.\n**********\n");
-    stable = open (STORE_FILE, O_CREAT | O_RDWR , S_IRWXU | S_IRWXG | S_IRWXO);
   }
   if(stable == -1) {
     perror("couldn't open storefile");
@@ -145,6 +143,7 @@ void openPageFile() {
 }
 
 void forcePageFile() { 
+  if(pageFile_isDurable) { 
 #ifndef PAGE_FILE_O_DIRECT
 #ifdef HAVE_FDATASYNC
   fdatasync(stable);
@@ -152,6 +151,7 @@ void forcePageFile() {
   fsync(stable);
 #endif // HAVE_FDATASYNC
 #endif // PAGE_FILE_O_DIRECT
+  }
 }
 
 void closePageFile() {

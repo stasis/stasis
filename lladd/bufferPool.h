@@ -41,7 +41,9 @@ terms specified in this license.
 ---*/
 
 /**
- * @file Functions to manage the in-memory pool of free page buffers.
+ * @file
+ *
+ * Functions to manage the in-memory pool of free page buffers.
  * $Id$
  */
 

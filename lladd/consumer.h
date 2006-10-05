@@ -28,7 +28,9 @@ void Tconsumer_close(int xid, lladdConsumer_t * it);
    
    @param xid Transaction id @param it  The consumer
    @param key Can be null if there is no key.
-   @param value Can be null if there is no value, but both can't be null.  (Or can they???)
+   @param keySize Length of key in bytes
+   @param val Can be null if there is no value, but both can't be null.  (Or can they???)
+   @param valSize Length of value in bytes.
    
    @return Error.  Blocks when full.
 

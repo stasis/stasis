@@ -47,10 +47,10 @@ terms specified in this license.
  * http://sources.redhat.com/autobook/
  *
  * The idea behind this file is twofold.  First, we want to keep as
- * much of the #ifdef portability nonsense in here as possible.
- * Second, we allow users to #include headers that in turn #include
+ * much of the \#ifdef portability nonsense in here as possible.
+ * Second, we allow users to \#include headers that in turn \#include
  * common.h.  If they do so, then their code should continue to 'do
- * the right thing' and build, even though they do not #include the
+ * the right thing' and build, even though they do not \#include the
  * config.h file that all of the LLADD stuff uses.
  *
  * @todo Need to make sure every .c file actually includes this thing, and

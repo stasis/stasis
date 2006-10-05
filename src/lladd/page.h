@@ -204,6 +204,9 @@ void pageDeInit();
  * does not update dirtyPages.  Similarly, if the page is already
  * dirty, there is no need to udpate dirtyPages.
  *
+ * @param xid The transaction that is writing to the page, or -1 if
+ * outside of a transaction.
+ *
  * @param page You must have a writelock on page before calling this
  * function.
  *
@@ -243,6 +246,7 @@ void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat)
 void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
  * @param xid transaction ID
+ * @param page a pointer to the pinned page that contains the record.
  * @param rid the record to be written
  * @param dat buffer for data
  * @return 0 on success, lladd error code on failure

@@ -97,6 +97,7 @@ typedef struct Page_s Page_s;
 typedef struct Page_s Page;
 
 /**
+ * @param xid The transaction that is pinning the page (used by page-level locking implementations.)
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
  */

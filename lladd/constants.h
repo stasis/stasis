@@ -44,7 +44,7 @@ terms specified in this license.
  *
  * defines various constants
  *
- * @todo Sometime, LLADD's #includes need to be cleaned up.  In
+ * @todo Sometime, LLADD's \#includes need to be cleaned up.  In
  * particular, we should make sure everything directly or indirectly
  * includes this file, common.h, and constants.h 
  *
@@ -222,5 +222,6 @@ extern const short SLOT_TYPE_LENGTHS[];
 
 #define TALLOC_REGION_SIZE 100  // Pages
 
+#define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
 #endif
