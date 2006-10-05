@@ -44,7 +44,7 @@ terms specified in this license.
 #include <stdio.h>
 #include <string.h>
 
-/** For O_DIRECT.  It's unclear that this is the correct thing to #define, but it works under linux. */
+/** For O_DIRECT.  It's unclear that this is the correct thing to \#define, but it works under linux. */
 #define __USE_GNU
 #include <fcntl.h>
 #include <unistd.h>
@@ -63,8 +63,6 @@ terms specified in this license.
 #include "latches.h"
 #include "io.h"
 #include <assert.h>
-
-#define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
 
 #include <lladd/bufferManager.h>
