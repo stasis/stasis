@@ -527,6 +527,9 @@ static void really_do_ralloc(Page * page, recordid rid) {
 
 }
 /**
+   @param xid
+   @param page
+   @param lsn
    @param rid with user-visible size.
 */
 recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
