@@ -122,8 +122,10 @@ void slottedPageInitialize(Page * p);
  */
 recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
 /**
- * Mark the space used by a record for reclaimation.
- *
+ * Mark the space used by a record for reclamation.
+ * @param xid the transaction resposible for the deallocation, or -1 if outside of a transaction.
+ * @param page a pointer to the binned page that contains the record
+ * @param lsn the LSN of the redo log record that records this deallocation.
  * @param rid the recordid to be freed.
  */
 void     slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid);
@@ -194,7 +196,7 @@ size_t slottedFreespace(Page * p);
  *
  *  @param p the page of interest
  *  @param slot the slot in p that we're checking.
- *  @param The type of this slot.
+ *  @return The type of this slot.
  */
 int  slottedGetType(Page * p, int slot); 
 /**
