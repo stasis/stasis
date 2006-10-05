@@ -66,10 +66,16 @@ void redoUpdate(const LogEntry * e) {
     /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
     recordid rid = e->contents.update.rid;
     Page * p;
+    lsn_t pageLSN;
     try {
-      p = loadPage(e->xid, rid.page);
+      if(operationsTable[e->contents.update.funcID].sizeofData == SIZEIS_PAGEID) {
+	p = NULL;
+	pageLSN = 0;
+      } else {
+	p = loadPage(e->xid, rid.page);
+	pageLSN = pageReadLSN(p);
+      } 
     } end;
-    lsn_t pageLSN = pageReadLSN(p);
 
     if(e->LSN > pageLSN) {
       DEBUG("OPERATION Redo, %ld > %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
@@ -82,25 +88,35 @@ void redoUpdate(const LogEntry * e) {
     } else {
       DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n", e->LSN, pageLSN, rid.page, rid.slot, rid.size);
     }
-
-    releasePage(p);
+    if(p) { 
+      releasePage(p);
+    }
   } else if(e->type == CLRLOG) {
     const LogEntry * f = LogReadLSN(e->contents.clr.thisUpdateLSN);
     recordid rid = f->contents.update.rid;
     Page * p = NULL;
+    lsn_t pageLSN;
 
     int isNullRid = !memcmp(&rid, &NULLRID, sizeof(recordid));
     if(!isNullRid) {
-      try { 
-	p = loadPage(e->xid, rid.page);
-      } end;
+      if(operationsTable[f->contents.update.funcID].sizeofData == SIZEIS_PAGEID) { 
+	p = NULL;
+	pageLSN = 0;
+      } else { 
+	try { 
+	  p = loadPage(e->xid, rid.page);
+	  pageLSN = pageReadLSN(p);
+	} end;
+      }
     }
-    //    assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
+    //assert(rid.page == e->contents.update.rid.page); /* @todo Should this always hold? */
     
-    /* See if the page contains the result of the undo that this CLR is supposed to perform. If it
-       doesn't, then undo the original operation. */
+    /* See if the page contains the result of the undo that this CLR
+       is supposed to perform. If it doesn't, or this was a logical
+       operation, then undo the original operation. */
 
-    if(isNullRid || f->LSN > pageReadLSN(p)) {
+
+    if(isNullRid || f->LSN > pageLSN) {
 
       DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", f->LSN, rid.page, rid.slot, rid.size);
       undoUpdate(f, p, e->LSN);
