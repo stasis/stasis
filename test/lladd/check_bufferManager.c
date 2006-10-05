@@ -20,8 +20,8 @@
 #define NUM_PAGES (MAX_BUFFER_SIZE * 2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
-#define READS_PER_THREAD (NUM_PAGES * 5)
-#define RECORDS_PER_THREAD (NUM_PAGES * 2)
+#define READS_PER_THREAD (NUM_PAGES * 10)
+#define RECORDS_PER_THREAD (NUM_PAGES * 10)
 
 
 #else 
@@ -260,8 +260,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, pageSingleThreadTest); 
-  tcase_add_test(tc, pageLoadTest);  
   tcase_add_test(tc, pageSingleThreadWriterTest);
+  tcase_add_test(tc, pageLoadTest);  
   tcase_add_test(tc, pageThreadedWritersTest); 
 
 
