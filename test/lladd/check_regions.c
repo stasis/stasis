@@ -311,6 +311,44 @@ START_TEST(regions_lockRandomizedTest) {
   Tdeinit();
 } END_TEST
 
+START_TEST(regions_recoveryTest) { 
+
+  Tinit();
+
+  unsigned int pages[50];
+  int xid1 = Tbegin();
+  int xid2 = Tbegin();
+  for(int i = 0; i < 50; i+=2) { 
+    pages[i] = TregionAlloc(xid1, myrandom(4)+1, 1);
+    pages[i+1] = TregionAlloc(xid2, myrandom(2)+1, 1);
+  }
+  
+  fsckRegions(xid1);
+
+  Tcommit(xid1);
+
+  Tdeinit();
+
+  Tinit();
+  
+  int xid = Tbegin();
+  fsckRegions(xid);
+  
+  for(int i = 0; i < 50; i+=2) { 
+    TregionDealloc(xid, pages[i]);
+  }
+
+  fsckRegions(xid);
+  Tabort(xid);
+  fsckRegions(Tbegin());
+  Tdeinit();
+
+  Tinit();
+  fsckRegions(Tbegin());
+  Tdeinit();
+
+} END_TEST
+
 /** 
   Add suite declarations here
 */
@@ -325,6 +363,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, regions_randomizedTest);
   tcase_add_test(tc, regions_lockSmokeTest);
   tcase_add_test(tc, regions_lockRandomizedTest);
+  tcase_add_test(tc, regions_recoveryTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
