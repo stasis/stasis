@@ -4,8 +4,6 @@
 #include "../page.h"
 #include <lladd/operations/pageOperations.h>
 #include <assert.h>
-/*#include "../page/slotted.h"*/
-#include "../page/header.h"
 #include "../pageFile.h"
 #include "../page/fixed.h"
 #include <alloca.h>
