@@ -9,7 +9,7 @@ liblladd_a_SOURCES=crc32.c redblack.c lhtable.c common.c stats.c io.c bufferMana
 		   lockManager.c iterator.c consumer.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c graph.c\
 	           logger/logEntry.c logger/logWriter.c logger/inMemoryLog.c logger/logHandle.c logger/logger2.c \
 		   logger/logMemory.c \
-		   page/raw.c page/slotted.c page/header.c page/fixed.c  compensations.c \
+		   page/raw.c page/slotted.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \
 		   operations/alloc.c operations/noop.c operations/instantSet.c \
@@ -18,8 +18,7 @@ liblladd_a_SOURCES=crc32.c redblack.c lhtable.c common.c stats.c io.c bufferMana
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c operations/bTree.c \
 		   operations/regions.c
-
-#		   logger/logMemory.c \ ringbuffer.c \   asdfas
+#		   page/header.c logger/logMemory.c \ ringbuffer.c \   asdfas
 #operations/lladdhash.c 
 #AM_CFLAGS= -g -Wall -pedantic -std=gnu99
 AM_CFLAGS=${GLOBAL_CFLAGS}
