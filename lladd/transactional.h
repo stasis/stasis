@@ -77,11 +77,27 @@ terms specified in this license.
    $ ./reconf
    $ ./configure
    $ make
+   $ cd test/lladd
    $ make check
    
    @endcode
    
-   'make install' is currently broken.  Look in utilities/ for an example of a 
+   This will fail if your system defaults to an old (pre-1.7) version
+   of autotools.  Fortunately, multiple versions of autotools may
+   exist on the same system.  Execute the following commands to
+   compile with version 1.8 of autotools:
+
+   @code
+
+   $ ./reconf-1.8
+   $ ./configure
+   $ make
+   $ cd test/lladd
+   $ make check
+
+   @endcode
+
+   'make install' is currently unsupported.  Look in utilities/ for an example of a 
    simple program that uses LLADD.  Currently, most generally useful programs 
    written on top of LLADD belong in lladd/src/apps, while utilities/ contains 
    programs useful for debugging the library.
@@ -340,22 +356,19 @@ compensated_function void Tread(int xid, recordid rid, void *dat);
 void TreadUnlocked(int xid, recordid rid, void *dat);
 
 /**
+ * Commit an active transaction.  Each transaction should be completed 
+ * with exactly one call to Tcommit() or Tabort().
+ * 
  * @param xid transaction ID
  * @return 0 on success
- * @throws error vallue on error
  */
 int Tcommit(int xid);
 
 /**
- * @param xid The current transaction
- * @param size The size, in bytes of the new record you wish to allocate
- * @returns A new recordid.  On success, this recordid's size will be 
- *          the requested size.  On failure, its size will be zero.
- */
-//recordid Talloc(int xid, long size);
-
-/* @function Tabort
- * @param xid transaction ID
+ * Abort (rollback) an active transaction.  Each transaction should be
+ * completed with exactly one call to Tcommit() or Tabort().
+ * 
+ * @param xid transaction ID 
  * @return 0 on success, -1 on error.
  */
 int Tabort(int xid);
