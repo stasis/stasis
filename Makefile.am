@@ -17,9 +17,13 @@ precoverage :
 	find . -name '*.bb' | xargs rm -f
 	find . -name '*.bbg' | xargs rm -f
 	find . -name '*.da' | xargs rm -f
+	rm -rf doc/coverage
 
-coverage: precoverage check
+coverage: all precoverage
 	echo '(make profile requires CFLAGS="-fprofile-arcs -ftest-coverage -pg -O0")'
+	cd test/lladd
+	make check || true
+	cd ../..
 	lcov -c --directory src/libdfa/ --directory src/lladd/ --directory test/   > tmp.info
 #	lcov -c --directory .  > tmp.info
 	genhtml -o doc/coverage tmp.info
