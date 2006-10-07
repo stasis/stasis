@@ -69,7 +69,7 @@ static int operate_dealloc_region(int xid, Page * p, lsn_t lsn, recordid rid, co
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
 
-  operate_dealloc_region_unlocked(xid, p, lsn, rid, datP);
+  ret = operate_dealloc_region_unlocked(xid, p, lsn, rid, datP);
 
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
