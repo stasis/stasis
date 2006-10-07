@@ -445,7 +445,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("transactional");
   /* Begin a new test */
   TCase *tc = tcase_create("transactional_smokeTest");
-  tcase_set_timeout(tc, 0); // disable timeouts
+  tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, transactional_blobSmokeTest);
