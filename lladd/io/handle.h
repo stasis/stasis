@@ -23,10 +23,10 @@
 typedef struct stasis_handle_t { 
   /** @return the number of in-memory copies made when the caller
       provides the buffer */
-  int (*num_copies)();
+  int (*num_copies)(struct stasis_handle_t * h);
   /** @return the number of in-memory copies made when the handle
       provides the buffer */
-  int (*num_copies_buffer)();
+  int (*num_copies_buffer)(struct stasis_handle_t * h);
   
   int (*close)(struct stasis_handle_t *);
   
@@ -35,22 +35,22 @@ typedef struct stasis_handle_t {
   /** The offset of the byte after the end of the handle's data. */
   lsn_t (*end_position)(struct stasis_handle_t * h);
   
-  int (*write)(struct stasis_handle_t * h, lsn_t off, 
-	       const byte * dat, lsn_t len);
-  int (*append)(struct stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len);
-
   struct stasis_write_buffer_t * (*write_buffer)(struct stasis_handle_t * h, 
 					  lsn_t off, lsn_t len);
   struct stasis_write_buffer_t * (*append_buffer)(struct stasis_handle_t * h, 
 					   lsn_t len);
   int (*release_write_buffer)(struct stasis_write_buffer_t * w);
+
+  struct stasis_read_buffer_t * (*read_buffer)(struct stasis_handle_t * h,
+					lsn_t offset, lsn_t length);
+  int (*release_read_buffer)(struct stasis_read_buffer_t * r);
   
+  int (*write)(struct stasis_handle_t * h, lsn_t off, 
+	       const byte * dat, lsn_t len);
+  int (*append)(struct stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len);
+
   int (*read)(struct stasis_handle_t * h, 
 	      lsn_t offset, byte * buf, lsn_t length);
-  
-  struct stasis_read_buffer_t * (*read_buffer)(struct stasis_handle_t * h,
-					lsn_t ofset, lsn_t length);
-  int (*release_read_buffer)(struct stasis_read_buffer_t * r);
   
   int (*truncate_start)(struct stasis_handle_t * h, lsn_t new_start);
 
@@ -77,9 +77,9 @@ typedef struct stasis_read_buffer_t {
   int error;
 } stasis_read_buffer_t;
 
-stasis_handle_t * stasis_handle(open_memory)();
+stasis_handle_t * stasis_handle(open_memory)(void);
 stasis_handle_t * stasis_handle(open_file)(char * path, int mode);
 stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * h, 
 				       int worker_thread_count);
 stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
-
+stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
