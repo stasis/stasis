@@ -1,7 +1,5 @@
 #include <lladd/io/handle.h>
-#include <latches.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
@@ -9,19 +7,17 @@
 
 typedef struct mem_impl {
   pthread_mutex_t mut;
-  rwl * trunc_latch;
   lsn_t start_pos;
   lsn_t end_pos;
   byte * buf;
 } mem_impl;
 
-static int mem_num_copies() { return 1; }
-static int mem_num_copies_buffer() { return 0; }
+static int mem_num_copies(stasis_handle_t * h) { return 1; }
+static int mem_num_copies_buffer(stasis_handle_t * h) { return 0; }
 
 static int mem_close(stasis_handle_t * h) {
   free(((mem_impl*)h->impl)->buf);
   pthread_mutex_destroy(&(((mem_impl*)h->impl)->mut));
-  deletelock(((mem_impl*)h->impl)->trunc_latch);
   free(h->impl);
   free(h);
   return 0;
@@ -53,7 +49,6 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
   stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
   if(!ret) { return NULL; }
 
-  writelock(impl->trunc_latch,0);
   pthread_mutex_lock(&(impl->mut));
 
   int error = 0;
@@ -89,8 +84,6 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
     ret->error = 0;
   }
 
-  pthread_mutex_unlock(&(impl->mut));
-
   return ret;
 }
 
@@ -101,7 +94,6 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
   stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
   if(!ret) { return 0; }
 
-  writelock(impl->trunc_latch,0);
   pthread_mutex_lock(&(impl->mut));
 
   lsn_t off = impl->end_pos;
@@ -124,13 +116,42 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
     ret->impl = 0;
     ret->error = ENOMEM;
   }
-  pthread_mutex_unlock(&(impl->mut));
-
   return ret;
 }
 static int mem_release_write_buffer(stasis_write_buffer_t * w) { 
-  unlock(((mem_impl*)w->h->impl)->trunc_latch);
+  mem_impl * impl = (mem_impl*)(w->h->impl);
+  pthread_mutex_unlock(&(impl->mut));
   free(w);
+  return 0;
+}
+
+static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
+					      lsn_t off, lsn_t len) { 
+  mem_impl * impl = (mem_impl*)(h->impl);
+  pthread_mutex_lock(&(impl->mut));
+  
+  stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
+  if(!ret) { return NULL; }
+
+  if(off < impl->start_pos || off + len > impl->end_pos) { 
+    ret->h = h;
+    ret->buf = 0;
+    ret->len = 0;
+    ret->impl = 0;
+    ret->error = EDOM;
+  } else {
+    ret->h = h;
+    ret->buf = &(impl->buf[off-impl->start_pos]);
+    ret->len = len;
+    ret->impl = 0;
+    ret->error = 0;
+  }
+  return ret;
+}
+static int mem_release_read_buffer(stasis_read_buffer_t * r) { 
+  mem_impl * impl = (mem_impl*)(r->h->impl);
+  pthread_mutex_unlock(&(impl->mut));
+  free(r);
   return 0;
 }
 
@@ -163,38 +184,6 @@ static int mem_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t 
   return ret;
 }
 
-static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
-					      lsn_t off, lsn_t len) { 
-  mem_impl * impl = (mem_impl*)(h->impl);
-  readlock(impl->trunc_latch,0);
-  pthread_mutex_lock(&(impl->mut));
-  
-  stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
-  if(!ret) { return NULL; }
-
-  if(off < impl->start_pos || off + len > impl->end_pos) { 
-    ret->h = h;
-    ret->buf = 0;
-    ret->len = 0;
-    ret->impl = 0;
-    ret->error = EDOM;
-  } else {
-    ret->h = h;
-    ret->buf = &(impl->buf[off-impl->start_pos]);
-    ret->len = len;
-    ret->impl = 0;
-    ret->error = 0;
-  }
-  pthread_mutex_unlock(&(impl->mut));
-
-  return ret;
-}
-static int mem_release_read_buffer(stasis_read_buffer_t * r) { 
-  unlock(((mem_impl*)r->h->impl)->trunc_latch);
-  free(r);
-  return 0;
-}
-
 static int mem_read(stasis_handle_t * h, 
 		    lsn_t off, byte * buf, lsn_t len) { 
   stasis_read_buffer_t * r = mem_read_buffer(h, off, len);
@@ -212,16 +201,13 @@ static int mem_read(stasis_handle_t * h,
 
 static int mem_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   mem_impl* impl = (mem_impl*) h->impl;
-  writelock(impl->trunc_latch,0);
   pthread_mutex_lock(&(impl->mut));
   if(new_start < impl->start_pos) { 
     pthread_mutex_unlock(&impl->mut);
-    unlock(impl->trunc_latch);
     return 0;
   } 
   if(new_start > impl->end_pos) { 
     pthread_mutex_unlock(&impl->mut);
-    unlock(impl->trunc_latch);
     return EDOM;
   }
 
@@ -235,7 +221,6 @@ static int mem_truncate_start(stasis_handle_t * h, lsn_t new_start) {
   impl->start_pos = new_start;
 
   pthread_mutex_unlock(&(impl->mut));
-  unlock(impl->trunc_latch);
   return 0;
 }
 
@@ -264,7 +249,6 @@ stasis_handle_t * stasis_handle(open_memory)() {
   mem_impl * impl = malloc(sizeof(mem_impl));
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
-  impl->trunc_latch = initlock();
   impl->start_pos = 0;
   impl->end_pos = 0;
   impl->buf = malloc(0);
