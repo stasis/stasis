@@ -64,7 +64,7 @@ void handle_smoketest(stasis_handle_t * h) {
   const int three = 0x33333333;
   const int four  = 0x44444444;
 
-  assert((!h->num_copies()) || (!h->num_copies_buffer()));
+  assert((!h->num_copies(h)) || (!h->num_copies_buffer(h)));
 
   assert(0 == h->start_position(h) ||
 	 0 == h->end_position(h));
@@ -225,12 +225,12 @@ void load_handle(thread_arg* t) {
 	if(!r->error) { 
 	  assert(*(int*)(r->buf) == t->values[val]);
 	  assert(r->len == sizeof(int));
+	  r->h->release_read_buffer(r);
 	} else {
 	  assert(r->error == EDOM);
+	  r->h->release_read_buffer(r);
 	  assert(h->start_position(h) > offsets[val]);
 	}
-	r->h->release_read_buffer(r);
-					 
       } break;
       default:
 	abort();
@@ -239,7 +239,7 @@ void load_handle(thread_arg* t) {
     }
 
     // Truncate 1% of the time.
-    if(!myrandom(100)) {       
+    if(!myrandom(100)) {     
       lsn_t pre_start = h->start_position(h);
       
       pthread_mutex_lock(&trunc_mut);
@@ -249,7 +249,6 @@ void load_handle(thread_arg* t) {
 	trunc_val = stop;
       }
       pthread_mutex_unlock(&trunc_mut);
-      
 
       assert(pre_start <= start);
       int ret = h->truncate_start(h, stop);
@@ -257,7 +256,6 @@ void load_handle(thread_arg* t) {
 	lsn_t post_stop = h->start_position(h);
 	assert(stop <= post_stop);
       }
-      
     }
   }
   free(offsets);
@@ -283,7 +281,7 @@ void handle_sequentialtest(stasis_handle_t * h) {
 void handle_concurrencytest(stasis_handle_t * h) { 
   int vc = myrandom(VALUE_COUNT) + 10;
 
-  printf("Running concurrency test with %d values", vc);
+  printf("Running concurrency test with %d values", vc); fflush(stdout);
 
   int * values = malloc(vc * sizeof(int));
 
@@ -315,13 +313,17 @@ void handle_concurrencytest(stasis_handle_t * h) {
    Check the memory I/O handle.
 */
 START_TEST(io_memoryTest) {
-  stasis_handle_t * h = stasis_handle(open_memory)(0);
+  stasis_handle_t * h;
+  h = stasis_handle(open_memory)();
+  //  h = stasis_handle(open_debug)(h);
   handle_smoketest(h);
   h->close(h);
-  h = stasis_handle(open_memory)(0);
+  h = stasis_handle(open_memory)();
+  //  h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
-  h = stasis_handle(open_memory)(0);
+  h = stasis_handle(open_memory)();
+  //  h = stasis_handle(open_debug)(h);
   handle_concurrencytest(h);
   h->close(h);
 } END_TEST
