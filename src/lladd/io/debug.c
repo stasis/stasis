@@ -67,8 +67,8 @@ static stasis_write_buffer_t * debug_append_buffer(stasis_handle_t * h,
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
-  printf("tid=%9ld retn append_buffer(%lx, %ld) = %lx\n", 
-	 pthread_self(), (unsigned long)hh, len, (unsigned long)retWrap); fflush(stdout); 
+  printf("tid=%9ld retn append_buffer(%lx, %ld) = %lx (off=%ld)\n", 
+	 pthread_self(), (unsigned long)hh, len, (unsigned long)retWrap, ret->off); fflush(stdout); 
   return retWrap;
   
 }

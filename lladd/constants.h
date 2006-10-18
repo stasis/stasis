@@ -223,5 +223,5 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define TALLOC_REGION_SIZE 100  // Pages
 
 #define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
-
+#define LOG_MODE  (O_CREAT | O_RDWR | O_SYNC)
 #endif

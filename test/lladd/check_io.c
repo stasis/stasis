@@ -44,6 +44,10 @@ terms specified in this license.
 #include <check.h>
 #include <assert.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "../check_includes.h"
 
 #define LOG_NAME   "check_io.log"
@@ -72,7 +76,8 @@ void handle_smoketest(stasis_handle_t * h) {
   assert(! h->write(h, 0, (byte*)&one, sizeof(int)));
 
   int one_read = 0;
-  assert(! h->read(h, 0, (byte*)&one_read, sizeof(int)));
+  int ret = h->read(h, 0, (byte*)&one_read, sizeof(int));
+  assert(!ret);
   assert(one_read == one);
   stasis_write_buffer_t * w = h->write_buffer(h, sizeof(int), sizeof(int));
   *((int*)(w->buf)) = two;
@@ -211,7 +216,7 @@ void load_handle(thread_arg* t) {
       
       switch(choice) { 
       case 0: {   // read
-	int j;
+	int j = -1;
 	int ret = h->read(h, offsets[val], (byte*)&j, sizeof(int));
 	if(!ret) { 
 	  assert(j == t->values[val]);
@@ -263,6 +268,7 @@ void load_handle(thread_arg* t) {
 
 void handle_sequentialtest(stasis_handle_t * h) { 
   time_t seed = time(0);
+  //time_t seed = 0;
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
@@ -328,6 +334,29 @@ START_TEST(io_memoryTest) {
   h->close(h);
 } END_TEST
 
+START_TEST(io_fileTest) { 
+  stasis_handle_t * h;
+  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //  h = stasis_handle(open_debug)(h);
+  handle_smoketest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //h = stasis_handle(open_debug)(h);
+  handle_sequentialtest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  handle_concurrencytest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+} END_TEST
 
 /** 
   Add suite declarations here
@@ -339,7 +368,9 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, io_memoryTest);
+  //  tcase_add_test(tc, io_memoryTest);
+  tcase_add_test(tc, io_fileTest);
+  
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

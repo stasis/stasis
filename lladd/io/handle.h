@@ -9,8 +9,15 @@
    otherwise.  read_buffer() and write_buffer() return error codes via
    the error field of the handles they produce.
 
+   An error that occurs while writing to the handle leaves the region
+   that was being written in an undefined state.
+
    Errors in num_copies, num_copies_buffer, start_position, and end_position
    are always unrecoverable, and return -1.
+
+   close returns 0 on success, or an error code otherwise.  close
+   always frees the handle that was passed into it, regardless of
+   whether an error occurred.
 
    Here are the meanings of the various error codes:
    
@@ -19,6 +26,11 @@
           that caused this one is stored in the handle's error field.
 
    Handle implementations may return return other errors as appropriate.
+
+   Offset:
+   
+   Negative offsets are reserved for implementation-specific purposes.
+
  */
 typedef struct stasis_handle_t { 
   /** @return the number of in-memory copies made when the caller
@@ -78,7 +90,7 @@ typedef struct stasis_read_buffer_t {
 } stasis_read_buffer_t;
 
 stasis_handle_t * stasis_handle(open_memory)(void);
-stasis_handle_t * stasis_handle(open_file)(char * path, int mode);
+stasis_handle_t * stasis_handle(open_file)(char * path, int flags, int mode);
 stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * h, 
 				       int worker_thread_count);
 stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);

@@ -244,6 +244,7 @@ struct stasis_handle_t mem_func = {
 
 stasis_handle_t * stasis_handle(open_memory)() {
   stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
+  if(!ret) { return NULL; }
   *ret = mem_func;
 
   mem_impl * impl = malloc(sizeof(mem_impl));
