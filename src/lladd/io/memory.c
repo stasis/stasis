@@ -98,7 +98,14 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
 
   lsn_t off = impl->end_pos;
   impl->end_pos += len;
-  byte * newbuf = realloc(impl->buf, impl->end_pos - impl->start_pos);
+  size_t newlen = impl->end_pos - impl->start_pos;
+  byte * newbuf;
+  if(newlen == 0) {
+    free(impl->buf);
+    newbuf = malloc(0);
+  } else { 
+    newbuf = realloc(impl->buf, impl->end_pos - impl->start_pos);
+  }
   if(newbuf) { 
     impl->buf = newbuf;
   
@@ -109,6 +116,7 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
     ret->impl = 0;
     ret->error = 0;
   } else { 
+    // if we requested a zero length buffer, this is OK.
     ret->h = h;
     ret->off = 0;
     ret->buf = 0;
@@ -242,7 +250,7 @@ struct stasis_handle_t mem_func = {
   .error = 0
 };
 
-stasis_handle_t * stasis_handle(open_memory)() {
+stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset) {
   stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
   if(!ret) { return NULL; }
   *ret = mem_func;
@@ -250,8 +258,8 @@ stasis_handle_t * stasis_handle(open_memory)() {
   mem_impl * impl = malloc(sizeof(mem_impl));
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
-  impl->start_pos = 0;
-  impl->end_pos = 0;
+  impl->start_pos = start_offset;
+  impl->end_pos = start_offset;
   impl->buf = malloc(0);
     
   return ret;

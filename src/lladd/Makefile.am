@@ -18,7 +18,7 @@ liblladd_a_SOURCES=crc32.c redblack.c lhtable.c common.c stats.c io.c bufferMana
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c operations/bTree.c \
 		   operations/regions.c \
-	 	   io/memory.c io/file.c io/debug.c
+	 	   io/memory.c io/file.c io/non_blocking.c io/debug.c
 #		   page/header.c logger/logMemory.c \ ringbuffer.c \   asdfas
 #operations/lladdhash.c 
 #AM_CFLAGS= -g -Wall -pedantic -std=gnu99

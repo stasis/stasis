@@ -456,7 +456,7 @@ struct stasis_handle_t file_func = {
   .error = 0
 };
 
-stasis_handle_t * stasis_handle(open_file)(char * filename, int flags, int mode) {
+stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, char * filename, int flags, int mode) {
   stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
   if(!ret) { return NULL; }
   *ret = file_func;
@@ -464,8 +464,8 @@ stasis_handle_t * stasis_handle(open_file)(char * filename, int flags, int mode)
   file_impl * impl = malloc(sizeof(file_impl));
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
-  impl->start_pos = 0;
-  impl->end_pos = 0;
+  impl->start_pos = start_offset;
+  impl->end_pos = start_offset;
   impl->fd = open(filename, flags, mode);
   if(impl->fd == -1) { 
     ret->error = errno;

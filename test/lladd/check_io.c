@@ -68,6 +68,10 @@ void handle_smoketest(stasis_handle_t * h) {
   const int three = 0x33333333;
   const int four  = 0x44444444;
 
+  lsn_t off;
+  h->append(h, &off, 0, 0);
+  assert(off == 0);
+
   assert((!h->num_copies(h)) || (!h->num_copies_buffer(h)));
 
   assert(0 == h->start_position(h) ||
@@ -92,7 +96,6 @@ void handle_smoketest(stasis_handle_t * h) {
   assert(! h->read(h, sizeof(int), (byte*)&two_read, sizeof(int)));
   assert(two == two_read);
   
-  lsn_t off;
   assert(! h->append(h, &off, (byte*)&three, sizeof(int)));
   
   w = h->append_buffer(h, sizeof(int));
@@ -320,15 +323,15 @@ void handle_concurrencytest(stasis_handle_t * h) {
 */
 START_TEST(io_memoryTest) {
   stasis_handle_t * h;
-  h = stasis_handle(open_memory)();
+  h = stasis_handle(open_memory)(0);
   //  h = stasis_handle(open_debug)(h);
   handle_smoketest(h);
   h->close(h);
-  h = stasis_handle(open_memory)();
+  h = stasis_handle(open_memory)(0);
   //  h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
-  h = stasis_handle(open_memory)();
+  h = stasis_handle(open_memory)(0);
   //  h = stasis_handle(open_debug)(h);
   handle_concurrencytest(h);
   h->close(h);
@@ -336,27 +339,68 @@ START_TEST(io_memoryTest) {
 
 START_TEST(io_fileTest) { 
   stasis_handle_t * h;
-  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   //  h = stasis_handle(open_debug)(h);
   handle_smoketest(h);
   h->close(h);
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   //h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_file)("logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   handle_concurrencytest(h);
   h->close(h);
 
   unlink("logfile.txt");
 
 } END_TEST
+
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) { 
+  stasis_handle_t * h = stasis_handle(open_memory)(off);
+  //  h = stasis_handle(open_debug)(h);
+  stasis_write_buffer_t * w = h->append_buffer(h, len);
+  w->h->release_write_buffer(w);
+  
+  return h;
+  
+}
+
+START_TEST(io_nonBlockingTest) { 
+  stasis_handle_t * slow;
+  stasis_handle_t * h;
+
+  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //  slow = stasis_handle(open_debug)(slow);
+  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
+  //  h = stasis_handle(open_debug)(h);
+  handle_smoketest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //h = stasis_handle(open_debug)(h);
+  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
+  handle_sequentialtest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
+  handle_concurrencytest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+} END_TEST
+
 
 /** 
   Add suite declarations here
@@ -368,9 +412,9 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  //  tcase_add_test(tc, io_memoryTest);
+  tcase_add_test(tc, io_memoryTest);
   tcase_add_test(tc, io_fileTest);
-  
+  tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

@@ -89,9 +89,11 @@ typedef struct stasis_read_buffer_t {
   int error;
 } stasis_read_buffer_t;
 
-stasis_handle_t * stasis_handle(open_memory)(void);
-stasis_handle_t * stasis_handle(open_file)(char * path, int flags, int mode);
-stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * h, 
-				       int worker_thread_count);
+stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
+stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, char * path, int flags, int mode);
+stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * slow, 
+						   stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
+						   void * fast_factory_arg);
 stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
+
