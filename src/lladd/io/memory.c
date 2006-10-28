@@ -58,8 +58,13 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
   } else if(impl->end_pos > off+len) { 
     // Just need to return buffer; h's state is unchanged.
   } else { 
-    byte * newbuf = realloc(impl->buf, off+len - impl->start_pos);
-    
+    byte * newbuf;
+    if(off+len-impl->start_pos) { 
+      newbuf = realloc(impl->buf, off+len - impl->start_pos);
+    } else {
+      free(impl->buf);
+      newbuf = malloc(0);
+    }
     if(newbuf) {
       impl->buf = newbuf;
       impl->end_pos = off+len;
@@ -145,11 +150,13 @@ static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
     ret->h = h;
     ret->buf = 0;
     ret->len = 0;
+    ret->off = 0;
     ret->impl = 0;
     ret->error = EDOM;
   } else {
     ret->h = h;
     ret->buf = &(impl->buf[off-impl->start_pos]);
+    ret->off = off;
     ret->len = len;
     ret->impl = 0;
     ret->error = 0;

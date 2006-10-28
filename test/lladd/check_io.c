@@ -371,29 +371,45 @@ static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
   
 }
 
+typedef struct sf_args {
+  char * filename;
+  int    openMode;
+  int    filePerm;
+} sf_args;
+
+static stasis_handle_t * slow_factory(void * argsP) { 
+  sf_args * args = (sf_args*) argsP;
+  return stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
+}
+
 START_TEST(io_nonBlockingTest) { 
-  stasis_handle_t * slow;
   stasis_handle_t * h;
 
-  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  //  slow = stasis_handle(open_debug)(slow);
-  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
+  sf_args slow_args = {
+    "logfile.txt",
+    O_CREAT | O_RDWR, 
+    FILE_PERM
+  };
+
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 
+				       fast_factory, 0,
+				       5, 1024*1024);
   //  h = stasis_handle(open_debug)(h);
   handle_smoketest(h);
   h->close(h);
 
   unlink("logfile.txt");
 
-  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0, 
+				       5, 1024*1024);
   //h = stasis_handle(open_debug)(h);
-  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
   handle_sequentialtest(h);
   h->close(h);
 
   unlink("logfile.txt");
 
-  slow = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  h = stasis_handle(open_non_blocking)(slow, fast_factory, 0);
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0,
+				       5, 1024 * 1024);
   handle_concurrencytest(h);
   h->close(h);
 
@@ -412,8 +428,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, io_memoryTest);
-  tcase_add_test(tc, io_fileTest);
+  //  tcase_add_test(tc, io_memoryTest);
+  //  tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

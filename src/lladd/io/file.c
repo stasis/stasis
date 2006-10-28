@@ -359,6 +359,7 @@ static stasis_read_buffer_t * file_read_buffer(stasis_handle_t * h,
   if(error) { 
     ret->h = h;
     ret->buf = 0;
+    ret->off = 0;
     ret->len = 0;
     ret->impl = 0;
     ret->error = error;
@@ -366,6 +367,7 @@ static stasis_read_buffer_t * file_read_buffer(stasis_handle_t * h,
   } else { 
     ret->h = h;
     ret->buf = buf;
+    ret->off = off;
     ret->len = len;
     ret->impl = 0;
     ret->error = 0;
