@@ -34,7 +34,7 @@
 #include <lladd/operations/prepare.h>
 
 static pblHashTable_t * transactionLSN;
-static LinkedListPtr rollbackLSNs = NULL;
+static LinkedList * rollbackLSNs = NULL;
 /** @todo There is no real reason to have this mutex (which prevents
     concurrent aborts, except that we need to protect rollbackLSNs's
     from concurrent modifications. */
@@ -277,8 +277,8 @@ void InitiateRecovery() {
 
   pblHtDelete(transactionLSN);
   
-  destroyList(rollbackLSNs);
-  rollbackLSNs=0;
+  destroyList(&rollbackLSNs);
+  assert(rollbackLSNs==0);
 }
 
 
@@ -296,9 +296,9 @@ void undoTrans(TransactionLog transaction) {
 
   Undo(0);
   if(rollbackLSNs) {
-    destroyList(rollbackLSNs);
+    destroyList(&rollbackLSNs);
   }
-  rollbackLSNs = 0;
+  assert(rollbackLSNs == 0);
   pthread_mutex_unlock(&rollback_mutex);
 
 }
