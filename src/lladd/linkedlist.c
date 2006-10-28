@@ -51,17 +51,17 @@ terms specified in this license.
 
 #include <stdio.h>
 
-void printList(LinkedList *l) {
-	LinkedListPtr tmp = l;
+void printList(LinkedList **l) {
+	LinkedList * tmp = *l;
 	printf ("List is ");
 	while (tmp!=NULL) {
-		printf ("%d ", tmp->val);
+		printf ("%ld ", tmp->val);
 		tmp = tmp->next;
 	}
 	printf (".\n");
 }
-void addVal(LinkedList **list, int val) {
-  LinkedListPtr new = (LinkedListPtr)malloc(sizeof(LinkedList));
+void addVal(LinkedList **list, long val) {
+  LinkedList * new = (LinkedList *)malloc(sizeof(LinkedList));
   new->val = val;
   new->next = NULL;
   if (*list==NULL) {
@@ -72,8 +72,9 @@ void addVal(LinkedList **list, int val) {
     *list = new;
   }
 }
-void removeVal(LinkedList **list, int val) {
-  LinkedListPtr tmp, tmpprev;
+void removeVal(LinkedList **list, long val) {
+  LinkedList * tmp;
+  LinkedList * tmpprev;
   if (*list==NULL) return;
   if ((*list!=NULL) && ((*list)->val==val)) {
   	tmp = *list;
@@ -93,9 +94,9 @@ void removeVal(LinkedList **list, int val) {
 	tmp = tmp->next;
   }
 }
-int popMaxVal(LinkedList **list) {
-	LinkedListPtr tmp;
-	int tmpval;
+long popMaxVal(LinkedList **list) {
+	LinkedList * tmp;
+	long tmpval;
 	if (*list!=NULL) {
 	  tmp = *list;
 	  (*list) = (*list)->next;
@@ -106,9 +107,10 @@ int popMaxVal(LinkedList **list) {
 	else return -1; /*this should be an error! */
 }
 
-void addSortedVal(LinkedList **list, int val) {
-  LinkedListPtr tmp, tmpprev;
-  LinkedListPtr new = (LinkedListPtr)malloc(sizeof(LinkedList));
+void addSortedVal(LinkedList **list, long val) {
+  LinkedList * tmp;
+  LinkedList * tmpprev;
+  LinkedList * new = malloc(sizeof(LinkedList));
   new->val = val;
   /*see if new entry should come in the beginning*/
   if ((*list==NULL) || ((*list)->val<val)) {
@@ -135,8 +137,8 @@ void addSortedVal(LinkedList **list, int val) {
 /*
   return 1 if val is in the list, 0 otherwise
 */
-int findVal(LinkedList *list, int val) {
-  LinkedListPtr tmp = list;
+int findVal(LinkedList **list, long val) {
+  LinkedList * tmp = *list;
   while (tmp!=NULL) {
     if (tmp->val==val)
       return 1;
@@ -147,12 +149,12 @@ int findVal(LinkedList *list, int val) {
 
 /*  Deallocates all nodes in the list, and sets list to null
  */
-void destroyList (LinkedList *list) {
-  LinkedListPtr tmp;
-  while (list!=NULL) {
-    tmp = list->next;
-    free(list);
-	list=tmp;
+void destroyList (LinkedList **list) {
+  LinkedList * tmp;
+  while ((*list)!=NULL) {
+    tmp = (*list)->next;
+    free((*list));
+    (*list)=tmp;
   }
   list = NULL;
 }

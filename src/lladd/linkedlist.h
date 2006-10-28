@@ -54,43 +54,46 @@ terms specified in this license.
 #include <lladd/common.h>
 BEGIN_C_DECLS
 
-struct Nodetmp {
-  int val;
-  struct Nodetmp *next;
-};
+typedef struct LinkedList {
+  long val;
+  struct LinkedList *next;
+} LinkedList;
 
-typedef struct Nodetmp LinkedList;
-typedef LinkedList *LinkedListPtr;
+//typedef struct Nodetmp LinkedList;
+//typedef LinkedList *LinkedListPtr;
 
-void printList(LinkedList *l) ;
+void printList(LinkedList ** l) ;
 
-void addVal(LinkedList **list, int val);
+void addVal(LinkedList **list, long val);
 
 /**
   @return 1 if val is in the list, 0 otherwise
 */
-int findVal(LinkedList *list, int val);
+int findVal(LinkedList ** list, int long);
 
 /**
   Deallocates all nodes in the list, and sets list to null
 */
-void destroyList (LinkedList *list);
+void destroyList (LinkedList **list);
 
 /**
  *   Add a value to the list in descending order
  */
-void addSortedVal(LinkedList **list, int val);
+void addSortedVal(LinkedList **list, long val);
 
 /**
  *   Remove a value from the list
  */
-void removeVal(LinkedList **list, int val);
+void removeVal(LinkedList **list, long val);
 
 /**
- * Remove the max value (first on list), assuming list is not null and has been
- * sorted
+ * Remove the first value (first on list). 
+ *
+ * If all values were added using "addSortedVal", this is the largest value in the list.
+ *
+ * @return 0 if no values were on the list
  */
-int popMaxVal(LinkedList **list);
+long popMaxVal(LinkedList **list);
 
 END_C_DECLS
 
