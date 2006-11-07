@@ -93,7 +93,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
 
 
   // if DEBUGERROR ==1 this causes a seg fault below! 
-  if (DEBUGERROR) {printf("\n***page->id  = %ld\n", p->id);}
+  if (DEBUGERROR) {printf("\n***page->id  = %lld\n", p->id);}
   printf("\n***rid.page  = %d\n\n", rid.page);
 
 
@@ -164,7 +164,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
   rid.slot = insertLocation;
 
   // fixedWrite(p, rid, valueInBuff); // page/fixed.c:58: checkRid: Assertion `page->id == rid.page' failed.
-  printf("\n***page->id  = %ld\n", p->id);
+  printf("\n***page->id  = %lld\n", p->id);
   printf("\n***rid.page  = %d\n", rid.page);
 
  
@@ -234,7 +234,7 @@ int SimpleExample(){
   
   Page *  p1 = loadPage(xid, pageid1);
 
-  if(DEBUGP) {  printf("\n**** page->id  = %ld\n", p1->id);}
+  if(DEBUGP) {  printf("\n**** page->id  = %lld\n", p1->id);}
 
   /* check consistency between rid & page's values 
    * for number of slots and record size */

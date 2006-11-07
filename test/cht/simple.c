@@ -158,7 +158,7 @@ int main (int argc, char**argv) {
     /*    int j = (i % 8) + 1;*/
     int j = i;
     if(!cHtLookup(xid, dfaSet, &ht, &j, sizeof(int), buf, &buflen)) { printf ("lookup failed!"); }
-    printf("                                                        looked up !! key %d -> %d: %s %ld\n", i, j, buf, buflen);
+    printf("                                                        looked up !! key %d -> %d: %s %lld\n", i, j, buf, (long long)buflen);
   }
   
   cHtDelete(xid, dfaSet, &ht);

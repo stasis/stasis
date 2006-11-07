@@ -262,7 +262,7 @@ int openLogWriter() {
 	nextAvailableLSN = nextEntry_LogWriter(le); //le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);
 	crc = 0;
       } else { 
-	printf("Log corruption: %x != %x (lsn = %ld)\n", (unsigned int) le->prevLSN, crc, le->LSN);
+	printf("Log corruption: %x != %x (lsn = %lld)\n", (unsigned int) le->prevLSN, crc, le->LSN);
 	// The log wasn't successfully forced to this point; discard
 	// everything after the last CRC.
 	FreeLogEntry(le);
@@ -484,7 +484,7 @@ static LogEntry * readLogEntry() {
   lsn_t size;
   lsn_t entrySize;
   
-  ssize_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
+  lsn_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
 
   if(bytesRead != sizeof(lsn_t)) { 
     if(bytesRead == 0) {
@@ -503,9 +503,9 @@ static LogEntry * readLogEntry() {
 	abort();
 	return NULL;
       }
-      fprintf(stderr, "short read from log.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", sizeof(lsn_t), bytesRead);
+      fprintf(stderr, "short read from log.  Expected %lld bytes, got %lld.\nFIXME: This is 'normal', but currently not handled", (long long) sizeof(lsn_t), (long long) bytesRead);
       fflush(stderr);
-      fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
+      fprintf(stderr, "\nattempt to read again produced newBytesRead = %lld, newSize was %lld\n", newBytesRead, newSize);
       fflush(stderr);
 
       abort();  // XXX really abort here.  This code should attempt to piece together short log reads...
@@ -540,9 +540,9 @@ static LogEntry * readLogEntry() {
 	return NULL;
       }
 
-      fprintf(stderr, "short read from log w/ lsn %ld.  Expected %ld bytes, got %ld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
+      fprintf(stderr, "short read from log w/ lsn %lld.  Expected %lld bytes, got %lld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
       fflush(stderr);
-      fprintf(stderr, "\nattempt to read again produced newBytesRead = %ld, newSize was %ld\n", newBytesRead, newSize);
+      fprintf(stderr, "\nattempt to read again produced newBytesRead = %lld, newSize was %lld\n", newBytesRead, newSize);
       fflush(stderr);
 
       abort();
@@ -750,7 +750,7 @@ int truncateLog_LogWriter(lsn_t LSN) {
     if(logPos == -1) { 
       perror("Truncation couldn't seek");
     } else { 
-      printf("logfile was wrong length after truncation.  Expected %ld, found %ld\n", nextAvailableLSN - global_offset, logPos);
+      printf("logfile was wrong length after truncation.  Expected %lld, found %lld\n", nextAvailableLSN - global_offset, logPos);
       fflush(stdout);
       abort();
     }

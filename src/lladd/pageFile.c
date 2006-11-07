@@ -25,7 +25,7 @@
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
 
-static long myLseekNoLock(int f, long offset, int whence);
+static pageid_t myLseekNoLock(int f, pageid_t offset, int whence);
 
 static int oldOffset = -1;
 
@@ -33,8 +33,8 @@ int pageFile_isDurable = 1;
 
 void pageRead(Page *ret) {
 
-  long pageoffset;
-  long offset;
+  pageid_t pageoffset;
+  pageid_t offset;
 
   pageoffset = ret->id * PAGE_SIZE;
   pthread_mutex_lock(&stable_mutex);
@@ -74,8 +74,8 @@ void pageWrite(Page * ret) {
     DEBUG(" =^)~ "); 
     return; 
   }
-  long pageoffset = ret->id * PAGE_SIZE;
-  long offset ;
+  pageid_t pageoffset = ret->id * PAGE_SIZE;
+  pageid_t offset ;
 
   /*  assert(ret->pending == 0); */
   
@@ -166,9 +166,9 @@ void closePageFile() {
   stable = -1;
 }
 
-static long myLseekNoLock(int f, long offset, int whence) {
+static pageid_t myLseekNoLock(int f, pageid_t offset, int whence) {
   assert(! ( offset % 4096 ));
-  long ret = lseek(f, offset, whence);
+  pageid_t ret = lseek(f, offset, whence);
   if(ret == -1) {
     perror("Couldn't seek.");
     fflush(NULL);

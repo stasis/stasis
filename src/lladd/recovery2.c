@@ -251,7 +251,7 @@ static void Undo(int recovery) {
 	   records may be passed in by undoTrans.)*/
       break;
       default:
-	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%ld), skipping...\n", e->type, e->xid, e->LSN); 
+	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%lld), skipping...\n", e->type, e->xid, e->LSN); 
       break;
       }
       FreeLogEntry(e);

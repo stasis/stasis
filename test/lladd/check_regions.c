@@ -51,7 +51,7 @@ terms specified in this license.
 long myrandom(long x) {
   double xx = x;
   double r = random();
-  double max = ((long)RAND_MAX)+1;
+  double max = ((uint64_t)RAND_MAX)+1;
   max /= xx;
   return (long)((r/max));
 }

@@ -324,7 +324,7 @@ int receive_message(NetworkSetup *ns, Message *message, char *from) {
 
   if(message_size != sizeof(Message)) { 
     /* drop packet */
-    fprintf(stderr, "Size mismatch: %ld, %ld\n", message_size, sizeof(Message)); 
+    fprintf(stderr, "Size mismatch: %lld, %lld\n", (long long)message_size, (long long)sizeof(Message)); 
     return 0;
   } else {
     /* TODO: Callback to security stuff / crypto here? */

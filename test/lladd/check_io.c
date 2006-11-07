@@ -55,7 +55,7 @@ terms specified in this license.
 long myrandom(long x) {
   double xx = x;
   double r = random();
-  double max = ((long)RAND_MAX)+1;
+  double max = ((uint64_t)RAND_MAX)+1;
   max /= xx;
   return (long)((r/max));
 }
@@ -428,8 +428,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  //  tcase_add_test(tc, io_memoryTest);
-  //  tcase_add_test(tc, io_fileTest);
+  tcase_add_test(tc, io_memoryTest);
+  tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

@@ -72,6 +72,8 @@ terms specified in this license.
 #  define END_C_DECLS
 #endif /* __cplusplus */
 
+#define _FILE_OFFSET_BITS 64
+
 #include <stdint.h> // uint32, et. al.
 #include <limits.h>
 

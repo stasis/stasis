@@ -46,28 +46,28 @@ static lsn_t debug_end_position(stasis_handle_t *h) {
 static stasis_write_buffer_t * debug_write_buffer(stasis_handle_t * h, 
 						lsn_t off, lsn_t len) {
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call write_buffer(%lx, %ld, %ld)\n", 
+  printf("tid=%9ld call write_buffer(%lx, %lld, %lld)\n", 
 	 pthread_self(), (unsigned long)hh, off, len); fflush(stdout);
   stasis_write_buffer_t * ret = hh->write_buffer(hh,off,len);
   stasis_write_buffer_t * retWrap = malloc(sizeof(stasis_write_buffer_t));
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
-  printf("tid=%9ld retn write_buffer(%lx, %ld, %ld) = %lx\n", 
+  printf("tid=%9ld retn write_buffer(%lx, %lld, %lld) = %lx\n", 
 	 pthread_self(), (unsigned long)hh, off, len, (unsigned long)retWrap); fflush(stdout); 
   return retWrap; 
 }
 static stasis_write_buffer_t * debug_append_buffer(stasis_handle_t * h, 
 						   lsn_t len) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call append_buffer(%lx, %ld)\n", 
+  printf("tid=%9ld call append_buffer(%lx, %lld)\n", 
 	 pthread_self(), (unsigned long)hh, len); fflush(stdout);
   stasis_write_buffer_t * ret = hh->append_buffer(hh,len);
   stasis_write_buffer_t * retWrap = malloc(sizeof(stasis_write_buffer_t));
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
-  printf("tid=%9ld retn append_buffer(%lx, %ld) = %lx (off=%ld)\n", 
+  printf("tid=%9ld retn append_buffer(%lx, %lld) = %lx (off=%lld)\n", 
 	 pthread_self(), (unsigned long)hh, len, (unsigned long)retWrap, ret->off); fflush(stdout); 
   return retWrap;
   
@@ -85,14 +85,14 @@ static int debug_release_write_buffer(stasis_write_buffer_t * w_wrap) {
 static stasis_read_buffer_t * debug_read_buffer(stasis_handle_t * h,
 					      lsn_t off, lsn_t len) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call read_buffer(%lx, %ld, %ld)\n", 
+  printf("tid=%9ld call read_buffer(%lx, %lld, %lld)\n", 
 	 pthread_self(), (unsigned long)hh, off, len); fflush(stdout);
   stasis_read_buffer_t * ret = hh->read_buffer(hh,off,len);
   stasis_read_buffer_t * retWrap = malloc(sizeof(stasis_read_buffer_t));
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
-  printf("tid=%9ld retn read_buffer(%lx, %ld, %ld) = %lx\n", 
+  printf("tid=%9ld retn read_buffer(%lx, %lld, %lld) = %lx\n", 
 	 pthread_self(), (unsigned long)hh, off, len, (unsigned long)retWrap); fflush(stdout); 
   return retWrap; 
   
@@ -112,7 +112,7 @@ static int debug_release_read_buffer(stasis_read_buffer_t * r_wrap) {
 static int debug_write(stasis_handle_t * h, lsn_t off, 
 		     const byte * dat, lsn_t len) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call write(%lx, %ld, %lx, %ld)\n", pthread_self(), (unsigned long)hh, off, (unsigned long)dat, len); fflush(stdout);
+  printf("tid=%9ld call write(%lx, %lld, %lx, %lld)\n", pthread_self(), (unsigned long)hh, off, (unsigned long)dat, len); fflush(stdout);
   int ret = hh->write(hh, off, dat, len);
   printf("tid=%9ld retn write(%lx) = %d\n", pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
@@ -120,27 +120,27 @@ static int debug_write(stasis_handle_t * h, lsn_t off,
 static int debug_append(stasis_handle_t * h, lsn_t * off, 
 		      const byte * dat, lsn_t len) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call append(%lx, ??, %lx, %ld)\n", pthread_self(), (unsigned long)hh, (unsigned long)dat, len); fflush(stdout);
+  printf("tid=%9ld call append(%lx, ??, %lx, %lld)\n", pthread_self(), (unsigned long)hh, (unsigned long)dat, len); fflush(stdout);
   lsn_t tmpOff;
   if(!off) { 
     off = &tmpOff;
   }
   int ret = hh->append(hh, off, dat, len);
-  printf("tid=%9ld retn append(%lx, %ld, %lx, %ld) = %d\n", pthread_self(), (unsigned long)hh, *off, (unsigned long) dat, len, ret); fflush(stdout);
+  printf("tid=%9ld retn append(%lx, %lld, %lx, %lld) = %d\n", pthread_self(), (unsigned long)hh, *off, (unsigned long) dat, len, ret); fflush(stdout);
   return ret;
 
 }
 static int debug_read(stasis_handle_t * h, 
 		    lsn_t off, byte * buf, lsn_t len) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call read(%lx, %ld, %lx, %ld)\n", pthread_self(), (unsigned long)hh, off, (unsigned long)buf, len); fflush(stdout);
+  printf("tid=%9ld call read(%lx, %lld, %lx, %lld)\n", pthread_self(), (unsigned long)hh, off, (unsigned long)buf, len); fflush(stdout);
   int ret = hh->read(hh, off, buf, len);
   printf("tid=%9ld retn read(%lx) = %d\n", pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
 }
 static int debug_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call truncate_start(%lx, %ld)\n", pthread_self(), (unsigned long)hh, new_start); fflush(stdout);
+  printf("tid=%9ld call truncate_start(%lx, %lld)\n", pthread_self(), (unsigned long)hh, new_start); fflush(stdout);
   int ret = hh->truncate_start(hh, new_start);
   printf("tid=%9ld retn truncate_start(%lx) = %d\n", pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
