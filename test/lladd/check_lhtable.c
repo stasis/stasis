@@ -74,8 +74,8 @@ START_TEST(lhtableTest)
 
   char** keys = malloc(NUM_ENTRIES * sizeof(char*));
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(100);
-  for(int64_t i = 0; i < NUM_ENTRIES; i++) { 
-    int keyLen = asprintf(&(keys[i]), "--> %lld <--\n", i);
+  for(long i = 0; i < NUM_ENTRIES; i++) { 
+    int keyLen = asprintf(&(keys[i]), "--> %ld <--\n", i);
     assert(keyLen == strlen(keys[i]));
     assert(!LH_ENTRY(find)(t, keys[i], strlen(keys[i])));
     LH_ENTRY(insert)(t, keys[i], strlen(keys[i]), (void*)i);
@@ -83,11 +83,11 @@ START_TEST(lhtableTest)
 
   }
   
-  for(int64_t i = 0; i < NUM_ENTRIES; i+=2) { 
+  for(long i = 0; i < NUM_ENTRIES; i+=2) { 
     char * key;
-    asprintf(&key, "--> %lld <--\n", i);
+    asprintf(&key, "--> %ld <--\n", i);
     
-    assert((void*)i == LH_ENTRY(find)(t, key, strlen(key)));
+    assert(i == (long)LH_ENTRY(find)(t, key, strlen(key)));
     LH_ENTRY(remove)(t, keys[i], strlen(keys[i]));
     assert(!LH_ENTRY(find)(t, keys[i], strlen(keys[i])));
     free(key);
@@ -144,7 +144,7 @@ START_TEST(lhtableRandomized) {
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(myrandom(10000));
   int numSets = myrandom(MAXSETS);
   int* setLength = malloc(numSets * sizeof(int));
-  int** sets = malloc(numSets * sizeof(int*));
+  long** sets = malloc(numSets * sizeof(long*));
   int64_t nextVal = 1;
   int64_t eventCount = 0;
 
@@ -154,7 +154,7 @@ START_TEST(lhtableRandomized) {
 
   for(int i =0; i < numSets; i++) { 
     setLength[i] = myrandom(MAXSETLEN);
-    sets[i] = malloc(setLength[i] * sizeof(int));
+    sets[i] = malloc(setLength[i] * sizeof(long));
     eventCount += setLength[i];
     for(int j =0; j < setLength[i]; j++) {
       sets[i][j] = nextVal;
@@ -171,10 +171,10 @@ START_TEST(lhtableRandomized) {
     switch(eventType) { 
     case 0: // insert
       if(setNextAlloc[set] != setLength[set]) {
-	int keyInt = sets[set][setNextAlloc[set]];
+	long keyInt = sets[set][setNextAlloc[set]];
 	char * key = itoa(keyInt);
 	assert(!LH_ENTRY(find)(t, key, strlen(key)+1));
-	LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)(int64_t)keyInt);
+	LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)keyInt);
 	//	printf("i %d\n", keyInt);
 	assert(LH_ENTRY(find)(t, key, strlen(key)+1));
 	free(key);
@@ -190,22 +190,22 @@ START_TEST(lhtableRandomized) {
 	  setNextRead[set] = setNextDel[set];
 	}
 	assert(setNextRead[set] < setNextAlloc[set] && setNextRead[set] >= setNextDel[set]);
-	int64_t keyInt = sets[set][setNextRead[set]];
+	long keyInt = sets[set][setNextRead[set]];
 	char * key = itoa(keyInt);
-	int64_t fret = (int64_t)LH_ENTRY(find)(t, key, strlen(key)+1);
+	long fret = (long)LH_ENTRY(find)(t, key, strlen(key)+1);
 	assert(keyInt == fret);
-	assert(keyInt == (int64_t)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)(keyInt+1)));
-	assert(keyInt+1 == (int64_t)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)keyInt));
+	assert(keyInt == (long)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)(keyInt+1)));
+	assert(keyInt+1 == (long)LH_ENTRY(insert)(t, key, strlen(key)+1, (void*)keyInt));
 	free(key);
       }
       break;
     case 2: // delete
       if(setNextAlloc[set] != setNextDel[set]) { 
-	int keyInt = sets[set][setNextDel[set]];
+	long keyInt = sets[set][setNextDel[set]];
 	char * key = itoa(keyInt);
-	assert((int64_t)keyInt == (int64_t)LH_ENTRY(find)  (t, key, strlen(key)+1));
-	assert((int64_t)keyInt == (int64_t)LH_ENTRY(remove)(t, key, strlen(key)+1));
-	assert((int64_t)0 == (int64_t)LH_ENTRY(find)(t, key, strlen(key)+1));
+	assert(keyInt == (long)LH_ENTRY(find)  (t, key, strlen(key)+1));
+	assert(keyInt == (long)LH_ENTRY(remove)(t, key, strlen(key)+1));
+	assert(0 == (long)LH_ENTRY(find)(t, key, strlen(key)+1));
 	//	printf("d %d\n", keyInt);
 	free(key);
 	setNextDel[set]++;
