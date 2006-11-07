@@ -33,7 +33,9 @@ void dirtyPages_add(Page * p) {
     //assert(p->LSN);
     void* ret = pblHtLookup(dirtyPages, &(p->id), sizeof(int));
     assert(!ret);
-    pblHtInsert(dirtyPages, &(p->id), sizeof(int), (void*)p->LSN);
+    lsn_t * insert = malloc(sizeof(lsn_t));
+    *insert = p->LSN;
+    pblHtInsert(dirtyPages, &(p->id), sizeof(int), insert); //(void*)p->LSN);
   }
   pthread_mutex_unlock(&dirtyPages_mutex);
 }
@@ -65,10 +67,10 @@ static lsn_t dirtyPages_minRecLSN() {
   pthread_mutex_lock(&dirtyPages_mutex);
 
   for( pageid = (int*)pblHtFirst (dirtyPages); pageid; pageid = (int*)pblHtNext(dirtyPages)) { 
-    lsn_t thisLSN = (lsn_t) pblHtCurrent(dirtyPages);
+    lsn_t * thisLSN = (lsn_t*) pblHtCurrent(dirtyPages);
     //    printf("lsn = %d\n", thisLSN);
-    if(thisLSN < lsn) { 
-      lsn = thisLSN;
+    if(*thisLSN < lsn) { 
+      lsn = *thisLSN;
     }
   }
   pthread_mutex_unlock(&dirtyPages_mutex);
@@ -109,6 +111,10 @@ void dirtyPagesInit() {
 
 
 void dirtyPagesDeinit() { 
+  void * tmp;
+  for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
+    free(pblHtCurrentKey(dirtyPages));
+  }
   pblHtDelete(dirtyPages);
   dirtyPages = 0;
 }
