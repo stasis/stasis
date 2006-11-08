@@ -73,16 +73,18 @@ void bufferPoolInit() {
 
   byte * bufferSpace ;
 
-#ifdef HAVE_POSIX_MEMALIGN
+  /*#ifdef HAVE_POSIX_MEMALIGN
   int ret = posix_memalign((void*)&bufferSpace, PAGE_SIZE, PAGE_SIZE * (MAX_BUFFER_SIZE + 1));
   assert(!ret);
   addressFromMalloc = bufferSpace;
-#else
+  #else*/
   bufferSpace = malloc(PAGE_SIZE * (MAX_BUFFER_SIZE + 2));
   assert(bufferSpace);
   addressFromMalloc = bufferSpace;
-  bufferSpace += PAGE_SIZE - (bufferSpace % PAGE_SIZE);
-#endif
+  bufferSpace = (byte*)(((long)bufferSpace) + 
+			PAGE_SIZE - 
+			(((long)bufferSpace) % PAGE_SIZE));
+  //#endif
 
   for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     pool[i].rwlatch = initlock();
