@@ -1,8 +1,30 @@
-LLADD is an experimental Lightweight Library for Atomicity and Durability of Data.
+Stasis is an experimental flexible transactional storage library.
 
 Please see the COPYING file for licensing information.  
 
+First, make sure you have the appropriate dependencies:
+
+'make check' requires the GNU check library, 'make doc' requires Doxygen.
+
+You'll need Berkeley DB to build; it isn't actually used by Stasis, but 
+I haven't gotten around to making it optional.
+
+You also need libconfuse; it is used by some of the programs that ship 
+with Stasis.
+
+
 To build, do:
+
+./reconf
+
+or 
+
+./reconf-1.8
+
+You'll need to have a version of automake >= 1.7 for ./reconf to work,
+or have automake 1.8 for ./reconf-1.8 to work.  Different packages of
+automake should be able to coexist on the same system, and probably
+ship with your distribution.
 
 ./configure
 make
@@ -15,46 +37,10 @@ make docs
 
 after configure.
 
-'make check' requires the GNU check library, 'make doc' requires Doxygen.
+We don't support "make install". ;)
 
-We haven't tested make install. ;)
+For up-to date coverage reports and unit test pass rates, see 
+http://www.cs.berkeley.edu/~sears/stasis/
 
-If you want to install check to a non-standard location, try this:
-
-./configure --with-check=/home/eecs/sears/check
-
-
-This package contains a copy of Peter Graf's Program Base Library, PBL, which is
-distributed under the terms of the LGPL.
-
-The original version can be found at:
-
-http://mission.base.com/peter/source/
-
-LLADD's version of the package adds the jbhash.* files, and compiles PBL using
-LLADD's make files.  Currently, LLADD's hash table implementations are based upon
-code from PBL, and pbl is used in a number of places throughout LLADD.
-
-In order to use gcc's profiling and coverage tools (gprof, and gcov, respectively),
- execute this command:
-
-export CFLAGS="-fprofile-arcs -ftest-coverage -pg -O0"
-./configure
-make clean
-make check
-
-
-The 'make check' step will output profiles and test coverage that reflects the test
-cases.  You can simply invoke 'make' if you are interested in profiling the 
-library for a specific program.
-
-To produce the gcov output, you may then run this command in src/
-
-ls *.c logger/*.c operations/*.c page/*.c | xargs -n 1 gcov | grep  executed | sort -k1,1n
-
-Or, run this:
-
-lcov -c --directory .  > tmp.info
-genhtml tmp.info
-
-For HTML output.
+The unit test logs for lcov describe how the coverage report was 
+generated.
