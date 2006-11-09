@@ -2,6 +2,11 @@ Stasis is an experimental flexible transactional storage library.
 
 Please see the COPYING file for licensing information.  
 
+More information about installation, a tutorial and API documentation
+are available at:
+
+http://lladd.sourceforge.net/developers/html/
+
 First, make sure you have the appropriate dependencies:
 
 'make check' requires the GNU check library, 'make doc' requires Doxygen.
