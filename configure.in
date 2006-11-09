@@ -67,15 +67,13 @@ if test "$db_cv_open_o_direct" = "yes"; then
 	AH_TEMPLATE(HAVE_O_DIRECT, [Define to 1 if you have the O_DIRECT flag.])
 fi
 
-AC_CONFIG_DB
-
 AC_CHECK_LIB([check], [suite_create], , AC_MSG_WARN([Check not found; cannot run unit tests!]))
 
 ## This perl script thing is a total hack, but we need to define HAVE_LIBCHECK
 ## inside of an AM_CONDITIONAL to get conditional compilation to work.
 AM_CONDITIONAL(HAVE_LIBCHECK, echo $LIBS | [
 perl -ne 'if($_=~/-lcheck/) 
-   { print qq(Check found, make check will run full test suite.
+   { print qq(Check found, make check will run test suites.  --enable-confuse will enable extra tests of old code.
 ); exit 0; } else { print qq(
 --------------------------------
 
@@ -85,6 +83,8 @@ Check not found!  Most tests will be skipped by make check!
 
 --------------------------------
 ); exit 1; }'])
+
+
 
 #have_libcheck", "xyes")
 #AC_CHECK_LIB([check], 
@@ -96,7 +96,47 @@ Check not found!  Most tests will be skipped by make check!
 #AM_CONDITIONAL(HAVE_CHECK, test xyes, xyes)
 AC_CHECK_LIB([m], [sqrt])
 AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([confuse], [cfg_set_validate_func])
+#AC_CHECK_LIB([confuse], [cfg_set_validate_func])
+## Repeat hack for LIBCONFUSE
+
+AC_ARG_ENABLE([deprecated-networking],
+  AC_HELP_STRING([--enable-network],
+                 [Enables old networking code.  Requires libconfuse]),
+  if test x$enableval = xno ; then
+     echo "Networking disabled; not checking for confuse"
+  else
+     AC_CHECK_LIB([confuse], [cfg_set_validate_func])
+  fi,
+  echo "Networking disabled; not checking for confuse"
+)
+
+# Repeat hack for LIBCONFUSE
+AM_CONDITIONAL(HAVE_LIBCONFUSE, echo $LIBS | [
+perl -ne 'if($_=~/-lconfuse/) 
+   { print qq(Confuse found, make check will run full test suite.
+); exit 0; } else { print qq(Confuse not found; will skip networked stuff.
+); exit 1; }'])
+
+
+AC_ARG_ENABLE([pobj],
+  AC_HELP_STRING([--enable-pobj], [Build pobj]),
+  AM_CONDITIONAL(BUILD_POBJ, test x$enableval = xyes),
+  AM_CONDITIONAL(BUILD_POBJ, false)
+)
+
+AC_ARG_ENABLE([benchmarks],
+  AC_HELP_STRING([--enable-benchmarks], 
+                 [Build benchmarks.  Requires Berkeley DB >= 4.2]),
+  AM_CONDITIONAL(BUILD_BENCHMARKS, test x$enableval = xyes),
+#  AC_CONFIG_DB,
+  AM_CONDITIONAL(BUILD_BENCHMARKS, false)
+)
+
+AC_CONFIG_DB
+
+AC_CHECK_LIB([intl], [bindtextdomain])
+AC_CHECK_LIB([c], [bindtextdomain])
+
 # Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
@@ -109,6 +149,9 @@ AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+
+#enable largefile support.
+AC_SYS_LARGEFILE
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE

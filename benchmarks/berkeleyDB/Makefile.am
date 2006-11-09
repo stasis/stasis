@@ -1,3 +1,6 @@
-LDADD=-lpthread
+if BUILD_BENCHMARKS
+if DB_ENABLED
+LDADD=@DB_LIBS@
 bin_PROGRAMS=transapp bdbRaw bdbHash bdbHashThreaded bdbHashWriteRequests
-AM_CFLAGS=-g
+endif
+endif

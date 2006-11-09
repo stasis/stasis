@@ -69,11 +69,15 @@ AC_DEFUN([AC_CONFIG_DB], [
         LDFLAGS="$LDFLAGS -L$dtn_cv_path_db_lib"
     fi
 
-    LIBS="$LIBS -l$dtn_cv_lib_db"
+    #LIBS="$LIBS -l$dtn_cv_lib_db"
+    DB_LIBS="-l$dtn_cv_lib_db"
 
     fi # DB_ENABLED
 
     AC_SUBST(DB_ENABLED)
+    AC_SUBST(DB_LIBS)
+    AM_CONDITIONAL(DB_ENABLED, test x$ac_dbdir != xno)
+    #AM_CONDITIONAL(DB_ENABLED, $DB_ENABLED)
 ])
 
 dnl

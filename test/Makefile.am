@@ -1,6 +1,16 @@
-SUBDIRS = lladd monotree messages dfa 2pc cht pobj
 #INCLUDES = @CHECK_CFLAGS@
 if HAVE_LIBCHECK
+
+SUBDIRS = lladd
+
+if HAVE_LIBCONFUSE
+SUBDIRS += monotree messages dfa 2pc cht 
+endif
+
+if BUILD_POBJ
+SUBDIRS += pobj
+endif 
+
 TESTS = check_check
 else
 TESTS = 

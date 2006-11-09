@@ -231,7 +231,7 @@ state_name veto_or_prepare_cht(void * dfaSet, StateMachine * stateMachine, Messa
   return ret;
 }
 state_name eval_action_cht(void * dfaSet, StateMachine * stateMachine, Message * m, char * from) {
-  state_name ret;
+  state_name ret = -1;
   setup_vars;
 
   int xid = getXid(ht_xid, app_state_cht->xid_ht, stateMachine->machine_id);
