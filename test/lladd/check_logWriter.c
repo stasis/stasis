@@ -267,12 +267,13 @@ pthread_mutex_t random_mutex;
 lsn_t truncated_to = 4;
 //pthread_mutex_t truncated_to_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#define NO_CONCURRENCY
+#ifdef NO_CONCURRENCY
+pthread_mutex_t big = PTHREAD_MUTEX_INITIALIZER;
+#endif
 static void* worker_thread(void * arg) {
   long key = *(int*)arg;
   long i = 0;
-
-
-
 
   lsn_t lsns[ENTRIES_PER_THREAD];
 
@@ -303,20 +304,35 @@ static void* worker_thread(void * arg) {
     pthread_mutex_unlock(&random_mutex);
 
     if(needToTruncate) { 
+#ifdef NO_CONCURRENCY      
+      pthread_mutex_lock(&big);
+#endif
       LogTruncate(myTruncVal);
+#ifdef NO_CONCURRENCY      
+      pthread_mutex_unlock(&big);
+#endif      
       assert(LogTruncationPoint() >= myTruncVal);
     }
 
     if(threshold < 3) {
     } else {
       le->xid = i+key;
+#ifdef NO_CONCURRENCY      
+      pthread_mutex_lock(&big);
+#endif
       LogWrite(le);
+#ifdef NO_CONCURRENCY      
+      pthread_mutex_unlock(&big);
+#endif
       //printf("reportedLSN: %ld\n", le->LSN);
       lsns[i] = le->LSN;
       i++;
     }
     /*    fail_unless(1, NULL); */
     pthread_mutex_lock(&random_mutex);
+#ifdef NO_CONCURRENCY      
+    //pthread_mutex_lock(&big);
+#endif
     if(lsns[entry] > truncated_to && entry < i) {
       /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
       lsn_t lsn = lsns[entry];
@@ -330,6 +346,9 @@ static void* worker_thread(void * arg) {
     } else { 
       pthread_mutex_unlock(&random_mutex);
     }
+#ifdef NO_CONCURRENCY      
+    //pthread_mutex_unlock(&big);
+#endif
     /*    fail_unless(1, NULL); */
 	
     /* Try to interleave requests as much as possible */
@@ -500,10 +519,10 @@ Suite * check_suite(void) {
   tcase_add_test(tc, loggerTruncate);
   tcase_add_test(tc, loggerCheckWorker);
   tcase_add_test(tc, loggerCheckThreaded);
-  if(loggerType != LOG_TO_MEMORY) {
+  /*  if(loggerType != LOG_TO_MEMORY) {
     tcase_add_test(tc, loggerReopenTest);
     tcase_add_test(tc, loggerTruncateReopenTest);
-  }
+    }*/
 
   /* --------------------------------------------- */
   
