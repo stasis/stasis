@@ -3,27 +3,16 @@ dnl Autoconf support for finding Berkeley DB
 dnl
 
 AC_DEFUN([AC_DB_HELP], [
-cat <<EOF
+AC_MSG_NOTICE([
+Could not find Berkeley DB.  Stasis includes benchmarks that use it.
+They will not be built.
 
-Configure error with Berkeley DB...
-
-If your installed version is not one of [$dbversions], you may
+If your installed version is not one of the ones searched for, you may
 have to specify it with --with-dbver.
 
 If your installation is in a non-standard path, you can specify
 it with --with-db=DIR.
-
-To download the latest version, go to http://www.sleepycat.com
-To build and install to /usr/local/BerkeleyDB-<version>:
-
-# cd <db_download_dir>/build_unix
-# ../dist/configure --enable-cxx
-# make
-# make install
-
-EOF
-
-])
+])])
 
 dnl
 dnl Main macro for finding a usable db installation 
@@ -187,6 +176,7 @@ AC_DEFUN([AC_FIND_DB], [
 
     if test x$dtn_cv_path_db_h = x ; then
         AC_DB_HELP
-        AC_MSG_ERROR([can't find usable Berkeley DB installation])
+        #AC_MSG_WARN([can't find usable Berkeley DB installation])
+	DB_ENABLED=0
     fi
 ])
