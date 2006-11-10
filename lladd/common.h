@@ -105,9 +105,9 @@ extern int errno;
 typedef unsigned char byte;
 //@todo lsn_t should be unsigned.
 // If it were unsigned, it could be typedef'ed from size_t.
-typedef int64_t lsn_t;
+typedef long long lsn_t;
 #define LSN_T_MAX    INT64_MAX
-typedef int64_t pageid_t;
+typedef long long pageid_t;
 #define PAGEID_T_MAX INT64_MAX
 
 /*#define DEBUGGING   */
