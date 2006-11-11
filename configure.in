@@ -144,6 +144,8 @@ AC_ARG_ENABLE([benchmarks],
 
 AC_CONFIG_DB
 
+AM_CONDITIONAL(DB_ENABLED, test $DB_ENABLED = 1)
+
 if test x$build_benchmarks = xyes ; then 
 if test $DB_ENABLED = 0; then 
 AC_MSG_WARN([Could not find Berkeley DB; some benchmarks will not be built])
@@ -152,6 +154,7 @@ AM_CONDITIONAL(BUILD_BENCHMARKS, true)
 else
 AM_CONDITIONAL(BUILD_BENCHMARKS, false)
 fi
+
 
 AC_CHECK_LIB([intl], [bindtextdomain])
 AC_CHECK_LIB([c], [bindtextdomain])
