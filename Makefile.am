@@ -1,8 +1,8 @@
 EXTRA_DIST = reconf
 SUBDIRS = src test utilities benchmarks
-export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -Winline -DPBL_COMPAT
+export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -DPBL_COMPAT
 ## GOAL:  Make these not warn!
-#-Wextra -Wno-unused-parameter
+#-Wextra -Wno-unused-parameter -Winline
 
 # -feliminate-unused-debug-symbols -feliminate-unused-debug-types -funit-at-a-time -finline-functions -fno-keep-static-consts
 
