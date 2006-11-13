@@ -43,7 +43,7 @@ terms specified in this license.
 /**
  * @defgroup LLADD_CORE  Core API
  *
- * The minimal subset of LLADD necessary to implement transactional consistency.
+ * The minimal subset of Stasis necessary to implement transactional consistency.
  *
  * This module includes the standard API (excluding operations), the
  * logger, the buffer mananger, and recovery code.
@@ -55,28 +55,38 @@ terms specified in this license.
  *
  */
 /**
-   @mainpage Introduction to LLADD
+   @mainpage Introduction to Stasis
    
    @section compiling Compiling and installation
    
    Prerequisites:
    
-   - automake 1.8+: needed to build from CVS
-   - libconfuse: configuration file parser_range
-   - libcheck: A unit testing framework (optional, needed to run most of the self-tests)
-   - BerkeleyDB: Used by the benchmarking code for purposes of comparison (Should 
-     eventually be made optional)  The benchmarks have been tested with BerkeleyDB 4,2
+   - automake 1.8+: needed to build from CVS 
+   - <a href="http://check.sourceforge.net">check</a>: A unit testing 
+     framework (needed to run the self-tests)
+
+   Optional:
+
+   - libconfuse: Used by older networking code to parse configuration options.
+   - BerkeleyDB: Used by the benchmarking code for purposes of comparison. 
    
-   Development is currently performed under Debian's Testing branch.  Unless 
-   noted above, the most recent version is the one used for development.
+   Development is currently performed under Debian's Testing branch.
    
-   To compile LLADD, first check out a copy with CVS, then:
+   To compile Stasis, first check out a copy with CVS:
+
+   @code
+
+   $  cvs -z3 -d:pserver:anonymous@lladd.cvs.sourceforge.net:/cvsroot/lladd co -P lladd
+
+   @endcode
+
+   then:
    
    @code
    
    $ ./reconf
-   $ ./configure
-   $ make
+   $ ./configure --quiet
+   $ make -j4 > /dev/null
    $ cd test/lladd
    $ make check
    
@@ -90,19 +100,23 @@ terms specified in this license.
    @code
 
    $ ./reconf-1.8
-   $ ./configure
-   $ make
+   $ ./configure --quiet
+   $ make -j4 > /dev/null
    $ cd test/lladd
    $ make check
 
    @endcode
 
+   Of course, you can omit "--quiet" and "> /dev/null", but configure
+   and make both produce quite a bit of output that may obscure useful
+   warning messages.
+
    'make install' is currently unsupported.  Look in utilities/ for an example of a 
-   simple program that uses LLADD.  Currently, most generally useful programs 
-   written on top of LLADD belong in lladd/src/apps, while utilities/ contains 
+   simple program that uses Stasis.  Currently, most generally useful programs 
+   written on top of Stasis belong in lladd/src/apps, while utilities/ contains 
    programs useful for debugging the library.
    
-   @section usage Using LLADD in your software
+   @section usage Using Stasis in your software
    
    Synopsis:
    
@@ -118,7 +132,7 @@ terms specified in this license.
    
    int xid = Tbegin();
    recordid rid = Talloc(xid, sizeof(int)); 
-   Tset(xid, rid, i);    // the application is responsible for memory management.
+   Tset(xid, rid, &i);   // the application is responsible for memory management.
                          // Here, stack-allocated integers are used, although memory
 			 // from malloc() works as well.
    Tcommit(xid); 
@@ -137,24 +151,20 @@ terms specified in this license.
    self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and 
    Tdeinit() initialize the library, and clean up when the program is finished.
    
-   Other partiularly useful functions are ThashAlloc(), ThashDelete(), 
-   ThashInsert(), ThashRemove(), and ThashLookup() which provide a re-entrant 
-   linear hash implementation.  Currently, the hashtable only supports fixed 
-   length keys and values (the lengths are set when the hashtable is created).  
-   ThashIterator() and ThashNext() provide an iterator over the hashtable's 
-   values.  Also of general use is the Tprepare() function which guarantees that 
-   a transaction's current state will survive a system crash, but does not cause
-   the transaction to commit.
+   Other partiularly useful functions are ThashCreate(), ThashDelete(),
+   ThashInsert(), ThashRemove(), and ThashLookup() which provide a
+   re-entrant linear hash implementation.  ThashIterator() and
+   ThashNext() provide an iterator over the hashtable's values.
    
    @subsection bootstrap Reopening a closed data store
    
-   LLADD imposes as little structure upon the application's data structures as 
+   Stasis imposes as little structure upon the application's data structures as 
    possible.  Therefore, it does not maintain any information about the contents
    or naming of objects within the page file.  This means that the application 
    must maintain such information manually.
    
-   In order to facilitate this, LLADD provides the function TgetRecordType() and
-   guarantess that the first recordid returned by any allocation will point to 
+   In order to facilitate this, Stasis provides the function TgetRecordType() and
+   guarantees that the first recordid returned by any allocation will point to 
    the same page and slot as the constant ROOT_RECORD.  TgetRecordType 
    will return NULLRID if the record passed to it does not exist.  
    
@@ -195,39 +205,50 @@ terms specified in this license.
    
    @see OPERATIONS for more operations that may be useful for your software.
    
-   @subsection consistency  Using LLADD in multithreaded applications.
+   @subsection consistency  Using Stasis in multithreaded applications.
    
-   Unless otherwise noted, LLADD's operations are re-entrant.  This means that 
-   an application may call them concurrently without corrupting LLADD's internal
-   data structures.  However, this does not mean that LLADD provides full
-   transactional consistency or serializable schedules.  Therefore, an application 
-   must manipulate data in a way that ensures logical consistency.  In other words, 
-   if two threads attempt to write to the same data value simultaneously, the result 
-   is undefined.  In database terms, you could say that LLADD only provides latches, 
-   or that all read and write locks are 'short'.  
+   Unless otherwise noted, Stasis' operations are re-entrant.  This
+   means that an application may call them concurrently without
+   corrupting Stasis' internal data structures.  However, this does
+   not mean that Stasis provides full transactional consistency or
+   serializable schedules.  Therefore, an application must manipulate
+   data in a way that ensures logical consistency.  In other words, if
+   two threads attempt to write to the same data value simultaneously,
+   the result is undefined.  In database terms, you could say that
+   Stasis only provides latches.  
+
+   This is different than saying all read and write locks are 'short';
+   short write locks would guarantee that once two concurrent writes
+   complete, one of the values have been stored.  Stasis does not
+   guarantee this although some of its data structures do have this
+   property.
    
-   If you are unfamiliar with the terms above, but are familiar with multithreaded
-   software development, don't worry.  These semantics closely match those 
-   provided by typical operating system thread implementations, and we recommend
-   the use of pthread's mutexes, or a similar synchronization mechanism to 
-   protect the logical consistency of application data.
-   
-   Finally, LLADD asumes that each thread has its own transaction; concurrent calls
-   within the same transaction are not supported.  This restriction may be lifted in 
-   the future.
+   From the point of view of conventional multithreaded software
+   development, Stasis closely matches the semantics provided by
+   typical operating system thread implementations.  However, it
+   allows transactions to abort and rollback independently of each
+   other.  This means that transactions may observe the effects of
+   transactions that will eventually abort.
+
+   Finally, Stasis asumes that each thread has its own transaction;
+   concurrent calls within the same transaction are not supported.
+   This restriction may be removed in the future.
    
    @section selfTest The self-test suite
    
-   LLADD includes an extensive self test suite which may be invoked by running 
-   'make check' in LLADD's root directory.
+   Stasis includes an extensive self test suite which may be invoked
+   by running 'make check' in Stasis' root directory.  Some of the
+   tests are for older, unmaintained code that was built on top of
+   Stasis.  Running 'make check' in test/lladd runs all of the Stasis
+   tests.
    
-   @section archictecture LLADD's architecture 
+   @section archictecture Stasis' architecture 
    
-   @todo Provide a brief summary of LLADD's architecture.
+   @todo Provide a brief summary of Stasis' architecture.
    
    @section extending Implementing you own operations
    
-   @todo Provide a tutorial that explains howto extend LLADD with new operations.
+   @todo Provide a tutorial that explains howto extend Stasis with new operations.
    
    @see increment.h for an example of a very simple logical operation. 
    @see linearHashNTA.h for a more sophisticated example that makes use of Nested Top Actions.
@@ -249,7 +270,7 @@ terms specified in this license.
 /**
  * @file 
  *
- * Defines LLADD's primary interface.
+ * Defines Stasis' primary interface.
  *
  *
  *
@@ -305,7 +326,7 @@ extern const recordid NULLRID;
 #include "operations.h"
 
 /**
- * Currently, LLADD has a fixed number of transactions that may be
+ * Currently, Stasis has a fixed number of transactions that may be
  * active at one time.
  */
 #define EXCEED_MAX_TRANSACTIONS 1
@@ -335,7 +356,7 @@ int Tinit();
 int Tbegin();
 
 /**
- * Used when extending LLADD.
+ * Used when extending Stasis.
  * Operation implementors should wrap around this function to provide more mnuemonic names.
  *
  * @param xid          The current transaction.

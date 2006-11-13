@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------
 # Project related configuration options
 #---------------------------------------------------------------------------
-PROJECT_NAME           = "LLADD Internals"
+PROJECT_NAME           = "Stasis API"
 PROJECT_NUMBER         = 1
 OUTPUT_DIRECTORY       = doc/developers
 OUTPUT_LANGUAGE        = English
