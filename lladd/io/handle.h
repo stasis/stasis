@@ -97,7 +97,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * (*slow_fact
 						   stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
 						   void * fast_factory_arg,
 						   int worker_thread_count,
-						   lsn_t buffer_size);
+						   lsn_t buffer_size, int max_writes);
 stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
 
