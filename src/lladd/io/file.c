@@ -22,6 +22,17 @@ typedef struct file_impl {
   char * filename;
 } file_impl;
 
+static int updateEOF(stasis_handle_t * h) {
+  file_impl * impl = h->impl;
+  off_t pos = lseek(impl->fd, 0, SEEK_END);
+  if(pos == (off_t)-1) { 
+    return errno;
+  } else {
+    impl->end_pos = pos;
+    return 0;
+  }
+}
+
 static int file_num_copies(stasis_handle_t * h) { return 0; }
 static int file_num_copies_buffer(stasis_handle_t * h) { return 0; }
 
@@ -43,10 +54,18 @@ static lsn_t file_start_position(stasis_handle_t *h) {
   pthread_mutex_unlock(&(impl->mut));
   return ret;
 }
+
 static lsn_t file_end_position(stasis_handle_t *h) { 
   file_impl * impl = (file_impl*)h->impl;
   pthread_mutex_lock(&(impl->mut));
-  lsn_t ret = impl->end_pos;
+  int error = updateEOF(h);
+  int ret;
+  if(error) { 
+    h->error = error;
+    ret = -1;
+  } else { 
+    ret = impl->end_pos;
+  }
   pthread_mutex_unlock(&(impl->mut));
   return ret;
 }
@@ -130,8 +149,13 @@ static int file_read(stasis_handle_t * h,
   file_impl * impl = (file_impl*)(h->impl);
   pthread_mutex_lock(&(impl->mut));
   int error = 0;
-  if(off < impl->start_pos || off + len > impl->end_pos) {
+  if(off < impl->start_pos) {
     error = EDOM;
+  } else if(off + len > impl->end_pos) {
+    error = updateEOF(h);
+    if(!error && off + len > impl->end_pos) {
+      error = EDOM;
+    }
   }
 
   if(!error) { 
@@ -387,7 +411,10 @@ static int file_truncate_start(stasis_handle_t * h, lsn_t new_start) {
   int error = 0;
 
   if(new_start > impl->end_pos) { 
-    error = EDOM;
+    updateEOF(h);
+    if(!error && new_start > impl->end_pos) { 
+      error = EDOM;
+    }
   } else if(new_start > impl->start_pos) { 
     char * tmpfile = malloc(strlen(impl->filename)+2);
     strcpy(tmpfile, impl->filename);
