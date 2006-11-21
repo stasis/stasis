@@ -106,8 +106,8 @@ void handle_smoketest(stasis_handle_t * h) {
   
   int three_read = 0;
   int four_read = 0;
-  
-  assert(! h->read(h, 2*sizeof(int), (byte*)&three_read, sizeof(int)));
+  ret = h->read(h, 2*sizeof(int), (byte*)&three_read, sizeof(int)); 
+  assert(!ret);
 
   r = h->read_buffer(h, 3*sizeof(int), sizeof(int));
   memcpy(&four_read, r->buf, sizeof(int));
@@ -186,17 +186,19 @@ void load_handle(thread_arg* t) {
 	}
       } break;
       case 2: {	  // append
+	lsn_t oldend = h->end_position(h);
 	int ret = h->append(h, &(offsets[val]), (const byte*)&(t->values[val]), sizeof(int));
-	assert(!ret);
+	assert(!ret || oldend < h->start_position(h));
       } break;
       case 3: {	  // append_buffer
+	lsn_t oldend = h->end_position(h);
 	stasis_write_buffer_t * w = h->append_buffer(h, sizeof(int));
 	if(!w->error) {
 	  *((int*)w->buf) = t->values[val];
 	  assert(w->len == sizeof(int));
 	  offsets[val] = w->off;
 	} else {
-	  abort();
+	  assert(oldend < h->start_position(h));
 	}
 	w->h->release_write_buffer(w);
       } break;
@@ -271,7 +273,6 @@ void load_handle(thread_arg* t) {
 
 void handle_sequentialtest(stasis_handle_t * h) { 
   time_t seed = time(0);
-  //time_t seed = 0;
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
@@ -354,7 +355,7 @@ START_TEST(io_fileTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  handle_concurrencytest(h);
+  //  handle_concurrencytest(h);
   h->close(h);
 
   unlink("logfile.txt");
@@ -393,7 +394,7 @@ START_TEST(io_nonBlockingTest) {
 
   h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 
 				       fast_factory, 0,
-				       5, 1024*1024);
+				       5, 1024*1024, 100);
   //  h = stasis_handle(open_debug)(h);
   handle_smoketest(h);
   h->close(h);
@@ -401,7 +402,7 @@ START_TEST(io_nonBlockingTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0, 
-				       5, 1024*1024);
+				       5, 1024*1024, 100);
   //h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
@@ -409,7 +410,7 @@ START_TEST(io_nonBlockingTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0,
-				       5, 1024 * 1024);
+				       5, 1024 * 1024, 100);
   handle_concurrencytest(h);
   h->close(h);
 
@@ -428,8 +429,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, io_memoryTest);
-  tcase_add_test(tc, io_fileTest);
+  //  tcase_add_test(tc, io_memoryTest);
+  //tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
