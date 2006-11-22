@@ -28,7 +28,7 @@ static int updateEOF(stasis_handle_t * h) {
   if(pos == (off_t)-1) { 
     return errno;
   } else {
-    impl->end_pos = pos;
+    impl->end_pos = impl->start_pos + pos;
     return 0;
   }
 }
@@ -248,10 +248,9 @@ static int file_write(stasis_handle_t *h, lsn_t off, const byte * dat, lsn_t len
 static int file_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len) { 
   file_impl * impl = (file_impl*)(h->impl);
   pthread_mutex_lock(&impl->mut);
+  updateEOF(h);
   *off = impl->end_pos;
-  if(impl->end_pos < *off+len){ 
-    impl->end_pos = *off+len;
-  }
+  impl->end_pos += len;
   int error = file_write_unlocked(h, *off, dat, len);
   pthread_mutex_unlock(&impl->mut);
   return error;
@@ -316,6 +315,7 @@ static stasis_write_buffer_t * file_append_buffer(stasis_handle_t * h,
 
   // Obtain an appropriate offset
   pthread_mutex_lock(&(impl->mut));
+  updateEOF(h);
   off_t off = impl->end_pos;
   impl->end_pos += len;
   pthread_mutex_unlock(&(impl->mut));
@@ -415,7 +415,9 @@ static int file_truncate_start(stasis_handle_t * h, lsn_t new_start) {
     if(!error && new_start > impl->end_pos) { 
       error = EDOM;
     }
-  } else if(new_start > impl->start_pos) { 
+  }
+
+  if(!error && new_start > impl->start_pos) { 
     char * tmpfile = malloc(strlen(impl->filename)+2);
     strcpy(tmpfile, impl->filename);
     tmpfile[strlen(tmpfile)+1] = '\0';
