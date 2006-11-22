@@ -38,10 +38,10 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+#include <check.h>
 #include <config.h>
 #include <lladd/io/handle.h>
 
-#include <check.h>
 #include <assert.h>
 
 #include <sys/types.h>
@@ -429,8 +429,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 600); // ten minute timeout
 
   /* Sub tests are added, one per line, here */
-  //  tcase_add_test(tc, io_memoryTest);
-  //tcase_add_test(tc, io_fileTest);
+  tcase_add_test(tc, io_memoryTest);
+  tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
