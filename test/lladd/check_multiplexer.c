@@ -39,12 +39,12 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+#include <check.h>
 #include <lladd/transactional.h>
 #include <pbl/pbl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <config.h>
-#include <check.h>
 
 #include <assert.h>
 

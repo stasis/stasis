@@ -38,10 +38,10 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+#include <check.h>
 #include <config.h>
 #include <lladd/common.h>
 #include <../../src/lladd/latches.h>
-#include <check.h>
 #include <assert.h>
 
 #include <lladd/transactional.h>
