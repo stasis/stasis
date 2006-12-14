@@ -122,7 +122,7 @@ terms specified in this license.
    
    @code
    
-   #include <lladd/transaction.h>
+   #include <lladd/transactional.h>
    
    ...
    
