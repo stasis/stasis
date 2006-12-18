@@ -2,7 +2,10 @@
 #include <assert.h>
 #include <lladd/transactional.h>
 
-/*
+/**
+
+  @file 
+
   Basic first program
 
   Transactionally stores one integer, which is the version number of the store.

@@ -199,6 +199,8 @@ terms specified in this license.
    
    @endcode
 
+   @see test.c for a complete, executable example of reopeneing an existing store.
+
    @todo Explain how to determine the correct value of rootEntry.size in the case
          of a hashtable.
    
