@@ -142,7 +142,7 @@ Operation getSet() {
 }
 Operation getSetRaw() { 
 	Operation o = {
-		OPERATION_INSTANT_SET, /* id */
+		OPERATION_SET_RAW, /* id */
 		SIZEOF_RECORD, /* use the size of the record as size of arg */
 		NO_INVERSE, 
 		&operate /* Function */
