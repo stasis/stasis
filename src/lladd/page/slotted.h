@@ -71,10 +71,10 @@ Slotted page layout:
 #define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
 #endif
 
-void slottedWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
-void slottedRead(int xid, Page * page, recordid rid, byte *buff);
-void slottedWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const byte *data);
-void slottedReadUnlocked(int xid, Page * page, recordid rid, byte *buff);
+void slottedWrite(Page * page, recordid rid, const byte *data);
+void slottedRead(Page * page, recordid rid, byte *buff);
+void slottedWriteUnlocked(Page * page, recordid rid, const byte *data);
+void slottedReadUnlocked(Page * page, recordid rid, byte *buff);
 
 void slottedPageInitialize(Page * p);
 

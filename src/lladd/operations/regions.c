@@ -29,7 +29,7 @@ static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid
   slottedPageInitialize(p);
   *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
   slottedPostRalloc(xid, p, lsn, rid);
-  slottedWrite(xid, p, lsn, rid, dat);
+  slottedWrite(p, rid, dat);
   return 0;
 }
 
