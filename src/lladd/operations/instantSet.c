@@ -50,8 +50,8 @@ terms specified in this license.
 #include "../page/fixed.h"
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  //        writeRecord(xid, p, lsn, rid, dat); 
-  writeRecordUnlocked(xid, p, lsn, rid, dat);
+  writeRecord(xid, p, lsn, rid, dat); 
+  //writeRecordUnlocked(xid, p, lsn, rid, dat);
   return 0;
 }
 
@@ -75,12 +75,3 @@ Operation getInstantSetRaw() {
 }
 
 
-/** @todo The spirit of instantSet suggests that it should hold a
-    shorter write lock than set, but instant set was written before
-    the lock manager... */
-/*Operation getInstantSet() {
-  Operation o = getSet();
-  o.id = OPERATION_INSTANT_SET;
-  o.undo = OPERATION_NOOP;
-  return o;
-  }*/
