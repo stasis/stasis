@@ -1,6 +1,6 @@
 typedef struct range { 
   long start;
-  long end;
+  long stop;
 } range;
 
 typedef struct transition { 
@@ -28,7 +28,7 @@ range ** rangeTrackerAdd(rangeTracker * rt, const range * r);
 */
 range ** rangeTrackerRemove(rangeTracker * rt, const range * r);
 
-const transition ** enumTransitions(rangeTracker * rt);
+const transition ** rangeTrackerEnumerate(rangeTracker * rt);
 char * rangeToString(const range * r);
 char * transitionToString(const transition * t);
 

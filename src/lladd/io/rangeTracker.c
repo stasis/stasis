@@ -27,13 +27,25 @@ rangeTracker * rangeTrackerInit(int quantization) {
 }
 
 void rangeTrackerDeinit(rangeTracker * rt) { 
+  RBLIST * l = RB_ENTRY(openlist)(rt->ranges);
+  const transition * t;
+  while((t = RB_ENTRY(readlist)(l))) { 
+    RB_ENTRY(delete)(t, rt->ranges);
+    fprintf(stderr, "WARNING: Detected leaked range in rangeTracker!\n");
+    // Discard const to free t
+    free((void*)t);
+  }
+  RB_ENTRY(closelist)(l);
   RB_ENTRY(destroy)(rt->ranges);
   free(rt);
 }
 
 static void rangeTrackerDelta(rangeTracker * rt, const range * r, int delta) { 
 
-  assert(delta);  // Otherwise, we'd be a no-op...
+  // Abort on no-op requests.
+  assert(delta);  
+  assert(r->start < r->stop);
+
 
   /** Find predecessor of range */
   transition key;
@@ -79,24 +91,24 @@ static void rangeTrackerDelta(rangeTracker * rt, const range * r, int delta) {
   // a particular point in the tree...
   
   // Discarding const.
-  while((t = (transition *) rblookup(RB_LUGREAT, t, rt->ranges)) && t->pos < r->end) { 
+  while((t = (transition *) rblookup(RB_LUGREAT, t, rt->ranges)) && t->pos < r->stop) { 
     assert(t);
     t->pins += delta;
     assert(t->delta);
     assert(t->pins == curpin);
     curpin = t->pins + t->delta;
   }
-  if(!t || t->pos != r->end) { 
+  if(!t || t->pos != r->stop) { 
     // Need to allocate new transition
     t = malloc(sizeof(transition));
-    t->pos = r->end;
+    t->pos = r->stop;
     t->delta = 0-delta;
     t->pins = curpin;
     RB_ENTRY(search)(t, rt->ranges); // insert
   } else { 
     // Found existing transition at end of range.
 
-    assert(t->pos == r->end);
+    assert(t->pos == r->stop);
     t->pins += delta;
     assert(t->pins == curpin);
     t->delta -= delta;
@@ -121,7 +133,7 @@ range ** rangeTrackerRemove(rangeTracker * rt, const range * r) {
   rangeTrackerDelta(rt, r, -1);
 }
 
-const transition ** enumTransitions(rangeTracker * rt) {
+const transition ** rangeTrackerEnumerate(rangeTracker * rt) {
   int transitionCount = 0;
   const transition * t;
   RBLIST * list =  RB_ENTRY(openlist) (rt->ranges);
@@ -146,7 +158,7 @@ const transition ** enumTransitions(rangeTracker * rt) {
 
 char * rangeToString(const range * r) { 
   char * ret;
-  int err = asprintf(&ret, "[range %lld-%lld]", (long long)r->start, (long long)r->end);
+  int err = asprintf(&ret, "[range %lld-%lld]", (long long)r->start, (long long)r->stop);
   assert(err !=-1);
   return ret;
 }
