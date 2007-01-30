@@ -56,7 +56,7 @@ terms specified in this license.
 #include <config.h>
 #include <lladd/common.h>
 
-#include <lladd/transactional.h>
+//#include <lladd/transactional.h>
 #include <lladd/crc32.h>
 #include "logWriter.h"
 #include "logHandle.h"
@@ -163,7 +163,7 @@ int openLogWriter() {
 
   int logFD;
   if(logWriter_isDurable) { 
-    logFD = open(LOG_FILE, O_CREAT | O_RDWR | O_SYNC, FILE_PERM); //, S_IRWXU | S_IRWXG | S_IRWXO);
+    logFD = open(LOG_FILE, LOG_MODE, FILE_PERM); //, S_IRWXU | S_IRWXG | S_IRWXO);
   } else { 
     fprintf(stderr, "\n**********\n");
     fprintf  (stderr, "logWriter.c: logWriter_isDurable==0; the logger will not force writes to disk.\n");
@@ -557,7 +557,7 @@ static LogEntry * readLogEntry() {
 }
 
 //static lsn_t lastPosition_readLSNEntry = -1;
-LogEntry * readLSNEntry_LogWriter(lsn_t LSN) {
+LogEntry * readLSNEntry_LogWriter(const lsn_t LSN) {
   LogEntry * ret;
 
   pthread_mutex_lock(&nextAvailableLSN_mutex);
@@ -566,16 +566,16 @@ LogEntry * readLSNEntry_LogWriter(lsn_t LSN) {
     pthread_mutex_unlock(&nextAvailableLSN_mutex);
     return 0;
   } 
-  pthread_mutex_unlock(&nextAvailableLSN_mutex);
+  pthread_mutex_unlock(&nextAvailableLSN_mutex); 
+
+  pthread_mutex_lock(&log_read_mutex);
 
   /** Because we use two file descriptors to access the log, we need
       to flush the log write buffer before concluding we're at EOF. */
   if(flushedLSNInternal() <= LSN) { // && LSN < nextAvailableLSN) {
     syncLogInternal();
-    assert(flushedLSNInternal() > LSN);
+    assert(flushedLSNInternal() > LSN); // @todo move up into if() 
   }
-
-  pthread_mutex_lock(&log_read_mutex);
 
   assert(global_offset <= LSN);
 
@@ -647,8 +647,13 @@ int truncateLog_LogWriter(lsn_t LSN) {
   lh = getLSNHandle(LSN);
   lsn_t lengthOfCopiedLog = 0;
   int firstInternalEntry = 1;
+  lsn_t nextLSN = 0;
   while((le = nextInLog(&lh))) {
     size = sizeofLogEntry(le);
+    if(nextLSN) { 
+      assert(nextLSN == le->LSN);
+    } 
+    nextLSN = nextEntry_LogWriter(le);
 
     if(firstInternalEntry && le->type == INTERNALLOG) { 
       LogEntry * firstCRC = malloc(size);

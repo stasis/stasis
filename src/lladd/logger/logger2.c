@@ -78,13 +78,12 @@ long LoggerSizeOfInternalLogEntry(const LogEntry * e) {
 void LogWrite(LogEntry * e) { 
   if(loggerType == LOG_TO_FILE) { 
     writeLogEntry(e);
-    return;
   } else if (loggerType == LOG_TO_MEMORY) {
     writeLogEntry_InMemoryLog(e);
-    return;
   } else { 
     abort();
   }
+  return;
 }
 
 int LogInit(int logType) { 
@@ -115,7 +114,8 @@ int LogDeinit() {
 }
 
 void LogForce(lsn_t lsn) { 
-  if(LogFlushedLSN() < lsn) {
+  lsn_t flushedLSN = LogFlushedLSN();
+  if(flushedLSN < lsn) {
     if(LOG_TO_FILE == loggerType) { 
       syncLog_LogWriter();
     } else if (LOG_TO_MEMORY == loggerType) { 
@@ -134,45 +134,53 @@ void LogTruncate(lsn_t lsn) {
   } else { 
     abort();
   }
-
 }
 
 lsn_t LogFlushedLSN() { 
+  lsn_t ret;
   if(LOG_TO_FILE == loggerType) { 
-    return flushedLSN_LogWriter();
+    ret = flushedLSN_LogWriter();
   } else if(LOG_TO_MEMORY == loggerType) { 
-    return flushedLSN_InMemoryLog();
-  } 
-  abort();
+    ret = flushedLSN_InMemoryLog();
+  } else {
+    abort();
+  }
+  return ret;
 }
 
 lsn_t LogTruncationPoint() { 
+  lsn_t ret;
   if(LOG_TO_FILE == loggerType) { 
-    return firstLogEntry();
+    ret =  firstLogEntry();
   } else if(LOG_TO_MEMORY == loggerType) { 
-    return firstLogEntry_InMemoryLog();
+    ret = firstLogEntry_InMemoryLog();
   } else { 
     abort();
   }
+  return ret;
 }
 const LogEntry * LogReadLSN(lsn_t lsn) { 
+  LogEntry * ret;
   if(LOG_TO_FILE == loggerType) { 
-    return readLSNEntry_LogWriter(lsn);
+    ret = readLSNEntry_LogWriter(lsn);
   } else if(LOG_TO_MEMORY == loggerType) { 
-    return readLSNEntry_InMemoryLog(lsn);
+    ret = readLSNEntry_InMemoryLog(lsn);
   } else {
     abort();
   }
+  return ret;
 }
 
 lsn_t LogNextEntry(const LogEntry * e) { 
+  lsn_t ret;
   if(LOG_TO_FILE == loggerType) { 
-    return nextEntry_LogWriter(e);
+    ret = nextEntry_LogWriter(e);
   } else if(LOG_TO_MEMORY == loggerType) { 
-    return nextEntry_InMemoryLog(e);
+    ret = nextEntry_InMemoryLog(e);
   } else {
     abort();
   }
+  return ret;
 }
 
 void FreeLogEntry(const LogEntry * e) { 
