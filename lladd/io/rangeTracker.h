@@ -19,12 +19,20 @@ void rangeTrackerDeinit(rangeTracker * rt);
 
 /** 
     Add a new range
-    @return a null terminated array of newly-pinned, quantized ranges 
+
+    @return a null terminated array of newly-pinned, quantized ranges.
+    This array might contain ranges that were already pinned, and/or
+    ones that overlap (this aspect of the behavior is intentionally
+    left unspecified).
 */
 range ** rangeTrackerAdd(rangeTracker * rt, const range * r);
 /** 
-    Remove a range
-    @return a null terminated array of newly-unpinned, quantized ranges
+    Remove a range 
+
+    @return a null terminated array of unpinned, quantized ranges.
+    
+    @see rangeTrackerAdd for a discussion of approximations that may
+    be applied to rangeTrackerRemove's return value.
 */
 range ** rangeTrackerRemove(rangeTracker * rt, const range * r);
 
