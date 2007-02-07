@@ -198,18 +198,111 @@ static inline long roundUp(long x, long quant) {
   return (((x-1) / quant) + 1) * quant;
 }
 
+static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTracker * ret, int delta) { 
+  transition key;
+  // we will start looking at the tree at the first transition after key.pos.
+  // DEL OLD COMMENT: the -1 gives us >= instead of > when we pass RB_LUGREAT into rblookup.
+  key.pos = roundDown(request->start, rt->quantization); 
+  const transition * t = &key;
+
+  int in_range = 0;   // 0 if the last transition marked the end of a range.
+  int have_range = 0; // 1 once we have encountered the first range.
+  range cur;
+
+  range expanded_range;
+  expanded_range.start = roundDown(request->start, rt->quantization);
+  expanded_range.stop  = roundUp(request->stop, rt->quantization);
+
+  while((t = rblookup(RB_LUGREAT, t, rt->ranges))) { 
+    assert(t->delta);
+    //    printf("%s\n", transitionToString(t));
+    if(t->pos >= expanded_range.stop) { 
+      if(in_range) { 
+	assert(t->pins);
+	assert(have_range);
+	cur.stop = expanded_range.stop;
+	assert(cur.stop != cur.start);
+	in_range = 0;
+      } else { 
+	if(!have_range) { 
+	  // we are at first transition
+	  if(t->pins) { 
+	    cur = expanded_range;
+	    have_range = 1;
+	  } else { 
+	    // no ranges are pinned.
+	  }
+	}
+      }
+      // Pretend we hit the end of the tree.
+      break;
+    } else { 
+      if(in_range) { 
+	assert(have_range);
+	assert(t->pins);
+	if(!(t->pins + t->delta)) { 
+	  cur.stop = roundUp(t->pos, rt->quantization);
+	  assert(cur.stop != cur.start);
+	  in_range = 0;
+	} else {
+	  assert(in_range);
+	}
+      } else { 
+	// not in range.
+	if(!have_range) { 
+	  // we are at first transition
+	  if(t->pins) { 
+	    cur.start = expanded_range.start;
+	    in_range = t->pins + t->delta;
+	    if(! in_range) { 
+	      cur.stop = roundUp(t->pos, rt->quantization);
+	      assert(cur.stop != cur.start);
+	    }
+	  } else { 
+	    cur.start = roundDown(t->pos, rt->quantization);
+	    in_range = 1;
+	    assert(t->pins + t->delta);
+	  }
+	  have_range = 1;
+	} else { 
+	  assert(! t->pins);
+	  assert(t->pins + t->delta);
+	  // do we need to merge this transition with the range, or output the old range?
+	  if(cur.stop >= roundDown(t->pos, rt->quantization)) { 
+	    // do nothing; start position doesn't change.
+	  } else { 
+	    // output old range, reset start position
+	    rangeTrackerDelta(ret, &cur, delta);
+	    cur.start = roundDown(t->pos, rt->quantization);
+	  }
+	  in_range = 1;
+	}
+      }
+    }
+  }
+
+  assert(!in_range);
+  if(have_range) { 
+    rangeTrackerDelta(ret, &cur, delta);
+  }
+
+}
+
+//#define DBGPINS(...) printf(__VA_ARGS__)
+#define DBGPINS(...) 
 /** 
     @return a set of ranges that are pinned, and that overlap the request range. 
 */
-static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * request, rangeTracker * ret, int delta) { 
+static rangeTracker * pinnedRangesOLD(const rangeTracker * rt, const range * request, rangeTracker * ret, int delta) { 
   transition key;
   const transition * t;
-
+  DBGPINS("Call ");
   key.pos = roundDown(request->start, rt->quantization);
 
   t = rblookup(RB_LUGTEQ, &key, rt->ranges);
 
   if(!t) {
+    DBGPINS("at End\n");
     // No ranges after request->start, so no ranges can overlap.
     return ret;
   }
@@ -224,6 +317,7 @@ static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * reques
   long putative_range_stop;
 
   if(t) {
+    DBGPINS("T %ld", t->pos);
     if(roundDown(t->pos, rt->quantization) >= roundUp(request->stop, rt->quantization)) { 
       if(t->pins) { 
 	// entire range is pinned.
@@ -234,51 +328,80 @@ static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * reques
 	assert(tmp_r.start >= roundDown(request->start, rt->quantization) && tmp_r.stop <= roundUp(request->stop, rt->quantization));
 	rangeTrackerDelta(ret, &tmp_r, delta);
 
-	//	printf("0 %s\n", rangeToString(&tmp_r));
+	//	DBGPINS("0 %s\n", rangeToString(&tmp_r));
       } else { 
 	// none of the range is pinned.
       }
       return ret;
-    }
-    if(t->pins) { 
+    } else if(t->pins) { 
+      DBGPINS("startPin ");
       // The beginning of request is a range.
       range_start = roundDown(request->start, rt->quantization);
       if(0 == t->pins + t->delta) { 
+	DBGPINS("!in ");
 	in_range = 0;
 	// even though we're not in range, we need to see if the next
 	// transition starts a range on the same page before returning a
 	// new range.
 	putative_range_stop = roundUp(t->pos, rt->quantization);
       } else { 
+	DBGPINS("in ");
 	in_range = 1;
       }
     } else { 
+      DBGPINS("start!Pin ");
       // The beginning of the request is not a range.
       range_start = roundDown(t->pos, rt->quantization);
+      DBGPINS("A ");
       in_range = 1;
       assert(t->delta);
     }
+  } else { 
+    DBGPINS("!T ");
   }
   while((t = rblookup(RB_LUGREAT, t, rt->ranges))) { 
+    DBGPINS("W %ld", t->pos);
     assert(t->delta);
 
     if(roundUp(t->pos, rt->quantization) >= roundUp(request->stop, rt->quantization)) { 
+      DBGPINS("Break ");
       if(in_range) { 
+	assert(t->pins);
 	// if we're in range, part of the last page must be pinned.
 	in_range = 0;
 	putative_range_stop = roundUp(request->stop, rt->quantization);
       } else {
-	// is this transition in the last page?  If so, part of the last page must be pinned.
-	if(t->pos < roundUp(request->stop, rt->quantization)) {
-	  // in_range == 0
-	  assert(t->pins == 0);
-	  range_start = roundDown(t->pos, rt->quantization);
+	// deal with range that ended before this transition.
+	range tmp_r;
+	assert(t->pins == 0);
+
+	if(roundUp(putative_range_stop, rt->quantization) < roundDown(t->pos, rt->quantization)) {
+	  
+	  // There is a gap between the last range and this range.
+	  tmp_r.start = range_start;
+	  tmp_r.stop  = putative_range_stop;
+	  if(tmp_r.start != tmp_r.stop) { 
+	    rangeTrackerDelta(ret, &tmp_r, delta);
+	  }
+	  // is this transition in the last page?  If so, part of the last page must be pinned.
+	  if(t->pos < roundUp(request->stop, rt->quantization)) {
+	    // in_range == 0
+	    range_start = roundDown(t->pos, rt->quantization);
+	    putative_range_stop = roundUp(request->stop, rt->quantization);
+	  } else {
+	    in_range = 2;
+	  }
+	} else {
+	  // There is no gap between the last range and this range.
 	  putative_range_stop = roundUp(request->stop, rt->quantization);
+
 	}
+
       }
       break;
     }
     if(t->pins) { 
+      DBGPINS("P ");
       assert(in_range);
 
       if(!(t->pins + t->delta)) { 
@@ -287,6 +410,7 @@ static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * reques
       } 
 
     } else { // ! t->pins
+      DBGPINS("!P ");
       assert(!in_range);
 
       if(putative_range_stop < roundDown(t->pos, rt->quantization)) { 
@@ -297,7 +421,7 @@ static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * reques
 	if(tmp_r.start != tmp_r.stop) { 
 	  assert(tmp_r.start >= roundDown(request->start, rt->quantization) && tmp_r.stop <= roundUp(request->stop, rt->quantization));
 	  rangeTrackerDelta(ret, &tmp_r, delta);
-	  //	  printf("1 %s\n", rangeToString(&tmp_r));
+	  //	  DBGPINS("1 %s\n", rangeToString(&tmp_r));
 	}
 	range_start = roundDown(t->pos, rt->quantization);
       } else { 
@@ -306,16 +430,20 @@ static rangeTracker * pinnedRanges(const rangeTracker * rt, const range * reques
       in_range = 1;
     }
   }
-  assert(!in_range);
-  range tmp_r;
-  tmp_r.start = range_start;
-  tmp_r.stop  = putative_range_stop;
-  if(tmp_r.start != tmp_r.stop) { 
-    assert(tmp_r.start >= roundDown(request->start, rt->quantization) && tmp_r.stop <= roundUp(request->stop, rt->quantization));
-    rangeTrackerDelta(ret, &tmp_r, delta);
-    //    printf("2 %s\n", rangeToString(&tmp_r));
-    
+  assert(in_range==0 || in_range ==2);
+  if(!in_range) { 
+    range tmp_r;
+    tmp_r.start = range_start;
+    tmp_r.stop  = putative_range_stop;
+    if(tmp_r.start != tmp_r.stop) { 
+      DBGPINS("2 ");
+      assert(tmp_r.start >= roundDown(request->start, rt->quantization) && tmp_r.stop <= roundUp(request->stop, rt->quantization));
+      rangeTrackerDelta(ret, &tmp_r, delta);
+      //    DBGPINS("2 %s\n", rangeToString(&tmp_r));
+      
+    }
   }
+  DBGPINS("\n");
   return ret;
 }
 
