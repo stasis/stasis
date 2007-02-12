@@ -37,6 +37,25 @@ void printRT(rangeTracker * rt) {
   free (ts);
 }
 
+void check_no_overlap(range * r, int * explicit_pins) { 
+  for(int j = r->start; j < r->stop; j++) {
+    assert(!explicit_pins[j]);
+  }
+}
+void check_overlap(range * r, int * explicit_pins) { 
+  assert(!(r->start % QUANTIZATION));
+  assert(!(r->stop % QUANTIZATION));
+  
+  int overlap = 0;
+  for(int j = r->start; j < r->stop; j++) { 
+    if(explicit_pins[j]) { overlap = 1; }
+    if(! (j+1 % QUANTIZATION)) { 
+      assert(overlap);
+      overlap = 0;
+    }
+  }
+}
+
 START_TEST(rangeTracker_smokeTest) {
   rangeTracker * rt = rangeTrackerInit(QUANTIZATION);
  
@@ -298,26 +317,26 @@ START_TEST (rangeTracker_randomTest) {
     switch(myrandom(3)) {
     case 0: { // add range
       s = rangeToString(&ranges[range]);
-      printf("pin   %s\n", s);
+      //      printf("pin   %s\n", s);
       free(s);
       r_arry = rangeTrackerAdd(rt, &ranges[range]);
-      // check return value doesn't overlap pins.
       for(int i = 0; r_arry[i]; i++) { 
-	for(int j = r_arry[i]->start; j < r_arry[i]->stop; j++) {
-	  assert(!explicit_pins[j]);
-	}
+	check_no_overlap(r_arry[i], explicit_pins);
       }
 
       for(int i = ranges[range].start; i < ranges[range].stop; i++) { 
 	explicit_pins[i]++;
       }
-      // check that each page of return value does overlap pins.
       for(int i = 0; r_arry[i]; i++) { 
 	s = rangeToString(r_arry[i]);
-	printf(" add returned %s\n", s);
-	// XXX update these with rounding in mind!
-	//	assert(r_arry[i]->start >= ranges[range].start);
-	//	assert(r_arry[i]->stop <= ranges[range].stop);
+	//	printf(" add returned %s\n", s);
+
+	check_overlap(r_arry[i], explicit_pins);
+
+	assert(r_arry[i]->start >= 
+	       rangeTrackerRoundDown(ranges[range].start, QUANTIZATION));
+	assert(r_arry[i]->stop <= 
+	       rangeTrackerRoundUp(ranges[range].stop, QUANTIZATION));
 	free(s);
 	free(r_arry[i]);
       }
@@ -329,24 +348,28 @@ START_TEST (rangeTracker_randomTest) {
     case 1: { // del range
       if(pins[range]) { 
 	s = rangeToString(&ranges[range]);
-	printf("unpin %s\n", s);
+	//	printf("unpin %s\n", s);
 	free(s);
 	r_arry = rangeTrackerRemove(rt, &ranges[range]);
+	for(int i = 0; r_arry[i]; i++) { 
+	  check_overlap(r_arry[i], explicit_pins);
+	}
 	for(int i = ranges[range].start; i < ranges[range].stop; i++)  {
 	  explicit_pins[i]--;
 	  assert(explicit_pins[i] >= 0);
 	}
 	// return value should no longer overlap pins.
 	for(int i = 0; r_arry[i]; i++) { 
-	  for(int j = r_arry[i]->start; j < r_arry[i]->stop; j++) {
-	    assert(!explicit_pins[j]);
-	  }
-	}
-	for(int i = 0; r_arry[i]; i++) { 
+	  check_no_overlap(r_arry[i], explicit_pins);
+	  //	  for(int j = r_arry[i]->start; j < r_arry[i]->stop; j++) {
+	  //	    assert(!explicit_pins[j]);
+	  //	  }
 	  s = rangeToString(r_arry[i]);
-	  //	  assert(r_arry[i]->start >= ranges[range].start);
-	  //	  assert(r_arry[i]->stop <= ranges[range].stop);
-	  printf(" del returned %s\n", s);
+	  assert(r_arry[i]->start >= 
+		 rangeTrackerRoundDown(ranges[range].start, QUANTIZATION));
+	  assert(r_arry[i]->stop <= 
+		 rangeTrackerRoundUp(ranges[range].stop, QUANTIZATION));
+	  //	  printf(" del returned %s\n", s);
 	  free(s);
 	  free(r_arry[i]);
 	}
@@ -374,16 +397,20 @@ START_TEST (rangeTracker_randomTest) {
   for(long i = 0; i < RANGE_COUNT; i++) { 
     while(pins[i]) { 
       s = rangeToString(&ranges[i]);
-      printf("unpin %s\n", s);
+      //      printf("unpin %s\n", s);
       free(s);
       range ** r_arry =  rangeTrackerRemove(rt, &ranges[i]);
+      for(int i = 0; r_arry[i]; i++) { 
+	check_overlap(r_arry[i], explicit_pins);
+      }
       for(int j = ranges[i].start; j < ranges[i].stop; j++)  {
 	explicit_pins[j]--;
 	assert(explicit_pins[j] >= 0);
       }
       for(int i = 0; r_arry[i]; i++) { 
 	s = rangeToString(r_arry[i]);
-	printf(" del returned %s\n", s);
+	//	printf(" del returned %s\n", s);
+	check_no_overlap(r_arry[i], explicit_pins);
 	free(s);
 	free(r_arry[i]);
       }

@@ -191,17 +191,10 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
 }
 
 
-static inline long roundDown(long x, long quant) { 
-  return (x / quant) * quant;
-}
-static inline long roundUp(long x, long quant) { 
-  return (((x-1) / quant) + 1) * quant;
-}
-
 static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTracker * ret, int delta) { 
   transition key;
   // we will start looking at the tree at the first transition after key.pos.
-  key.pos = roundDown(request->start, rt->quantization); 
+  key.pos = rangeTrackerRoundDown(request->start, rt->quantization); 
   const transition * t = &key;
 
   int in_range = 0;   // 0 if the last transition marked the end of a range.
@@ -209,8 +202,8 @@ static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTr
   range cur;
 
   range expanded_range;
-  expanded_range.start = roundDown(request->start, rt->quantization);
-  expanded_range.stop  = roundUp(request->stop, rt->quantization);
+  expanded_range.start = rangeTrackerRoundDown(request->start, rt->quantization);
+  expanded_range.stop  = rangeTrackerRoundUp(request->stop, rt->quantization);
 
   while((t = rblookup(RB_LUGREAT, t, rt->ranges))) { 
     assert(t->delta);
@@ -239,7 +232,7 @@ static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTr
 	assert(have_range);
 	assert(t->pins);
 	if(!(t->pins + t->delta)) { 
-	  cur.stop = roundUp(t->pos, rt->quantization);
+	  cur.stop = rangeTrackerRoundUp(t->pos, rt->quantization);
 	  assert(cur.stop != cur.start);
 	  in_range = 0;
 	} else {
@@ -253,11 +246,11 @@ static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTr
 	    cur.start = expanded_range.start;
 	    in_range = t->pins + t->delta;
 	    if(! in_range) { 
-	      cur.stop = roundUp(t->pos, rt->quantization);
+	      cur.stop = rangeTrackerRoundUp(t->pos, rt->quantization);
 	      assert(cur.stop != cur.start);
 	    }
 	  } else { 
-	    cur.start = roundDown(t->pos, rt->quantization);
+	    cur.start = rangeTrackerRoundDown(t->pos, rt->quantization);
 	    in_range = 1;
 	    assert(t->pins + t->delta);
 	  }
@@ -266,12 +259,12 @@ static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTr
 	  assert(! t->pins);
 	  assert(t->pins + t->delta);
 	  // do we need to merge this transition with the range, or output the old range?
-	  if(cur.stop >= roundDown(t->pos, rt->quantization)) { 
+	  if(cur.stop >= rangeTrackerRoundDown(t->pos, rt->quantization)) { 
 	    // do nothing; start position doesn't change.
 	  } else { 
 	    // output old range, reset start position
 	    rangeTrackerDelta(ret, &cur, delta);
-	    cur.start = roundDown(t->pos, rt->quantization);
+	    cur.start = rangeTrackerRoundDown(t->pos, rt->quantization);
 	  }
 	  in_range = 1;
 	}

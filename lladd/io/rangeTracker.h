@@ -40,3 +40,10 @@ const transition ** rangeTrackerEnumerate(rangeTracker * rt);
 char * rangeToString(const range * r);
 char * transitionToString(const transition * t);
 
+static inline long rangeTrackerRoundDown(long x, long quant) { 
+  return (x / quant) * quant;
+}
+static inline long rangeTrackerRoundUp(long x, long quant) { 
+  return (((x-1) / quant) + 1) * quant;
+}
+
