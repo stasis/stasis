@@ -276,6 +276,8 @@ START_TEST (rangeTracker_randomTest) {
 
   gettimeofday(&time,0);
   
+  int * explicit_pins = calloc(RANGE_SIZE, sizeof(int));
+
   long seed = time.tv_usec + time.tv_sec * 1000000; //1170807889195512; //time.tv_usec + time.tv_sec * 1000000; //1170729550013502; //time.tv_usec + time.tv_sec * 1000000;// 1170727703805787; // 1170810757441165; 1170811024737237;  //
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
@@ -299,9 +301,23 @@ START_TEST (rangeTracker_randomTest) {
       printf("pin   %s\n", s);
       free(s);
       r_arry = rangeTrackerAdd(rt, &ranges[range]);
+      // check return value doesn't overlap pins.
+      for(int i = 0; r_arry[i]; i++) { 
+	for(int j = r_arry[i]->start; j < r_arry[i]->stop; j++) {
+	  assert(!explicit_pins[j]);
+	}
+      }
+
+      for(int i = ranges[range].start; i < ranges[range].stop; i++) { 
+	explicit_pins[i]++;
+      }
+      // check that each page of return value does overlap pins.
       for(int i = 0; r_arry[i]; i++) { 
 	s = rangeToString(r_arry[i]);
 	printf(" add returned %s\n", s);
+	// XXX update these with rounding in mind!
+	//	assert(r_arry[i]->start >= ranges[range].start);
+	//	assert(r_arry[i]->stop <= ranges[range].stop);
 	free(s);
 	free(r_arry[i]);
       }
@@ -316,8 +332,20 @@ START_TEST (rangeTracker_randomTest) {
 	printf("unpin %s\n", s);
 	free(s);
 	r_arry = rangeTrackerRemove(rt, &ranges[range]);
+	for(int i = ranges[range].start; i < ranges[range].stop; i++)  {
+	  explicit_pins[i]--;
+	  assert(explicit_pins[i] >= 0);
+	}
+	// return value should no longer overlap pins.
+	for(int i = 0; r_arry[i]; i++) { 
+	  for(int j = r_arry[i]->start; j < r_arry[i]->stop; j++) {
+	    assert(!explicit_pins[j]);
+	  }
+	}
 	for(int i = 0; r_arry[i]; i++) { 
 	  s = rangeToString(r_arry[i]);
+	  //	  assert(r_arry[i]->start >= ranges[range].start);
+	  //	  assert(r_arry[i]->stop <= ranges[range].stop);
 	  printf(" del returned %s\n", s);
 	  free(s);
 	  free(r_arry[i]);
@@ -349,15 +377,23 @@ START_TEST (rangeTracker_randomTest) {
       printf("unpin %s\n", s);
       free(s);
       range ** r_arry =  rangeTrackerRemove(rt, &ranges[i]);
-	for(int i = 0; r_arry[i]; i++) { 
-	  s = rangeToString(r_arry[i]);
-	  printf(" del returned %s\n", s);
-	  free(s);
-	  free(r_arry[i]);
-	}
-	free(r_arry);
+      for(int j = ranges[i].start; j < ranges[i].stop; j++)  {
+	explicit_pins[j]--;
+	assert(explicit_pins[j] >= 0);
+      }
+      for(int i = 0; r_arry[i]; i++) { 
+	s = rangeToString(r_arry[i]);
+	printf(" del returned %s\n", s);
+	free(s);
+	free(r_arry[i]);
+      }
+      free(r_arry);
       pins[i]--;
     }
+  }
+
+  for(int i =0 ; i < RANGE_SIZE; i++ ) { 
+    assert(explicit_pins[i] == 0);
   }
 
   free (ranges);
