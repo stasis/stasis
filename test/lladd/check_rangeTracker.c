@@ -297,7 +297,8 @@ START_TEST (rangeTracker_randomTest) {
   
   int * explicit_pins = calloc(RANGE_SIZE, sizeof(int));
 
-  long seed = time.tv_usec + time.tv_sec * 1000000; //1170807889195512; //time.tv_usec + time.tv_sec * 1000000; //1170729550013502; //time.tv_usec + time.tv_sec * 1000000;// 1170727703805787; // 1170810757441165; 1170811024737237;  //
+  long seed =  time.tv_usec + time.tv_sec * 1000000; //1170807889195512; //time.tv_usec + time.tv_sec * 1000000; //1170729550013502; //time.tv_usec + time.tv_sec * 1000000;// 1170727703805787; // 1170810757441165; 1170811024737237; 1171329519584370;
+
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
