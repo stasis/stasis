@@ -122,12 +122,10 @@ lsn_t pageReadLSN(const Page * page) {
  * all the functions dealing with pages.
  */
 void pageInit() {
-  bufferPoolInit();
   slottedPageInit();
 }
 
-void pageDeInit() {
-  bufferPoolDeInit();
+void pageDeinit() {
   slottedPageDeInit();
 }
 

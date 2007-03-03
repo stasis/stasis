@@ -43,10 +43,10 @@ terms specified in this license.
  * @file
  * Manages the page buffer
 
-    pageManager - Provides cached page handling, delegates to blob
+    bufferManager - Provides cached page handling, delegates to blob
     manager when necessary.  Doesn't implement an eviction policy.
     That is left to a cacheManager.  (Multiple cacheManagers could be
-    used with a single page manager.)
+    used with a single bufferManager.)
 
   @todo Allow error checking!  
  
@@ -60,7 +60,7 @@ terms specified in this license.
 	 Operations,
 	 Predicates.
 
-       LLADD already has operations and transactions, and these can be
+       Stasis already has operations and transactions, and these can be
        relatively unchanged.  Predicates are read only operations that
        return a set of tuples.  Tread() is the simplest predicate.
        Index scans provide a motivating example.  
@@ -90,27 +90,29 @@ BEGIN_C_DECLS
    an abstraction barrier between page.h and the rest of the system.
 
    If you need to muck with page internals, first consider the
-   implications that doing so has on locking.  In particular, rwlatch
+   implications that doing so has on latching.  In particular, rwlatch
    is currently entirely handled in page.c.
 */
 typedef struct Page_s Page_s;
 typedef struct Page_s Page;
+
+extern Page * (*loadPage)(int xid, int pageid);
+extern void   (*releasePage)(Page * p);
+extern int    (*bufInit)();
+extern void   (*bufDeinit)();
 
 /**
  * @param xid The transaction that is pinning the page (used by page-level locking implementations.)
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
  */
-compensated_function Page * loadPage(int xid, int pageid);
+compensated_function Page * bufManLoadPage(int xid, int pageid);
 
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
 */
-void releasePage(Page * p);
-
-//#define loadPage(xid, pageid) loadPage(xid, pageid); printf("%s %d: thread=%d loadPage(%d, %d)\n", __FILE__, __LINE__, pthread_self(), (xid), (pageid));
-//#define releasePage(pageid) releasePage(pageid); printf("%s,%d: thread=%d releasePage()\n", __FILE__, __LINE__, pthread_self()); 
+void bufManReleasePage(Page * p);
 
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)
@@ -125,13 +127,16 @@ compensated_function Page * __profile_loadPage(int xid, int pageid, char * file,
  * @return 0 on success
  * @return error code on failure
  */
-int bufInit();
+int bufManBufInit();
 
 /**
  * will write out any dirty pages, assumes that there are no running
  * transactions
  */
-void bufDeinit();
+void bufManBufDeinit();
+
+void setBufferManager(int i);
+
 
 END_C_DECLS
 

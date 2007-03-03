@@ -64,8 +64,6 @@ terms specified in this license.
 #include <lladd/bufferPool.h>
 
 #include <lladd/lockManager.h>
-#include "page.h"
-#include "blobManager.h"
 #include <lladd/pageCache.h>
 #include "pageFile.h"
 
@@ -109,9 +107,10 @@ static Page * dummy_page;
 
 pthread_key_t lastPage;
 
-int bufInit() {
+int bufManBufInit() {
 
-	pageInit();
+        bufferPoolInit();
+
 	openPageFile();
 
 
@@ -126,8 +125,6 @@ int bufInit() {
 	pageFree(first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(int), first);
 
-	openBlobStore();
-
 	pageCacheInit(first);
 
 	int err = pthread_key_create(&lastPage, 0);
@@ -141,9 +138,7 @@ int bufInit() {
 	return 0;
 }
 
-void bufDeinit() {
-
-	closeBlobStore();
+void bufManBufDeinit() {
 
 	DEBUG("pageCacheDeinit()");
 
@@ -155,15 +150,16 @@ void bufDeinit() {
 	  pageWrite((Page*)next->value);
 	  DEBUG("+");
 	}
-	
+
 	LH_ENTRY(destroy)(activePages);
 
 	pthread_mutex_destroy(&loadPagePtr_mutex);
 	
 	pageCacheDeinit();
 	closePageFile();
+
+	bufferPoolDeInit();
 	
-	pageDeInit();
 #ifdef PIN_COUNT
 	if(pinCount != 0) { 
 	  printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
@@ -176,14 +172,13 @@ void bufDeinit() {
     testing.)
 */
 void simulateBufferManagerCrash() {
-  closeBlobStore();
   closePageFile();
 #ifdef PIN_COUNT
   pinCount = 0;
 #endif
 }
 
-void releasePage (Page * p) {
+void bufManReleasePage (Page * p) {
   unlock(p->loadlatch);
 #ifdef PIN_COUNT
   pthread_mutex_lock(&pinCount_mutex);
@@ -453,7 +448,7 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
-compensated_function Page *loadPage(int xid, int pageid) {
+compensated_function Page *bufManLoadPage(int xid, int pageid) {
 
   try_ret(NULL) {
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
@@ -489,3 +484,16 @@ compensated_function Page *loadPage(int xid, int pageid) {
   return ret;
 }
 
+Page * (*loadPage)(int xid, int pageid) = 0;
+void   (*releasePage)(Page * p) = 0;
+int    (*bufInit)()  = 0;
+void   (*bufDeinit)()  = 0;
+
+void setBufferManager(int i ) { 
+  if(i == BUFFER_MANAGER_HASH) { 
+    releasePage = bufManReleasePage;
+    bufInit = bufManBufInit;
+    loadPage = bufManLoadPage;
+    bufDeinit = bufManBufDeinit; 
+  }
+}

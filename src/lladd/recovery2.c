@@ -18,10 +18,7 @@
 #include <lladd/bufferManager.h>
 #include <lladd/lockManager.h>
 
-/** @todo recovery2.c shouldn't include pageCache.h once refactoring is done. */
-#include <lladd/pageCache.h>
-/** @todo questionable include? */
-#include "page.h"
+#include "page.h" // Needed for pageReadLSN. 
 
 
 #include <lladd/transactional.h>

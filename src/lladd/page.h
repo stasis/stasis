@@ -84,7 +84,6 @@ terms specified in this license.
 /** @todo page.h includes things that it shouldn't, and page.h should eventually be an installed header. */
 
 #include <lladd/transactional.h>
-#include <lladd/bufferManager.h>
 
 BEGIN_C_DECLS
 
@@ -192,7 +191,7 @@ void pageInit();
 /**
  * releases all resources held by the page sub-system.
  */
-void pageDeInit();
+void pageDeinit();
 
 /**
  * assumes that the page is already loaded in memory.  It takes as a

@@ -18,14 +18,6 @@ void allocBlob(int xid, recordid rid) {
   //  printf("rid = {%d %d %d}\n", rid.page, rid.slot, rid.size);
 }
 
-void openBlobStore() {
-
-}
-
-void closeBlobStore() {
-
-}
-
 void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
   int chunk;
   recordid rawRid = rid;
