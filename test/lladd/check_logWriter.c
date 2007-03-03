@@ -519,10 +519,10 @@ Suite * check_suite(void) {
   tcase_add_test(tc, loggerTruncate);
   tcase_add_test(tc, loggerCheckWorker);
   tcase_add_test(tc, loggerCheckThreaded);
-  /*  if(loggerType != LOG_TO_MEMORY) {
+  if(loggerType != LOG_TO_MEMORY) {
     tcase_add_test(tc, loggerReopenTest);
     tcase_add_test(tc, loggerTruncateReopenTest);
-    }*/
+  }
 
   /* --------------------------------------------- */
   
