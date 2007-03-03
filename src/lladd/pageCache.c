@@ -16,6 +16,7 @@
 
 
 #include <stdio.h>
+/** @todo break dependency between pageCache and pageFile */
 #include "pageFile.h"
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */

@@ -4,6 +4,7 @@
 #include <lladd/logger/logger2.h>
 #include "page.h"
 #include <assert.h>
+/** @todo truncation.c is too dependent on the bufferManager implementation. */
 #include "pageFile.h"
 
 static volatile int initialized = 0;
