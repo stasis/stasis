@@ -83,7 +83,11 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 			       const byte * args, unsigned int argSize, const byte * preImage) {
   int invertible = operationsTable[funcID].undo != NO_INVERSE;
   int whole_page_phys = operationsTable[funcID].undo == NO_INVERSE_WHOLE_PAGE;
-  LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize +
+  
+  /** Use calloc since the struct might not be packed in memory;
+      otherwise, we'd leak uninitialized bytes to the log. */
+
+  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize +
 			  ((!invertible) ? physical_slot_length(rid.size) : 0) + (whole_page_phys ? PAGE_SIZE : 0));
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
