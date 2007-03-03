@@ -112,20 +112,14 @@ int Tinit() {
 
         setupOperationsTable();
 	dirtyPagesInit();
-	
+	LogInit(loggerType);
 	pageInit();
 	bufInit();
-
-	LogInit(loggerType);
-
-	try_ret(compensation_error()) { 
-	  pageOperationsInit();
-	} end_ret(compensation_error());
-
+	//	try_ret(compensation_error()) { 
+	pageOperationsInit();
+	//	} end_ret(compensation_error());
 	initNestedTopActions();
-
 	TallocInit();
-
 	ThashInit();
 	LinearHashNTAInit();
 	LinkedListNTAInit();
@@ -381,7 +375,7 @@ lsn_t transactions_minRecLSN() {
 }
 
 int TisActiveTransaction(int xid) { 
-  if(xid > 0) { return 0; }
+  if(xid < 0) { return 0; }
   pthread_mutex_lock(&transactional_2_mutex);
   int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
   pthread_mutex_unlock(&transactional_2_mutex);
