@@ -103,6 +103,8 @@ void setupOperationsTable() {
 
 
 int Tinit() {
+	setBufferManager(BUFFER_MANAGER_HASH);
+
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
 
@@ -111,6 +113,7 @@ int Tinit() {
         setupOperationsTable();
 	dirtyPagesInit();
 	
+	pageInit();
 	bufInit();
 
 	LogInit(loggerType);
@@ -178,7 +181,7 @@ int Tbegin() {
 
 static compensated_function void TupdateHelper(int xid, recordid rid, const void * dat, int op, Page * p) {
   LogEntry * e;
-
+  assert(xid >= 0);
   try { 
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, rid.page);
@@ -199,6 +202,7 @@ static compensated_function void TupdateHelper(int xid, recordid rid, const void
 
 compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
   Page * p;  
+  assert(xid >= 0);
 #ifdef DEBUGGING
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
@@ -267,6 +271,7 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
 
 int Tcommit(int xid) {
   lsn_t lsn;
+  assert(xid >= 0);
 #ifdef DEBUGGING 
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
@@ -290,7 +295,8 @@ int Tcommit(int xid) {
 
 int Tabort(int xid) {
   lsn_t lsn;
-  
+  assert(xid >= 0);
+
   TransactionLog * t =&XactionTable[xid%MAX_TRANSACTIONS];
 
   lsn = LogTransAbort(t /*&XactionTable[xid%MAX_TRANSACTIONS]*/);
@@ -323,12 +329,14 @@ int Tdeinit() {
 	truncationDeinit();
 	ThashDeinit();
 	bufDeinit();
+	pageDeinit();
 	LogDeinit();
 	dirtyPagesDeinit();
 	return 0;
 }
 
 void Trevive(int xid, long lsn) {
+  assert(xid >= 0);
   int index = xid % MAX_TRANSACTIONS;
   pthread_mutex_lock(&transactional_2_mutex);
 
@@ -373,6 +381,7 @@ lsn_t transactions_minRecLSN() {
 }
 
 int TisActiveTransaction(int xid) { 
+  if(xid > 0) { return 0; }
   pthread_mutex_lock(&transactional_2_mutex);
   int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
   pthread_mutex_unlock(&transactional_2_mutex);

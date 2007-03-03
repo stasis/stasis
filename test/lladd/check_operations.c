@@ -71,9 +71,11 @@ START_TEST(operation_physical_do_undo) {
   LogEntry * setToTwo;
   
   Tinit();
-  int  xid = -1;
-  Page * p = loadPage(xid, TpageAlloc(xid));
+  int  xid = Tbegin();
+  long long pnum = TpageAlloc(xid);
+  Page * p = loadPage(xid, pnum);
   slottedPageInitialize(p);
+
 
   rid = slottedRawRalloc(p, sizeof(int));
   releasePage(p);
@@ -103,7 +105,6 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
 
   fail_unless(buf == 2, NULL);
-
 
 
   DEBUG("D\n");
@@ -165,6 +166,7 @@ START_TEST(operation_physical_do_undo) {
     LogWrite(allocCommonLogEntry(-1, -1, -1));
 
   /** @todo need to re-think check_operations.  The test is pretty broken. */
+  Tcommit(xid);
   Tdeinit();
   return;
 

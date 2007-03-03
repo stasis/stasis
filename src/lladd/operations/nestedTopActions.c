@@ -74,7 +74,7 @@ void initNestedTopActions() {
 */
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   recordid rid = NULLRID;
-  
+  assert(xid >= 0);
   rid.page = datSize;
   LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, rid, op, dat);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
@@ -108,6 +108,8 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   if(handle) {
     pblHtInsert(nestedTopActions, &xid, sizeof(int), handle);
   }
+
+  assert(xid >= 0);
   // This action wasn't really undone -- This is a nested top action!
   lsn_t undoneLSN = XactionTable[xid % MAX_TRANSACTIONS].prevLSN; 
   recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)
