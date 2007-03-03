@@ -60,37 +60,6 @@ compensated_function void pageOperationsInit() {
 }
 
 
-/** @todo TpageAlloc / TpageDealloc + undo + page reuse is not multi-transaction / threadsafe. 
-    
-   Example of the problem:
-
-   T1                              T2
-   dealloc(100)
-  (a)    list ptr 30 -> 100
-  (b)    p(100) nil -> 30
-                                   alloc() -> 100       <- Can't allow this to happen!
-                                   list_ptr 100 -> 30
-                                   alloc() -> 30
-                                   list_ptr 30 -> 20
-  abort();
-
-  // Really just needs to remove 100 from the linked list.  Instead,
-  we use physical, value based locking. 
-
-  list ptr 20 <- 30   <- Oops! Page 30 is in use, and we lose the rest 
-                         of the freelist, starting at 20!
-      
-  The partial solution: dealloc() aquires a lock on the freelist until
-  commit / abort.  If other transactions need to allocate when the
-  lock is held, then they simply do not reuse pages.  Since locking is
-  not yet implemented, we require applications to manually serialize
-  transactions that call Talloc or Tdealloc
-
-  A better solution: defer the addition of 100 to the freelist until
-  commit, and use a 'real' data structure, like a concurrent B-Tree.
-
-*/
-
 compensated_function int TpageDealloc(int xid, int pageid) {
   TregionDealloc(xid, pageid); // @todo inefficient hack!
   return 0;
