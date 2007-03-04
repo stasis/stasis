@@ -405,7 +405,7 @@ void reopenLogWorkload(int truncating) {
 
   numActiveXactions = 0;
   dirtyPagesInit();
-  bufInit();
+  bufInit(BUFFER_MANAGER_REOPEN);
 
   LogInit(loggerType);
   int xid = 1;

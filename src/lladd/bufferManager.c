@@ -105,9 +105,9 @@ static pthread_mutex_t loadPagePtr_mutex;
 
 static Page * dummy_page;
 
-pthread_key_t lastPage;
+static pthread_key_t lastPage;
 
-int bufManBufInit() {
+static int bufManBufInit() {
 
         bufferPoolInit();
 
@@ -138,7 +138,7 @@ int bufManBufInit() {
 	return 0;
 }
 
-void bufManBufDeinit() {
+static void bufManBufDeinit() {
 
 	DEBUG("pageCacheDeinit()");
 
@@ -178,7 +178,7 @@ void simulateBufferManagerCrash() {
 #endif
 }
 
-void bufManReleasePage (Page * p) {
+static void bufManReleasePage (Page * p) {
   unlock(p->loadlatch);
 #ifdef PIN_COUNT
   pthread_mutex_lock(&pinCount_mutex);
@@ -448,7 +448,7 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
-compensated_function Page *bufManLoadPage(int xid, int pageid) {
+static compensated_function Page *bufManLoadPage(int xid, int pageid) {
 
   try_ret(NULL) {
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
@@ -486,14 +486,26 @@ compensated_function Page *bufManLoadPage(int xid, int pageid) {
 
 Page * (*loadPage)(int xid, int pageid) = 0;
 void   (*releasePage)(Page * p) = 0;
-int    (*bufInit)()  = 0;
-void   (*bufDeinit)()  = 0;
+void (*writeBackPage)(Page * p) = 0;
+void (*forcePages)() = 0;
 
-void setBufferManager(int i ) { 
-  if(i == BUFFER_MANAGER_HASH) { 
+void   (*bufDeinit)()  = 0;
+int bufInit(int type) { 
+  static int lastType = 0;
+  if(type == BUFFER_MANAGER_REOPEN) { 
+    type = lastType;
+  } 
+  lastType = type;
+  if(type == BUFFER_MANAGER_HASH) { 
     releasePage = bufManReleasePage;
-    bufInit = bufManBufInit;
     loadPage = bufManLoadPage;
+    writeBackPage = pageWrite;
+    forcePages = forcePageFile;
     bufDeinit = bufManBufDeinit; 
-  }
+    bufManBufInit();
+    return 0;
+  } else { 
+    // XXX error handling
+    abort();
+  } 
 }

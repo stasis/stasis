@@ -96,23 +96,49 @@ BEGIN_C_DECLS
 typedef struct Page_s Page_s;
 typedef struct Page_s Page;
 
-extern Page * (*loadPage)(int xid, int pageid);
-extern void   (*releasePage)(Page * p);
-extern int    (*bufInit)();
-extern void   (*bufDeinit)();
-
 /**
  * @param xid The transaction that is pinning the page (used by page-level locking implementations.)
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
  */
-compensated_function Page * bufManLoadPage(int xid, int pageid);
-
+extern Page * (*loadPage)(int xid, int pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
 */
-void bufManReleasePage(Page * p);
+extern void   (*releasePage)(Page * p);
+/**
+ * initialize buffer manager
+ * @return 0 on success
+ * @return error code on failure
+ */
+/** 
+    This is used by truncation to move dirty pages from Stasis cache
+    into the operating system cache.  Once writeBackPage(p) returns,
+    calling forcePages() will synchronously force page number p to
+    disk.
+
+    (Not all buffer managers support synchronous writes to stable
+     storage.  For compatibility, such buffer managers should ignore
+     this call.)
+*/
+extern void (*writeBackPage)(Page * p);
+/**
+    Force any written back pages to disk.
+   
+    @see writeBackPage for more information.
+
+    If the buffer manager doesn't support stable storage, this call is
+    a no-op.
+*/
+extern void (*forcePages)();
+
+int bufInit(int type);
+/**
+ * will write out any dirty pages, assumes that there are no running
+ * transactions
+ */
+extern void   (*bufDeinit)();
 
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)
@@ -122,20 +148,15 @@ compensated_function Page * __profile_loadPage(int xid, int pageid, char * file,
 #endif
 
 
-/**
- * initialize buffer manager
- * @return 0 on success
- * @return error code on failure
- */
+/*compensated_function Page * bufManLoadPage(int xid, int pageid);
+
+void bufManReleasePage(Page * p);
+
 int bufManBufInit();
 
-/**
- * will write out any dirty pages, assumes that there are no running
- * transactions
- */
 void bufManBufDeinit();
 
-void setBufferManager(int i);
+void setBufferManager(int i); */
 
 
 END_C_DECLS

@@ -4,8 +4,6 @@
 #include <lladd/logger/logger2.h>
 #include "page.h"
 #include <assert.h>
-/** @todo truncation.c is too dependent on the bufferManager implementation. */
-#include "pageFile.h"
 
 static volatile int initialized = 0;
 static int automaticallyTuncating = 0;
@@ -100,7 +98,7 @@ static void dirtyPages_flush() {
 
   for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
     p = loadPage(-1, staleDirtyPages[i]);
-    pageWrite(p);
+    writeBackPage(p);
     releasePage(p);
   }
   free(staleDirtyPages);
@@ -183,7 +181,7 @@ int truncateNow() {
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       //      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
-      forcePageFile();
+      forcePages();
       LogTruncate(rec_lsn);
       return 1;
     } else { 
@@ -198,7 +196,7 @@ int truncateNow() {
 	
 	//fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
-	forcePageFile();
+	forcePages();
 	LogTruncate(rec_lsn);
 	return 1;
 

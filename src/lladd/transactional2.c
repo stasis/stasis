@@ -103,8 +103,6 @@ void setupOperationsTable() {
 
 
 int Tinit() {
-	setBufferManager(BUFFER_MANAGER_HASH);
-
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
 
@@ -114,10 +112,8 @@ int Tinit() {
 	dirtyPagesInit();
 	LogInit(loggerType);
 	pageInit();
-	bufInit();
-	//	try_ret(compensation_error()) { 
+	bufInit(BUFFER_MANAGER_HASH);
 	pageOperationsInit();
-	//	} end_ret(compensation_error());
 	initNestedTopActions();
 	TallocInit();
 	ThashInit();
