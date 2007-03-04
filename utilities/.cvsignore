@@ -1,0 +1,7 @@
+.deps
+Makefile
+Makefile.in
+.libs
+logfile_dump
+run_recovery
+truncate_log

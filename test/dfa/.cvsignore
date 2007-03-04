@@ -1,0 +1,8 @@
+.deps
+Makefile
+Makefile.in
+.libs
+check_networksetup
+fork_bomb
+ping_pong_dfa
+star

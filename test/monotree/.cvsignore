@@ -1,0 +1,7 @@
+.deps
+Makefile
+Makefile.in
+.libs
+binary_search
+bit_arithmetic
+soundness
