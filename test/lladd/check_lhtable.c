@@ -163,7 +163,7 @@ START_TEST(lhtableRandomized) {
   }
 
   eventCount = myrandom(eventCount * 4);
-  printf("Running %lld events.\n", eventCount);
+  printf("Running %lld events.\n", (long long) eventCount);
   
   for(int iii = 0; iii < eventCount; iii++) { 
     int eventType = myrandom(3);  // 0 = insert; 1 = read; 2 = delete.
