@@ -60,6 +60,7 @@ terms specified in this license.
 #include <assert.h>
 
 #include <lladd/bufferManager.h>
+#include "bufferManager/pageArray.h"
 
 #include <lladd/bufferPool.h>
 
@@ -107,7 +108,18 @@ static Page * dummy_page;
 
 static pthread_key_t lastPage;
 
+static void bufManBufDeinit();
+static compensated_function Page *bufManLoadPage(int xid, int pageid);
+static void bufManReleasePage (Page * p);
+
 static int bufManBufInit() {
+
+    releasePage = bufManReleasePage;
+    loadPage = bufManLoadPage;
+    writeBackPage = pageWrite;
+    forcePages = forcePageFile;
+    bufDeinit = bufManBufDeinit; 
+
 
         bufferPoolInit();
 
@@ -488,8 +500,8 @@ Page * (*loadPage)(int xid, int pageid) = 0;
 void   (*releasePage)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
-
 void   (*bufDeinit)()  = 0;
+
 int bufInit(int type) { 
   static int lastType = 0;
   if(type == BUFFER_MANAGER_REOPEN) { 
@@ -497,12 +509,10 @@ int bufInit(int type) {
   } 
   lastType = type;
   if(type == BUFFER_MANAGER_HASH) { 
-    releasePage = bufManReleasePage;
-    loadPage = bufManLoadPage;
-    writeBackPage = pageWrite;
-    forcePages = forcePageFile;
-    bufDeinit = bufManBufDeinit; 
     bufManBufInit();
+    return 0;
+  } else if (type == BUFFER_MANAGER_MEM_ARRAY) { 
+    paBufInit();
     return 0;
   } else { 
     // XXX error handling

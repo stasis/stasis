@@ -113,6 +113,7 @@ int Tinit() {
 	LogInit(loggerType);
 	pageInit();
 	bufInit(BUFFER_MANAGER_HASH);
+	//bufInit(BUFFER_MANAGER_MEM_ARRAY);
 	pageOperationsInit();
 	initNestedTopActions();
 	TallocInit();
