@@ -5,7 +5,7 @@
 #include "page.h"
 #include <assert.h>
 
-static volatile int initialized = 0;
+static int initialized = 0;
 static int automaticallyTuncating = 0;
 static pthread_t truncationThread;
 
@@ -111,8 +111,13 @@ void dirtyPagesInit() {
 
 void dirtyPagesDeinit() { 
   void * tmp;
+  int areDirty = 0;
   for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
-    free(pblHtCurrentKey(dirtyPages));
+    free(pblHtCurrent(dirtyPages));
+    if(!areDirty) { 
+      printf("Warning:  dirtyPagesDeinit detected dirty, unwritten pages.  Updates lost?\n");
+      areDirty = 1;
+    }
   }
   pblHtDelete(dirtyPages);
   dirtyPages = 0;
@@ -122,11 +127,15 @@ void truncationInit() {
 }
 
 void truncationDeinit() { 
+  pthread_mutex_lock(&shutdown_mutex);
   initialized = 0;
   if(automaticallyTuncating) {
     void * ret = 0;
+    pthread_mutex_unlock(&shutdown_mutex);
     pthread_cond_broadcast(&shutdown_cond);
     pthread_join(truncationThread, &ret);
+  } else { 
+    pthread_mutex_unlock(&shutdown_mutex);
   }
   automaticallyTuncating = 0;
 }
