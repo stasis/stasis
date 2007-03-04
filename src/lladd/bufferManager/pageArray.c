@@ -39,12 +39,10 @@ static Page * paLoadPage(int xid, int pageid) {
 }
 
 static void paReleasePage(Page * p) { 
-  /* no-op */
-}
-
-static void paWriteBackPage(Page * p) { 
   dirtyPages_remove(p);
 }
+
+static void paWriteBackPage(Page * p) {  /* no-op */ }
 static void paForcePages() { /* no-op */ }
 
 static void paBufDeinit() { 
