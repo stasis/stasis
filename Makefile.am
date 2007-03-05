@@ -13,6 +13,14 @@ docs:
 	doxygen doc/Doxyfile-api
 	doxygen doc/Doxyfile-developers
 
+tidy:
+	find . -name '*~' -exec rm '{}' \;
+	find . -name 'core' -exec rm '{}' \;
+	find . -name 'core.[0-9]*' -exec rm '{}' \;
+	find . -name 'vgcore.*' -exec rm '{}' \;
+	find . -name '.\#*' -exec rm '{}' \;
+
+
 precoverage : 
 	find . -name '*.bb' | xargs rm -f
 	find . -name '*.bbg' | xargs rm -f
