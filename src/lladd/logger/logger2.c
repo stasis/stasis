@@ -59,7 +59,11 @@ terms specified in this license.
 
 #include "page.h"  
 
+#ifdef USE_LOGGER
+int loggerType = USE_LOGGER;
+#else
 int loggerType = LOG_TO_FILE;
+#endif
 
 extern int numActiveXactions;
 static int pendingCommits;

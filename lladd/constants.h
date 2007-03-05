@@ -94,6 +94,10 @@ terms specified in this license.
 #define BUFFER_MANAGER_REOPEN 0 
 #define BUFFER_MANAGER_HASH   1
 #define BUFFER_MANAGER_MEM_ARRAY 2
+
+#define LOG_TO_FILE   0
+#define LOG_TO_MEMORY 1
+
 #define MAX_TRANSACTIONS 1000
 
 /** Operation types */

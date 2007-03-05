@@ -83,9 +83,20 @@ typedef struct {
   lsn_t recLSN;
 } TransactionLog;
 
-#define LOG_TO_FILE   0
-#define LOG_TO_MEMORY 1
+/** 
+    This is the log implementation that is being used.  
+    Before Stasis is intialized, it will be set to a default value.
+    
+    It may be changed before Tinit() is called by assigning to it.
 
+    The default can be overriddent at compile time by defining
+    USE_LOGGER
+
+    (eg: gcc ... -DUSE_LOGGER=LOG_TO_FOO)
+
+    @see constants.h for a list of recognized log implementations.
+
+ */
 extern int loggerType;
 
 int  LogInit(int logType);
