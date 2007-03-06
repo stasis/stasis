@@ -85,16 +85,15 @@ typedef struct {
 
 /** 
     This is the log implementation that is being used.  
-    Before Stasis is intialized, it will be set to a default value.
     
+    Before Stasis is intialized it will be set to a default value.    
     It may be changed before Tinit() is called by assigning to it.
-
-    The default can be overriddent at compile time by defining
-    USE_LOGGER
+    The default can be overridden at compile time by defining
+    USE_LOGGER.
 
     (eg: gcc ... -DUSE_LOGGER=LOG_TO_FOO)
 
-    @see constants.h for a list of recognized log implementations.
+    @see constants.h for a list of recognized log implementations. (The constants are named LOG_TO_*)
 
  */
 extern int loggerType;

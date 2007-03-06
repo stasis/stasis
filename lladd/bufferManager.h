@@ -98,14 +98,14 @@ typedef struct Page_s Page;
 
 /** 
     This is the type of buffer manager that is being used.  
-    Before Stasis is intialized, it will be set to a default value.
-    
+
+    Before Stasis is intialized it will be set to a default value.
     It may be changed before Tinit() is called, or overridden at
-    compile time by defining USE_BUFFER_MANAGER 
+    compile time by defining USE_BUFFER_MANAGER.
 
     (eg: gcc ... -DUSE_BUFFER_MANAGER=BUFFER_MANAGER_FOO)
 
-    @see constants.h for a list of recognized log implementations.
+    @see constants.h for a list of recognized buffer manager implementations. (The constants are named BUFFER_MANAGER_*)
 
  */
 extern int bufferManagerType;
