@@ -112,8 +112,7 @@ int Tinit() {
 	dirtyPagesInit();
 	LogInit(loggerType);
 	pageInit();
-	bufInit(BUFFER_MANAGER_HASH);
-	//bufInit(BUFFER_MANAGER_MEM_ARRAY);
+	bufInit(bufferManagerType);
 	pageOperationsInit();
 	initNestedTopActions();
 	TallocInit();

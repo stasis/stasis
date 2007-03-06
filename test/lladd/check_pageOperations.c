@@ -58,7 +58,6 @@ terms specified in this license.
 
 #define LOG_NAME   "check_pageOperations.log"
 #include "../../src/lladd/logger/logWriter.h"
-void simulateBufferManagerCrash();
 extern int numActiveXactions;
 
 START_TEST(pageOpCheckRecovery) {

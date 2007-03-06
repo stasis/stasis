@@ -55,7 +55,6 @@ terms specified in this license.
 #include "../check_includes.h"
 #include <lladd/truncation.h>
 
-void simulateBufferManagerCrash();
 extern int numActiveXactions;
 
 #define LOG_NAME   "check_logWriter.log"

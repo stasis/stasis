@@ -98,6 +98,12 @@ pthread_mutex_t pinCount_mutex = PTHREAD_MUTEX_INITIALIZER;
 int pinCount = 0;
 #endif
 
+#ifdef USE_BUFFER_MANAGER
+int bufferManagerType = USE_BUFFER_MANAGER;
+#else
+int bufferManagerType = BUFFER_MANAGER_HASH;
+#endif 
+
 static struct LH_ENTRY(table) *activePages; /* page lookup */
 /*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
 
@@ -111,6 +117,7 @@ static pthread_key_t lastPage;
 static void bufManBufDeinit();
 static compensated_function Page *bufManLoadPage(int xid, int pageid);
 static void bufManReleasePage (Page * p);
+static void bufManSimulateBufferManagerCrash();
 
 static int bufManBufInit() {
 
@@ -119,7 +126,7 @@ static int bufManBufInit() {
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
     bufDeinit = bufManBufDeinit; 
-
+    simulateBufferManagerCrash = bufManSimulateBufferManagerCrash;
 
         bufferPoolInit();
 
@@ -183,7 +190,7 @@ static void bufManBufDeinit() {
     Just close file descriptors, don't do any other clean up. (For
     testing.)
 */
-void simulateBufferManagerCrash() {
+void bufManSimulateBufferManagerCrash() {
   closePageFile();
 #ifdef PIN_COUNT
   pinCount = 0;
@@ -501,8 +508,10 @@ void   (*releasePage)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
 void   (*bufDeinit)()  = 0;
+void   (*simulateBufferManagerCrash)()  = 0;
 
 int bufInit(int type) { 
+  bufferManagerType = type;
   static int lastType = 0;
   if(type == BUFFER_MANAGER_REOPEN) { 
     type = lastType;

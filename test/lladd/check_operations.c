@@ -54,7 +54,6 @@ terms specified in this license.
 #include <stdio.h>
 
 
-void simulateBufferManagerCrash();
 extern int numActiveXactions;
 /**
    @test

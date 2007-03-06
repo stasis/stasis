@@ -54,6 +54,7 @@ static void paBufDeinit() {
     }
   }
 }
+
 void paBufInit () { 
 
   releasePage = paReleasePage;
@@ -61,6 +62,7 @@ void paBufInit () {
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
   bufDeinit = paBufDeinit; 
+  simulateBufferManagerCrash = paBufDeinit; 
 
   pageCount = 0;
   pageMap = 0;

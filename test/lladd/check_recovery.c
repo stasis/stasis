@@ -334,7 +334,6 @@ START_TEST(recovery_clr) {
 
 } END_TEST
 
-void simulateBufferManagerCrash();
 extern int numActiveXactions;
 /** 
     @test

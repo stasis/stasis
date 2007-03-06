@@ -384,7 +384,6 @@ END_TEST
 
 } END_TEST
 */
-void simulateBufferManagerCrash();
 extern int numActiveXactions;
 /** 
     @test
