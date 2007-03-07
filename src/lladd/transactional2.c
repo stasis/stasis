@@ -378,3 +378,12 @@ int TisActiveTransaction(int xid) {
   return ret;
 }
 
+int TdurabilityLevel() {
+  if(bufferManagerType == BUFFER_MANAGER_MEM_ARRAY) { 
+    return VOLATILE;
+  } else if(loggerType == LOG_TO_MEMORY) { 
+    return PERSISTENT;
+  } else { 
+    return DURABLE;
+  }
+}

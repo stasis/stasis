@@ -122,7 +122,7 @@ static void bufManSimulateBufferManagerCrash();
 static int bufManBufInit() {
 
     releasePage = bufManReleasePage;
-    loadPage = bufManLoadPage;
+    loadPageImpl = bufManLoadPage;
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
     bufDeinit = bufManBufDeinit; 
@@ -469,11 +469,6 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 static compensated_function Page *bufManLoadPage(int xid, int pageid) {
 
-  try_ret(NULL) {
-    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  } end_ret(NULL);
-
-
   Page * ret = pthread_getspecific(lastPage);
 
   if(ret && ret->id == pageid) { 
@@ -503,12 +498,22 @@ static compensated_function Page *bufManLoadPage(int xid, int pageid) {
   return ret;
 }
 
-Page * (*loadPage)(int xid, int pageid) = 0;
+Page * (*loadPageImpl)(int xid, int pageid) = 0;
 void   (*releasePage)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
 void   (*bufDeinit)()  = 0;
 void   (*simulateBufferManagerCrash)()  = 0;
+
+Page * loadPage(int xid, int pageid) { 
+  try_ret(NULL) {
+    // This lock is released at Tcommit()
+    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+  } end_ret(NULL);
+
+  return loadPageImpl(xid, pageid);
+
+}
 
 int bufInit(int type) { 
   bufferManagerType = type;

@@ -424,9 +424,10 @@ START_TEST(operation_instant_set) {
   Tread(xid, rid, &three);
   assert(two == three);
   Tcommit(xid);
- 
   Tdeinit();
  
+  if(TdurabilityLevel() == VOLATILE) { return; } 
+
   Tinit();
 
   xid = Tbegin();

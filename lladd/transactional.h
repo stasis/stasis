@@ -435,6 +435,17 @@ int TisActiveTransaction(int xid);
 */
 lsn_t transactions_minRecLSN();
 
+
+/**
+   Report Stasis' current durablity guarantees.
+
+   @return VOLATILE if the data will be lost after Tdeinit(), or a
+   crash, PERSISTENT if the data will be written back to disk after
+   Tdeinit(), but may be corrupted at crash, or DURABLE if Stasis will
+   apply committed transactions, and roll back active transactions
+   after a crash.
+*/
+int TdurabilityLevel();
 END_C_DECLS
 
 #endif

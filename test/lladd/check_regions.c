@@ -329,6 +329,8 @@ START_TEST(regions_recoveryTest) {
 
   Tdeinit();
 
+  if(TdurabilityLevel() == VOLATILE) { return; }
+
   Tinit();
   
   int xid = Tbegin();

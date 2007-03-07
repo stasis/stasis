@@ -98,6 +98,10 @@ terms specified in this license.
 #define LOG_TO_FILE   0
 #define LOG_TO_MEMORY 1
 
+#define VOLATILE   0
+#define PERSISTENT 1
+#define DURABLE    2
+
 #define MAX_TRANSACTIONS 1000
 
 /** Operation types */

@@ -202,8 +202,6 @@ static void* worker_thread(void * arg_ptr) {
 START_TEST(pageNoThreadTest)
 {
   Page * p;
-  /*    p->id = 0;*/
-
 
   pthread_mutex_init(&lsn_mutex, NULL);
   
@@ -214,11 +212,14 @@ START_TEST(pageNoThreadTest)
   slottedPageInitialize(p);
   worker_thread(p);
 
-  unlock(p->loadlatch);
   p->LSN = 0;
   *lsn_ptr(p) = p->LSN;
 
+  releasePage(p);
+
   Tdeinit();
+
+  pthread_mutex_destroy(&lsn_mutex);
 
 }
 END_TEST
@@ -316,6 +317,7 @@ START_TEST(pageNoThreadMultPageTest)
 
 
   Tdeinit();
+  pthread_mutex_destroy(&lsn_mutex);
 
 }
 END_TEST
@@ -357,6 +359,9 @@ START_TEST(pageThreadTest) {
 
   Tdeinit();
 
+  pthread_mutex_destroy(&lsn_mutex);
+  pthread_mutex_destroy(&random_mutex);
+
 } END_TEST
 
 
@@ -384,6 +389,8 @@ START_TEST(fixedPageThreadTest) {
   *lsn_ptr(p) = p->LSN;
   releasePage(p);
   Tdeinit();
+  pthread_mutex_destroy(&lsn_mutex);
+  pthread_mutex_destroy(&random_mutex);
 } END_TEST
 
 START_TEST(pageCheckSlotTypeTest) {

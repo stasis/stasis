@@ -238,6 +238,7 @@ START_TEST(transactionalLinearHashTest)
 	
   Tabort(xid);
   Tdeinit();
+  if(TdurabilityLevel() == VOLATILE) return;  
   Tinit();
   xid = Tbegin();
   ThashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));

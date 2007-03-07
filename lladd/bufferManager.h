@@ -115,7 +115,13 @@ extern int bufferManagerType;
  * @param pageid ID of the page you want to load
  * @return fully formed Page type
  */
-extern Page * (*loadPage)(int xid, int pageid);
+Page * loadPage(int xid, int pageid);
+
+/** 
+    This is the function pointer that bufInit sets in order to
+    override loadPage.
+*/
+extern Page * (*loadPageImpl)(int xid, int pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.

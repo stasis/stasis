@@ -12,6 +12,7 @@ static int pageCount;
 static pthread_mutex_t pageArray_mut = PTHREAD_MUTEX_INITIALIZER;
 
 static Page * paLoadPage(int xid, int pageid) {
+
   pthread_mutex_lock(&pageArray_mut);
   if(pageid >= pageCount) { 
     pageMap = realloc(pageMap, (1+pageid) * sizeof(Page*));
@@ -58,7 +59,7 @@ static void paBufDeinit() {
 void paBufInit () { 
 
   releasePage = paReleasePage;
-  loadPage = paLoadPage;
+  loadPageImpl = paLoadPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
   bufDeinit = paBufDeinit; 

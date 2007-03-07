@@ -69,6 +69,8 @@ START_TEST (header_test) {
 
   Tdeinit();
 
+  if(TdurabilityLevel() == VOLATILE) { return ; }
+
   Tinit();
 
   xid = Tbegin();
