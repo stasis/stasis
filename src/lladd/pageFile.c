@@ -63,6 +63,10 @@ void pageRead(Page *ret) {
       abort();
     }
   }
+
+  ret->dirty = 0;
+  ret->LSN = *lsn_ptr(ret);
+
   pthread_mutex_unlock(&stable_mutex);
 
 }
@@ -80,7 +84,9 @@ void pageWrite(Page * ret) {
   /*  assert(ret->pending == 0); */
   
   // If necessary, force the log to disk so that ret's LSN will be stable.
-  LogForce(pageReadLSN(ret));
+
+  assert(ret->LSN == pageReadLSN(ret));
+  LogForce(ret->LSN);
 
   pthread_mutex_lock(&stable_mutex);
 
