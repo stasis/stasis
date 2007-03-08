@@ -145,9 +145,7 @@ START_TEST(loggerTest)
   assert(i == 3000);
 
   deleteLogWriter();
-  LogDeinit();
-
-
+  Tdeinit();
 }
 END_TEST
 
@@ -176,13 +174,8 @@ START_TEST(logHandleColdReverseIterator) {
     i++;
     FreeLogEntry(e);
   }
-  /*  printf("i = %d\n", i); */
-  //  assert(i == 1);
   assert(i < 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
-  //  fail_unless( i == 1 , NULL);  
-  LogDeinit();
-  deleteLogWriter();
-
+  Tdeinit();
 }
 END_TEST
 
@@ -250,12 +243,9 @@ START_TEST(loggerTruncate) {
     }
     FreeLogEntry(le);
   }
-
-
   assert(i == (3000 - 234 + 1));
-  //  fail_unless(i == (3000 - 234 + 1), NULL);
-  
-  LogDeinit();
+
+  Tdeinit();
 
 } END_TEST
 
@@ -264,7 +254,6 @@ START_TEST(loggerTruncate) {
 pthread_mutex_t random_mutex;
 
 lsn_t truncated_to = 4;
-//pthread_mutex_t truncated_to_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define NO_CONCURRENCY
 #ifdef NO_CONCURRENCY
