@@ -107,8 +107,8 @@ lsn_t pageReadLSN(const Page * page) {
   lsn_t ret;
 
   readlock(page->rwlatch, 259); 
-  /*  ret = *(long *)(page->memAddr + START_OF_LSN); */
   ret = *lsn_ptr(page);
+  assert(ret == page->LSN);
   readunlock(page->rwlatch); 
 
   return ret;
