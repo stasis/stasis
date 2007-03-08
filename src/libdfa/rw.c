@@ -56,6 +56,18 @@ void readlock (rwl *lock, int d)
   
   return;
 }
+int tryreadlock (rwl *lock, int d)
+{
+  pthread_mutex_lock (lock->mut);
+  if (lock->writers || lock->waiting) {
+    pthread_mutex_unlock (lock->mut);
+    return 0;
+  }
+  lock->readers++;
+  pthread_mutex_unlock (lock->mut);
+  return 1;
+}
+
 
 void writelock (rwl *lock, int d)
 {
@@ -77,6 +89,19 @@ void writelock (rwl *lock, int d)
   
   return;
 }
+
+int trywritelock(rwl *lock, int d) {
+  /*  printf("\nwritelock %d\n", d);
+      fflush(NULL); */
+  pthread_mutex_lock (lock->mut);
+  if (lock->readers || lock->writers) {
+    pthread_mutex_unlock(lock->mut);
+    return 0;
+  }
+  lock->writers++;
+  pthread_mutex_unlock (lock->mut);
+  return 1;
+} 
 
 void downgradelock(rwl * lock) {
   pthread_mutex_lock(lock->mut);

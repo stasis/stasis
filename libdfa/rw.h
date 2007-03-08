@@ -32,7 +32,9 @@ typedef struct {
 
 rwl *initlock (void);
 void readlock (rwl *lock, int d);
+int tryreadlock(rwl *lock, int d);
 void writelock (rwl *lock, int d);
+int trywritelock(rwl *lock, int d);
 void downgradelock(rwl * lock);
 void unlock(rwl * lock);
 /** @deprecated in favor of unlock() */
