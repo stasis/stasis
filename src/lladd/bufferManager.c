@@ -47,7 +47,12 @@ terms specified in this license.
 
 #include <config.h>
 
+#define RO 0
+#define RW 1
+
 #ifdef PROFILE_LATCHES_WRITE_ONLY
+
+
 
 #define _GNU_SOURCE   
 #include <stdio.h>  // Need _GNU_SOURCE for asprintf
@@ -61,7 +66,7 @@ terms specified in this license.
 
 #include <lladd/bufferManager.h>
 #include "bufferManager/pageArray.h"
-
+#include "bufferManager/bufferHash.h"
 #include <lladd/bufferPool.h>
 
 #include <lladd/lockManager.h>
@@ -522,11 +527,14 @@ int bufInit(int type) {
     type = lastType;
   } 
   lastType = type;
-  if(type == BUFFER_MANAGER_HASH) { 
+  if(type == BUFFER_MANAGER_DEPRECATED_HASH) { 
     bufManBufInit();
     return 0;
   } else if (type == BUFFER_MANAGER_MEM_ARRAY) { 
     paBufInit();
+    return 0;
+  } else if (type == BUFFER_MANAGER_HASH) { 
+    bhBufInit();
     return 0;
   } else { 
     // XXX error handling

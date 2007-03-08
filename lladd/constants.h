@@ -94,6 +94,7 @@ terms specified in this license.
 #define BUFFER_MANAGER_REOPEN 0 
 #define BUFFER_MANAGER_HASH   1
 #define BUFFER_MANAGER_MEM_ARRAY 2
+#define BUFFER_MANAGER_DEPRECATED_HASH 3
 
 #define LOG_TO_FILE   0
 #define LOG_TO_MEMORY 1

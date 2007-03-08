@@ -3,9 +3,6 @@
 
 #include <lladd/bufferManager.h>
 
-#define RO 0
-#define RW 1
-
 //Page * getPage(int pageid, int locktype);
 /** 
     Implements lladd's caching policy.  Looks up pageid in the cache.
@@ -18,14 +15,17 @@
     Engine Results"
 
     If you would like to implement your own caching policy, implement
-    the three functions below.  They are relatively straightforward.
+    the functions below.  They are relatively straightforward.
     Note that pageCache does not perform any file I/O of its own.
+
+    The implementation of this module does not need to be threadsafe.
 
     @todo pageCache should not include page.h at all.  It should treat
     pages as (int, void*) pairs.  (But the page struct contains the
     pointers that pageCache manipulates..)
 
 */
+
 void pageCacheInit(Page * first);
 void pageCacheDeinit();
 
