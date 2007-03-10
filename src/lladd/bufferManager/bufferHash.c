@@ -90,6 +90,7 @@ static void * writeBackWorker(void * ignored) {
       Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(int));
       assert(old == victim);
        
+      //      printf("Write(%ld)\n", (long)victim->id);
       pageWrite(victim);
 
       freeList[freeCount] = victim;

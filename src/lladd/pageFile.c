@@ -74,7 +74,9 @@ void pageRead(Page *ret) {
     dirty page table can be kept up to date. */
 void pageWrite(Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
-  if(!dirtyPages_isDirty(ret)) { 
+  assert(ret->dirty == dirtyPages_isDirty(ret));
+  if(!ret->dirty) {
+    //  if(!dirtyPages_isDirty(ret)) { 
     DEBUG(" =^)~ "); 
     return; 
   }

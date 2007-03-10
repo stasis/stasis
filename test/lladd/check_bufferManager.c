@@ -36,6 +36,14 @@
 
 #define MAX_TRANS_LENGTH 100 // Number of writes per transaction.  Keeping this low allows truncation.
 
+long myrandom(long x) {
+  double xx = x;
+  double r = random();
+  double max = ((uint64_t)RAND_MAX)+1;
+  max /= xx;
+  return (long)((r/max));
+}
+
 void initializePages() {
   
   int i; 
@@ -253,16 +261,53 @@ START_TEST(pageThreadedWritersTest) {
   Tdeinit();
 }END_TEST
 
+ //#define PINNED_PAGE_COUNT (MAX_BUFFER_SIZE - 1)
+#define PINNED_PAGE_COUNT 2
+#define MAX_PAGE_ID  (MAX_BUFFER_SIZE * 10)
+
+START_TEST(pageBlindRandomTest) { 
+  Tinit();
+  //  logInit(loggerType);
+  //  bufInit(bufferManagerType);
+  
+  int * pageids = malloc(PINNED_PAGE_COUNT * sizeof(int));
+  Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
+
+  for(int i = 0; i < PINNED_PAGE_COUNT; i++) { 
+    pageids[i] = -1;
+  }
+
+  for(int i = 0; i < 1000000000; i ++) { 
+    int j = myrandom(PINNED_PAGE_COUNT);
+    if(pageids[j] == -1) {
+      pageids[j] = myrandom(MAX_PAGE_ID);
+      pages[j] = loadPage(-1, pageids[j]);
+      assert(pages[j]->id == pageids[j]);
+    } else { 
+      dirtyPages_add(pages[j]);
+      releasePage(pages[j]);
+      pageids[j] = -1;
+      pages[j] = 0;
+    }
+  }
+
+  //  bufDeinit();
+  //  logDenit(loggerType);
+  Tdeinit();
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("bufferManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 1200); // twenty minute timeout
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, pageSingleThreadTest); 
+  /*  tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageSingleThreadWriterTest);
   tcase_add_test(tc, pageLoadTest);  
-  tcase_add_test(tc, pageThreadedWritersTest); 
+  tcase_add_test(tc, pageThreadedWritersTest);  */
+  tcase_add_test(tc, pageBlindRandomTest); 
+  
 
 
   /* --------------------------------------------- */

@@ -60,7 +60,7 @@ static void * lruGetStale(replacementPolicy* r) {
   lru * l = r->impl;
   entry * e = (entry * ) RB_ENTRY(min)(l->lru);
   pthread_mutex_unlock(&mut);
-  return  e->value;
+  return  e ? e->value : 0;
 }
 static void* lruRemove(replacementPolicy* r, int id) { 
   pthread_mutex_lock(&mut);
