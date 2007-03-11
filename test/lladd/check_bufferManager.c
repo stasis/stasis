@@ -262,14 +262,12 @@ START_TEST(pageThreadedWritersTest) {
 }END_TEST
 
  //#define PINNED_PAGE_COUNT (MAX_BUFFER_SIZE - 1)
-#define PINNED_PAGE_COUNT 2
-#define MAX_PAGE_ID  (MAX_BUFFER_SIZE * 10)
+#define PINNED_PAGE_COUNT ((MAX_BUFFER_SIZE - 1) / THREAD_COUNT)
+#define MAX_PAGE_ID  (MAX_BUFFER_SIZE * 2)
+#define BLIND_ITERS 1000000
+void * blindRandomWorker(void * v) { 
+  //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
-START_TEST(pageBlindRandomTest) { 
-  Tinit();
-  //  logInit(loggerType);
-  //  bufInit(bufferManagerType);
-  
   int * pageids = malloc(PINNED_PAGE_COUNT * sizeof(int));
   Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
 
@@ -277,22 +275,45 @@ START_TEST(pageBlindRandomTest) {
     pageids[i] = -1;
   }
 
-  for(int i = 0; i < 1000000000; i ++) { 
+  for(int i = 0; i < BLIND_ITERS; i ++) { 
     int j = myrandom(PINNED_PAGE_COUNT);
     if(pageids[j] == -1) {
       pageids[j] = myrandom(MAX_PAGE_ID);
       pages[j] = loadPage(-1, pageids[j]);
       assert(pages[j]->id == pageids[j]);
     } else { 
-      dirtyPages_add(pages[j]);
+      //      dirtyPages_add(pages[j]); // Shouldn't affect buffermanager too much...
       releasePage(pages[j]);
       pageids[j] = -1;
       pages[j] = 0;
     }
   }
+  return 0;
+}
 
-  //  bufDeinit();
-  //  logDenit(loggerType);
+START_TEST(pageBlindRandomTest) { 
+
+  Tinit();
+
+  blindRandomWorker(0);
+
+  Tdeinit();
+} END_TEST
+START_TEST(pageBlindThreadTest) { 
+
+  Tinit();
+
+  printf("Spawning threads now.\n"); fflush(stdout);
+
+  pthread_t workers[THREAD_COUNT];
+
+  for(int i = 0; i < THREAD_COUNT; i++) { 
+    pthread_create(&workers[i], NULL, blindRandomWorker, NULL);
+  }
+  for(int i = 0; i < THREAD_COUNT; i++) { 
+    pthread_join(workers[i], NULL);
+  }
+
   Tdeinit();
 } END_TEST
 
@@ -302,13 +323,12 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 1200); // twenty minute timeout
   /* Sub tests are added, one per line, here */
-  /*  tcase_add_test(tc, pageSingleThreadTest); 
+  tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageSingleThreadWriterTest);
   tcase_add_test(tc, pageLoadTest);  
-  tcase_add_test(tc, pageThreadedWritersTest);  */
+  tcase_add_test(tc, pageThreadedWritersTest);  
   tcase_add_test(tc, pageBlindRandomTest); 
-  
-
+  tcase_add_test(tc, pageBlindThreadTest);
 
   /* --------------------------------------------- */
   
