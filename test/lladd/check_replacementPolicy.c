@@ -3,7 +3,7 @@
 #include <config.h>
 #include <lladd/transactional.h>
 #include <lladd/replacementPolicy.h>
-
+#include <lladd/doubleLinkedList.h>
 #include <assert.h>
 #include "../check_includes.h"
 
@@ -20,16 +20,28 @@ long myrandom(long x) {
 #define OBJECT_COUNT 1000
 #define OP_COUNT     10000000
 
+typedef struct LL_ENTRY(node_t) node_t;
+
 typedef struct tracker { 
-  long key;
+  intptr_t key;
   int inCache;
 } tracker;
-START_TEST(replacementPolicyRandomTest) {
+
+static node_t * getKey(void * page, void * ignore) { 
+  tracker * p = page;
+  return (node_t*)p->key;
+}
+static void setKey(void * page, node_t * n, void * ignore) { 
+  tracker * p = page;
+  p->key = (intptr_t) n;
+}
+
+
+void randomTest(replacementPolicy * lru) { 
   time_t seed = time(0);
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
-  replacementPolicy * lru = lruInit();
   int cachedCount = 0;
   
   tracker * t = calloc(OBJECT_COUNT, sizeof(tracker));
@@ -43,11 +55,11 @@ START_TEST(replacementPolicyRandomTest) {
     if(op < 10) { 
       // TOGGLE IN CACHE
       if(!t[i].inCache) { 
-	lru->insert(lru, t[i].key, &t[i]);
+	lru->insert(lru, &t[i]);
 	t[i].inCache = 1;
 	cachedCount ++;
       } else { 
-	void * v = lru->remove(lru, t[i].key);
+	void * v = lru->remove(lru, &t[i]);
 	assert(v == &t[i]);
 	t[i].inCache = 0;
 	cachedCount --;
@@ -58,7 +70,7 @@ START_TEST(replacementPolicyRandomTest) {
       if( tr ) { 
 	assert(tr->inCache);
 	assert(tr == &t[tr->key]);
-	tr = lru->remove(lru, tr->key);
+	tr = lru->remove(lru, tr);
 	assert(tr == &t[tr->key]);
 	tr->inCache = 0;
 	assert(cachedCount != 0);
@@ -78,11 +90,17 @@ START_TEST(replacementPolicyRandomTest) {
       }
     } else { 
       // Hit
-      if(t[i].inCache) lru->hit(lru, t[i].key);
+      if(t[i].inCache) lru->hit(lru, &t[i]);
     }
   }
-
-
+}
+START_TEST(replacementPolicyLRURandomTest) {
+  replacementPolicy * lru = lruFastInit(getKey, setKey, 0);
+  randomTest(lru);
+} END_TEST
+START_TEST(replacementPolicyLRUFastRandomTest) {
+  replacementPolicy * lru = lruFastInit(getKey, setKey, 0);
+  randomTest(lru);
 } END_TEST
 
 Suite * check_suite(void) {
@@ -91,7 +109,8 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 1200); // twenty minute timeout
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, replacementPolicyRandomTest); 
+  tcase_add_test(tc, replacementPolicyLRURandomTest); 
+  tcase_add_test(tc, replacementPolicyLRUFastRandomTest); 
 
   /* --------------------------------------------- */
   
