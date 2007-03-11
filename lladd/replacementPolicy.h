@@ -20,16 +20,23 @@
 
 */
 
+#include <lladd/doubleLinkedList.h>
 
 typedef struct replacementPolicy {
   struct replacementPolicy* (*init)();
   void (*deinit)  (struct replacementPolicy* impl);
-  void (*hit)     (struct replacementPolicy* impl, int id);
+  void (*hit)     (struct replacementPolicy* impl, void * page);
   void*(*getStale)(struct replacementPolicy* impl);
-  void*(*remove)  (struct replacementPolicy* impl, int id);
-  void (*insert)  (struct replacementPolicy* impl, int id, void * page);
+  void*(*remove)  (struct replacementPolicy* impl, void * page);
+  void (*insert)  (struct replacementPolicy* impl, void * page);
   void * impl;
 } replacementPolicy;
 
 replacementPolicy * lruInit();
+replacementPolicy * lruFastInit(
+   struct LL_ENTRY(node_t) * (*getNode)(void * page, void * conf),
+   void (*setNode)(void * page, 
+		   struct LL_ENTRY(node_t) * n,
+		   void * conf),
+   void * conf);
 

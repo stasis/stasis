@@ -6,14 +6,11 @@
 #include <lladd/lhtable.h>
 #include <lladd/redblack.h>
 #include <lladd/replacementPolicy.h>
-#include <pthread.h>
 
 typedef struct entry { 
   void * value;
   uint64_t clock;
 } entry;
-
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct lru { 
   uint64_t now;
@@ -43,7 +40,6 @@ static void lruDeinit(replacementPolicy* r) {
 /** @todo handle clock wraps properly! */
 
 static void lruHit(replacementPolicy* r, int id) { 
-  pthread_mutex_lock(&mut);
   lru * l = r->impl;
   entry * e = LH_ENTRY(find)(l->hash, &id, sizeof(int));
   assert(e);
@@ -53,17 +49,13 @@ static void lruHit(replacementPolicy* r, int id) {
   l->now++; 
   old = (entry *)RB_ENTRY(search)(e, l->lru);
   assert(e == old);
-  pthread_mutex_unlock(&mut);
 }
 static void * lruGetStale(replacementPolicy* r) { 
-  pthread_mutex_lock(&mut);
   lru * l = r->impl;
   entry * e = (entry * ) RB_ENTRY(min)(l->lru);
-  pthread_mutex_unlock(&mut);
   return  e ? e->value : 0;
 }
 static void* lruRemove(replacementPolicy* r, int id) { 
-  pthread_mutex_lock(&mut);
   lru * l = r->impl;
   entry * e = LH_ENTRY(remove)(l->hash, &id, sizeof(int));
   assert(e);
@@ -71,11 +63,9 @@ static void* lruRemove(replacementPolicy* r, int id) {
   assert(old == e);
   void * ret = e->value;
   free(e);
-  pthread_mutex_unlock(&mut);
   return ret;
 }
 static void lruInsert(replacementPolicy* r, int id, void * p) { 
-  pthread_mutex_lock(&mut);
   lru * l = r->impl;
   entry * e = LH_ENTRY(find)(l->hash, &id, sizeof(int));
   assert(!e);
@@ -86,8 +76,6 @@ static void lruInsert(replacementPolicy* r, int id, void * p) {
   LH_ENTRY(insert)(l->hash, &id, sizeof(int), e);
   entry * old = (entry *) RB_ENTRY(search)(e, l->lru);
   assert(e == old);
-  pthread_mutex_unlock(&mut);
-
 }
 
 replacementPolicy * lruInit() {
