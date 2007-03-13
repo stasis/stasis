@@ -1,4 +1,9 @@
 #include <lladd/transactional.h>
+
+#ifndef IO_HANDLE_H
+#define IO_HANDLE_H
+
+
 #define stasis_handle(x) stasis_handle_##x
 
 /**
@@ -101,3 +106,4 @@ stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * (*slow_fact
 stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
 
+#endif
