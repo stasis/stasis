@@ -16,6 +16,9 @@ typedef struct lru {
   uint64_t now;
   struct LH_ENTRY(table) * hash;
   struct RB_ENTRY(tree)  * lru;
+  void * (*getNode)(void * page, void * conf);
+  void   (*setNode)(void * page, void * n, void * conf);
+  void * conf;
 } lru;
 
 int cmp(const void * ap, const void * bp, const void * ignored) {
@@ -39,9 +42,9 @@ static void lruDeinit(replacementPolicy* r) {
 
 /** @todo handle clock wraps properly! */
 
-static void lruHit(replacementPolicy* r, int id) { 
+static void lruHit(replacementPolicy* r, void * p) { 
   lru * l = r->impl;
-  entry * e = LH_ENTRY(find)(l->hash, &id, sizeof(int));
+  entry * e = l->getNode(p, l->conf);
   assert(e);
   entry * old = (entry * ) RB_ENTRY(delete)(e, l->lru);
   assert(e == old);
@@ -55,9 +58,9 @@ static void * lruGetStale(replacementPolicy* r) {
   entry * e = (entry * ) RB_ENTRY(min)(l->lru);
   return  e ? e->value : 0;
 }
-static void* lruRemove(replacementPolicy* r, int id) { 
+static void* lruRemove(replacementPolicy* r, void * p) { 
   lru * l = r->impl;
-  entry * e = LH_ENTRY(remove)(l->hash, &id, sizeof(int));
+  entry * e = l->getNode(p, l->conf);
   assert(e);
   entry * old = (entry *) RB_ENTRY(delete)(e, l->lru);
   assert(old == e);
@@ -65,15 +68,13 @@ static void* lruRemove(replacementPolicy* r, int id) {
   free(e);
   return ret;
 }
-static void lruInsert(replacementPolicy* r, int id, void * p) { 
+static void lruInsert(replacementPolicy* r, void * p) { 
   lru * l = r->impl;
-  entry * e = LH_ENTRY(find)(l->hash, &id, sizeof(int));
-  assert(!e);
-  e = malloc(sizeof(entry));
+  entry * e = malloc(sizeof(entry));
   e->value = p;
   e->clock = l->now;
   l->now++;
-  LH_ENTRY(insert)(l->hash, &id, sizeof(int), e);
+  l->setNode(p, l->conf, e);
   entry * old = (entry *) RB_ENTRY(search)(e, l->lru);
   assert(e == old);
 }
