@@ -321,7 +321,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("bufferManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
-  tcase_set_timeout(tc, 1200); // twenty minute timeout
+  tcase_set_timeout(tc, 3600); // one hour timeout
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, pageSingleThreadTest); 
   tcase_add_test(tc, pageSingleThreadWriterTest);
