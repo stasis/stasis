@@ -13,12 +13,15 @@ docs:
 	doxygen doc/Doxyfile-api
 	doxygen doc/Doxyfile-developers
 
-tidy:
+tidy: precoverage
 	find . -name '*~' -exec rm '{}' \;
 	find . -name 'core' -exec rm '{}' \;
 	find . -name 'core.[0-9]*' -exec rm '{}' \;
 	find . -name 'vgcore.*' -exec rm '{}' \;
 	find . -name '.\#*' -exec rm '{}' \;
+	find . -name '*.da' -exec rm '{}' \;
+	find . -name '*.gcda' -exec rm '{}' \;
+	find . -name '*.gcno' -exec rm '{}' \;
 
 
 precoverage : 
