@@ -408,7 +408,7 @@ Suite * check_suite(void) {
   /* Begin a new test */
   TCase *tc = tcase_create("simple");
 
-  tcase_set_timeout(tc, 0); // disable timeouts
+  tcase_set_timeout(tc, 1200); // 20 minute timeout
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);
