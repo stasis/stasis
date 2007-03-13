@@ -47,8 +47,8 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
   
 }
 
-#define pagePendingPtr(p) ((intptr_t*)(&((p)->next)))
-#define pagePinCountPtr(p) ((intptr_t*)(&((p)->queue)))
+#define pagePendingPtr(p)  ((struct Page_s **)(&((p)->next)))
+#define pagePinCountPtr(p) ((int*)(&((p)->queue)))
 
 #ifdef LONG_RUN
 
@@ -214,7 +214,7 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
   ret = getFreePage();
 
   // Add a pending entry to cachedPages to block like-minded threads and writeback
-  (*pagePendingPtr(ret)) = 1;
+  (*pagePendingPtr(ret)) = (void*)1;
 
   check = LH_ENTRY(insert)(cachedPages,&pageid,sizeof(int), ret);
   assert(!check);
