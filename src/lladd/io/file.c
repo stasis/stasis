@@ -1,3 +1,5 @@
+#include <config.h>
+#include <lladd/common.h>
 #include <lladd/io/handle.h>
 #include <stdlib.h>
 #include <string.h>
@@ -497,6 +499,7 @@ stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, char * filename, 
   pthread_mutex_init(&(impl->mut), 0);
   impl->start_pos = start_offset;
   impl->end_pos = start_offset;
+  assert(sizeof(off_t) >= (64/8));
   impl->fd = open(filename, flags, mode);
   if(impl->fd == -1) { 
     ret->error = errno;
