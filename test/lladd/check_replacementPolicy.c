@@ -23,6 +23,7 @@ long myrandom(long x) {
 typedef struct LL_ENTRY(node_t) node_t;
 
 typedef struct tracker { 
+  long val;
   intptr_t key;
   int inCache;
 } tracker;
@@ -46,7 +47,7 @@ void randomTest(replacementPolicy * lru) {
   
   tracker * t = calloc(OBJECT_COUNT, sizeof(tracker));
   for(int i = 0; i < OBJECT_COUNT; i++) { 
-    t[i].key = i;
+    t[i].val = i;
   }
   for(unsigned long j = 0; j < 100000000UL; j++) { 
     int op = myrandom(100);
@@ -69,9 +70,9 @@ void randomTest(replacementPolicy * lru) {
       tracker * tr = lru->getStale(lru);
       if( tr ) { 
 	assert(tr->inCache);
-	assert(tr == &t[tr->key]);
+	assert(tr == &t[tr->val]);
 	tr = lru->remove(lru, tr);
-	assert(tr == &t[tr->key]);
+	assert(tr == &t[tr->val]);
 	tr->inCache = 0;
 	assert(cachedCount != 0);
 	cachedCount --;
@@ -83,7 +84,7 @@ void randomTest(replacementPolicy * lru) {
       tracker * tr = lru->getStale(lru);
       if(tr) { 
 	assert(tr->inCache);
-	assert(tr == &t[tr->key]);
+	assert(tr == &t[tr->val]);
 	assert(cachedCount != 0);
       } else { 
 	assert(cachedCount == 0);
