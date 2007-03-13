@@ -30,6 +30,7 @@ static int pageCount;
 
 static Page ** freeList;
 
+// A page is in LRU iff !pending, !pinned
 static replacementPolicy * lru;
 
 static int running;
@@ -49,48 +50,90 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
 #define pagePendingPtr(p) ((intptr_t*)(&((p)->next)))
 #define pagePinCountPtr(p) ((intptr_t*)(&((p)->queue)))
 
+#ifdef LONG_RUN
+
+inline static void checkPageState(Page * p) { 
+  Page * check = LH_ENTRY(find)(cachedPages, &(p->id), sizeof(int));
+  if(check) { 
+    int pending = *pagePendingPtr(p);
+    int pinned  = *pagePinCountPtr(p);
+    if((!pinned) && (!pending)) { 
+      assert(pageGetNode(p, 0));
+    } else {
+      assert(!pageGetNode(p,0));
+    }
+    int notfound = 1;
+    for(int i = 0; i < freeCount; i++) { 
+      if(freeList[i] == p) { notfound = 0; }
+    }
+    assert(notfound);
+  } else { 
+    assert(!pageGetNode(p,0));
+    assert(!*pagePendingPtr(p));
+    assert(!*pagePinCountPtr(p));
+    int found = 0;
+    for(int i = 0; i < freeCount; i++) { 
+      if(freeList[i] == p) { found = 1; }
+    }
+    assert(found);
+  }
+}
+
+#else 
+
+inline static void checkPageState(Page * p) { }
+
+#endif
+
 /** You need to hold mut before calling this.  
 
     @return the page that was just written back.  It will not be in
     lru or cachedPages after the call returns.
 */
 inline static Page * writeBackOnePage() { 
-  
   Page * victim = lru->getStale(lru);
+  // Make sure we have an exclusive lock on victim.
   assert(victim);
-  assert(!*pagePendingPtr(victim));
-
+  assert(! *pagePendingPtr(victim));
+  assert(! *pagePinCountPtr(victim));
 #ifdef LATCH_SANITY_CHECKING
   int latched = trywritelock(victim->loadlatch,0);
   assert(latched);
 #endif    
 
-  // We have an exclusive lock on victim.
-  assert(! *pagePinCountPtr(victim));
+  checkPageState(victim);
+
+  // XXX this can double free with (*) 
   lru->remove(lru, victim);
   Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(int));
   assert(old == victim);
   
   //      printf("Write(%ld)\n", (long)victim->id);
   pageWrite(victim);
-  
+  // Make sure that no one mistakenly thinks this is still a live copy.
+  victim->id = -1;
+
+#ifdef LATCH_SANITY_CHECKING
   // We can release the lock since we just grabbed it to see if
   // anyone else has pinned the page...  the caller holds mut, so 
   // no-one will touch the page for now.
-#ifdef LATCH_SANITY_CHECKING
   unlock(victim->loadlatch);
 #endif
-  
   return victim;
 }
 
-/** Returns a free page.  The page will not be cachedPages or lru. */
+/** Returns a free page.  The page will not be in freeList,
+    cachedPages or lru. */
 inline static Page * getFreePage() { 
   Page * ret;
   if(pageCount < MAX_BUFFER_SIZE) { 
     ret = pageMalloc();
-    pageCount++;
-  } else { 
+    pageFree(ret,-1);
+    (*pagePinCountPtr(ret)) = 0;
+    (*pagePendingPtr(ret)) = 0;
+    pageSetNode(ret,0,0);
+    pageCount++; 
+ } else { 
     if(!freeCount) { 
       ret = writeBackOnePage();
     } else { 
@@ -98,11 +141,13 @@ inline static Page * getFreePage() {
       freeList[freeCount-1] = 0;
       freeCount--;
     }
-    assert(ret);
     if(freeCount < freeLowWater) { 
       pthread_cond_signal(&needFree);
     }
   } 
+  assert(!*pagePinCountPtr(ret));
+  assert(!*pagePendingPtr(ret));
+  assert(!pageGetNode(ret,0));
   return ret;
 }
 
@@ -114,13 +159,10 @@ static void * writeBackWorker(void * ignored) {
     }
     if(!running) { break; } 
     Page * victim = writeBackOnePage();
-    
     assert(freeCount < freeListLength);
     freeList[freeCount] = victim;
     freeCount++;
-
-    //    pthread_mutex_unlock(&mut);
-    //    pthread_mutex_lock(&mut);
+    checkPageState(victim);
   }
   pthread_mutex_unlock(&mut);
   return 0;
@@ -137,12 +179,11 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
   pthread_mutex_lock(&mut);
 
   // Is the page in cache?
-
   Page * ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(int));
 
   // Is the page already being read from disk?  (If ret == 0, then no...)
-
   while(ret) { 
+    checkPageState(ret);           
     if(*pagePendingPtr(ret)) { 
       pthread_cond_wait(&readComplete, &mut);
       if(ret->id != pageid) { 
@@ -153,10 +194,13 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
       int locked = tryreadlock(ret->loadlatch,0);
       assert(locked);
 #endif
+      // XXX this can double free with (*)      
       if(! *pagePinCountPtr(ret) ) { 
+	// Then ret is in lru (otherwise it would be pending, or not cached); remove it.
 	lru->remove(lru, ret);
       }
       (*pagePinCountPtr(ret))++;
+      checkPageState(ret);
       pthread_mutex_unlock(&mut);
       assert(ret->id == pageid);
       return ret;
@@ -170,25 +214,28 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
   ret = getFreePage();
 
   // Add a pending entry to cachedPages to block like-minded threads and writeback
-  *pagePendingPtr(ret) = 1;
+  (*pagePendingPtr(ret)) = 1;
+
   check = LH_ENTRY(insert)(cachedPages,&pageid,sizeof(int), ret);
   assert(!check);
+
+  ret->id = pageid;
 
   // Now, it is safe to release the mutex; other threads won't 
   // try to read this page from disk.
   pthread_mutex_unlock(&mut);
 
-  ret->id = pageid;
   pageRead(ret);
 
   pthread_mutex_lock(&mut);
 
   *pagePendingPtr(ret) = 0;
-  (*pagePinCountPtr(ret))++;
-
-  // Would remove rom lru, but getFreePage() guarantees that it isn't
+  // Would remove from lru, but getFreePage() guarantees that it isn't
   // there.
-  //lru->remove(lru, ret);
+  assert(!pageGetNode(ret, 0));
+
+  assert(!(*pagePinCountPtr(ret)));
+  (*pagePinCountPtr(ret))++;
 
 #ifdef LATCH_SANITY_CHECKING
   int locked = tryreadlock(ret->loadlatch, 0);
@@ -196,16 +243,18 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
 #endif
 
   pthread_mutex_unlock(&mut);
-
   pthread_cond_broadcast(&readComplete);
 
   assert(ret->id == pageid);
+  checkPageState (ret);
   return ret;
 }
 static void bhReleasePage(Page * p) { 
   pthread_mutex_lock(&mut);
+  checkPageState(p);
   (*pagePinCountPtr(p))--;
   if(!(*pagePinCountPtr(p))) { 
+    assert(!pageGetNode(p, 0));
     lru->insert(lru,p);
   }
 #ifdef LATCH_SANITY_CHECKING
@@ -236,13 +285,17 @@ static void bhBufDeinit() {
   
   free(freeList);
 
-  closePageFile();
+  //  closePageFile();
   lru->deinit(lru);
   bufferPoolDeInit();
 }
 void bhBufInit() { 
 
   assert(!running);
+
+#ifdef LONG_RUN
+  printf("Using expensive bufferHash sanity checking.\n");
+#endif
 
   loadPageImpl = bhLoadPageImpl;
   releasePage = bhReleasePage;
@@ -253,7 +306,7 @@ void bhBufInit() {
 
   bufferPoolInit();
 
-  openPageFile();
+  //  openPageFile();
   lru = lruFastInit(pageGetNode, pageSetNode, 0);
 
   cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);

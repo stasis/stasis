@@ -24,14 +24,15 @@
 
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
-
-static pageid_t myLseekNoLock(int f, pageid_t offset, int whence);
+static void pfForcePageFile();
+static void pfClosePageFile();
+inline static pageid_t myLseekNoLock(int f, pageid_t offset, int whence);
 
 static int oldOffset = -1;
 
 int pageFile_isDurable = 1;
 
-void pageRead(Page *ret) {
+static void pfPageRead(Page *ret) {
 
   pageid_t pageoffset;
   pageid_t offset;
@@ -72,7 +73,7 @@ void pageRead(Page *ret) {
 }
 /** @todo need to sync the page file to disk occasionally, so that the
     dirty page table can be kept up to date. */
-void pageWrite(Page * ret) {
+static void pfPageWrite(Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
   assert(ret->dirty == dirtyPages_isDirty(ret));
   if(!ret->dirty) {
@@ -128,6 +129,11 @@ void pageWrite(Page * ret) {
 
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
 void openPageFile() {
+  pageRead = pfPageRead;
+  pageWrite = pfPageWrite;
+  forcePageFile = pfForcePageFile;
+  closePageFile = pfClosePageFile;
+
   DEBUG("Opening storefile.\n");
 
 #ifdef PAGE_FILE_O_DIRECT
@@ -150,7 +156,7 @@ void openPageFile() {
 
 }
 
-void forcePageFile() { 
+static void pfForcePageFile() { 
   if(pageFile_isDurable) { 
 #ifndef PAGE_FILE_O_DIRECT
 #ifdef HAVE_FDATASYNC
@@ -162,7 +168,7 @@ void forcePageFile() {
   }
 }
 
-void closePageFile() {
+static void pfClosePageFile() {
   forcePageFile();
   int ret = close(stable);
 

@@ -1,16 +1,21 @@
 #include <config.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <lladd/common.h>
 #include "latches.h"
 #include <lladd/transactional.h>
-
 #include <lladd/recovery.h>
 #include <lladd/bufferManager.h>
 #include <lladd/consumer.h>
 #include <lladd/lockManager.h>
 #include <lladd/compensations.h>
+#include "pageFile.h"
 #include "page.h"
 #include <lladd/logger/logger2.h>
 #include <lladd/truncation.h>
+#include <lladd/io/handle.h>
 #include <stdio.h>
 #include <assert.h>
 #include "page/indirect.h"
@@ -101,7 +106,25 @@ void setupOperationsTable() {
 	*/
 }
 
-
+// @todo this factory stuff doesn't really belong here...
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) { 
+  stasis_handle_t * h = stasis_handle(open_memory)(off);
+  //h = stasis_handle(open_debug)(h);
+  stasis_write_buffer_t * w = h->append_buffer(h, len);
+  w->h->release_write_buffer(w);
+  return h;
+}
+typedef struct sf_args {
+  char * filename;
+  int    openMode;
+  int    filePerm;
+} sf_args;
+static stasis_handle_t * slow_factory(void * argsP) { 
+  sf_args * args = (sf_args*) argsP;
+  stasis_handle_t * h =  stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
+  //h = stasis_handle(open_debug)(h);
+  return h;
+}
 int Tinit() {
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
@@ -112,6 +135,21 @@ int Tinit() {
 	dirtyPagesInit();
 	LogInit(loggerType);
 	pageInit();
+
+	struct sf_args * slow_arg = malloc(sizeof(sf_args));
+	slow_arg->filename = STORE_FILE;
+#ifdef PAGE_FILE_O_DIRECT
+	slow_arg->openMode = O_CREAT | O_RDWR | O_DIRECT;
+#else
+	slow_arg->openMode = O_CREAT | O_RDWR;
+#endif	  
+	slow_arg->filePerm = FILE_PERM;
+	// Allow 4MB of outstanding writes.
+	stasis_handle_t * pageFile = 
+	  stasis_handle(open_non_blocking)(slow_factory, slow_arg, fast_factory,
+	  NULL, 20, PAGE_SIZE * 1024, 1024);  
+	pageHandleOpen(pageFile); 
+	//	openPageFile();
 	bufInit(bufferManagerType);
 	pageOperationsInit();
 	initNestedTopActions();
@@ -319,6 +357,7 @@ int Tdeinit() {
 	truncationDeinit();
 	ThashDeinit();
 	bufDeinit();
+	closePageFile();
 	pageDeinit();
 	LogDeinit();
 	dirtyPagesDeinit();
