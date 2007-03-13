@@ -36,6 +36,7 @@ static void* remove(struct replacementPolicy* r, void * p) {
   assert(n);
   value_t * v = n->v;
   LL_ENTRY(remove)(l->lru, n);
+  l->setNode(p, 0, l->conf);
   return v;
 }
 static void  insert(struct replacementPolicy* r, 
