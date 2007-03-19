@@ -103,7 +103,6 @@ inline static Page * writeBackOnePage() {
 
   checkPageState(victim);
 
-  // XXX this can double free with (*) 
   lru->remove(lru, victim);
   Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(int));
   assert(old == victim);
@@ -194,7 +193,6 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
       int locked = tryreadlock(ret->loadlatch,0);
       assert(locked);
 #endif
-      // XXX this can double free with (*)      
       if(! *pagePinCountPtr(ret) ) { 
 	// Then ret is in lru (otherwise it would be pending, or not cached); remove it.
 	lru->remove(lru, ret);
@@ -306,7 +304,6 @@ void bhBufInit() {
 
   bufferPoolInit();
 
-  //  openPageFile();
   lru = lruFastInit(pageGetNode, pageSetNode, 0);
 
   cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
