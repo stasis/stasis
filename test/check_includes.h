@@ -1,6 +1,6 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <config.h>
 
 #ifndef HAVE_TCASE_SET_TIMEOUT
 #define tcase_set_timeout(x, y) 0

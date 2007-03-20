@@ -1,9 +1,5 @@
-#include <check.h>
-
-#include <lladd/transactional.h>
-
 #include <config.h>
-
+#include <check.h>
 #include <lladd/transactional.h>
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"

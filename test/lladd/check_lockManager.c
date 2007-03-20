@@ -1,8 +1,8 @@
+#include <config.h>
 #include <check.h>
 #include <lladd/transactional.h>
 #include <lladd/lockManager.h>
 #include <pthread.h>
-#include <config.h>
 
 #include <lladd/transactional.h>
 #include <assert.h>

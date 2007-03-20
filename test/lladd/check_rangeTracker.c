@@ -1,3 +1,4 @@
+#include <config.h>
 #include <check.h>
 #include <assert.h>
 #include <lladd/transactional.h>

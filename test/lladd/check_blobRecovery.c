@@ -41,9 +41,9 @@ terms specified in this license.
 ---*/
 #include <config.h>
 #include <check.h>
-/*#include <assert.h> */
-
 #include <lladd/transactional.h>
+
+
 #include <lladd/logger/logger2.h>
 #include <lladd/truncation.h>
 #include "../../src/lladd/logger/logWriter.h"
