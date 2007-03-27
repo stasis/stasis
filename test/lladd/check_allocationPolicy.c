@@ -39,16 +39,22 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+//#include <config.h>
 
+
+//#include <stdlib.h>
+//#include <stdio.h>
+
+#include <config.h>
 #include <check.h>
+#include "../check_includes.h"
 
 #include <lladd/allocationPolicy.h>
 
+#include <sys/time.h>
+#include <time.h>
 #include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
 
-#include "../check_includes.h"
 /*
 #include <sys/time.h>
 #include <time.h>
@@ -143,20 +149,104 @@ START_TEST(allocationPolicy_smokeTest)
 
   free(pages);
 
+  
+} END_TEST
+
+#define AVAILABLE_PAGE_COUNT_A 1000
+#define AVAILABLE_PAGE_COUNT_B 10
+#define FREE_MUL 100
+#define XACT_COUNT 1000
+
+#define PHASE_ONE_COUNT 10000
+#define PHASE_TWO_COUNT 50000
+
+static void takeRandomAction(allocationPolicy * ap, int * xids, 
+			     availablePage ** pages1, availablePage ** pages2) { 
+  switch(myrandom(6)) { 
+  case 0 : {   // find page
+  } break;
+  case 1 : {   // xact completed
+  } break;
+  case 2 : {   // update freespace unlocked
+  } break;
+  case 3 : {   // update freespace locked
+  } break;
+  case 4 : {   // lock page
+  } break;
+  case 5 : {   // alloced from page
+  } break;
+
+  }
+
+
+}
+
+START_TEST(allocationPolicy_randomTest) { 
+
+  struct timeval time; 
+  gettimeofday(&time,0);
+  long seed =  time.tv_usec + time.tv_sec * 1000000;
+  printf("\nSeed = %ld\n", seed);
+  srandom(seed);
+
+  availablePage ** pages1 = 
+    malloc((1+AVAILABLE_PAGE_COUNT_A) * sizeof(availablePage *));
+  availablePage ** pages2 = 
+    malloc((1+AVAILABLE_PAGE_COUNT_B) * sizeof(availablePage *));
+
+  int * xids = malloc(sizeof(int) * XACT_COUNT);
+  
+  for(int i = 0; i < XACT_COUNT; i++) { 
+    xids[i] = -1;
+  }
+
+  for(int i = 0; i < AVAILABLE_PAGE_COUNT_A; i++) { 
+    pages1[i] = malloc(sizeof(availablePage));
+    pages1[i]->pageid = i;
+    pages1[i]->freespace = i * FREE_MUL;
+    pages1[i]->lockCount = 0;
+  }
+  pages1[AVAILABLE_PAGE_COUNT_A] = 0;
+  for(int i = 0 ; i < AVAILABLE_PAGE_COUNT_B; i++) { 
+    pages2[i] = malloc(sizeof(availablePage));
+    pages2[i]->pageid = AVAILABLE_PAGE_COUNT_A + i;
+    pages2[i]->freespace = (AVAILABLE_PAGE_COUNT_A + i) * FREE_MUL;
+    pages2[i]->lockCount = 0;
+  }
+  pages2[AVAILABLE_PAGE_COUNT_B] = 0;
+
+  allocationPolicy * ap = allocationPolicyInit();
+
+  allocationPolicyAddPages(ap, pages1);
+
+  for(int k = 0; k < PHASE_ONE_COUNT; k++) { 
+    // Don't pass in pages2; ap doesn't know about them yet!
+    takeRandomAction(ap, xids, pages1, 0);
+  }
+
+  allocationPolicyAddPages(ap, pages2);
+
+  for(int k = 0; k < PHASE_ONE_COUNT; k++) { 
+    takeRandomAction(ap, xids, pages1, pages2);
+  }
+
+  allocationPolicyDeinit(ap);
+
+  free(pages1);
+  free(pages2);
 
 } END_TEST
 
 Suite * check_suite(void) {
-  Suite *s = suite_create("lhtable");
+  Suite *s = suite_create("allocationPolicy");
   /* Begin a new test */
-  TCase *tc = tcase_create("lhtable");
-
+  TCase *tc = tcase_create("allocationPolicy");
   tcase_set_timeout(tc, 0); // disable timeouts
-
 
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, allocationPolicy_smokeTest);
+  tcase_add_test(tc, allocationPolicy_randomTest);
 
   /* --------------------------------------------- */
   
