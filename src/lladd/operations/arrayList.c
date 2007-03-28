@@ -166,30 +166,25 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
       DEBUG("block %d\n", i);
       /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-      //      alTupdate(xid, tmp, &newFirstPage, op);
 
-      /**
-	 @XXX the calls to Tupdate in arrayList.c are bypassing operation implementations.
-      */
-      Tupdate(xid, tmp, &newFirstPage, op);
+      TupdateRaw(xid, tmp, &newFirstPage, op);
       DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
     }
     
     tmp.slot = MAX_OFFSET_POSITION;
     
     int newMaxOffset = tlp.maxOffset+slots;
-    //    alTupdate(xid, tmp, &newMaxOffset, op);
-    Tupdate(xid, tmp, &newMaxOffset, op);
+    TupdateRaw(xid, tmp, &newMaxOffset, op);
   } end_ret(compensation_error());
   return 0;
 
 }
 
 compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots) {
-  return TarrayListExtendInternal(xid, rid, slots, OPERATION_INSTANT_SET_RAW);
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_INSTANT_SET);
 }
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
-  return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET_RAW);
+  return TarrayListExtendInternal(xid, rid, slots, OPERATION_SET);
 }
 compensated_function int TarrayListLength(int xid, recordid rid) { 
  Page * p = loadPage(xid, rid.page);
@@ -197,39 +192,6 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
  releasePage(p);
  return tlp.maxOffset+1;
 }
-
-/*static int operateInitFixed(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  
-  fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
-  pageWriteLSN(xid, p, lsn);
-  return 0;
-}
-
-static int operateUnInitPage(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  *page_type_ptr(p) = UNINITIALIZED_PAGE;
-  pageWriteLSN(xid, p, lsn);
-  return 0;
-}
-
-Operation getInitFixed() {
-  Operation o = {
-    OPERATION_INITIALIZE_FIXED_PAGE,
-    0,  // The necessary parameters are hidden in the rid 
-    //OPERATION_UNINITIALIZE_PAGE,
-    OPERATION_NOOP, 
-    &operateInitFixed
-  };
-  return o;
-}
-Operation getUnInitPage() {
-  Operation o = {
-    OPERATION_UNINITIALIZE_PAGE,
-    PAGE_SIZE,
-    NO_INVERSE_WHOLE_PAGE, //OPERATION_NOOP,
-    &operateUnInitPage
-  };
-  return o;
-}*/
 
 /*----------------------------------------------------------------------------*/
 

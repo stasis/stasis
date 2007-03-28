@@ -130,7 +130,7 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
 
   hashRid.slot = valSize;
   hashRid.size = keySize;
-  Tupdate(xid, hashRid, key, OPERATION_LINEAR_INSERT);
+  TupdateRaw(xid, hashRid, key, OPERATION_LINEAR_INSERT);
   
   /* Perform redo-only insert. */
   hashRid.size = sizeof(hashEntry) + keySize + valSize;
@@ -157,7 +157,7 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
 
     hashRid.size = sizeof(undoDeleteArg) + keySize + valSize;
 
-    Tupdate(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
+    TupdateRaw(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
     hashRid.size = sizeof(hashEntry) + keySize + valSize;
     free(arg);
     /*    hashRid.size = sizeof(recordid); */

@@ -43,6 +43,7 @@ pthread_mutex_t transactional_2_mutex;
 
 void setupOperationsTable() {
 	memset(XactionTable, INVALID_XTABLE_XID, sizeof(TransactionLog)*MAX_TRANSACTIONS);
+	// @todo clean out unused constants...
 	operationsTable[OPERATION_SET]       = getSet();
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
@@ -85,8 +86,8 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
 	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
 	
-	operationsTable[OPERATION_SET_RAW] = getSetRaw();
-	operationsTable[OPERATION_INSTANT_SET_RAW] = getInstantSetRaw();
+	//operationsTable[OPERATION_SET_RAW] = getSetRaw();
+	//operationsTable[OPERATION_INSTANT_SET_RAW] = getInstantSetRaw();
 
 	operationsTable[OPERATION_ALLOC_BOUNDARY_TAG] = getAllocBoundaryTag();
 
@@ -95,15 +96,6 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_ALLOC_REGION] = getAllocRegion();
 	operationsTable[OPERATION_DEALLOC_REGION] = getDeallocRegion();
 
-	/* 
-	   int i;
-
-		for(i = 0; i <= OPERATION_LINEAR_HASH_REMOVE; i++) {
-	  if(operationsTable[i].id != i) {
-	    printf("mismatch %d -> %d\n", i, operationsTable[i].id);
-	  }
-	}
-	*/
 }
 
 // @todo this factory stuff doesn't really belong here...
@@ -228,43 +220,28 @@ static compensated_function void TupdateHelper(int xid, recordid rid, const void
   FreeLogEntry(e);
 }
 
-compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op) {
-  Page * p;  
+compensated_function void TupdateRaw(int xid, recordid rid, 
+				     const void * dat, int op) { 
   assert(xid >= 0);
-#ifdef DEBUGGING
-  pthread_mutex_lock(&transactional_2_mutex);
-  assert(numActiveXactions <= MAX_TRANSACTIONS);
-  pthread_mutex_unlock(&transactional_2_mutex);
-#endif
-  try { 
-    p = loadPage(xid, rid.page);
-  } end;
-  if(op != OPERATION_SET_RAW && op != OPERATION_INSTANT_SET_RAW) { 
-    if(*page_type_ptr(p) == INDIRECT_PAGE) {
-      releasePage(p);
-      try { 
-	rid = dereferenceRID(xid, rid);
-	p = loadPage(xid, rid.page); 
-      } end;
-      // @todo Kludge! Shouldn't special case operations in transactional2. 
-    } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE && 
-	      op != OPERATION_LINEAR_INSERT && 
-	      op != OPERATION_UNDO_LINEAR_INSERT &&
-	      op != OPERATION_LINEAR_DELETE && 
-	      op != OPERATION_UNDO_LINEAR_DELETE  ) {
-      rid = dereferenceArrayListRid(p, rid.slot);
-      releasePage(p);
-      try { 
-	p = loadPage(xid, rid.page); 
-      } end;
-    } 
+  Page * p = loadPage(xid, rid.page);
+  TupdateHelper(xid, rid, dat, op, p);
+  releasePage(p);
+}
+
+compensated_function void Tupdate(int xid, recordid rid, 
+					  const void *dat, int op) { 
+  Page * p = loadPage(xid, rid.page);
+  if(*page_type_ptr(p) == INDIRECT_PAGE) { 
+    rid = dereferenceRID(xid, rid);
+  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) { 
+    rid = dereferenceArrayListRid(p, rid.slot);
   }
-
-  /** @todo For logical undo logs, grabbing a lock makes no sense! */
-  begin_action(releasePage, p) { 
-    TupdateHelper(xid, rid, dat, op, p);
-  } compensate;
-
+  if(p->id != rid.page) { 
+    releasePage(p);
+    p = loadPage(xid, rid.page);
+  }
+  TupdateHelper(xid, rid, dat, op, p);
+  releasePage(p);
 }
 
 void TreadUnlocked(int xid, recordid rid, void * dat) {
@@ -327,10 +304,10 @@ int Tabort(int xid) {
 
   TransactionLog * t =&XactionTable[xid%MAX_TRANSACTIONS];
 
-  lsn = LogTransAbort(t /*&XactionTable[xid%MAX_TRANSACTIONS]*/);
+  lsn = LogTransAbort(t);
 
   /** @todo is the order of the next two calls important? */
-  undoTrans(*t/*XactionTable[xid%MAX_TRANSACTIONS]*/); 
+  undoTrans(*t);
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
 
   allocTransactionAbort(xid);
@@ -395,7 +372,7 @@ void TsetXIDCount(int xid) {
 }
 
 lsn_t transactions_minRecLSN() { 
-  lsn_t minRecLSN = LSN_T_MAX; // LogFlushedLSN()
+  lsn_t minRecLSN = LSN_T_MAX;
   pthread_mutex_lock(&transactional_2_mutex);
   for(int i = 0; i < MAX_TRANSACTIONS; i++) { 
     if(XactionTable[i].xid != INVALID_XTABLE_XID) { 

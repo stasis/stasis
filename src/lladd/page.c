@@ -128,6 +128,9 @@ void pageDeinit() {
   slottedPageDeInit();
 }
 
+/**
+   @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!
+*/
 void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	

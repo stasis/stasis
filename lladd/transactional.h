@@ -368,8 +368,12 @@ int Tbegin();
  *
  * @see operations.h set.h
  */
-compensated_function void Tupdate(int xid, recordid rid, const void *dat, int op);
-
+compensated_function void Tupdate(int xid, recordid rid, 
+				  const void *dat, int op);
+compensated_function void TupdateRaw(int xid, recordid rid, 
+				     const void *dat, int op);
+compensated_function void TupdateDeferred(int xid, recordid rid, 
+					  const void *dat, int op);
 /**
  * @param xid transaction ID
  * @param rid reference to page/slot

@@ -51,7 +51,6 @@ terms specified in this license.
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   writeRecord(xid, p, lsn, rid, dat); 
-  //writeRecordUnlocked(xid, p, lsn, rid, dat);
   return 0;
 }
 
@@ -64,14 +63,3 @@ Operation getInstantSet() {
 	};
 	return o;
 }
-Operation getInstantSetRaw() { 
-	Operation o = {
-		OPERATION_INSTANT_SET_RAW, /* id */
-		SIZEOF_RECORD, /* use the size of the record as size of arg */
-		OPERATION_NOOP, 
-		&operate /* Function */
-	};
-	return o;
-}
-
-

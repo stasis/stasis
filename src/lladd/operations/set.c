@@ -140,15 +140,6 @@ Operation getSet() {
 	};
 	return o;
 }
-Operation getSetRaw() { 
-	Operation o = {
-		OPERATION_SET_RAW, /* id */
-		SIZEOF_RECORD, /* use the size of the record as size of arg */
-		NO_INVERSE, 
-		&operate /* Function */
-	};
-	return o;
-}
 
 Operation getSetRange() {
 	Operation o = {
