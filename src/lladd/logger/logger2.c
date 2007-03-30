@@ -301,33 +301,31 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
   LogEntry * e;
 
 
-  if(operationsTable[operation].sizeofData == SIZEOF_RECORD) {
-    argSize = physical_slot_length(rid.size);
-  } else if(operationsTable[operation].sizeofData == SIZEIS_PAGEID) {
-    argSize = rid.page;
- //   printf("argsize (page) %d, %d\n", argSize, sizeof(recordid) * 2 + sizeof(int) * 3);
-  } else {
-    argSize = operationsTable[operation].sizeofData;
-  }
+  argSize = operationsTable[operation].sizeofData;
 
-  if(operationsTable[operation].undo == NO_INVERSE) {
+  if(argSize == SIZEOF_RECORD) argSize = physical_slot_length(rid.size);
+  if(argSize == SIZEIS_PAGEID) argSize = rid.page;
+
+  int undoType = operationsTable[operation].undo;
+  
+  if(undoType == NO_INVERSE) {
     DEBUG("Creating %ld byte physical pre-image.\n", physical_slot_length(rid.size));
+
     preImage = malloc(physical_slot_length(rid.size));
-    if(!preImage) { perror("malloc"); abort(); }
     readRecord(l->xid, p, rid, preImage);
-    DEBUG("got preimage");
-  } else if (operationsTable[operation].undo == NO_INVERSE_WHOLE_PAGE) {
+  } else if (undoType == NO_INVERSE_WHOLE_PAGE) {
     DEBUG("Logging entire page\n");
+
     preImage = malloc(PAGE_SIZE);
-    if(!preImage) { perror("malloc"); abort(); }
     memcpy(preImage, p->memAddr, PAGE_SIZE);
-    DEBUG("got preimage");
+  } else { 
+    DEBUG("No pre-image");
   }
   
   e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, preImage);
   
   LogWrite(e);
-  DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
+  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
 
   if(preImage) {
