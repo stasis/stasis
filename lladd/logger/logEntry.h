@@ -110,11 +110,22 @@ typedef struct {
  */
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type);
 /** 
-   Allocate a log entry with extra payload info.(eg:  Tupdate, Talloc, etc)
+   Allocate a log entry associated with an operation implemention.  This
+   is usually called inside of Tupdate().
 */
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
 			       unsigned int operation, recordid rid, 
-			       const byte * args, unsigned int argSize, const byte * preImage);
+			       const byte * args, unsigned int argSize, 
+			       const byte * preImage);
+/**
+   Alloc a deferred log entry.  This is just like allocUpdateLogEntry(), except 
+   the log entry's type will be DEFERLOG instead UPDATELOG.  This is usually
+   called inside of Tdefer().
+*/
+LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
+				 unsigned int operation, recordid rid, 
+				 const byte * args, unsigned int argSize, 
+				 const byte * preImage);
 /**
    Allocate a CLR entry.  These are written during recovery to
    indicate that the stable copy of the store file reflects the state

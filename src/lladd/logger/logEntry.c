@@ -60,7 +60,7 @@ LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
 }
 
 const byte * getUpdateArgs(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG);
+  assert(ret->type == UPDATELOG || ret->type == DEFERLOG);
   if(ret->contents.update.argSize == 0) {
     return NULL;
   } else {
@@ -69,7 +69,7 @@ const byte * getUpdateArgs(const LogEntry * ret) {
 }
 
 const byte * getUpdatePreImage(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG);
+  assert(ret->type == UPDATELOG || ret->type == DEFERLOG);
   if(operationsTable[ret->contents.update.funcID].undo != NO_INVERSE && 
      operationsTable[ret->contents.update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
     return NULL;
@@ -80,7 +80,8 @@ const byte * getUpdatePreImage(const LogEntry * ret) {
 
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
 			       unsigned int funcID, recordid rid, 
-			       const byte * args, unsigned int argSize, const byte * preImage) {
+			       const byte * args, unsigned int argSize, 
+			       const byte * preImage) {
   int invertible = operationsTable[funcID].undo != NO_INVERSE;
   int whole_page_phys = operationsTable[funcID].undo == NO_INVERSE_WHOLE_PAGE;
   
@@ -111,6 +112,15 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 
 }
 
+LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
+				 unsigned int funcID, recordid rid, 
+				 const byte * args, unsigned int argSize, 
+				 const byte * preImage) {
+  LogEntry * ret = allocUpdateLogEntry(prevLSN, xid, funcID, rid, args, argSize,
+				       preImage);
+  ret->type = DEFERLOG;
+  return ret;
+}
 LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid, 
 			       lsn_t thisUpdateLSN, recordid rid, lsn_t undoNextLSN) {
   LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry));
@@ -132,7 +142,8 @@ long sizeofLogEntry(const LogEntry * log) {
   switch (log->type) {
   case CLRLOG:
     return sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry);
-  case UPDATELOG: 
+  case UPDATELOG:
+  case DEFERLOG: 
     return sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + log->contents.update.argSize + 
       ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? physical_slot_length(log->contents.update.rid.size) : 0) +
       ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0) ;

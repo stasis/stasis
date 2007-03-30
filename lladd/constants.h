@@ -199,10 +199,11 @@ extern const short SLOT_TYPE_LENGTHS[];
    (recovery, abort) should be prepared to accept and ignore these
    entries. */
 #define INTERNALLOG 0
-#define UPDATELOG 1
-#define XBEGIN 2
-#define XCOMMIT 3
-#define XABORT 4
+#define XBEGIN 1
+#define XCOMMIT 2
+#define XABORT 3
+#define UPDATELOG 4
+#define DEFERLOG 5
 /** 
     XEND is used for after the pages touched by a transaction have
     been flushed to stable storage.

@@ -125,6 +125,8 @@ static void Analysis () {
       pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
       break;
     case UPDATELOG:
+      // XXX we should treat CLR's like REDO's, but things don't work
+      // that way yet.
     case CLRLOG:
       /* 
 	 If the last record we see for a transaction is an update or clr, 
@@ -139,11 +141,16 @@ static void Analysis () {
       addSortedVal(&rollbackLSNs, e->LSN);
       break;
     case XABORT: 
-      /* Don't want this XID in the list of rolled back lsn's since
-	 this XACT will be rolled back during redo. */
+      /* If the last record we see for a transaction is an abort, then
+	 the transaction didn't commit, and must be rolled back. 
+      */
+      DEBUG("Adding %ld\n", e->LSN);
+      addSortedVal(&rollbackLSNs, e->LSN);
       break;  
     case INTERNALLOG:
       /* Created by the logger, just ignore it. */
+      // Make sure the log entry doesn't interfere with real xacts.
+      assert(e->xid == INVALID_XID); 
       break; 
     default:
       abort();
@@ -161,26 +168,46 @@ static void Redo() {
 
     /* Check to see if this log entry is part of a transaction that needs to be redone. */
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
-      /* Check to see if this log entry contains an action that needs to be redone. */
-      if(e->type == UPDATELOG || 
-	 e->type == CLRLOG) {
-	/* redoUpdate checks the page that contains e->rid, so we
-	   don't need to check to see if the page is newer than this
-	   log entry. */
-	if(e->type == UPDATELOG) { 
-	  /*	  addPendingEvent(e->contents.update.rid.page);  */
-	} else {
-	  /*	  addPendingEvent(e->contents.clr.rid.page); */
-	}
-	redoUpdate(e);
-      } else if(e->type == XCOMMIT && globalLockManager.commit) {
-	globalLockManager.commit(e->xid);
-      } // if transaction aborted, wait until undo is complete before notifying the globalLockManager.
-    }
-    FreeLogEntry(e);
+      // Check to see if this entry's action needs to be redone
+      switch(e->type) { 
+      case UPDATELOG:
+      case CLRLOG: 
+	{
+	  // redoUpdate checks the page that contains e->rid, so we
+	  // don't need to check to see if the page is newer than this
+	  // log entry.
+	  redoUpdate(e);
+	  FreeLogEntry(e);
+	} break;
+      case DEFERLOG: 
+	{ 
+	  //XXX	deferred_push(e);
+	} break;
+      case XCOMMIT:
+	{
+	  if(globalLockManager.commit)
+	    globalLockManager.commit(e->xid);
+	  FreeLogEntry(e);
+	} break;
+      case XABORT: 
+	{ 
+	  // wait until undo is complete before informing the lock manager
+	  FreeLogEntry(e);
+	} break;
+      case INTERNALLOG:
+	{
+	  FreeLogEntry(e);
+	} break;
+      default:
+	abort();
+      }
+    } 
   }
 }
-
+/** 
+    XXX
+    @todo CLR handling seems to be broken for logical operations!
+*/
 static void Undo(int recovery) {
   LogHandle lh;
   void * prepare_guard_state;
@@ -234,11 +261,17 @@ static void Undo(int recovery) {
 	  } else {
 	    // The log entry is not associated with a particular page.
 	    // (Therefore, it must be an idempotent logical log entry.)
-	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, e->prevLSN);
+	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, 
+			     e->prevLSN);
 	    undoUpdate(e, NULL, clr_lsn);
 	  }
 	  break;
 	}
+      case DEFERLOG:
+	// The transaction is aborting, so it never committed.  Therefore
+	// actions deferred to commit have never been applied; ignore this
+	// log entry.
+      break;
       case CLRLOG:  
 	/* Don't need to do anything special to handle CLR's.  
 	   Iterator will correctly jump to clr's previous undo record. */
@@ -248,7 +281,9 @@ static void Undo(int recovery) {
 	   records may be passed in by undoTrans.)*/
       break;
       default:
-	printf ("Unknown log type to undo (TYPE=%d, XID= %d, LSN=%lld), skipping...\n", e->type, e->xid, e->LSN); 
+	print
+	  ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
+	   e->type, e->xid, e->LSN); 
       break;
       }
       FreeLogEntry(e);

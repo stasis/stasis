@@ -199,7 +199,9 @@ int Tbegin() {
 	return XactionTable[index].xid;
 }
 
-static compensated_function void TupdateHelper(int xid, recordid rid, const void * dat, int op, Page * p) {
+static compensated_function void TactionHelper(int xid, recordid rid, 
+					       const void * dat, int op, 
+					       Page * p, int deferred) {
   LogEntry * e;
   assert(xid >= 0);
   try { 
@@ -207,40 +209,65 @@ static compensated_function void TupdateHelper(int xid, recordid rid, const void
       globalLockManager.writeLockPage(xid, rid.page);
     }
   } end;
+  if(! deferred) { 
+    e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+    assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+    DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
+    doUpdate(e, p);
+    FreeLogEntry(e);
+  } else { 
+    e = LogDeferred(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+    assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);    
+    DEBUG("Deferring e->LSN: %ld\n", e->LSN);
+    // XXX update XactionTable...
+    //XXX deferred_push(e);
+  }
 
-    
-  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-  
-  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
-  
-  DEBUG("T update() e->LSN: %ld\n", e->LSN);
-  
-  doUpdate(e, p);
 
-  FreeLogEntry(e);
+}
+
+static recordid resolveForUpdate(int xid, Page * p, recordid rid) { 
+  
+  if(*page_type_ptr(p) == INDIRECT_PAGE) { 
+    rid = dereferenceRID(xid, rid);
+  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) { 
+    rid = dereferenceArrayListRid(p, rid.slot);
+  }
+  return rid;
 }
 
 compensated_function void TupdateRaw(int xid, recordid rid, 
 				     const void * dat, int op) { 
   assert(xid >= 0);
   Page * p = loadPage(xid, rid.page);
-  TupdateHelper(xid, rid, dat, op, p);
+  TactionHelper(xid, rid, dat, op, p, 0); // 0 -> not deferred
   releasePage(p);
 }
 
 compensated_function void Tupdate(int xid, recordid rid, 
-					  const void *dat, int op) { 
+				  const void *dat, int op) { 
   Page * p = loadPage(xid, rid.page);
-  if(*page_type_ptr(p) == INDIRECT_PAGE) { 
-    rid = dereferenceRID(xid, rid);
-  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) { 
-    rid = dereferenceArrayListRid(p, rid.slot);
-  }
+  rid = resolveForUpdate(xid, p, rid);
+  
   if(p->id != rid.page) { 
     releasePage(p);
     p = loadPage(xid, rid.page);
   }
-  TupdateHelper(xid, rid, dat, op, p);
+  
+  TactionHelper(xid, rid, dat, op, p, 0); // 0 -> not deferred
+  releasePage(p);
+}
+
+compensated_function void Tdefer(int xid, recordid rid, 
+				 const void * dat, int op) {
+
+  Page * p = loadPage(xid, rid.page);
+  recordid newrid = resolveForUpdate(xid, p, rid);
+  // Caller cannot rely on late or early binding of rid.
+  assert(rid.page == newrid.page && 
+	 rid.slot == newrid.slot && 
+	 rid.size == newrid.size);  
+  TactionHelper(xid, rid, dat, op, p, 1); // 1 -> deferred.
   releasePage(p);
 }
 

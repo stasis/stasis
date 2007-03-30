@@ -61,6 +61,9 @@ void doUpdate(const LogEntry * e, Page * p) {
 
 }
 
+/**
+   @todo redoUpdate()'s CLR handling is messy, at best; broken at worst.
+ */
 void redoUpdate(const LogEntry * e) {
   if(e->type == UPDATELOG) {
     /*    lsn_t pageLSN = readLSN(e->contents.update.rid.page); */
