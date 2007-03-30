@@ -52,12 +52,12 @@ terms specified in this license.
 
 START_TEST(rawLogEntryAlloc)
 {
-  LogEntry * log = allocCommonLogEntry(200, 1, 4);
-  fail_unless(log->LSN == -1, NULL);
-  fail_unless(log->prevLSN == 200, NULL);
-  fail_unless(log->xid == 1,NULL);
-  fail_unless(log->type == 4,NULL);
-  fail_unless(sizeofLogEntry(log) == sizeof(struct __raw_log_entry),NULL);
+  LogEntry * log = allocCommonLogEntry(200, 1, XABORT);
+  assert(log->LSN == -1);
+  assert(log->prevLSN == 200);
+  assert(log->xid == 1);
+  assert(log->type == XABORT);
+  assert(sizeofLogEntry(log) == sizeof(struct __raw_log_entry));
   free(log);
 }
 END_TEST
@@ -66,17 +66,17 @@ START_TEST(clrLogEntryAlloc)
 {
   recordid rid = { 3, 4, 5 };
   LogEntry * log = allocCLRLogEntry(200, 1, 7, rid, 8);
-  fail_unless(log->LSN == -1, NULL);
-  fail_unless(log->prevLSN == 200, NULL);
-  fail_unless(log->xid == 1, NULL);
-  fail_unless(log->type == CLRLOG, NULL);
-  fail_unless(sizeofLogEntry(log) == sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry), NULL);
+  assert(log->LSN == -1);
+  assert(log->prevLSN == 200);
+  assert(log->xid == 1);
+  assert(log->type == CLRLOG);
+  assert(sizeofLogEntry(log) == sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry));
   
-  fail_unless(log->contents.clr.thisUpdateLSN == 7, NULL);
-  fail_unless(log->contents.clr.rid.page == 3, NULL);
-  fail_unless(log->contents.clr.rid.slot == 4, NULL);
-  fail_unless(log->contents.clr.rid.size == 5, NULL);
-  fail_unless(log->contents.clr.undoNextLSN == 8, NULL);
+  assert(log->contents.clr.thisUpdateLSN == 7);
+  assert(log->contents.clr.rid.page == 3);
+  assert(log->contents.clr.rid.slot == 4);
+  assert(log->contents.clr.rid.size == 5);
+  assert(log->contents.clr.undoNextLSN == 8);
 
   free(log);
 
@@ -103,30 +103,30 @@ START_TEST(updateLogEntryAlloc)
   log = allocUpdateLogEntry(200, 1, OPERATION_SET,
 				       rid, 
 				       (const byte*)args, 3*sizeof(char), (const byte*)preImage);
-  fail_unless(log->LSN == -1, NULL);
-  fail_unless(log->prevLSN == 200, NULL);
-  fail_unless(log->xid == 1, NULL);
-  fail_unless(log->type == UPDATELOG, NULL);
+  assert(log->LSN == -1);
+  assert(log->prevLSN == 200);
+  assert(log->xid == 1);
+  assert(log->type == UPDATELOG);
   
-  fail_unless(log->contents.update.funcID    == OPERATION_SET, NULL);
-  /* fail_unless(log->contents.update.invertible == 0, NULL); */ 
-  fail_unless(log->contents.update.rid.page   == 3, NULL);
-  fail_unless(log->contents.update.rid.slot   == 4, NULL);
-  fail_unless(log->contents.update.rid.size   == 3*sizeof(int), NULL);
-  fail_unless(log->contents.update.argSize    == 3*sizeof(char), NULL);
+  assert(log->contents.update.funcID    == OPERATION_SET);
+  /* assert(log->contents.update.invertible == 0); */ 
+  assert(log->contents.update.rid.page   == 3);
+  assert(log->contents.update.rid.slot   == 4);
+  assert(log->contents.update.rid.size   == 3*sizeof(int));
+  assert(log->contents.update.argSize    == 3*sizeof(char));
   
-  fail_unless(getUpdateArgs(log) != NULL, NULL);
-  fail_unless(args[0] == ((char*)getUpdateArgs(log))[0], NULL);
-  fail_unless(args[1] == ((char*)getUpdateArgs(log))[1], NULL);
-  fail_unless(args[2] == ((char*)getUpdateArgs(log))[2], NULL);
+  assert(getUpdateArgs(log) != NULL);
+  assert(args[0] == ((char*)getUpdateArgs(log))[0]);
+  assert(args[1] == ((char*)getUpdateArgs(log))[1]);
+  assert(args[2] == ((char*)getUpdateArgs(log))[2]);
   preImageCpy = (int*)getUpdatePreImage(log);
-  fail_unless(preImageCpy != NULL, NULL);
+  assert(preImageCpy != NULL);
 
-  fail_unless(preImage[0] == preImageCpy[0], NULL);
-  fail_unless(preImage[1] == preImageCpy[1], NULL);
-  fail_unless(preImage[2] == preImageCpy[2], NULL);
+  assert(preImage[0] == preImageCpy[0]);
+  assert(preImage[1] == preImageCpy[1]);
+  assert(preImage[2] == preImageCpy[2]);
 
-  fail_unless(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 3 * (sizeof(int)+sizeof(char))), NULL);
+  assert(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 3 * (sizeof(int)+sizeof(char))));
   free(log);
   Tdeinit();
 }
@@ -143,23 +143,23 @@ START_TEST(updateLogEntryAllocNoExtras)
   LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_LHINSERT,
 				       rid, 
 				       (byte*)args, 0, (byte*)preImage);
-  fail_unless(log->LSN == -1, NULL);
-  fail_unless(log->prevLSN == 200, NULL);
-  fail_unless(log->xid == 1, NULL);
-  fail_unless(log->type == UPDATELOG, NULL);
+  assert(log->LSN == -1);
+  assert(log->prevLSN == 200);
+  assert(log->xid == 1);
+  assert(log->type == UPDATELOG);
   
-  fail_unless(log->contents.update.funcID    == OPERATION_LHINSERT, NULL);
-  /*  fail_unless(log->contents.update.invertible == 1, NULL); */
-  fail_unless(log->contents.update.rid.page   == 3, NULL);
-  fail_unless(log->contents.update.rid.slot   == 4, NULL);
-  fail_unless(log->contents.update.rid.size   == 3*sizeof(int), NULL);
-  fail_unless(log->contents.update.argSize    == 0, NULL);
+  assert(log->contents.update.funcID    == OPERATION_LHINSERT);
+  /*  assert(log->contents.update.invertible == 1); */
+  assert(log->contents.update.rid.page   == 3);
+  assert(log->contents.update.rid.slot   == 4);
+  assert(log->contents.update.rid.size   == 3*sizeof(int));
+  assert(log->contents.update.argSize    == 0);
   
-  fail_unless(getUpdateArgs(log) == NULL, NULL);
+  assert(getUpdateArgs(log) == NULL);
   preImageCpy = (int*)getUpdatePreImage(log);
-  fail_unless(preImageCpy == NULL, NULL);
+  assert(preImageCpy == NULL);
 
-  fail_unless(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))), NULL);
+  assert(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))));
   free(log);
 }
 END_TEST
