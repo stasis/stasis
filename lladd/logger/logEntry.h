@@ -48,14 +48,8 @@ terms specified in this license.
 BEGIN_C_DECLS
 
 /**
-   @file 
+   @file structs and memory managment routines for log entries
 
-   Next generation logger api.  
-
-   @todo Was getting some memory over-runs from the fact that I didn't
-   know the exact length of a raw log entry.  This seems to be fixed
-   now. 
-   
    @todo Is there a better way to deal with sizeof() and log entries?
    
    @todo Other than some typedefs, is there anything in logEntry that belongs in the API?
@@ -66,16 +60,9 @@ BEGIN_C_DECLS
 */
 
 typedef struct {
-  lsn_t    thisUpdateLSN;
-  recordid rid; 
-  lsn_t    undoNextLSN;
-} CLRLogEntry;
-
-typedef struct {
   unsigned int funcID : 8;
   recordid rid;
   unsigned int argSize;
-  /*  int invertible; */ /* no longer needed */
   /* Implicit members:
      args;     @ ((byte*)ule) + sizeof(UpdateLogEntry)
      preImage; @ ((byte*)ule) + sizeof(UpdateLogEntry) + ule.argSize */
@@ -88,30 +75,27 @@ struct __raw_log_entry {
   unsigned int type;
 };
 
-/*#define sizeofRawLogEntry (sizeof(lsn_t)*2+sizeof(int)+4)*/
-
 typedef struct {
   lsn_t LSN;
   lsn_t prevLSN;
   int   xid;
   unsigned int type;
-  union {
-    UpdateLogEntry update;
-    CLRLogEntry    clr;
-  } contents;
+  UpdateLogEntry update;
 } LogEntry;
 
 /**
-   All of these return a pointer to a single malloced region that should be freed. 
-*/
+   Allocate a log entry that does not contain any extra payload
+   information.  (Eg: Tbegin, Tcommit, etc.)
 
-/**
-   Allocate a log entry that does not contain any extra payload information.  (Eg:  Tbegin, Tcommit, etc.)
+   @return a LogEntry that should be freed with free().
  */
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type);
 /** 
    Allocate a log entry associated with an operation implemention.  This
    is usually called inside of Tupdate().
+
+   @return a LogEntry that should be freed with free().
+
 */
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
 			       unsigned int operation, recordid rid, 
@@ -121,25 +105,36 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
    Alloc a deferred log entry.  This is just like allocUpdateLogEntry(), except 
    the log entry's type will be DEFERLOG instead UPDATELOG.  This is usually
    called inside of Tdefer().
+
+   @return a LogEntry that should be freed with free().
+
 */
 LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
 				 unsigned int operation, recordid rid, 
 				 const byte * args, unsigned int argSize, 
 				 const byte * preImage);
 /**
-   Allocate a CLR entry.  These are written during recovery to
-   indicate that the stable copy of the store file reflects the state
-   of the database after an operation has successfuly been
-   redone/undone.
- */
-LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid, 
-			       lsn_t thisUpdateLSN, recordid rid, lsn_t undoNextLSN);
+   Allocate a CLR entry.  These are written during recovery as log
+   entries are undone.  This moves undo operations into the redo
+   phase, by recording the inverse of the original operation, and sets
+   prevLSN to the prevLSN of old_e.
 
-
-
-long sizeofLogEntry(const LogEntry * log);
-const byte * getUpdateArgs(const LogEntry * log);
-const byte * getUpdatePreImage(const LogEntry * log);
+   @return a LogEntry that should be freed with free().
+*/
+LogEntry * allocCLRLogEntry(const LogEntry * old_e);
+/** 
+   @return the length, in bytes, of e.
+*/
+long sizeofLogEntry(const LogEntry * e);
+/**
+   @return the operation's arguments.
+*/
+const byte * getUpdateArgs(const LogEntry * e);
+/**
+   @return the undo information for operations that use record-based
+   phsysical undo.
+*/
+const byte * getUpdatePreImage(const LogEntry * e);
 
 END_C_DECLS
 

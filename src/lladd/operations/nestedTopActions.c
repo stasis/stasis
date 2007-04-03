@@ -56,13 +56,9 @@ terms specified in this license.
 /** @todo Remove extern declaration of transactional_2_mutex from nestedTopActions.c */
 extern pthread_mutex_t transactional_2_mutex;
 
-
-/*#include <lladd/bufferManager.h>*/
-
 extern TransactionLog XactionTable[];
 
 pblHashTable_t * nestedTopActions = NULL;
-/** @todo this really should be set somewhere globally. */
 
 void initNestedTopActions() {
   nestedTopActions = pblHtCreate();
@@ -93,11 +89,7 @@ void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
 
 /** 
     Call this function at the end of a nested top action.
-
     @return the lsn of the CLR.  Most users (everyone?) will ignore this.
-
-    @todo LogCLR()'s API is useless.  Make it private, and implement a better 
-    public version. (Then rewrite TendNestedTopAction) 
 */
 lsn_t TendNestedTopAction(int xid, void * handle) {
   
@@ -110,12 +102,9 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   }
 
   assert(xid >= 0);
-  // This action wasn't really undone -- This is a nested top action!
-  lsn_t undoneLSN = XactionTable[xid % MAX_TRANSACTIONS].prevLSN; 
-  recordid undoneRID = NULLRID;  // Not correct, but this field is unused anyway. ;)
-  
+
   // Write a CLR.
-  lsn_t clrLSN = LogCLR(xid, undoneLSN, undoneRID, *prevLSN);
+  lsn_t clrLSN = LogDummyCLR(xid, *prevLSN);
   
   // Ensure that the next action in this transaction points to the CLR. 
   XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;

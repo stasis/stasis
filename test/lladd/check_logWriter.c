@@ -97,7 +97,8 @@ static void setup_log() {
     LogWrite(e);
     prevLSN = e->prevLSN;
 
-    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
+    //    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
+    LogEntry * g = allocCLRLogEntry(e); // XXX will probably break
 
     LogWrite(g);
     assert (g->type == CLRLOG);

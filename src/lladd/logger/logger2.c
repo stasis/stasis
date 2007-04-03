@@ -47,16 +47,16 @@ terms specified in this license.
    @todo Switch logger2 to use function pointers?
 */
 
-#include <stdio.h>
-#include <assert.h>
 #include <config.h>
-
 #include <lladd/common.h>
 
+#include <stdio.h>
+#include <assert.h>
+
 #include <lladd/logger/logger2.h>
+
 #include "logWriter.h"
 #include "inMemoryLog.h"
-
 #include "page.h"  
 
 #ifdef USE_LOGGER
@@ -75,7 +75,8 @@ long LoggerSizeOfInternalLogEntry(const LogEntry * e) {
   } else if (loggerType == LOG_TO_MEMORY) {
     return sizeofInternalLogEntry_InMemoryLog(e);   
   } else {
-    abort(); // we dont have an appropriate implementation, or weren't initialized...
+    // we dont have an appropriate implementation, or weren't initialized...
+    abort();
   }
 }
 
@@ -352,16 +353,22 @@ LogEntry * LogDeferred(TransactionLog * l, Page * p, recordid rid, int operation
   return LogAction(l, p, rid, operation, args, 1); // 1 -> deferred
 }
 
-
-lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN) { 
-  lsn_t ret;
-  LogEntry * e = allocCLRLogEntry(-1, xid, LSN, rid, prevLSN);
+lsn_t LogCLR(const LogEntry * old_e) { 
+  LogEntry * e = allocCLRLogEntry(old_e);
   LogWrite(e);
 
   DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
   	 e->LSN, LSN, prevLSN);
 
-  ret = e->LSN;
+  lsn_t ret = e->LSN;
+  FreeLogEntry(e);
+  return ret;
+}
+
+lsn_t LogDummyCLR(int xid, lsn_t prevLSN) { 
+  LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP, 
+				     NULLRID, NULL, 0, 0);
+  lsn_t ret = LogCLR(e);
   FreeLogEntry(e);
   return ret;
 }

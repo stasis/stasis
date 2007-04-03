@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -42,39 +42,47 @@ terms specified in this license.
 
 #include <config.h>
 #include <lladd/common.h>
-#include <page.h> // For physical_slot_length()
-
-#include <lladd/transactional.h>
 
 #include <assert.h>
-#include <lladd/operations.h>
-#include <lladd/logger/logger2.h>
+
+#include "page.h" // For physical_slot_length()
+#include <lladd/logger/logger2.h> // needed for LoggerSizeOfInternalLogEntry()
+#include <lladd/logger/logEntry.h>
+
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = malloc(sizeof(struct __raw_log_entry));
   ret->LSN     = -1;
   ret->prevLSN = prevLSN;
   ret->xid     = xid;
   ret->type    = type;
-  //printf ("logEntry.c: Log entry length is %ld\n", sizeof(struct __raw_log_entry));
   return ret;
 }
 
 const byte * getUpdateArgs(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG || ret->type == DEFERLOG);
-  if(ret->contents.update.argSize == 0) {
+  assert(ret->type == UPDATELOG || 
+	 ret->type == DEFERLOG  || 
+	 ret->type == CLRLOG);
+  if(ret->update.argSize == 0) {
     return NULL;
   } else {
-    return ((byte*)ret) + sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry);
+    return ((byte*)ret) + 
+      sizeof(struct __raw_log_entry) + 
+      sizeof(UpdateLogEntry);
   }
 }
 
 const byte * getUpdatePreImage(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG || ret->type == DEFERLOG);
-  if(operationsTable[ret->contents.update.funcID].undo != NO_INVERSE && 
-     operationsTable[ret->contents.update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
+  assert(ret->type == UPDATELOG || 
+	 ret->type == DEFERLOG  || 
+	 ret->type == CLRLOG);
+  if(operationsTable[ret->update.funcID].undo != NO_INVERSE && 
+     operationsTable[ret->update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
     return NULL;
   } else {
-    return ((byte*)ret) + sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + ret->contents.update.argSize;
+    return ((byte*)ret) + 
+      sizeof(struct __raw_log_entry) + 
+      sizeof(UpdateLogEntry) + 
+      ret->update.argSize;
   }
 }
 
@@ -88,50 +96,55 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   /** Use calloc since the struct might not be packed in memory;
       otherwise, we'd leak uninitialized bytes to the log. */
 
-  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + argSize +
-			  ((!invertible) ? physical_slot_length(rid.size) : 0) + (whole_page_phys ? PAGE_SIZE : 0));
+  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry) + 
+			     sizeof(UpdateLogEntry) + argSize +
+			     ((!invertible) ? physical_slot_length(rid.size) 
+			                    : 0) + 
+			     (whole_page_phys ? PAGE_SIZE 
+			                      : 0));
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
   ret->type = UPDATELOG;
-  ret->contents.update.funcID = funcID;
-  ret->contents.update.rid    = rid;
-  ret->contents.update.argSize = argSize;
+  ret->update.funcID = funcID;
+  ret->update.rid    = rid;
+  ret->update.argSize = argSize;
   
   if(argSize) {
     memcpy((void*)getUpdateArgs(ret), args, argSize);
   } 
   if(!invertible) {
-    memcpy((void*)getUpdatePreImage(ret), preImage, physical_slot_length(rid.size));
+    memcpy((void*)getUpdatePreImage(ret), preImage, 
+	   physical_slot_length(rid.size));
   }
   if(whole_page_phys) {
-    memcpy((void*)getUpdatePreImage(ret), preImage, PAGE_SIZE);
+    memcpy((void*)getUpdatePreImage(ret), preImage, 
+	   PAGE_SIZE);
   }
-
   return ret;
-
 }
 
 LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
 				 unsigned int funcID, recordid rid, 
 				 const byte * args, unsigned int argSize, 
 				 const byte * preImage) {
-  LogEntry * ret = allocUpdateLogEntry(prevLSN, xid, funcID, rid, args, argSize,
-				       preImage);
+  LogEntry * ret = allocUpdateLogEntry(prevLSN, xid, funcID, rid, 
+				       args, argSize, preImage);
   ret->type = DEFERLOG;
   return ret;
 }
-LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid, 
-			       lsn_t thisUpdateLSN, recordid rid, lsn_t undoNextLSN) {
-  LogEntry * ret = malloc(sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry));
-  ret->LSN = -1;
-  ret->prevLSN = prevLSN;
-  ret->xid = xid;
-  ret->type = CLRLOG;
+LogEntry * allocCLRLogEntry(const LogEntry * old_e) { 
 
-  ret->contents.clr.thisUpdateLSN = thisUpdateLSN;
-  ret->contents.clr.rid           = rid;
-  ret->contents.clr.undoNextLSN   = undoNextLSN;
+  // Could handle other types, but we should never encounter them here.
+  assert(old_e->type == UPDATELOG); 
+
+  LogEntry * ret = malloc(sizeofLogEntry(old_e));
+  memcpy(ret, old_e, sizeofLogEntry(old_e));
+  ret->LSN = -1;
+  // prevLSN is OK already
+  // xid is OK already
+  ret->type = CLRLOG;
+  // update is also OK
   
   return ret;
 }
@@ -141,12 +154,15 @@ LogEntry * allocCLRLogEntry   (lsn_t prevLSN, int xid,
 long sizeofLogEntry(const LogEntry * log) {
   switch (log->type) {
   case CLRLOG:
-    return sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry);
   case UPDATELOG:
-  case DEFERLOG: 
-    return sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + log->contents.update.argSize + 
-      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE) ? physical_slot_length(log->contents.update.rid.size) : 0) +
-      ((operationsTable[log->contents.update.funcID].undo == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0) ;
+  case DEFERLOG: { 
+    int undoType = operationsTable[log->update.funcID].undo;
+    return sizeof(struct __raw_log_entry) + 
+      sizeof(UpdateLogEntry) + log->update.argSize + 
+      ((undoType == NO_INVERSE) ? physical_slot_length(log->update.rid.size) 
+                                : 0) +
+      ((undoType == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0);
+  }
   case INTERNALLOG:
     return LoggerSizeOfInternalLogEntry(log);
   default:

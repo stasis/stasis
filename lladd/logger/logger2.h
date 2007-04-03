@@ -63,8 +63,6 @@ terms specified in this license.
 typedef int (guard_fcn_t)(const LogEntry *, void *);
 
 typedef struct { 
-  /** The LSN of the last log entry returned.*/
-  /*  lsn_t       file_offset; */ /* Unneeded? */
   /** The LSN of the log entry that we would return if next is called. */
   lsn_t       next_offset; 
   /** The LSN of the log entry that we would return if previous is called. */
@@ -93,7 +91,8 @@ typedef struct {
 
     (eg: gcc ... -DUSE_LOGGER=LOG_TO_FOO)
 
-    @see constants.h for a list of recognized log implementations. (The constants are named LOG_TO_*)
+    @see constants.h for a list of recognized log implementations. 
+         (The constants are named LOG_TO_*)
 
  */
 extern int loggerType;
@@ -130,7 +129,8 @@ lsn_t LogNextEntry(const LogEntry * e);
 TransactionLog LogTransBegin(int xid);
 
 /**
-  Write a transaction COMMIT to the log tail.  Blocks until the commit record is stable.
+  Write a transaction COMMIT to the log tail.  Blocks until the commit
+  record is stable.
 
   @return The lsn of the commit log entry.  
 */
@@ -148,7 +148,7 @@ lsn_t LogTransAbort(TransactionLog * l);
   its operation argument to the extent necessary for allocating and laying out 
   the log entry.  Finally, it updates the state of the parameter l.
 */
-LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation, 
+LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
 		     const byte * args);
 /**
   LogDeferred writes a DEFERLOG log record to the log tail
@@ -156,14 +156,15 @@ LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
   @see LogUpdate is analagous to this function, but wrutes UPDATELOG entries 
        instead.
 */
-LogEntry * LogDeferred(TransactionLog * l, Page * p, recordid rid, int operation, 
-		       const byte * args);
+LogEntry * LogDeferred(TransactionLog * l, Page * p, recordid rid, 
+		       int operation, const byte * args);
 
 /**
    Any LogEntry that is returned by a function in logger2.h or
    logHandle.h should be freed using this function.
 
-   @param e The log entry to be freed.  (The "const" here is a hack that allows LogReadLSN to return a const *.
+   @param e The log entry to be freed.  (The "const" here is a hack
+            that allows LogReadLSN to return a const *.
 */
 void FreeLogEntry(const LogEntry * e);
 
@@ -173,10 +174,12 @@ void FreeLogEntry(const LogEntry * e);
    record the completion of undo operations, amongst other things.
 
    @return the lsn of the CLR entry that was written to the log.
-   (Needed so that the lsn slot of the page in question can be
-   updated.)  
+           (Needed so that the lsn slot of the page in question can be
+           updated.)
 */
-lsn_t LogCLR(int xid, lsn_t LSN, recordid rid, lsn_t prevLSN);
+lsn_t LogCLR(const LogEntry * e);
+
+lsn_t LogDummyCLR(int xid, lsn_t prevLSN);
 
 /**
    Write a end transaction record @see XEND
@@ -191,7 +194,8 @@ void LogEnd (TransactionLog * l);
 long LoggerSizeOfInternalLogEntry(const LogEntry * e);
 
 /** 
-   For internal use only...  This would be static, but it is called by the test cases.
+   For internal use only...  This would be static, but it is called by
+   the test cases.
 */
 void LogWrite(LogEntry * e);
 

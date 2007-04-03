@@ -12,9 +12,9 @@ static char * logEntryToString(const LogEntry * le) {
   switch(le->type) {
   case UPDATELOG:
     {
-      recordid rid = le->contents.clr.rid;
+      recordid rid = le->update.rid;
       asprintf(&ret, "UPDATE\tlsn=%9lld\tprevlsn=%9lld\txid=%4d\trid={%8d %5d %5lld}\tfuncId=%3d\targSize=%9d\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, (long long int)rid.size, le->contents.update.funcID, le->contents.update.argSize );
+	       rid.page, rid.slot, (long long int)rid.size, le->update.funcID, le->update.argSize );
       
     }
     break;
@@ -42,9 +42,9 @@ static char * logEntryToString(const LogEntry * le) {
     break;
   case CLRLOG:
     {
-      recordid rid = le->contents.clr.rid;
-      asprintf(&ret, "CLR   \tlsn=%9lld\tprevlsn=%9lld\txid=%4d\trid={%8d %5d %5lld}\tthisUpdateLSN=%9lld\tundoNextLSN=%9lld\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, (long long int) rid.size, le->contents.clr.thisUpdateLSN, le->contents.clr.undoNextLSN );
+      recordid rid = le->update.rid;
+      asprintf(&ret, "CLR   \tlsn=%9lld\tprevlsn=%9lld\txid=%4d\trid={%8d %5d %5lld}\n", le->LSN, le->prevLSN, le->xid, 
+	       rid.page, rid.slot, (long long int) rid.size );
     }
     break;
   }

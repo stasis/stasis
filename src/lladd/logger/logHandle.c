@@ -40,9 +40,11 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include "logHandle.h"
 #include <config.h> 
+
 #include <stdlib.h>
+
+#include "logHandle.h"
 
 /**
    Sets the next and prev field of h, but does not set h.file_offset.
@@ -117,7 +119,6 @@ const LogEntry * previousInTransaction(LogHandle * h) {
 */
 static void set_offsets(LogHandle * h, const LogEntry * e) {
   h->next_offset = LogNextEntry(e);
-  h->prev_offset = (e->type==CLRLOG) ? e->contents.clr.undoNextLSN : e->prevLSN ;
-  
+  h->prev_offset = e->prevLSN;
 }
 

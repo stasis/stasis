@@ -1,34 +1,29 @@
 /** 
 
-    Replacement for recovery.c 
-
-    A lot of refactoring has been done to simplify the contents of recovery.c
-
-    Hopefully, this file will be nice and clean. :)
+   @file Implements three phase recovery
 
 */
 
 #include <config.h>
 #include <lladd/common.h>
-#include <lladd/recovery.h>
-
-#include <pbl/pbl.h>
-#include "linkedlist.h"
-#include "logger/logHandle.h"
-#include <lladd/bufferManager.h>
-#include <lladd/lockManager.h>
-
-#include "page.h" // Needed for pageReadLSN. 
-
-
-#include <lladd/transactional.h>
 
 #include <stdio.h>
 #include <assert.h>
 
+#include <pbl/pbl.h>
 
-/** @todo This include is an artifact of our lack of infrastructure to support log iterator guards.  */
+#include <lladd/recovery.h>
+#include <lladd/bufferManager.h>
+#include <lladd/lockManager.h>
+
+/** @todo Add better log iterator guard support and remove this include.*/
 #include <lladd/operations/prepare.h>
+
+#include "logger/logHandle.h"
+/** @todo Get rid of linkedlist.[ch] */
+#include "linkedlist.h"
+#include "page.h" // Needed for pageReadLSN. 
+
 
 static pblHashTable_t * transactionLSN;
 static LinkedList * rollbackLSNs = NULL;
@@ -36,8 +31,6 @@ static LinkedList * rollbackLSNs = NULL;
     concurrent aborts, except that we need to protect rollbackLSNs's
     from concurrent modifications. */
 static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
 
 /** 
     Determines which transactions committed, and which need to be redone.
@@ -54,7 +47,6 @@ static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
        the pages from being read later during recovery.  Since this function
        no longer reads the pages in, there's no longer any reason to build 
        the list of dirty pages.
-
 */
 static void Analysis () {
 
@@ -68,13 +60,12 @@ static void Analysis () {
   int highestXid = 0;
   
   /** @todo loadCheckPoint() - Jump forward in the log to the last
-      checkpoint.  (Maybe getLogHandle should do this automatically,
+      checkpoint.  (getLogHandle should do this automatically,
       since the log will be truncated on checkpoint anyway.) */
 
   while((e = nextInLog(&lh))) {
     
     lsn_t * xactLSN = (lsn_t*)pblHtLookup(transactionLSN,    &(e->xid), sizeof(int));
-    /*    recordid rid = e->contents.update.rid; */
 
     if(highestXid < e->xid) {
       highestXid = e->xid;
@@ -125,15 +116,13 @@ static void Analysis () {
       pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
       break;
     case UPDATELOG:
-      // XXX we should treat CLR's like REDO's, but things don't work
-      // that way yet.
     case CLRLOG:
       /* 
 	 If the last record we see for a transaction is an update or clr, 
 	 then the transaction must not have committed, so it must need
 	 to be rolled back. 
 
-	 Add it to the appropriate list
+	 Add it to the list
 
       */
       DEBUG("Adding %ld\n", e->LSN);
@@ -141,14 +130,13 @@ static void Analysis () {
       addSortedVal(&rollbackLSNs, e->LSN);
       break;
     case XABORT: 
-      /* If the last record we see for a transaction is an abort, then
-	 the transaction didn't commit, and must be rolled back. 
-      */
+      // If the last record we see for a transaction is an abort, then
+      // the transaction didn't commit, and must be rolled back. 
       DEBUG("Adding %ld\n", e->LSN);
       addSortedVal(&rollbackLSNs, e->LSN);
       break;  
     case INTERNALLOG:
-      /* Created by the logger, just ignore it. */
+      // Created by the logger, just ignore it
       // Make sure the log entry doesn't interfere with real xacts.
       assert(e->xid == INVALID_XID); 
       break; 
@@ -165,8 +153,7 @@ static void Redo() {
   const LogEntry  * e;
   
   while((e = nextInLog(&lh))) {
-
-    /* Check to see if this log entry is part of a transaction that needs to be redone. */
+    // Is this log entry part of a transaction that needs to be redone?
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
       // Check to see if this entry's action needs to be redone
       switch(e->type) { 
@@ -181,7 +168,7 @@ static void Redo() {
 	} break;
       case DEFERLOG: 
 	{ 
-	  //XXX	deferred_push(e);
+	  // XXX deferred_push(e);
 	} break;
       case XCOMMIT:
 	{
@@ -204,9 +191,8 @@ static void Redo() {
     } 
   }
 }
-/** 
-    XXX
-    @todo CLR handling seems to be broken for logical operations!
+/**
+    @todo Guards shouldn't be hardcoded in Undo()
 */
 static void Undo(int recovery) {
   LogHandle lh;
@@ -219,72 +205,66 @@ static void Undo(int recovery) {
     prepare_guard_state = getPrepareGuardState();
 
     DEBUG("Undoing LSN %ld\n", (long int)rollback);
+
     if(recovery) {
-      /** @todo shouldn't be hardcoded here! */
       lh = getGuardedHandle(rollback, &prepareGuard, prepare_guard_state);
     } else {
-      /** @todo probably want guards that are run during normal operation. */
       lh = getLSNHandle(rollback);
     } 
 
-
-    /*    printf("e->prev_offset: %ld\n", e->prevLSN);
-	  printf("prev_offset: %ld\n", lh.prev_offset); */
     int thisXid = -1;
     while((e = previousInTransaction(&lh))) {
       thisXid = e->xid;
       lsn_t this_lsn, clr_lsn;
-      /*      printf("."); fflush(NULL); */
       switch(e->type) {
       case UPDATELOG:
 	{
-	  /* Need write lock for undo.. (Why??) */
-	  if(e->contents.update.rid.size != -1) {
+	  // If the rid is valid, load the page for undoUpdate.
+	  // undoUpdate checks the LSN before applying physical undos
 
-	    Page * p = loadPage(thisXid, e->contents.update.rid.page);
+	  Page * p = NULL;
+	  if(e->update.rid.size != -1) {
+	    p = loadPage(thisXid, e->update.rid.page);
+
+	    // If this fails, something is wrong with redo or normal operation.
 	    this_lsn= pageReadLSN(p);
-	    
-	    /* Sanity check.  If this fails, something is wrong with the
-	       redo phase or normal operation. */
 	    assert(e->LSN <= this_lsn);  
-	    
-	    /* Need to log a clr here. */
-	    
-	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, e->prevLSN);
-	    
-	    /* Undo update is a no-op if the page does not reflect this
-	       update, but it will write the new clr_lsn if necessary.  */
-	    
-	    undoUpdate(e, p, clr_lsn);
 
-	    releasePage(p);
-	  } else {
+	  } else { 
 	    // The log entry is not associated with a particular page.
 	    // (Therefore, it must be an idempotent logical log entry.)
-	    clr_lsn = LogCLR(e->xid, e->LSN, e->contents.update.rid, 
-			     e->prevLSN);
-	    undoUpdate(e, NULL, clr_lsn);
 	  }
+
+	  clr_lsn = LogCLR(e);
+	  undoUpdate(e, p, clr_lsn);
+
+	  if(p) { 
+	    releasePage(p);
+	  } 
+
 	  break;
 	}
       case DEFERLOG:
 	// The transaction is aborting, so it never committed.  Therefore
 	// actions deferred to commit have never been applied; ignore this
 	// log entry.
-      break;
-      case CLRLOG:  
-	/* Don't need to do anything special to handle CLR's.  
-	   Iterator will correctly jump to clr's previous undo record. */
-      break;
+	break;
+      case CLRLOG:
+	// Don't undo CLRs; they were undone during Redo
+	break;
       case XABORT:
-	/* Since XABORT is a no-op, we can silentlt ignore it. (XABORT
-	   records may be passed in by undoTrans.)*/
-      break;
+	// Since XABORT is a no-op, we can silentlt ignore it.  XABORT
+	// records may be passed in by undoTrans.
+	break;
+      case XCOMMIT:
+	// Should never abort a transaction that contains a commit record
+	abort();
       default:
 	printf
 	  ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
 	   e->type, e->xid, e->LSN); 
-      break;
+	fflush(NULL);
+	abort();
       }
       FreeLogEntry(e);
     }

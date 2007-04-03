@@ -48,8 +48,10 @@ terms specified in this license.
 
 #include <lladd/operations.h>
 #include <lladd/logger/logger2.h>
+
 #include <stdlib.h>
 #include <assert.h>
+
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
@@ -88,7 +90,7 @@ int prepareGuard(const LogEntry * e, void * state) {
   PrepareGuardState * pgs = state; 
   int ret = pgs->continueIterating;
   if(e->type == UPDATELOG) {
-    if(e->contents.update.funcID == OPERATION_PREPARE) { 
+    if(e->update.funcID == OPERATION_PREPARE) { 
       pgs->continueIterating = 0;
       pgs->prevLSN           = e->prevLSN;
     }
@@ -102,7 +104,8 @@ int prepareGuard(const LogEntry * e, void * state) {
   return ret;
 }
 
-/** @todo When fleshing out the logHandle's prepareAction interface, figure out what the return value should mean... */
+/** @todo When fleshing out the logHandle's prepareAction interface,
+    figure out what the return value should mean... */
 int prepareAction(void * state) {
   PrepareGuardState * pgs = state; 
   int ret;
