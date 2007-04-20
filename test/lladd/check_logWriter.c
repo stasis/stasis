@@ -40,11 +40,19 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
+/** 
+    @file check_logWriter
+    
+    Tests logWriter.  
+
+    @todo Change tests to apply to all logger implementations.
+
+    (Also Get rid of include for logWriter.h)
+*/
 #include <config.h>
 #include <check.h>
 
 #include <lladd/transactional.h>
-/*#include <lladd/logger/logEntry.h> */
 #include "../../src/lladd/logger/logHandle.h"
 #include <lladd/logger/logger2.h>
 #include "../../src/lladd/logger/logWriter.h"
@@ -68,6 +76,8 @@ static void setup_log() {
   deleteLogWriter();
   lladd_enableAutoTruncation = 0;
   Tinit();
+  lsn_t firstLSN;
+  int  first = 1;
 
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
@@ -84,6 +94,11 @@ static void setup_log() {
     LogWrite(e);
     prevLSN = e->LSN;
 
+    if(first) { 
+      first = 0;
+      firstLSN = prevLSN;
+    }
+
     f = LogReadLSN(prevLSN);
 
     fail_unless(sizeofLogEntry(e) == sizeofLogEntry(f), "Log entry changed size!!");
@@ -99,16 +114,14 @@ static void setup_log() {
 
     //    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
     LogEntry * g = allocCLRLogEntry(e); // XXX will probably break
-
+    g->prevLSN = firstLSN;
     LogWrite(g);
     assert (g->type == CLRLOG);
     prevLSN = g->LSN; 
-
+    
     FreeLogEntry (e);
     FreeLogEntry (g);
   }
-  //  truncationDeinit();
-
 }
 /**
    @test 
@@ -169,13 +182,12 @@ START_TEST(logHandleColdReverseIterator) {
   }
   
   i = 0;
-  //  printf("getLogHandle(%ld)\n", e->LSN);
-  lh = getLSNHandle(e->LSN);  // was 'getLogHandle...'
+  lh = getLSNHandle(e->LSN);
   while((e = previousInTransaction(&lh))) {
     i++;
     FreeLogEntry(e);
   }
-  assert(i < 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
+  assert(i <= 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
   Tdeinit();
 }
 END_TEST
@@ -207,8 +219,6 @@ START_TEST(loggerTruncate) {
     le3 = nextInLog(&lh);
   }
   
-
-  //  truncateLog(le->LSN);
   LogTruncate(le->LSN);
   
   tmp = LogReadLSN(le->LSN);
@@ -256,7 +266,7 @@ pthread_mutex_t random_mutex;
 
 lsn_t truncated_to = 4;
 
-#define NO_CONCURRENCY
+#undef NO_CONCURRENCY
 #ifdef NO_CONCURRENCY
 pthread_mutex_t big = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -266,8 +276,10 @@ static void* worker_thread(void * arg) {
 
   lsn_t lsns[ENTRIES_PER_THREAD];
 
-
-  /*  fail_unless(NULL != le, NULL); */
+  for(i = 0; i < ENTRIES_PER_THREAD; i++) { 
+    lsns[i] = 0;
+  }
+  i = 0;
 
   while(i < ENTRIES_PER_THREAD) {
     LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
@@ -313,17 +325,14 @@ static void* worker_thread(void * arg) {
 #ifdef NO_CONCURRENCY      
       pthread_mutex_unlock(&big);
 #endif
-      //printf("reportedLSN: %ld\n", le->LSN);
       lsns[i] = le->LSN;
       i++;
     }
-    /*    fail_unless(1, NULL); */
     pthread_mutex_lock(&random_mutex);
 #ifdef NO_CONCURRENCY      
-    //pthread_mutex_lock(&big);
+    pthread_mutex_lock(&big);
 #endif
     if(lsns[entry] > truncated_to && entry < i) {
-      /*printf("X %d\n", (LogReadLSN(lsns[entry])->xid == entry+key)); fflush(stdout); */
       lsn_t lsn = lsns[entry];
       pthread_mutex_unlock(&random_mutex);
 
@@ -331,17 +340,14 @@ static void* worker_thread(void * arg) {
 
       assert(e->xid == entry+key);
       FreeLogEntry(e);
-      /*      fail_unless(LogReadLSN(lsns[entry])->xid == entry+key, NULL); */
     } else { 
       pthread_mutex_unlock(&random_mutex);
     }
 #ifdef NO_CONCURRENCY      
-    //pthread_mutex_unlock(&big);
+    pthread_mutex_unlock(&big);
 #endif
-    /*    fail_unless(1, NULL); */
 	
     /* Try to interleave requests as much as possible */
-    /*pthread_yield(); */
     sched_yield();
     FreeLogEntry(le);
   }
@@ -373,12 +379,9 @@ START_TEST(loggerCheckThreaded) {
 
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&workers[i], NULL, worker_thread, &i);
-    //    printf("%d", i); fflush(stdout);
   }
-  //  printf("\n\n\n\n\n");
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
-    //    printf("%d", i); fflush(stdout);
   }
   Tdeinit();
 
@@ -409,8 +412,6 @@ void reopenLogWorkload(int truncating) {
 
     if(i == SYNC_POINT) {
       if(truncating) { 
-	//	printf("Called LogTruncate()");
-	//	fflush(stdout);
 	LogTruncate(entries[i]->LSN);
 	startLSN = entries[i]->LSN;
       }
@@ -423,7 +424,7 @@ void reopenLogWorkload(int truncating) {
   int i;
 
   if(truncating) { 
-    h = getLogHandle(); //getLSNHandle(startLSN);
+    h = getLogHandle();
     i = SYNC_POINT;
   } else { 
     h = getLogHandle();
@@ -477,6 +478,7 @@ void reopenLogWorkload(int truncating) {
 
   lladd_enableAutoTruncation = 1;
 
+  bufDeinit(BUFFER_MANAGER_REOPEN);
 }
 
 START_TEST(loggerReopenTest) {
@@ -488,12 +490,6 @@ START_TEST(loggerReopenTest) {
 START_TEST(loggerTruncateReopenTest) { 
   deleteLogWriter();
   reopenLogWorkload(1);
-  /*  reopenLogWorkload();
-  Tinit();
-  truncateNow();
-  Tdeinit();
-  Tinit();
-  Tdeinit(); */
 } END_TEST
 
 Suite * check_suite(void) {
