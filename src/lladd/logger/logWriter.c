@@ -373,7 +373,6 @@ static int writeLogEntryUnlocked(LogEntry * e) {
   nextAvailableLSN = nextEntry_LogWriter(e);
   pthread_mutex_unlock(&nextAvailableLSN_mutex);
 
-  pthread_mutex_unlock(&log_read_mutex);
   return 0;
 }
 
