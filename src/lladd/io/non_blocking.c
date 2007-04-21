@@ -492,10 +492,11 @@ static void * nbw_worker(void * handle) {
 	pthread_mutex_lock(&impl->mut);
 	node->pin_count--;
       }      
+      tree_node * new_node = (tree_node*)RB_ENTRY(lookup)(RB_LUGREAT, node, impl->fast_handles);
       if(!node->dirty && !node->pin_count) { 
 	freeFastHandle(impl, node);
       }
-      node = (tree_node*)RB_ENTRY(lookup)(RB_LUGREAT, node, impl->fast_handles);
+      node = new_node;
     }
     if(!impl->fast_handle_count || !writes) { 
       if(impl->still_open) {
