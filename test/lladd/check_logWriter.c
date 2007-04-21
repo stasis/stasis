@@ -390,14 +390,12 @@ START_TEST(loggerCheckThreaded) {
 void reopenLogWorkload(int truncating) { 
 
   lladd_enableAutoTruncation = 0;
-
+  
   const int ENTRY_COUNT = 1000;
   const int SYNC_POINT = 900;
   lladd_enableAutoTruncation = 0;
 
   numActiveXactions = 0;
-  dirtyPagesInit();
-  bufInit(BUFFER_MANAGER_REOPEN);
 
   LogInit(loggerType);
   int xid = 1;
@@ -417,9 +415,10 @@ void reopenLogWorkload(int truncating) {
       }
     }
   }
-  LogDeinit(loggerType);
-  
+
+  LogDeinit();
   LogInit(loggerType);
+
   LogHandle h;
   int i;
 
@@ -477,12 +476,11 @@ void reopenLogWorkload(int truncating) {
   assert(i == (ENTRY_COUNT * 2));  
 
   lladd_enableAutoTruncation = 1;
-
-  bufDeinit(BUFFER_MANAGER_REOPEN);
+  LogDeinit();
 }
 
 START_TEST(loggerReopenTest) {
-  
+  deleteLogWriter();  
   reopenLogWorkload(0);
 
 } END_TEST
