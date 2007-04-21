@@ -12,8 +12,8 @@
 #define LOG_NAME   "check_bufferManager.log"
 #ifdef LONG_TEST
 
-#define THREAD_COUNT 200
-#define NUM_PAGES (MAX_BUFFER_SIZE * 2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
+#define THREAD_COUNT 100
+#define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
 #define READS_PER_THREAD (NUM_PAGES * 10)
