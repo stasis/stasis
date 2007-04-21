@@ -76,7 +76,7 @@ static void setup_log() {
   deleteLogWriter();
   lladd_enableAutoTruncation = 0;
   Tinit();
-  lsn_t firstLSN;
+  lsn_t firstLSN = -1;
   int  first = 1;
 
   for(i = 0 ; i < 1000; i++) {
