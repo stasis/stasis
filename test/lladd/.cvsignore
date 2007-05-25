@@ -55,3 +55,4 @@ check_recovery.log
 check_regions.log
 check_ringbuffer.log
 check_transactional2.log
+check_replacementPolicy
