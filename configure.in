@@ -232,5 +232,6 @@ AC_CONFIG_FILES([Makefile
                  test/monotree/Makefile
                  test/pobj/Makefile
                  utilities/Makefile
+                 examples/Makefile
 ])
 AC_OUTPUT
