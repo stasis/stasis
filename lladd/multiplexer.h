@@ -49,6 +49,8 @@ lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
     creates a new thread that will consume input from it, and forward
     its output to the consumers.  
 
+    @param multiplexer A multiplexer produced by lladdMultiplexer_alloc
+
     @param thread_attributes passed through to pthread_create, it is
     fine if this is NULL, although it probably makes sense to set the
     stack size to something reasonable (PTHREAD_STACK_MIN will

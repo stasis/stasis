@@ -37,6 +37,7 @@ void iterator_init();
 void Titerator_close(int xid, lladdIterator_t * it);
 
 /** 
+    @param xid transaction id
     @param it the iterator 
 
     @return 1 if the iterator position could advance, or 0 at end of iterator. 
@@ -47,6 +48,7 @@ void Titerator_close(int xid, lladdIterator_t * it);
 int Titerator_next(int xid, lladdIterator_t * it);
 
 /**
+   @param xid transaction id
    @param it the iterator 
 
    @return 1 if the iterator position advanced, and releaseTuple must be called,
@@ -77,8 +79,8 @@ int Titerator_tryNext(int xid, lladdIterator_t * it);
     Iterator support for concurrent modification is implementation
     specfic and optional.
 
+    @param xid transaction id
     @param it the iterator
-
     @param key a pointer to the current key of the iterator.  This 
                memory is managed by the iterator implementation.
 
@@ -108,4 +110,3 @@ void Titerator_releaseLock(int xid, lladdIterator_t * it);
 END_C_DECLS
 
 #endif
-

@@ -48,7 +48,9 @@ terms specified in this license.
 BEGIN_C_DECLS
 
 /**
-   @file structs and memory managment routines for log entries
+   @file
+
+   Structs and memory managment routines for log entries
 
    @todo Is there a better way to deal with sizeof() and log entries?
    
