@@ -1,23 +1,27 @@
 #include <lladd/transactional.h>
 
-int main (int argc, char ** argv) { 
+int main (int argc, char ** argv) {
 
   Tinit();
-  
-  int i = 42;
-  
+
+  // First transaction
+
   int xid = Tbegin();
-  recordid rid = Talloc(xid, sizeof(int)); 
-  Tset(xid, rid, &i);   // the application is responsible for memory management.
-  // Here, stack-allocated integers are used, although memory
-  // from malloc() works as well.
-  Tcommit(xid); 
-  
+  recordid rid = Talloc(xid, sizeof(int));
+
+  // The application is responsible for memory management.
+  // Tset() will copy i; it can be freed immediately after the call is made.
+
+  int i = 42;
+  Tset(xid, rid, &i);
+  Tcommit(xid);
+
   int j;
-  
+
   xid = Tbegin();
   Tread(xid, rid, &j);  // j is now 42.
-  Tdealloc(xid, rid); 
-  Tabort(xid); 
+  Tdealloc(xid, rid);
+  Tabort(xid);
+
   Tdeinit();
 }

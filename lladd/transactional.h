@@ -115,38 +115,13 @@ terms specified in this license.
    simple program that uses Stasis.  Currently, most generally useful programs 
    written on top of Stasis belong in lladd/src/apps, while utilities/ contains 
    programs useful for debugging the library.
-   
+ 
    @section usage Using Stasis in your software
-   
-   Synopsis:
-   
-   @code
-   
-   #include <lladd/transactional.h>
-   
-   ...
-   
-   Tinit();
-   
-   int i = 42;
-   
-   int xid = Tbegin();
-   recordid rid = Talloc(xid, sizeof(int)); 
-   Tset(xid, rid, &i);   // the application is responsible for memory management.
-                         // Here, stack-allocated integers are used, although memory
-			 // from malloc() works as well.
-   Tcommit(xid); 
 
-   int j;
-  
-   xid = Tbegin();
-   Tread(xid, rid, &j);  // j is now 42.
-   Tdealloc(xid, rid); 
-   Tabort(xid); 
-   Tdeinit();
-   
-   @endcode
-   
+   Synopsis:
+
+   @include examples/ex1.c
+
    Hopefully, Tbegin(), Talloc(), Tset(), Tcommit(), Tabort() and Tdealloc() are 
    self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and 
    Tdeinit() initialize the library, and clean up when the program is finished.
@@ -171,60 +146,38 @@ terms specified in this license.
    Therefore, the following code will safely initialize or reopen a data 
    store:
    
-   @code
-   Tinit();
-
-   recordid rootEntry;
-
-   int xid = Tbegin();
-   if(TrecordType(xid, ROOT_RECORD) == UNINITIALIZED_RECORD) {
-     // ThashAlloc() will work here as well.
-     rootEntry = Talloc(xid, sizeof(something)); 
-   
-     assert(ROOT_RECORD.page == rootEntry.page);
-     assert(ROOT_RECORD.slot == rootEntry.slot);
-     // newRoot.size will be sizeof(something) from above.
-     
-     // Continue initialization procedures...
-  
-   } else {
-     
-     // The store already is initialized.  
-     
-     rootEntry = ROOT_RECORD;
-     rootEntry.size = sizeof(something);  // Same as sizeof(something) above.
-     
-     // Perform any application initialization based upon its contents...
-   }
-   
-   @endcode
+   @include examples/ex2.c
 
    @see test.c for a complete, executable example of reopeneing an existing store.
 
    @todo Explain how to determine the correct value of rootEntry.size in the case
          of a hashtable.
-   
-   
+
+
    @see OPERATIONS for more operations that may be useful for your software.
-   
+
    @subsection consistency  Using Stasis in multithreaded applications.
-   
+
    Unless otherwise noted, Stasis' operations are re-entrant.  This
    means that an application may call them concurrently without
-   corrupting Stasis' internal data structures.  However, this does
-   not mean that Stasis provides full transactional consistency or
-   serializable schedules.  Therefore, an application must manipulate
-   data in a way that ensures logical consistency.  In other words, if
-   two threads attempt to write to the same data value simultaneously,
-   the result is undefined.  In database terms, you could say that
-   Stasis only provides latches.  
+   corrupting Stasis' internal data structures.  However, if two
+   threads attempt to write the same data value simultaneously, the
+   result is undefined.
 
-   This is different than saying all read and write locks are 'short';
-   short write locks would guarantee that once two concurrent writes
-   complete, one of the values have been stored.  Stasis does not
-   guarantee this although some of its data structures do have this
-   property.
-   
+   In database terms, Stasis uses latches to protect its own data
+   structures' consistency (including those on disk), but does not
+   obtain short term read or write locks to protect data as it is
+   being written.  This is less consistency than SQL's Level 0 (Dirty
+   Reads) provides.  Some of Stasis' data structures do obtain short
+   read and write locks automatically.  Refer to individual data
+   structues for more information.
+
+   Stasis' allocation functions, such as Talloc(), do not reuse space
+   that was freed by an ongoing transaction.  This means that you may
+   safely overwrite freshly allocated space without writing undo
+   entries, and allows concurrent transactions to safely allocate
+   space.
+
    From the point of view of conventional multithreaded software
    development, Stasis closely matches the semantics provided by
    typical operating system thread implementations.  However, it
@@ -235,29 +188,25 @@ terms specified in this license.
    Finally, Stasis asumes that each thread has its own transaction;
    concurrent calls within the same transaction are not supported.
    This restriction may be removed in the future.
-   
+
    @section selfTest The self-test suite
-   
+
    Stasis includes an extensive self test suite which may be invoked
    by running 'make check' in Stasis' root directory.  Some of the
    tests are for older, unmaintained code that was built on top of
    Stasis.  Running 'make check' in test/lladd runs all of the Stasis
    tests.
-   
-   @section archictecture Stasis' architecture 
-   
+
+   @section archictecture Stasis' architecture
+
    @todo Provide a brief summary of Stasis' architecture.
-   
+
    @section extending Implementing you own operations
-   
-   @todo Provide a tutorial that explains howto extend Stasis with new operations.
-   
+
+   @todo Provide a tutorial that explains how to extend Stasis with new operations.
+
    @see increment.h for an example of a very simple logical operation. 
    @see linearHashNTA.h for a more sophisticated example that makes use of Nested Top Actions.
-   
-   @section roadmap Roadmap
-  
-   @todo Fill out the roadmap section.
 
 */
 /**
