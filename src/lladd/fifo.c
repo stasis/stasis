@@ -25,7 +25,7 @@ void lladdFifoPool_markDirty(int xid, lladdFifoPool_t * pool, lladdFifo_t * fifo
 /**
    Create a new pool of ringBuffer based fifos
 
-   @param consumerCount the number of consumers in the pool.
+   consumerCount is the number of consumers in the pool.
    @todo this function should be generalized to other consumer implementations.
 */
 lladdFifoPool_t * lladdFifoPool_ringBufferInit (int consumerCount, int bufferSize, 

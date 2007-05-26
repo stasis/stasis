@@ -2,6 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/** @file 
+
+  This implements a io handle that wraps another handle, logging each
+  call (and its result) to stdout.
+
+*/
+
 typedef struct debug_impl {
   stasis_handle_t * h;
 } debug_impl;

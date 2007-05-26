@@ -7,6 +7,9 @@
 #define stasis_handle(x) stasis_handle_##x
 
 /**
+
+   @file
+
    Error handling:
    
    read, write, append, open, release_read_buffer and

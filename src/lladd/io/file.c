@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+/** @file */
 
 typedef struct file_impl { 
   pthread_mutex_t mut;

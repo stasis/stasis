@@ -32,7 +32,7 @@ void freePage(Page * freepage, long freepage_id, Page * headerpage) {
 }
 
 /**
-   @param freepage Must be the head of the freepage list (right now,
+   freepage Must be the head of the freepage list (right now,
    the free list is essentially treated like a stack.
 */
 void unfreePage(Page * freepage, Page * headerpage) {

@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include "io.h"
 #include <stdlib.h>
+/** @file 
+
+    This file contains old-ish utility methods that wrap fseek, read, etc...
+
+*/
 long myFseek(FILE * f, long offset, int whence) {
   long ret;
   flockfile(f);

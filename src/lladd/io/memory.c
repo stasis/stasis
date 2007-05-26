@@ -3,7 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
-
+/** @file */
 
 typedef struct mem_impl {
   pthread_mutex_t mut;

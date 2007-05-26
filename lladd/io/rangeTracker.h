@@ -1,3 +1,5 @@
+
+/** @file */
 typedef struct range { 
   long start;
   long stop;
@@ -46,4 +48,3 @@ static inline long rangeTrackerRoundDown(long x, long quant) {
 static inline long rangeTrackerRoundUp(long x, long quant) { 
   return (((x-1) / quant) + 1) * quant;
 }
-
