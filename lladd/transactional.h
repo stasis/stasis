@@ -189,23 +189,179 @@ terms specified in this license.
    concurrent calls within the same transaction are not supported.
    This restriction may be removed in the future.
 
-   @section selfTest The self-test suite
+   @section selfTest The test suite
 
-   Stasis includes an extensive self test suite which may be invoked
+   Stasis includes an extensive unit test suite which may be invoked
    by running 'make check' in Stasis' root directory.  Some of the
    tests are for older, unmaintained code that was built on top of
    Stasis.  Running 'make check' in test/lladd runs all of the Stasis
-   tests.
+   tests without running the obsolete tests.
 
-   @section archictecture Stasis' architecture
+   @section archictecture Stasis' structure
 
-   @todo Provide a brief summary of Stasis' architecture.
+   This section is geared toward people that would like to extend
+   Stasis.  The OSDI paper provides a higher level description and
+   motivation for the architecture.  This section describes naming
+   conventions used to distinguish between different portions of
+   Stasis, and provides an overview of memory management and mutex
+   acquisition conventions.
+
+   This section does not describe recovery, transaction initiation,
+   etc.  Those methods change less frequently.  Instead of focusing on
+   them, this text focuses on the issues faced by transactional data
+   structures.
+
+   Stasis components can be classified as follows:
+
+   - I/O utilities (file handles, OS compatibility wrappers)
+   - Write ahead logging component interfaces (logger.h, XXX)
+   - Write ahead logging component implementations (hash based buffer manager, in memory log, etc...)
+   - Page formats and associated operations (page/slotted.c page/fixed.c)
+   - Application visible methods (Talloc, Tset, ThashInsert, etc)
+
+   @subsection layoutNaming Directory layout
+
+   The Stasis repository contains the following "interesting" directories:
+
+   @par $STASIS/lladd/
+
+   Contains the header directory structure.
+
+   In theory, this contains all of the .h files that need to be
+   installed for a fully functional Stasis development environment.
+   In practice, .h files in src/ are also  needed in some cases.  The
+   separation of .h files between src/ and lladd/ continues for
+   various obscure reasons, including CVS's lack of a "move" command.
+   For now, .h files should be placed with similar .h files, or in
+   lladd/ if no such files exist.
+
+   The directory structure of lladd/ mirrors that of src/
+
+   @par $STASIS/src/
+
+   Contains the .c files
+
+   @par $STASIS/src/lladd
+
+   Contains Stasis and the implementations of its standard modules.
+   The subdirectories group files by the type of module they
+   implement.
+
+   @note By convention, when the rest of this document says
+   <tt>foo/</tt>, it is referring to two directories:
+   <tt>lladd/foo/</tt> and <tt>src/lladd/foo/</tt>.  Unless it's clear
+   from context, a file without an explicit directory name is in
+   <tt>lladd/</tt> or <tt>src/lladd/</tt>.  In order to refer to files
+   and directories outside of these two locations, but still in the
+   repository, this document will use the notation
+   <tt>$STASIS/dir</tt>.
+
+   @note This is done for brevity, and to avoid coupling documentation
+   to the (deprecated) placement of .h files under src/.
+
+   @note <b>Example:</b> The transactional data structure
+   implementations in <tt>operations/</tt> can be found in
+   <tt>$STASIS/src/lladd/operations/</tt> and
+   <tt>$STASIS/lladd/operations/</tt>.
+
+   @subsection Modules
+
+   Stasis is implemented in C, but is structured in a somewhat object
+   oriented style.  There are a number of different "modules", for
+   lack of a better term.  Each implementation in the module lives in
+   the module's subdirectory.  Code that is common to many
+   implementation, and headers that define per-module functions live
+   in files named after the module.
+
+   <b>Example:</b> The <tt>io</tt> module contains the following files:
+
+   @code
+      io.h
+      io.c
+      io/handle.h
+      io/debug.c
+      io/file.c
+      io/memory.c
+      io/non_blocking.c
+      io/rangeTracker.h
+      io/rangeTracker.c
+   @endcode
+
+   In this case, rangeTracker.c and io.c are the only files containing
+   more than one non-static method, so they are the only ones that
+   have corresponding .h files.  rangeTracker.c is implementing a data
+   structure that is being used by the other files.  debug.c, file.c,
+   memory.c and non_blocking.c each implements a different type of
+   handle.
+
+   Some modules are simply groups of files that perform similar tasks,
+   or make use of the same set of interfaces (eg: <tt>page/</tt> and
+   <tt>operations/</tt>).  Files in these directories may make use of the same
+   utility functions, but aren't implementing the same interface.
+
+   Other modules provide multiple implementations of the same
+   interface (eg: <tt>io/</tt> and <tt>logger/</tt>).  C doesn't have
+   inheritance, so Stasis "fakes it" using one of two methods.  In
+   both cases, a struct is defined to contain a void pointer, which
+   the implementation manually casts to the appropriate type:
+
+   @par Dispatch functions
+
+   The dispatch functions contain a switch statement or conditional
+   that decides which implementation to call. Calling convention:
+
+   @code bird_carry(african_swallow, coconut); @endcode
+
+   @par struct of function pointers
+
+   These functions use the following calling convention:
+
+   @code african_swallow->carry(african_swallow,coconut) @endcode
+
+   @subsection ioutil I/O utilities
+
+   The I/O utilities live in <tt>io/</tt>.  They provide reentrant,
+   interfaces.  This was written to insulate Stasis from Linux's
+   ever-evolving I/O system calls, for portability, and to allow (for
+   example) in-memory operation.
+
+   @subsection walin WAL Modules
+
+   None of these modules understand page formats; at this level
+   everything is either
+
+   - a page with an LSN (a version number),or 
+
+   - a log entry with an associated operation (redo / undo
+   functions).
+
+   Interesting files from modules in this part of Stasis include
+   logger2.c, bufferManager.c, and recovery2.c.
+
+   @subsection page Page Formats
+
+   XXX: I ran out of time here.  The rest of the documentation is
+   incomplete, but might point in the right direction.
+
+   Discuss readRecord, writeRecord (high level page access
+   methods) and their implemetnations in slotted.c, fixed.c, etc.
+
+   XXX: Then explain the latching convention.  (Also, explain which
+   latches are not to be used by page implementations, and which
+   latches may not be used by higher level code.)
+
+   @subsection appfunc Application visible methods
+
+   These methods start with "T".  Look at the examples above.  These
+   are the "wrapper functions" from the OSDI paper.  They are
+   supported by operation implementations, which can be found in the
+   operations/ directory.
 
    @section extending Implementing you own operations
 
    @todo Provide a tutorial that explains how to extend Stasis with new operations.
 
-   @see increment.h for an example of a very simple logical operation. 
+   @see increment.h for an example of a very simple logical operation.
    @see linearHashNTA.h for a more sophisticated example that makes use of Nested Top Actions.
 
 */
