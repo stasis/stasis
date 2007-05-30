@@ -56,3 +56,6 @@ check_regions.log
 check_ringbuffer.log
 check_transactional2.log
 check_replacementPolicy
+logfile.txt
+storefile.txt
+
