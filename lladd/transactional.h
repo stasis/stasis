@@ -475,6 +475,8 @@ int Tbegin();
  */
 compensated_function void Tupdate(int xid, recordid rid, 
 				  const void *dat, int op);
+compensated_function void TupdateStr(int xid, recordid rid, 
+                                     const char *dat, int op);
 compensated_function void TupdateRaw(int xid, recordid rid, 
 				     const void *dat, int op);
 compensated_function void TupdateDeferred(int xid, recordid rid, 
@@ -485,6 +487,7 @@ compensated_function void TupdateDeferred(int xid, recordid rid,
  * @param dat buffer into which data goes
  */
 compensated_function void Tread(int xid, recordid rid, void *dat);
+compensated_function void TreadStr(int xid, recordid rid, char *dat);
 void TreadUnlocked(int xid, recordid rid, void *dat);
 
 /**

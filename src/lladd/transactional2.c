@@ -244,6 +244,11 @@ compensated_function void TupdateRaw(int xid, recordid rid,
   releasePage(p);
 }
 
+compensated_function void TupdateStr(int xid, recordid rid, 
+                                     const char *dat, int op) {
+  Tupdate(xid, rid, dat, op);
+}
+
 compensated_function void Tupdate(int xid, recordid rid, 
 				  const void *dat, int op) { 
   Page * p = loadPage(xid, rid.page);
@@ -284,6 +289,10 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
   }
   readRecordUnlocked(xid, p, rid, dat);
   releasePage(p);
+}
+
+compensated_function void TreadStr(int xid, recordid rid, char * dat) {
+  Tread(xid, rid, dat);
 }
 
 compensated_function void Tread(int xid, recordid rid, void * dat) {

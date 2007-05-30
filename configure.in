@@ -20,6 +20,14 @@ AC_PROG_AWK
 AC_PROG_RANLIB
 # Checks for libraries.
 
+# For SWIG & Python
+# AC_PROG_LIBTOOL
+AM_PATH_PYTHON(2.3)
+AC_PROG_SWIG(1.3)
+SWIG_ENABLE_CXX
+SWIG_PYTHON
+AM_CONDITIONAL(HAVE_SWIG, test x"$have_swig" = "xyes")
+
 #AM_PATH_CHECK(,[have_check="yes"],
 #  AC_MSG_WARN([Check not found; cannot run unit tests!])
 #  [have_check="no"])
@@ -232,6 +240,7 @@ AC_CONFIG_FILES([Makefile
                  test/monotree/Makefile
                  test/pobj/Makefile
                  utilities/Makefile
+                 utilities/swig/Makefile
                  examples/Makefile
 ])
 AC_OUTPUT
