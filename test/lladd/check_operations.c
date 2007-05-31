@@ -90,7 +90,7 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("B\n");
   
   p = loadPage(xid, rid.page);
-  writeRecord(xid, p, lsn, rid, &buf);
+  recordWrite(xid, p, lsn, rid, &buf);
   releasePage(p);
   setToTwo->LSN = 10;
   
@@ -100,7 +100,7 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
 
   p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
   releasePage(p);
 
   fail_unless(buf == 2, NULL);
@@ -118,7 +118,7 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
 
   p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
   releasePage(p);
 
   fail_unless(buf == 1, NULL);
@@ -128,7 +128,7 @@ START_TEST(operation_physical_do_undo) {
   
 
   p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
   releasePage(p);
 
   fail_unless(buf == 1, NULL);
@@ -147,7 +147,7 @@ START_TEST(operation_physical_do_undo) {
   buf = 1;
 
   p = loadPage(xid, rid.page);
-  writeRecord(xid, p, lsn, rid, &buf);
+  recordWrite(xid, p, lsn, rid, &buf);
   releasePage(p);
   /* Trace of test: 
 
@@ -175,14 +175,14 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);
 
   p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
   assert(buf == 2);
   fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
   undoUpdate(setToTwo, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   releasePage(p);
@@ -192,18 +192,18 @@ START_TEST(operation_physical_do_undo) {
 
   p = loadPage(xid, rid.page);
 
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
 
   fail_unless(buf == 1, NULL);
   
-  writeRecord(xid, p, 0, rid, &buf); /* reset the page's LSN. */
+  recordWrite(xid, p, 0, rid, &buf); /* reset the page's LSN. */
 
   DEBUG("I redo set to 2\n");
 
   releasePage(p);
   redoUpdate(setToTwo);        /* Succeeds */
   p = loadPage(xid, rid.page);
-  readRecord(xid, p, rid, &buf);
+  recordRead(xid, p, rid, &buf);
 
   fail_unless(buf == 2, NULL);
   releasePage(p);

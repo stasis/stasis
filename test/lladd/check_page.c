@@ -83,7 +83,7 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
 
     if(! first ) {
       for(k = 0; k < 100; k++) {
-	readRecord(1, p, rid[k], (byte*)&j);
+	recordRead(1, p, rid[k], (byte*)&j);
 
 	assert((j + 1) ==  i + k);
 	slottedDeRalloc(-1, p, lsn, rid[k]);
@@ -98,7 +98,7 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
       rid[k] = slottedRawRalloc(p, sizeof(short));
       i +=k;
       /*       printf("Slot %d = %d\n", rid[k].slot, i);  */
-      writeRecord(-1, p, lsn, rid[k], (byte*)&i);
+      recordWrite(-1, p, lsn, rid[k], (byte*)&i);
       i -=k;
       sched_yield();
     }
@@ -159,7 +159,7 @@ static void* worker_thread(void * arg_ptr) {
     pthread_mutex_unlock(&lsn_mutex);  
 
     if(! first ) {
-      readRecord(1, p, rid, (byte*)&j);
+      recordRead(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
       slottedDeRalloc(-1, p, lsn, rid);
       sched_yield();
@@ -176,7 +176,7 @@ static void* worker_thread(void * arg_ptr) {
     } else {
       rid = slottedRawRalloc(p, sizeof(int));
       pthread_mutex_unlock(&lsn_mutex);
-      writeRecord(-1, p, lsn, rid, (byte*)&i);
+      recordWrite(-1, p, lsn, rid, (byte*)&i);
     }
     sched_yield();
 
@@ -403,14 +403,14 @@ START_TEST(pageCheckSlotTypeTest) {
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
 	
 	Page * p = loadPage(-1, slot.page);
-	assert(getRecordType(xid, p, slot) == SLOTTED_RECORD);
+	assert(recordType(xid, p, slot) == SLOTTED_RECORD);
 	releasePage(p);
 	
 	/** @todo the use of the fixedRoot recordid to check getRecordType is 
 		  a bit questionable, but should work. */
 	p = loadPage(-1, fixedRoot.page); 
 
-	assert(getRecordType(xid, p, fixedRoot) == FIXED_RECORD);  
+	assert(recordType(xid, p, fixedRoot) == FIXED_RECORD);  
 	releasePage(p);
 	
 	fixedRoot.slot = 1;
@@ -418,11 +418,11 @@ START_TEST(pageCheckSlotTypeTest) {
 	fixedRoot.slot = 0;
 	
 	p = loadPage(-1, fixedEntry.page);
-	assert(getRecordType(xid, p, fixedEntry) == FIXED_RECORD);
+	assert(recordType(xid, p, fixedEntry) == FIXED_RECORD);
 	releasePage(p);
 	
 	p = loadPage(-1, blob.page);
-	int type = getRecordType(xid, p, blob);
+	int type = recordType(xid, p, blob);
 	assert(type == BLOB_RECORD);
 	releasePage(p);
 	
@@ -432,12 +432,12 @@ START_TEST(pageCheckSlotTypeTest) {
 	bad.size = 4;
 	
 	p = loadPage(xid, bad.page);
-	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	assert(recordType(xid, p, bad) == UNINITIALIZED_RECORD);
 	bad.size = 100000;
-	assert(getRecordType(xid, p, bad) == UNINITIALIZED_RECORD);
-	/** getRecordType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
+	assert(recordType(xid, p, bad) == UNINITIALIZED_RECORD);
+	/** recordType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
 	bad.slot = slot.slot;
-	assert(getRecordType(xid, p, bad) == SLOTTED_RECORD);
+	assert(recordType(xid, p, bad) == SLOTTED_RECORD);
 	p->LSN = 0;
 	*lsn_ptr(p) = p->LSN;
 	releasePage(p);
@@ -460,7 +460,7 @@ START_TEST(pageTrecordTypeTest) {
 	
 	assert(TrecordType(xid, slot) == SLOTTED_RECORD);
 	
-	/** @todo the use of the fixedRoot recordid to check getRecordType is 
+	/** @todo the use of the fixedRoot recordid to check recordType is 
 		  a bit questionable, but should work. */
 	
 	assert(TrecordType(xid, fixedRoot) == FIXED_RECORD);  
@@ -521,4 +521,3 @@ Suite * check_suite(void) {
 }
 
 #include "../check_setup.h"
-

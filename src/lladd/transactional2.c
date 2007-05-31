@@ -282,12 +282,12 @@ void TreadUnlocked(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
 
-  rid = interpretRidUnlocked(xid, rid, p);
+  rid = recordDereferenceUnlocked(xid, p, rid);
   if(rid.page != p->id) { 
     releasePage(p);
     p = loadPage(xid, rid.page);
   }
-  readRecordUnlocked(xid, p, rid, dat);
+  recordReadUnlocked(xid, p, rid, dat);
   releasePage(p);
 }
 
@@ -301,12 +301,12 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
 
-  rid = interpretRid(xid, rid, p);
+  rid = recordDereference(xid, p, rid);
   if(rid.page != p->id) { 
     releasePage(p);
     p = loadPage(xid, rid.page);
   }
-  readRecord(xid, p, rid, dat);
+  recordRead(xid, p, rid, dat);
   releasePage(p);
 }
 

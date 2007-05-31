@@ -131,7 +131,7 @@ void pageDeinit() {
 /**
    @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!
 */
-void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
+void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
 
@@ -155,7 +155,7 @@ void writeRecord(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   
 }
 
-int readRecord(int xid, Page * p, recordid rid, void *buf) {
+int recordRead(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
   
   int page_type = *page_type_ptr(p);
@@ -177,7 +177,7 @@ int readRecord(int xid, Page * p, recordid rid, void *buf) {
 }
 
 
-int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
+int recordReadUnlocked(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
   
   int page_type = *page_type_ptr(p);
@@ -199,7 +199,7 @@ int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf) {
   return 0;
 }
 
-int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
+int recordTypeUnlocked(int xid, Page * p, recordid rid) {
   assert(rid.page == p->id);
   
   int page_type = *page_type_ptr(p);
@@ -222,16 +222,16 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid) {
   }
 }
 
-int getRecordType(int xid, Page * p, recordid rid) {
+int recordType(int xid, Page * p, recordid rid) {
 	readlock(p->rwlatch, 343);
-	int ret = getRecordTypeUnlocked(xid, p, rid);
+	int ret = recordTypeUnlocked(xid, p, rid);
 	unlock(p->rwlatch);
 	return ret;
 }
 /** @todo implement getRecordLength for blobs and fixed length pages. */
-int getRecordSize(int xid, Page * p, recordid rid) {
+int recordSize(int xid, Page * p, recordid rid) {
   readlock(p->rwlatch, 353);
-  int ret = getRecordTypeUnlocked(xid, p, rid);
+  int ret = recordTypeUnlocked(xid, p, rid);
   if(ret == UNINITIALIZED_RECORD) {
     ret = -1;
   } else if(ret == SLOTTED_RECORD) {
@@ -243,7 +243,7 @@ int getRecordSize(int xid, Page * p, recordid rid) {
   return ret;
 }
 
-void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
+void recordWriteUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
 
@@ -269,7 +269,7 @@ void writeRecordUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void 
 
 }
 
-recordid interpretRidUnlocked(int xid, recordid rid, Page * p) { 
+recordid recordDereferenceUnlocked(int xid, Page * p, recordid rid) { 
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
@@ -282,7 +282,7 @@ recordid interpretRidUnlocked(int xid, recordid rid, Page * p) {
   }
   return rid;
 }
-recordid interpretRid(int xid, recordid rid, Page * p) { 
+recordid recordDereference(int xid, Page * p, recordid rid) { 
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
@@ -295,4 +295,3 @@ recordid interpretRid(int xid, recordid rid, Page * p) {
   }
   return rid;
 }
-

@@ -238,11 +238,11 @@ lsn_t pageReadLSN(const Page * page);
  * @return 0 on success, lladd error code on failure
  *
  */
-void writeRecord(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+void recordWrite(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
  *  The same as writeRecord, but does not obtain a latch on the page.
  */
-void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+void recordWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
 /**
  * @param xid transaction ID
  * @param page a pointer to the pinned page that contains the record.
@@ -250,11 +250,11 @@ void writeRecordUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const vo
  * @param dat buffer for data
  * @return 0 on success, lladd error code on failure
  */
-int readRecord(int xid, Page * page, recordid rid, void *dat);
+int recordRead(int xid, Page * page, recordid rid, void *dat);
 /**
  *  The same as readRecord, but does not obtain a latch.
  */
-int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
+int recordReadUnlocked(int xid, Page * p, recordid rid, void *buf);
 
 /** 
     Allocate memory to hold a new page.
@@ -264,13 +264,13 @@ int readRecordUnlocked(int xid, Page * p, recordid rid, void *buf);
     into pageFree() so that it can be reused.
 */
 
-int getRecordType(int xid, Page * p, recordid rid);
+int recordType(int xid, Page * p, recordid rid);
 
-int getRecordSize(int xid, Page * p, recordid rid);
+int recordSize(int xid, Page * p, recordid rid);
 /**
    same as getRecordType(), but does not obtain a lock.
 */
-int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
+int recordTypeUnlocked(int xid, Page * p, recordid rid);
 /**
    return the length of the record rid.  (the rid parameter's size field will be ignored)
 
@@ -278,10 +278,10 @@ int getRecordTypeUnlocked(int xid, Page * p, recordid rid);
 
    @return -1 if the field does not exist, the size of the field otherwise.
  */
-int getRecordLength(int xid, Page * p, recordid rid);
+int recordLength(int xid, Page * p, recordid rid);
 
-recordid interpretRid(int xid, recordid rid, Page * p);
-recordid interpretRidUnlocked(int xid, recordid rid, Page * p);
+recordid recordDereference(int xid, Page *p, recordid rid);
+recordid recordDereferenceUnlocked(int xid, Page *p, recordid rid);
 
 END_C_DECLS
 

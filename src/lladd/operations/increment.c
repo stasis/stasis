@@ -51,9 +51,9 @@ terms specified in this license.
 static int operate(int xid, Page * p, lsn_t lsn, recordid r, const void *d) {
 	int i;
 
-	readRecord(xid, p, r, &i);
+	recordRead(xid, p, r, &i);
 	i++;
-	writeRecord(xid, p, lsn, r, &i);
+	recordWrite(xid, p, lsn, r, &i);
 	
 	return 0;
 }

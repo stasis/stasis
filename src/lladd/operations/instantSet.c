@@ -50,7 +50,7 @@ terms specified in this license.
 #include "../page/fixed.h"
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  writeRecord(xid, p, lsn, rid, dat); 
+  recordWrite(xid, p, lsn, rid, dat); 
   return 0;
 }
 

@@ -314,7 +314,7 @@ static LogEntry * LogAction(TransactionLog * l, Page * p, recordid rid, int oper
     DEBUG("Creating %ld byte physical pre-image.\n", physical_slot_length(rid.size));
 
     preImage = malloc(physical_slot_length(rid.size));
-    readRecord(l->xid, p, rid, preImage);
+    recordRead(l->xid, p, rid, preImage);
   } else if (undoType == NO_INVERSE_WHOLE_PAGE) {
     DEBUG("Logging entire page\n");
 

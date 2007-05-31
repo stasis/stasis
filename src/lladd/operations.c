@@ -156,7 +156,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 	    e->update.rid.page, e->contents.rid.slot, e->update.rid.size);
 
       assert(p);  
-      writeRecord(e->xid, p, clr_lsn, e->update.rid, getUpdatePreImage(e));
+      recordWrite(e->xid, p, clr_lsn, e->update.rid, getUpdatePreImage(e));
 
     } else if(undo == NO_INVERSE_WHOLE_PAGE) {
 

@@ -100,7 +100,7 @@ static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat
 
   slottedPostRalloc(xid, p, lsn, rid); 
   /** @todo dat should be the pointer to the space in the blob store. */
-  writeRecord(xid, p, lsn, rid, dat);
+  recordWrite(xid, p, lsn, rid, dat);
 
   return 0;
 }
@@ -322,11 +322,11 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   } end;
 
   
-  recordid newrid = interpretRid(xid, rid, p);
+  recordid newrid = recordDereference(xid, p, rid);
   allocationPolicyLockPage(allocPolicy, xid, newrid.page);
   
   begin_action(releasePage, p) {
-    readRecord(xid, p, rid, preimage);
+    recordRead(xid, p, rid, preimage);
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
     Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
   } compensate;
@@ -342,7 +342,7 @@ compensated_function int TrecordType(int xid, recordid rid) {
     p = loadPage(xid, rid.page);
   } end_ret(compensation_error());
   int ret;
-  ret = getRecordType(xid, p, rid);
+  ret = recordType(xid, p, rid);
   releasePage(p);
   return ret;
 }
@@ -353,7 +353,7 @@ compensated_function int TrecordSize(int xid, recordid rid) {
   try_ret(compensation_error()) { 
     p = loadPage(xid, rid.page);
   } end_ret(compensation_error());
-  ret = getRecordSize(xid, p, rid);
+  ret = recordSize(xid, p, rid);
   releasePage(p);
   return ret;
 }
@@ -404,5 +404,3 @@ Operation getInitializePage() {
   };
   return o;
 }
-
-
