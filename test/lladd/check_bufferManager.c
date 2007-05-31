@@ -57,7 +57,7 @@ void initializePages() {
     assert(p->id != -1); 
     slottedPostRalloc(-1, p, 0, rid);
 
-    recordWrite(1, p, 1, rid, &i);
+    recordWrite(1, p, 1, rid, (byte*)&i);
 
     p->LSN = 0;
     *lsn_ptr(p) = 0;
@@ -87,7 +87,7 @@ void * workerThread(void * p) {
 
     p = loadPage(-1, rid.page);
     
-    recordRead(1, p, rid, &j);
+    recordRead(1, p, rid, (byte*)&j);
 
     releasePage(p);
 
@@ -138,7 +138,7 @@ void * workerThreadWriting(void * q) {
     }
     
     /*    sched_yield(); */
-    recordWrite(1, p, 0, rids[i], &val); 
+    recordWrite(1, p, 0, rids[i], (byte*)&val); 
 
     assert(p->id == rids[i].page);
     /*    p->LSN = 0;
@@ -159,7 +159,7 @@ void * workerThreadWriting(void * q) {
 
     p = loadPage(xid, rids[i].page);
 
-    recordRead(1, p, rids[i], &val); 
+    recordRead(1, p, rids[i], (byte*)&val); 
 
     /*    p->LSN = 0;
      *lsn_ptr(p) = 0;  */
