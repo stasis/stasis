@@ -36,6 +36,10 @@ rwl *initlock (void)
   writelock(lock, d);
   }*/
 
+void assertlocked(rwl * lock) { 
+  assert(lock->writers || lock->readers);
+}
+
 void readlock (rwl *lock, int d)
 {
   /*  printf("reader %d\n", d);  

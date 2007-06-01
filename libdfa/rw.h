@@ -35,6 +35,8 @@ void readlock (rwl *lock, int d);
 int tryreadlock(rwl *lock, int d);
 void writelock (rwl *lock, int d);
 int trywritelock(rwl *lock, int d);
+/** aborts if called when no thread holds this latch. */
+void assertlocked(rwl *lock);
 void downgradelock(rwl * lock);
 void unlock(rwl * lock);
 /** @deprecated in favor of unlock() */

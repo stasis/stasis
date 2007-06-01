@@ -7,7 +7,7 @@
 static void really_do_ralloc(Page * page, recordid rid) ;
 size_t slottedFreespaceForSlot(Page * page, int slot);
 void fsckSlottedPage(const Page const * page) {
-
+  assertlocked(page->rwlatch);
 #ifdef SLOTTED_PAGE_SANITY_CHECKS
   Page dummy;
 
@@ -126,6 +126,7 @@ The caller of this function must have a writelock on the page.
 */
 
 void slottedCompact(Page * page) { 
+  assertlocked(page->rwlatch);
   Page bufPage; 
   byte buffer[PAGE_SIZE];
   bufPage.memAddr = buffer;
@@ -198,8 +199,6 @@ void slottedPageInitialize(Page * page) {
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
   *freelist_ptr(page)  = INVALID_SLOT;
-  fsckSlottedPage(page);
-
 }
 size_t slottedFreespaceUnlocked(Page * page);
 
@@ -208,6 +207,7 @@ size_t slottedFreespaceUnlocked(Page * page);
     it takes the position of the new slot's header into account.
 */
 size_t slottedFreespaceForSlot(Page * page, int slot) { 
+  assertlocked(page->rwlatch);
   size_t slotOverhead;
 
   if(slot == INVALID_SLOT) { 
@@ -305,6 +305,7 @@ recordid slottedRawRalloc(Page * page, int size) {
   @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
 */
 static void really_do_ralloc(Page * page, recordid rid) {
+  assertlocked(page->rwlatch);
 
   short freeSpace;
   
@@ -508,6 +509,7 @@ void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
 }
 
 void slottedReadUnlocked(Page * page, recordid rid, byte *buff) {
+  assertlocked(page->rwlatch);
   int slot_length;
 
   fsckSlottedPage(page);
@@ -556,6 +558,7 @@ void slottedWrite(Page * page, recordid rid, const byte *data) {
 
 }
 void slottedWriteUnlocked(Page * page, recordid rid, const byte *data) {
+  assertlocked(page->rwlatch);
   int slot_length;
   fsckSlottedPage(page);
 

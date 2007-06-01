@@ -1,3 +1,9 @@
+/**
+   @file
+
+   @todo Is header.[ch] used for anything any more?  No one seems to call
+   into them.  Delete them?
+*/
 
 //void headerPageInitialize(Page * p);
 int headerPageInitialize();

@@ -146,6 +146,7 @@ int Tinit() {
                                           NULL, 20, PAGE_SIZE * 1024, 1024);
         pageHandleOpen(pageFile);
 #else
+        printf("\nWarning: Using old I/O routines.\n");
         openPageFile();
 #endif // USE_PAGEFILE
 	bufInit(bufferManagerType);

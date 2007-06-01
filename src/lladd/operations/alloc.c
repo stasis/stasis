@@ -202,7 +202,9 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     p = loadPage(xid, lastFreepage);
 
     while(slottedFreespace(p) < physical_slot_length(type)) { 
+      writelock(p->rwlatch,0);
       slottedCompact(p);
+      unlock(p->rwlatch);
       int newFreespace = slottedFreespace(p);
       if(newFreespace >= physical_slot_length(type)) { 
 	break;

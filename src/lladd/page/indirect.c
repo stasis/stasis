@@ -13,39 +13,43 @@ void indirectInitialize(Page * p, int height) {
   *page_type_ptr(p) = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }
-/** @todo locking for dereferenceRID? */
+/** @todo Is locking for dereferenceRID really necessary? */
 compensated_function recordid dereferenceRID(int xid, recordid rid) {
-  Page * this;
+  Page * page;
   try_ret(NULLRID) {
-    this = loadPage(xid, rid.page);
+    page = loadPage(xid, rid.page);
+    readlock(page->rwlatch, 0);
   } end_ret(NULLRID);
   //  printf("a"); fflush(stdout);
   int offset = 0;
   int max_slot;
-  while(*page_type_ptr(this) == INDIRECT_PAGE) {
+  while(*page_type_ptr(page) == INDIRECT_PAGE) {
     int i = 0;
-    for(max_slot = *maxslot_ptr(this, i); ( max_slot + offset ) <= rid.slot; max_slot = *maxslot_ptr(this, i)) {
+    for(max_slot = *maxslot_ptr(page, i); ( max_slot + offset ) <= rid.slot; max_slot = *maxslot_ptr(page, i)) {
       i++;
       assert(max_slot != INVALID_SLOT);
     }
 
     if(i) {
-      offset += *maxslot_ptr(this, i - 1);
+      offset += *maxslot_ptr(page, i - 1);
     } /** else, the adjustment to the offset is zero */
     
-    int nextPage = *page_ptr(this, i);
+    int nextPage = *page_ptr(page, i);
 
-    releasePage(this);
+    unlock(page->rwlatch);
+    releasePage(page);
     try_ret(NULLRID) {
-      this = loadPage(xid, nextPage);
+      page = loadPage(xid, nextPage);
+      readlock(page->rwlatch, 0);
     } end_ret(NULLRID);
   }
   //  printf("b"); fflush(stdout);
   
-  rid.page = this->id;
+  rid.page = page->id;
   rid.slot -= offset;
 
-  releasePage(this);
+  unlock(page->rwlatch);
+  releasePage(page);
   //  printf("c"); fflush(stdout);
 
   return rid;
@@ -195,6 +199,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   try_ret(-1){
     p = loadPage(xid, rid.page);
   }end_ret(-1);
+  readlock(p->rwlatch, 0);
   int i = 0;
   unsigned int ret;
   if(*page_type_ptr(p) == INDIRECT_PAGE) {
@@ -221,6 +226,8 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
     printf("Unknown page type in indirectPageRecordCount\n");
     abort();
   }
+
+  unlock(p->rwlatch);
   releasePage(p);
   return ret;
 }

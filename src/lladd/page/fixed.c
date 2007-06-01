@@ -18,11 +18,13 @@ void fixedPageInitialize(Page * page, size_t size, int count) {
 }
 
 short fixedPageCount(Page * page) {
+  assertlocked(page->rwlatch);
   assert(*page_type_ptr(page) == FIXED_PAGE || *page_type_ptr(page) == ARRAY_LIST_PAGE);
   return *recordcount_ptr(page);
 }
 
 short fixedPageRecordSize(Page * page) {
+  assertlocked(page->rwlatch);
   assert(*page_type_ptr(page) == FIXED_PAGE || *page_type_ptr(page) == ARRAY_LIST_PAGE);
   return *recordsize_ptr(page);
 }
@@ -53,7 +55,9 @@ recordid fixedRawRalloc(Page *page) {
   return fixedRawRallocMany(page, 1);
 }
 
+static int checkRidWarnedAboutUninitializedKludge = 0;
 static void checkRid(Page * page, recordid rid) {
+  assertlocked(page->rwlatch);
   if(*page_type_ptr(page)) {
     assert(*page_type_ptr(page) == FIXED_PAGE || *page_type_ptr(page) == ARRAY_LIST_PAGE);
     assert(page->id == rid.page);
@@ -62,11 +66,16 @@ static void checkRid(Page * page, recordid rid) {
     int recCount = *recordcount_ptr(page);
     assert(recCount  > rid.slot);          
   } else {
+     if(!checkRidWarnedAboutUninitializedKludge) {
+       checkRidWarnedAboutUninitializedKludge = 1;
+       printf("KLUDGE detected in checkRid. Fix it ASAP\n");
+     }
     fixedPageInitialize(page, rid.size, recordsPerPage(rid.size));
   }
 }
 
 void fixedReadUnlocked(Page * page, recordid rid, byte * buf) {
+  assertlocked(page->rwlatch);
   if(!memcpy(buf, fixed_record_ptr(page, rid.slot), rid.size)) {
     perror("memcpy");
     abort();
@@ -87,6 +96,7 @@ void fixedRead(Page * page, recordid rid, byte * buf) {
 }
 
 void fixedWriteUnlocked(Page * page, recordid rid, const byte *dat) {
+  assertlocked(page->rwlatch);
   checkRid(page,rid);
   if(!memcpy(fixed_record_ptr(page, rid.slot), dat, rid.size)) {
     perror("memcpy");

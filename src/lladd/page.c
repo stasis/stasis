@@ -154,7 +154,7 @@ void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
   assert( (p->id == rid.page) && (p->memAddr != NULL) );	
   
 }
-
+static int recordReadWarnedAboutPageTypeKludge = 0;
 int recordRead(int xid, Page * p, recordid rid, void *buf) {
   assert(rid.page == p->id); 
   
@@ -164,8 +164,12 @@ int recordRead(int xid, Page * p, recordid rid, void *buf) {
     readBlob(xid, p, rid, buf);
   } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
     slottedRead(p, rid, buf);
-    /* @TODO !page_type can never be required if this code is correct... arraylist is broken!!*/
-  } else if(page_type == FIXED_PAGE || page_type==ARRAY_LIST_PAGE || !page_type) { 
+    /* @TODO !page_type can never be required if this code is correct... arraylist is broken!! XXX */
+  } else if(page_type == FIXED_PAGE || page_type==ARRAY_LIST_PAGE || !page_type) {
+    if(!page_type && ! recordReadWarnedAboutPageTypeKludge) {
+      recordReadWarnedAboutPageTypeKludge = 1;
+      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+    }
     fixedRead(p, rid, buf);
   } else {
     abort();

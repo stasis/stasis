@@ -198,7 +198,7 @@ void testFunctions(){
   recordid rid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
   int pageid1 = rid1.page;
   Page *  p1 = loadPage(xid, pageid1);
-  
+
   // calling functions
   
   initializeNewBTreeNode(p1, rid1);
@@ -206,6 +206,7 @@ void testFunctions(){
 
 
   // cleaning up
+
   releasePage(p1);
   Tcommit(xid);
 }
@@ -233,7 +234,7 @@ int SimpleExample(){
   int pageid1 = rid1.page;
   
   Page *  p1 = loadPage(xid, pageid1);
-
+  writelock(p1->rwlatch, 0);
   if(DEBUGP) {  printf("\n**** page->id  = %lld\n", p1->id);}
 
   /* check consistency between rid & page's values 
@@ -271,14 +272,15 @@ int SimpleExample(){
   
   recordid rid2 = rid1;
   rid2.slot = 0; 
+
+  // @todo This is a messy way to do this...
+  unlock(p1->rwlatch);
  
   fixedWrite(p1, rid2, b1);
   fixedRead(p1, rid2, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
   //  initializeNewBTreeNode(p1, rid1); 
-
-
 
   releasePage(p1);
   Tcommit(xid);

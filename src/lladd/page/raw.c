@@ -10,18 +10,21 @@ void rawPageInferMetadata(Page * p) {
 }
 
 byte* rawPageGetData(int xid, Page * p) {
+  assertlocked(p->rwlatch);
   return units_from_start_raw(byte, p, 0);
 }
 
 void  rawPageSetData(int xid, lsn_t lsn, Page * p) { 
-  writelock(p->rwlatch, 255);
+  assertlocked(p->rwlatch);
+  //  writelock(p->rwlatch, 255);
   rawPageWriteLSN(xid, p, lsn);
   dirtyPages_add(p);
-  unlock(p->rwlatch);
+  //  unlock(p->rwlatch);
   return;
 }
 
 lsn_t rawPageReadLSN(const Page * p) { 
+  assertlocked(p->rwlatch);
   // There are some potential optimizations here since the page
   // doesn't "really" have an LSN at all, but we need to be careful
   // about log truncation...
@@ -29,6 +32,7 @@ lsn_t rawPageReadLSN(const Page * p) {
 }
 
 void rawPageWriteLSN(int xid, Page * p, lsn_t lsn) { 
+  assertlocked(p->rwlatch);
   if(p->LSN < lsn) { p->LSN = lsn; }
 }
 

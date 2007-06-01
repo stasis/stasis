@@ -75,6 +75,9 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   int multiplier = tlp->multiplier;
   int size = tlp->size;
 
+  /* Allocing this page -> implicit lock, but latch to conformt to
+   fixedPage's interface. */
+  writelock(p->rwlatch, 0);
   fixedPageInitialize(p, sizeof(int), recordsPerPage(sizeof(int)));
 
 #define MAX_OFFSET_POSITION    3
@@ -91,7 +94,6 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   firstDataPageRid.slot = 4;
   
   int firstDataPage = firstPage + 1;
-  /* Allocing this page -> implicit lock. */
   fixedWriteUnlocked(p, countRid,      (byte*)&count);
   fixedWriteUnlocked(p, multiplierRid, (byte*)&multiplier);
   fixedWriteUnlocked(p, firstDataPageRid, (byte*)&firstDataPage);
@@ -109,7 +111,8 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   ret.page = firstPage;
   ret.slot = 0;        /* slot = # of slots in array... */
   ret.size = size;
-  
+  unlock(p->rwlatch);
+
   return 0;
 }
 
@@ -196,7 +199,7 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
 /*----------------------------------------------------------------------------*/
 
 recordid dereferenceArrayListRid(Page * p, int offset) {
-
+  readlock(p->rwlatch,0);
   TarrayListParameters tlp = pageToTLP(p);
 
   int rec_per_page = recordsPerPage((size_t)tlp.size);
@@ -215,6 +218,7 @@ recordid dereferenceArrayListRid(Page * p, int offset) {
 
   assert(pageRidSlot + FIRST_DATA_PAGE_OFFSET < fixedPageCount(p));
   thePage = *(int*)fixed_record_ptr(p, pageRidSlot + FIRST_DATA_PAGE_OFFSET); /*reading immutable record; don't need latch.*/
+  unlock(p->rwlatch);
 
   recordid rid;
   rid.page = thePage + blockPage;

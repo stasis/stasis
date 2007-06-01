@@ -54,7 +54,6 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid r, const void *d) {
 	recordRead(xid, p, r, (byte*)&i);
 	i++;
 	recordWrite(xid, p, lsn, r, (byte*)&i);
-
 	return 0;
 }
 
