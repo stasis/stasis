@@ -1,4 +1,9 @@
+.deps
+.libs
+Makefile
 Makefile.in
+_lladd.la
+_lladd_la-lladd_wrap.lo
 lladd.py
 lladd.pyc
 lladd_wrap.cc
