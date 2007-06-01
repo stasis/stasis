@@ -52,8 +52,6 @@ BEGIN_C_DECLS
 
    Structs and memory managment routines for log entries
 
-   @todo Is there a better way to deal with sizeof() and log entries?
-   
    @todo Other than some typedefs, is there anything in logEntry that belongs in the API?
 
    @ingroup LLADD_CORE

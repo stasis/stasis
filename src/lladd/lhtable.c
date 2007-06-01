@@ -6,10 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "latches.h"
-/**
-   @todo Look up the balls + bins stuff, and pick FILL_FACTOR in a
-   principled way...
-*/
+
 #define FILL_FACTOR (0.5)
 
 //#define MEASURE_GLOBAL_BUCKET_LENGTH

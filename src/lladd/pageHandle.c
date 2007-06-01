@@ -55,6 +55,7 @@ static void phForce() {
 }
 static void phClose() { 
   int err = h->close(h);
+  DEBUG("Closing pageHandle\n");
   if(err) {
     printf("Couldn't close page file: %s\n", strerror(err));
     fflush(stdout);
@@ -63,6 +64,7 @@ static void phClose() {
 }
 
 void pageHandleOpen(stasis_handle_t * handle) { 
+  DEBUG("Using pageHandle implementation\n");
   pageWrite = phWrite;
   pageRead  = phRead;
   forcePageFile = phForce;

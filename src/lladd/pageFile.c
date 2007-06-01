@@ -7,6 +7,7 @@
 #include <lladd/bufferManager.h>
 
 #include "pageFile.h"
+#include <lladd/pageHandle.h>
 #include <assert.h>
 #include <lladd/logger/logger2.h>
 #include <lladd/truncation.h>
@@ -169,8 +170,12 @@ static void pfForcePageFile() {
 }
 
 static void pfClosePageFile() {
+  assert(stable != -1);
   forcePageFile();
+  DEBUG("Closing storefile\n");
+
   int ret = close(stable);
+
 
   if(-1 == ret) { 
     perror("Couldn't close storefile.");
@@ -190,4 +195,3 @@ static pageid_t myLseekNoLock(int f, pageid_t offset, int whence) {
   }
   return ret;
 }
-

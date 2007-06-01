@@ -290,7 +290,7 @@ recordid slottedRawRalloc(Page * page, int size) {
 }
 
 /** 
-  @todo Allocation is scary without locking.  Consider this situation:
+  Allocation is scary without locking.  Consider this situation:
 
    (1) *numslot_ptr(page) is 10
    (2) An aborting transcation calls really_do_ralloc(page) with rid.slot = 12
@@ -298,6 +298,9 @@ recordid slottedRawRalloc(Page * page, int size) {
      - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
    (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
        be reused by aborting transactions...)
+
+  For now, we make sure that we don't alloc off a page that another active
+  transaction dealloced from.
 
   @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
 */
@@ -415,6 +418,9 @@ static void really_do_ralloc(Page * page, recordid rid) {
    @param page
    @param lsn
    @param rid with user-visible size.
+
+   @todo Does this still really need to check for BLOB_THRESHOLD_SIZE? 
+   Shouldn't the caller call slottedSetType if necessary?
 */
 recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
   

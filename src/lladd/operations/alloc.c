@@ -29,18 +29,16 @@
    too big of a deal, but it should be fixed someday.  A more serious
    problem results from crashes during blob allocation.
 
-   @todo The entire allocaction system needs to be redone.  
+   Here are some requirements for alloc:
 
-   Here are some requirements for the next version of alloc:
-
-   Space Reuse: There are many ways to implement this.  One method
+   [DONE] Space Reuse: There are many ways to implement this.  One method
    (that I'm not particularly attached to) is to maintain seperate
    linked lists for each type of page, seperated by an estimate of the
    amount of space free (actually 'un-reserved'; see below) on the
    page.  Allocation would move pages between linked lists, and search
    in the appropriate linked list before expanding the page file.
     
-   Treserve: Hashtables, linked lists, and other graph-like structures
+   @todo Treserve: Hashtables, linked lists, and other graph-like structures
    can be optimized by exploiting physical locality.  A call such as
    this allows page-level locality to be established / maintained:
 
@@ -52,14 +50,16 @@
    TallocFromPage (xid, page, size) already exists, and should ignore
    the presence of the 'reserved space' field.
 
-   Track level locality is another problem that Talloc should address, 
+   @todo Track level locality is another problem that Talloc should address, 
    especially for the blob implementation.
 
-   Better support for locking.  Consider this sequence of events:
+   [DONE] Concurrent transaction support.  Consider this sequence of events:
 
    recordid rid1 = Talloc (xid1, 1);
    recordid rid2 = Talloc (xid2, 1);  // May deadlock if page level  
                                      // locking is used.
+
+   [NOT TO BE DONE] (We don't want allocation to grab locks...
 
    The lock manager needs a 'try lock' operation that allows
    transactions to attempt to read multiple pages.  When the current
@@ -84,7 +84,6 @@ static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat)
   return 0;
 }
 
-/** @todo Currently, we leak empty pages on dealloc. */
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   assert(rid.page == p->id);
   slottedDeRalloc(xid, p, lsn, rid);
@@ -99,7 +98,6 @@ static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat
     //  } 
 
   slottedPostRalloc(xid, p, lsn, rid); 
-  /** @todo dat should be the pointer to the space in the blob store. */
   recordWrite(xid, p, lsn, rid, dat);
 
   return 0;

@@ -64,8 +64,6 @@ terms specified in this license.
  (to support savepoints, for example) Right now, recovery uses a
  guarded iterator, transUndo() does not.
  
- @todo Test Tprepare()
-
  *
  * @ingroup OPERATIONS
  *

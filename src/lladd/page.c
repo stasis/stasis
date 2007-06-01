@@ -164,8 +164,7 @@ int recordRead(int xid, Page * p, recordid rid, void *buf) {
     readBlob(xid, p, rid, buf);
   } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
     slottedRead(p, rid, buf);
-    /* FIXED_PAGES can function correctly even if they have not been
-       initialized. */
+    /* @TODO !page_type can never be required if this code is correct... arraylist is broken!!*/
   } else if(page_type == FIXED_PAGE || page_type==ARRAY_LIST_PAGE || !page_type) { 
     fixedRead(p, rid, buf);
   } else {
@@ -228,7 +227,7 @@ int recordType(int xid, Page * p, recordid rid) {
 	unlock(p->rwlatch);
 	return ret;
 }
-/** @todo implement getRecordLength for blobs and fixed length pages. */
+/** @todo implement recordSize for blobs and fixed length pages. */
 int recordSize(int xid, Page * p, recordid rid) {
   readlock(p->rwlatch, 353);
   int ret = recordTypeUnlocked(xid, p, rid);

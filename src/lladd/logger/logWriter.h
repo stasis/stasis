@@ -153,8 +153,8 @@ void closeLogWriter();
   Only use after calling closeLogStream AND you are sure there are no active (or
   future active) transactions!
 
-  @todo This is in here now for completeness, but once we implement
-  log truncation, it should leave.
+  @todo This only exists because the tests use it...once the logfile
+        name isn't hardcoded, remove this function.
 */
 void deleteLogWriter();
 
@@ -175,4 +175,3 @@ long sizeofInternalLogEntry_LogWriter(const LogEntry * e);
 END_C_DECLS
 
 #endif /* __LLADD_LOGGER_LOGWRITER_H */
-

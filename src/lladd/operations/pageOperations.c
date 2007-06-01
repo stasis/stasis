@@ -38,7 +38,7 @@ compensated_function int TpageSet(int xid, int pageid, byte * memAddr) {
   return 0;
 }
 
-/** @todo this should be dynamic. */
+/** @todo region sizes should be dynamic. */
 #define TALLOC_PAGE_REGION_SIZE 128 // 512K
 
 /** 

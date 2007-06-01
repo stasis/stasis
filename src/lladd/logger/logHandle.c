@@ -110,15 +110,7 @@ const LogEntry * previousInTransaction(LogHandle * h) {
 
 }
 
-/**
-   @todo The next_offset field is set in a way that assumes a
-   particular layout of log entries.  If we want to support other
-   loggers, then the lsn of the next entry should be calculated by the
-   logging implementation, not here.  (One possibility is to have
-   readLSNEntry return it explicitly.)
-*/
 static void set_offsets(LogHandle * h, const LogEntry * e) {
   h->next_offset = LogNextEntry(e);
   h->prev_offset = e->prevLSN;
 }
-

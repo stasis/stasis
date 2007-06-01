@@ -3,9 +3,6 @@
 
    Allocates and deallocates records.
 
-   @todo Talloc() should reuse space freed by Tdealloc(), but
-   currently just leaks it.
-
    @ingroup OPERATIONS
 
    $Id$
@@ -32,8 +29,6 @@ void TallocInit();
     @param size The size of the new record to be allocated.  Talloc will allocate a
     blob if the record will not easily fit on a page.
 
-    @todo need to obtain (transaction-level) write locks _before_ writing log entries.  Otherwise, we can deadlock at recovery.
-
     @return the recordid of the new record.
 */
 compensated_function recordid Talloc(int xid, unsigned long size);
@@ -42,7 +37,6 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long s
 
 /** 
    Free a record.  
-    @todo Currently, we just leak store space on dealloc. 
 */
 compensated_function void Tdealloc(int xid, recordid rid);
 

@@ -7,7 +7,7 @@
 
 
 #include <lladd/bufferPool.h>
-#include "pageFile.h"
+#include <lladd/pageHandle.h>
 
 #include <lladd/replacementPolicy.h>
 #include <lladd/bufferManager.h>

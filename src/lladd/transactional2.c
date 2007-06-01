@@ -11,7 +11,10 @@
 #include <lladd/consumer.h>
 #include <lladd/lockManager.h>
 #include <lladd/compensations.h>
+#ifdef USE_PAGEFILE
 #include "pageFile.h"
+#endif
+#include <lladd/pageHandle.h>
 #include "page.h"
 #include <lladd/logger/logger2.h>
 #include <lladd/truncation.h>
@@ -127,22 +130,26 @@ int Tinit() {
 	dirtyPagesInit();
 	LogInit(loggerType);
 	pageInit();
-
+#ifndef USE_PAGEFILE
 	struct sf_args * slow_arg = malloc(sizeof(sf_args));
 	slow_arg->filename = STORE_FILE;
 #ifdef PAGE_FILE_O_DIRECT
 	slow_arg->openMode = O_CREAT | O_RDWR | O_DIRECT;
 #else
 	slow_arg->openMode = O_CREAT | O_RDWR;
-#endif	  
+#endif
 	slow_arg->filePerm = FILE_PERM;
 	// Allow 4MB of outstanding writes.
-	stasis_handle_t * pageFile = 
-	  stasis_handle(open_non_blocking)(slow_factory, slow_arg, fast_factory,
-	  NULL, 20, PAGE_SIZE * 1024, 1024);  
-	pageHandleOpen(pageFile); 
-	//	openPageFile();
+        // @todo Where / how should we open storefile?
+        stasis_handle_t * pageFile = 
+         stasis_handle(open_non_blocking)(slow_factory, slow_arg, fast_factory,
+                                          NULL, 20, PAGE_SIZE * 1024, 1024);
+        pageHandleOpen(pageFile);
+#else
+        openPageFile();
+#endif // USE_PAGEFILE
 	bufInit(bufferManagerType);
+        DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
 	initNestedTopActions();
 	TallocInit();
@@ -370,6 +377,7 @@ int Tdeinit() {
 	truncationDeinit();
 	ThashDeinit();
 	bufDeinit();
+        DEBUG("Closing page file tdeinit\n");
 	closePageFile();
 	pageDeinit();
 	LogDeinit();

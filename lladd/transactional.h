@@ -51,7 +51,7 @@ terms specified in this license.
  * In theory, the other .h files that are installed in /usr/include
  * aren't needed for application developers.
  *
- * @todo Move as much of the stuff in lladd/ to src/lladd/ as possible.
+ * @todo Move as much of the stuff in lladd/ to src/lladd/ as possible.  Alternatively, move all headers to lladd/, and be done with it!
  *
  */
 /**

@@ -54,10 +54,9 @@ Slotted page layout:
 
  $Id$
 
-@todo slotted.c shouldn't need to include the buffer manager calls 
-                (like loadPage(), releasePage()).
 @todo slotted.c Should know that specific record types (like blobs) exist,
-                (but should not hardcode information about these types)
+                (but should not hardcode information about these types) This
+                has been handled, except in slottedPostRalloc...
 
 ************************************************************************/
 
@@ -168,7 +167,7 @@ void slottedPageDeInit();
  * @see slottedFreespace()
  *
  * @todo pageRalloc's algorithm for reusing slot id's reclaims the
- * highest numbered slots first, which encourages fragmentation.
+ * most recently freed slots first, which may encourage fragmentation.
  */
 recordid slottedRawRalloc(Page * page, int size);
 

@@ -69,7 +69,6 @@ int global_kill = 100000;
 
 
 /** 
-    @todo the dfa implementation uses jbhash!
     @test
 */
 START_TEST (pingpong_check) {

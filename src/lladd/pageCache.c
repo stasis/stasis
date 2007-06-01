@@ -13,11 +13,8 @@
 #include <lladd/bufferManager.h>
 
 #include <assert.h>
-
-
 #include <stdio.h>
-/** @todo break dependency between pageCache and pageFile */
-#include "pageFile.h"
+
 static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
 
@@ -30,16 +27,11 @@ void pageCacheInit(Page * first) {
   bufferSize = 1;
   cache_state  = INITIAL;
 
-
-  
   DEBUG("pageCacheInit()");
 
   first->inCache = 1;
 
   first->prev = first->next = NULL;
-  /*  pageMap(first); */
-  pageRead(first);
-
   repHead = repTail = first;
   repMiddle = NULL;
 

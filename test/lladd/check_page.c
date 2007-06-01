@@ -195,9 +195,6 @@ static void* worker_thread(void * arg_ptr) {
    The number of slots allocated by the page tests is too low to check
    that freed space is recovered.
 
-   @todo While space is being reclaimed by page.c, it does not reclaim
-   slots, so freeing records still does not work properly.
-
 */
 START_TEST(pageNoThreadTest)
 {
@@ -459,10 +456,6 @@ START_TEST(pageTrecordTypeTest) {
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
 	
 	assert(TrecordType(xid, slot) == SLOTTED_RECORD);
-	
-	/** @todo the use of the fixedRoot recordid to check recordType is 
-		  a bit questionable, but should work. */
-	
 	assert(TrecordType(xid, fixedRoot) == FIXED_RECORD);  
 	
 	fixedRoot.slot = 1;

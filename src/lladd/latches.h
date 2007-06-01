@@ -1,13 +1,6 @@
 #include <config.h>
 #include <lladd/common.h>
-
-/** @todo threading should be moved into its own header file. */
 #include <pthread.h>
-
-
-
-
-/*#include <pbl/pbl.h> -- Don't want everything that touches threading to include pbl... */
 #include <lladd/stats.h>
 
 #ifndef __LATCHES_H

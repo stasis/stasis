@@ -71,8 +71,7 @@ terms specified in this license.
 
 #include <lladd/lockManager.h>
 #include <lladd/pageCache.h>
-#include "pageFile.h"
-
+#include <lladd/pageHandle.h>
 #include <lladd/truncation.h>
 
 #include <lladd/lhtable.h>
@@ -135,9 +134,6 @@ static int bufManBufInit() {
 
         bufferPoolInit();
 
-	openPageFile();
-
-
 	pthread_mutex_init(&loadPagePtr_mutex, NULL);
 
 	activePages = LH_ENTRY(create)(16);
@@ -148,7 +144,7 @@ static int bufManBufInit() {
 	first = pageMalloc();
 	pageFree(first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(int), first);
-
+        pageRead(first);
 	pageCacheInit(first);
 
 	int err = pthread_key_create(&lastPage, 0);
@@ -180,7 +176,8 @@ static void bufManBufDeinit() {
 	pthread_mutex_destroy(&loadPagePtr_mutex);
 	
 	pageCacheDeinit();
-	closePageFile();
+
+	//closePageFile();
 
 	bufferPoolDeInit();
 	
@@ -194,6 +191,8 @@ static void bufManBufDeinit() {
 /**
     Just close file descriptors, don't do any other clean up. (For
     testing.)
+
+    @todo buffer manager should never call closePageFile(); it not longer manages pageFile handles
 */
 void bufManSimulateBufferManagerCrash() {
   closePageFile();

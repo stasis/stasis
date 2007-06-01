@@ -37,8 +37,7 @@ BEGIN_C_DECLS
        (5) recovery2.c handles the restoration of the fd bits using
            physical logging (this is automatic, since we use Tset()
            calls to update the records.)
-       
-       @todo Should the tripleHash be its own little support library? 
+
        @todo Set range??
 
        @ingroup LLADD_CORE
@@ -61,11 +60,6 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
 
 /**
    Allocate a blob of size blobSize. 
-
-   @todo This function does not atomically allocate space in the blob
-   file.  Instead of trusting the blob store length, upon recieving a
-   log entry, update a static file length variable in blobManager.
-
 */
 
 void allocBlob(int xid, recordid rid);

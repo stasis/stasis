@@ -126,7 +126,6 @@ static void pageFreeNoLock(Page *p, int id) {
   p->dirty = 0;
 }
 
-/** @todo Does pageFree really need to obtain a lock? */
 void pageFree(Page *p, int id) {
   writelock(p->rwlatch, 10);
   pageFreeNoLock(p,id);

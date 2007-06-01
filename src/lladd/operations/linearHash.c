@@ -756,7 +756,7 @@ void ThashInstantInsert(int xid, recordid hashRid,
   free(e);
 
 }
-/** @todo hash hable probably should track the number of items in it,
+/** @todo hash table probably should track the number of items in it,
     so that expand can be selectively called. */
 void ThashInstantDelete(int xid, recordid hashRid, 
 	    const void * key, int keySize, int valSize) {

@@ -11,18 +11,16 @@
     pageRead() function.  Eventually, this could be extended to
     support application specific caching schemes.
 
-    Currently, LLADD uses LRU-2S from Markatos "On Caching Searching
-    Engine Results"
-
     If you would like to implement your own caching policy, implement
     the functions below.  They are relatively straightforward.
     Note that pageCache does not perform any file I/O of its own.
 
     The implementation of this module does not need to be threadsafe.
 
-    @todo pageCache should not include page.h at all.  It should treat
-    pages as (int, void*) pairs.  (But the page struct contains the
-    pointers that pageCache manipulates..)
+    @param first The caller should manually read this page by calling
+    pageRead() before calling pageCacheInit. 
+
+    @todo pageCacheInit should not take a page as a parameter.
 
 */
 

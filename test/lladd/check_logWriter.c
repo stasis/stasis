@@ -45,9 +45,7 @@ terms specified in this license.
     
     Tests logWriter.  
 
-    @todo Change tests to apply to all logger implementations.
-
-    (Also Get rid of include for logWriter.h)
+    @todo Get rid of include for logWriter.h (stop calling deleteLogWriter, syncLog_logWriter...)
 */
 #include <config.h>
 #include <check.h>

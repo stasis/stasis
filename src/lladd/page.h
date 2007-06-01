@@ -272,11 +272,7 @@ int recordSize(int xid, Page * p, recordid rid);
 */
 int recordTypeUnlocked(int xid, Page * p, recordid rid);
 /**
-   return the length of the record rid.  (the rid parameter's size field will be ignored)
-
-   @todo implement getRecordLength for blobs and fixed length pages.
-
-   @return -1 if the field does not exist, the size of the field otherwise.
+   @return -1 if the field does not exist, the size of the field otherwise (the rid parameter's size field will be ignored).
  */
 int recordLength(int xid, Page * p, recordid rid);
 

@@ -195,7 +195,6 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
 
 /*----------------------------------------------------------------------------*/
 
-/** @todo locking for arrayLists */
 recordid dereferenceArrayListRid(Page * p, int offset) {
 
   TarrayListParameters tlp = pageToTLP(p);

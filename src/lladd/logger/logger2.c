@@ -44,7 +44,7 @@ terms specified in this license.
    @file Abstract log implementation.  Provides access to methods that
    directly read and write log entries, force the log to disk, etc.
 
-   @todo Switch logger2 to use function pointers?
+   @todo Switch logger2 to use function pointers
 */
 
 #include <config.h>

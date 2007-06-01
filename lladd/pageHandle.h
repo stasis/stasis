@@ -34,8 +34,8 @@ extern int pageFile_isDurable;
    
    @see bufferManager.c for the implementation of pageRead.
 
-   @todo pageRead and pageWrite should be static, but pageCache needs
-   to call them.
+   @todo pageRead and pageWrite should be stored in a struct returned by
+   an initailizer, not in global function pointers.
 */
 extern void (*pageRead)(Page * ret);
 /**
