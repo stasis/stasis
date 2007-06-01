@@ -66,16 +66,17 @@ static void checkRid(Page * page, recordid rid) {
     int recCount = *recordcount_ptr(page);
     assert(recCount  > rid.slot);          
   } else {
-     if(!checkRidWarnedAboutUninitializedKludge) {
-       checkRidWarnedAboutUninitializedKludge = 1;
-       printf("KLUDGE detected in checkRid. Fix it ASAP\n");
-     }
+    if(!checkRidWarnedAboutUninitializedKludge) { 
+      checkRidWarnedAboutUninitializedKludge = 1;
+      printf("KLUDGE detected in checkRid. Fix it ASAP\n");
+    }
     fixedPageInitialize(page, rid.size, recordsPerPage(rid.size));
   }
 }
 
 void fixedReadUnlocked(Page * page, recordid rid, byte * buf) {
   assertlocked(page->rwlatch);
+  checkRid(page, rid);
   if(!memcpy(buf, fixed_record_ptr(page, rid.slot), rid.size)) {
     perror("memcpy");
     abort();
