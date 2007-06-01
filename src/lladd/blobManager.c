@@ -24,7 +24,7 @@ void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
   rawRid.size = BLOB_SLOT;
   byte * pbuf = alloca(PAGE_SIZE);
   blob_record_t rec;
-  recordRead(xid, p2, rawRid, &rec);
+  recordRead(xid, p2, rawRid, (byte*)&rec);
   
   for(chunk = 0; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) { 
     TpageGet(xid, rec.offset+chunk, pbuf);
@@ -43,7 +43,7 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
   rawRid.size = BLOB_SLOT;
   byte * pbuf = alloca(PAGE_SIZE);
   blob_record_t rec;
-  recordRead(xid, p2, rawRid, &rec);
+  recordRead(xid, p2, rawRid, (byte*)&rec);
   
   assert(rec.offset);
 
