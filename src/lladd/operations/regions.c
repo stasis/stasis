@@ -1,6 +1,6 @@
+#include "config.h"
 #include "../page.h"
 #include <lladd/operations.h>
-#include "../page/slotted.h"
 #include <assert.h>
 
 typedef struct regionAllocLogArg{
@@ -26,10 +26,14 @@ static void TdeallocBoundaryTag(int xid, unsigned int page);
     could matter in the future.
 */
 static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { 
+  writelock(p->rwlatch, 0);
   slottedPageInitialize(p);
   *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
-  slottedPostRalloc(xid, p, lsn, rid);
-  slottedWrite(p, rid, dat);
+  recordPostAlloc(xid, p, rid);
+  pageWriteLSN(xid, p, lsn);
+  byte * buf = recordWriteNew(xid, p, rid);
+  memcpy(buf, dat, recordGetLength(xid, p, rid));
+  unlock(p->rwlatch);
   return 0;
 }
 
@@ -123,7 +127,6 @@ void regionsInit() {
   Page * p = loadPage(-1, 0);
   int pageType = *page_type_ptr(p);
 
-
   holding_mutex = pthread_self();
   if(pageType != BOUNDARY_TAG_PAGE) {
     boundary_tag t;
@@ -178,11 +181,9 @@ void fsckRegions(int xid) {
 	TreadBoundaryTag(xid, thisPage, &orphan);
 	assert(orphan.status == REGION_CONDEMNED);
 	Page * p  = loadPage(xid, thisPage);
-	fsckSlottedPage(p);
 	releasePage(p);
       } else if (pageType == SLOTTED_PAGE) { 
 	Page * p = loadPage(xid, thisPage);
-	fsckSlottedPage(p);
 	releasePage(p);
       }
     }
@@ -491,4 +492,3 @@ void TregionFindNthActive(int xid, unsigned int regionNumber, unsigned int * fir
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
 }
-

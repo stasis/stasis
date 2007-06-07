@@ -1,14 +1,15 @@
 /** $Id$ */
 
+#include "config.h"
 #include "../page.h"
 #include "slotted.h"
 #include <assert.h>
+/** @todo should page implementations provide readLSN / writeLSN??? */
+#include <lladd/truncation.h>
+static inline void slottedFsck(const Page const * page) {
 
-static void really_do_ralloc(Page * page, recordid rid) ;
-size_t slottedFreespaceForSlot(Page * page, int slot);
-void fsckSlottedPage(const Page const * page) {
   assertlocked(page->rwlatch);
-#ifdef SLOTTED_PAGE_SANITY_CHECKS
+
   Page dummy;
 
   dummy.id = -1;
@@ -21,7 +22,7 @@ void fsckSlottedPage(const Page const * page) {
 
   const long slotListStart = (long)slot_length_ptr(&dummy, numslots-1);
   assert(slotListStart < PAGE_SIZE && slotListStart >= 0);
-  assert(page_type == SLOTTED_PAGE || 
+  assert(page_type == SLOTTED_PAGE ||
 	 page_type == BOUNDARY_TAG_PAGE);
   assert(numslots >= 0);
   assert(numslots * SLOTTED_PAGE_OVERHEAD_PER_RECORD < PAGE_SIZE);
@@ -29,7 +30,9 @@ void fsckSlottedPage(const Page const * page) {
   assert(freespace <= slotListStart);
   assert(freelist >= INVALID_SLOT);
   assert(freelist < numslots);
-  
+
+#ifdef SLOTTED_PAGE_SANITY_CHECKS
+
   // Check integrity of freelist.  All free slots less than
   // numslots should be on it, in order.
 
@@ -113,10 +116,6 @@ void fsckSlottedPage(const Page const * page) {
 
 }
 
-#ifndef SLOTTED_PAGE_SANITY_CHECKS
-#define fsckSlottedPage(x) ((void)0)
-#endif
-
 /**
    
 Move all of the records to the beginning of the page in order to 
@@ -125,7 +124,7 @@ increase the available free space.
 The caller of this function must have a writelock on the page.
 */
 
-void slottedCompact(Page * page) { 
+static void slottedCompact(Page * page) { 
   assertlocked(page->rwlatch);
   Page bufPage; 
   byte buffer[PAGE_SIZE];
@@ -180,7 +179,7 @@ void slottedCompact(Page * page) {
   
   memcpy(page->memAddr, buffer, PAGE_SIZE);
 
-  fsckSlottedPage(page);
+  slottedFsck(page);
 
 }
 
@@ -190,23 +189,23 @@ void slottedPageInit() {
 #endif  
 }
 
-void slottedPageDeInit() {
+void slottedPageDeinit() {
 }
 
 
 void slottedPageInitialize(Page * page) {
+  assertlocked(page->rwlatch);
   *page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
   *freelist_ptr(page)  = INVALID_SLOT;
 }
-size_t slottedFreespaceUnlocked(Page * page);
 
 /** 
     This is needed to correctly implement really_do_ralloc(), since
     it takes the position of the new slot's header into account.
 */
-size_t slottedFreespaceForSlot(Page * page, int slot) { 
+static size_t slottedFreespaceForSlot(Page * page, int slot) { 
   assertlocked(page->rwlatch);
   size_t slotOverhead;
 
@@ -236,61 +235,8 @@ size_t slottedFreespaceForSlot(Page * page, int slot) {
   }
 }
 
-/** @todo Implement a model of slotted pages in the test scripts, and
-    then write a randomized test that confirms the model matches the
-    implementation's behavior. */
-size_t slottedFreespaceUnlocked(Page * page) { 
-  return slottedFreespaceForSlot(page, INVALID_SLOT);
-}
-
-size_t slottedFreespace(Page * page) {
-  size_t ret;
-  readlock(page->rwlatch, 292);
-  ret = slottedFreespaceUnlocked(page);
-  readunlock(page->rwlatch);
-  return ret;
-}
-
-
-
-recordid slottedRawRalloc(Page * page, int size) {
-  int type = size;
-  size = physical_slot_length(type);
-  assert(type != INVALID_SLOT);
-
-  writelock(page->rwlatch, 342);
-  fsckSlottedPage(page);
-
-  recordid rid;
-  
-  rid.page = page->id;
-  rid.slot = *numslots_ptr(page);
-  rid.size = type;  // The rid should reflect the fact that this is a special slot.
-
-  /* The freelist_ptr points to the first free slot number, which 
-     is the head of a linked list of free slot numbers.*/
-  if(*freelist_ptr(page) != INVALID_SLOT) {
-    rid.slot = *freelist_ptr(page);  
-    // really_do_ralloc will look this slot up in the freelist (which
-    // is O(1), since rid.slot is the head), and then remove it from
-    // the list.
-  }
-  
-  really_do_ralloc(page, rid);
-
-  assert(*numslots_ptr(page) > rid.slot);
-  assert(type == *slot_length_ptr(page, rid.slot));
-  assert(size == physical_slot_length(*slot_length_ptr(page, rid.slot)));
-
-  fsckSlottedPage(page);
-
-  writeunlock(page->rwlatch);
-
-  return rid;
-}
-
 /** 
-  Allocation is scary without locking.  Consider this situation:
+  Allocation is complicated without locking.  Consider this situation:
 
    (1) *numslot_ptr(page) is 10
    (2) An aborting transcation calls really_do_ralloc(page) with rid.slot = 12
@@ -414,162 +360,180 @@ static void really_do_ralloc(Page * page, recordid rid) {
   *slot_length_ptr(page, rid.slot) = rid.size; 
 
 }
-/**
-   @param xid
-   @param page
-   @param lsn
-   @param rid with user-visible size.
 
-   @todo Does this still really need to check for BLOB_THRESHOLD_SIZE? 
-   Shouldn't the caller call slottedSetType if necessary?
-*/
-recordid slottedPostRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
-  
-	writelock(page->rwlatch, 376);
+/// ------------------------------------------------------------------------------------------
+// PUBLIC API IS BELOW THIS LINE
+/// ------------------------------------------------------------------------------------------
 
-	if(rid.size >= BLOB_THRESHOLD_SIZE) { 
-	  rid.size = BLOB_SLOT;
-	}
-
-	if(*page_type_ptr(page) != SLOTTED_PAGE && *page_type_ptr(page) != BOUNDARY_TAG_PAGE) {
-	  /* slottedPreRalloc calls this when necessary.  However, in
-	     the case of a crash, it is possible that
-	     slottedPreRalloc's updates were lost, so we need to check
-	     for that here.  
-
-	     If slottedPreRalloc didn't call slottedPageInitialize,
-	     then there would be a race condition:
-	
-	     Thread 1             Thread 2
-	     preAlloc(big record)
-
-	                          preAlloc(big record) // Should check the freespace of the page and fail
-	                          postAlloc(big record)
-
-             postAlloc(big record)  // Thread 2 stole my space! => Crash?
-
-	     Note that this _will_ cause trouble if recovery is
-	     multi-threaded, and allows the application to begin
-	     updating the storefile without first locking any pages
-	     that suffer from this problem.
-
-	     Also, this only works because pages that are of type
-	     BOUNDARY_TAG_PAGE are guaranteed to have their page type
-	     set before recovery calls this function.
-
-	  */
-
-	  slottedPageInitialize(page);  
-	}
-	fsckSlottedPage(page);
-
-	if(*slot_ptr(page, rid.slot) == INVALID_SLOT || rid.slot >= *numslots_ptr(page)) {
-	  really_do_ralloc(page, rid);
-	
-       	} else {
-
-	  // Check to see that the slot happens to be the right size,
-	  // so we are (hopefully) just overwriting a slot with
-	  // itself.  This can happen under normal operation, since
-	  // really_do_ralloc() must be called before and after the
-	  // log entry is generated.  (See comment above...)
-
-	  assert(rid.size == *slot_length_ptr(page, rid.slot));
-
-	}
-
-	pageWriteLSN(xid, page, lsn);
-        fsckSlottedPage(page);
-	writeunlock(page->rwlatch);
-
-
-	return rid;
+static inline void sanityCheck(Page * p, recordid rid) {
+  assert(p->id == rid.page);
+  assert(rid.size < BLOB_THRESHOLD_SIZE); // Caller deals with this now!
+  slottedFsck(p);
 }
 
-void slottedDeRalloc(int xid, Page * page, lsn_t lsn, recordid rid) {
-  writelock(page->rwlatch, 443);
-  fsckSlottedPage(page);
+static const byte* slottedRead (int xid, Page *p, recordid rid) {
+  sanityCheck(p, rid);
 
-  if(*freespace_ptr(page) == *slot_ptr(page, rid.slot) + physical_slot_length(rid.size)) {
-    (*freespace_ptr(page)) -= physical_slot_length(rid.size);
-  }
-
-  assert(rid.slot < *numslots_ptr(page));
-  if(rid.slot == *numslots_ptr(page)-1) { 
-    (*numslots_ptr(page))--;
-  } else { 
-    *slot_ptr(page, rid.slot) =  INVALID_SLOT;
-    *slot_length_ptr(page, rid.slot) = *freelist_ptr(page); 
-    *freelist_ptr(page) = rid.slot;  
-  }
-    
-  pageWriteLSN(xid, page, lsn);
-  fsckSlottedPage(page);
-  unlock(page->rwlatch);
+  return record_ptr(p, rid.slot);
 }
 
-void slottedReadUnlocked(Page * page, recordid rid, byte *buff) {
-  assertlocked(page->rwlatch);
-  int slot_length;
+static byte* slottedWrite(int xid, Page *p, recordid rid) {
+  sanityCheck(p, rid);
 
-  fsckSlottedPage(page);
-  assert(page->id == rid.page);
-  slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length));
+  return record_ptr(p, rid.slot);
+}
+static int slottedGetType(int xid, Page *p, recordid rid) {
+  //sanityCheck(p, rid); <-- Would fail if rid.size is a blob
+  assert(p->id == rid.page);
+  slottedFsck(p);
+  if(rid.slot >= *numslots_ptr(p)) { return INVALID_SLOT; }
+  if(*slot_ptr(p, rid.slot) == INVALID_SLOT) { return INVALID_SLOT; }
+  int ret = *slot_length_ptr(p, rid.slot);
+  return ret >= 0 ? NORMAL_SLOT : ret;
+}
+static void slottedSetType(int xid, Page *p, recordid rid, int type) {
+  sanityCheck(p, rid);
 
-  if(!memcpy(buff, record_ptr(page, rid.slot),  physical_slot_length(rid.size))) {
-    perror("memcpy");
-    abort();
+  int old_type = *slot_length_ptr(p, rid.slot);
+  assert(rid.slot < *numslots_ptr(p));
+  assert(old_type != INVALID_SLOT);
+
+  if(type == NORMAL_SLOT) {
+    // set slot_length_ptr to the physical length.
+    *slot_length_ptr(p, rid.slot) = physical_slot_length(old_type);
+  } else {
+    // Changing to a special slot type; make sure doing so doesn't change
+    // the record size.
+    assert(physical_slot_length(type) == physical_slot_length(old_type));
+    *slot_length_ptr(p, rid.slot) = type;
   }
-  fsckSlottedPage(page);
-
 }
 
-void slottedRead(Page * page, recordid rid, byte *buff) {
-
-  int slot_length;
-  readlock(page->rwlatch, 519);
-  fsckSlottedPage(page);
-
-  //  printf("Reading from rid = {%d,%d,%d (%d)}\n", rid.page, rid.slot, rid.size, physical_slot_length(rid.size));
-
-  assert(page->id == rid.page);
-
-  slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length));
-
-  if(!memcpy(buff, record_ptr(page, rid.slot),  physical_slot_length(rid.size))) {
-    perror("memcpy");
-    abort();
-  }
-
-  fsckSlottedPage(page);
-  unlock(page->rwlatch);
-  
+static int slottedGetLength(int xid, Page *p, recordid rid) {
+  assert(p->id == rid.page);
+  slottedFsck(p);
+  assert(slottedGetType(xid, p, rid) != INVALID_SLOT);
+  if(rid.slot > *numslots_ptr(p) || slottedGetType(xid, p, rid) == INVALID_SLOT)
+    return INVALID_SLOT;
+  else
+    return physical_slot_length(*slot_length_ptr(p, rid.slot));
 }
 
-void slottedWrite(Page * page, recordid rid, const byte *data) {
+static recordid slottedNext(int xid, Page *p, recordid rid) {
+  sanityCheck(p, rid);
 
-  readlock(page->rwlatch, 529);  
-  
-  slottedWriteUnlocked(page, rid, data);
-
-  unlock(page->rwlatch); 
-
+  short n = *numslots_ptr(p);
+  rid.slot ++;
+  while(rid.slot < n && !isValidSlot(p, rid.slot)) { rid.slot++; }
+  return isValidSlot(p, rid.slot) ? rid : NULLRID;
 }
-void slottedWriteUnlocked(Page * page, recordid rid, const byte *data) {
-  assertlocked(page->rwlatch);
-  int slot_length;
-  fsckSlottedPage(page);
 
-  assert(page->id == rid.page);
-  
-  slot_length = *slot_length_ptr(page, rid.slot); 
-  assert((rid.size == slot_length)); 
+static recordid slottedFirst(int xid, Page *p) {
+  slottedFsck(p);
 
-  if(!memcpy(record_ptr(page, rid.slot), data, physical_slot_length(rid.size))) {
-    perror("memcpy");
-    abort();
+  recordid rid = { p->id, -1, 0 };
+  return slottedNext(xid, p, rid);
+}
+
+static int notSupported(int xid, Page * p) { return 0; }
+
+static int slottedFreespace(int xid, Page * p) {
+  slottedFsck(p);
+
+  return slottedFreespaceForSlot(p, INVALID_SLOT);
+}
+
+static recordid slottedPreRalloc(int xid, Page * p, int type) {
+  assert(type != INVALID_SLOT);
+  slottedFsck(p);
+
+  recordid rid;
+  rid.page = p->id;
+  rid.slot = *numslots_ptr(p);
+  rid.size = type;
+
+  if(*freelist_ptr(p) != INVALID_SLOT) {
+    rid.slot = *freelist_ptr(p);
   }
-  fsckSlottedPage(page);
+
+  if(slottedFreespaceForSlot(p, rid.slot) < physical_slot_length(type)) {
+    rid = NULLRID;
+  }
+
+  return rid;
+}
+
+static void slottedPostRalloc(int xid, Page * p, recordid rid) {
+  sanityCheck(p, rid);
+
+  really_do_ralloc(p, rid);
+}
+
+static void slottedFree(int xid, Page * p, recordid rid) {
+  sanityCheck(p, rid);
+
+  if(*freespace_ptr(p) == *slot_ptr(p, rid.slot) + physical_slot_length(rid.size)) {
+    (*freespace_ptr(p)) -= physical_slot_length(rid.size);
+  }
+
+  assert(rid.slot < *numslots_ptr(p));
+  if(rid.slot == *numslots_ptr(p)-1) {
+    (*numslots_ptr(p))--;
+    assert(slottedGetType(xid,p,rid)==INVALID_SLOT);
+  } else {
+    *slot_ptr(p, rid.slot) =  INVALID_SLOT;
+    *slot_length_ptr(p, rid.slot) = *freelist_ptr(p);
+    *freelist_ptr(p) = rid.slot;
+    assert(slottedGetType(xid,p,rid)==INVALID_SLOT);
+  }
+
+  slottedFsck(p);
+}
+
+
+// XXX dereferenceRID
+
+/*static lsn_t slottedReadLSN(int xid, Page * p) {
+  return p->LSN;
+}
+static void slottedWriteLSN(int xid, Page * p, lsn_t lsn) {
+  p->LSN = lsn;
+  *lsn_ptr(p) = lsn;
+  dirtyPages_add(p);
+//pageWriteLSN(xid, p, lsn);
+} */
+
+// XXX loaded
+
+// XXX flushed
+
+page_impl slottedImpl() {
+static page_impl pi =  {
+    SLOTTED_PAGE,
+    slottedRead,
+    slottedWrite,
+    slottedGetType,
+    slottedSetType,
+    slottedGetLength,
+    slottedFirst,
+    slottedNext,
+    notSupported, // is block supported
+    0, //block first
+    0, //block next
+    slottedFreespace,
+    slottedCompact,
+    slottedPreRalloc,
+    slottedPostRalloc,
+    slottedFree, 
+    0, //XXX page_impl_dereference_identity,
+    0, //loaded
+    0, //flushed
+  };
+  return pi;
+}
+
+page_impl boundaryTagImpl() { 
+  page_impl p =  slottedImpl();
+  p.page_type = BOUNDARY_TAG_PAGE;
+  return p;
 }

@@ -20,7 +20,6 @@ static stasis_handle_t * h;
     out, or forcing the log too early? 
 */
 static void phWrite(Page * ret) { 
-  assert(ret->LSN == pageReadLSN(ret));
   if(!ret->dirty) { return; }
   LogForce(ret->LSN);
   int err = h->write(h, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);

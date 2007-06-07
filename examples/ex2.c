@@ -10,7 +10,7 @@ int main (int argc, char ** argv) {
 
   int xid = Tbegin();
 
-  if(TrecordType(xid, ROOT_RECORD) == UNINITIALIZED_RECORD) {
+  if(TrecordType(xid, ROOT_RECORD) == INVALID_SLOT) {
 
     // ThashAlloc() will work here as well.
     rootEntry = Talloc(xid, sizeof(int));

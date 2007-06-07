@@ -21,7 +21,6 @@
 #include <lladd/io/handle.h>
 #include <stdio.h>
 #include <assert.h>
-#include "page/indirect.h"
 #include <limits.h>
 
 TransactionLog XactionTable[MAX_TRANSACTIONS];
@@ -239,7 +238,7 @@ static recordid resolveForUpdate(int xid, Page * p, recordid rid) {
   if(*page_type_ptr(p) == INDIRECT_PAGE) { 
     rid = dereferenceRID(xid, rid);
   } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) { 
-    rid = dereferenceArrayListRid(p, rid.slot);
+    rid = dereferenceArrayListRid(xid, p, rid.slot);
   }
   return rid;
 }
@@ -281,21 +280,6 @@ compensated_function void Tdefer(int xid, recordid rid,
 	 rid.slot == newrid.slot && 
 	 rid.size == newrid.size);  
   TactionHelper(xid, rid, dat, op, p, 1); // 1 -> deferred.
-  releasePage(p);
-}
-
-void TreadUnlocked(int xid, recordid rid, void * dat) {
-  Page * p;
-  try { 
-    p = loadPage(xid, rid.page);
-  } end;
-
-  rid = recordDereferenceUnlocked(xid, p, rid);
-  if(rid.page != p->id) { 
-    releasePage(p);
-    p = loadPage(xid, rid.page);
-  }
-  recordReadUnlocked(xid, p, rid, dat);
   releasePage(p);
 }
 

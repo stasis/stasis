@@ -1,10 +1,10 @@
 #define _XOPEN_SOURCE 600
 #include <stdlib.h>
 
+#include "config.h"
 #include "../page.h"
 #include <lladd/operations/pageOperations.h>
 #include <assert.h>
-#include "../page/fixed.h"
 #include <alloca.h>
 
 static pthread_mutex_t pageAllocMutex;
@@ -69,8 +69,10 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 }
 
 int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
-  fixedPageInitialize(p, r.size, recordsPerPage(r.size));
+  writelock(p->rwlatch,0);
+  fixedPageInitialize(p, r.size, fixedRecordsPerPage(r.size));
   pageWriteLSN(xid, p, lsn);
+  unlock(p->rwlatch);
   return 0;
 }
 
@@ -82,7 +84,7 @@ int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
 */
 recordid TfixedPageAlloc(int xid, int size) {
   int page = TpageAlloc(xid);
-  recordid rid = {page, recordsPerPage(size), size};
+  recordid rid = {page, fixedRecordsPerPage(size), size};
   Tupdate(xid, rid, 0, OPERATION_FIXED_PAGE_ALLOC);
   return rid;
 }

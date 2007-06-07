@@ -179,7 +179,8 @@ terms specified in this license.
 /** This constant is used as a placeholder to mark slot locations that contain blobs. 
     @see slotted.c, indirect.c,  blobManager.c  */
 #define BLOB_SLOT     (-2)
-#define SLOT_TYPE_END (-3)
+#define NORMAL_SLOT  (-3)
+#define SLOT_TYPE_END (-4)
 
 /** Initialized statically in transactional2.c */
 extern const short SLOT_TYPE_LENGTHS[];
@@ -225,13 +226,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define FIXED_PAGE          5
 #define ARRAY_LIST_PAGE     6
 #define BOUNDARY_TAG_PAGE   7
-
-/* Record types */
-
-#define UNINITIALIZED_RECORD 0
-#define BLOB_RECORD          1
-#define SLOTTED_RECORD       2
-#define FIXED_RECORD         3
+#define MAX_PAGE_TYPE       8
 
 #define TALLOC_REGION_SIZE 100  // Pages
 

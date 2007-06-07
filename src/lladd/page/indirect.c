@@ -1,5 +1,5 @@
 #include "indirect.h"
-#include "slotted.h"  
+#include "slotted.h"
 #include <math.h>
 #include <string.h>
 #include <assert.h>
@@ -170,15 +170,17 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
     
     /* Initialize leaves.  (As SLOTTED_PAGE's) */
 
-    slottedPageInitialize(&p); 
+    writelock(p.rwlatch,0);
+    slottedPageInitialize(&p);
     p.id = parentPage;
     for(int i = 0; i < recordCount; i++) {
       /* Normally, we would worry that the page id isn't set, but
 	 we're discarding the recordid returned by page ralloc
 	 anyway. */
-      slottedRawRalloc(&p, recordSize);
+      recordid rid = recordPreAlloc(xid, &p, recordSize);
+      recordPostAlloc(xid, &p, rid);
     }
-    
+      unlock(p.rwlatch);
   }
   try_ret(NULLRID) {
     TpageSet(xid, parentPage, p.memAddr);
@@ -193,7 +195,7 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 
   return rid;
 }
-
+ 
 compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   Page * p;
   try_ret(-1){

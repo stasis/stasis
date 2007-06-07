@@ -66,8 +66,7 @@ Operation getUnInitPage();
 /** Un-initializes a page. */
 #define TunInitPage(xid, rid) Tupdate(xid, rid, NULL, OPERATION_UNINITIALIZE_PAGE)
 
-recordid dereferenceArrayListRid(Page * p, int offset);
-#define dereferenceArrayListRidUnlocked(x, y) dereferenceArrayListRid((x),(y))
+recordid dereferenceArrayListRid(int xid, Page * p, int offset);
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
 compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
 compensated_function int TarrayListLength(int xid, recordid rid); 

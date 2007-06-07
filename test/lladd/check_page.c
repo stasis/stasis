@@ -46,8 +46,6 @@ terms specified in this license.
 
 #include "../../src/lladd/page.h"
 #include "../../src/lladd/page/slotted.h"
-#include "../../src/lladd/page/fixed.h"
-#include "../../src/lladd/page/indirect.h"
 #include "../../src/lladd/blobManager.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
@@ -76,9 +74,10 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
   recordid rid[100];
   
   for(i = 0; i < 10000; i++) {
-    pthread_mutex_lock(&lsn_mutex);
-    this_lsn = lsn;
+    pthread_mutex_lock(&lsn_mutex); 
     lsn++;
+    this_lsn = lsn;
+    assert(pageReadLSN(p) < this_lsn);
     pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {
@@ -86,7 +85,10 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
 	recordRead(1, p, rid[k], (byte*)&j);
 
 	assert((j + 1) ==  i + k);
-	slottedDeRalloc(-1, p, lsn, rid[k]);
+        writelock(p->rwlatch,0);
+        recordFree(-1, p, rid[k]);
+        pageWriteLSN(-1, p, this_lsn);
+        unlock(p->rwlatch);
 	sched_yield();
       }
     } 
@@ -94,16 +96,21 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
     first = 0;
     
     for(k = 0; k < 100; k++) {
-    
-      rid[k] = slottedRawRalloc(p, sizeof(short));
-      i +=k;
-      /*       printf("Slot %d = %d\n", rid[k].slot, i);  */
-      recordWrite(-1, p, lsn, rid[k], (byte*)&i);
-      i -=k;
+      writelock(p->rwlatch,0);
+      rid[k] = recordPreAlloc(-1,p,sizeof(short));
+      if(rid[k].size == INVALID_SLOT) { // Is rid[k] == NULLRID?
+        pageCompact(p);
+        rid[k] = recordPreAlloc(-1,p,sizeof(short));
+      }
+      recordPostAlloc(-1,p,rid[k]);
+      int * buf = (int*)recordWriteNew(-1,p,rid[k]);
+      *buf = i+k;
+      pageWriteLSN(-1, p, this_lsn);
+      assert(pageReadLSN(p) >= this_lsn);
+      unlock(p->rwlatch);
       sched_yield();
     }
-      
-    assert(pageReadLSN(p) <= lsn);
+    
   }
   
   return NULL;
@@ -124,22 +131,20 @@ static void* fixed_worker_thread(void * arg_ptr) {
     lsn++;
     pthread_mutex_unlock(&lsn_mutex);
 
+    writelock(p->rwlatch,0);
     if(! first ) {
-      fixedRead(p, rid, (byte*)&j);
+      j = *(int*)recordReadNew(-1,p,rid);
       assert((j + 1) ==  i);
-      /*      slottedDeRalloc(p, lsn, rid); */
-      sched_yield();
-    } 
-    
+    }
     first = 0;
-    
-    rid = fixedRawRalloc(p);
-    fixedWrite(p, rid, (byte*)&i);
+    rid = recordPreAlloc(-1, p, sizeof(int));
+    recordPostAlloc(-1, p, rid);
+    (*(int*)recordWriteNew(-1,p,rid)) = i;
+    pageWriteLSN(-1, p,lsn);
+    assert(pageReadLSN( p) >= this_lsn);
+    unlock(p->rwlatch);
     sched_yield();
-
-    assert(pageReadLSN(p) <= lsn);
   }
-  
   return NULL;
 }
 
@@ -156,31 +161,35 @@ static void* worker_thread(void * arg_ptr) {
     this_lsn = lsn;
     lsn++;
 
-    pthread_mutex_unlock(&lsn_mutex);  
+    pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {
       recordRead(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
-      slottedDeRalloc(-1, p, lsn, rid);
+      writelock(p->rwlatch,0);
+      recordFree(-1, p, rid);
+      pageWriteLSN(-1, p, this_lsn);
+      unlock(p->rwlatch);
       sched_yield();
-    } 
-    
+    }
+
     first = 0;
 
-    // TODO A condition variable would be more efficient...
-    
-    pthread_mutex_lock(&lsn_mutex);
-    if(slottedFreespace(p) < sizeof(int)) { 
+    // @todo In check_page, a condition variable would be more efficient...
+    writelock(p->rwlatch,0);
+    if(pageFreespace(-1, p) < sizeof(int)) {
       first = 1;
-      pthread_mutex_unlock(&lsn_mutex);
     } else {
-      rid = slottedRawRalloc(p, sizeof(int));
-      pthread_mutex_unlock(&lsn_mutex);
-      recordWrite(-1, p, lsn, rid, (byte*)&i);
+      rid = recordPreAlloc(-1, p, sizeof(int));
+      recordPostAlloc(-1, p, rid);
+      int * buf = (int*)recordWriteNew(-1, p, rid);
+      pageWriteLSN(-1,p,this_lsn);
+      *buf = i;
+      assert(pageReadLSN(p) >= this_lsn);
     }
+    unlock(p->rwlatch);
     sched_yield();
 
-    assert(pageReadLSN(p) <= lsn);
   }
 
   return NULL;
@@ -203,10 +212,10 @@ START_TEST(pageNoThreadTest)
   pthread_mutex_init(&lsn_mutex, NULL);
   
   Tinit();
-
   p = loadPage(-1, 0);
-
+  writelock(p->rwlatch,0);
   slottedPageInitialize(p);
+  unlock(p->rwlatch);
   worker_thread(p);
 
   p->LSN = 0;
@@ -300,7 +309,12 @@ START_TEST(pageNoThreadMultPageTest)
   Tinit();
 
   p = loadPage(-1, 1);
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
+
+  writelock(p->rwlatch,0);
   slottedPageInitialize(p);
+  unlock(p->rwlatch);
   multiple_simultaneous_pages(p);
   // Normally, you would call pageWriteLSN() to update the LSN.  This
   // is a hack, since Tdeinit() will crash if it detects page updates
@@ -337,7 +351,12 @@ START_TEST(pageThreadTest) {
   fail_unless(1, NULL);
 
   Page * p = loadPage(-1, 2);
+  writelock(p->rwlatch,0);
   slottedPageInitialize(p);
+  unlock(p->rwlatch);
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
+
   fail_unless(1, NULL);
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -372,7 +391,12 @@ START_TEST(fixedPageThreadTest) {
   pthread_mutex_init(&lsn_mutex, NULL);
   Tinit();
   Page * p = loadPage(-1, 2);
+  writelock(p->rwlatch,0);
   fixedPageInitialize(p, sizeof(int), 0);
+  unlock(p->rwlatch);
+  p->LSN = 0;
+  *lsn_ptr(p) = p->LSN;
+
 
   for(i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&workers[i], NULL, fixed_worker_thread, p);
@@ -392,7 +416,6 @@ START_TEST(fixedPageThreadTest) {
 
 START_TEST(pageCheckSlotTypeTest) {
 	Tinit();
-	
 	int xid = Tbegin();
 	
 	recordid slot      = Talloc(xid, sizeof(int));
@@ -400,14 +423,19 @@ START_TEST(pageCheckSlotTypeTest) {
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
 	
 	Page * p = loadPage(-1, slot.page);
-	assert(recordType(xid, p, slot) == SLOTTED_RECORD);
+        readlock(p->rwlatch, 0);
+        assert(recordGetTypeNew(xid, p, slot) == NORMAL_SLOT);
+        unlock(p->rwlatch);
 	releasePage(p);
 	
 	/** @todo the use of the fixedRoot recordid to check getRecordType is 
 		  a bit questionable, but should work. */
 	p = loadPage(-1, fixedRoot.page); 
 
-	assert(recordType(xid, p, fixedRoot) == FIXED_RECORD);  
+        readlock(p->rwlatch, 0);
+	assert(recordGetTypeNew(xid, p, fixedRoot) == NORMAL_SLOT);
+
+        unlock(p->rwlatch);
 	releasePage(p);
 	
 	fixedRoot.slot = 1;
@@ -415,28 +443,34 @@ START_TEST(pageCheckSlotTypeTest) {
 	fixedRoot.slot = 0;
 	
 	p = loadPage(-1, fixedEntry.page);
-	assert(recordType(xid, p, fixedEntry) == FIXED_RECORD);
+        readlock(p->rwlatch, 0);
+        assert(recordGetTypeNew(xid, p, fixedEntry) == NORMAL_SLOT);
+        unlock(p->rwlatch);
 	releasePage(p);
 	
 	p = loadPage(-1, blob.page);
-	int type = recordType(xid, p, blob);
-	assert(type == BLOB_RECORD);
-	releasePage(p);
-	
+        readlock(p->rwlatch, 0);
+ 	int type = recordGetTypeNew(xid, p, blob);
+        unlock(p->rwlatch);
+        assert(type == BLOB_SLOT);
+	releasePage(p); 
+
 	recordid bad;
 	bad.page = slot.page;
 	bad.slot = slot.slot + 10;
 	bad.size = 4;
 	
 	p = loadPage(xid, bad.page);
-	assert(recordType(xid, p, bad) == UNINITIALIZED_RECORD);
+        readlock(p->rwlatch, 0);
+	assert(recordGetTypeNew(xid, p, bad) == INVALID_SLOT);
 	bad.size = 100000;
-	assert(recordType(xid, p, bad) == UNINITIALIZED_RECORD);
-	/** recordType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
+	assert(recordGetTypeNew(xid, p, bad) == INVALID_SLOT);
+	/** recordGetType now ignores the size field, so this (correctly) returns SLOTTED_RECORD */
 	bad.slot = slot.slot;
-	assert(recordType(xid, p, bad) == SLOTTED_RECORD);
+	assert(recordGetTypeNew(xid, p, bad) == NORMAL_SLOT);
 	p->LSN = 0;
 	*lsn_ptr(p) = p->LSN;
+        unlock(p->rwlatch);
 	releasePage(p);
 	
 	Tcommit(xid);
@@ -448,40 +482,39 @@ START_TEST(pageCheckSlotTypeTest) {
 */
 START_TEST(pageTrecordTypeTest) {
 	Tinit();
-	
 	int xid = Tbegin();
 	
 	recordid slot      = Talloc(xid, sizeof(int));
 	recordid fixedRoot = TarrayListAlloc(xid, 2, 10, 10);
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
 	
-	assert(TrecordType(xid, slot) == SLOTTED_RECORD);
-	assert(TrecordType(xid, fixedRoot) == FIXED_RECORD);  
+	assert(TrecordType(xid, slot) == NORMAL_SLOT);
+	assert(TrecordType(xid, fixedRoot) == NORMAL_SLOT);  
 	
 	fixedRoot.slot = 1;
 	recordid  fixedEntry = dereferenceRID(xid, fixedRoot);
 	fixedRoot.slot = 0;
 	
-	assert(TrecordType(xid, fixedEntry) == FIXED_RECORD);
+	assert(TrecordType(xid, fixedEntry) == NORMAL_SLOT);
 	
 	int type = TrecordType(xid, blob);
-	assert(type == BLOB_RECORD);
+	assert(type == BLOB_SLOT);
 		
 	recordid bad;
 	bad.page = slot.page;
 	bad.slot = slot.slot + 10;
 	bad.size = 4;
 	
-	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	assert(TrecordType(xid, bad) == INVALID_SLOT);
 	bad.size = 100000;
-	assert(TrecordType(xid, bad) == UNINITIALIZED_RECORD);
+	assert(TrecordType(xid, bad) == INVALID_SLOT);
 
 	bad.slot = slot.slot;
-	assert(TrecordType(xid, bad) == SLOTTED_RECORD);
+	assert(TrecordType(xid, bad) == NORMAL_SLOT);
 	/* Try to trick TrecordType by allocating a record that's the
 	   same length as the slot used by blobs. */
 	recordid rid2 = Talloc(xid, sizeof(blob_record_t));
-	assert(TrecordType(xid, rid2) == SLOTTED_RECORD);
+	assert(TrecordType(xid, rid2) == NORMAL_SLOT);
 
 	Tcommit(xid);
 	

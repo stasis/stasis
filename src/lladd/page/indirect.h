@@ -22,6 +22,8 @@ below this block.  level = 1 means that the pageid's point to 'normal'
 pages.  (They may be slotted (type = 1), or provided by some other
 implementation).
 
+   @todo Does anything actually use indirect.h?  Why doesn't arrayList use it?
+
 */
 
 #include <lladd/common.h>
@@ -44,13 +46,7 @@ BEGIN_C_DECLS
     physical location of the record.
 */
 compensated_function recordid dereferenceRID(int xid, recordid rid);
-compensated_function static inline recordid dereferenceRIDUnlocked(int xid, recordid rid) {return dereferenceRID(xid,rid);}
-//#define dereferenceRIDUnlocked(y, x) dereferenceRID((y), (x))
 void indirectInitialize(Page * p, int height);
-
-/* This comment is for check_compensations:
-compensated_function __rallocMany();
-*/
 
 compensated_function recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);
 compensated_function int indirectPageRecordCount(int xid, recordid rid);

@@ -45,7 +45,6 @@ terms specified in this license.
 #include <check.h>
 
 #include "../../src/lladd/page.h"
-#include "../../src/lladd/page/slotted.h"
 #include <lladd/bufferManager.h>
 #include <lladd/transactional.h>
 #include <lladd/truncation.h>

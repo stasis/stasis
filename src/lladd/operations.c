@@ -55,6 +55,9 @@ terms specified in this license.
 
 Operation operationsTable[MAX_OPERATIONS];
 
+/**
+   @todo operations.c should handle LSN's for non-logical operations.
+*/
 void doUpdate(const LogEntry * e, Page * p) {
   DEBUG("OPERATION update arg length %d, lsn = %ld\n",
 	e->contents.update.argSize, e->LSN);

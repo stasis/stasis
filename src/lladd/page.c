@@ -91,27 +91,31 @@ terms specified in this license.
 #include <lladd/operations/arrayList.h>
 #include <lladd/bufferPool.h>
 #include <lladd/truncation.h>
+
+static page_impl * page_impls;
+
+/**
+   XXX latching for pageWriteLSN...
+*/
 void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
-  // if(!page->dirty) {  // This assert belongs here, but would cause some hacked up unit tests to fail... 
+  // These asserts belong here, but would cause some hacked up unit tests to fail...
+  // if(!page->dirty) {
   //  assert(page->LSN < lsn);
   // }
+  //  assertlocked(page->rwlatch);
+
   if(page->LSN < lsn) {
     page->LSN = lsn;
     *lsn_ptr(page) = page->LSN;
-  } 
+  }
   dirtyPages_add(page);
   return;
 }
-
+/**
+   XXX latching for pageReadLSN...
+*/
 lsn_t pageReadLSN(const Page * page) {
-  lsn_t ret;
-
-  readlock(page->rwlatch, 259); 
-  ret = *lsn_ptr(page);
-  assert(ret == page->LSN);
-  readunlock(page->rwlatch); 
-
-  return ret;
+  return page->LSN;
 }
 
 /* ----- (de)initialization functions.  Do not need to support multithreading. -----*/
@@ -122,179 +126,182 @@ lsn_t pageReadLSN(const Page * page) {
  */
 void pageInit() {
   slottedPageInit();
+  fixedPageInit();
+
+  page_impls = malloc(MAX_PAGE_TYPE * sizeof(page_impl));
+  for(int i = 0; i < MAX_PAGE_TYPE; i++) {
+    page_impl p = { 0 };
+    page_impls[i] = p;
+  }
+  registerPageType(slottedImpl());
+  registerPageType(fixedImpl());
+  registerPageType(boundaryTagImpl());
+  registerPageType(arrayListImpl());
 }
 
 void pageDeinit() {
-  slottedPageDeInit();
+  fixedPageDeinit();
+  slottedPageDeinit();
 }
 
+int registerPageType(page_impl p) {
+  assert(page_impls[p.page_type].page_type == 0);
+  page_impls[p.page_type] = p;
+  return 0;
+}
 /**
-   @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!
+   @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!  This is slow and breaks recovery.
 */
-void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
+void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
 
-  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
+  assert( (p->id == rid.page) && (p->memAddr != NULL) );
 
-  writelock(p->rwlatch, 225);
-  pageWriteLSN(xid, p, lsn);
-
+  readlock(p->rwlatch, 225);
+  //  page_impl p_impl;
   if(rid.size > BLOB_THRESHOLD_SIZE) {
+    // XXX Kludge This is done so that recovery sees the LSN update.  Otherwise, it gets upset... Of course, doing it will break blob recovery unless we set blob writes to do "logical" redo...
+    pageWriteLSN(xid, p, lsn);
     unlock(p->rwlatch);
     writeBlob(xid, p, lsn, rid, dat);
   } else {
-    if(*page_type_ptr(p) == SLOTTED_PAGE || *page_type_ptr(p) == BOUNDARY_TAG_PAGE) {
-      slottedWriteUnlocked(p, rid, dat);
-    } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
-      fixedWriteUnlocked(p, rid, dat);
-    } else {
-      abort();
+    /*    p_impl = page_impls[*page_type_ptr(p)];
+    if(!*page_type_ptr(p)) {
+      // XXX kludge!!!!
+      p_impl = page_impls[FIXED_PAGE];
     }
+    assert(physical_slot_length(rid.size) == p_impl.recordGetLength(xid, p, rid));
+    byte * buf = p_impl.recordWrite(xid, p, rid);
+    pageWriteLSN(xid, p, lsn);
+    memcpy(buf, dat, physical_slot_length(p_impl.recordGetLength(xid, p, rid))); */
+
+    byte * buf = recordWriteNew(xid, p, rid);
+    pageWriteLSN(xid, p, lsn);
+    memcpy(buf, dat, recordGetLength(xid, p, rid));
     unlock(p->rwlatch);
   }
-  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-  
+  assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
-static int recordReadWarnedAboutPageTypeKludge = 0;
-int recordRead(int xid, Page * p, recordid rid, void *buf) {
-  assert(rid.page == p->id); 
-  
-  int page_type = *page_type_ptr(p);
-
-  if(rid.size > BLOB_THRESHOLD_SIZE) { 
-    readBlob(xid, p, rid, buf);
-  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
-    slottedRead(p, rid, buf);
-    /* @TODO !page_type can never be required if this code is correct... arraylist is broken!! XXX */
-  } else if(page_type == FIXED_PAGE || page_type==ARRAY_LIST_PAGE || !page_type) {
-    if(!page_type && ! recordReadWarnedAboutPageTypeKludge) {
-      recordReadWarnedAboutPageTypeKludge = 1;
-      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
-    }
-    fixedRead(p, rid, buf);
-  } else {
-    abort();
-  }
-  assert(rid.page == p->id); 
-
-  return 0;
-}
-
-
-int recordReadUnlocked(int xid, Page * p, recordid rid, void *buf) {
-  assert(rid.page == p->id); 
-  
-  int page_type = *page_type_ptr(p);
-
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
-    abort(); /* Unsupported for now. */
-    readBlob(xid, p, rid, buf);
-  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
-    slottedReadUnlocked(p, rid, buf);
-    /* FIXED_PAGES can function correctly even if they have not been
-       initialized. */
-  } else if(page_type == FIXED_PAGE || !page_type) { 
-    fixedReadUnlocked(p, rid, buf);
-  } else {
-    abort();
-  }
-  assert(rid.page == p->id); 
-
-  return 0;
-}
-
-int recordTypeUnlocked(int xid, Page * p, recordid rid) {
+int recordRead(int xid, Page * p, recordid rid, byte *buf) {
   assert(rid.page == p->id);
-  
-  int page_type = *page_type_ptr(p);
-  if(page_type == UNINITIALIZED_PAGE) {
-    return UNINITIALIZED_RECORD;	
-    
-  } else if(page_type == SLOTTED_PAGE || page_type == BOUNDARY_TAG_PAGE) {
-    if(*numslots_ptr(p) <= rid.slot || *slot_ptr(p, rid.slot) == INVALID_SLOT) {
-      return UNINITIALIZED_PAGE;
-    } else if (*slot_length_ptr(p, rid.slot) == BLOB_SLOT) {
-      return BLOB_RECORD; 
-    } else {
-      return SLOTTED_RECORD;
-    }
-  } else if(page_type == FIXED_PAGE || page_type == ARRAY_LIST_PAGE) {
-    return  (fixedPageCount(p) > rid.slot) ? 
-      FIXED_RECORD : UNINITIALIZED_RECORD;
-  } else {
-    return UNINITIALIZED_RECORD;
-  }
-}
-
-int recordType(int xid, Page * p, recordid rid) {
-	readlock(p->rwlatch, 343);
-	int ret = recordTypeUnlocked(xid, p, rid);
-	unlock(p->rwlatch);
-	return ret;
-}
-/** @todo implement recordSize for blobs and fixed length pages. */
-int recordSize(int xid, Page * p, recordid rid) {
-  readlock(p->rwlatch, 353);
-  int ret = recordTypeUnlocked(xid, p, rid);
-  if(ret == UNINITIALIZED_RECORD) {
-    ret = -1;
-  } else if(ret == SLOTTED_RECORD) {
-    ret = *slot_length_ptr(p, rid.slot);
-  } else { 
-    abort(); // unimplemented for fixed length pages and blobs.
-  }
-  unlock(p->rwlatch);
-  return ret;
-}
-
-void recordWriteUnlocked(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-
-  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-
-  // Need a writelock so that we can update the lsn. 
-
-  writelock(p->rwlatch, 225);
-  pageWriteLSN(xid, p, lsn);
-  unlock(p->rwlatch);
-
 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
-    abort();
-    writeBlob(xid, p, lsn, rid, dat);
-  } else if(*page_type_ptr(p) == SLOTTED_PAGE || *page_type_ptr(p) == BOUNDARY_TAG_PAGE) {
-    slottedWriteUnlocked(p, rid, dat);
-  } else if(*page_type_ptr(p) == FIXED_PAGE  || *page_type_ptr(p)==ARRAY_LIST_PAGE || !*page_type_ptr(p) )  {
-    fixedWriteUnlocked(p, rid, dat);
+    readBlob(xid, p, rid, buf);
+    assert(rid.page == p->id);
+    return 0;
   } else {
-    abort();
-  }
-  assert( (p->id == rid.page) && (p->memAddr != NULL) );	
-  
+    readlock(p->rwlatch, 0);
 
+    /*    page_impl p_impl;
+    int page_type = *page_type_ptr(p);
+
+    if(!page_type) {
+      if (! recordReadWarnedAboutPageTypeKludge) {
+	recordReadWarnedAboutPageTypeKludge = 1;
+	printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+      }
+      p_impl = page_impls[FIXED_PAGE];
+    } else {
+      p_impl = page_impls[page_type];
+    }
+    assert(physical_slot_length(rid.size) == p_impl.recordGetLength(xid, p, rid));
+    const byte * dat = p_impl.recordRead(xid, p, rid);
+    memcpy(buf, dat, physical_slot_length(p_impl.recordGetLength(xid, p, rid))); */
+
+    const byte * dat = recordReadNew(xid,p,rid);
+    memcpy(buf, dat, recordGetLength(xid,p,rid));
+    unlock(p->rwlatch);
+    return 0;
+  }
 }
 
-recordid recordDereferenceUnlocked(int xid, Page * p, recordid rid) { 
-  int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
-
-  } else if(page_type == INDIRECT_PAGE) {
-    rid = dereferenceRIDUnlocked(xid, rid);
-  } else if(page_type == ARRAY_LIST_PAGE) {
-    rid = dereferenceArrayListRidUnlocked(p, rid.slot);
-  } else {
-    abort();
-  }
-  return rid;
-}
-recordid recordDereference(int xid, Page * p, recordid rid) { 
+recordid recordDereference(int xid, Page * p, recordid rid) {
   int page_type = *page_type_ptr(p);
   if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
 
   } else if(page_type == INDIRECT_PAGE) {
     rid = dereferenceRID(xid, rid);
   } else if(page_type == ARRAY_LIST_PAGE) {
-    rid = dereferenceArrayListRid(p, rid.slot);
+    rid = dereferenceArrayListRid(xid, p, rid.slot);
   } else {
     abort();
   }
   return rid;
+}
+
+/// --------------  Dispatch functions
+
+static int recordWarnedAboutPageTypeKludge = 0;
+const byte * recordReadNew(int xid, Page * p, recordid rid) {
+  int page_type = *page_type_ptr(p);
+  if(!page_type) {
+    page_type = FIXED_PAGE;
+    if(!recordWarnedAboutPageTypeKludge) {
+      recordWarnedAboutPageTypeKludge = 1;
+      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+    }
+  }
+  return page_impls[page_type].recordRead(xid, p, rid);
+}
+byte * recordWriteNew(int xid, Page * p, recordid rid) {
+  int page_type = *page_type_ptr(p);
+  if(!page_type) {
+    page_type = FIXED_PAGE;
+    if(!recordWarnedAboutPageTypeKludge) {
+      recordWarnedAboutPageTypeKludge = 1;
+      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+    }
+  }
+  return page_impls[page_type].recordWrite(xid, p, rid);
+}
+int recordGetTypeNew(int xid, Page *p, recordid rid) {
+  return page_impls[*page_type_ptr(p)]
+    .recordGetType(xid, p, rid);
+}
+void recordSetTypeNew(int xid, Page *p, recordid rid, int type) {
+  page_impls[*page_type_ptr(p)]
+    .recordSetType(xid, p, rid, type);
+}
+int recordGetLength(int xid, Page *p, recordid rid) {
+  return page_impls[*page_type_ptr(p)]
+    .recordGetLength(xid,p,rid);
+}
+recordid recordFirst(int xid, Page * p){
+  return page_impls[*page_type_ptr(p)]
+    .recordFirst(xid,p);
+}
+recordid recordNext(int xid, Page * p, recordid prev){
+  return page_impls[*page_type_ptr(p)]
+    .recordNext(xid,p,prev);
+}
+recordid recordPreAlloc(int xid, Page * p, int size){
+  return page_impls[*page_type_ptr(p)]
+    .recordPreAlloc(xid,p,size);
+}
+void recordPostAlloc(int xid, Page * p, recordid rid){
+  page_impls[*page_type_ptr(p)]
+    .recordPostAlloc(xid, p, rid);
+}
+void recordFree(int xid, Page * p, recordid rid){
+  page_impls[*page_type_ptr(p)]
+    .recordFree(xid, p, rid);
+}
+int pageIsBlockSupported(int xid, Page * p){
+  return page_impls[*page_type_ptr(p)]
+    .isBlockSupported(xid, p);
+}
+int pageFreespace(int xid, Page * p){
+  return page_impls[*page_type_ptr(p)]
+    .pageFreespace(xid, p);
+}
+void pageCompact(Page * p){
+  page_impls[*page_type_ptr(p)]
+    .pageCompact(p);
+}
+void pageLoaded(Page * p){
+  page_impls[*page_type_ptr(p)]
+    .pageLoaded(p);
+}
+void pageFlushed(Page * p){
+  page_impls[*page_type_ptr(p)]
+    .pageFlushed(p);
 }

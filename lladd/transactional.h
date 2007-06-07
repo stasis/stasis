@@ -488,7 +488,6 @@ compensated_function void TupdateDeferred(int xid, recordid rid,
  */
 compensated_function void Tread(int xid, recordid rid, void *dat);
 compensated_function void TreadStr(int xid, recordid rid, char *dat);
-void TreadUnlocked(int xid, recordid rid, void *dat);
 
 /**
  * Commit an active transaction.  Each transaction should be completed 

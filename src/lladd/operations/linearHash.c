@@ -69,8 +69,6 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
 
 
   rid.slot = 0;
-  /*  TreadUnlocked(xid, dereferenceArrayListRid(p, rid.slot), &headerRidA); */
-  /*  TreadUnlocked(xid, rid, &headerRidA); */
 
   assert(keySize == sizeof(int));
   assert(valSize == sizeof(recordid));
@@ -416,16 +414,12 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
   
-  //  recordid ba_contents; TreadUnlocked(xid, ba, &ba_contents);
-  //  recordid bb_contents = NULLRID; 
-  /*  Tset(xid, bb, &bb_contents); */ //TreadUnlocked(xid, bb, &bb_contents);
-
   hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
   hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
   hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
 
-  TreadUnlocked(xid, ba, A_contents);
-  TreadUnlocked(xid, bb, D_contents);
+  Tread(xid, ba, A_contents);
+  Tread(xid, bb, D_contents);
   recordid A = ba; //ba_contents; 
   recordid D = bb; //bb_contents; 
   recordid B = A_contents->next;
@@ -444,7 +438,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
     firstD = 0;
     if(D_contents->next.size != -1) {
       D = D_contents->next;
-      TreadUnlocked(xid, D, D_contents);
+      Tread(xid, D, D_contents);
     } else {
       abort(); // Got here?  We're starting a new bucket, but found that it is already -1 terminated...
     }
@@ -500,7 +494,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
       return;
     } 
     assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
-    TreadUnlocked(xid, oldANext, A_contents);
+    Tread(xid, oldANext, A_contents);
     //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
     TinstantSet(xid, A, A_contents);
     Tdealloc(xid, oldANext);
@@ -514,7 +508,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 
   while(B.size != -1) {
     assert(B.size == sizeof(hashEntry) + keySize + valSize);
-    TreadUnlocked(xid, B, B_contents);
+    Tread(xid, B, B_contents);
     C = B_contents->next;
 
     old_hash = hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
@@ -533,7 +527,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
   // D is the tail of our list. 
 	assert(D.size == sizeof(hashEntry) + keySize + valSize);
 	assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
-	TreadUnlocked(xid, D, D_contents); 
+	Tread(xid, D, D_contents);
 	D_contents->next = B;
 	assert(B.size != 0);
 	//	assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
@@ -542,7 +536,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 	// A is somewhere in the first list. 
 	assert(A.size == sizeof(hashEntry) + keySize + valSize);
 	assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
-	TreadUnlocked(xid, A, A_contents);
+	Tread(xid, A, A_contents);
 	A_contents->next = C;
 	assert(C.size != 0);
 	
@@ -556,7 +550,7 @@ void instant_rehash(int xid, recordid hashRid, int next_split, int i, int keySiz
 
 
       assert(B.size == sizeof(hashEntry) + keySize + valSize);
-      TreadUnlocked(xid, B, B_contents);
+      Tread(xid, B, B_contents);
       B_contents->next = NULLRID;
       TinstantSet(xid, B, B_contents);
 
@@ -584,7 +578,7 @@ void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hash
 	Tdealloc(xid, deleteMe);
 	hashRid.slot = bucket_number;
 	assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
-	TreadUnlocked(xid, hashRid, bucket_contents);
+	Tread(xid, hashRid, bucket_contents);
 	hashRid.slot = 0;
       }
     }
@@ -594,7 +588,7 @@ void instant_insertIntoBucket(int xid, recordid hashRid, int bucket_number, hash
 
   hashRid.slot = bucket_number;
 
-  TreadUnlocked(xid, hashRid, bucket_contents);
+  Tread(xid, hashRid, bucket_contents);
 
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   
@@ -669,7 +663,7 @@ int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntr
       /* There is something else in this bucket, so copy it into the bucket */
       assert(bucket_contents->next.size ==  sizeof(hashEntry) + keySize + valSize);
       recordid oldNext = bucket_contents->next;
-      TreadUnlocked(xid, bucket_contents->next, bucket_contents);
+      Tread(xid, bucket_contents->next, bucket_contents);
       TinstantSet(xid, this, bucket_contents);
       *deletedEntry = oldNext; /* @todo delete from bucket really should do its own deallocation.. */
     }
@@ -695,7 +689,7 @@ int instant_deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntr
     B = tmp;
     assert(A->next.size == sizeof(hashEntry) + keySize + valSize);
     Baddr = A->next;
-    TreadUnlocked(xid, Baddr, B);
+    Tread(xid, Baddr, B);
     // At this point, A points at B, and we're considering B for deletion. 
 
     if(!memcmp(B+1, key, keySize)) {
@@ -745,7 +739,7 @@ void ThashInstantInsert(int xid, recordid hashRid,
   hashEntry *  bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
 
   hashRid.slot = bucket;
-  TreadUnlocked(xid, hashRid, bucket_contents);
+  Tread(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
   instant_insertIntoBucket(xid, hashRid, bucket, bucket_contents, e, keySize, valSize, 0);
 
@@ -776,7 +770,7 @@ void ThashInstantDelete(int xid, recordid hashRid,
   recordid deleteMe;
   hashRid.slot = bucket_number;
   hashEntry * bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
-  TreadUnlocked(xid, hashRid, bucket_contents);
+  Tread(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
   if(instant_deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, key, keySize, valSize, &deleteMe)) {
 

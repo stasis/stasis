@@ -47,7 +47,7 @@ terms specified in this license.
 #include <lladd/transactional.h>
 
 
-#include "../../src/lladd/page/fixed.h"
+#include "../../src/lladd/page.h"
 
 #include <assert.h>
 #include <limits.h>
@@ -78,7 +78,7 @@ START_TEST(bTreeTest)
    This method doesn't use the Slot value of rid! 
    We make a copy of rid_caller so that the caller's copy doesn't change. 
 */
-int insert(Page* p, recordid rid_caller,  int valueIn){
+int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
   printf ("\nbegin insert\n");
   int DEBUG = 0;
   int DEBUGERROR = 1;
@@ -110,7 +110,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
 
   if (DEBUGSTATEMENTS) {printf("\nDebug1\n");}
 
-  fixedRead(p, rid, countBuff); // read the value of count from slot 0
+  recordRead(xid, p, rid, countBuff); // read the value of count from slot 0
 
   if (DEBUGSTATEMENTS) {printf("\nDebug2\n");}
 
@@ -122,14 +122,16 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
   printf("\nrid2slot  = %d\n", rid.slot);
 
   // *recordcount_ptr(p) = last accessible index on the page. 
-  int max_index = *recordcount_ptr(p); 
+  int max_index = fixedRecordsPerPage(rid.size); // rcs made this change.  
+  //  int max_index = *recordcount_ptr(p);     // recordcount_ptr is the number of slots currently allocated on the page.
+                                               // but this code seems to do it's own allocation(?)
 
 
   //THESE LINES WERE CAUSING A SEGFAULT! *******************************************
   if (DEBUGERROR2) {printf("\nx  = %d\n", max_index);} // This causes a segfault after Debug2 
   
   // HACK! TO FIX THE ABOVE PROBLEM!
-  max_index = 1021;
+  //  max_index = 1021;
 
   // assert that max_index is greater than our record of how many
   // entries we currently have on the page. 
@@ -177,7 +179,7 @@ int insert(Page* p, recordid rid_caller,  int valueIn){
    it to be a BTreeNode. Just puts the value 0 in the  
    first index of the page. 
 */
-void initializeNewBTreeNode(Page* p, recordid rid){
+void initializeNewBTreeNode(int xid, Page* p, recordid rid){
   
   // need access to the first slot 
   rid.slot = 0;  
@@ -187,7 +189,7 @@ void initializeNewBTreeNode(Page* p, recordid rid){
   byte * countBuff = (byte *) & countInt;
   
   // write the count out
-  fixedWrite(p, rid, countBuff); 
+  recordWrite(xid, p, 1, rid, countBuff); 
 
 }
 void testFunctions(){
@@ -201,8 +203,8 @@ void testFunctions(){
 
   // calling functions
   
-  initializeNewBTreeNode(p1, rid1);
-  insert(p1, rid1, 3);
+  initializeNewBTreeNode(xid, p1, rid1);
+  insert(xid, p1, rid1, 3);
 
 
   // cleaning up
@@ -239,8 +241,8 @@ int SimpleExample(){
 
   /* check consistency between rid & page's values 
    * for number of slots and record size */
-  assert (rid1.slot == fixedPageCount(p1));
-  assert (rid1.size == fixedPageRecordSize(p1));
+  //  assert (rid1.slot == fixedPageCount(p1));
+  // assert (rid1.size == fixedPageRecordSize(p1));
   assert (p1->id == rid1.page);
 
 
@@ -251,7 +253,8 @@ int SimpleExample(){
   byte * b1 = (byte *) malloc (sizeof (int));
   byte * b2 = (byte *) malloc (sizeof (int));
   byte * b3 = (byte *) malloc (sizeof (int));
-  int x = *recordcount_ptr(p1); 
+  //  int x = *recordcount_ptr(p1); 
+  int x = 42; //  rcs - recordcount_ptr is no longer exposed here...
   int y = rid1.slot;
   int z = 256;
 
@@ -276,8 +279,8 @@ int SimpleExample(){
   // @todo This is a messy way to do this...
   unlock(p1->rwlatch);
  
-  fixedWrite(p1, rid2, b1);
-  fixedRead(p1, rid2, b2);
+  recordWrite(xid, p1, 1, rid2, b1);
+  recordRead(xid, p1, rid2, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
   //  initializeNewBTreeNode(p1, rid1); 

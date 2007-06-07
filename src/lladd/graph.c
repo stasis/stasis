@@ -84,7 +84,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
 	recordid nextRid = arrayList;
 	nextRid.slot = node[i];
 	Page * p = loadPage(xid, arrayList.page); // just pin it forever and ever
-	nextRid = dereferenceArrayListRid(p, nextRid.slot); 
+	nextRid = dereferenceArrayListRid(xid, p, nextRid.slot); 
 	releasePage(p);
 
 	int thisFifo = crc32((byte*)&(nextRid.page), sizeof(nextRid.page), (unsigned int)-1) % pool->fifoCount;

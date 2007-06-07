@@ -78,11 +78,8 @@ terms specified in this license.
 #ifndef __PAGE_H__
 #define __PAGE_H__
 
-#include <config.h>
 #include <lladd/common.h>
 #include "latches.h"
-/** @todo page.h includes things that it shouldn't, and page.h should eventually be an installed header. */
-
 #include <lladd/transactional.h>
 
 BEGIN_C_DECLS
@@ -96,6 +93,8 @@ BEGIN_C_DECLS
     linked lists, 
 
     @todo The Page struct should be tuned for better memory utilization.
+
+    @todo Remove next and prev from Page_s
 */
 struct Page_s {
   pageid_t id;
@@ -237,47 +236,334 @@ lsn_t pageReadLSN(const Page * page);
  *
  * @return 0 on success, lladd error code on failure
  *
+ * @deprecated Unnecessary memcpy()'s
  */
-void recordWrite(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
-/**
- *  The same as writeRecord, but does not obtain a latch on the page.
- */
-void recordWriteUnlocked(int xid, Page * page, lsn_t lsn, recordid rid, const void *dat); 
+void recordWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat); 
 /**
  * @param xid transaction ID
  * @param page a pointer to the pinned page that contains the record.
  * @param rid the record to be written
  * @param dat buffer for data
  * @return 0 on success, lladd error code on failure
+ * @deprecated Unnecessary memcpy()'s
  */
-int recordRead(int xid, Page * page, recordid rid, void *dat);
-/**
- *  The same as readRecord, but does not obtain a latch.
- */
-int recordReadUnlocked(int xid, Page * p, recordid rid, void *buf);
+int recordRead(int xid, Page * page, recordid rid, byte *dat);
 
-/** 
-    Allocate memory to hold a new page.
+const byte * recordReadNew(int xid, Page * p, recordid rid);
+byte * recordWriteNew(int xid, Page * p, recordid rid);
+int recordGetTypeNew(int xid, Page * p, recordid rid);
+void recordSetTypeNew(int xid, Page * p, recordid rid, int type);
+int recordGetLength(int xid, Page *p, recordid rid);
+recordid recordFirst(int xid, Page * p);
+recordid recordNext(int xid, Page * p, recordid prev);
+recordid recordPreAlloc(int xid, Page * p, int size);
+void recordPostAlloc(int xid, Page * p, recordid rid);
+void recordFree(int xid, Page * p, recordid rid);
+int pageIsBlockSupported(int xid, Page * p);
+int pageFreespace(int xid, Page * p);
+void pageCompact(Page * p);
+void pageLoaded(Page * p);
+void pageFlushed(Page * p);
 
-    @return A pointer to the new page.  This memory is part of a pool,
-    and should never be freed manually.  Instead, it should be passed
-    into pageFree() so that it can be reused.
-*/
-
-int recordType(int xid, Page * p, recordid rid);
-
-int recordSize(int xid, Page * p, recordid rid);
-/**
-   same as getRecordType(), but does not obtain a lock.
-*/
-int recordTypeUnlocked(int xid, Page * p, recordid rid);
 /**
    @return -1 if the field does not exist, the size of the field otherwise (the rid parameter's size field will be ignored).
  */
-int recordLength(int xid, Page * p, recordid rid);
-
+int recordSize(int xid, Page * p, recordid rid);
+/**
+   @todo recordDereference doesn't dispatch to pages.  Should it? 
+*/
 recordid recordDereference(int xid, Page *p, recordid rid);
-recordid recordDereferenceUnlocked(int xid, Page *p, recordid rid);
+
+/**
+   @param a block returned by blockFirst() or blockNext().
+
+   is*() methods return zero for false, non-zero for true.
+
+   recordFixedLen() returns the (single) length of every record in the
+   block, or BLOCK_VARIABLE_LENGTH
+
+   methods that take int * size as an argument return a record size by 
+   setting the pointer (if it's not null).
+
+   @see Abadi, et. al, Intergrating Compression and Execution in Column-Oriented Database Systems, VLDB 2006.
+
+*/
+typedef struct block_t {
+  int    (*isValid)         (struct block_t *b);
+  int    (*isOneValue)      (struct block_t *b);
+  int    (*isValueSorted)   (struct block_t *b);
+  int    (*isPosContig)     (struct block_t *b);
+  byte * (*recordFirst)     (struct block_t *b, int *size);
+  byte * (*recordNext)      (struct block_t *b, int *size);
+  int    (*recordCount)     (struct block_t *b);
+  byte * (*recordPtrArray)  (struct block_t *b);
+  int  * (*recordSizeArray) (struct block_t *b);
+  // These two are not in paper
+  int    (*recordFixedLen)  (struct block_t *b);
+  /**
+     This returns a pointer to an array that contains the records in
+     the page.  It only makes sense for pages that many values of the
+     same length, and that can implement this more efficiently than
+     repeated calls to recordNext.
+
+     @param block the block
+     @param count will be set to the number of slots in the page
+     @param stride will be set to the size of each value in the page
+
+     @return a pointer to an array of record contents.  The array is
+     ordered according to slot id.  The page implementation manages
+     the memory; hopefully, this points into the buffer manager, and
+     this function call is O(1).  If it would be expensive to return a
+     packed array of every record in the page, then only some of the
+     records might be returned.  Calling recordNext on { page->id,
+     off+ count } will tell the caller if it's received the entire
+     page's contents.
+
+     @todo Should recordArray be forced to return records in slot order?
+  */
+  byte * (*recordPackedArray)     (struct block_t *b, int * count, int * stride);
+  /**
+     This must be called when you're done with the block (before
+     releasePage) */
+  void (*blockRelease)(struct block_t *b);
+  void * impl;
+} block_t;
+
+block_t pageBlockFirst(int xid, Page * p);
+block_t pageBlockNext(int xid, Page * p, block_t prev);
+
+/**
+   None of these functions obtain latches.  Calling them without
+   holding rwlatch is an error. (Exception: dereferenceRid grabs the
+   latch for you...)
+
+   The function pointer should be null if your page implementaion does
+   not support the method in question.
+
+   @todo Figure out what to do about readlock vs writelock...
+   @todo Get rid of .size in recordid?
+
+   New allocation sequence (normal operation)
+
+   pin
+   latch
+   recordPreAlloc
+   recordPostAlloc
+   unlatch
+
+   (There is a race here; other transactions can see that the page
+   contains a new slot, but that the LSN hasn't been updated.  This
+   seems to be benign.  writeLSN refuses to decrement LSN's...  If the
+   lock manager is using LSNs for versioning, it might get into a
+   situation where the page has changed (the slot was allocated), but
+   the version wasn't bumped.  I can't imagine this causing trouble,
+   unless the application is using the presense or absence of an
+   uninitialized slot as some sort of side channel....)
+
+   lsn = Tupdate(...)
+   latch
+   writeLSN
+   unlatch
+   unpin
+
+   New allocation sequence (recovery)
+
+   pin
+   latch
+   recordPostAlloc
+   writeLSN
+   unlatch
+   unpin
+*/
+typedef struct page_impl {
+  int page_type;
+
+  // ---------- Record access
+
+  /**
+
+      @param size If non-null, will be set to the size of the record
+      that has been read.
+
+      @return pointer to read region.  The pointer will be guaranteed
+      valid while the page is read latched by this caller, or while
+      the page is write latched, and no other method has been called on
+      this page.
+  */
+  const byte* (*recordRead)(int xid,  Page *p, recordid rid);
+  /**
+      Like recordRead, but marks the page dirty, and provides a
+      non-const pointer.
+
+      @return a pointer to the buffer manager's copy of the record.
+  */
+  byte* (*recordWrite)(int xid, Page *p, recordid rid);
+  /**
+      Check to see if a slot is a normal slot, or something else, such
+      as a blob.  This is stored in the size field in the slotted page
+      structure.
+
+      @param p the page of interest
+      @param slot the slot in p that we're checking.
+      @return The type of this slot.
+  */
+  int (*recordGetType)(int xid, Page *p, recordid rid);
+  /**
+     Change the type of a slot.  Doing so must not change the record's
+     type.
+  */
+  void (*recordSetType)(int xid, Page *p, recordid rid, int type);
+  /**
+     @return the length of a record in bytes.  This value can be used
+     to safely access the pointers returned by page_impl.recordRead()
+     and page_impl.recordWrite()
+   */
+  int (*recordGetLength)(int xid, Page *p, recordid rid);
+  /**
+     @param p the page that will be iterated over
+     @return the first slot on the page (in slot order), or NULLRID if the page is empty.
+  */
+  recordid (*recordFirst)(int xid, Page *p);
+  /**
+      This returns the next slot in the page (in slot order).
+
+      @param rid If NULLRID, start at the beginning of the page.
+      @return The next record in the sequence, or NULLRID if done.
+  */
+  recordid (*recordNext)(int xid, Page *p, recordid rid);
+
+  // -------- "Exotic" (optional) access methods.
+
+  /*
+    @return non-zero if this page implementation supports the block API
+  */
+  int        (*isBlockSupported)(int xid, Page *p);
+  /** Returns a block from this page.  For some page implementations,
+      this is essentially the same as recordRead.  Others can produce
+      more sophisticated blocks.
+
+  */
+  block_t (*blockFirst)(int xid, Page *p);
+  block_t (*blockNext)(int xid, Page * p, block_t prev);
+
+
+  // -------- Allocation methods.
+
+
+  /**
+      This returns a lower bound on the amount of freespace in the
+      page
+
+      @param p the page whose freespace will be estimated.
+      @return The number of bytes of free space on the page, or (for
+              efficiency's sake) an underestimate.
+
+  */
+  int (*pageFreespace)(int xid, Page * p);
+  /**
+      Compact the page in place.  This operation should not change the
+      slot id's allocated to the records on the page.  Instead, it
+      should update the extimate returned by page_impl.freespace().
+
+      Depending on the page implementation, this function may have
+      other side effects.
+  */
+  void(*pageCompact)(Page *p);
+  /**
+      Generate a new, appropriately sized recordid.  This is the first
+      of two allocation phases, and does not actually modify the page.
+      The caller of this function must call recordPostAlloc() before
+      unlatching the page.
+
+      @see page_impl.recordPostAlloc()
+      @see Talloc() for an overview of allocation
+
+      @param xid The active transaction.
+      @param size The size of the new record
+
+      @return A new recordid, or NULLRID if there is not enough space
+  */
+  recordid (*recordPreAlloc)(int xid, Page *p, int size);
+  /** Allocate a new record with the supplied rid.  This is the second
+      of two allocation phases.  The supplied record must use an
+      unoccupied slot, and there must be enough freespace on the page.
+
+      @param xid The active transaction
+      @param p The page that will be allocated from
+      @param rid A new recordid that is (usually) from recordPreAlloc()
+
+      @see Talloc(), page_impl.recordPreAlloc()
+  */
+  void (*recordPostAlloc)(int xid, Page *p, recordid rid);
+  /** Free a record.  The page implementation doesn't need to worry
+      about uncommitted deallocations; that is handled by a higher
+      level.
+
+      @param xid The active transaction
+      @param page The page that contains the record that will be freed.
+      @param rid the recordid to be freed.
+
+      @see Tdealloc() for example usage
+   */
+  void (*recordFree)(int xid, Page *p, recordid rid);
+  /**
+      @todo Is recordDereference a page-implementation specific
+      operation, or should it be implemented once and for all in
+      page.c?
+
+      indirect.c suggets this should be specfic to the page type;
+      blobs suggest this should be specific to record type.  Perhaps
+      two levels of dereferencing are in order...  (First: page
+      specific; second record specific...)
+  */
+  recordid (*recordDereference)(int xid, Page *p, recordid rid);
+
+  // -------- Page maintenance
+
+  /** This is called (exactly once) right after the page is read from
+      disk.
+
+      This function should set p->LSN to an appropriate value.
+
+      @todo Arrange to call page_impl.loaded() and page_impl.flushed().
+
+  */
+  void (*pageLoaded)(Page * p);
+  /** This is called (exactly once) right before the page is written
+      back to disk.
+
+      This function should record p->LSN somewhere appropriate
+  */
+  void (*pageFlushed)(Page * p);
+} page_impl;
+
+/**
+   Register a new page type with Stasis.  The pageType field of impl
+   will be checked for uniqueness.  If the type is not unique, this
+   function will return non-zero.
+
+   (Since error handling isn't really working yet, it aborts if the
+    page type is not unique.)
+
+*/
+int registerPageType(page_impl impl);
+
+// --------------------  Page specific, general purpose methods
+
+/**
+    Initialize a new page
+
+    @param p The page that will be turned into a new slotted page.
+             Its contents will be overwitten.  It was probably
+             returned by loadPage()
+ */
+void slottedPageInitialize(Page * p);
+void fixedPageInitialize(Page * page, size_t size, int count);
+
+int fixedRecordsPerPage(size_t size);
+
+void indirectInitialize(Page * p, int height);
+compensated_function recordid dereferenceRID(int xid, recordid rid);
 
 END_C_DECLS
 

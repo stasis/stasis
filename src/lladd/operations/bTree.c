@@ -3,8 +3,6 @@
 #include "../latches.h"
 #include <lladd/transactional.h>
 #include <lladd/hash.h>
-#include "../page.h"
-#include "../page/slotted.h"
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>

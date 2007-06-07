@@ -46,6 +46,7 @@ terms specified in this license.
 
 #include "../check_includes.h"
 #include <lladd/bufferManager.h>
+#include "src/lladd/page.h"
 #include "../../src/lladd/page/indirect.h"
 
 #include <assert.h>

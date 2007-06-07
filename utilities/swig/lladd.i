@@ -15,8 +15,6 @@ extern void TupdateRaw(int xid, recordid rid, const void *dat, int op);
 extern void Tread(int xid, recordid rid, void *dat);
 extern void TreadStr(int xid, recordid rid, char *dat);
 
-extern void TreadUnlocked(int xid, recordid rid, void *dat);
-
 extern int Tcommit(int xid);
 extern int Tabort(int xid);
 

@@ -7,9 +7,6 @@
 #include <lladd/allocationPolicy.h>
 #include "../blobManager.h"
 #include "../page.h"
-#include "../page/slotted.h"
-#include "../page/fixed.h"
-
 #include <assert.h>
 //try{
 /**
@@ -78,29 +75,47 @@
    
 */
 //}end
-static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  slottedPostRalloc(xid, p, lsn, rid); 
 
+static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
+
+  if(recordGetTypeNew(xid, p, rid) == INVALID_SLOT) {
+    recordPostAlloc(xid, p, rid);
+  }
+
+  assert(recordGetLength(xid, p, rid) == physical_slot_length(rid.size));
+  if(rid.size < 0) {
+    assert(recordGetTypeNew(xid,p,rid) == rid.size);
+  }
   return 0;
 }
 
+static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+  writelock(p->rwlatch, 0);
+  int ret = operate_helper(xid,p,rid,dat);
+  pageWriteLSN(xid,p,lsn);
+  unlock(p->rwlatch);
+  return ret;
+}
+
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  assert(rid.page == p->id);
-  slottedDeRalloc(xid, p, lsn, rid);
+  writelock(p->rwlatch,0);
+  recordFree(xid, p, rid);
+  pageWriteLSN(xid,p,lsn);
+  assert(recordGetTypeNew(xid, p, rid) == INVALID_SLOT);
+  unlock(p->rwlatch);
   return 0;
 }
 
 static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+  writelock(p->rwlatch,0);
+  assert(recordGetTypeNew(xid, p, rid) == INVALID_SLOT);
+  int ret = operate_helper(xid, p, rid, dat);
+  byte * buf = recordWriteNew(xid,p,rid);
+  memcpy(buf, dat, recordGetLength(xid,p,rid));
+  pageWriteLSN(xid,p,lsn);
+  unlock(p->rwlatch);
 
-  //  if(rid.size >= BLOB_THRESHOLD_SIZE) { // && rid.size != BLOB_SLOT) {
-    //    rid.size = BLOB_REC_SIZE; /* Don't reuse blob space yet... */
-  //    rid.size = BLOB_SLOT; //sizeof(blob_record_t); 
-    //  } 
-
-  slottedPostRalloc(xid, p, lsn, rid); 
-  recordWrite(xid, p, lsn, rid, dat);
-
-  return 0;
+  return ret;
 }
 
 static pthread_mutex_t talloc_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -138,7 +153,6 @@ Operation getRealloc() {
 }
 
 static uint64_t lastFreepage;
-static int initialFreespace = -1;
 static allocationPolicy * allocPolicy;
 
 void TallocInit() { 
@@ -147,27 +161,29 @@ void TallocInit() {
   //  pthread_mutex_init(&talloc_mutex, NULL);
 }
 
-static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size);
-
 static void reserveNewRegion(int xid) {
      int firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);
-     
+     int initialFreespace = -1;
+
      void* nta = TbeginNestedTopAction(xid, OPERATION_NOOP, 0,0);
 
      availablePage ** newPages = malloc(sizeof(availablePage**)*(TALLOC_REGION_SIZE+1));
-     if(initialFreespace == -1) { 
-       Page * p = loadPage(xid, firstPage);
-       initialFreespace = slottedFreespace(p);
-       releasePage(p);
-     }
-     for(int i = 0; i < TALLOC_REGION_SIZE; i++) { 
+
+     for(int i = 0; i < TALLOC_REGION_SIZE; i++) {
        availablePage * next = malloc(sizeof(availablePage) * TALLOC_REGION_SIZE);
-       
+
+       TinitializeSlottedPage(xid, firstPage + i);
+       if(initialFreespace == -1) {
+         Page * p = loadPage(xid, firstPage);
+         readlock(p->rwlatch,0);
+         initialFreespace = pageFreespace(xid, p);
+         unlock(p->rwlatch);
+         releasePage(p);
+       }
        next->pageid = firstPage + i;
        next->freespace = initialFreespace;
        next->lockCount = 0;
        newPages[i] = next;
-       TinitializeSlottedPage(xid, firstPage + i);
      }
      newPages[TALLOC_REGION_SIZE]= 0;
      allocationPolicyAddPages(allocPolicy, newPages);
@@ -200,36 +216,48 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     lastFreepage = ap->pageid;
 
     p = loadPage(xid, lastFreepage);
+    writelock(p->rwlatch, 0);
+    while(pageFreespace(xid, p) < physical_slot_length(type)) {
+      pageCompact(p);
+      int newFreespace = pageFreespace(xid, p);
 
-    while(slottedFreespace(p) < physical_slot_length(type)) { 
-      writelock(p->rwlatch,0);
-      slottedCompact(p);
-      unlock(p->rwlatch);
-      int newFreespace = slottedFreespace(p);
-      if(newFreespace >= physical_slot_length(type)) { 
+      if(newFreespace >= physical_slot_length(type)) {
 	break;
       }
+
+      unlock(p->rwlatch);
       allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
 
       releasePage(p);
-      
+
       ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
 
-      if(!ap) { 
+      if(!ap) {
 	reserveNewRegion(xid);
 	ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
       }
-      
-      lastFreepage = ap->pageid;
-      
-      p = loadPage(xid, lastFreepage);
 
+      lastFreepage = ap->pageid;
+
+      p = loadPage(xid, lastFreepage);
+      writelock(p->rwlatch, 0);
     }
-    
-    rid = TallocFromPageInternal(xid, p, size);
-    
-    int newFreespace = slottedFreespace(p);
+
+    rid = recordPreAlloc(xid, p, type);
+
+    assert(rid.size != INVALID_SLOT);
+
+    recordPostAlloc(xid, p, rid);
+    int newFreespace = pageFreespace(xid, p);
     allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
+    unlock(p->rwlatch);
+
+    Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+
+    if(type == BLOB_SLOT) {
+      rid.size = size;
+      allocBlob(xid, rid);
+    }
 
     releasePage(p);
   } compensate_ret(NULLRID);
@@ -249,64 +277,38 @@ void allocTransactionCommit(int xid) {
   } compensate;
 }
 
-compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
+compensated_function recordid TallocFromPage(int xid, long page, unsigned long type) {
+
+  unsigned long size = type;
+  if(size > BLOB_THRESHOLD_SIZE) { 
+    type = BLOB_SLOT;
+  }
+
   pthread_mutex_lock(&talloc_mutex);
   Page * p = loadPage(xid, page);
-  recordid ret = TallocFromPageInternal(xid, p, size);
-  if(ret.size != INVALID_SLOT) {
+  writelock(p->rwlatch,0);
+  recordid rid = recordPreAlloc(xid, p, type);
+
+  if(rid.size != INVALID_SLOT) {
+    recordPostAlloc(xid,p,rid);
     allocationPolicyAllocedFromPage(allocPolicy, xid, page);
+    unlock(p->rwlatch);
+
+    Tupdate(xid,rid,NULL,OPERATION_ALLOC);
+
+    if(type == BLOB_SLOT) {
+      rid.size = size;
+      allocBlob(xid,rid);
+    }
+
+  } else {
+    unlock(p->rwlatch);
   }
+
+
   releasePage(p);
   pthread_mutex_unlock(&talloc_mutex);
 
-  return ret;
-}
-
-static compensated_function recordid TallocFromPageInternal(int xid, Page * p, unsigned long size) {
-  recordid rid;
-
-  // Does TallocFromPage need to understand blobs?  This function
-  // seems to be too complex; all it does it delegate the allocation
-  // request to the page type's implementation.  (Does it really need
-  // to check for freespace?)
-
-  short type;
-  if(size >= BLOB_THRESHOLD_SIZE) { 
-    type = BLOB_SLOT;
-  } else { 
-    type = size;
-  }
-
-  unsigned long slotSize = INVALID_SLOT;
-  
-  slotSize = physical_slot_length(type);
-  
-  assert(slotSize < PAGE_SIZE && slotSize > 0);
-  
-  /*  if(slottedFreespace(p) < slotSize) { 
-    slottedCompact(p);
-    }  */
-  if(slottedFreespace(p) < slotSize) {
-    rid = NULLRID;
-  } else { 
-    rid = slottedRawRalloc(p, type);
-    assert(rid.size == type);
-    rid.size = size;
-    Tupdate(xid, rid, NULL, OPERATION_ALLOC); 
-
-    if(type == BLOB_SLOT) { 
-      allocBlob(xid, rid);
-    }
-
-    rid.size = type;
-
-  }
-  
-  if(rid.size == type &&  // otherwise TallocFromPage failed
-     type == BLOB_SLOT    // only special case blobs (for now)
-     ) { 
-    rid.size = size;
-  }
   return rid;
 }
 
@@ -338,11 +340,11 @@ compensated_function void Tdealloc(int xid, recordid rid) {
 
 compensated_function int TrecordType(int xid, recordid rid) {
   Page * p;
-  try_ret(compensation_error()) {
-    p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
+  p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   int ret;
-  ret = recordType(xid, p, rid);
+  ret = recordGetTypeNew(xid, p, rid);
+  unlock(p->rwlatch);
   releasePage(p);
   return ret;
 }
@@ -350,21 +352,9 @@ compensated_function int TrecordType(int xid, recordid rid) {
 compensated_function int TrecordSize(int xid, recordid rid) {
   int ret;
   Page * p;
-  try_ret(compensation_error()) { 
-    p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
-  ret = recordSize(xid, p, rid);
-  releasePage(p);
-  return ret;
-}
-
-compensated_function int TrecordsInPage(int xid, int pageid) {
-  Page * p;
-  try_ret(compensation_error()) {
-    p = loadPage(xid, pageid);
-  } end_ret(compensation_error());
-  readlock(p->rwlatch, 187);
-  int ret = *numslots_ptr(p);
+  p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
+  ret = recordGetLength(xid, p, rid);
   unlock(p->rwlatch);
   releasePage(p);
   return ret;
@@ -380,17 +370,19 @@ void TinitializeFixedPage(int xid, int pageid, int slotLength) {
 }
 
 static int operate_initialize_page(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+  writelock(p->rwlatch, 0);
   switch(rid.slot) { 
   case SLOTTED_PAGE:
     slottedPageInitialize(p);
     break;
   case FIXED_PAGE: 
-    fixedPageInitialize(p, rid.size, recordsPerPage(rid.size));
+    fixedPageInitialize(p, rid.size, fixedRecordsPerPage(rid.size));
     break;
   default:
     abort();
   }
   pageWriteLSN(xid, p, lsn);
+  unlock(p->rwlatch);
   return 0;
 }
 

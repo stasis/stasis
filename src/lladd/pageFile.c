@@ -3,6 +3,7 @@
     This file handles all of the file I/O for pages.
 
 */
+#include "config.h"
 #include "page.h"
 #include <lladd/bufferManager.h>
 

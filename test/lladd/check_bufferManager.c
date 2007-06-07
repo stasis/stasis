@@ -3,7 +3,6 @@
 #include <lladd/transactional.h>
 #include "../../src/lladd/latches.h"
 #include "../../src/lladd/page.h"
-#include "../../src/lladd/page/slotted.h" 
 #include <lladd/bufferManager.h>
 #include <sched.h>
 #include <assert.h>
@@ -41,8 +40,8 @@ long myrandom(long x) {
 }
 
 void initializePages() {
-  
-  int i; 
+
+  int i;
 
   printf("Initialization starting\n"); fflush(NULL);
 
@@ -52,18 +51,19 @@ void initializePages() {
     rid.page = PAGE_MULT * (i+1);
     rid.slot = 0;
     rid.size = sizeof(int);
-    p = loadPage(-1, rid.page); 
+    p = loadPage(-1, rid.page);
 
-    assert(p->id != -1); 
-    slottedPostRalloc(-1, p, 0, rid);
-
-    recordWrite(1, p, 1, rid, (byte*)&i);
-
-    p->LSN = 0;
-    *lsn_ptr(p) = 0;
-    releasePage(p);    
+    assert(p->id != -1);
+    writelock(p->rwlatch,0);
+    slottedPageInitialize(p);
+    recordPostAlloc(-1, p, rid);
+    int * buf = (int*)recordWriteNew(-1, p, rid);
+    *buf = i;
+    pageWriteLSN(-1, p, 0);
+    unlock(p->rwlatch);
+    releasePage(p);
   }
-  
+
   printf("Initialization complete.\n"); fflush(NULL);
 
 }

@@ -48,7 +48,6 @@ terms specified in this license.
 #include <lladd/truncation.h>
 #include "../check_includes.h"
 #include "../../src/lladd/page.h"
-#include "../../src/lladd/page/slotted.h"
 #define LOG_NAME   "check_operations.log"
 
 #include <stdio.h>
@@ -68,15 +67,17 @@ START_TEST(operation_physical_do_undo) {
   int buf;
   int arg;
   LogEntry * setToTwo;
-  
+
   Tinit();
   int  xid = Tbegin();
   long long pnum = TpageAlloc(xid);
   Page * p = loadPage(xid, pnum);
+
+  writelock(p->rwlatch, 0);
   slottedPageInitialize(p);
-
-
-  rid = slottedRawRalloc(p, sizeof(int));
+  rid = recordPreAlloc(xid, p, sizeof(int));
+  recordPostAlloc(xid, p, rid);
+  unlock(p->rwlatch);
   releasePage(p);
 
   buf = 1;
@@ -109,8 +110,9 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("D\n");
 
   p = loadPage(xid, rid.page);
-
+  readlock(p->rwlatch,0);
   fail_unless(10 == pageReadLSN(p), "page lsn not set correctly.");
+  unlock(p->rwlatch);
 
   setToTwo->LSN = 5;
 
