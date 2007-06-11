@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <lladd/lhtable.h>
+#include <stasis/lhtable.h>
 
 int entries;
 int thread_count;

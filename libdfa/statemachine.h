@@ -45,9 +45,9 @@ terms specified in this license.
 #define _STATEMACHINE_H
 
 #include <time.h>
-#include <lladd/transactional.h>
+#include <stasis/transactional.h>
 #include <libdfa/messages.h>
-#include "../src/lladd/page.h"
+#include "../src/stasis/page.h"
 #include <sys/types.h>
 #include <pthread.h>
 

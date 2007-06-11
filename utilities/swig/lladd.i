@@ -1,6 +1,6 @@
-%module lladd
+%module stasis
 %{
-#include "lladd/transactional.h"
+#include "stasis/transactional.h"
 %}
 
 extern int Tinit();
@@ -32,6 +32,6 @@ extern recordid Talloc(int xid, unsigned long size);
 extern recordid TallocFromPage(int xid, long page, unsigned long size);
 extern void Tdealloc(int xid, recordid rid);
 
-%include "lladd/constants.h"
+%include "stasis/constants.h"
 
 

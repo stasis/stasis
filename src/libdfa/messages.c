@@ -43,7 +43,7 @@ terms specified in this license.
 
 #define _GNU_SOURCE
 
-#include <lladd/common.h>
+#include <stasis/common.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netinet/in.h>

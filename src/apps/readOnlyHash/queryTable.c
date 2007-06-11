@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
-#include <lladd/transactional.h>
+#include <stasis/transactional.h>
 
 int main(int argc, char** argv) {
   Tinit();

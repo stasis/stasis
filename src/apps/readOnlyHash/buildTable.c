@@ -3,8 +3,8 @@
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
-#include <lladd/transactional.h>
-#include <lladd/truncation.h>
+#include <stasis/transactional.h>
+#include <stasis/truncation.h>
 #include <sys/time.h>
 #include <time.h>
 

@@ -42,7 +42,7 @@ terms specified in this license.
 
 #include <pbl/pbl.h>
 //#include <pbl/jbhash.h>
-#include <lladd/operations.h>
+#include <stasis/operations.h>
 #include <libdfa/statemachine.h>
 /** State machine hash library. */
 

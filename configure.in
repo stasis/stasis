@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.57)
-AC_INIT(LLADD, 0.1, sears@cs.berkeley.edu)
+AC_INIT(Stasis, 0.1, sears@cs.berkeley.edu)
 AM_INIT_AUTOMAKE(hello,0.1)
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADER([config.h])
@@ -219,7 +219,7 @@ AC_CONFIG_FILES([Makefile
                  benchmarks/Makefile
                  benchmarks/berkeleyDB/Makefile
                  libdfa/Makefile
-                 lladd/Makefile
+                 stasis/Makefile
                  src/2pc/Makefile
                  src/Makefile
                  src/apps/Makefile
@@ -227,7 +227,7 @@ AC_CONFIG_FILES([Makefile
                  src/apps/readOnlyHash/Makefile
                  src/apps/cyrus/Makefile
                  src/libdfa/Makefile
-                 src/lladd/Makefile
+                 src/stasis/Makefile
                  src/pobj/Makefile
                  src/timing/Makefile
                  test/2pc/Makefile
@@ -235,7 +235,7 @@ AC_CONFIG_FILES([Makefile
                  test/cht/Makefile
                  test/dfa/Makefile
                  test/lladd-old/Makefile
-                 test/lladd/Makefile
+                 test/stasis/Makefile
                  test/messages/Makefile
                  test/monotree/Makefile
                  test/pobj/Makefile

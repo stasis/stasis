@@ -1,7 +1,7 @@
 #INCLUDES = @CHECK_CFLAGS@
 if HAVE_LIBCHECK
 
-SUBDIRS = lladd
+SUBDIRS = stasis
 
 if HAVE_LIBCONFUSE
 SUBDIRS += monotree messages dfa 2pc cht 

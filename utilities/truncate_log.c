@@ -1,5 +1,5 @@
-#include <lladd/transactional.h>
-#include <lladd/truncation.h>
+#include <stasis/transactional.h>
+#include <stasis/truncation.h>
 int main(void) {
   Tinit();
   truncateNow();
@@ -7,4 +7,3 @@ int main(void) {
 
   return compensation_error();
 }
-

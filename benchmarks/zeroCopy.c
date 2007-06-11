@@ -1,9 +1,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <lladd/transactional.h>
+#include <stasis/transactional.h>
 #include <unistd.h>
-#include "../src/lladd/page/raw.h"
+#include "../src/stasis/page/raw.h"
 #include <string.h>
 
 int main(int argc, char** argv) { 

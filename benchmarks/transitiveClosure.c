@@ -1,7 +1,7 @@
-#include <lladd/transactional.h>
-#include <lladd/multiplexer.h>
-#include <lladd/graph.h>
-#include "../src/lladd/logger/logMemory.h"
+#include <stasis/transactional.h>
+#include <stasis/multiplexer.h>
+#include <stasis/graph.h>
+#include "../src/stasis/logger/logMemory.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
