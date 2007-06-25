@@ -8,6 +8,6 @@ else
 TESTS = 
 endif
 noinst_PROGRAMS = $(TESTS)
-LDADD = $(top_builddir)/src/stasis/liblladd.a $(top_builddir)/src/libdfa/librw.a #-lefence
+LDADD = $(top_builddir)/src/stasis/libstasis.la $(top_builddir)/src/libdfa/librw.la
 CLEANFILES = check_lht.log check_logEntry.log storefile.txt logfile.txt blob0_file.txt blob1_file.txt check_blobRecovery.log check_logWriter.log check_operations.log check_recovery.log check_transactional2.log check_page.log check_bufferManager.log check_indirect.log check_bufferMananger.log check_lladdhash.log check_pageOperations.log check_linearhash.log check_linkedListNTA.log check_linearHashNTA.log check_pageOrientedListNTA.log check_lockManager.log check_compensations.log check_errorhandling.log check_header.log check_iterator.log check_linearHash.log check_ringbuffer.log check_bTree.log
 AM_CFLAGS=${GLOBAL_CFLAGS}

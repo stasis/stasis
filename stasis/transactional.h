@@ -72,13 +72,17 @@ terms specified in this license.
    
    Development is currently performed under Debian's Testing branch.
    
-   To compile Stasis, first check out a copy with CVS:
+   To compile Stasis, first check out a copy with SVN.  If you have commit access:
 
    @code
 
-   $  cvs -z3 -d:pserver:anonymous@lladd.cvs.sourceforge.net:/cvsroot/lladd co -P lladd
+   svn co --username username https://stasis.googlecode.com/svn/trunk stasis
 
    @endcode
+
+   For anonymous checkout:
+
+   svn co http://stasis.googlecode.com/svn/trunk stasis
 
    then:
    
@@ -87,7 +91,7 @@ terms specified in this license.
    $ ./reconf
    $ ./configure --quiet
    $ make -j4 > /dev/null
-   $ cd test/lladd
+   $ cd test/stasis
    $ make check
    
    @endcode
@@ -102,7 +106,7 @@ terms specified in this license.
    $ ./reconf-1.8
    $ ./configure --quiet
    $ make -j4 > /dev/null
-   $ cd test/lladd
+   $ cd test/stasis
    $ make check
 
    @endcode
@@ -113,7 +117,7 @@ terms specified in this license.
 
    'make install' is currently unsupported.  Look in utilities/ for an example of a 
    simple program that uses Stasis.  Currently, most generally useful programs 
-   written on top of Stasis belong in lladd/src/apps, while utilities/ contains 
+   written on top of Stasis belong in stasis/src/apps, while utilities/ contains 
    programs useful for debugging the library.
  
    @section usage Using Stasis in your software
@@ -194,7 +198,7 @@ terms specified in this license.
    Stasis includes an extensive unit test suite which may be invoked
    by running 'make check' in Stasis' root directory.  Some of the
    tests are for older, unmaintained code that was built on top of
-   Stasis.  Running 'make check' in test/lladd runs all of the Stasis
+   Stasis.  Running 'make check' in test/stasis runs all of the Stasis
    tests without running the obsolete tests.
 
    @section archictecture Stasis' structure
@@ -223,25 +227,25 @@ terms specified in this license.
 
    The Stasis repository contains the following "interesting" directories:
 
-   @par $STASIS/lladd/
+   @par $STASIS/stasis/
 
    Contains the header directory structure.
 
    In theory, this contains all of the .h files that need to be
    installed for a fully functional Stasis development environment.
    In practice, .h files in src/ are also  needed in some cases.  The
-   separation of .h files between src/ and lladd/ continues for
+   separation of .h files between src/ and stasis/ continues for
    various obscure reasons, including CVS's lack of a "move" command.
    For now, .h files should be placed with similar .h files, or in
-   lladd/ if no such files exist.
+   stasis/ if no such files exist.
 
-   The directory structure of lladd/ mirrors that of src/
+   The directory structure of stasis/ mirrors that of src/
 
    @par $STASIS/src/
 
    Contains the .c files
 
-   @par $STASIS/src/lladd
+   @par $STASIS/src/stasis
 
    Contains Stasis and the implementations of its standard modules.
    The subdirectories group files by the type of module they
@@ -249,9 +253,9 @@ terms specified in this license.
 
    @note By convention, when the rest of this document says
    <tt>foo/</tt>, it is referring to two directories:
-   <tt>lladd/foo/</tt> and <tt>src/lladd/foo/</tt>.  Unless it's clear
+   <tt>stasis/foo/</tt> and <tt>src/stasis/foo/</tt>.  Unless it's clear
    from context, a file without an explicit directory name is in
-   <tt>lladd/</tt> or <tt>src/lladd/</tt>.  In order to refer to files
+   <tt>stasis/</tt> or <tt>src/stasis/</tt>.  In order to refer to files
    and directories outside of these two locations, but still in the
    repository, this document will use the notation
    <tt>$STASIS/dir</tt>.
@@ -261,8 +265,8 @@ terms specified in this license.
 
    @note <b>Example:</b> The transactional data structure
    implementations in <tt>operations/</tt> can be found in
-   <tt>$STASIS/src/lladd/operations/</tt> and
-   <tt>$STASIS/lladd/operations/</tt>.
+   <tt>$STASIS/src/stasis/operations/</tt> and
+   <tt>$STASIS/stasis/operations/</tt>.
 
    @subsection Modules
 

@@ -5,13 +5,13 @@
 #include "page.h"
 #include <stasis/crc32.h>
 
-extern int transClos_outdegree;
-extern int numOut;
-extern int numTset;
-extern int numShortcutted;
-extern int numSkipped;
-extern int numPushed;
-extern int useCRC;
+int numOut = 0;
+int numTset = 0;
+int numShortcutted = 0;
+int numSkipped = 0;
+int numPushed = 0;
+int useCRC = 0;
+int transClos_outdegree = 0;
 
 void naiveTraverse(int xid, recordid rid, int num) {
 

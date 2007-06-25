@@ -12,9 +12,10 @@
 
 #define NUM_NODES 1000000
 #define DIRTY_BUF_SIZE 60000000
-//#define OUTDGREE 3
+//#define OUTDEGREE 3
 #define NUM_THREADS 1
 #define NUM_FIFOS 5
+
 
 #define NUM_ITER 1
 
@@ -69,14 +70,14 @@ lladdFifo_t * transClos_getFifoLocal(lladdFifoPool_t * pool, byte * multiplexKey
 
   }*/
 
-int numOut = 0;
-int numTset = 0;
-int numShortcutted = 0;
-int numSkipped = 0;
-int numPushed = 0;
-int useCRC = 0;
+extern int transClos_outdegree;
+extern int numOut;
+extern int numTset;
+extern int numShortcutted;
+extern int numSkipped;
+extern int numPushed;
+extern int useCRC;
 int OUTDEGREE = 0;
-int transClos_outdegree = 0;
 
 typedef struct {
   lladdFifo_t * dirty;

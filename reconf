@@ -1,3 +1,22 @@
+#!/usr/bin/env perl
+
+#
+#  @todo Rewrite this in sh
+#
+#  This perl script invokes autoreconf after setting ACLOCAL and AUTOMAKE to reasonably modern values.
+#  (>= aclocal-1.6, automake-1.6).
+#
+#  It is careful to avoid mixing versions of the two tools.
+#
+#  If you don't have perl, find sufficiently recent and matching versions of aclocal and automake, and invoke
+#  something like this (under bash):
+#
+#  ACLOCAL=/usr/bin/aclocal-1.8 AUTOMAKE=/usr/bin/automake-1.8 autoreconf
+#
+#  Stasis used to ship with the following two scripts; the first uses the system default, the second uses automake 1.8:
+#
+qq(
+
 #!/bin/sh
 rm -f config.cache
 rm -f acconfig.h
@@ -7,3 +26,71 @@ autoheader
 libtoolize --automake
 automake  -a
 exit
+
+);
+#
+#
+qq(
+
+#!/bin/sh
+rm -f config.cache
+rm -f acconfig.h
+aclocal-1.8 -I m4
+autoconf
+autoheader
+libtoolize --automake
+automake-1.8  -a
+exit
+
+);
+#
+
+my $aclocal_base = `which aclocal` || die `aclocal not found!`;
+my $automake_base = `which automake` || die `aclocal not found!`;
+
+chomp $aclocal_base;
+chomp $automake_base;
+
+my @good_versions = qw(1.9 1.8 1.7 1.6);
+
+foreach my $i (@ARGV) { 
+    if ($i eq "-h" || $i eq "--help") { 
+	print 
+qq(Usage: $0 [options]
+
+This program is a thin wrapper on top of autoreconf.  It looks for an 
+appropriate version of aclocal and automake, and then invokes autoreconf.  
+
+It takes the same options as autoreconf, whose usage string is repeated below:
+
+);
+    }
+}
+
+my $version;
+foreach my $i (@good_versions) {
+    if ((-x "$aclocal_base-$i") && (-x "$automake_base-$i")) { 
+	$version = $i;
+	break;
+    }
+}
+
+if(! $version ) { 
+    print 
+qq(
+*****************************************************************************************
+No appropriate version of automake was found.  
+
+Please install a version between 1.6 and 1.9, or add a directory containing automake-1.n 
+and aclocal-1.n to your path.
+
+Proceeding with system's default automake.  Expect trouble.
+*****************************************************************************************
+
+
+);
+} else { 
+   $ENV{ACLOCAL} = "$aclocal_base-$version";
+   $ENV{AUTOMAKE} = "$automake_base-$version";
+}
+system ("autoreconf", @ARGV);

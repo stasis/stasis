@@ -1,6 +1,11 @@
 EXTRA_DIST = reconf
-SUBDIRS = src test utilities benchmarks examples
+SUBDIRS = stasis src test utilities benchmarks examples
 export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -DPBL_COMPAT
+
+nobase_include_HEADERS=libdfa/rw.h   # XXX move rw.h into stasis/ !!!
+
+ACLOCAL_AMFLAGS = -I m4
+
 ## GOAL:  Make these not warn!
 #-Wextra -Wno-unused-parameter -Winline
 

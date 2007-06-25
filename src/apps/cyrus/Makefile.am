@@ -1,5 +1,5 @@
-LDADD=$(top_builddir)/build/libdfa.a $(top_builddir)/build/lib2pc.a
+LDADD=$(top_builddir)/build/libdfa.la $(top_builddir)/build/lib2pc.la
 SOURCES=cyrusdb_lladd.c
-lib_LIBRARIES=libcyrusdb_lladd.a
-libcyrusdb_lladd_a_SOURCES=cyrusdb_lladd.c
+noinst_LTLIBRARIES=libcyrusdb_lladd.la
+libcyrusdb_lladd_la_SOURCES=cyrusdb_lladd.c
 AM_CFLAGS=${GLOBAL_CFLAGS}

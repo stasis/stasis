@@ -1,5 +1,5 @@
 if HAVE_LIBCONFUSE
-lib_LIBRARIES=lib2pc.a
-lib2pc_a_SOURCES=2pc.c
+noinst_LTLIBRARIES=lib2pc.la
+lib2pc_la_SOURCES=2pc.c
 AM_CFLAGS=${GLOBAL_CFLAGS}
 endif

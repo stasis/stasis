@@ -1,4 +1,4 @@
-LDADD=$(top_builddir)/src/2pc/lib2pc.a $(top_builddir)/src/libdfa/libdfa.a \
-      $(top_builddir)/src/stasis/liblladd.a $(top_builddir)/src/libdfa/librw.a -lconfuse
-bin_PROGRAMS=always_commit
+LDADD=$(top_builddir)/src/2pc/lib2pc.la $(top_builddir)/src/libdfa/libdfa.la \
+      $(top_builddir)/src/stasis/libstasis.la $(top_builddir)/src/libdfa/librw.la -lconfuse
+noinst_PROGRAMS=always_commit
 AM_CFLAGS=${GLOBAL_CFLAGS}

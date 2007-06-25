@@ -1,9 +1,6 @@
-#SUBDIRS=operations logger
-#LDADD=$(top_builddir)/src/pbl/libpbl.a 
-lib_LIBRARIES=liblladd.a
-#liblladd_a_LIBADD=logger/liblogger.a operations/liboperations.a
-# removed: recovery.c transactional.c logger.c logger/logparser.c logger/logstreamer.c
-liblladd_a_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
+nobase_pkginclude_HEADERS=$(wildcard *.h) $(wildcard */*.h)
+lib_LTLIBRARIES=libstasis.la
+libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
                    pageHandle.c pageFile.c pageCache.c page.c bufferPool.c blobManager.c recovery2.c truncation.c \
 		   transactional2.c allocationPolicy.c \
 		   lockManager.c iterator.c consumer.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c graph.c\
@@ -21,7 +18,4 @@ liblladd_a_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c stat
 		   io/rangeTracker.c io/memory.c io/file.c io/non_blocking.c io/debug.c \
 		   bufferManager/pageArray.c bufferManager/bufferHash.c \
 	           replacementPolicy/lru.c replacementPolicy/lruFast.c
-#		   page/header.c logger/logMemory.c \ ringbuffer.c \   asdfas
-#operations/lladdhash.c 
-#AM_CFLAGS= -g -Wall -pedantic -std=gnu99
 AM_CFLAGS=${GLOBAL_CFLAGS}

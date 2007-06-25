@@ -1,3 +1,3 @@
-lib_LIBRARIES=libpobj.a
-libpobj_a_SOURCES=xmem.c debug.c hash.c queue.c pobj.c
+noinst_LTLIBRARIES=libpobj.la
+libpobj_la_SOURCES=xmem.c debug.c hash.c queue.c pobj.c
 AM_CFLAGS= -g -Wall # -pedantic -std=gnu99
