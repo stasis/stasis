@@ -164,7 +164,12 @@ struct Page_s {
       
   */
   rwl * loadlatch;
-
+  /**
+      Page type implementatioms may store whatever they'd like in this
+      pointer.  It persists from each call to pageLoaded() to the
+      subsequent call to pageFlushed().
+  */
+  void * impl;
 };
 
 #define lsn_ptr(page)                   (((lsn_t*)(&((page)->memAddr[PAGE_SIZE])))-1)
