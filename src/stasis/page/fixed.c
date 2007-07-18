@@ -81,12 +81,23 @@ static int fixedGetLength(int xid, Page *p, recordid rid) {
   return rid.slot > *recordcount_ptr(p) ? 
       INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
 }
-/* XXXstatic recordid fixedFirst(int xid, Page *p, recordid rid) {
-
-}
 static recordid fixedNext(int xid, Page *p, recordid rid) {
+  short n = *recordcount_ptr(p);
+  rid.slot++;
+  if(rid.slot >= n) {
+    return NULLRID;
+  } else {
+    return rid;
+  }
+}
+static recordid fixedFirst(int xid, Page *p) {
+  recordid rid = { p->id, -1, 0 };
+  rid.size = *recordsize_ptr(p);
+  return fixedNext(xid, p, rid);
+}
 
-} */
+static int notSupported(int xid, Page * p) { return 0; }
+
 static int fixedFreespace(int xid, Page * p) {
   assertlocked(p->rwlatch);
   if(fixedRecordsPerPage(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
@@ -126,36 +137,39 @@ static void fixedFree(int xid, Page *p, recordid rid) {
     // leak space; there's no way to track it with this page format.
   }
 }
-//// XXX missing some functions w/ murky futures.
-/* static lsn_t fixedReadLSN(int xid, Page * p) {
-  return p->LSN;
+
+// XXX dereferenceRID
+
+void fixedLoaded(Page *p) {
+  p->LSN = *lsn_ptr(p);
 }
-static void fixedWriteLSN(int xid, Page * p, lsn_t lsn) {
-  p->LSN = lsn;
-  *lsn_ptr(p) = lsn;
-  dirtyPages_add(p);
-} */
+void fixedFlushed(Page *p) {
+  *lsn_ptr(p) = p->LSN;
+}
 page_impl fixedImpl() {
   static page_impl pi = {
     FIXED_PAGE,
     fixedRead,
     fixedWrite,
+    0,// readDone
+    0,// writeDone
     fixedGetType,
     fixedSetType,
     fixedGetLength,
-    0, // fixedFirst,
-    0, // fixedNext,
-    0, // notSupported,
-    0,  // block first
-    0,  // block next
+    fixedFirst,
+    fixedNext,
+    notSupported, // notSupported,
+    pageGenericBlockFirst,
+    pageGenericBlockNext,
+    pageGenericBlockDone,
     fixedFreespace,
     fixedCompact,
     fixedPreAlloc,
     fixedPostAlloc,
     fixedFree,
     0, // XXX dereference
-    0, // loaded
-    0, // flushed
+    fixedLoaded, // loaded
+    fixedFlushed, // flushed
   };
   return pi;
 }

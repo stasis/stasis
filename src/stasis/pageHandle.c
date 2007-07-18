@@ -14,13 +14,18 @@ void (*closePageFile)();
 int printedForceWarning = 0;
 
 static stasis_handle_t * h;
-/** 
+/**
     @todo Make sure this doesn't need to be atomic.  (It isn't!) Can
     we get in trouble by setting the page clean after it's written
-    out, or forcing the log too early? 
+    out, or forcing the log too early?
 */
-static void phWrite(Page * ret) { 
+static void phWrite(Page * ret) {
   if(!ret->dirty) { return; }
+  // This lock is only held to make the page implementation happy.  We should
+  // implicitly have exclusive access to the page before this function is called,
+  // or we'll deadlock.
+  writelock(ret->rwlatch,0);
+  pageFlushed(ret);
   LogForce(ret->LSN);
   int err = h->write(h, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
@@ -29,22 +34,24 @@ static void phWrite(Page * ret) {
     abort();
   }
   dirtyPages_remove(ret);
+  unlock(ret->rwlatch);
 }
-
-static void phRead(Page * ret) { 
+static void phRead(Page * ret) {
+  writelock(ret->rwlatch,0);
   int err = h->read(h, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
-    if(err == EDOM) { 
+    if(err == EDOM) {
       // tried to read off end of file...
       memset(ret->memAddr, 0, PAGE_SIZE);
-    } else { 
+    } else {
       printf("Couldn't read from page file: %s\n", strerror(err));
       fflush(stdout);
       abort();
     }
   }
   ret->dirty = 0;
-  ret->LSN = *lsn_ptr(ret);
+  pageLoaded(ret);
+  unlock(ret->rwlatch);
 }
 static void phForce() { 
   if(!printedForceWarning) { 

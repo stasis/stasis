@@ -51,6 +51,8 @@ void indirectInitialize(Page * p, int height);
 compensated_function recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);
 compensated_function int indirectPageRecordCount(int xid, recordid rid);
 
+page_impl indirectImpl();
+
 END_C_DECLS
 
 #endif /*__LLADD_PAGE_INDIRECT_H*/

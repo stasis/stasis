@@ -51,18 +51,18 @@ terms specified in this license.
  * Second, we allow users to \#include headers that in turn \#include
  * common.h.  If they do so, then their code should continue to 'do
  * the right thing' and build, even though they do not \#include the
- * config.h file that all of the LLADD stuff uses.
+ * config.h file that all of the Stasis stuff uses.
  *
  * @todo Need to make sure every .c file actually includes this thing, and
- * also includes constants.h, and that no .h files include config.h
+ * also includes constants.h
  *
  * $Id$
  */
 
 //#define NDEBUG 1
 
-#ifndef __lladd_common_h
-#define __lladd_common_h
+#ifndef __stasis_common_h
+#define __stasis_common_h
 
 #ifdef __cplusplus
 #  define BEGIN_C_DECLS extern "C" {
@@ -74,11 +74,6 @@ terms specified in this license.
 
 #include <stdint.h> // uint32, et. al.
 #include <limits.h>
-
-/* Should be included by the .c files only. :( */
-/*#if HAVE_CONFIG_H
- #  include "config.h"
- #endif */
 
 #if STDC_HEADERS
 #  include <stdlib.h>
@@ -125,5 +120,4 @@ typedef long long pageid_t;
 
 #endif /*DEBUGGING*/
 
-#endif /* __lladd_common_h */
-
+#endif /* __stasis_common_h */

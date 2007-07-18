@@ -106,7 +106,6 @@ void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
 
   if(page->LSN < lsn) {
     page->LSN = lsn;
-    *lsn_ptr(page) = page->LSN;
   }
   dirtyPages_add(page);
   return;
@@ -137,6 +136,8 @@ void pageInit() {
   registerPageType(fixedImpl());
   registerPageType(boundaryTagImpl());
   registerPageType(arrayListImpl());
+  registerPageType(blobImpl());
+  registerPageType(indirectImpl());
 }
 
 void pageDeinit() {
@@ -157,23 +158,12 @@ void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 
   readlock(p->rwlatch, 225);
-  //  page_impl p_impl;
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     // XXX Kludge This is done so that recovery sees the LSN update.  Otherwise, it gets upset... Of course, doing it will break blob recovery unless we set blob writes to do "logical" redo...
     pageWriteLSN(xid, p, lsn);
     unlock(p->rwlatch);
     writeBlob(xid, p, lsn, rid, dat);
   } else {
-    /*    p_impl = page_impls[*page_type_ptr(p)];
-    if(!*page_type_ptr(p)) {
-      // XXX kludge!!!!
-      p_impl = page_impls[FIXED_PAGE];
-    }
-    assert(physical_slot_length(rid.size) == p_impl.recordGetLength(xid, p, rid));
-    byte * buf = p_impl.recordWrite(xid, p, rid);
-    pageWriteLSN(xid, p, lsn);
-    memcpy(buf, dat, physical_slot_length(p_impl.recordGetLength(xid, p, rid))); */
-
     byte * buf = recordWriteNew(xid, p, rid);
     pageWriteLSN(xid, p, lsn);
     memcpy(buf, dat, recordGetLength(xid, p, rid));
@@ -190,23 +180,6 @@ int recordRead(int xid, Page * p, recordid rid, byte *buf) {
     return 0;
   } else {
     readlock(p->rwlatch, 0);
-
-    /*    page_impl p_impl;
-    int page_type = *page_type_ptr(p);
-
-    if(!page_type) {
-      if (! recordReadWarnedAboutPageTypeKludge) {
-	recordReadWarnedAboutPageTypeKludge = 1;
-	printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
-      }
-      p_impl = page_impls[FIXED_PAGE];
-    } else {
-      p_impl = page_impls[page_type];
-    }
-    assert(physical_slot_length(rid.size) == p_impl.recordGetLength(xid, p, rid));
-    const byte * dat = p_impl.recordRead(xid, p, rid);
-    memcpy(buf, dat, physical_slot_length(p_impl.recordGetLength(xid, p, rid))); */
-
     const byte * dat = recordReadNew(xid,p,rid);
     memcpy(buf, dat, recordGetLength(xid,p,rid));
     unlock(p->rwlatch);
@@ -253,6 +226,18 @@ byte * recordWriteNew(int xid, Page * p, recordid rid) {
   }
   return page_impls[page_type].recordWrite(xid, p, rid);
 }
+void recordReadDone(int xid, Page *p, recordid rid, const byte *b) {
+  int page_type = *page_type_ptr(p);
+  if(page_impls[page_type].recordReadDone) {
+    page_impls[page_type].recordReadDone(xid,p,rid,b);
+  }
+}
+void recordWriteDone(int xid, Page *p, recordid rid, byte *b) {
+  int page_type = *page_type_ptr(p);
+  if(page_impls[page_type].recordWriteDone) {
+    page_impls[page_type].recordWriteDone(xid,p,rid,b);
+  }
+}
 int recordGetTypeNew(int xid, Page *p, recordid rid) {
   return page_impls[*page_type_ptr(p)]
     .recordGetType(xid, p, rid);
@@ -289,6 +274,19 @@ int pageIsBlockSupported(int xid, Page * p){
   return page_impls[*page_type_ptr(p)]
     .isBlockSupported(xid, p);
 }
+block_t * pageBlockFirst(int xid, Page * p){
+  int t = *page_type_ptr(p);
+  return page_impls[t]
+    .blockFirst(xid, p);
+}
+block_t * pageBlockNext(int xid, Page * p, block_t * prev){
+  return page_impls[*page_type_ptr(p)]
+    .blockNext(xid, p,prev);
+}
+void pageBlockDone(int xid, Page * p, block_t * done){
+  page_impls[*page_type_ptr(p)]
+    .blockDone(xid, p,done);
+}
 int pageFreespace(int xid, Page * p){
   return page_impls[*page_type_ptr(p)]
     .pageFreespace(xid, p);
@@ -297,11 +295,100 @@ void pageCompact(Page * p){
   page_impls[*page_type_ptr(p)]
     .pageCompact(p);
 }
+/** @todo How should the LSN of pages without a page_type be handled?
+
+    This only works because we don't have LSN-free pages yet.  With
+    LSN-free pages, we'll need special "loadPageForAlloc(), and
+    loadPageOfType() methods (or something...)
+*/
 void pageLoaded(Page * p){
-  page_impls[*page_type_ptr(p)]
-    .pageLoaded(p);
+  short type = *page_type_ptr(p);
+  if(type) {
+    page_impls[type].pageLoaded(p);
+  } else {
+    p->LSN = *lsn_ptr(p);  // XXX kluge - shouldn't special-case UNINITIALIZED_PAGE
+  }
 }
 void pageFlushed(Page * p){
-  page_impls[*page_type_ptr(p)]
-    .pageFlushed(p);
+  short type = *page_type_ptr(p);
+  if(type) {
+    page_impls[type]
+        .pageFlushed(p);
+  } else {
+    *lsn_ptr(p) = p->LSN;
+  }
+}
+
+/// Generic block implementations
+
+static int blkTrue(block_t *b) { return 1; }
+static int blkFalse(block_t *b) { return 0; }
+
+typedef struct genericBlockImpl {
+  Page * p;
+  recordid pos;
+} genericBlockImpl;
+
+/**
+   @todo The block API should pass around xids.
+ */
+static const byte * blkFirst(block_t * b) {
+  genericBlockImpl * impl = b->impl;
+  impl->pos = recordFirst(-1, impl->p);
+  if(! memcmp(&(impl->pos), &(NULLRID), sizeof(recordid))) {
+    return 0;
+  } else {
+    return recordReadNew(-1, impl->p, impl->pos);
+  }
+}
+static const byte * blkNext(block_t * b) {
+  genericBlockImpl * impl = b->impl;
+  impl->pos = recordNext(-1, impl->p, impl->pos);
+  if(! memcmp(&(impl->pos), &NULLRID, sizeof(recordid))) {
+    return 0;
+  } else {
+    return recordReadNew(-1, impl->p, impl->pos);
+  }
+}
+static int blkSize(block_t * b) {
+  genericBlockImpl * impl = b->impl;
+  return physical_slot_length(impl->pos.size);
+}
+static void blkRelease(block_t * b) {
+  free(b->impl);
+  free(b);
+}
+
+block_t genericBlock = {
+  blkTrue, // isValid
+  blkFalse, //isOneValue
+  blkFalse, //isValueSorted
+  blkFalse, //isPosContig
+  blkFirst,
+  blkNext,
+  blkSize,
+  0, //recordCount
+  0, //ptrArray can't do pointer array efficiently...
+  0, //sizePtrArray
+  blkFalse, //recordFixedLen
+  0, //packedArray
+  blkRelease,
+  0
+};
+
+block_t* pageGenericBlockFirst(int xid, Page * p) {
+  block_t* ret = malloc(sizeof(block_t));
+  *ret = genericBlock;
+  genericBlockImpl impl = { p, NULLRID };
+  ret->impl = malloc(sizeof(genericBlockImpl));
+  *(genericBlockImpl*)(ret->impl) = impl;
+  return ret;
+}
+block_t* pageGenericBlockNext(int xid, Page *p, block_t *prev) {
+  pageGenericBlockDone(xid, p, prev);
+  return 0;  // definitely done.
+}
+void pageGenericBlockDone(int xid, Page *p, block_t *b) {
+  free(b->impl);
+  free(b);
 }

@@ -233,3 +233,45 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   releasePage(p);
   return ret;
 }
+
+static int notSupported(int xid, Page * p) { return 0; }
+
+void indirectLoaded(Page *p) {
+  p->LSN = *lsn_ptr(p);
+}
+void indirectFlushed(Page *p) {
+  *lsn_ptr(p) = p->LSN;
+}
+
+static page_impl pi = {
+    INDIRECT_PAGE,
+    0, //read,
+    0, //write,
+    0, //readDone
+    0, //writeDone
+    0, //getType,
+    0, //setType,
+    0, //getLength,
+    0, //recordFirst,
+    0, //recordNext,
+    notSupported, // is block supported
+    0, //pageGenericBlockFirst,
+    0, //pageGenericBlockNext,
+    0, //pageGenericBlockDone,
+    0, //freespace,
+    0, //compact,
+    0, //preRalloc,
+    0, //postRalloc,
+    0, //Free,
+    0, //XXX page_impl_dereference_identity,
+    indirectLoaded,
+    indirectFlushed,
+};
+
+/**
+    @todo Flesh out INDIRECT_PAGE's implementation of new PAGE_API, or
+    remove INDIRECT_PAGE from Stasis.
+*/
+page_impl indirectImpl() {
+  return pi;
+}

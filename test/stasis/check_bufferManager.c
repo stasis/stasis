@@ -141,9 +141,6 @@ void * workerThreadWriting(void * q) {
     recordWrite(1, p, 0, rids[i], (byte*)&val); 
 
     assert(p->id == rids[i].page);
-    /*    p->LSN = 0;
-     *lsn_ptr(p) = 0;  */
-    /*    printf("LSN: %ld, %ld\n", p->LSN, *lsn_ptr(p)); */
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10)) ) {
@@ -161,9 +158,6 @@ void * workerThreadWriting(void * q) {
 
     recordRead(1, p, rids[i], (byte*)&val); 
 
-    /*    p->LSN = 0;
-     *lsn_ptr(p) = 0;  */
-    /* printf("LSN: %ld, %ld\n", p->LSN, *lsn_ptr(p));*/
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10))) {

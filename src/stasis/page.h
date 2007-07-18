@@ -173,6 +173,7 @@ struct Page_s {
 
 #define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
 #define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
+#define shorts_from_start(page, count) (((short*)((page)->memAddr))+(count))
 #define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
 #define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
 
@@ -251,6 +252,8 @@ int recordRead(int xid, Page * page, recordid rid, byte *dat);
 
 const byte * recordReadNew(int xid, Page * p, recordid rid);
 byte * recordWriteNew(int xid, Page * p, recordid rid);
+void recordReadDone(int xid, Page *p, recordid rid, const byte* buf);
+void recordWriteDone(int xid, Page *p, recordid rid, byte *buf);
 int recordGetTypeNew(int xid, Page * p, recordid rid);
 void recordSetTypeNew(int xid, Page * p, recordid rid, int type);
 int recordGetLength(int xid, Page *p, recordid rid);
@@ -293,10 +296,11 @@ typedef struct block_t {
   int    (*isOneValue)      (struct block_t *b);
   int    (*isValueSorted)   (struct block_t *b);
   int    (*isPosContig)     (struct block_t *b);
-  byte * (*recordFirst)     (struct block_t *b, int *size);
-  byte * (*recordNext)      (struct block_t *b, int *size);
+  const byte * (*recordFirst)     (struct block_t *b);
+  const byte * (*recordNext)      (struct block_t *b);
+  int    (*recordSize)      (struct block_t *b);
   int    (*recordCount)     (struct block_t *b);
-  byte * (*recordPtrArray)  (struct block_t *b);
+  const byte **(*recordPtrArray)  (struct block_t *b);
   int  * (*recordSizeArray) (struct block_t *b);
   // These two are not in paper
   int    (*recordFixedLen)  (struct block_t *b);
@@ -329,9 +333,34 @@ typedef struct block_t {
   void * impl;
 } block_t;
 
-block_t pageBlockFirst(int xid, Page * p);
-block_t pageBlockNext(int xid, Page * p, block_t prev);
+/**
+   This function should work with any valid page implementation, but
+   it might be less efficient than a custom implementation.
 
+   This is a convenience function for page implementors.  Other code
+   should call pageBlockFirst() instead.
+*/
+block_t *pageGenericBlockFirst(int xid, Page *p);
+/**
+   This function should work with any valid page implementation, but
+   it might be less efficient than a custom implementation.
+
+   This is a convenience function for page implementors.  Other code
+   should call pageBlockNext() instead.
+*/
+block_t * pageGenericBlockNext(int xid, Page *p, block_t *prev);
+/**
+   This function should work with any valid page implementation, but
+   it might be less efficient than a custom implementation.
+
+   This is a convenience function for page implementors.  Other code
+   should call pageBlockDone() instead.
+*/
+void      pageGenericBlockDone(int xid, Page *p, block_t *b);
+
+block_t * pageBlockFirst(int xid, Page * p);
+block_t * pageBlockNext(int xid, Page * p, block_t * prev);
+void pageBlockDone(int xid, Page * p, block_t * done);
 /**
    None of these functions obtain latches.  Calling them without
    holding rwlatch is an error. (Exception: dereferenceRid grabs the
@@ -388,7 +417,8 @@ typedef struct page_impl {
       @return pointer to read region.  The pointer will be guaranteed
       valid while the page is read latched by this caller, or while
       the page is write latched, and no other method has been called on
-      this page.
+      this page.  Return null on error.  (XXX current implementations 
+      abort/crash)
   */
   const byte* (*recordRead)(int xid,  Page *p, recordid rid);
   /**
@@ -398,6 +428,11 @@ typedef struct page_impl {
       @return a pointer to the buffer manager's copy of the record.
   */
   byte* (*recordWrite)(int xid, Page *p, recordid rid);
+  /**
+     @todo Most code doesn't call recordReadDone() and recordWriteDone() yet.
+  */
+  void (*recordReadDone)(int xid, Page *p, recordid rid, const byte *b);
+  void (*recordWriteDone)(int xid, Page *p, recordid rid, byte *b);
   /**
       Check to see if a slot is a normal slot, or something else, such
       as a blob.  This is stored in the size field in the slotted page
@@ -443,9 +478,9 @@ typedef struct page_impl {
       more sophisticated blocks.
 
   */
-  block_t (*blockFirst)(int xid, Page *p);
-  block_t (*blockNext)(int xid, Page * p, block_t prev);
-
+  block_t* (*blockFirst)(int xid, Page *p);
+  block_t* (*blockNext)(int xid, Page *p, block_t *prev);
+  void (*blockDone)(int xid, Page *p, block_t *done);
 
   // -------- Allocation methods.
 
@@ -525,7 +560,13 @@ typedef struct page_impl {
 
       This function should set p->LSN to an appropriate value.
 
-      @todo Arrange to call page_impl.loaded() and page_impl.flushed().
+      @todo In order to support "raw" pages, we need a new page read
+      method that lets the caller decide which page type should handle
+      the call to pageLoaded().
+
+      @todo pageLoaded() should set p->pageType.
+
+      @todo set *page_type_ptr() to UNINITIALIZED_PAGE when appropriate.
 
   */
   void (*pageLoaded)(Page * p);

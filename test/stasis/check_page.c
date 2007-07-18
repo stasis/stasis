@@ -41,6 +41,11 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
+/** @file
+
+    @todo check_page should judiciously avoid lsn_ptr()
+*/
+
 #include <config.h>
 #include <check.h>
 

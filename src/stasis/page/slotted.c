@@ -425,7 +425,12 @@ static recordid slottedNext(int xid, Page *p, recordid rid) {
   short n = *numslots_ptr(p);
   rid.slot ++;
   while(rid.slot < n && !isValidSlot(p, rid.slot)) { rid.slot++; }
-  return isValidSlot(p, rid.slot) ? rid : NULLRID;
+  if(isValidSlot(p, rid.slot)) {
+    rid.slot = *slot_length_ptr(p, rid.slot);
+    return rid;
+  } else {
+    return NULLRID;
+  }
 }
 
 static recordid slottedFirst(int xid, Page *p) {
@@ -493,41 +498,39 @@ static void slottedFree(int xid, Page * p, recordid rid) {
 
 // XXX dereferenceRID
 
-/*static lsn_t slottedReadLSN(int xid, Page * p) {
-  return p->LSN;
+void slottedLoaded(Page *p) {
+  p->LSN = *lsn_ptr(p);
+  slottedFsck(p);  // @todo In normal case, arrange for fsck to run on load/flush, but nowhere else.
 }
-static void slottedWriteLSN(int xid, Page * p, lsn_t lsn) {
-  p->LSN = lsn;
-  *lsn_ptr(p) = lsn;
-  dirtyPages_add(p);
-//pageWriteLSN(xid, p, lsn);
-} */
-
-// XXX loaded
-
-// XXX flushed
+void slottedFlushed(Page *p) {
+  *lsn_ptr(p) = p->LSN;
+  slottedFsck(p);
+}
 
 page_impl slottedImpl() {
 static page_impl pi =  {
     SLOTTED_PAGE,
     slottedRead,
     slottedWrite,
+    0,// readDone
+    0,// writeDone
     slottedGetType,
     slottedSetType,
     slottedGetLength,
     slottedFirst,
     slottedNext,
     notSupported, // is block supported
-    0, //block first
-    0, //block next
+    pageGenericBlockFirst,
+    pageGenericBlockNext,
+    pageGenericBlockDone,
     slottedFreespace,
     slottedCompact,
     slottedPreRalloc,
     slottedPostRalloc,
-    slottedFree, 
+    slottedFree,
     0, //XXX page_impl_dereference_identity,
-    0, //loaded
-    0, //flushed
+    slottedLoaded,
+    slottedFlushed,
   };
   return pi;
 }

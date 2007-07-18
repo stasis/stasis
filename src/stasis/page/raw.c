@@ -4,6 +4,9 @@
 /**
    @todo Should rawPageInferMetadata set a page type in the Page
    struct?
+
+   XXX rawPageInferMetadata is wrong; setting lsn to LogFlushedLSN() breaks
+   recovery.
 */
 void rawPageInferMetadata(Page * p) { 
   p->LSN = LogFlushedLSN();

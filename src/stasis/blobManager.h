@@ -2,6 +2,7 @@
 #define __BLOB_MANAGER_H
 
 #include <stasis/common.h>
+#include "page.h"
 BEGIN_C_DECLS
 
 /**    
@@ -40,6 +41,8 @@ BEGIN_C_DECLS
 
        @todo Set range??
 
+       @todo Update blobManager to (partially) provide a page api
+
        @ingroup LLADD_CORE
 */
 
@@ -63,6 +66,8 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
 */
 
 void allocBlob(int xid, recordid rid);
+
+page_impl blobImpl();
 
 END_C_DECLS
 

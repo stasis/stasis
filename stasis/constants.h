@@ -226,7 +226,9 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define FIXED_PAGE          5
 #define ARRAY_LIST_PAGE     6
 #define BOUNDARY_TAG_PAGE   7
-#define MAX_PAGE_TYPE       8
+#define BLOB_PAGE           8
+#define USER_DEFINED_PAGE(n) (100+n)  // 0 <= n < 155
+#define MAX_PAGE_TYPE       255
 
 #define TALLOC_REGION_SIZE 100  // Pages
 
