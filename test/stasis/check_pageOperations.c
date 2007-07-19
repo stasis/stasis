@@ -92,10 +92,7 @@ START_TEST(pageOpCheckRecovery) {
   TpageAlloc(xid);  /* This test doesn't check for leaks, so we don't need to remember this pageid. */
   TpageDealloc(xid, pageid1);
   TpageDealloc(xid, pageid2);
-  truncationDeinit();
-  simulateBufferManagerCrash();
-  LogDeinit();
-  numActiveXactions = 0;
+  TuncleanShutdown();
 
   Tinit();
 

@@ -370,6 +370,17 @@ int Tdeinit() {
 	return 0;
 }
 
+int TuncleanShutdown() {
+  truncationDeinit();
+  ThashDeinit();
+  simulateBufferManagerCrash();
+  pageDeinit();
+  LogDeinit();
+  numActiveXactions = 0;
+  dirtyPagesDeinit();
+  return 0;
+}
+
 void Trevive(int xid, long lsn) {
   assert(xid >= 0);
   int index = xid % MAX_TRANSACTIONS;

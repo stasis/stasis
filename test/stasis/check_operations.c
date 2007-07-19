@@ -244,11 +244,7 @@ START_TEST(operation_prepare) {
   Tset(prepared, b, &two);
 
   Tcommit(winner);
-  truncationDeinit();
-  simulateBufferManagerCrash();
-  LogDeinit();
-  numActiveXactions = 0;
-
+  TuncleanShutdown();
 
   Tinit();
 
@@ -301,10 +297,8 @@ START_TEST(operation_prepare) {
   Tset(prepared, b, &two);
 
   Tcommit(winner);
-  truncationDeinit();
-  simulateBufferManagerCrash();
-  LogDeinit();
-  numActiveXactions = 0;
+
+  TuncleanShutdown();
 
 
   Tinit();

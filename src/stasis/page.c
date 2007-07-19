@@ -136,11 +136,18 @@ void pageInit() {
 }
 
 void pageDeinit() {
+
+  for(int i = 0; i < MAX_PAGE_TYPE; i++) {
+    page_impl p = { 0 };
+    page_impls[i] = p;
+  }
+
   fixedPageDeinit();
   slottedPageDeinit();
 }
 
 int registerPageType(page_impl p) {
+  assert(page_impls[p.page_type].page_type == 0);
   page_impls[p.page_type] = p;
   return 0;
 }

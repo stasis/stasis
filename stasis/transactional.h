@@ -454,15 +454,17 @@ typedef struct {
 
 
 /**
- * initialize the transactional system, including running recover (if
- * necessary), building the operations_table, and opening the logs
+ * Initialize Stasis.  This opens the pagefile and log, initializes
+ * subcomponents, and runs recovery.
+ *
  * @return 0 on success
- * @throws error code on error
  */
 int Tinit();
 
 /**
- * @return positive transaction ID on success, negative return value on error
+ * Start a new transaction, and return a new transaction id (xid).
+ *
+ * @return positive transaction ID (xid) on success, negative return value on error
  */
 int Tbegin();
 
@@ -512,12 +514,23 @@ int Tcommit(int xid);
 int Tabort(int xid);
 
 /**
- * flushes all pages, cleans up log
+ * Cleanly shutdown Stasis.  After this function is called, you should
+ * call Tinit() before attempting to access data stored in Stasis.
+ * This function flushes all pages, cleans up log, and frees any
+ * resources that Stasis is holding.
+ *
  * @return 0 on success
- * @throws error value on error
  */
 int Tdeinit();
-
+/**
+ * Uncleanly shutdown Stasis.  This function frees any resources that
+ * Stasis is holding, and flushes the log, but it does not flush dirty
+ * pages to disk.  This is used by testing to exercise the recovery
+ * logic.
+ *
+ * @return 0 on success
+*/
+int TuncleanShutdown();
 /**
  *  Used by the recovery process.
  *  Revives Tprepare'ed transactions.
