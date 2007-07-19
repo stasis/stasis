@@ -92,7 +92,7 @@ terms specified in this license.
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
 
-static page_impl * page_impls;
+static page_impl page_impls[MAX_PAGE_TYPE];
 
 /**
    XXX latching for pageWriteLSN...
@@ -127,11 +127,6 @@ void pageInit() {
   slottedPageInit();
   fixedPageInit();
 
-  page_impls = malloc(MAX_PAGE_TYPE * sizeof(page_impl));
-  for(int i = 0; i < MAX_PAGE_TYPE; i++) {
-    page_impl p = { 0 };
-    page_impls[i] = p;
-  }
   registerPageType(slottedImpl());
   registerPageType(fixedImpl());
   registerPageType(boundaryTagImpl());
@@ -146,7 +141,6 @@ void pageDeinit() {
 }
 
 int registerPageType(page_impl p) {
-  assert(page_impls[p.page_type].page_type == 0);
   page_impls[p.page_type] = p;
   return 0;
 }
@@ -304,6 +298,7 @@ void pageCompact(Page * p){
 void pageLoaded(Page * p){
   short type = *page_type_ptr(p);
   if(type) {
+    assert(page_impls[type].page_type == type);
     page_impls[type].pageLoaded(p);
   } else {
     p->LSN = *lsn_ptr(p);  // XXX kluge - shouldn't special-case UNINITIALIZED_PAGE
@@ -312,6 +307,7 @@ void pageLoaded(Page * p){
 void pageFlushed(Page * p){
   short type = *page_type_ptr(p);
   if(type) {
+    assert(page_impls[type].page_type == type);
     page_impls[type]
         .pageFlushed(p);
   } else {
