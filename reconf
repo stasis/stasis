@@ -93,4 +93,4 @@ Proceeding with system's default automake.  Expect trouble.
    $ENV{ACLOCAL} = "$aclocal_base-$version";
    $ENV{AUTOMAKE} = "$automake_base-$version";
 }
-system ("autoreconf", @ARGV);
+system ("autoreconf -i", @ARGV);
