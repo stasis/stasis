@@ -283,10 +283,33 @@ static void bhBufDeinit() {
   
   free(freeList);
 
-  //  closePageFile();
   lru->deinit(lru);
   bufferPoolDeInit();
 }
+static void bhSimulateBufferManagerCrash() {
+  running = 0;
+
+  pthread_cond_signal(&needFree);
+  pthread_join(worker, 0);
+
+  struct LH_ENTRY(list) iter;
+  const struct LH_ENTRY(pair_t) * next;
+  LH_ENTRY(openlist)(cachedPages, &iter);
+  while((next = LH_ENTRY(readlist)(&iter))) {
+    Page * p = next->value;
+    writelock(p->rwlatch,0);
+    pageFlushed(p); // normally, pageWrite() would call this...
+    unlock(p->rwlatch);
+  }
+  LH_ENTRY(closelist)(&iter);
+  LH_ENTRY(destroy)(cachedPages);
+
+  free(freeList);
+
+  lru->deinit(lru);
+  bufferPoolDeInit();
+}
+
 void bhBufInit() { 
 
   assert(!running);
@@ -299,8 +322,8 @@ void bhBufInit() {
   releasePage = bhReleasePage;
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;
-  bufDeinit = bhBufDeinit; 
-  simulateBufferManagerCrash = bhBufDeinit; 
+  bufDeinit = bhBufDeinit;
+  simulateBufferManagerCrash = bhSimulateBufferManagerCrash;
 
   bufferPoolInit();
 
