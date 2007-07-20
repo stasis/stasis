@@ -74,18 +74,18 @@ terms specified in this license.
    
    To compile Stasis, first check out a copy with SVN.  If you have commit access:
 
-   @code
-
+   @verbatim
    svn co --username username https://stasis.googlecode.com/svn/trunk stasis
-
-   @endcode
+   @endverbatim
 
    For anonymous checkout:
 
+   @verbatim
    svn co http://stasis.googlecode.com/svn/trunk stasis
+   @endverbatim
 
    then:
-   
+ 
    @code
    
    $ ./reconf
@@ -115,11 +115,12 @@ terms specified in this license.
    and make both produce quite a bit of output that may obscure useful
    warning messages.
 
-   'make install' is currently unsupported.  Look in utilities/ for an example of a 
-   simple program that uses Stasis.  Currently, most generally useful programs 
-   written on top of Stasis belong in stasis/src/apps, while utilities/ contains 
-   programs useful for debugging the library.
- 
+   'make install' installs the Stasis library and python SWIG
+   bindings, but none of the extra programs that come with Stasis.
+   utilities/ contains a number of utility programs that are useful
+   for debugging Stasis.  The examples/ directory contains a number of
+   simple C examples.
+
    @section usage Using Stasis in your software
 
    Synopsis:
@@ -324,7 +325,7 @@ terms specified in this license.
 
    @subsection ioutil I/O utilities
 
-   The I/O utilities live in <tt>io/</tt>.  They provide reentrant,
+   The I/O utilities live in <tt>io/</tt>.  They provide reentrant
    interfaces.  This was written to insulate Stasis from Linux's
    ever-evolving I/O system calls, for portability, and to allow (for
    example) in-memory operation.
@@ -334,25 +335,115 @@ terms specified in this license.
    None of these modules understand page formats; at this level
    everything is either
 
-   - a page with an LSN (a version number),or 
+   - a page with an LSN (a version number),or
 
    - a log entry with an associated operation (redo / undo
    functions).
 
-   Interesting files from modules in this part of Stasis include
-   logger2.c, bufferManager.c, and recovery2.c.
+   Interesting files in this part of Stasis include logger2.c,
+   bufferManager.c, and recovery2.c.
 
-   @subsection page Page Formats
+   @subsection page Page types
 
-   XXX: I ran out of time here.  The rest of the documentation is
-   incomplete, but might point in the right direction.
+   Page types define the layout of data on pages.  Currently, all
+   pages contain a header with an LSN and a page type in it.  This
+   information is used by recovery and the buffer manager to invoke
+   callbacks at appropriate times.  (LSN-free pages are currently not
+   supported.)
 
-   Discuss readRecord, writeRecord (high level page access
-   methods) and their implemetnations in slotted.c, fixed.c, etc.
+   XXX: This section is not complete.
 
-   XXX: Then explain the latching convention.  (Also, explain which
+   @todo Discuss readRecord, writeRecord (high level page access
+   methods)
+
+   @todo Explain the latching convention.  (Also, explain which
    latches are not to be used by page implementations, and which
    latches may not be used by higher level code.)
+
+   @par Registering new page type implementations
+
+   Page implementations are registered with Stasis by passing a
+   page_impl struct into registerPageType().  page_impl.page_type
+   should contain an integer that is unique across all page types,
+   while the rest of the fields contain function pointers to the page
+   type's implementation.
+
+   @par Pointer arithmetic
+
+   Stasis page type implementations typically do little more than
+   pointer arithmetic.  However, implementing page types cleanly and
+   portably is a bit tricky.  Stasis has settled upon a compromise in
+   this matter.  Its page file formats are compatible within a single
+   architecture, but not across systems with varying lengths of
+   primitive types, or that vary in endianess.
+
+   Over time, types that vary in length such as "int", "long", etc
+   will be removed from Stasis, but their usage still exists in a few
+   places.  Once they have been removed, file compatibility problems
+   should be limited to endianness (though application code will still
+   be free to serialize objects in a non-portable manner).
+
+   Most page implementations leverage C's pointer manipulation
+   semantics to lay out pages.  Rather than casting pointers to
+   char*'s and then manually calculating byte offsets using sizeof(),
+   the existing page types prefer to cast pointers to appropriate
+   types, and then add or subtract the appropriate number of values.
+
+   For example, instead of doing this:
+
+   @code
+   // p points to an int, followed by a two bars, then the foo whose address
+   // we want to calculate
+
+   int * p;
+   foo* f = (foo*)( ((char*)p) + sizeof(int) + 2 * sizeof(bar))
+   @endcode
+
+   the implementations would do this:
+
+   @code
+   int * p;
+   foo * f = (foo*)( ((bar*)(p+1)) + 2 )
+   @endcode
+
+   The main disadvantage of this approach is the large number of ()'s
+   involved.  However, it lets the compiler deal with the underlying
+   multiplications, and often reduces the number of casts, leading to
+   slightly more readable code.  Take this implementation of
+   page_type_ptr(), for example:
+
+   @code
+   int * page_type_ptr(Page *p) { return ( (int*)lsn_ptr(Page *p) ) - 1; }
+   @endcode
+
+   Here, the page type is stored as an integer immediately before the
+   lsn_ptr.  Using arithmetic over char*'s would require an extra
+   cast to char*, and a multiplication by sizeof(int).
+
+   @par A note on storage allocation
+
+   Finally, while Stasis will correctly call appropriate functions
+   when it encounters a properly registered third party page type, it
+   currently provides few mechanisms to allocate such pages in the
+   first place.  There are examples of three approaches in the current
+   code base:
+
+   # Implement a full-featured, general purpose allocator, like the
+     one in alloc.h.  This is more difficult than it sounds.
+
+   # Allocate entire regions at a time, and manually initialize pages
+     within them.  arrayList.h attempts to do this, but gets it wrong
+     by relying upon lazy initialization to eventually set page types
+     correctly.  Doing so is problematic if the page was deallocated,
+     then reused without being reset.
+
+   # Allocate a single page at a time using TallocPage(), and
+     TsetPage().  This is currently the msot attractive route, though
+     TsetPage() does not call pageLoaded() when it resets page types,
+     which can lead to trouble.
+
+   @see page.h, fixed.h, and slotted.h for more information on the
+   page API's, and the implementations of two common page formats.
 
    @subsection appfunc Application visible methods
 

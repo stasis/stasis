@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------
 # Project related configuration options
 #---------------------------------------------------------------------------
-PROJECT_NAME           = "LLADD API"
+PROJECT_NAME           = "Stasis API"
 PROJECT_NUMBER         = 1
 OUTPUT_DIRECTORY       = doc/api
 OUTPUT_LANGUAGE        = English
@@ -64,7 +64,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = lladd
+INPUT                  = stasis
 #			 libdfa \
 #			 pbl
 FILE_PATTERNS          = *.h
