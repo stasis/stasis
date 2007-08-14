@@ -319,7 +319,7 @@ void bhBufInit() {
 #endif
 
   loadPageImpl = bhLoadPageImpl;
-  releasePage = bhReleasePage;
+  releasePageImpl = bhReleasePage;
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;
   bufDeinit = bhBufDeinit;

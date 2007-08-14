@@ -125,7 +125,7 @@ static void bufManSimulateBufferManagerCrash();
 
 static int bufManBufInit() {
 
-    releasePage = bufManReleasePage;
+    releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
@@ -503,7 +503,7 @@ static compensated_function Page *bufManLoadPage(int xid, int pageid) {
 }
 
 Page * (*loadPageImpl)(int xid, int pageid) = 0;
-void   (*releasePage)(Page * p) = 0;
+void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
 void   (*bufDeinit)()  = 0;
@@ -517,6 +517,10 @@ Page * loadPage(int xid, int pageid) {
 
   return loadPageImpl(xid, pageid);
 
+}
+
+void releasePage(Page * p) {
+  releasePageImpl(p);
 }
 
 int bufInit(int type) { 

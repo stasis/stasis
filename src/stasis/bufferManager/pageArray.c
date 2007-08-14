@@ -58,7 +58,7 @@ static void paBufDeinit() {
 
 void paBufInit () { 
 
-  releasePage = paReleasePage;
+  releasePageImpl = paReleasePage;
   loadPageImpl = paLoadPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;

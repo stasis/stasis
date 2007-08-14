@@ -126,7 +126,13 @@ extern Page * (*loadPageImpl)(int xid, int pageid);
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
 */
-extern void   (*releasePage)(Page * p);
+void releasePage(Page *p);
+
+/** 
+    This is the function pointer that bufInit sets in order to
+    override releasePage.
+*/
+extern void   (*releasePageImpl)(Page * p);
 /**
  * initialize buffer manager
  * @return 0 on success
