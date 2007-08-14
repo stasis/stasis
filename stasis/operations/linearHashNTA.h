@@ -1,10 +1,8 @@
-/** 
+/**
     @file
 
     A reliable hashtable implementation.  The implementation makes
-    use of nested top actions, and is reentrant.  Currently, all keys
-    and values must be of the same length, although this restriction
-    will eventually be removed.
+    use of nested top actions, and is reentrant.
 
     The implementation uses a linear hash function, allowing the
     bucket list to be resized dynamically.  Because the bucket list is

@@ -227,6 +227,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define ARRAY_LIST_PAGE     6
 #define BOUNDARY_TAG_PAGE   7
 #define BLOB_PAGE           8
+#define LSM_ROOT_PAGE       9
 #define USER_DEFINED_PAGE(n) (100+n)  // 0 <= n < 155
 #define MAX_PAGE_TYPE       255
 

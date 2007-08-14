@@ -3,20 +3,18 @@
 #include "../latches.h"
 #include <stasis/transactional.h>
 #include <stasis/hash.h>
-#include "../page.h"
-#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <stasis/operations/noop.h>
+// The next two #includes are for deprecated code.
 #include <stasis/fifo.h>
 #include <stasis/multiplexer.h>
 #include "../logger/logMemory.h"
 /**
-   re-entrant implementation of a linear hash hable, using nensted top actions.
-   
+   re-entrant implementation of a linear hash hable, using nested top actions.
+
    @file
-   
-   @todo Improve concurrency of linearHashNTA and linkedListNTA.
+
+   @todo Improve concurrency of linearHashNTA and linkedListNTA by leveraging Page.impl on the data structure header page?
 */
 
 static pthread_mutex_t linear_hash_mutex;// = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;

@@ -11,4 +11,6 @@ void fixedPageInit();
 void fixedPageDeinit();
 page_impl fixedImpl();
 page_impl arrayListImpl();
+// @todo move lsmTreeImpl() to lsmTree.h (but first, move page.h...)
+page_impl lsmRootImpl();
 #endif

@@ -32,7 +32,6 @@ static void checkRid(Page * page, recordid rid) {
     fixedPageInitialize(page, rid.size, fixedRecordsPerPage(rid.size));
   }
 
-  assert(*page_type_ptr(page) == FIXED_PAGE || *page_type_ptr(page) == ARRAY_LIST_PAGE);
   assert(page->id == rid.page);
   assert(*recordsize_ptr(page) == rid.size);
   assert(fixedRecordsPerPage(rid.size) > rid.slot);
@@ -174,7 +173,10 @@ page_impl fixedImpl() {
   return pi;
 }
 
-page_impl arrayListImpl() { 
+/**
+ @todo arrayListImpl belongs in arrayList.c
+*/
+page_impl arrayListImpl() {
   page_impl pi = fixedImpl();
   pi.page_type = ARRAY_LIST_PAGE;
   return pi;

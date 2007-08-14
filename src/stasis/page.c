@@ -133,6 +133,7 @@ void pageInit() {
   registerPageType(arrayListImpl());
   registerPageType(blobImpl());
   registerPageType(indirectImpl());
+  registerPageType(lsmRootImpl());
 }
 
 void pageDeinit() {
