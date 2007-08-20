@@ -489,6 +489,7 @@ terms specified in this license.
 #define __TRANSACTIONAL_H__
 
 #include "common.h"
+#include "flags.h"
 
 BEGIN_C_DECLS
 

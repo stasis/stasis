@@ -11,9 +11,7 @@
 #include <stasis/consumer.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
-#ifdef USE_PAGEFILE
 #include "pageFile.h"
-#endif
 #include <stasis/pageHandle.h>
 #include "page.h"
 #include <stasis/logger/logger2.h>
@@ -113,12 +111,20 @@ typedef struct sf_args {
   int    openMode;
   int    filePerm;
 } sf_args;
-static stasis_handle_t * slow_factory(void * argsP) { 
+static stasis_handle_t * slow_file_factory(void * argsP) { 
   sf_args * args = (sf_args*) argsP;
   stasis_handle_t * h =  stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
   //h = stasis_handle(open_debug)(h);
   return h;
 }
+static stasis_handle_t * slow_pfile_factory(void * argsP) {
+  stasis_handle_t * h = argsP;
+  return h;
+}
+static int (*slow_close)(stasis_handle_t * h) = 0;
+static stasis_handle_t * slow_pfile = 0;
+static int nop_close(stasis_handle_t*h) { return 0; }
+
 int Tinit() {
         pthread_mutex_init(&transactional_2_mutex, NULL);
 	numActiveXactions = 0;
@@ -129,25 +135,66 @@ int Tinit() {
 	dirtyPagesInit();
 	LogInit(loggerType);
 	pageInit();
-#ifndef USE_PAGEFILE
-	struct sf_args * slow_arg = malloc(sizeof(sf_args));
-	slow_arg->filename = STORE_FILE;
-#ifdef PAGE_FILE_O_DIRECT
-	slow_arg->openMode = O_CREAT | O_RDWR | O_DIRECT;
-#else
-	slow_arg->openMode = O_CREAT | O_RDWR;
+
+        switch(bufferManagerFileHandleType) {
+          case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
+            struct sf_args * slow_arg = malloc(sizeof(sf_args));
+            slow_arg->filename = STORE_FILE;
+
+#ifndef HAVE_O_DIRECT
+            if(bufferManagerO_DIRECT) {
+              printf("O_DIRECT not supported by this build; switching to conventional buffered I/O.\n");
+              bufferManagerO_DIRECT = 0;
+            }
 #endif
-	slow_arg->filePerm = FILE_PERM;
-	// Allow 4MB of outstanding writes.
-        // @todo Where / how should we open storefile?
-        stasis_handle_t * pageFile = 
-         stasis_handle(open_non_blocking)(slow_factory, slow_arg, fast_factory,
-                                          NULL, 20, PAGE_SIZE * 1024, 1024);
-        pageHandleOpen(pageFile);
+            if(bufferManagerO_DIRECT) {
+#ifdef HAVE_O_DIRECT
+              slow_arg->openMode = O_CREAT | O_RDWR | O_DIRECT;
 #else
-        printf("\nWarning: Using old I/O routines.\n");
-        openPageFile();
-#endif // USE_PAGEFILE
+              printf("Can't happen\n");
+              abort();
+#endif
+            } else {
+              slow_arg->openMode = O_CREAT | O_RDWR;
+            }
+
+            slow_arg->filePerm = FILE_PERM;
+            // Allow 4MB of outstanding writes.
+            // @todo Where / how should we open storefile?
+            stasis_handle_t * pageFile;
+            int worker_thread_count = 4;
+            if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_PFILE) {
+              //              printf("\nusing pread()/pwrite()\n");
+              slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
+              slow_close = slow_pfile->close;
+              slow_pfile->close = nop_close;
+              pageFile =
+                  stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile, fast_factory,
+                                                   NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
+
+            } else if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_FILE) {
+              pageFile =
+                  stasis_handle(open_non_blocking)(slow_file_factory, slow_arg, fast_factory,
+                                                   NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
+            } else {
+              printf("Unknown value for config option bufferManagerNonBlockingSlowHandleType\n");
+              abort();
+            }
+            //pageFile = stasis_handle(open_debug)(pageFile);
+            pageHandleOpen(pageFile);
+          } break;
+          case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: { 
+            printf("\nWarning: Using old I/O routines (with known bugs).\n");
+            openPageFile();
+          } break;
+          default: {
+            printf("\nUnknown buffer manager filehandle type: %d\n",
+                   bufferManagerFileHandleType);
+            abort();
+          }
+        }
+        //#else
+        //#endif // USE_PAGEFILE
 	bufInit(bufferManagerType);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
@@ -364,6 +411,11 @@ int Tdeinit() {
 	bufDeinit();
         DEBUG("Closing page file tdeinit\n");
 	closePageFile();
+        if(slow_pfile) {
+          slow_close(slow_pfile);
+          slow_pfile = 0;
+          slow_close = 0;
+        }
 	pageDeinit();
 	LogDeinit();
 	dirtyPagesDeinit();
@@ -374,6 +426,11 @@ int TuncleanShutdown() {
   truncationDeinit();
   ThashDeinit();
   simulateBufferManagerCrash();
+  if(slow_pfile) {
+    slow_close(slow_pfile);
+    slow_pfile = 0;
+    slow_close = 0;
+  }
   pageDeinit();
   LogDeinit();
   numActiveXactions = 0;

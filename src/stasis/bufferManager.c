@@ -102,15 +102,7 @@ pthread_mutex_t pinCount_mutex = PTHREAD_MUTEX_INITIALIZER;
 int pinCount = 0;
 #endif
 
-#ifdef USE_BUFFER_MANAGER
-int bufferManagerType = USE_BUFFER_MANAGER;
-#else
-int bufferManagerType = BUFFER_MANAGER_HASH;
-#endif 
-
 static struct LH_ENTRY(table) *activePages; /* page lookup */
-/*static Page * activePagePtrs[MAX_BUFFER_SIZE];*/
-
 
 static pthread_mutex_t loadPagePtr_mutex;
 

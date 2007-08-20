@@ -132,6 +132,8 @@ typedef struct {
 lsn_t trunc_val;
 pthread_mutex_t trunc_mut = PTHREAD_MUTEX_INITIALIZER;
 
+int load_handle_truncate_is_supported = 1; 
+
 void load_handle(thread_arg* t) {
   lsn_t * offsets = malloc(t->count * sizeof(lsn_t));
   
@@ -249,7 +251,7 @@ void load_handle(thread_arg* t) {
     }
 
     // Truncate 1% of the time.
-    if(!myrandom(100)) {     
+    if(!myrandom(100) && load_handle_truncate_is_supported) {
       lsn_t pre_start = h->start_position(h);
       
       pthread_mutex_lock(&trunc_mut);
@@ -355,7 +357,7 @@ START_TEST(io_fileTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  //  handle_concurrencytest(h);
+  //handle_concurrencytest(h);
   h->close(h);
 
   unlink("logfile.txt");
@@ -371,6 +373,33 @@ static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
   return h;
   
 }
+
+START_TEST(io_pfileTest) {
+  load_handle_truncate_is_supported = 0;
+
+  stasis_handle_t * h;
+  h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //  h = stasis_handle(open_debug)(h);
+  handle_smoketest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //h = stasis_handle(open_debug)(h);
+  handle_sequentialtest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
+  //handle_concurrencytest(h);
+  h->close(h);
+
+  unlink("logfile.txt");
+
+  load_handle_truncate_is_supported = 1;
+} END_TEST
 
 typedef struct sf_args {
   char * filename;
@@ -431,6 +460,7 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, io_memoryTest);
   tcase_add_test(tc, io_fileTest);
+  tcase_add_test(tc, io_pfileTest);
   tcase_add_test(tc, io_nonBlockingTest);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);

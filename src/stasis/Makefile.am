@@ -1,6 +1,6 @@
 nobase_pkginclude_HEADERS=$(wildcard *.h) $(wildcard */*.h)
 lib_LTLIBRARIES=libstasis.la
-libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c stats.c io.c bufferManager.c linkedlist.c operations.c \
+libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c flags.c stats.c io.c bufferManager.c linkedlist.c operations.c \
                    pageHandle.c pageFile.c pageCache.c page.c bufferPool.c blobManager.c recovery2.c truncation.c \
 		   transactional2.c allocationPolicy.c \
 		   lockManager.c iterator.c consumer.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c graph.c\
@@ -15,7 +15,7 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c st
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c operations/bTree.c \
 		   operations/regions.c operations/lsmTree.c \
-		   io/rangeTracker.c io/memory.c io/file.c io/non_blocking.c io/debug.c \
+		   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/non_blocking.c io/debug.c \
 		   bufferManager/pageArray.c bufferManager/bufferHash.c \
 	           replacementPolicy/lru.c replacementPolicy/lruFast.c
 AM_CFLAGS=${GLOBAL_CFLAGS}

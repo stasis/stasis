@@ -91,8 +91,8 @@ typedef struct stasis_write_buffer_t {
 
 typedef struct stasis_read_buffer_t {
   stasis_handle_t * h;
-  const byte * buf;
   lsn_t off;
+  const byte * buf;
   lsn_t len;
   void * impl;
   int error;
@@ -100,6 +100,7 @@ typedef struct stasis_read_buffer_t {
 
 stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
 stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, char * path, int flags, int mode);
+stasis_handle_t * stasis_handle(open_pfile)(lsn_t start_offset, char * path, int flags, int mode);
 stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * (*slow_factory)(void * arg),
 						   void * slow_factory_arg,
 						   stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
