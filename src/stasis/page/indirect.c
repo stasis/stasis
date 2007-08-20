@@ -219,7 +219,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
     int numslots = *numslots_ptr(p);
     ret = 0;
     for(int i = 0; i < numslots; i++) {
-      if(isValidSlot(p, i)) {
+      if(*slot_ptr(p,i) != INVALID_SLOT) {
 	ret++;
       }
     }

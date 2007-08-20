@@ -283,19 +283,82 @@ START_TEST(pageCheckMacros) {
   assert(*bytes_from_start(&p, 3) == 53);
   assert(*bytes_from_start(&p, 4) == 54);
 
-  assert(isValidSlot(&p, 0));
-  assert(isValidSlot(&p, 1));
-  assert(isValidSlot(&p, 40));
+} END_TEST
 
-  /*  invalidateSlot(&p, 0);
-  invalidateSlot(&p, 1);
-  invalidateSlot(&p, 40);
-  
-  assert(!isValidSlot(&p, 0));
-  assert(!isValidSlot(&p, 1));
-  assert(!isValidSlot(&p, 40));*/
+static void assertRecordCountSizeType(int xid, Page *p, int count, int size, int type) {
+  int foundRecords = 0;
+
+  recordid it = recordFirst(xid,p);
+  assert(it.size != INVALID_SLOT);
+  do {
+    foundRecords++;
+    assert(recordGetLength(xid,p,it)  == size);
+    assert(recordGetTypeNew(xid,p,it) == type);
+    it.size = 0;
+    assert(recordGetLength(xid,p,it)  == size);
+    assert(recordGetTypeNew(xid,p,it) == type);
+    it.size = INVALID_SLOT;
+    assert(recordGetLength(xid,p,it)  == size);
+    assert(recordGetTypeNew(xid,p,it) == type);
+    it = recordNext(xid,p,it);
+  } while(it.size != INVALID_SLOT);
+
+  assert(foundRecords == count);
+  assert(it.page == NULLRID.page);
+  assert(it.slot   == NULLRID.slot);
+  assert(it.size   == NULLRID.size);
+}
+
+static void checkPageIterators(int xid, Page *p,int record_count) {
+  recordid first = recordPreAlloc(xid, p, sizeof(int64_t));
+  recordPostAlloc(xid,p,first);
+
+  for(int i = 1; i < record_count; i++) {
+    recordPostAlloc(xid,p,recordPreAlloc(xid,p,sizeof(int64_t)));
+  }
+
+  assertRecordCountSizeType(xid, p, record_count, sizeof(int64_t), NORMAL_SLOT);
 
 
+  if(*page_type_ptr(p) == SLOTTED_PAGE) {
+    recordid other = first;
+    other.slot = 3;
+    recordFree(xid,p,other);
+    assertRecordCountSizeType(xid, p, record_count-1, sizeof(int64_t), NORMAL_SLOT);
+  }
+}
+/**
+   @test
+
+   Check functions used to iterate over pages
+
+   XXX this should also test indirect pages.
+*/
+START_TEST(pageRecordSizeTypeIteratorTest) {
+  Tinit();
+  int xid = Tbegin();
+  pageid_t pid = TpageAlloc(xid);
+
+  Page * p = loadPage(xid,pid);
+  writelock(p->rwlatch,0);
+  slottedPageInitialize(p);
+
+  checkPageIterators(xid,p,10);
+
+  unlock(p->rwlatch);
+
+  pid = TpageAlloc(xid);
+
+  p = loadPage(xid,pid);
+  writelock(p->rwlatch,0);
+  fixedPageInitialize(p,sizeof(int64_t),0);
+
+  checkPageIterators(xid,p,10);
+
+  unlock(p->rwlatch);
+
+  Tcommit(xid);
+  Tdeinit();
 } END_TEST
 /**
    @test 
@@ -430,6 +493,7 @@ START_TEST(pageCheckSlotTypeTest) {
 	Page * p = loadPage(-1, slot.page);
         readlock(p->rwlatch, 0);
         assert(recordGetTypeNew(xid, p, slot) == NORMAL_SLOT);
+        assert(recordGetLength(xid, p, slot) == sizeof(int));
         unlock(p->rwlatch);
 	releasePage(p);
 	
@@ -534,8 +598,8 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
   /* Sub tests are added, one per line, here */
 
+  tcase_add_test(tc, pageRecordSizeTypeIteratorTest);
   tcase_add_test(tc, pageCheckMacros);
-
   tcase_add_test(tc, pageCheckSlotTypeTest);
   tcase_add_test(tc, pageTrecordTypeTest);
   tcase_add_test(tc, pageNoThreadMultPageTest);

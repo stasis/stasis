@@ -412,8 +412,7 @@ static void slottedSetType(int xid, Page *p, recordid rid, int type) {
 static int slottedGetLength(int xid, Page *p, recordid rid) {
   assert(p->id == rid.page);
   slottedFsck(p);
-  assert(slottedGetType(xid, p, rid) != INVALID_SLOT);
-  if(rid.slot > *numslots_ptr(p) || slottedGetType(xid, p, rid) == INVALID_SLOT)
+  if( slottedGetType(xid, p, rid) == INVALID_SLOT)
     return INVALID_SLOT;
   else
     return physical_slot_length(*slot_length_ptr(p, rid.slot));
@@ -424,9 +423,11 @@ static recordid slottedNext(int xid, Page *p, recordid rid) {
 
   short n = *numslots_ptr(p);
   rid.slot ++;
-  while(rid.slot < n && !isValidSlot(p, rid.slot)) { rid.slot++; }
-  if(isValidSlot(p, rid.slot)) {
-    rid.slot = *slot_length_ptr(p, rid.slot);
+  while(rid.slot < n && slottedGetType(xid,p,rid)==INVALID_SLOT) {
+    rid.slot++;
+  }
+  if(rid.slot != n) { 
+    rid.size = *slot_length_ptr(p, rid.slot);
     return rid;
   } else {
     return NULLRID;

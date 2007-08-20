@@ -76,7 +76,6 @@ Slotted page layout:
 #define slot_ptr(page, n)        shorts_from_end((page), (2*(n))+4)
 #define slot_length_ptr(page, n) shorts_from_end((page), (2*(n))+5)
 #define record_ptr(page, n)      bytes_from_start((page), *slot_ptr((page), (n)))
-#define isValidSlot(page, n)   ((*slot_ptr((page), (n)) == INVALID_SLOT) ? 0 : 1)
 
 void slottedPageInit();
 void slottedPageDeinit();

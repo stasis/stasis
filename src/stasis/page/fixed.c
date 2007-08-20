@@ -75,14 +75,14 @@ static void fixedSetType(int xid, Page *p, recordid rid, int type) {
 }
 static int fixedGetLength(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
-  //XXX this should be here...  assert(rid.slot < *recordcount_ptr(p));
-  checkRid(p, rid); // <-- XXX KLUDGE checkRid init's the page if necessary...
-  return rid.slot > *recordcount_ptr(p) ? 
+  assert(*page_type_ptr(p));
+  return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
 }
 static recordid fixedNext(int xid, Page *p, recordid rid) {
   short n = *recordcount_ptr(p);
   rid.slot++;
+  rid.size = *recordsize_ptr(p);
   if(rid.slot >= n) {
     return NULLRID;
   } else {
