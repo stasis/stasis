@@ -57,6 +57,7 @@ terms specified in this license.
 #define __NESTED_TOP_ACTIONS_H__
 
 void initNestedTopActions();
+void deinitNestedTopActions();
 void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments, int log_arguments_length);
 lsn_t TendNestedTopAction(int xid, void * handle);
 #endif

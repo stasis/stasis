@@ -160,6 +160,9 @@ void TallocInit() {
   allocPolicy = allocationPolicyInit();
   //  pthread_mutex_init(&talloc_mutex, NULL);
 }
+void TallocDeinit() { 
+  allocationPolicyDeinit(allocPolicy);
+}
 
 static void reserveNewRegion(int xid) {
      int firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);

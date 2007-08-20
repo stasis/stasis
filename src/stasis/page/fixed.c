@@ -79,6 +79,7 @@ static int fixedGetLength(int xid, Page *p, recordid rid) {
   return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
 }
+
 static int notSupported(int xid, Page * p) { return 0; }
 
 static int fixedFreespace(int xid, Page * p) {
@@ -129,6 +130,7 @@ void fixedLoaded(Page *p) {
 void fixedFlushed(Page *p) {
   *lsn_ptr(p) = p->LSN;
 }
+void fixedCleanup(Page *p) { }
 page_impl fixedImpl() {
   static page_impl pi = {
     FIXED_PAGE,
@@ -153,6 +155,7 @@ page_impl fixedImpl() {
     0, // XXX dereference
     fixedLoaded, // loaded
     fixedFlushed, // flushed
+    fixedCleanup
   };
   return pi;
 }

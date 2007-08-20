@@ -15,7 +15,8 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c fl
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c operations/bTree.c \
 		   operations/regions.c operations/lsmTree.c \
-		   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/non_blocking.c io/debug.c \
+		   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/non_blocking.c \
+		   io/debug.c \
 		   bufferManager/pageArray.c bufferManager/bufferHash.c \
 	           replacementPolicy/lru.c replacementPolicy/lruFast.c
 AM_CFLAGS=${GLOBAL_CFLAGS}

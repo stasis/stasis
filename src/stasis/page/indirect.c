@@ -242,7 +242,7 @@ void indirectLoaded(Page *p) {
 void indirectFlushed(Page *p) {
   *lsn_ptr(p) = p->LSN;
 }
-
+void indirectCleanup(Page *p) { }
 static page_impl pi = {
     INDIRECT_PAGE,
     0, //read,
@@ -266,6 +266,7 @@ static page_impl pi = {
     0, //XXX page_impl_dereference_identity,
     indirectLoaded,
     indirectFlushed,
+    indirectCleanup
 };
 
 /**

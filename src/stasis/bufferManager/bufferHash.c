@@ -109,6 +109,7 @@ inline static Page * writeBackOnePage() {
   
   //      printf("Write(%ld)\n", (long)victim->id);
   pageWrite(victim);
+  pageCleanup(victim);
   // Make sure that no one mistakenly thinks this is still a live copy.
   victim->id = -1;
 
@@ -277,6 +278,7 @@ static void bhBufDeinit() {
   LH_ENTRY(openlist)(cachedPages, &iter);
   while((next = LH_ENTRY(readlist)(&iter))) { 
     pageWrite((next->value));
+    pageCleanup((next->value)); // normally called by writeBackOnePage()
   }
   LH_ENTRY(closelist)(&iter);
   LH_ENTRY(destroy)(cachedPages);
@@ -299,6 +301,7 @@ static void bhSimulateBufferManagerCrash() {
     Page * p = next->value;
     writelock(p->rwlatch,0);
     pageFlushed(p); // normally, pageWrite() would call this...
+    pageCleanup(p); // normally called by writeBackOnePage()
     unlock(p->rwlatch);
   }
   LH_ENTRY(closelist)(&iter);
@@ -331,7 +334,7 @@ void bhBufInit() {
 
   cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
 
-  freeListLength = MAX_BUFFER_SIZE / 10;
+  freeListLength = 9 * MAX_BUFFER_SIZE / 10;
   freeLowWater  = freeListLength - 5;
   freeCount = 0;
   pageCount = 0;

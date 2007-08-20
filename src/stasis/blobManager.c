@@ -63,12 +63,13 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
 
 static int notSupported(int xid, Page * p) { return 0; }
 
-void blobLoaded(Page *p) {
+static void blobLoaded(Page *p) {
   p->LSN = *lsn_ptr(p);
 }
-void blobFlushed(Page *p) {
+static void blobFlushed(Page *p) {
   *lsn_ptr(p) = p->LSN;
 }
+static void blobCleanup(Page *p) { }
 
 static page_impl pi = {
     BLOB_PAGE,
@@ -93,6 +94,7 @@ static page_impl pi = {
     0, //XXX page_impl_dereference_identity,
     blobLoaded,
     blobFlushed,
+    blobCleanup
 };
 page_impl blobImpl() {
   return pi;

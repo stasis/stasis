@@ -2,7 +2,7 @@
 
 #ifndef __FIXED_H 
 #define __FIXED_H
-
+// @todo rename fixed.h macros to something more specific
 #define recordsize_ptr(page)  shorts_from_end((page), 1)
 #define recordcount_ptr(page) shorts_from_end((page), 2)
 #define fixed_record_ptr(page, n)   bytes_from_start((page), *recordsize_ptr((page)) * (n))

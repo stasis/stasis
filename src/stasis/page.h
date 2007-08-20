@@ -272,7 +272,7 @@ int pageFreespace(int xid, Page * p);
 void pageCompact(Page * p);
 void pageLoaded(Page * p);
 void pageFlushed(Page * p);
-
+void pageCleanup(Page * p);
 /**
    @return -1 if the field does not exist, the size of the field otherwise (the rid parameter's size field will be ignored).
  */
@@ -581,6 +581,7 @@ typedef struct page_impl {
       This function should record p->LSN somewhere appropriate
   */
   void (*pageFlushed)(Page * p);
+  void (*pageCleanup)(Page * p);
 } page_impl;
 
 /**

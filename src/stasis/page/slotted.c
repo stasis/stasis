@@ -507,6 +507,7 @@ void slottedFlushed(Page *p) {
   *lsn_ptr(p) = p->LSN;
   slottedFsck(p);
 }
+void slottedCleanup(Page *p) { }
 
 page_impl slottedImpl() {
 static page_impl pi =  {
@@ -532,6 +533,7 @@ static page_impl pi =  {
     0, //XXX page_impl_dereference_identity,
     slottedLoaded,
     slottedFlushed,
+    slottedCleanup
   };
   return pi;
 }

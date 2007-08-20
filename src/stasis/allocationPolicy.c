@@ -231,10 +231,12 @@ void allocationPolicyDeinit(allocationPolicy * ap) {
     RB_ENTRY(delete)(next, ap->availablePages);
     free((void*)next);
   }
-
   LH_ENTRY(destroy)(ap->xidAlloced);
+  LH_ENTRY(destroy)(ap->xidDealloced);
   RB_ENTRY(destroy)(ap->availablePages);
   LH_ENTRY(destroy)(ap->pageOwners);
+  LH_ENTRY(destroy)(ap->allPages);
+
   free(ap);
 }
 

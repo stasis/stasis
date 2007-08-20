@@ -408,6 +408,8 @@ int Tdeinit() {
 	assert( numActiveXactions == 0 );
 	truncationDeinit();
 	ThashDeinit();
+	TallocDeinit();
+	deinitNestedTopActions();
 	bufDeinit();
         DEBUG("Closing page file tdeinit\n");
 	closePageFile();

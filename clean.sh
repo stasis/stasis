@@ -5,6 +5,9 @@ find . | grep \~$ | xargs rm -f
 find . -name '*.bb' | xargs rm -f
 find . -name '*.bbg' | xargs rm -f
 find . -name '*.da' | xargs rm -f
+find . -name '*.o'  | xargs rm -f
+find . -name '*.lo'  | xargs rm -f
+find . -name '*.Plo'  | xargs rm -f
 find . | perl -ne 'print if (/\/core(\.\d+)?$/)' | xargs rm -f
 find . | perl -ne 'print if (/\/Makefile.in$/)' | xargs rm -f
 find . | perl -ne 'print if (/\/storefile.txt$/)' | xargs rm -f

@@ -76,6 +76,19 @@ void lsmTreeRegisterComparator(int id, lsm_comparator_t i) {
 
 */
 
+static pageid_t defaultAllocator(int xid, void *ignored) {
+  return TpageAlloc(xid);
+}
+
+static pageid_t (*pageAllocator)(int xid, void *ignored) = defaultAllocator;
+static void *pageAllocatorConfig;
+void TlsmSetPageAllocator(pageid_t (*allocer)(int xid, void * ignored),
+                          void * config) {
+  pageAllocator = allocer;
+  pageAllocatorConfig = config;
+}
+
+
 
 typedef struct lsmTreeState {
   pageid_t lastLeaf;
@@ -119,7 +132,7 @@ static void initializeNodePage(int xid, Page *p, size_t keylen) {
 */
 
 static inline size_t getKeySizeFixed(int xid, Page const *p) {
-  return *recordsize_ptr(p) - sizeof(lsmTreeNodeRecord);
+  return (*recordsize_ptr(p)) - sizeof(lsmTreeNodeRecord);
 }
 
 static inline size_t getKeySizeVirtualMethods(int xid, Page *p) {
@@ -190,7 +203,7 @@ recordid TlsmCreate(int xid, int comparator, int keySize) {
   assert(HEADER_SIZE + 2 * (sizeof(lsmTreeNodeRecord) +keySize) <
          USABLE_SIZE_OF_PAGE - 2 * sizeof(short));
 
-  pageid_t root = TpageAlloc(xid);
+  pageid_t root = pageAllocator(xid, pageAllocatorConfig);
   DEBUG("Root = %lld\n", root);
   recordid ret = { root, 0, 0 };
 
@@ -237,7 +250,7 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
   assert(depth);
   DEBUG("buildPathToLeaf(depth=%d) (lastleaf=%lld) called\n",depth, lastLeaf);
 
-  pageid_t child = TpageAlloc(xid); // XXX Use some other function...
+  pageid_t child = pageAllocator(xid, pageAllocatorConfig); // XXX Use some other function...
   DEBUG("new child = %lld internal? %d\n", child, depth-1);
 
   Page *child_p = loadPage(xid, child);
@@ -316,6 +329,8 @@ static recordid appendInternalNode(int xid, Page *p,
                                    int depth,
                                    const byte *key, size_t key_len,
                                    pageid_t val_page, pageid_t lastLeaf) {
+  assert(*page_type_ptr(p) == LSM_ROOT_PAGE || 
+	 *page_type_ptr(p) == FIXED_PAGE);
   if(!depth) {
     // leaf node.
     recordid ret = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
@@ -449,7 +464,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
     if(ret.size == INVALID_SLOT) {
       DEBUG("Need to split root; depth = %d\n", depth);
 
-      pageid_t child = TpageAlloc(xid);
+      pageid_t child = pageAllocator(xid, pageAllocatorConfig);
       Page *lc = loadPage(xid, child);
       writelock(lc->rwlatch,0);
 
@@ -629,15 +644,17 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
     associated with the tree.
 */
 static void lsmPageLoaded(Page *p) {
+  /// XXX should call fixedLoaded, or something...
   lsmTreeState *state = malloc(sizeof(lsmTreeState));
   state->lastLeaf = -1;
   p->impl = state;
 }
+static void lsmPageFlushed(Page *p) { }
 /**
     Free any soft state associated with the tree rooted at page p.
     This is called by the buffer manager.
 */
-static void lsmPageFlushed(Page *p) {
+static void lsmPageCleanup(Page *p) {
   lsmTreeState *state = p->impl;
   free(state);
 }
@@ -648,6 +665,7 @@ page_impl lsmRootImpl() {
   page_impl pi = fixedImpl();
   pi.pageLoaded = lsmPageLoaded;
   pi.pageFlushed = lsmPageFlushed;
+  pi.pageCleanup = lsmPageCleanup;
   pi.page_type = LSM_ROOT_PAGE;
   return pi;
 }
@@ -706,7 +724,7 @@ int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
   impl->current = fixedNext(xid, impl->p, impl->current);
   if(impl->current.size == INVALID_SLOT) {
     const lsmTreeNodeRecord *next_rec = readNodeRecord(xid,impl->p,NEXT_LEAF,
-                                                        impl->current.size);
+                                                       keySize);
     unlock(impl->p->rwlatch);
     releasePage(impl->p);
 
@@ -722,6 +740,9 @@ int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
       impl->p = 0;
       impl->current.size = -1;
     }
+  } else {
+    assert(impl->current.size == keySize + sizeof(lsmTreeNodeRecord));
+    impl->current.size = keySize;
   }
   if(impl->current.size != INVALID_SLOT) {
     impl->t = readNodeRecord(xid,impl->p,impl->current.slot,impl->current.size);

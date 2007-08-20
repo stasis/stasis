@@ -45,6 +45,12 @@ recordid TlsmDealloc(int xid, recordid tree);
 recordid TlsmAppendPage(int xid, recordid tree,
                         const byte *key,
                         long pageid);
+
+/**
+   Override the page allocation algorithm that LSM tree uses by default
+*/
+void TlsmSetPageAllocator(pageid_t (*allocer)(int xid, void * ignored),
+                          void * config);
 /**
    Lookup a leaf page.
 
@@ -92,7 +98,7 @@ static inline int lsmTreeIterator_key  (int xid, lladdIterator_t *it,
                                         byte **key) {
   lsmIteratorImpl * impl = (lsmIteratorImpl*)it->impl;
   *key = (byte*)(impl->t+1);
-  return sizeof(impl->current.size);
+  return impl->current.size;
 
 }
 static inline int lsmTreeIterator_value(int xid, lladdIterator_t *it,

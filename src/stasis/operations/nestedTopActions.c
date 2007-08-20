@@ -63,6 +63,9 @@ pblHashTable_t * nestedTopActions = NULL;
 void initNestedTopActions() {
   nestedTopActions = pblHtCreate();
 }
+void deinitNestedTopActions() { 
+  pblHtDelete(nestedTopActions);
+}
 /** @todo TbeginNestedTopAction's API might not be quite right.  
     Are there cases where we need to pass a recordid in?
 

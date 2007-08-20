@@ -322,6 +322,13 @@ void pageFlushed(Page * p){
     *lsn_ptr(p) = p->LSN;
   }
 }
+void pageCleanup(Page * p) { 
+  short type = *page_type_ptr(p);
+  if(type) { 
+    assert(page_impls[type].page_type == type);
+    page_impls[type].pageCleanup(p);
+  } 
+}
 
 /// Generic block implementations
 
