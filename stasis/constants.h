@@ -241,4 +241,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 
 #define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 #define LOG_MODE  (O_CREAT | O_RDWR | O_SYNC)
+
+#define MAX_LSM_COMPARATORS 256
+
 #endif

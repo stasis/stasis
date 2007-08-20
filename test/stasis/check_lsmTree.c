@@ -13,34 +13,74 @@
 #include <time.h>
 
 #define LOG_NAME   "check_lsmTree.log"
-#define NUM_ENTRIES 100000
+#define NUM_ENTRIES_A 100000
+#define NUM_ENTRIES_B 10
+#define NUM_ENTRIES_C 0
+
 #define OFFSET      (NUM_ENTRIES * 10)
 
-#define DEBUG(...) 
+typedef int64_t lsmkey_t;
+
+int cmp(const void *ap, const void *bp) {
+  lsmkey_t a = *(lsmkey_t*)ap;
+  lsmkey_t b = *(lsmkey_t*)bp;
+  if(a < b) { return -1; }
+  if(a == b) { return 0; }
+  return 1;
+}
+
+void insertProbeIter(lsmkey_t NUM_ENTRIES) {
+  int intcmp = 0;
+  lsmTreeRegisterComparator(intcmp,cmp);
+
+  Tinit();
+  int xid = Tbegin();
+  recordid tree = TlsmCreate(xid, intcmp, sizeof(lsmkey_t));
+  for(lsmkey_t i = 0; i < NUM_ENTRIES; i++) {
+    long pagenum = TlsmFindPage(xid, tree, (byte*)&i);
+    assert(pagenum == -1);
+    DEBUG("TlsmAppendPage %d\n",i);
+    TlsmAppendPage(xid, tree, (const byte*)&i, i + OFFSET);
+    pagenum = TlsmFindPage(xid, tree, (byte*)&i);
+    assert(pagenum == i + OFFSET);
+  }
+
+  for(lsmkey_t i = 0; i < NUM_ENTRIES; i++) {
+    long pagenum = TlsmFindPage(xid, tree, (byte*)&i);
+    assert(pagenum == i + OFFSET);
+  }
+
+  int64_t count = 0;
+
+  lladdIterator_t * it = lsmTreeIterator_open(xid, tree);
+
+  while(lsmTreeIterator_next(xid, it)) {
+    lsmkey_t * key;
+    lsmkey_t **key_ptr = &key;
+    int size = lsmTreeIterator_key(xid, it, (byte**)key_ptr);
+    assert(size == sizeof(lsmkey_t));
+    long *value;
+    long **value_ptr = &value;
+    size = lsmTreeIterator_value(xid, it, (byte**)value_ptr);
+    assert(size == sizeof(pageid_t));
+    assert(*key + OFFSET == *value);
+    assert(*key == count);
+    count++;
+  }
+  assert(count == NUM_ENTRIES);
+
+  lsmTreeIterator_close(xid, it);
+
+  Tcommit(xid);
+  Tdeinit();
+}
 /** @test
 */
 START_TEST(lsmTreeTest)
 {
-  Tinit();
-  int xid = Tbegin();
-  recordid tree = TlsmCreate(xid, 0, sizeof(int)); // xxx comparator not set.
-  for(int i = 0; i < NUM_ENTRIES; i++) {
-    long pagenum = TlsmFindPage(xid, tree, (byte*)&i, sizeof(int));
-    assert(pagenum == -1);
-    DEBUG("TlsmAppendPage %d\n",i);
-    TlsmAppendPage(xid, tree, (const byte*)&i, sizeof(int), i + OFFSET);
-    //    fflush(NULL);
-    pagenum = TlsmFindPage(xid, tree, (byte*)&i, sizeof(int));
-    assert(pagenum == i + OFFSET);
-  }
-
-  for(int i = 0; i < NUM_ENTRIES; i++) {
-    long pagenum = TlsmFindPage(xid, tree, (byte*)&i, sizeof(int));
-    assert(pagenum == i + OFFSET);
-  }
-
-  Tcommit(xid);
-  Tdeinit();
+  insertProbeIter(NUM_ENTRIES_A);
+  insertProbeIter(NUM_ENTRIES_B);
+  insertProbeIter(NUM_ENTRIES_C);
 } END_TEST
 
 Suite * check_suite(void) {

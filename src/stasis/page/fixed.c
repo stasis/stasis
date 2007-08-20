@@ -79,22 +79,6 @@ static int fixedGetLength(int xid, Page *p, recordid rid) {
   return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
 }
-static recordid fixedNext(int xid, Page *p, recordid rid) {
-  short n = *recordcount_ptr(p);
-  rid.slot++;
-  rid.size = *recordsize_ptr(p);
-  if(rid.slot >= n) {
-    return NULLRID;
-  } else {
-    return rid;
-  }
-}
-static recordid fixedFirst(int xid, Page *p) {
-  recordid rid = { p->id, -1, 0 };
-  rid.size = *recordsize_ptr(p);
-  return fixedNext(xid, p, rid);
-}
-
 static int notSupported(int xid, Page * p) { return 0; }
 
 static int fixedFreespace(int xid, Page * p) {

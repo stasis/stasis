@@ -22,13 +22,9 @@ typedef struct {
   recordid pos;
 } lladd_lsm_iterator;
 
-typedef struct {
-  int id;
-  // fcn pointer...
-} comparator_impl;
+typedef int(*lsm_comparator_t)(const void* a, const void* b);
 
-void lsmTreeRegisterComparator(comparator_impl i);
-extern const int MAX_LSM_COMPARATORS;
+void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
 
 /**
    Initialize a new LSM tree.
@@ -47,7 +43,7 @@ recordid TlsmDealloc(int xid, recordid tree);
    ascending order; LSM trees do not support update in place.
 */
 recordid TlsmAppendPage(int xid, recordid tree,
-                        const byte *key, size_t keySize,
+                        const byte *key,
                         long pageid);
 /**
    Lookup a leaf page.
@@ -60,25 +56,51 @@ recordid TlsmAppendPage(int xid, recordid tree,
                   Currently unused.
 */
 pageid_t TlsmFindPage(int xid, recordid tree,
-                 const byte *key, size_t keySize);
+                 const byte *key);
+
+/// ---------------  Iterator implementation
+
+typedef struct lsmTreeNodeRecord {
+  pageid_t ptr;
+} lsmTreeNodeRecord;
+
+typedef struct lsmIteratorImpl {
+  Page * p;
+  recordid current;
+  const lsmTreeNodeRecord *t;
+  int justOnePage;
+} lsmIteratorImpl;
 
 /**
     Return a forward iterator over the tree's leaf pages (*not* their
-    contents).
-*/
-lladdIterator_t * TlsmIterator(int xid, recordid hash);
+    contents).  The iterator starts before the first leaf page.
 
-/**
+   @see iterator.h for documentation of lsmTree's iterator interface.
+*/
+lladdIterator_t * lsmTreeIterator_open(int xid, recordid tree);
+
+/*
    These are the functions that implement lsmTree's iterator.
 
    They're public so that performance critical code can call them
    without paying for a virtual method invocation.
-
-   XXX should they be public?
 */
-void lsmTreeIterator_close(int xid, void * it);
-int  lsmTreeIterator_next (int xid, void * it);
-int  lsmTreeIterator_key  (int xid, void * it, byte **key);
-int  lsmTreeIterator_value(int xid, void * it, byte **value);
+void lsmTreeIterator_close(int xid, lladdIterator_t * it);
+int  lsmTreeIterator_next (int xid, lladdIterator_t * it);
 
+static inline int lsmTreeIterator_key  (int xid, lladdIterator_t *it,
+                                        byte **key) {
+  lsmIteratorImpl * impl = (lsmIteratorImpl*)it->impl;
+  *key = (byte*)(impl->t+1);
+  return sizeof(impl->current.size);
+
+}
+static inline int lsmTreeIterator_value(int xid, lladdIterator_t *it,
+                                         byte **value) {
+  lsmIteratorImpl * impl = (lsmIteratorImpl*)it->impl;
+  *value = (byte*)&(impl->t->ptr);
+  return sizeof(impl->t->ptr);
+}
+static inline void lsmTreeIterator_tupleDone(int xid, void *it) { }
+static inline void lsmTreeIterator_releaseLock(int xid, void *it) { }
 #endif  // _LSMTREE_H__
