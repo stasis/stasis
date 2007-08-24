@@ -63,7 +63,10 @@ void TlsmSetPageAllocator(pageid_t (*allocer)(int xid, void * ignored),
 */
 pageid_t TlsmFindPage(int xid, recordid tree,
                  const byte *key);
-
+/**
+   @todo TlsmFirstPage for symmetry?
+ */
+pageid_t TlsmLastPage(int xid, recordid tree);
 /// ---------------  Iterator implementation
 
 typedef struct lsmTreeNodeRecord {
@@ -93,7 +96,7 @@ lladdIterator_t * lsmTreeIterator_open(int xid, recordid tree);
 */
 void lsmTreeIterator_close(int xid, lladdIterator_t * it);
 int  lsmTreeIterator_next (int xid, lladdIterator_t * it);
-
+lladdIterator_t *lsmTreeIterator_copy(int xid, lladdIterator_t* i);
 static inline int lsmTreeIterator_key  (int xid, lladdIterator_t *it,
                                         byte **key) {
   lsmIteratorImpl * impl = (lsmIteratorImpl*)it->impl;

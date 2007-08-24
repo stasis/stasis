@@ -22,6 +22,17 @@
 #include <unistd.h>
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
+
+#ifdef __cplusplus
+#  define BEGIN_C_DECLS extern "C" {
+#  define END_C_DECLS   }
+#else /* !__cplusplus */
+#  define BEGIN_C_DECLS
+#  define END_C_DECLS
+#endif /* __cplusplus */
+
+BEGIN_C_DECLS
+
 typedef struct {
 	pthread_mutex_t *mut;
 	int writers;
@@ -55,4 +66,7 @@ rwargs *newRWargs (rwl *l, int i, long d);
 void *reader (void *args);
 void *writer (void *args);
 */
+
+END_C_DECLS
+
 #endif /* rw.h */

@@ -106,9 +106,9 @@ inline static Page * writeBackOnePage() {
   lru->remove(lru, victim);
   Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(int));
   assert(old == victim);
-  
+
   //      printf("Write(%ld)\n", (long)victim->id);
-  pageWrite(victim);
+  pageWrite(victim);   /// XXX pageCleanup and pageFlushed might be heavyweight.
   pageCleanup(victim);
   // Make sure that no one mistakenly thinks this is still a live copy.
   victim->id = -1;

@@ -450,8 +450,10 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
   if(ret.size == INVALID_SLOT) {
     if(lastLeaf->id != p->id) {
+      assert(s->lastLeaf != tree.page);
       unlock(lastLeaf->rwlatch);
       releasePage(lastLeaf); // don't need that page anymore...
+      lastLeaf = 0;
     }
     // traverse down the root of the tree.
 
@@ -537,6 +539,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
     writeNodeRecord(xid, lastLeaf, ret.slot, key, keySize, val_page);
 
     if(lastLeaf->id != p->id) {
+      assert(s->lastLeaf != tree.page);
       unlock(lastLeaf->rwlatch);
       releasePage(lastLeaf);
     }
@@ -638,6 +641,37 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
 
 }
 
+pageid_t TlsmLastPage(int xid, recordid tree) {
+  Page * root = loadPage(xid, tree.page);
+  readlock(root->rwlatch,0);
+  lsmTreeState *state = root->impl;
+  int keySize = getKeySize(xid,root);
+  if(state->lastLeaf == -1) {
+    const lsmTreeNodeRecord *nr = readNodeRecord(xid,root,DEPTH,
+                                                 keySize);
+    int depth = nr->ptr;
+    state->lastLeaf = findLastLeaf(xid,root,depth);
+  }
+  pageid_t ret = state->lastLeaf;
+  unlock(root->rwlatch);
+
+  // ret points to the last internal node at this point.
+  releasePage(root);
+
+  Page * p = loadPage(xid, ret);
+  readlock(p->rwlatch,0);
+  if(*recordcount_ptr(p) == 2) {
+    ret = -1;
+  } else {
+    const lsmTreeNodeRecord *nr = readNodeRecord(xid,p,(*recordcount_ptr(p))-1,keySize);
+    ret = nr->ptr;
+  }
+  unlock(p->rwlatch);
+  releasePage(p);
+
+  return ret;
+}
+
 /**
     The buffer manager calls this when the lsmTree's root page is
     loaded.  This function allocates some storage for cached values
@@ -683,6 +717,9 @@ lladdIterator_t *lsmTreeIterator_open(int xid, recordid root) {
     releasePage(p);
     p = loadPage(xid,leafid);
     readlock(p->rwlatch,0);
+    assert(depth != 0);
+  } else {
+    assert(depth == 0);
   }
   lsmIteratorImpl *impl = malloc(sizeof(lsmIteratorImpl));
   impl->p = p;
@@ -707,6 +744,24 @@ lladdIterator_t *lsmTreeIterator_open(int xid, recordid root) {
     lsmTreeIterator_releaseLock;
     } */
   return it;
+}
+lladdIterator_t *lsmTreeIterator_copy(int xid, lladdIterator_t* i) {
+  lsmIteratorImpl *it = i->impl;
+  lsmIteratorImpl *mine = malloc(sizeof(lsmIteratorImpl));
+
+  if(it->p) {
+    mine->p = loadPage(xid, it->p->id);
+    readlock(mine->p->rwlatch,0);
+  } else {
+    mine->p = 0;
+  }
+  memcpy(&mine->current, &it->current,sizeof(recordid));
+  mine->t = it->t;
+  mine->justOnePage = it->justOnePage;
+  lladdIterator_t * ret = malloc(sizeof(lladdIterator_t));
+  ret->type = -1; // XXX LSM_TREE_ITERATOR
+  ret->impl = mine;
+  return ret;
 }
 void lsmTreeIterator_close(int xid, lladdIterator_t *it) {
   lsmIteratorImpl *impl = it->impl;
@@ -738,7 +793,7 @@ int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
       impl->current.size = keySize;
     } else {
       impl->p = 0;
-      impl->current.size = -1;
+      impl->current.size = INVALID_SLOT;
     }
   } else {
     assert(impl->current.size == keySize + sizeof(lsmTreeNodeRecord));

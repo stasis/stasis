@@ -62,7 +62,7 @@
 //#define MAX_MERGE 4
 
 /** @return a read buffer indicating an error has occured */
-static inline stasis_read_buffer_t * alloc_read_buffer_error(stasis_handle_t *h,
+static inline stasis_read_buffer_t* alloc_read_buffer_error(stasis_handle_t *h,
                                                              int error) {
   assert(error);
   stasis_read_buffer_t * r = malloc(sizeof(stasis_read_buffer_t));
@@ -74,8 +74,8 @@ static inline stasis_read_buffer_t * alloc_read_buffer_error(stasis_handle_t *h,
   return r;
 }
 /** @return a read buffer indicating a write error has occured */
-static inline stasis_write_buffer_t * alloc_write_buffer_error(stasis_handle_t *h,
-                                                               int error) {
+static inline stasis_write_buffer_t* alloc_write_buffer_error
+    (stasis_handle_t *h, int error) {
   assert(error);
   stasis_write_buffer_t * w = malloc(sizeof(stasis_write_buffer_t));
   w->h = h;
@@ -87,7 +87,7 @@ static inline stasis_write_buffer_t * alloc_write_buffer_error(stasis_handle_t *
   return w;
 }
 /** Wraps stasis_handle_t so that it can be stored in an rbtree. */
-typedef struct tree_node { 
+typedef struct tree_node {
   lsn_t start_pos;
   lsn_t end_pos;
   stasis_handle_t * h;
@@ -97,43 +97,43 @@ typedef struct tree_node {
       be deallocated unless this is zero. */
   int pin_count;
   /** set to 1 when the handle is written to, 0 when the handle is
-      written back to disk, INVALID_NODE when the handle is not in 
+      written back to disk, INVALID_NODE when the handle is not in
       the tree.  */
   int dirty;
 } tree_node;
 
 /** Wrapper for write buffers */
-typedef struct write_buffer_impl {  
+typedef struct write_buffer_impl {
   /** The tree node that contains this buffer */
   const tree_node * n;
   /** The underlying buffer. */
   stasis_write_buffer_t * w;
 } write_buffer_impl;
-typedef struct read_buffer_impl { 
-  /** The tree node that contains this buffer, or NULL if the buffer 
+typedef struct read_buffer_impl {
+  /** The tree node that contains this buffer, or NULL if the buffer
       is from a slow handle. */
   const tree_node * n;
   /** The underlying buffer. */
   stasis_read_buffer_t * r;
 } read_buffer_impl;
 
-/** 
+/**
     Compare two tree_node structs.  Two tree nodes are equal if they
     are zero length, and start at the same point, or if they overlap.
  */
 static int cmp_handle(const void * ap, const void * bp, const void * ignored) {
   tree_node * a = (tree_node*)ap;
   tree_node * b = (tree_node*)bp;
-  if(a->start_pos == b->start_pos && 
+  if(a->start_pos == b->start_pos &&
      a->start_pos == a->end_pos &&
-     b->start_pos == b->end_pos ) { 
+     b->start_pos == b->end_pos ) {
     return 0;
   }
-  if(a->end_pos <= b->start_pos) { 
+  if(a->end_pos <= b->start_pos) {
     return -1;
   } else if(a->start_pos >= b->end_pos) {
     return 1;
-  } else { 
+  } else {
     return 0;
   }
 }
@@ -143,7 +143,7 @@ typedef struct nbw_impl {
 
   // Handle state
   lsn_t start_pos;
-  lsn_t end_pos; 
+  lsn_t end_pos;
 
   // Fields to manage slow handles
   stasis_handle_t * (*slow_factory)(void * arg);
@@ -178,7 +178,7 @@ static inline void freeFastHandle(nbw_impl * impl, const tree_node * n);
 
 /** Obtain a slow handle from the pool of existing ones, or obtain a new one
     by calling impl->slow_factory.. */
-static stasis_handle_t * getSlowHandle(nbw_impl * impl) { 
+static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
   pthread_mutex_lock(&impl->mut);
   stasis_handle_t * slow = (stasis_handle_t*)popMaxVal(&impl->slow_handles);
   assert(slow);
@@ -186,20 +186,20 @@ static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
     impl->slow_handle_count++;
     pthread_mutex_unlock(&impl->mut);
     slow = impl->slow_factory(impl->slow_factory_arg);
-  } else { 
+  } else {
     pthread_mutex_unlock(&impl->mut);
   }
   return slow;
 }
 /** Release a file handle back into the pool of slow handles. */
-static void releaseSlowHandle(nbw_impl * impl, stasis_handle_t * slow) { 
+static void releaseSlowHandle(nbw_impl * impl, stasis_handle_t * slow) {
   assert(slow);
   pthread_mutex_lock(&impl->mut);
   addVal(&impl->slow_handles, (long)slow);
   pthread_mutex_unlock(&impl->mut);
 }
 
-static tree_node * allocTreeNode(lsn_t off, lsn_t len) { 
+static tree_node * allocTreeNode(lsn_t off, lsn_t len) {
   tree_node * ret = malloc(sizeof(tree_node));
   ret->start_pos = off;
   ret->end_pos = off + len;
@@ -235,7 +235,7 @@ static inline const tree_node * allocFastHandle(nbw_impl * impl, lsn_t off,
                impl->fast_handle_count, impl->max_fast_handles);
       }
       if(impl->used_buffer_size + len > impl->max_buffer_size) {
-        printf("Blocking on write.  %lld bytes (%lld max)\n", 
+        printf("Blocking on write.  %lld bytes (%lld max)\n",
                impl->used_buffer_size, impl->max_buffer_size);
       }
 
@@ -267,15 +267,24 @@ static inline const tree_node * allocFastHandle(nbw_impl * impl, lsn_t off,
   }
 
 #ifdef EAGER_MERGE
-  // check for a mergable range immediately after the point we're interested in.
+  // check for a mergable range immediately after the point we're
+  // interested in.  (DEAD CODE)
   tree_node dummy;
   dummy.start_pos = n->end_pos;
   dummy.end_pos = n->end_pos+1;
 
-  while((np = (tree_node*)RB_ENTRY(find)(&dummy, impl->fast_handles)) && np->dirty && !np->pin_count && np->write_count + n->write_count < MAX_MERGE) {
-    DEBUG("Did post-merge of page %lld-%lld (%d) and %lld-%lld (%d) outstanding = %d\n", n->start_pos/PAGE_SIZE, -1+n->end_pos/PAGE_SIZE, n->write_count, np->start_pos/PAGE_SIZE, -1+np->end_pos/PAGE_SIZE, np->write_count, impl->fast_handle_count);
+  while((np = (tree_node*)RB_ENTRY(find)(&dummy, impl->fast_handles))
+        && np->dirty
+        && !np->pin_count
+        && np->write_count + n->write_count < MAX_MERGE) {
+    DEBUG("Did post-merge of page %lld-%lld (%d) and %lld-%lld (%d) "
+          "outstanding = %d\n", n->start_pos/PAGE_SIZE,
+          -1+n->end_pos/PAGE_SIZE, n->write_count, np->start_pos/PAGE_SIZE,
+          -1+np->end_pos/PAGE_SIZE, np->write_count, impl->fast_handle_count);
     lsn_t appendLen = np->end_pos - np->start_pos;
-    stasis_read_buffer_t * r= np->h->read_buffer(np->h,np->start_pos, appendLen);
+    stasis_read_buffer_t * r= np->h->read_buffer(np->h,np->start_pos,
+                                                 appendLen);
+
     int ret = n->h->write(n->h,np->start_pos,r->buf, appendLen);
     assert(!ret);
     ret = r->h->release_read_buffer(r);
@@ -293,7 +302,8 @@ static inline const tree_node * allocFastHandle(nbw_impl * impl, lsn_t off,
 
   return n;
 }
-static inline const tree_node * findFastHandle(nbw_impl * impl, lsn_t off, lsn_t len) {
+static inline const tree_node * findFastHandle(nbw_impl * impl, lsn_t off,
+                                               lsn_t len) {
   tree_node * np = allocTreeNode(off, len);
 
   pthread_mutex_lock(&impl->mut);
@@ -311,19 +321,19 @@ static inline void freeFastHandle(nbw_impl * impl, const tree_node * n) {
   n->h->close(n->h);
   free((void*)n);
 }
-static inline int releaseFastHandle(nbw_impl * impl, const tree_node * n, 
+static inline int releaseFastHandle(nbw_impl * impl, const tree_node * n,
 				    int setDirty) {
-  if(n->dirty == INVALID_NODE) { 
+  if(n->dirty == INVALID_NODE) {
     // Not in tree; cast removes "const"
     releaseSlowHandle(impl, n->h);
     free((void*)n);
     return 0;
-  } else { 
+  } else {
     assert(setDirty == 0 || setDirty == 1);
     assert(n->dirty == 0 || n->dirty == 1);
     pthread_mutex_lock(&impl->mut);
     ((tree_node*)n)->pin_count--;
-    if(n->dirty == 0) { 
+    if(n->dirty == 0) {
       ((tree_node*)n)->dirty = setDirty;
     }
     pthread_mutex_unlock(&impl->mut);
@@ -334,14 +344,14 @@ static inline int releaseFastHandle(nbw_impl * impl, const tree_node * n,
   }
 }
 /** @todo nbw_num_copies is unimplemented. */
-static int nbw_num_copies(stasis_handle_t * h) { 
+static int nbw_num_copies(stasis_handle_t * h) {
   return 0;
 }
 /** @todo nbw_num_copies_buffer is unimplemented. */
-static int nbw_num_copies_buffer(stasis_handle_t * h) { 
+static int nbw_num_copies_buffer(stasis_handle_t * h) {
   return 0;
 }
-static int nbw_close(stasis_handle_t * h) { 
+static int nbw_close(stasis_handle_t * h) {
   nbw_impl * impl = h->impl;
 
   pthread_mutex_lock(&impl->mut);
@@ -357,7 +367,8 @@ static int nbw_close(stasis_handle_t * h) {
   free(impl->workers);
 
   DEBUG("nbw had %d slow handles\n", impl->slow_handle_count);
-  DEBUG("fast handles = %d, used buffer = %lld\n", impl->fast_handle_count, impl->used_buffer_size);
+  DEBUG("fast handles = %d, used buffer = %lld\n", impl->fast_handle_count,
+        impl->used_buffer_size);
   if(impl->requested_bytes_written < impl->total_bytes_written) {
     printf("nbw: Problem with write coalescing detected.\n"
            "Client wrote %lld bytes, handle wrote %lld.\n",
@@ -377,47 +388,47 @@ static int nbw_close(stasis_handle_t * h) {
   destroyList(&impl->slow_handles);
 
   assert(impl->slow_handle_count == 0);
-  
+
   free(h->impl);
   free(h);
   return 0;
 }
-static lsn_t nbw_start_position(stasis_handle_t *h) { 
+static lsn_t nbw_start_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
   lsn_t ret = impl->start_pos;
   pthread_mutex_unlock(&impl->mut);
   return ret;
 }
-static lsn_t nbw_end_position(stasis_handle_t *h) { 
+static lsn_t nbw_end_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
   lsn_t ret = impl->end_pos;
   pthread_mutex_unlock(&impl->mut);
   return ret;
 }
-static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h, 
+static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
 						lsn_t off, lsn_t len) {
   nbw_impl * impl = h->impl;
   const tree_node * n = allocFastHandle(impl, off, len);
   stasis_write_buffer_t * w = n->h->write_buffer(n->h, off, len);
 
   write_buffer_impl * w_impl = malloc(sizeof(write_buffer_impl));
-  w_impl->n = n; 
+  w_impl->n = n;
   w_impl->w = w;
 
   stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
-  ret->h     = h; 
-  ret->off   = w->off; 
-  ret->len   = w->len; 
-  ret->buf   = w->buf; 
+  ret->h     = h;
+  ret->off   = w->off;
+  ret->len   = w->len;
+  ret->buf   = w->buf;
   ret->error = w->error;
-  ret->impl  = w_impl; 
-  
-  if(!ret->error) { 
+  ret->impl  = w_impl;
+
+  if(!ret->error) {
     pthread_mutex_lock(&impl->mut);
     assert(impl->start_pos <= impl->end_pos);
-    if(off < impl->start_pos) { 
+    if(off < impl->start_pos) {
       // Note: We're returning a valid write buffer to space before
       // the handle's truncation point.  Spooky.
       ret->error = EDOM;
@@ -430,8 +441,8 @@ static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
 
   return ret;
 }
-static stasis_write_buffer_t * nbw_append_buffer(stasis_handle_t * h, 
-						   lsn_t len) { 
+static stasis_write_buffer_t * nbw_append_buffer(stasis_handle_t * h,
+						   lsn_t len) {
   nbw_impl * impl = h->impl;
 
   pthread_mutex_lock(&impl->mut);
@@ -442,7 +453,7 @@ static stasis_write_buffer_t * nbw_append_buffer(stasis_handle_t * h,
 
   return nbw_write_buffer(h, off, len);
 }
-static int nbw_release_write_buffer(stasis_write_buffer_t * w) { 
+static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
   nbw_impl * impl = w->h->impl;
   write_buffer_impl * w_impl = w->impl;
   const tree_node * n = w_impl->n;
@@ -453,7 +464,7 @@ static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
   return 0;
 }
 static stasis_read_buffer_t * nbw_read_buffer(stasis_handle_t * h,
-					      lsn_t off, lsn_t len) { 
+					      lsn_t off, lsn_t len) {
   nbw_impl * impl = h->impl;
   const tree_node * n = findFastHandle(impl, off, len);
   stasis_read_buffer_t * r;
@@ -474,16 +485,17 @@ static stasis_read_buffer_t * nbw_read_buffer(stasis_handle_t * h,
 
   return ret;
 }
-static int nbw_release_read_buffer(stasis_read_buffer_t * r) { 
+static int nbw_release_read_buffer(stasis_read_buffer_t * r) {
   nbw_impl * impl = r->h->impl;
   read_buffer_impl * r_impl = r->impl;
   const tree_node * n = r_impl->n;
   stasis_handle_t * oldHandle = r_impl->r->h;
   r_impl->r->h->release_read_buffer(r_impl->r);
-  // XXX shouldn't need to check for this here; getFastHandle does something similar...
-  if(n) { 
+  // XXX shouldn't need to check for this here; getFastHandle does
+  // something similar...
+  if(n) {
     releaseFastHandle(impl, n, 0);
-  } else { 
+  } else {
     assert(oldHandle);
     releaseSlowHandle(impl, oldHandle);
   }
@@ -491,16 +503,16 @@ static int nbw_release_read_buffer(stasis_read_buffer_t * r) {
   free(r);
   return 0;
 }
-static int nbw_write(stasis_handle_t * h, lsn_t off, 
-		     const byte * dat, lsn_t len) { 
+static int nbw_write(stasis_handle_t * h, lsn_t off,
+		     const byte * dat, lsn_t len) {
   nbw_impl * impl = h->impl;
   const tree_node * n = allocFastHandle(impl, off, len);
   int ret = n->h->write(n->h, off, dat, len);
   releaseFastHandle(impl, n, 1);
-  if(!ret) { 
+  if(!ret) {
     pthread_mutex_lock(&impl->mut);
     assert(impl->start_pos <= impl->end_pos);
-    if(off < impl->start_pos) { 
+    if(off < impl->start_pos) {
       ret = EDOM;
     } else if(off + len > impl->end_pos) {
       impl->end_pos = off+len;
@@ -510,8 +522,8 @@ static int nbw_write(stasis_handle_t * h, lsn_t off,
   }
   return ret;
 }
-static int nbw_append(stasis_handle_t * h, lsn_t * off, 
-		      const byte * dat, lsn_t len) { 
+static int nbw_append(stasis_handle_t * h, lsn_t * off,
+		      const byte * dat, lsn_t len) {
   nbw_impl * impl = h->impl;
 
   pthread_mutex_lock(&impl->mut);
@@ -523,33 +535,33 @@ static int nbw_append(stasis_handle_t * h, lsn_t * off,
   int ret = nbw_write(h, *off, dat, len);
   return ret;
 }
-static int nbw_read(stasis_handle_t * h, 
-		    lsn_t off, byte * buf, lsn_t len) { 
+static int nbw_read(stasis_handle_t * h,
+		    lsn_t off, byte * buf, lsn_t len) {
   nbw_impl * impl = h->impl;
   const tree_node * n = findFastHandle(impl, off, len);
   int ret;
   // XXX should be handled by releaseFastHandle.
-  if(n) { 
+  if(n) {
     ret = n->h->read(n->h, off, buf, len);
     releaseFastHandle(impl, n, 0);
-  } else { 
+  } else {
     stasis_handle_t * slow = getSlowHandle(impl);
     ret = slow->read(slow, off, buf, len);
     releaseSlowHandle(impl, slow);
   }
   return ret;
 }
-static int nbw_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
+static int nbw_truncate_start(stasis_handle_t * h, lsn_t new_start) {
   nbw_impl * impl = h->impl;
   int error = 0;
   pthread_mutex_lock(&impl->mut);
-  if(new_start <= impl->end_pos && new_start > impl->start_pos) { 
+  if(new_start <= impl->end_pos && new_start > impl->start_pos) {
     impl->start_pos = new_start;
-  } else { 
+  } else {
     error = EDOM;
   }
   pthread_mutex_unlock(&impl->mut);
-  if(!error) { 
+  if(!error) {
     // XXX close all slow handles; truncate of them. (ie: implement truncate)
   }
   return error;
@@ -586,12 +598,12 @@ struct stasis_handle_t nbw_func = {
          the mutex.
 
 */
-static void * nbw_worker(void * handle) { 
+static void * nbw_worker(void * handle) {
   stasis_handle_t * h = handle;
   nbw_impl * impl = h->impl;
 
   pthread_mutex_lock(&impl->mut);
-  while(1) { 
+  while(1) {
     // cast strips const.
     tree_node * node = (tree_node*)RB_ENTRY(min)(impl->fast_handles);
     int writes = 0;
@@ -633,7 +645,8 @@ static void * nbw_worker(void * handle) {
           }
 
           stasis_handle_t * fast2 = np->h;
-          stasis_read_buffer_t * r2 = fast2->read_buffer(fast2,np->start_pos, np_len);
+          stasis_read_buffer_t * r2 = fast2->read_buffer(fast2,np->start_pos,
+                                                         np_len);
           memcpy(buf + buf_off, r2->buf, np_len);
           buf_off += np_len;
           r2->h->release_read_buffer(r2);
@@ -647,7 +660,8 @@ static void * nbw_worker(void * handle) {
         pthread_mutex_unlock(&impl->mut);
 
         if(len != PAGE_SIZE) {
-          DEBUG("merged %lld pages at %lld into single write\n", len/PAGE_SIZE, off/PAGE_SIZE);
+          DEBUG("merged %lld pages at %lld into single write\n",
+                len/PAGE_SIZE, off/PAGE_SIZE);
         }
 	slow->write(slow, off, buf, len);
 
@@ -660,15 +674,16 @@ static void * nbw_worker(void * handle) {
 	pthread_mutex_lock(&impl->mut);
 	node->pin_count--;
       }
-      tree_node *new_node = (tree_node*)RB_ENTRY(lookup)(RB_LUGREAT, node, impl->fast_handles);
-      if(!node->dirty && !node->pin_count) { 
+      tree_node *new_node = (tree_node*)RB_ENTRY(lookup)(RB_LUGREAT, node,
+                                                         impl->fast_handles);
+      if(!node->dirty && !node->pin_count) {
 	impl->fast_handle_count -= node->write_count;
         impl->used_buffer_size -= (node->end_pos - node->start_pos);
         freeFastHandle(impl, node);
       }
       node = new_node;
     }
-    if(!impl->fast_handle_count || !writes) { 
+    if(!impl->fast_handle_count || !writes) {
       if(impl->still_open) {
 	pthread_cond_wait(&impl->pending_writes_cond, &impl->mut);
       } else {
@@ -680,12 +695,11 @@ static void * nbw_worker(void * handle) {
   return 0;
 }
 
-stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * (*slow_factory)(void * arg),
-						   void * slow_factory_arg,
-						   stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),
-						   void * fast_factory_arg,
-						   int worker_thread_count,
-						   lsn_t buffer_size, int max_fast_handles) {
+stasis_handle_t * stasis_handle(open_non_blocking)
+    (stasis_handle_t * (*slow_factory)(void * arg), void * slow_factory_arg,
+     stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),
+     void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
+     int max_fast_handles) {
   nbw_impl * impl = malloc(sizeof(nbw_impl));
   pthread_mutex_init(&impl->mut, 0);
 
@@ -715,16 +729,16 @@ stasis_handle_t * stasis_handle(open_non_blocking)(stasis_handle_t * (*slow_fact
   impl->worker_count = worker_thread_count;
 
   pthread_cond_init(&impl->pending_writes_cond, 0);
-  
+
   impl->still_open = 1;
 
   stasis_handle_t *h = malloc(sizeof(stasis_handle_t));
   *h = nbw_func;
   h->impl = impl;
 
-  for(int i = 0; i < impl->worker_count; i++) { 
+  for(int i = 0; i < impl->worker_count; i++) {
     int err = pthread_create(&(impl->workers[i]), 0, nbw_worker, h);
-    if(err) { 
+    if(err) {
       perror("Coudln't spawn worker thread for non_blocking io");
     }
   }

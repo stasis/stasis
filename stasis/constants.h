@@ -82,10 +82,10 @@ terms specified in this license.
 
 #ifndef MAX_BUFFER_SIZE
 //#define MAX_BUFFER_SIZE 100003 
-/*#define MAX_BUFFER_SIZE 20029 */
+#define MAX_BUFFER_SIZE 20029
 //#define MAX_BUFFER_SIZE 10007 
 //#define MAX_BUFFER_SIZE 5003
-#define MAX_BUFFER_SIZE 2003 
+//#define MAX_BUFFER_SIZE 2003 
 //#define MAX_BUFFER_SIZE 4006 
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
