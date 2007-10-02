@@ -43,14 +43,166 @@ terms specified in this license.
 /**
  * @file
  *
- * interface for dealing with generic, lsn based pages
+ * interface for dealing with generic, LSN based pages
  *
  * This file provides a re-entrant interface for pages that are labeled
  * with an LSN and a page type.
  *
- * @ingroup LLADD_CORE
+ * @ingroup LLADD_CORE pageFormats
+ *
  * $Id$
- * 
+ */
+
+/**
+   @defgroup pageFormats Page format implementations
+
+   Stasis allows developers to define their own on-disk page formats.
+   Currently, each page format must end with a hard-coded header
+   containing an LSN and a page type.  (This restriction will be
+   removed in the future.)
+
+   This section explains how new page formats can be implemented in
+   Stasis, and documents the currently available page types.
+
+   A number of callbacks are invoked on existing pages as they are read
+   from disk, flushed back, and ultimately, evicted from cache:
+
+    -# stasis_page_loaded() is invoked when the page is read from disk.  It
+       should set the Page::LSN field appropriately, and
+       perhaps allocate any data structures that will be stored in the
+       Page::impl field.
+    -# stasis_page_flushed() is invoked when a dirty page is written back to
+       disk.  It should make sure that all updates are applied to the
+       physical representation of the page.  (Implementations of this
+       callback usually copy the Page::LSN field into the page header.)
+    -# stasis_page_cleanup() is invoked before a page is evicted from cache.
+       It should free any memory associated with the page, such as
+       that allocated by stasis_page_loaded(), or pointed to by Page::impl.
+
+   When an uninitialized page is read from disk, Stasis has no way of
+   knowing which stasis_page_loaded() callback should be invoked.  Therefore,
+   when a new page is initialized the page initialization code should
+   perform the work that would normally be performed by stasis_page_loaded().
+   Similarly, before a page is freed (and therefore, will be treated as
+   uninitialized data) stasis_page_cleanup() should be called.
+
+   Page implementations are free to define their own access methods
+   and APIs.  However, Stasis's record oriented page interface
+   provides a default set of methods for page access. 
+   
+   @see pageRecordInterface
+
+   @todo Page deallocators should call stasis_page_cleanup()
+   @todo Create variant of loadPage() that takes a page type
+   @todo Add support for LSN free pages.
+
+ */
+/*@{*/
+#ifndef __PAGE_H__
+#define __PAGE_H__
+
+#include <stasis/common.h>
+#include "latches.h"
+#include <stasis/transactional.h>
+
+BEGIN_C_DECLS
+
+/**
+    The page type contains in-memory information about pages.  This
+    information is used by Stasis to track the page while it is in
+    memory, and is never written to disk.
+
+    @todo Page_s shouldn't hardcode doubly linked lists.
+
+    @todo The Page struct should be tuned for better memory utilization.
+
+    @todo Remove next and prev from Page_s
+*/
+struct Page_s {
+  pageid_t id;
+  lsn_t LSN;
+  byte *memAddr;
+  byte dirty;
+  /** The next item in the replacement policy's queue */
+  struct Page_s *next;
+  /** The previous item in the replacement policy's queue. */
+  struct Page_s *prev;
+  /** Which queue is the page in? */
+  int queue;
+  /** Is the page in the cache at all? */
+  int inCache;
+
+  /** Used for page-level latching.
+
+      Each page has an associated read/write lock.  This lock only
+      protects the internal layout of the page, and the members of the
+      page struct.  Here is how rwlatch is held in various circumstances:
+
+      Record allocation:  Write lock
+      Record read:        Read lock
+      Read LSN            Read lock
+      Record write       *READ LOCK*
+      Write LSN           Write lock
+      Write page to disk  No lock
+      Read page from disk No lock
+
+      Any circumstance where one these locks are held during an I/O
+      operation is a bug.
+
+      For the 'no lock' cases, @see loadlatch
+
+  */
+
+  rwl * rwlatch;
+
+  /**
+      Since the bufferManager re-uses page structs, this lock is used
+      to ensure that the page is in one of two consistent states,
+      depending on whether a read lock or a write lock is being held.
+      If a read lock is held, then the page is managed by the rwlatch
+      also defined in this struct.  Therefore, it cannot be read from
+      or written to disk.  Furthermore, since we do not impose an
+      order on operations, the holder of a readlock may not use the
+      LSN field to determine whether a particular operation has
+      completed on the page.
+
+      The write lock is used to block all writers (other than the one
+      holding the page), and to ensure that all updates with LSN less
+      than or equal to the page's LSN have been applied.  Therefore,
+      threads that write the page to disk must hold this lock.  Since
+      it precludes access by all other threads, a write lock also
+      allows the holder to evict the current page, and replace it.
+
+      Examples:
+
+      Write page to disk    Write lock
+      Read page from disk   Write lock
+      Allocate a new record Read lock
+      Write to a record     Read lock
+      Read from a record    Read lock
+
+
+      @see rwlatch, getPage(), pageRalloc(), pageRead()
+
+  */
+  rwl * loadlatch;
+  /**
+      Page type implementations may store whatever they'd like in this
+      pointer.  It persists from each call to stasis_page_loaded() to the
+      subsequent call to stasis_page_flushed().
+  */
+  void * impl;
+};
+/*@}*/
+
+/**
+   @defgroup pageLSNHeaderGeneric LSN and Page Types
+   @ingroup pageFormats
+
+   Most Stasis pages contain an LSN and a page type.  These are used
+   by recovery to determine whether or not to perform redo.  At
+   run time, the page type is used to decide which page implementation
+   should manipulate the page.
 
  STRUCTURE OF A GENERIC PAGE
 <pre>
@@ -74,129 +226,26 @@ terms specified in this license.
  +----------------------------------------------------+-----------+-----+
 </pre>
   */
-
-#ifndef __PAGE_H__
-#define __PAGE_H__
-
-#include <stasis/common.h>
-#include "latches.h"
-#include <stasis/transactional.h>
-
-BEGIN_C_DECLS
-
-/** 
-    The page type contains in-memory information about pages.  This
-    information is used by LLADD to track the page while it is in
-    memory, and is never written to disk.
-
-    In particular, our current page replacement policy requires two doubly
-    linked lists, 
-
-    @todo The Page struct should be tuned for better memory utilization.
-
-    @todo Remove next and prev from Page_s
-*/
-struct Page_s {
-  pageid_t id;
-  lsn_t LSN;
-  byte *memAddr;
-  byte dirty;
-  /** The next item in the replacement policy's queue */
-  struct Page_s *next;
-  /** The previous item in the replacement policy's queue. */
-  struct Page_s *prev; 
-  /** Which queue is the page in? */
-  int queue; 
-  /** Is the page in the cache at all? */
-  int inCache;
-
-  /** Used for page-level latching.
-      
-      Each page has an associated read/write lock.  This lock only
-      protects the internal layout of the page, and the members of the
-      page struct.  Here is how rwlatch is held in various circumstances:
-      
-      Record allocation:  Write lock
-      Record read:        Read lock
-      Read LSN            Read lock
-      Record write       *READ LOCK*
-      Write LSN           Write lock
-      Write page to disk  No lock
-      Read page from disk No lock
-
-      Any circumstance where one these locks are held during an I/O
-      operation is a bug.  
-      
-      For the 'no lock' cases, @see loadlatch
-
-  */
-  
-  rwl * rwlatch;
-
-  /**
-      Since the bufferManager re-uses page structs, this lock is used
-      to ensure that the page is in one of two consistent states,
-      depending on whether a read lock or a write lock is being held.
-      If a read lock is held, then the page is managed by the rwlatch
-      also defined in this struct.  Therefore, it cannot be read from
-      or written to disk.  Furthermore, since we do not impose an
-      order on operations, the holder of a readlock may not use the
-      lsn field to determine whether a particular operation has
-      completed on the page.
-
-      The write lock is used to block all writers (other than the one
-      holding the page), and to ensure that all updates with lsn less
-      than or equal to the page's lsn have been applied.  Therefore,
-      threads that write the page to disk must hold this lock.  Since
-      it precludes access by all other threads, a write lock also
-      allows the holder to evict the current page, and replace it.
-
-      Examples:
-      
-      Write page to disk    Write lock
-      Read page from disk   Write lock
-      Allocate a new record Read lock
-      Write to a record     Read lock
-      Read from a record    Read lock
-
-
-      @see rwlatch, getPage(), pageRalloc(), pageRead()
-      
-  */
-  rwl * loadlatch;
-  /**
-      Page type implementatioms may store whatever they'd like in this
-      pointer.  It persists from each call to pageLoaded() to the
-      subsequent call to pageFlushed().
-  */
-  void * impl;
-};
-
-#define lsn_ptr(page)                   (((lsn_t*)(&((page)->memAddr[PAGE_SIZE])))-1)
-#define page_type_ptr(page)             (((int*)lsn_ptr((page)))-1)
-#define end_of_usable_space_ptr(page)   page_type_ptr((page))
-
-#define shorts_from_end(page, count)  (((short*)end_of_usable_space_ptr((page)))-(count))
-#define bytes_from_start(page, count) (((byte*)((page)->memAddr))+(count))
-#define shorts_from_start(page, count) (((short*)((page)->memAddr))+(count))
-#define ints_from_start(page, count)  (((int*)((page)->memAddr))+(count))
-#define ints_from_end(page, count)    (((int*)end_of_usable_space_ptr((page)))-(count))
-
-#define decode_size(size) (((size) >= SLOT_TYPE_BASE) ? SLOT_TYPE_LENGTHS[(size)-SLOT_TYPE_BASE] : (size))
-
-#define USABLE_SIZE_OF_PAGE (PAGE_SIZE - sizeof(lsn_t) - sizeof(int))
-
-#define physical_slot_length(size) ((size) >= 0 ? (size) : SLOT_TYPE_LENGTHS[-1*size])
+/*@{*/
+static inline lsn_t* stasis_page_lsn_ptr(Page *p) {
+  return ((lsn_t*)(&(p->memAddr[PAGE_SIZE])))-1;
+}
 
 /**
- * initializes all the global variables needed by the functions
- * dealing with pages.
+   Returns a pointer to the page's type.  This information is stored with the LSN.
+   Stasis uses it to determine which page implementation should handle each
+   page.
+
+   @param p Any page that contains an LSN header.
+   @see stasis_page_impl_register
+   @todo Need to typedef page_type_t
  */
-void pageInit();
-/**
- * releases all resources held by the page sub-system.
- */
-void pageDeinit();
+static inline int* stasis_page_type_ptr(Page *p) {
+  return ((int*)stasis_page_lsn_ptr(p))-1;
+}
+static inline const int* stasis_page_type_cptr(const Page *p) {
+  return (const int*)stasis_page_type_ptr((Page*)p);
+}
 
 /**
  * assumes that the page is already loaded in memory.  It takes as a
@@ -206,7 +255,7 @@ void pageDeinit();
  * dirtyPages table is needed for log truncation.  (If the page->id is
  * null, this function assumes the page is not in the buffer pool, and
  * does not update dirtyPages.  Similarly, if the page is already
- * dirty, there is no need to udpate dirtyPages.
+ * dirty, there is no need to update dirtyPages.
  *
  * @param xid The transaction that is writing to the page, or -1 if
  * outside of a transaction.
@@ -215,85 +264,197 @@ void pageDeinit();
  * function.
  *
  * @param lsn The new lsn of the page.  If the new lsn is less than
- * the page's current lsn, then the page's lsn will not be changed.
- * If the page is clean, the new lsn must be greater than the old lsn.
+ * the page's current LSN, then the page's LSN will not be changed.
+ * If the page is clean, the new LSN must be greater than the old LSN.
  */
-void pageWriteLSN(int xid, Page * page, lsn_t lsn);
+void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn);
 
 /**
  * assumes that the page is already loaded in memory.  It takes
  * as a parameter a Page and returns the LSN that is currently written on that
  * page in memory.
  */
-lsn_t pageReadLSN(const Page * page);
+lsn_t stasis_page_lsn_read(const Page * page);
+
+/*@}*/
 
 /**
- * @param xid transaction id @param lsn the lsn that the updated
- * record will reflect.  This is needed by recovery, and undo.  (The
- * lsn of a page must always increase.  Undos are handled by passing
- * in the LSN of the CLR that records the undo.)
+   @defgroup pageUtils Utility methods for page manipulation
+   @ingroup pageFormats
+
+   These methods make it easy to manipulate pages that use a standard
+   Stasis header (one with an LSN and page type).
+
+   Each one counts bytes from the beginning or end of the page's
+   usable space.  Methods with "_cptr_" in their names return const
+   pointers (and can accept const Page pointers as arguments).
+   Methods with "_ptr_" in their names take non-const pages, and
+   return non-const pointers.
+
+*/
+/*@{*/
+static inline byte*
+stasis_page_byte_ptr_from_start(Page *p, int count) {
+  return ((byte*)(p->memAddr))+count;
+}
+static inline byte*
+stasis_page_byte_ptr_from_end(Page *p, int count) {
+  return ((byte*)stasis_page_type_ptr(p))-count;
+}
+
+static inline int16_t*
+stasis_page_int16_ptr_from_start(Page *p, int count) {
+  return ((int16_t*)(p->memAddr))+count;
+}
+
+static inline int16_t*
+stasis_page_int16_ptr_from_end(Page *p, int count) {
+  return ((int16_t*)stasis_page_type_ptr(p))-count;
+}
+static inline int32_t*
+stasis_page_int32_ptr_from_start(Page *p, int count) {
+  return ((int32_t*)(p->memAddr))+count;
+}
+
+static inline int32_t*
+stasis_page_int32_ptr_from_end(Page *p, int count) {
+  return ((int32_t*)stasis_page_type_ptr(p))-count;
+}
+// Const methods
+static inline const byte*
+stasis_page_byte_cptr_from_start(const Page *p, int count) {
+  return (const byte*)stasis_page_byte_ptr_from_start((Page*)p, count);
+}
+static inline const byte*
+stasis_page_byte_cptr_from_end(const Page *p, int count) {
+  return (const byte*)stasis_page_byte_ptr_from_end((Page*)p, count);
+}
+
+static inline const int16_t*
+stasis_page_int16_cptr_from_start(const Page *p, int count) {
+  return (const int16_t*)stasis_page_int16_ptr_from_start((Page*)p,count);
+}
+
+static inline const int16_t*
+stasis_page_int16_cptr_from_end(const Page *p, int count) {
+  return (const int16_t*)stasis_page_int16_ptr_from_end((Page*)p,count);
+}
+static inline const int32_t*
+stasis_page_int32_cptr_from_start(const Page *p, int count) {
+  return (const int32_t*)stasis_page_int32_ptr_from_start((Page*)p,count);
+}
+
+static inline const int32_t*
+stasis_page_int32_cptr_from_end(const Page *p, int count) {
+  return (const int32_t*)stasis_page_int32_ptr_from_end((Page*)p,count);
+}
+
+
+/*@}*/
+
+/**
+ * initializes all the global variables needed by the functions
+ * dealing with pages.
+ *
+ * @todo documentation group for page init and deinit?
+ */
+void stasis_page_init();
+/**
+ * releases all resources held by the page sub-system.
+ */
+void stasis_page_deinit();
+
+/**
+    @defgroup pageRecordInterface Record-oriented page interface
+    @ingroup pageFormats
+
+    Stasis provides a default record-oriented interface to page
+    implementations.  By defining these methods, and registering
+    appropriate callbacks, page implementations allow callers to
+    access their data through standard Stasis methods such as Tread()
+    and Tset().
+*/
+/*@{*/
+static const size_t USABLE_SIZE_OF_PAGE = (PAGE_SIZE - sizeof(lsn_t) - sizeof(int));
+
+/**
+   Stasis records carry type information with them.  The type either
+   encodes the physical size of opaque data (the common case), or
+   indicates that the record should be handled specially (as the
+   fixed-length header of a data structure, for example).
+
+   This function maps from record type to record size.
+
+   @param type If positive, a record type is equal to the record size,
+   in bytes.  If negative, the type has special significance.  Its
+   length is looked up in the SLOT_TYPE_LENGTHS array.
+
+   @return The length of the record in bytes.
+ */
+static inline size_t physical_slot_length(ssize_t type) {
+  return type >= 0 ? type : SLOT_TYPE_LENGTHS[0 - type];
+}
+
+/**
+ * @param xid transaction id
  *
  * @param page a pointer to an in-memory copy of the page as it
  * currently exists.  This copy will be updated by writeRecord.
  *
- * @param rid recordid where you want to write 
+ * @param lsn the LSN that the updated record will reflect.  This is
+ * needed by recovery, and undo.  (The LSN of a page must always
+ * increase.  Undos are handled by passing in the LSN of the CLR that
+ * records the undo.)
+ *
+ * @param rid recordid where you want to write
  *
  * @param dat the new value of the record.
- *
- * @return 0 on success, lladd error code on failure
- *
- * @deprecated Unnecessary memcpy()'s
  */
-void recordWrite(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat); 
+void stasis_record_write(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat);
 /**
  * @param xid transaction ID
  * @param page a pointer to the pinned page that contains the record.
  * @param rid the record to be written
  * @param dat buffer for data
- * @return 0 on success, lladd error code on failure
- * @deprecated Unnecessary memcpy()'s
+ * @return 0 on success, Stasis error code on failure
  */
-int recordRead(int xid, Page * page, recordid rid, byte *dat);
+int stasis_record_read(int xid, Page * page, recordid rid, byte *dat);
 
-const byte * recordReadNew(int xid, Page * p, recordid rid);
-byte * recordWriteNew(int xid, Page * p, recordid rid);
-void recordReadDone(int xid, Page *p, recordid rid, const byte* buf);
-void recordWriteDone(int xid, Page *p, recordid rid, byte *buf);
-int recordGetTypeNew(int xid, Page * p, recordid rid);
-void recordSetTypeNew(int xid, Page * p, recordid rid, int type);
-int recordGetLength(int xid, Page *p, recordid rid);
-recordid recordFirst(int xid, Page * p);
-recordid recordNext(int xid, Page * p, recordid prev);
-recordid recordPreAlloc(int xid, Page * p, int size);
-void recordPostAlloc(int xid, Page * p, recordid rid);
-void recordFree(int xid, Page * p, recordid rid);
-int pageIsBlockSupported(int xid, Page * p);
-int pageFreespace(int xid, Page * p);
-void pageCompact(Page * p);
-void pageLoaded(Page * p);
-void pageFlushed(Page * p);
-void pageCleanup(Page * p);
+const byte * stasis_record_read_begin(int xid, Page * p, recordid rid);
+byte * stasis_record_write_begin(int xid, Page * p, recordid rid);
+void stasis_record_read_done(int xid, Page *p, recordid rid, const byte* buf);
+void stasis_record_write_done(int xid, Page *p, recordid rid, byte *buf);
+int stasis_record_type_read(int xid, Page * p, recordid rid);
+void stasis_record_type_write(int xid, Page * p, recordid rid, int type);
+int stasis_record_length_read(int xid, Page *p, recordid rid);
+recordid stasis_record_first(int xid, Page * p);
+recordid stasis_record_next(int xid, Page * p, recordid prev);
+recordid stasis_record_alloc_begin(int xid, Page * p, int size);
+void stasis_record_alloc_done(int xid, Page * p, recordid rid);
+void stasis_record_free(int xid, Page * p, recordid rid);
+int stasis_block_supported(int xid, Page * p);
+int stasis_record_freespace(int xid, Page * p);
+void stasis_record_compact(Page * p);
+void stasis_page_loaded(Page * p);
+void stasis_page_flushed(Page * p);
+void stasis_page_cleanup(Page * p);
 /**
-   @return -1 if the field does not exist, the size of the field otherwise (the rid parameter's size field will be ignored).
- */
-int recordSize(int xid, Page * p, recordid rid);
-/**
-   @todo recordDereference doesn't dispatch to pages.  Should it? 
+   @todo XXX stasis_record_dereference should be dispatched via page_impl[]
 */
-recordid recordDereference(int xid, Page *p, recordid rid);
-
+recordid stasis_record_dereference(int xid, Page *p, recordid rid);
+/*@}*/
 /**
-   @param a block returned by blockFirst() or blockNext().
+   @param a block returned by stasis_block_first() or stasis_block_next().
 
    is*() methods return zero for false, non-zero for true.
 
    recordFixedLen() returns the (single) length of every record in the
    block, or BLOCK_VARIABLE_LENGTH
 
-   methods that take int * size as an argument return a record size by 
+   methods that take int * size as an argument return a record size by
    setting the pointer (if it's not null).
 
-   @see Abadi, et. al, Intergrating Compression and Execution in Column-Oriented Database Systems, VLDB 2006.
+   @see Abadi, et. al, Integrating Compression and Execution in Column-Oriented Database Systems, VLDB 2006.
 
 */
 typedef struct block_t {
@@ -324,7 +485,7 @@ typedef struct block_t {
      the memory; hopefully, this points into the buffer manager, and
      this function call is O(1).  If it would be expensive to return a
      packed array of every record in the page, then only some of the
-     records might be returned.  Calling recordNext on { page->id,
+     records might be returned.  Calling stasis_record_next() on { page->id,
      off+ count } will tell the caller if it's received the entire
      page's contents.
 
@@ -342,36 +503,36 @@ typedef struct block_t {
    This function should work with any valid page implementation, but
    it might be less efficient than a custom implementation.
 
-   This is a convenience function for page implementors.  Other code
-   should call pageBlockFirst() instead.
+   This is a convenience function for page implementers.  Other code
+   should call stasis_block_first() instead.
 */
-block_t *pageGenericBlockFirst(int xid, Page *p);
+block_t *stasis_block_first_default_impl(int xid, Page *p);
 /**
    This function should work with any valid page implementation, but
    it might be less efficient than a custom implementation.
 
-   This is a convenience function for page implementors.  Other code
-   should call pageBlockNext() instead.
+   This is a convenience function for page implementers.  Other code
+   should call stasis_block_next() instead.
 */
-block_t * pageGenericBlockNext(int xid, Page *p, block_t *prev);
+block_t * stasis_block_next_default_impl(int xid, Page *p, block_t *prev);
 /**
    This function should work with any valid page implementation, but
    it might be less efficient than a custom implementation.
 
-   This is a convenience function for page implementors.  Other code
-   should call pageBlockDone() instead.
+   This is a convenience function for page implementers.  Other code
+   should call stasis_block_done() instead.
 */
-void      pageGenericBlockDone(int xid, Page *p, block_t *b);
+void      stasis_block_done_default_impl(int xid, Page *p, block_t *b);
 
-block_t * pageBlockFirst(int xid, Page * p);
-block_t * pageBlockNext(int xid, Page * p, block_t * prev);
-void pageBlockDone(int xid, Page * p, block_t * done);
+block_t * stasis_block_first(int xid, Page * p);
+block_t * stasis_block_next(int xid, Page * p, block_t * prev);
+void stasis_block_done(int xid, Page * p, block_t * done);
 /**
    None of these functions obtain latches.  Calling them without
-   holding rwlatch is an error. (Exception: dereferenceRid grabs the
-   latch for you...)
+   holding rwlatch is an error. (Exception: recordDereference grabs the
+   latch for you... XXX does it?)
 
-   The function pointer should be null if your page implementaion does
+   The function pointer should be null if your page implementation does
    not support the method in question.
 
    @todo Figure out what to do about readlock vs writelock...
@@ -381,22 +542,22 @@ void pageBlockDone(int xid, Page * p, block_t * done);
 
    pin
    latch
-   recordPreAlloc
-   recordPostAlloc
+   stasis_record_alloc_begin
+   stasis_record_alloc_done
    unlatch
 
    (There is a race here; other transactions can see that the page
    contains a new slot, but that the LSN hasn't been updated.  This
-   seems to be benign.  writeLSN refuses to decrement LSN's...  If the
-   lock manager is using LSNs for versioning, it might get into a
-   situation where the page has changed (the slot was allocated), but
-   the version wasn't bumped.  I can't imagine this causing trouble,
-   unless the application is using the presense or absence of an
-   uninitialized slot as some sort of side channel....)
+   seems to be benign.  stasis_page_lsn_write() refuses to decrement
+   LSN's...  If the lock manager is using LSNs for versioning, it
+   might get into a situation where the page has changed (the slot was
+   allocated), but the version wasn't bumped.  I can't imagine this
+   causing trouble, unless the application is using the presence or
+   absence of an uninitialized slot as some sort of side channel....)
 
    lsn = Tupdate(...)
    latch
-   writeLSN
+   stasis_page_lsn_write
    unlatch
    unpin
 
@@ -404,8 +565,8 @@ void pageBlockDone(int xid, Page * p, block_t * done);
 
    pin
    latch
-   recordPostAlloc
-   writeLSN
+   stasis_record_alloc_done
+   stasis_page_lsn_write
    unlatch
    unpin
 */
@@ -422,7 +583,7 @@ typedef struct page_impl {
       @return pointer to read region.  The pointer will be guaranteed
       valid while the page is read latched by this caller, or while
       the page is write latched, and no other method has been called on
-      this page.  Return null on error.  (XXX current implementations 
+      this page.  Return null on error.  (XXX current implementations
       abort/crash)
   */
   const byte* (*recordRead)(int xid,  Page *p, recordid rid);
@@ -433,9 +594,6 @@ typedef struct page_impl {
       @return a pointer to the buffer manager's copy of the record.
   */
   byte* (*recordWrite)(int xid, Page *p, recordid rid);
-  /**
-     @todo Most code doesn't call recordReadDone() and recordWriteDone() yet.
-  */
   void (*recordReadDone)(int xid, Page *p, recordid rid, const byte *b);
   void (*recordWriteDone)(int xid, Page *p, recordid rid, byte *b);
   /**
@@ -496,14 +654,14 @@ typedef struct page_impl {
 
       @param p the page whose freespace will be estimated.
       @return The number of bytes of free space on the page, or (for
-              efficiency's sake) an underestimate.
+	      efficiency's sake) an underestimate.
 
   */
   int (*pageFreespace)(int xid, Page * p);
   /**
       Compact the page in place.  This operation should not change the
       slot id's allocated to the records on the page.  Instead, it
-      should update the extimate returned by page_impl.freespace().
+      should update the estimate returned by page_impl.freespace().
 
       Depending on the page implementation, this function may have
       other side effects.
@@ -512,7 +670,7 @@ typedef struct page_impl {
   /**
       Generate a new, appropriately sized recordid.  This is the first
       of two allocation phases, and does not actually modify the page.
-      The caller of this function must call recordPostAlloc() before
+      The caller of this function must call stasis_record_alloc_done() before
       unlatching the page.
 
       @see page_impl.recordPostAlloc()
@@ -530,7 +688,7 @@ typedef struct page_impl {
 
       @param xid The active transaction
       @param p The page that will be allocated from
-      @param rid A new recordid that is (usually) from recordPreAlloc()
+      @param rid A new recordid that is (usually) from stasis_record_alloc_begin()
 
       @see Talloc(), page_impl.recordPreAlloc()
   */
@@ -551,7 +709,7 @@ typedef struct page_impl {
       operation, or should it be implemented once and for all in
       page.c?
 
-      indirect.c suggets this should be specfic to the page type;
+      indirect.c suggests this should be specific to the page type;
       blobs suggest this should be specific to record type.  Perhaps
       two levels of dereferencing are in order...  (First: page
       specific; second record specific...)
@@ -560,27 +718,33 @@ typedef struct page_impl {
 
   // -------- Page maintenance
 
-  /** This is called (exactly once) right after the page is read from
-      disk.
+  /** This is called when the page is read from disk.
 
       This function should set p->LSN to an appropriate value.
 
       @todo In order to support "raw" pages, we need a new page read
       method that lets the caller decide which page type should handle
-      the call to pageLoaded().
+      the call to stasis_page_loaded().
 
-      @todo pageLoaded() should set p->pageType.
+      @todo stasis_page_loaded() should set p->pageType.
 
-      @todo set *page_type_ptr() to UNINITIALIZED_PAGE when appropriate.
+      @todo set *stasis_page_type_ptr() to UNINITIALIZED_PAGE when appropriate.
 
   */
   void (*pageLoaded)(Page * p);
-  /** This is called (exactly once) right before the page is written
-      back to disk.
+  /** This is called before the page is written back to disk.
 
       This function should record p->LSN somewhere appropriate
+      (perhaps via stasis_page_lsn_ptr()), and should prepare the page
+      to be written back to disk.
   */
   void (*pageFlushed)(Page * p);
+  /** This is called before the page is evicted from memory.
+
+      At this point the page has already been written back to disk
+      (if necessary).  Any resources held on behalf of this page
+      should be released.
+   */
   void (*pageCleanup)(Page * p);
 } page_impl;
 
@@ -593,7 +757,7 @@ typedef struct page_impl {
     page type is not unique.)
 
 */
-int registerPageType(page_impl impl);
+int stasis_page_impl_register(page_impl impl);
 
 // --------------------  Page specific, general purpose methods
 
@@ -601,16 +765,14 @@ int registerPageType(page_impl impl);
     Initialize a new page
 
     @param p The page that will be turned into a new slotted page.
-             Its contents will be overwitten.  It was probably
-             returned by loadPage()
+	     Its contents will be overwritten.  It was probably
+	     returned by loadPage()
  */
-void slottedPageInitialize(Page * p);
-void fixedPageInitialize(Page * page, size_t size, int count);
+void stasis_slotted_initialize_page(Page * p);
+void stasis_fixed_initialize_page(Page * page, size_t size, int count);
+void stasis_indirect_initialize_page(Page * p, int height);
 
-int fixedRecordsPerPage(size_t size);
-
-void indirectInitialize(Page * p, int height);
-compensated_function recordid dereferenceRID(int xid, recordid rid);
+int stasis_fixed_records_per_page(size_t size);
 
 END_C_DECLS
 

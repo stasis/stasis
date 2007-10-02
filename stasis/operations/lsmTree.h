@@ -29,9 +29,13 @@ void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
 /**
    Initialize a new LSM tree.
 
-   @param comparator.  The id of the comparator this tree should use.
+   @param xid The tranasction that is creating the tree.
+
+   @param comparator  The id of the comparator this tree should use.
           (It must have been registered with lsmTreeRegisterComparator
           before TlsmCreate() is called.
+
+   @param keySize
 */
 recordid TlsmCreate(int xid, int comparator, int keySize);
 /**

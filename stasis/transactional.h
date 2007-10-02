@@ -46,19 +46,30 @@ terms specified in this license.
  * The minimal subset of Stasis necessary to implement transactional consistency.
  *
  * This module includes the standard API (excluding operations), the
- * logger, the buffer mananger, and recovery code.
+ * logger, the buffer manager, and recovery code.
  *
  * In theory, the other .h files that are installed in /usr/include
  * aren't needed for application developers.
  *
- * @todo Move as much of the stuff in lladd/ to src/lladd/ as possible.  Alternatively, move all headers to lladd/, and be done with it!
+ * @todo Move as much of the stuff in stasis/ to src/stasis/ as possible.  Alternatively, move all headers to stasis/, and be done with it!
  *
  */
 /**
    @mainpage Introduction to Stasis
    
+   This is the main section.
+   <ul>
+     <li>@ref gettingStarted</li>
+     <li>@ref pageFormats</li>
+     <li>@ref LLADD_CORE</li>
+     <li>@ref OPERATIONS</li>
+   </ul>
+*/
+
+/**
+   @page gettingStarted Getting Started
    @section compiling Compiling and installation
-   
+
    Prerequisites:
    
    - automake 1.8+: needed to build from CVS 
@@ -131,7 +142,7 @@ terms specified in this license.
    self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and 
    Tdeinit() initialize the library, and clean up when the program is finished.
    
-   Other partiularly useful functions are ThashCreate(), ThashDelete(),
+   Other particularly useful functions are ThashCreate(), ThashDelete(),
    ThashInsert(), ThashRemove(), and ThashLookup() which provide a
    re-entrant linear hash implementation.  ThashIterator() and
    ThashNext() provide an iterator over the hashtable's values.
@@ -153,7 +164,7 @@ terms specified in this license.
    
    @include examples/ex2.c
 
-   @see test.c for a complete, executable example of reopeneing an existing store.
+   @see test.c for a complete, executable example of reopening an existing store.
 
    @todo Explain how to determine the correct value of rootEntry.size in the case
          of a hashtable.
@@ -175,7 +186,7 @@ terms specified in this license.
    being written.  This is less consistency than SQL's Level 0 (Dirty
    Reads) provides.  Some of Stasis' data structures do obtain short
    read and write locks automatically.  Refer to individual data
-   structues for more information.
+   structures for more information.
 
    Stasis' allocation functions, such as Talloc(), do not reuse space
    that was freed by an ongoing transaction.  This means that you may
@@ -190,7 +201,7 @@ terms specified in this license.
    other.  This means that transactions may observe the effects of
    transactions that will eventually abort.
 
-   Finally, Stasis asumes that each thread has its own transaction;
+   Finally, Stasis assumes that each thread has its own transaction;
    concurrent calls within the same transaction are not supported.
    This restriction may be removed in the future.
 
@@ -202,7 +213,7 @@ terms specified in this license.
    Stasis.  Running 'make check' in test/stasis runs all of the Stasis
    tests without running the obsolete tests.
 
-   @section archictecture Stasis' structure
+   @section architecture Stasis' structure
 
    This section is geared toward people that would like to extend
    Stasis.  The OSDI paper provides a higher level description and
@@ -375,7 +386,7 @@ terms specified in this license.
    portably is a bit tricky.  Stasis has settled upon a compromise in
    this matter.  Its page file formats are compatible within a single
    architecture, but not across systems with varying lengths of
-   primitive types, or that vary in endianess.
+   primitive types, or that vary in endianness.
 
    Over time, types that vary in length such as "int", "long", etc
    will be removed from Stasis, but their usage still exists in a few
@@ -410,14 +421,16 @@ terms specified in this license.
    involved.  However, it lets the compiler deal with the underlying
    multiplications, and often reduces the number of casts, leading to
    slightly more readable code.  Take this implementation of
-   page_type_ptr(), for example:
+   stasis_page_type_ptr(), for example:
 
    @code
-   int * page_type_ptr(Page *p) { return ( (int*)lsn_ptr(Page *p) ) - 1; }
+   int * stasis_page_type_ptr(Page *p) { 
+      return ( (int*)stasis_page_lsn_ptr(Page *p) ) - 1; 
+   }
    @endcode
 
    Here, the page type is stored as an integer immediately before the
-   lsn_ptr.  Using arithmetic over char*'s would require an extra
+   LSN pointer.  Using arithmetic over char*'s would require an extra
    cast to char*, and a multiplication by sizeof(int).
 
    @par A note on storage allocation
@@ -438,7 +451,7 @@ terms specified in this license.
      then reused without being reset.
 
    # Allocate a single page at a time using TallocPage(), and
-     TsetPage().  This is currently the msot attractive route, though
+     TsetPage().  This is currently the most attractive route, though
      TsetPage() does not call pageLoaded() when it resets page types,
      which can lead to trouble.
 
@@ -562,7 +575,7 @@ int Tbegin();
 
 /**
  * Used when extending Stasis.
- * Operation implementors should wrap around this function to provide more mnuemonic names.
+ * Operation implementers should wrap around this function to provide more mnemonic names.
  *
  * @param xid          The current transaction.
  * @param rid          The record the operation pertains to.  For some logical operations, this will be a dummy record.
@@ -580,6 +593,8 @@ compensated_function void TupdateRaw(int xid, recordid rid,
 compensated_function void TupdateDeferred(int xid, recordid rid, 
 					  const void *dat, int op);
 /**
+ * Read the value of a record.
+ * 
  * @param xid transaction ID
  * @param rid reference to page/slot
  * @param dat buffer into which data goes
@@ -646,7 +661,7 @@ void TsetXIDCount(int xid);
  * Checks to see if a transaction is still active.
  *
  * @param xid The transaction id to be tested.
- * @return true if the transacation is still running, false otherwise.
+ * @return true if the transaction is still running, false otherwise.
  */
 int TisActiveTransaction(int xid);
 
@@ -657,7 +672,7 @@ lsn_t transactions_minRecLSN();
 
 
 /**
-   Report Stasis' current durablity guarantees.
+   Report Stasis' current durability guarantees.
 
    @return VOLATILE if the data will be lost after Tdeinit(), or a
    crash, PERSISTENT if the data will be written back to disk after

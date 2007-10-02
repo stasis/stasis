@@ -1,7 +1,10 @@
 #include "../page.h"
 #include "header.h"
 #include <assert.h>
-
+/**
+   @file header.c is dead code(?)  
+   @todo Delete header.c
+ */
 int headerPageInitialize() {
   Page * p;
   try_ret(0) { 

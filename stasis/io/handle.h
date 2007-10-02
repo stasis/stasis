@@ -15,7 +15,9 @@
 
 /**
 
-   @file Interface for I/O handle implementations.
+   @file 
+
+   Interface for I/O handle implementations.
 
    This interface is designed to provide some extra features needed by
    the buffer manager and the log, and to hide the operating system's

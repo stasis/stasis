@@ -55,11 +55,11 @@ void initializePages() {
 
     assert(p->id != -1);
     writelock(p->rwlatch,0);
-    slottedPageInitialize(p);
-    recordPostAlloc(-1, p, rid);
-    int * buf = (int*)recordWriteNew(-1, p, rid);
+    stasis_slotted_initialize_page(p);
+    stasis_record_alloc_done(-1, p, rid);
+    int * buf = (int*)stasis_record_write_begin(-1, p, rid);
     *buf = i;
-    pageWriteLSN(-1, p, 0);
+    stasis_page_lsn_write(-1, p, 0);
     unlock(p->rwlatch);
     releasePage(p);
   }
@@ -87,7 +87,7 @@ void * workerThread(void * p) {
 
     p = loadPage(-1, rid.page);
     
-    recordRead(1, p, rid, (byte*)&j);
+    stasis_record_read(1, p, rid, (byte*)&j);
 
     releasePage(p);
 
@@ -138,7 +138,7 @@ void * workerThreadWriting(void * q) {
     }
     
     /*    sched_yield(); */
-    recordWrite(1, p, 0, rids[i], (byte*)&val); 
+    stasis_record_write(1, p, 0, rids[i], (byte*)&val); 
 
     assert(p->id == rids[i].page);
     releasePage(p);
@@ -156,7 +156,7 @@ void * workerThreadWriting(void * q) {
 
     p = loadPage(xid, rids[i].page);
 
-    recordRead(1, p, rids[i], (byte*)&val); 
+    stasis_record_read(1, p, rids[i], (byte*)&val); 
 
     releasePage(p);
 

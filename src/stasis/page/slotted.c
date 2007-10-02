@@ -15,10 +15,10 @@ static inline void slottedFsck(const Page const * page) {
   dummy.id = -1;
   dummy.memAddr = 0;
 
-  const short page_type = *page_type_ptr(page);
-  const short numslots  = *numslots_ptr(page);
-  const short freespace = *freespace_ptr(page);
-  const short freelist  = *freelist_ptr(page);
+  const short page_type = *stasis_page_type_cptr(page);
+  const short numslots  = *numslots_cptr(page);
+  const short freespace = *freespace_cptr(page);
+  const short freelist  = *freelist_cptr(page);
 
   const long slotListStart = (long)slot_length_ptr(&dummy, numslots-1);
   assert(slotListStart < PAGE_SIZE && slotListStart >= 0);
@@ -193,9 +193,9 @@ void slottedPageDeinit() {
 }
 
 
-void slottedPageInitialize(Page * page) {
+void stasis_slotted_initialize_page(Page * page) {
   assertlocked(page->rwlatch);
-  *page_type_ptr(page) = SLOTTED_PAGE;
+  *stasis_page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;
   *freelist_ptr(page)  = INVALID_SLOT;
@@ -500,11 +500,11 @@ static void slottedFree(int xid, Page * p, recordid rid) {
 // XXX dereferenceRID
 
 void slottedLoaded(Page *p) {
-  p->LSN = *lsn_ptr(p);
+  p->LSN = *stasis_page_lsn_ptr(p);
   slottedFsck(p);  // @todo In normal case, arrange for fsck to run on load/flush, but nowhere else.
 }
 void slottedFlushed(Page *p) {
-  *lsn_ptr(p) = p->LSN;
+  *stasis_page_lsn_ptr(p) = p->LSN;
   slottedFsck(p);
 }
 void slottedCleanup(Page *p) { }
@@ -522,9 +522,9 @@ static page_impl pi =  {
     slottedFirst,
     slottedNext,
     notSupported, // is block supported
-    pageGenericBlockFirst,
-    pageGenericBlockNext,
-    pageGenericBlockDone,
+    stasis_block_first_default_impl,
+    stasis_block_next_default_impl,
+    stasis_block_done_default_impl,
     slottedFreespace,
     slottedCompact,
     slottedPreRalloc,

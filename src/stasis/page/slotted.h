@@ -30,10 +30,10 @@
    - slots are zero indexed.
    - slots are of implemented as (offset, length)
 
-Slotted page layout: 
+Slotted page layout:
 
  END:
-         lsn (4 bytes)
+	 lsn (4 bytes)
 	 type (2 bytes)
 	 free space (2 bytes)
 	 num of slots (2 bytes)
@@ -55,8 +55,8 @@ Slotted page layout:
  $Id$
 
 @todo slotted.c Should know that specific record types (like blobs) exist,
-                (but should not hardcode information about these types) This
-                has been handled, except in slottedPostRalloc...
+		(but should not hardcode information about these types) This
+		has been handled, except in slottedPostRalloc...
 
 ************************************************************************/
 
@@ -70,12 +70,24 @@ Slotted page layout:
 #define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
 #endif
 
-#define freespace_ptr(page)      shorts_from_end((page), 1)
-#define numslots_ptr(page)       shorts_from_end((page), 2)
-#define freelist_ptr(page)       shorts_from_end((page), 3)
-#define slot_ptr(page, n)        shorts_from_end((page), (2*(n))+4)
-#define slot_length_ptr(page, n) shorts_from_end((page), (2*(n))+5)
-#define record_ptr(page, n)      bytes_from_start((page), *slot_ptr((page), (n)))
+/**
+ @todo rename and rewrite slotted.h macros as static inline functions.
+ */
+#define freespace_ptr(page)      stasis_page_int16_ptr_from_end((page), 1)
+#define numslots_ptr(page)       stasis_page_int16_ptr_from_end((page), 2)
+#define freelist_ptr(page)       stasis_page_int16_ptr_from_end((page), 3)
+#define slot_ptr(page, n)        stasis_page_int16_ptr_from_end((page), (2*(n))+4)
+#define slot_length_ptr(page, n) stasis_page_int16_ptr_from_end((page), (2*(n))+5)
+#define record_ptr(page, n)      stasis_page_byte_ptr_from_start((page), \
+								 *slot_ptr((page), (n)))
+
+#define freespace_cptr(page)      stasis_page_int16_cptr_from_end((page), 1)
+#define numslots_cptr(page)       stasis_page_int16_cptr_from_end((page), 2)
+#define freelist_cptr(page)       stasis_page_int16_cptr_from_end((page), 3)
+#define slot_cptr(page, n)        stasis_page_int16_cptr_from_end((page), (2*(n))+4)
+#define slot_length_cptr(page, n) stasis_page_int16_cptr_from_end((page), (2*(n))+5)
+#define record_cptr(page, n)      stasis_page_byte_cptr_from_start((page), \
+								   *slot_cptr((page), (n)))
 
 void slottedPageInit();
 void slottedPageDeinit();

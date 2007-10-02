@@ -35,7 +35,7 @@ extern int bufferManagerFileHandleType;
 extern int bufferManagerNonBlockingSlowHandleType;
 /**
    If true, the buffer manager will use O_DIRECT.  Set at compile time by
-   #defining BUFFER_MANAGER_O_DIRECT.
+   defining BUFFER_MANAGER_O_DIRECT.
 */
 extern int bufferManagerO_DIRECT;
 #endif

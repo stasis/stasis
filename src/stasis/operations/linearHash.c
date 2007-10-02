@@ -308,7 +308,7 @@ void instant_update_hash_header(int xid, recordid hash, int i, int next_split) {
     logical consistency to the buckets' linked lists.  Then, call instant_rehash
     to complete the split.
     
-    @XXX Need to test recover_split, and figure out where to call it!
+    @todo XXX Need to test recover_split, and figure out where to call it!
  */
 static void recover_split(int xid, recordid hashRid, int i, int next_split, int keySize, int valSize) __attribute__((unused));
 

@@ -78,13 +78,13 @@
 
 static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
 
-  if(recordGetTypeNew(xid, p, rid) == INVALID_SLOT) {
-    recordPostAlloc(xid, p, rid);
+  if(stasis_record_type_read(xid, p, rid) == INVALID_SLOT) {
+    stasis_record_alloc_done(xid, p, rid);
   }
 
-  assert(recordGetLength(xid, p, rid) == physical_slot_length(rid.size));
+  assert(stasis_record_length_read(xid, p, rid) == physical_slot_length(rid.size));
   if(rid.size < 0) {
-    assert(recordGetTypeNew(xid,p,rid) == rid.size);
+    assert(stasis_record_type_read(xid,p,rid) == rid.size);
   }
   return 0;
 }
@@ -92,27 +92,27 @@ static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch, 0);
   int ret = operate_helper(xid,p,rid,dat);
-  pageWriteLSN(xid,p,lsn);
+  stasis_page_lsn_write(xid,p,lsn);
   unlock(p->rwlatch);
   return ret;
 }
 
 static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch,0);
-  recordFree(xid, p, rid);
-  pageWriteLSN(xid,p,lsn);
-  assert(recordGetTypeNew(xid, p, rid) == INVALID_SLOT);
+  stasis_record_free(xid, p, rid);
+  stasis_page_lsn_write(xid,p,lsn);
+  assert(stasis_record_type_read(xid, p, rid) == INVALID_SLOT);
   unlock(p->rwlatch);
   return 0;
 }
 
 static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch,0);
-  assert(recordGetTypeNew(xid, p, rid) == INVALID_SLOT);
+  assert(stasis_record_type_read(xid, p, rid) == INVALID_SLOT);
   int ret = operate_helper(xid, p, rid, dat);
-  byte * buf = recordWriteNew(xid,p,rid);
-  memcpy(buf, dat, recordGetLength(xid,p,rid));
-  pageWriteLSN(xid,p,lsn);
+  byte * buf = stasis_record_write_begin(xid,p,rid);
+  memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
+  stasis_page_lsn_write(xid,p,lsn);
   unlock(p->rwlatch);
 
   return ret;
@@ -179,7 +179,7 @@ static void reserveNewRegion(int xid) {
        if(initialFreespace == -1) {
          Page * p = loadPage(xid, firstPage);
          readlock(p->rwlatch,0);
-         initialFreespace = pageFreespace(xid, p);
+         initialFreespace = stasis_record_freespace(xid, p);
          unlock(p->rwlatch);
          releasePage(p);
        }
@@ -220,9 +220,9 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
     p = loadPage(xid, lastFreepage);
     writelock(p->rwlatch, 0);
-    while(pageFreespace(xid, p) < physical_slot_length(type)) {
-      pageCompact(p);
-      int newFreespace = pageFreespace(xid, p);
+    while(stasis_record_freespace(xid, p) < physical_slot_length(type)) {
+      stasis_record_compact(p);
+      int newFreespace = stasis_record_freespace(xid, p);
 
       if(newFreespace >= physical_slot_length(type)) {
 	break;
@@ -246,12 +246,12 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
       writelock(p->rwlatch, 0);
     }
 
-    rid = recordPreAlloc(xid, p, type);
+    rid = stasis_record_alloc_begin(xid, p, type);
 
     assert(rid.size != INVALID_SLOT);
 
-    recordPostAlloc(xid, p, rid);
-    int newFreespace = pageFreespace(xid, p);
+    stasis_record_alloc_done(xid, p, rid);
+    int newFreespace = stasis_record_freespace(xid, p);
     allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
     unlock(p->rwlatch);
 
@@ -290,10 +290,10 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long t
   pthread_mutex_lock(&talloc_mutex);
   Page * p = loadPage(xid, page);
   writelock(p->rwlatch,0);
-  recordid rid = recordPreAlloc(xid, p, type);
+  recordid rid = stasis_record_alloc_begin(xid, p, type);
 
   if(rid.size != INVALID_SLOT) {
-    recordPostAlloc(xid,p,rid);
+    stasis_record_alloc_done(xid,p,rid);
     allocationPolicyAllocedFromPage(allocPolicy, xid, page);
     unlock(p->rwlatch);
 
@@ -327,11 +327,11 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   } end;
 
   
-  recordid newrid = recordDereference(xid, p, rid);
+  recordid newrid = stasis_record_dereference(xid, p, rid);
   allocationPolicyLockPage(allocPolicy, xid, newrid.page);
   
   begin_action(releasePage, p) {
-    recordRead(xid, p, rid, preimage);
+    stasis_record_read(xid, p, rid, preimage);
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
     Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
   } compensate;
@@ -346,7 +346,7 @@ compensated_function int TrecordType(int xid, recordid rid) {
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   int ret;
-  ret = recordGetTypeNew(xid, p, rid);
+  ret = stasis_record_type_read(xid, p, rid);
   unlock(p->rwlatch);
   releasePage(p);
   return ret;
@@ -357,7 +357,7 @@ compensated_function int TrecordSize(int xid, recordid rid) {
   Page * p;
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
-  ret = recordGetLength(xid, p, rid);
+  ret = stasis_record_length_read(xid, p, rid);
   unlock(p->rwlatch);
   releasePage(p);
   return ret;
@@ -376,15 +376,15 @@ static int operate_initialize_page(int xid, Page *p, lsn_t lsn, recordid rid, co
   writelock(p->rwlatch, 0);
   switch(rid.slot) { 
   case SLOTTED_PAGE:
-    slottedPageInitialize(p);
+    stasis_slotted_initialize_page(p);
     break;
   case FIXED_PAGE: 
-    fixedPageInitialize(p, rid.size, fixedRecordsPerPage(rid.size));
+    stasis_fixed_initialize_page(p, rid.size, stasis_fixed_records_per_page(rid.size));
     break;
   default:
     abort();
   }
-  pageWriteLSN(xid, p, lsn);
+  stasis_page_lsn_write(xid, p, lsn);
   unlock(p->rwlatch);
   return 0;
 }

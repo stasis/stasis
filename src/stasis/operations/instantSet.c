@@ -49,7 +49,7 @@ terms specified in this license.
 #include "../page.h"
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  recordWrite(xid, p, lsn, rid, dat); 
+  stasis_record_write(xid, p, lsn, rid, dat); 
   return 0;
 }
 

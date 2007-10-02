@@ -6,35 +6,35 @@
 
 
 
-int fixedRecordsPerPage(size_t size) {
+int stasis_fixed_records_per_page(size_t size) {
   return (USABLE_SIZE_OF_PAGE - 2*sizeof(short)) / size;
 }
-/** @todo CORRECTNESS  Locking for fixedPageInitialize? (should hold writelock)*/
-void fixedPageInitialize(Page * page, size_t size, int count) {
+/** @todo CORRECTNESS  Locking for stasis_fixed_initialize_page? (should hold writelock)*/
+void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
   assertlocked(page->rwlatch);
   // XXX fixed page asserts it's been given an UNINITIALIZED_PAGE...  Why doesn't that crash?
-  assert(*page_type_ptr(page) == UNINITIALIZED_PAGE);
-  *page_type_ptr(page) = FIXED_PAGE;
+  assert(*stasis_page_type_ptr(page) == UNINITIALIZED_PAGE);
+  *stasis_page_type_ptr(page) = FIXED_PAGE;
   *recordsize_ptr(page) = size;
-  assert(count <= fixedRecordsPerPage(size));
+  assert(count <= stasis_fixed_records_per_page(size));
   *recordcount_ptr(page)= count;
 }
 
 static int checkRidWarnedAboutUninitializedKludge = 0;
 static void checkRid(Page * page, recordid rid) {
   assertlocked(page->rwlatch);
-  if(! *page_type_ptr(page)) { 
+  if(! *stasis_page_type_ptr(page)) { 
     if(!checkRidWarnedAboutUninitializedKludge) { 
       checkRidWarnedAboutUninitializedKludge = 1;
       printf("KLUDGE detected in checkRid. Fix it ASAP\n");
       fflush(stdout);
     }
-    fixedPageInitialize(page, rid.size, fixedRecordsPerPage(rid.size));
+    stasis_fixed_initialize_page(page, rid.size, stasis_fixed_records_per_page(rid.size));
   }
 
   assert(page->id == rid.page);
   assert(*recordsize_ptr(page) == rid.size);
-  assert(fixedRecordsPerPage(rid.size) > rid.slot);
+  assert(stasis_fixed_records_per_page(rid.size) > rid.slot);
 }
 
 //-------------- New API below this line
@@ -75,7 +75,7 @@ static void fixedSetType(int xid, Page *p, recordid rid, int type) {
 }
 static int fixedGetLength(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
-  assert(*page_type_ptr(p));
+  assert(*stasis_page_type_ptr(p));
   return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
 }
@@ -84,7 +84,7 @@ static int notSupported(int xid, Page * p) { return 0; }
 
 static int fixedFreespace(int xid, Page * p) {
   assertlocked(p->rwlatch);
-  if(fixedRecordsPerPage(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
+  if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
     // Return the size of a slot; that's the biggest record we can take.
     return physical_slot_length(*recordsize_ptr(p));
   } else {
@@ -97,7 +97,7 @@ static void fixedCompact(Page * p) {
 }
 static recordid fixedPreAlloc(int xid, Page *p, int size) {
   assertlocked(p->rwlatch);
-  if(fixedRecordsPerPage(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
+  if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
     recordid rid;
     rid.page = p->id;
     rid.slot = *recordcount_ptr(p);
@@ -125,10 +125,10 @@ static void fixedFree(int xid, Page *p, recordid rid) {
 // XXX dereferenceRID
 
 void fixedLoaded(Page *p) {
-  p->LSN = *lsn_ptr(p);
+  p->LSN = *stasis_page_lsn_ptr(p);
 }
 void fixedFlushed(Page *p) {
-  *lsn_ptr(p) = p->LSN;
+  *stasis_page_lsn_ptr(p) = p->LSN;
 }
 void fixedCleanup(Page *p) { }
 page_impl fixedImpl() {
@@ -144,9 +144,9 @@ page_impl fixedImpl() {
     fixedFirst,
     fixedNext,
     notSupported, // notSupported,
-    pageGenericBlockFirst,
-    pageGenericBlockNext,
-    pageGenericBlockDone,
+    stasis_block_first_default_impl,
+    stasis_block_next_default_impl,
+    stasis_block_done_default_impl,
     fixedFreespace,
     fixedCompact,
     fixedPreAlloc,

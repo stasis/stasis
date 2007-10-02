@@ -110,7 +110,7 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
 
   if (DEBUGSTATEMENTS) {printf("\nDebug1\n");}
 
-  recordRead(xid, p, rid, countBuff); // read the value of count from slot 0
+  stasis_record_read(xid, p, rid, countBuff); // read the value of count from slot 0
 
   if (DEBUGSTATEMENTS) {printf("\nDebug2\n");}
 
@@ -122,7 +122,7 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
   printf("\nrid2slot  = %d\n", rid.slot);
 
   // *recordcount_ptr(p) = last accessible index on the page. 
-  int max_index = fixedRecordsPerPage(rid.size); // rcs made this change.  
+  int max_index = stasis_fixed_records_per_page(rid.size); // rcs made this change.  
   //  int max_index = *recordcount_ptr(p);     // recordcount_ptr is the number of slots currently allocated on the page.
                                                // but this code seems to do it's own allocation(?)
 
@@ -189,7 +189,7 @@ void initializeNewBTreeNode(int xid, Page* p, recordid rid){
   byte * countBuff = (byte *) & countInt;
   
   // write the count out
-  recordWrite(xid, p, 1, rid, countBuff); 
+  stasis_record_write(xid, p, 1, rid, countBuff); 
 
 }
 void testFunctions(){
@@ -247,7 +247,7 @@ int SimpleExample(){
 
 
   /* check to make sure page is recorded as a FIXED_PAGE */
-  assert( *page_type_ptr(p1) == FIXED_PAGE);
+  assert( *stasis_page_type_ptr(p1) == FIXED_PAGE);
   
   if (DEBUGP) { printf("\n%d\n", rid1.page); }
   byte * b1 = (byte *) malloc (sizeof (int));
@@ -279,8 +279,8 @@ int SimpleExample(){
   // @todo This is a messy way to do this...
   unlock(p1->rwlatch);
  
-  recordWrite(xid, p1, 1, rid2, b1);
-  recordRead(xid, p1, rid2, b2);
+  stasis_record_write(xid, p1, 1, rid2, b1);
+  stasis_record_read(xid, p1, rid2, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
   //  initializeNewBTreeNode(p1, rid1); 

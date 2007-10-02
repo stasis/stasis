@@ -27,12 +27,12 @@ static void TdeallocBoundaryTag(int xid, unsigned int page);
 */
 static int operate_alloc_boundary_tag(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { 
   writelock(p->rwlatch, 0);
-  slottedPageInitialize(p);
-  *page_type_ptr(p) = BOUNDARY_TAG_PAGE;
-  recordPostAlloc(xid, p, rid);
-  pageWriteLSN(xid, p, lsn);
-  byte * buf = recordWriteNew(xid, p, rid);
-  memcpy(buf, dat, recordGetLength(xid, p, rid));
+  stasis_slotted_initialize_page(p);
+  *stasis_page_type_ptr(p) = BOUNDARY_TAG_PAGE;
+  stasis_record_alloc_done(xid, p, rid);
+  stasis_page_lsn_write(xid, p, lsn);
+  byte * buf = stasis_record_write_begin(xid, p, rid);
+  memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
   unlock(p->rwlatch);
   return 0;
 }
@@ -125,7 +125,7 @@ static void TdeallocBoundaryTag(int xid, unsigned int page) {
  
 void regionsInit() { 
   Page * p = loadPage(-1, 0);
-  int pageType = *page_type_ptr(p);
+  int pageType = *stasis_page_type_ptr(p);
 
   holding_mutex = pthread_self();
   if(pageType != BOUNDARY_TAG_PAGE) {
@@ -263,7 +263,7 @@ static void consolidateRegions(int xid, unsigned int * firstPage, boundary_tag  
     boundary_tag succ_tag;
     TreadBoundaryTag(xid, succ_page, &succ_tag);
 
-    // TODO: Check page_type_ptr()...
+    // TODO: Check stasis_page_type_ptr()...
 
     if(succ_tag.size == UINT32_MAX) { 
       t->size = UINT32_MAX;

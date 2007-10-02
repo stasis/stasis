@@ -25,7 +25,7 @@ static void phWrite(Page * ret) {
   // implicitly have exclusive access to the page before this function is called,
   // or we'll deadlock.
   writelock(ret->rwlatch,0);
-  pageFlushed(ret);
+  stasis_page_flushed(ret);
   LogForce(ret->LSN);
   int err = h->write(h, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
@@ -50,7 +50,7 @@ static void phRead(Page * ret) {
     }
   }
   ret->dirty = 0;
-  pageLoaded(ret);
+  stasis_page_loaded(ret);
   unlock(ret->rwlatch);
 }
 static void phForce() { 

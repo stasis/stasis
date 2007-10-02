@@ -97,7 +97,7 @@ static page_impl page_impls[MAX_PAGE_TYPE];
 /**
    XXX latching for pageWriteLSN...
 */
-void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
+void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
   // These asserts belong here, but would cause some hacked up unit tests to fail...
   // if(!page->dirty) {
   //  assert(page->LSN < lsn);
@@ -113,30 +113,30 @@ void pageWriteLSN(int xid, Page * page, lsn_t lsn) {
 /**
    XXX latching for pageReadLSN...
 */
-lsn_t pageReadLSN(const Page * page) {
+lsn_t stasis_page_lsn_read(const Page * page) {
   return page->LSN;
 }
 
 /* ----- (de)initialization functions.  Do not need to support multithreading. -----*/
 
 /**
- * pageInit() initializes all the important variables needed in
+ * initializes all the important variables needed in
  * all the functions dealing with pages.
  */
-void pageInit() {
+void stasis_page_init() {
   slottedPageInit();
   fixedPageInit();
 
-  registerPageType(slottedImpl());
-  registerPageType(fixedImpl());
-  registerPageType(boundaryTagImpl());
-  registerPageType(arrayListImpl());
-  registerPageType(blobImpl());
-  registerPageType(indirectImpl());
-  registerPageType(lsmRootImpl());
+  stasis_page_impl_register(slottedImpl());
+  stasis_page_impl_register(fixedImpl());
+  stasis_page_impl_register(boundaryTagImpl());
+  stasis_page_impl_register(arrayListImpl());
+  stasis_page_impl_register(blobImpl());
+  stasis_page_impl_register(indirectImpl());
+  stasis_page_impl_register(lsmRootImpl());
 }
 
-void pageDeinit() {
+void stasis_page_deinit() {
 
   for(int i = 0; i < MAX_PAGE_TYPE; i++) {
     page_impl p = { 0 };
@@ -147,7 +147,7 @@ void pageDeinit() {
   slottedPageDeinit();
 }
 
-int registerPageType(page_impl p) {
+int stasis_page_impl_register(page_impl p) {
   assert(page_impls[p.page_type].page_type == 0);
   page_impls[p.page_type] = p;
   return 0;
@@ -155,25 +155,25 @@ int registerPageType(page_impl p) {
 /**
    @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!  This is slow and breaks recovery.
 */
-void recordWrite(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
+void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 
   readlock(p->rwlatch, 225);
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     // XXX Kludge This is done so that recovery sees the LSN update.  Otherwise, it gets upset... Of course, doing it will break blob recovery unless we set blob writes to do "logical" redo...
-    pageWriteLSN(xid, p, lsn);
+    stasis_page_lsn_write(xid, p, lsn);
     unlock(p->rwlatch);
     writeBlob(xid, p, lsn, rid, dat);
   } else {
-    byte * buf = recordWriteNew(xid, p, rid);
-    pageWriteLSN(xid, p, lsn);
-    memcpy(buf, dat, recordGetLength(xid, p, rid));
+    byte * buf = stasis_record_write_begin(xid, p, rid);
+    stasis_page_lsn_write(xid, p, lsn);
+    memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
     unlock(p->rwlatch);
   }
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
-int recordRead(int xid, Page * p, recordid rid, byte *buf) {
+int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
   assert(rid.page == p->id);
 
   if(rid.size > BLOB_THRESHOLD_SIZE) {
@@ -182,23 +182,21 @@ int recordRead(int xid, Page * p, recordid rid, byte *buf) {
     return 0;
   } else {
     readlock(p->rwlatch, 0);
-    const byte * dat = recordReadNew(xid,p,rid);
-    memcpy(buf, dat, recordGetLength(xid,p,rid));
+    const byte * dat = stasis_record_read_begin(xid,p,rid);
+    memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
     unlock(p->rwlatch);
     return 0;
   }
 }
-
-recordid recordDereference(int xid, Page * p, recordid rid) {
-  int page_type = *page_type_ptr(p);
-  if(page_type == SLOTTED_PAGE || page_type == FIXED_PAGE || (!page_type) || page_type == BOUNDARY_TAG_PAGE ) {
-
-  } else if(page_type == INDIRECT_PAGE) {
-    rid = dereferenceRID(xid, rid);
+/**
+   @todo stasis_record_dereference should dispatch via page_impl...
+ */
+recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
+  int page_type = *stasis_page_type_ptr(p);
+  if(page_type == INDIRECT_PAGE) {
+    rid = dereferenceIndirectRID(xid, rid);
   } else if(page_type == ARRAY_LIST_PAGE) {
     rid = dereferenceArrayListRid(xid, p, rid.slot);
-  } else {
-    abort();
   }
   return rid;
 }
@@ -206,8 +204,8 @@ recordid recordDereference(int xid, Page * p, recordid rid) {
 /// --------------  Dispatch functions
 
 static int recordWarnedAboutPageTypeKludge = 0;
-const byte * recordReadNew(int xid, Page * p, recordid rid) {
-  int page_type = *page_type_ptr(p);
+const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
+  int page_type = *stasis_page_type_ptr(p);
   if(!page_type) {
     page_type = FIXED_PAGE;
     if(!recordWarnedAboutPageTypeKludge) {
@@ -217,8 +215,8 @@ const byte * recordReadNew(int xid, Page * p, recordid rid) {
   }
   return page_impls[page_type].recordRead(xid, p, rid);
 }
-byte * recordWriteNew(int xid, Page * p, recordid rid) {
-  int page_type = *page_type_ptr(p);
+byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
+  int page_type = *stasis_page_type_ptr(p);
   if(!page_type) {
     page_type = FIXED_PAGE;
     if(!recordWarnedAboutPageTypeKludge) {
@@ -228,73 +226,73 @@ byte * recordWriteNew(int xid, Page * p, recordid rid) {
   }
   return page_impls[page_type].recordWrite(xid, p, rid);
 }
-void recordReadDone(int xid, Page *p, recordid rid, const byte *b) {
-  int page_type = *page_type_ptr(p);
+void stasis_record_read_done(int xid, Page *p, recordid rid, const byte *b) {
+  int page_type = *stasis_page_type_ptr(p);
   if(page_impls[page_type].recordReadDone) {
     page_impls[page_type].recordReadDone(xid,p,rid,b);
   }
 }
-void recordWriteDone(int xid, Page *p, recordid rid, byte *b) {
-  int page_type = *page_type_ptr(p);
+void stasis_record_write_done(int xid, Page *p, recordid rid, byte *b) {
+  int page_type = *stasis_page_type_ptr(p);
   if(page_impls[page_type].recordWriteDone) {
     page_impls[page_type].recordWriteDone(xid,p,rid,b);
   }
 }
-int recordGetTypeNew(int xid, Page *p, recordid rid) {
-  return page_impls[*page_type_ptr(p)]
+int stasis_record_type_read(int xid, Page *p, recordid rid) {
+  return page_impls[*stasis_page_type_ptr(p)]
     .recordGetType(xid, p, rid);
 }
-void recordSetTypeNew(int xid, Page *p, recordid rid, int type) {
-  page_impls[*page_type_ptr(p)]
+void stasis_record_type_write(int xid, Page *p, recordid rid, int type) {
+  page_impls[*stasis_page_type_ptr(p)]
     .recordSetType(xid, p, rid, type);
 }
-int recordGetLength(int xid, Page *p, recordid rid) {
-  return page_impls[*page_type_ptr(p)]
+int stasis_record_length_read(int xid, Page *p, recordid rid) {
+  return page_impls[*stasis_page_type_ptr(p)]
     .recordGetLength(xid,p,rid);
 }
-recordid recordFirst(int xid, Page * p){
-  return page_impls[*page_type_ptr(p)]
+recordid stasis_record_first(int xid, Page * p){
+  return page_impls[*stasis_page_type_ptr(p)]
     .recordFirst(xid,p);
 }
-recordid recordNext(int xid, Page * p, recordid prev){
-  return page_impls[*page_type_ptr(p)]
+recordid stasis_record_next(int xid, Page * p, recordid prev){
+  return page_impls[*stasis_page_type_ptr(p)]
     .recordNext(xid,p,prev);
 }
-recordid recordPreAlloc(int xid, Page * p, int size){
-  return page_impls[*page_type_ptr(p)]
+recordid stasis_record_alloc_begin(int xid, Page * p, int size){
+  return page_impls[*stasis_page_type_ptr(p)]
     .recordPreAlloc(xid,p,size);
 }
-void recordPostAlloc(int xid, Page * p, recordid rid){
-  page_impls[*page_type_ptr(p)]
+void stasis_record_alloc_done(int xid, Page * p, recordid rid){
+  page_impls[*stasis_page_type_ptr(p)]
     .recordPostAlloc(xid, p, rid);
 }
-void recordFree(int xid, Page * p, recordid rid){
-  page_impls[*page_type_ptr(p)]
+void stasis_record_free(int xid, Page * p, recordid rid){
+  page_impls[*stasis_page_type_ptr(p)]
     .recordFree(xid, p, rid);
 }
-int pageIsBlockSupported(int xid, Page * p){
-  return page_impls[*page_type_ptr(p)]
+int stasis_block_supported(int xid, Page * p){
+  return page_impls[*stasis_page_type_ptr(p)]
     .isBlockSupported(xid, p);
 }
-block_t * pageBlockFirst(int xid, Page * p){
-  int t = *page_type_ptr(p);
+block_t * stasis_block_first(int xid, Page * p){
+  int t = *stasis_page_type_ptr(p);
   return page_impls[t]
     .blockFirst(xid, p);
 }
-block_t * pageBlockNext(int xid, Page * p, block_t * prev){
-  return page_impls[*page_type_ptr(p)]
+block_t * stasis_block_next(int xid, Page * p, block_t * prev){
+  return page_impls[*stasis_page_type_ptr(p)]
     .blockNext(xid, p,prev);
 }
-void pageBlockDone(int xid, Page * p, block_t * done){
-  page_impls[*page_type_ptr(p)]
+void stasis_block_done(int xid, Page * p, block_t * done){
+  page_impls[*stasis_page_type_ptr(p)]
     .blockDone(xid, p,done);
 }
-int pageFreespace(int xid, Page * p){
-  return page_impls[*page_type_ptr(p)]
+int stasis_record_freespace(int xid, Page * p){
+  return page_impls[*stasis_page_type_ptr(p)]
     .pageFreespace(xid, p);
 }
-void pageCompact(Page * p){
-  page_impls[*page_type_ptr(p)]
+void stasis_record_compact(Page * p){
+  page_impls[*stasis_page_type_ptr(p)]
     .pageCompact(p);
 }
 /** @todo How should the LSN of pages without a page_type be handled?
@@ -303,27 +301,26 @@ void pageCompact(Page * p){
     LSN-free pages, we'll need special "loadPageForAlloc(), and
     loadPageOfType() methods (or something...)
 */
-void pageLoaded(Page * p){
-  short type = *page_type_ptr(p);
+void stasis_page_loaded(Page * p){
+  short type = *stasis_page_type_ptr(p);
   if(type) {
     assert(page_impls[type].page_type == type);
     page_impls[type].pageLoaded(p);
   } else {
-    p->LSN = *lsn_ptr(p);  // XXX kluge - shouldn't special-case UNINITIALIZED_PAGE
+    p->LSN = *stasis_page_lsn_ptr(p);  // XXX kluge - shouldn't special-case UNINITIALIZED_PAGE
   }
 }
-void pageFlushed(Page * p){
-  short type = *page_type_ptr(p);
+void stasis_page_flushed(Page * p){
+  short type = *stasis_page_type_ptr(p);
   if(type) {
     assert(page_impls[type].page_type == type);
-    page_impls[type]
-        .pageFlushed(p);
+    page_impls[type].pageFlushed(p);
   } else {
-    *lsn_ptr(p) = p->LSN;
+    *stasis_page_lsn_ptr(p) = p->LSN;
   }
 }
-void pageCleanup(Page * p) { 
-  short type = *page_type_ptr(p);
+void stasis_page_cleanup(Page * p) { 
+  short type = *stasis_page_type_ptr(p);
   if(type) { 
     assert(page_impls[type].page_type == type);
     page_impls[type].pageCleanup(p);
@@ -345,20 +342,20 @@ typedef struct genericBlockImpl {
  */
 static const byte * blkFirst(block_t * b) {
   genericBlockImpl * impl = b->impl;
-  impl->pos = recordFirst(-1, impl->p);
+  impl->pos = stasis_record_first(-1, impl->p);
   if(! memcmp(&(impl->pos), &(NULLRID), sizeof(recordid))) {
     return 0;
   } else {
-    return recordReadNew(-1, impl->p, impl->pos);
+    return stasis_record_read_begin(-1, impl->p, impl->pos);
   }
 }
 static const byte * blkNext(block_t * b) {
   genericBlockImpl * impl = b->impl;
-  impl->pos = recordNext(-1, impl->p, impl->pos);
+  impl->pos = stasis_record_next(-1, impl->p, impl->pos);
   if(! memcmp(&(impl->pos), &NULLRID, sizeof(recordid))) {
     return 0;
   } else {
-    return recordReadNew(-1, impl->p, impl->pos);
+    return stasis_record_read_begin(-1, impl->p, impl->pos);
   }
 }
 static int blkSize(block_t * b) {
@@ -387,7 +384,7 @@ block_t genericBlock = {
   0
 };
 
-block_t* pageGenericBlockFirst(int xid, Page * p) {
+block_t* stasis_block_first_default_impl(int xid, Page * p) {
   block_t* ret = malloc(sizeof(block_t));
   *ret = genericBlock;
   genericBlockImpl impl = { p, NULLRID };
@@ -395,11 +392,11 @@ block_t* pageGenericBlockFirst(int xid, Page * p) {
   *(genericBlockImpl*)(ret->impl) = impl;
   return ret;
 }
-block_t* pageGenericBlockNext(int xid, Page *p, block_t *prev) {
-  pageGenericBlockDone(xid, p, prev);
+block_t* stasis_block_next_default_impl(int xid, Page *p, block_t *prev) {
+  stasis_block_done_default_impl(xid, p, prev);
   return 0;  // definitely done.
 }
-void pageGenericBlockDone(int xid, Page *p, block_t *b) {
+void stasis_block_done_default_impl(int xid, Page *p, block_t *b) {
   free(b->impl);
   free(b);
 }

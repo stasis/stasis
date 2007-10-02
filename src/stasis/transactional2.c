@@ -134,7 +134,7 @@ int Tinit() {
         setupOperationsTable();
 	dirtyPagesInit();
 	LogInit(loggerType);
-	pageInit();
+	stasis_page_init();
 
         switch(bufferManagerFileHandleType) {
           case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
@@ -280,16 +280,6 @@ static compensated_function void TactionHelper(int xid, recordid rid,
 
 }
 
-static recordid resolveForUpdate(int xid, Page * p, recordid rid) { 
-  
-  if(*page_type_ptr(p) == INDIRECT_PAGE) { 
-    rid = dereferenceRID(xid, rid);
-  } else if(*page_type_ptr(p) == ARRAY_LIST_PAGE) { 
-    rid = dereferenceArrayListRid(xid, p, rid.slot);
-  }
-  return rid;
-}
-
 compensated_function void TupdateRaw(int xid, recordid rid, 
 				     const void * dat, int op) { 
   assert(xid >= 0);
@@ -306,7 +296,7 @@ compensated_function void TupdateStr(int xid, recordid rid,
 compensated_function void Tupdate(int xid, recordid rid, 
 				  const void *dat, int op) { 
   Page * p = loadPage(xid, rid.page);
-  rid = resolveForUpdate(xid, p, rid);
+  rid = stasis_record_dereference(xid, p, rid);
   
   if(p->id != rid.page) { 
     releasePage(p);
@@ -321,7 +311,7 @@ compensated_function void Tdefer(int xid, recordid rid,
 				 const void * dat, int op) {
 
   Page * p = loadPage(xid, rid.page);
-  recordid newrid = resolveForUpdate(xid, p, rid);
+  recordid newrid = stasis_record_dereference(xid, p, rid);
   // Caller cannot rely on late or early binding of rid.
   assert(rid.page == newrid.page && 
 	 rid.slot == newrid.slot && 
@@ -340,12 +330,12 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
 
-  rid = recordDereference(xid, p, rid);
+  rid = stasis_record_dereference(xid, p, rid);
   if(rid.page != p->id) { 
     releasePage(p);
     p = loadPage(xid, rid.page);
   }
-  recordRead(xid, p, rid, dat);
+  stasis_record_read(xid, p, rid, dat);
   releasePage(p);
 }
 
@@ -418,7 +408,7 @@ int Tdeinit() {
           slow_pfile = 0;
           slow_close = 0;
         }
-	pageDeinit();
+	stasis_page_deinit();
 	LogDeinit();
 	dirtyPagesDeinit();
 	return 0;
@@ -433,7 +423,7 @@ int TuncleanShutdown() {
     slow_pfile = 0;
     slow_close = 0;
   }
-  pageDeinit();
+  stasis_page_deinit();
   LogDeinit();
   numActiveXactions = 0;
   dirtyPagesDeinit();

@@ -100,11 +100,11 @@ typedef struct lsmTreeState {
  * header in the first two lsmTreeNodeRecords on the page.
  */
 static void initializeNodePage(int xid, Page *p, size_t keylen) {
-  fixedPageInitialize(p, sizeof(lsmTreeNodeRecord)+keylen, 0);
-  recordid reserved1 = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
-  recordPostAlloc(xid, p, reserved1);
-  recordid reserved2 = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
-  recordPostAlloc(xid, p, reserved2);
+  stasis_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord)+keylen, 0);
+  recordid reserved1 = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
+  stasis_record_alloc_done(xid, p, reserved1);
+  recordid reserved2 = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
+  stasis_record_alloc_done(xid, p, reserved2);
 }
 
 /**
@@ -132,12 +132,12 @@ static void initializeNodePage(int xid, Page *p, size_t keylen) {
 */
 
 static inline size_t getKeySizeFixed(int xid, Page const *p) {
-  return (*recordsize_ptr(p)) - sizeof(lsmTreeNodeRecord);
+  return (*recordsize_cptr(p)) - sizeof(lsmTreeNodeRecord);
 }
 
 static inline size_t getKeySizeVirtualMethods(int xid, Page *p) {
   recordid rid = { p->id, 0, 0 };
-  return recordGetLength(xid, p, rid) - sizeof(lsmTreeNodeRecord);
+  return stasis_record_length_read(xid, p, rid) - sizeof(lsmTreeNodeRecord);
 }
 /**
  * Read a record from the page node, assuming the nodes are fixed pages.
@@ -158,9 +158,9 @@ lsmTreeNodeRecord* readNodeRecordVirtualMethods(int xid, Page * p,
 
   recordid rid = {p->id, slot, sizeof(lsmTreeNodeRecord)};
   const lsmTreeNodeRecord *nr
-      = (const lsmTreeNodeRecord*)recordReadNew(xid,p,rid);
+      = (const lsmTreeNodeRecord*)stasis_record_read_begin(xid,p,rid);
   memcpy(ret, nr, sizeof(lsmTreeNodeRecord) + keylen);
-  recordReadDone(xid,p,rid,(const byte*)nr);
+  stasis_record_read_done(xid,p,rid,(const byte*)nr);
 
   DEBUG("reading {%lld, %d, %d} = %d, %lld\n",
         p->id, slot, sizeof(lsmTreeNodeRecord), ret.key, ret.ptr);
@@ -177,7 +177,7 @@ void writeNodeRecordFixed(int xid, Page *p, int slot,
   lsmTreeNodeRecord *nr = (lsmTreeNodeRecord*)fixed_record_ptr(p,slot);
   nr->ptr = ptr;
   memcpy(nr+1, key, keylen);
-  pageWriteLSN(xid, p, 0); // XXX need real LSN?
+  stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
 }
 
 /**
@@ -188,13 +188,13 @@ void writeNodeRecordVirtualMethods(int xid, Page *p, int slot,
                                    const byte *key, size_t keylen,
                                    pageid_t ptr) {
   recordid rid = {p->id, slot, sizeof(lsmTreeNodeRecord)};
-  lsmTreeNodeRecord *target = (lsmTreeNodeRecord*)recordWriteNew(xid,p,rid);
+  lsmTreeNodeRecord *target = (lsmTreeNodeRecord*)stasis_record_write_begin(xid,p,rid);
   target->ptr = ptr;
   memcpy(target+1,key,keylen);
 
   DEBUG("Writing to record {%d %d %lld}\n", rid.page, rid.slot, rid.size);
-  recordWriteDone(xid,p,rid,(byte*)target);
-  pageWriteLSN(xid, p, 0); // XXX need real LSN?
+  stasis_record_write_done(xid,p,rid,(byte*)target);
+  stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
 }
 
 recordid TlsmCreate(int xid, int comparator, int keySize) {
@@ -209,8 +209,8 @@ recordid TlsmCreate(int xid, int comparator, int keySize) {
 
   Page *p = loadPage(xid, ret.page);
   writelock(p->rwlatch,0);
-  fixedPageInitialize(p, sizeof(lsmTreeNodeRecord) + keySize, 0);
-  *page_type_ptr(p) = LSM_ROOT_PAGE;
+  stasis_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord) + keySize, 0);
+  *stasis_page_type_ptr(p) = LSM_ROOT_PAGE;
 
   lsmTreeState *state = malloc(sizeof(lsmTreeState));
   state->lastLeaf = -1; /// XXX define something in constants.h?
@@ -218,15 +218,15 @@ recordid TlsmCreate(int xid, int comparator, int keySize) {
   p->impl = state;
 
   recordid tmp
-      = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord) + keySize);
-  recordPostAlloc(xid,p,tmp);
+      = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord) + keySize);
+  stasis_record_alloc_done(xid,p,tmp);
 
   assert(tmp.page == ret.page
          && tmp.slot == DEPTH
          && tmp.size == sizeof(lsmTreeNodeRecord) + keySize);
 
-  tmp = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord) + keySize);
-  recordPostAlloc(xid,p,tmp);
+  tmp = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord) + keySize);
+  stasis_record_alloc_done(xid,p,tmp);
 
   assert(tmp.page == ret.page
          && tmp.slot == COMPARATOR
@@ -261,9 +261,9 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
 
   if(depth-1) {
     // recurse: the page we just allocated is not a leaf.
-    recordid child_rec = recordPreAlloc(xid, child_p, sizeof(lsmTreeNodeRecord)+key_len);
+    recordid child_rec = stasis_record_alloc_begin(xid, child_p, sizeof(lsmTreeNodeRecord)+key_len);
     assert(child_rec.size != INVALID_SLOT);
-    recordPostAlloc(xid, child_p, child_rec);
+    stasis_record_alloc_done(xid, child_p, child_rec);
 
     ret = buildPathToLeaf(xid, child_rec, child_p, depth-1, key, key_len,
                       val_page,lastLeaf);
@@ -281,12 +281,12 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
     // forward link (initialize to -1)
     writeNodeRecord(xid,child_p,NEXT_LEAF,dummy,key_len,-1);
 
-    recordid leaf_rec = recordPreAlloc(xid, child_p,
+    recordid leaf_rec = stasis_record_alloc_begin(xid, child_p,
                                        sizeof(lsmTreeNodeRecord)+key_len);
 
     assert(leaf_rec.slot == FIRST_SLOT);
 
-    recordPostAlloc(xid, child_p, leaf_rec);
+    stasis_record_alloc_done(xid, child_p, leaf_rec);
     writeNodeRecord(xid,child_p,leaf_rec.slot,key,key_len,val_page);
 
     ret = leaf_rec;
@@ -329,13 +329,13 @@ static recordid appendInternalNode(int xid, Page *p,
                                    int depth,
                                    const byte *key, size_t key_len,
                                    pageid_t val_page, pageid_t lastLeaf) {
-  assert(*page_type_ptr(p) == LSM_ROOT_PAGE || 
-	 *page_type_ptr(p) == FIXED_PAGE);
+  assert(*stasis_page_type_ptr(p) == LSM_ROOT_PAGE || 
+	 *stasis_page_type_ptr(p) == FIXED_PAGE);
   if(!depth) {
     // leaf node.
-    recordid ret = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
+    recordid ret = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
     if(ret.size != INVALID_SLOT) {
-      recordPostAlloc(xid, p, ret);
+      stasis_record_alloc_done(xid, p, ret);
       writeNodeRecord(xid,p,ret.slot,key,key_len,val_page);
     }
     return ret;
@@ -356,9 +356,9 @@ static recordid appendInternalNode(int xid, Page *p,
       releasePage(child_page);
     }
     if(ret.size == INVALID_SLOT) { // subtree is full; split
-      ret = recordPreAlloc(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
+      ret = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
       if(ret.size != INVALID_SLOT) {
-        recordPostAlloc(xid, p, ret);
+        stasis_record_alloc_done(xid, p, ret);
         ret = buildPathToLeaf(xid, ret, p, depth, key, key_len, val_page,
                               lastLeaf);
 
@@ -445,7 +445,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
     lastLeaf = p;
   }
 
-  recordid ret = recordPreAlloc(xid, lastLeaf,
+  recordid ret = stasis_record_alloc_begin(xid, lastLeaf,
                                 sizeof(lsmTreeNodeRecord)+keySize);
 
   if(ret.size == INVALID_SLOT) {
@@ -474,13 +474,13 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
       for(int i = FIRST_SLOT; i < *recordcount_ptr(p); i++) {
 
-        recordid cnext = recordPreAlloc(xid, lc,
+        recordid cnext = stasis_record_alloc_begin(xid, lc,
                                         sizeof(lsmTreeNodeRecord)+keySize);
 
         assert(i == cnext.slot);
         assert(cnext.size != INVALID_SLOT);
 
-        recordPostAlloc(xid, lc, cnext);
+        stasis_record_alloc_done(xid, lc, cnext);
 
         const lsmTreeNodeRecord *nr = readNodeRecord(xid,p,i,keySize);
         writeNodeRecord(xid,lc,i,(byte*)(nr+1),keySize,nr->ptr);
@@ -495,12 +495,12 @@ recordid TlsmAppendPage(int xid, recordid tree,
       *recordcount_ptr(p) = FIRST_SLOT+1;
 
       lsmTreeNodeRecord *nr
-          = (lsmTreeNodeRecord*)recordWriteNew(xid, p, pFirstSlot);
+          = (lsmTreeNodeRecord*)stasis_record_write_begin(xid, p, pFirstSlot);
 
       // don't overwrite key...
       nr->ptr = child;
-      recordWriteDone(xid,p,pFirstSlot,(byte*)nr);
-      pageWriteLSN(xid, p, 0); // XXX need real LSN?
+      stasis_record_write_done(xid,p,pFirstSlot,(byte*)nr);
+      stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
 
       byte *dummy = calloc(1,keySize);
       if(!depth) {
@@ -534,7 +534,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
     // write the new value to an existing page
     DEBUG("Writing %d to existing page# %lld\n", *(int*)key, lastLeaf->id);
 
-    recordPostAlloc(xid, lastLeaf, ret);
+    stasis_record_alloc_done(xid, lastLeaf, ret);
 
     writeNodeRecord(xid, lastLeaf, ret.slot, key, keySize, val_page);
 

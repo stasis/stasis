@@ -227,7 +227,7 @@ static void Undo(int recovery) {
 	    p = loadPage(thisXid, e->update.rid.page);
 
 	    // If this fails, something is wrong with redo or normal operation.
-	    this_lsn= pageReadLSN(p);
+	    this_lsn = stasis_page_lsn_read(p);
 	    assert(e->LSN <= this_lsn);  
 
 	  } else { 

@@ -34,10 +34,11 @@ implementation).
 
 BEGIN_C_DECLS
 
-#define level_ptr(page)             shorts_from_end((page), 3)
+#define level_ptr(page)             stasis_page_int16_ptr_from_end((page), 3)
 
-#define page_ptr(page, offset)      ints_from_start((page), 2*(offset))
-#define maxslot_ptr(page, offset)   ints_from_start((page), 2*(offset)+1)
+/** @todo indirect.h cannot handle 64 bit file offsets! */
+#define page_ptr(page, offset)      stasis_page_int32_ptr_from_start((page), 2*(offset))
+#define maxslot_ptr(page, offset)   stasis_page_int32_ptr_from_start((page), 2*(offset)+1)
 
 #define INDIRECT_POINTERS_PER_PAGE (USABLE_SIZE_OF_PAGE / 16)
 
@@ -45,7 +46,7 @@ BEGIN_C_DECLS
     Translates a recordid that points to an indirect block into the
     physical location of the record.
 */
-compensated_function recordid dereferenceRID(int xid, recordid rid);
+compensated_function recordid dereferenceIndirectRID(int xid, recordid rid);
 void indirectInitialize(Page * p, int height);
 
 compensated_function recordid rallocMany(/*int parentPage, lsn_t lsn,*/int xid,  int recordSize, int recordCount);

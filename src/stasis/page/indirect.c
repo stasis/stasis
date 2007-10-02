@@ -10,11 +10,11 @@
 
 void indirectInitialize(Page * p, int height) {
   *level_ptr(p) = height;
-  *page_type_ptr(p) = INDIRECT_PAGE;
+  *stasis_page_type_ptr(p) = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }
 /** @todo Is locking for dereferenceRID really necessary? */
-compensated_function recordid dereferenceRID(int xid, recordid rid) {
+compensated_function recordid dereferenceIndirectRID(int xid, recordid rid) {
   Page * page;
   try_ret(NULLRID) {
     page = loadPage(xid, rid.page);
@@ -23,7 +23,7 @@ compensated_function recordid dereferenceRID(int xid, recordid rid) {
   //  printf("a"); fflush(stdout);
   int offset = 0;
   int max_slot;
-  while(*page_type_ptr(page) == INDIRECT_PAGE) {
+  while(*stasis_page_type_ptr(page) == INDIRECT_PAGE) {
     int i = 0;
     for(max_slot = *maxslot_ptr(page, i); ( max_slot + offset ) <= rid.slot; max_slot = *maxslot_ptr(page, i)) {
       i++;
@@ -171,14 +171,14 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
     /* Initialize leaves.  (As SLOTTED_PAGE's) */
 
     writelock(p.rwlatch,0);
-    slottedPageInitialize(&p);
+    stasis_slotted_initialize_page(&p);
     p.id = parentPage;
     for(int i = 0; i < recordCount; i++) {
       /* Normally, we would worry that the page id isn't set, but
 	 we're discarding the recordid returned by page ralloc
 	 anyway. */
-      recordid rid = recordPreAlloc(xid, &p, recordSize);
-      recordPostAlloc(xid, &p, rid);
+      recordid rid = stasis_record_alloc_begin(xid, &p, recordSize);
+      stasis_record_alloc_done(xid, &p, rid);
     }
       unlock(p.rwlatch);
   }
@@ -204,7 +204,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   readlock(p->rwlatch, 0);
   int i = 0;
   unsigned int ret;
-  if(*page_type_ptr(p) == INDIRECT_PAGE) {
+  if(*stasis_page_type_ptr(p) == INDIRECT_PAGE) {
     
     while(*maxslot_ptr(p, i) > 0) {
       i++;
@@ -214,7 +214,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
     } else {
       ret = (*maxslot_ptr(p, i-1)) - 1;
     }
-  } else if (*page_type_ptr(p) == SLOTTED_PAGE) {
+  } else if (*stasis_page_type_ptr(p) == SLOTTED_PAGE) {
 
     int numslots = *numslots_ptr(p);
     ret = 0;
@@ -237,10 +237,10 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
 static int notSupported(int xid, Page * p) { return 0; }
 
 void indirectLoaded(Page *p) {
-  p->LSN = *lsn_ptr(p);
+  p->LSN = *stasis_page_lsn_ptr(p);
 }
 void indirectFlushed(Page *p) {
-  *lsn_ptr(p) = p->LSN;
+  *stasis_page_lsn_ptr(p) = p->LSN;
 }
 void indirectCleanup(Page *p) { }
 static page_impl pi = {

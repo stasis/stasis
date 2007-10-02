@@ -24,7 +24,7 @@ void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
   rawRid.size = BLOB_SLOT;
   byte * pbuf = alloca(PAGE_SIZE);
   blob_record_t rec;
-  recordRead(xid, p2, rawRid, (byte*)&rec);
+  stasis_record_read(xid, p2, rawRid, (byte*)&rec);
 
   for(chunk = 0; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) {
     TpageGet(xid, rec.offset+chunk, pbuf);
@@ -43,7 +43,7 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
   rawRid.size = BLOB_SLOT;
   byte * pbuf = alloca(PAGE_SIZE);
   blob_record_t rec;
-  recordRead(xid, p2, rawRid, (byte*)&rec);
+  stasis_record_read(xid, p2, rawRid, (byte*)&rec);
   Page tmp;
   tmp.memAddr=pbuf;
 
@@ -51,7 +51,7 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
   for(chunk = 0; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) {
     TpageGet(xid, rec.offset+chunk, pbuf);
 
-    *page_type_ptr(&tmp) = BLOB_PAGE;
+    *stasis_page_type_ptr(&tmp) = BLOB_PAGE;
     memcpy(pbuf, buf + (chunk * USABLE_SIZE_OF_PAGE), USABLE_SIZE_OF_PAGE);
     TpageSet(xid, rec.offset+chunk, pbuf);
   }
@@ -64,10 +64,10 @@ void writeBlob(int xid, Page * p2, lsn_t lsn, recordid rid, const byte * buf) {
 static int notSupported(int xid, Page * p) { return 0; }
 
 static void blobLoaded(Page *p) {
-  p->LSN = *lsn_ptr(p);
+  p->LSN = *stasis_page_lsn_ptr(p);
 }
 static void blobFlushed(Page *p) {
-  *lsn_ptr(p) = p->LSN;
+  *stasis_page_lsn_ptr(p) = p->LSN;
 }
 static void blobCleanup(Page *p) { }
 

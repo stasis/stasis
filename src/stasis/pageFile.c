@@ -68,7 +68,7 @@ static void pfPageRead(Page *ret) {
   }
 
   ret->dirty = 0;
-  pageLoaded(ret);
+  stasis_page_loaded(ret);
 
   pthread_mutex_unlock(&stable_mutex);
 
@@ -86,11 +86,11 @@ static void pfPageWrite(Page * ret) {
   pageid_t pageoffset = ret->id * PAGE_SIZE;
   pageid_t offset ;
 
-  pageFlushed(ret);
+  stasis_page_flushed(ret);
 
   // If necessary, force the log to disk so that ret's LSN will be stable.
 
-  assert(ret->LSN == pageReadLSN(ret));
+  assert(ret->LSN == stasis_page_lsn_read(ret));
   LogForce(ret->LSN);
 
   pthread_mutex_lock(&stable_mutex);

@@ -77,7 +77,7 @@ void redoUpdate(const LogEntry * e) {
 	pageLSN = 0;
       } else {
 	p = loadPage(e->xid, rid.page);
-	pageLSN = pageReadLSN(p);
+	pageLSN = stasis_page_lsn_read(p);
       } 
     } end;
 
@@ -110,7 +110,7 @@ void redoUpdate(const LogEntry * e) {
       } else { 
 	try { 
 	  p = loadPage(e->xid, rid.page);
-	  pageLSN = pageReadLSN(p);
+	  pageLSN = stasis_page_lsn_read(p);
 	} end;
       }
     }
@@ -149,7 +149,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 #endif
   lsn_t page_lsn = -1;
   if(p) {
-    page_lsn = pageReadLSN(p);
+    page_lsn = stasis_page_lsn_read(p);
   }
   if(e->LSN <= page_lsn || !p) {
     // Actually execute the undo 
@@ -159,7 +159,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 	    e->update.rid.page, e->contents.rid.slot, e->update.rid.size);
 
       assert(p);  
-      recordWrite(e->xid, p, clr_lsn, e->update.rid, getUpdatePreImage(e));
+      stasis_record_write(e->xid, p, clr_lsn, e->update.rid, getUpdatePreImage(e));
 
     } else if(undo == NO_INVERSE_WHOLE_PAGE) {
 
@@ -168,7 +168,7 @@ void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
 
       assert(p);
       memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
-      pageWriteLSN(e->xid, p, clr_lsn);
+      stasis_page_lsn_write(e->xid, p, clr_lsn);
 
     } else {
 

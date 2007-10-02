@@ -11,7 +11,7 @@ static pthread_mutex_t pageAllocMutex;
 
 int __pageSet(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   memcpy(p->memAddr, d, PAGE_SIZE);
-  pageWriteLSN(xid, p, lsn);
+  stasis_page_lsn_write(xid, p, lsn);
   return 0;
 }
 
@@ -70,8 +70,8 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 
 int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
   writelock(p->rwlatch,0);
-  fixedPageInitialize(p, r.size, fixedRecordsPerPage(r.size));
-  pageWriteLSN(xid, p, lsn);
+  stasis_fixed_initialize_page(p, r.size, stasis_fixed_records_per_page(r.size));
+  stasis_page_lsn_write(xid, p, lsn);
   unlock(p->rwlatch);
   return 0;
 }
@@ -84,7 +84,7 @@ int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
 */
 recordid TfixedPageAlloc(int xid, int size) {
   int page = TpageAlloc(xid);
-  recordid rid = {page, fixedRecordsPerPage(size), size};
+  recordid rid = {page, stasis_fixed_records_per_page(size), size};
   Tupdate(xid, rid, 0, OPERATION_FIXED_PAGE_ALLOC);
   return rid;
 }
@@ -105,7 +105,7 @@ compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
 
 int TpageGetType(int xid, int pageid) { 
   Page * p = loadPage(xid, pageid);
-  int ret = *page_type_ptr(p);
+  int ret = *stasis_page_type_ptr(p);
   releasePage(p);
   return ret;
 }

@@ -104,7 +104,7 @@ START_TEST(indirectAlloc) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *page_type_ptr(p);
+  int page_type = *stasis_page_type_ptr(p);
 
   assert(page_type == SLOTTED_PAGE);
 
@@ -125,7 +125,7 @@ START_TEST(indirectAlloc) {
 
   p = loadPage(xid, page);
 
-  page_type = *page_type_ptr(p);
+  page_type = *stasis_page_type_ptr(p);
 
   assert(page_type == INDIRECT_PAGE);
 
@@ -149,7 +149,7 @@ START_TEST(indirectAlloc) {
 
   p = loadPage(xid, page);
 
-  page_type = *page_type_ptr(p);
+  page_type = *stasis_page_type_ptr(p);
 
   assert(page_type == INDIRECT_PAGE);
 
@@ -180,7 +180,7 @@ START_TEST(indirectAccessDirect) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *page_type_ptr(p);
+  int page_type = *stasis_page_type_ptr(p);
 
   assert(page_type == SLOTTED_PAGE);
 
@@ -194,7 +194,7 @@ START_TEST(indirectAccessDirect) {
   
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
-    Tset(xid, dereferenceRID(xid, rid), &i);
+    Tset(xid, dereferenceIndirectRID(xid, rid), &i);
   }
   
   Tcommit(xid);
@@ -203,7 +203,7 @@ START_TEST(indirectAccessDirect) {
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
     int j;
-    Tread(xid, dereferenceRID(xid, rid), &j);
+    Tread(xid, dereferenceIndirectRID(xid, rid), &j);
     assert(j == i);
   }
   
@@ -225,7 +225,7 @@ START_TEST(indirectAccessIndirect) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *page_type_ptr(p);
+  int page_type = *stasis_page_type_ptr(p);
 
   assert(page_type == INDIRECT_PAGE);
 
@@ -240,7 +240,7 @@ START_TEST(indirectAccessIndirect) {
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
     //    printf("i=%d", i); fflush(stdout);
-    recordid rid2 = dereferenceRID(xid, rid);
+    recordid rid2 = dereferenceIndirectRID(xid, rid);
     //    printf("."); fflush(stdout);
     Tset(xid, rid2, &i);
   }
@@ -254,7 +254,7 @@ START_TEST(indirectAccessIndirect) {
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
     int j;
-    Tread(xid, dereferenceRID(xid, rid), &j);
+    Tread(xid, dereferenceIndirectRID(xid, rid), &j);
     assert(j == i);
   }
   

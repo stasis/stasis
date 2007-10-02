@@ -1,11 +1,14 @@
 #include "../page.h"
 
-#ifndef __FIXED_H 
+#ifndef __FIXED_H
 #define __FIXED_H
-// @todo rename fixed.h macros to something more specific
-#define recordsize_ptr(page)  shorts_from_end((page), 1)
-#define recordcount_ptr(page) shorts_from_end((page), 2)
-#define fixed_record_ptr(page, n)   bytes_from_start((page), *recordsize_ptr((page)) * (n))
+/**
+   @todo rename fixed.h macros turn them into static inline functions.
+*/
+#define recordsize_ptr(page)  stasis_page_int16_ptr_from_end((page), 1)
+#define recordsize_cptr(page)  stasis_page_int16_cptr_from_end((page), 1)
+#define recordcount_ptr(page) stasis_page_int16_ptr_from_end((page), 2)
+#define fixed_record_ptr(page, n) stasis_page_byte_ptr_from_start((page), *recordsize_ptr((page)) * (n))
 
 static inline recordid fixedNext(int xid, Page *p, recordid rid) {
   short n = *recordcount_ptr(p);

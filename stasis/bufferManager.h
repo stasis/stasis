@@ -97,8 +97,13 @@ typedef struct Page_s Page_s;
 typedef struct Page_s Page;
 
 /**
+ * Obtain a pointer to a page from the buffer manager.  The page will
+ * be pinned, and the pointer valid until releasePage is called.
+ *
  * @param xid The transaction that is pinning the page (used by page-level locking implementations.)
+ *
  * @param pageid ID of the page you want to load
+ *
  * @return fully formed Page type
  */
 Page * loadPage(int xid, int pageid);

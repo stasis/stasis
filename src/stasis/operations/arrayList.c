@@ -81,7 +81,7 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   /* Allocing this page -> implicit lock, but latch to conformt to
    fixedPage's interface. */
   writelock(p->rwlatch, 0);
-  fixedPageInitialize(p, sizeof(int), fixedRecordsPerPage(sizeof(int)));
+  stasis_fixed_initialize_page(p, sizeof(int), stasis_fixed_records_per_page(sizeof(int)));
 
   recordid countRid, multiplierRid, slotSizeRid, maxOffset, firstDataPageRid;
   countRid.page = multiplierRid.page = slotSizeRid.page =  maxOffset.page = firstDataPageRid.page = p->id;
@@ -94,15 +94,15 @@ static int operateAlloc(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   firstDataPageRid.slot = 4;
 
   int firstDataPage = firstPage + 1;
-  (*(int*)recordWriteNew(xid, p, countRid))= count;
-  (*(int*)recordWriteNew(xid, p, multiplierRid))= multiplier;
-  (*(int*)recordWriteNew(xid, p, firstDataPageRid))= firstDataPage;
-  (*(int*)recordWriteNew(xid, p, slotSizeRid))= size;
-  (*(int*)recordWriteNew(xid, p, maxOffset))= -1;
+  (*(int*)stasis_record_write_begin(xid, p, countRid))= count;
+  (*(int*)stasis_record_write_begin(xid, p, multiplierRid))= multiplier;
+  (*(int*)stasis_record_write_begin(xid, p, firstDataPageRid))= firstDataPage;
+  (*(int*)stasis_record_write_begin(xid, p, slotSizeRid))= size;
+  (*(int*)stasis_record_write_begin(xid, p, maxOffset))= -1;
 
-  *page_type_ptr(p) = ARRAY_LIST_PAGE;
+  *stasis_page_type_ptr(p) = ARRAY_LIST_PAGE;
 
-  pageWriteLSN(xid, p, lsn);
+  stasis_page_lsn_write(xid, p, lsn);
 
   recordid ret;
   ret.page = firstPage;
@@ -206,7 +206,7 @@ recordid dereferenceArrayListRid(int xid, Page * p, int offset) {
   readlock(p->rwlatch,0);
   TarrayListParameters tlp = pageToTLP(xid, p);
 
-  int rec_per_page = fixedRecordsPerPage((size_t)tlp.size);
+  int rec_per_page = stasis_fixed_records_per_page((size_t)tlp.size);
   int lastHigh = 0;
   int pageRidSlot = 0; /* The slot on the root arrayList page that contains the first page of the block of interest */
 
@@ -221,7 +221,7 @@ recordid dereferenceArrayListRid(int xid, Page * p, int offset) {
   int thePage;
 
   recordid rid = { p->id, pageRidSlot + FIRST_DATA_PAGE_OFFSET, sizeof(int) };
-  thePage = *(int*)recordReadNew(xid,p,rid);
+  thePage = *(int*)stasis_record_read_begin(xid,p,rid);
   unlock(p->rwlatch);
 
   rid.page = thePage + blockPage;
@@ -232,7 +232,7 @@ recordid dereferenceArrayListRid(int xid, Page * p, int offset) {
 
 }
 static int getBlockContainingOffset(TarrayListParameters tlp, int offset, int * firstSlotInBlock) {
-  int rec_per_page = fixedRecordsPerPage((size_t)tlp.size);
+  int rec_per_page = stasis_fixed_records_per_page((size_t)tlp.size);
   long thisHigh = rec_per_page * tlp.initialSize;
   int lastHigh = 0;
   int pageRidSlot = 0;
@@ -256,13 +256,13 @@ static TarrayListParameters pageToTLP(int xid, Page * p) {
   tlp.firstPage = p->id;
   /*  tlp.maxOffset   = *(int*)fixed_record_ptr(p, 3); */
   recordid rid = { p->id, 0, sizeof(int) };
-  tlp.initialSize = *(int*)recordReadNew(xid, p, rid);
+  tlp.initialSize = *(int*)stasis_record_read_begin(xid, p, rid);
   rid.slot = 1;
-  tlp.multiplier = *(int*)recordReadNew(xid, p, rid);
+  tlp.multiplier = *(int*)stasis_record_read_begin(xid, p, rid);
   rid.slot = 2;
-  tlp.size = *(int*)recordReadNew(xid, p, rid);
+  tlp.size = *(int*)stasis_record_read_begin(xid, p, rid);
   rid.slot = 3;
-  tlp.maxOffset = *(int*)recordReadNew(xid, p, rid);
+  tlp.maxOffset = *(int*)stasis_record_read_begin(xid, p, rid);
 
   return tlp;
 }

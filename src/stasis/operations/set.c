@@ -50,7 +50,7 @@ terms specified in this license.
 #include <string.h>
 #include <assert.h>
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-	recordWrite(xid, p, lsn, rid, dat);
+	stasis_record_write(xid, p, lsn, rid, dat);
 	return 0;
 }
 typedef struct {
@@ -68,9 +68,9 @@ static int operateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void *
   byte * data = (byte*)(range + 1);
   byte * tmp = malloc(rid.size);
 
-  recordRead(xid, p, rid, tmp);
+  stasis_record_read(xid, p, rid, tmp);
   memcpy(tmp+range->offset, data, diffLength);
-  recordWrite(xid, p, lsn, rid, tmp);
+  stasis_record_write(xid, p, lsn, rid, tmp);
 
   free(tmp);
   return 0;
@@ -88,9 +88,9 @@ static int deOperateRange(int xid, Page * p, lsn_t lsn, recordid rid, const void
   data += diffLength;
   byte * tmp = malloc(rid.size);
 
-  recordRead(xid, p, rid, tmp);
+  stasis_record_read(xid, p, rid, tmp);
   memcpy(tmp+range->offset, data, diffLength);
-  recordWrite(xid, p, lsn, rid, tmp);
+  stasis_record_write(xid, p, lsn, rid, tmp);
 
   free(tmp);
   return 0;
@@ -114,7 +114,7 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   // No further locking is necessary here; readRecord protects the 
   // page layout, but attempts at concurrent modification have undefined 
   // results.  (See page.c)
-  recordRead(xid, p, rid, record);
+  stasis_record_read(xid, p, rid, record);
 
   // Copy old value into log structure 
   memcpy((byte*)(range + 1) + length, record+offset, length);
