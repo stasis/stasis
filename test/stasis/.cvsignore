@@ -32,6 +32,7 @@ check_ringbuffer
 check_transactional2
 check_bTree.log
 check_replacementPolicy
+check_lsmTree
 check_*.log
 logfile.txt
 storefile.txt

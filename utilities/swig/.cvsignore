@@ -7,5 +7,10 @@ _lladd_la-lladd_wrap.lo
 lladd.py
 lladd.pyc
 lladd_wrap.cc
+_stasis.la
+_stasis_la-stasis_wrap.lo
+stasis.py
+stasis.pyc
+stasis_wrap.cc
 logfile.txt
 storefile.txt
