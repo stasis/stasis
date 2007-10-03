@@ -82,7 +82,7 @@ static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
     stasis_record_alloc_done(xid, p, rid);
   }
 
-  assert(stasis_record_length_read(xid, p, rid) == physical_slot_length(rid.size));
+  assert(stasis_record_length_read(xid, p, rid) == stasis_record_type_to_size(rid.size));
   if(rid.size < 0) {
     assert(stasis_record_type_read(xid,p,rid) == rid.size);
   }
@@ -210,21 +210,21 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     pthread_mutex_lock(&talloc_mutex);
     Page * p;
 
-    availablePage * ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+    availablePage * ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
 
     if(!ap) {
       reserveNewRegion(xid);
-      ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+      ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
     }
     lastFreepage = ap->pageid;
 
     p = loadPage(xid, lastFreepage);
     writelock(p->rwlatch, 0);
-    while(stasis_record_freespace(xid, p) < physical_slot_length(type)) {
+    while(stasis_record_freespace(xid, p) < stasis_record_type_to_size(type)) {
       stasis_record_compact(p);
       int newFreespace = stasis_record_freespace(xid, p);
 
-      if(newFreespace >= physical_slot_length(type)) {
+      if(newFreespace >= stasis_record_type_to_size(type)) {
 	break;
       }
 
@@ -233,11 +233,11 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
       releasePage(p);
 
-      ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+      ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
 
       if(!ap) {
 	reserveNewRegion(xid);
-	ap = allocationPolicyFindPage(allocPolicy, xid, physical_slot_length(type));
+	ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
       }
 
       lastFreepage = ap->pageid;

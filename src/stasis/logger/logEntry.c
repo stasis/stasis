@@ -45,7 +45,7 @@ terms specified in this license.
 
 #include <assert.h>
 
-#include "page.h" // For physical_slot_length()
+#include "page.h" // For stasis_record_type_to_size()
 #include <stasis/logger/logger2.h> // needed for LoggerSizeOfInternalLogEntry()
 #include <stasis/logger/logEntry.h>
 
@@ -98,7 +98,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 
   LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry) + 
 			     sizeof(UpdateLogEntry) + argSize +
-			     ((!invertible) ? physical_slot_length(rid.size) 
+			     ((!invertible) ? stasis_record_type_to_size(rid.size) 
 			                    : 0) + 
 			     (whole_page_phys ? PAGE_SIZE 
 			                      : 0));
@@ -115,7 +115,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   } 
   if(!invertible) {
     memcpy((void*)getUpdatePreImage(ret), preImage, 
-	   physical_slot_length(rid.size));
+	   stasis_record_type_to_size(rid.size));
   }
   if(whole_page_phys) {
     memcpy((void*)getUpdatePreImage(ret), preImage, 
@@ -159,7 +159,7 @@ long sizeofLogEntry(const LogEntry * log) {
     int undoType = operationsTable[log->update.funcID].undo;
     return sizeof(struct __raw_log_entry) + 
       sizeof(UpdateLogEntry) + log->update.argSize + 
-      ((undoType == NO_INVERSE) ? physical_slot_length(log->update.rid.size) 
+      ((undoType == NO_INVERSE) ? stasis_record_type_to_size(log->update.rid.size) 
                                 : 0) +
       ((undoType == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0);
   }

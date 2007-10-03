@@ -360,7 +360,7 @@ static const byte * blkNext(block_t * b) {
 }
 static int blkSize(block_t * b) {
   genericBlockImpl * impl = b->impl;
-  return physical_slot_length(impl->pos.size);
+  return stasis_record_type_to_size(impl->pos.size);
 }
 static void blkRelease(block_t * b) {
   free(b->impl);

@@ -70,14 +70,14 @@ static void fixedSetType(int xid, Page *p, recordid rid, int type) {
   assertlocked(p->rwlatch);
   checkRid(p,rid);
   assert(rid.slot < *recordcount_ptr(p));
-  assert(physical_slot_length(type) == physical_slot_length(*recordsize_ptr(p)));
+  assert(stasis_record_type_to_size(type) == stasis_record_type_to_size(*recordsize_ptr(p)));
   *recordsize_ptr(p) = rid.size;
 }
 static int fixedGetLength(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
   assert(*stasis_page_type_ptr(p));
   return rid.slot > *recordcount_ptr(p) ?
-      INVALID_SLOT : physical_slot_length(*recordsize_ptr(p));
+      INVALID_SLOT : stasis_record_type_to_size(*recordsize_ptr(p));
 }
 
 static int notSupported(int xid, Page * p) { return 0; }
@@ -86,7 +86,7 @@ static int fixedFreespace(int xid, Page * p) {
   assertlocked(p->rwlatch);
   if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
     // Return the size of a slot; that's the biggest record we can take.
-    return physical_slot_length(*recordsize_ptr(p));
+    return stasis_record_type_to_size(*recordsize_ptr(p));
   } else {
     // Page full; return zero.
     return 0;

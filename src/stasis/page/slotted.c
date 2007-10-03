@@ -103,7 +103,7 @@ static inline void slottedFsck(const Page const * page) {
     short slot_offset = *slot_ptr(page, i);
     if(slot_offset != INVALID_SLOT) { 
       const unsigned char ci = i % 0xFF;
-      short slot_len = physical_slot_length(*slot_length_ptr(page, i));
+      short slot_len = stasis_record_type_to_size(*slot_length_ptr(page, i));
     
       for(short j = 0; j < slot_len; j++) { 
 	assert(image[slot_offset + j] == 0xFF);
@@ -161,7 +161,7 @@ static void slottedCompact(Page * page) {
       lastFreeSlotBeforeUsedSlot = lastFreeSlot;
 
       short logicalSize = *slot_length_ptr(page, i);
-      short physicalSize = physical_slot_length(logicalSize);
+      short physicalSize = stasis_record_type_to_size(logicalSize);
 
       memcpy(&(buffer[*freespace_ptr(&bufPage)]), record_ptr(page, i), physicalSize);
 
@@ -256,11 +256,11 @@ static void really_do_ralloc(Page * page, recordid rid) {
   short freeSpace;
   
   // Compact the page if we don't have enough room.
-  if(slottedFreespaceForSlot(page, rid.slot) < physical_slot_length(rid.size)) {
+  if(slottedFreespaceForSlot(page, rid.slot) < stasis_record_type_to_size(rid.size)) {
     slottedCompact(page);
     
     // Make sure we have enough enough free space for the new record
-    assert (slottedFreespaceForSlot(page, rid.slot) >= physical_slot_length(rid.size));
+    assert (slottedFreespaceForSlot(page, rid.slot) >= stasis_record_type_to_size(rid.size));
   }
 
   freeSpace = *freespace_ptr(page);
@@ -354,7 +354,7 @@ static void really_do_ralloc(Page * page, recordid rid) {
   // the slot header.
 
   assert(rid.slot < *numslots_ptr(page));
-  *freespace_ptr(page) = freeSpace + physical_slot_length(rid.size);
+  *freespace_ptr(page) = freeSpace + stasis_record_type_to_size(rid.size);
   *slot_ptr(page, rid.slot)  = freeSpace;
 
   *slot_length_ptr(page, rid.slot) = rid.size; 
@@ -400,11 +400,11 @@ static void slottedSetType(int xid, Page *p, recordid rid, int type) {
 
   if(type == NORMAL_SLOT) {
     // set slot_length_ptr to the physical length.
-    *slot_length_ptr(p, rid.slot) = physical_slot_length(old_type);
+    *slot_length_ptr(p, rid.slot) = stasis_record_type_to_size(old_type);
   } else {
     // Changing to a special slot type; make sure doing so doesn't change
     // the record size.
-    assert(physical_slot_length(type) == physical_slot_length(old_type));
+    assert(stasis_record_type_to_size(type) == stasis_record_type_to_size(old_type));
     *slot_length_ptr(p, rid.slot) = type;
   }
 }
@@ -415,7 +415,7 @@ static int slottedGetLength(int xid, Page *p, recordid rid) {
   if( slottedGetType(xid, p, rid) == INVALID_SLOT)
     return INVALID_SLOT;
   else
-    return physical_slot_length(*slot_length_ptr(p, rid.slot));
+    return stasis_record_type_to_size(*slot_length_ptr(p, rid.slot));
 }
 
 static recordid slottedNext(int xid, Page *p, recordid rid) {
@@ -462,7 +462,7 @@ static recordid slottedPreRalloc(int xid, Page * p, int type) {
     rid.slot = *freelist_ptr(p);
   }
 
-  if(slottedFreespaceForSlot(p, rid.slot) < physical_slot_length(type)) {
+  if(slottedFreespaceForSlot(p, rid.slot) < stasis_record_type_to_size(type)) {
     rid = NULLRID;
   }
 
@@ -478,8 +478,8 @@ static void slottedPostRalloc(int xid, Page * p, recordid rid) {
 static void slottedFree(int xid, Page * p, recordid rid) {
   sanityCheck(p, rid);
 
-  if(*freespace_ptr(p) == *slot_ptr(p, rid.slot) + physical_slot_length(rid.size)) {
-    (*freespace_ptr(p)) -= physical_slot_length(rid.size);
+  if(*freespace_ptr(p) == *slot_ptr(p, rid.slot) + stasis_record_type_to_size(rid.size)) {
+    (*freespace_ptr(p)) -= stasis_record_type_to_size(rid.size);
   }
 
   assert(rid.slot < *numslots_ptr(p));

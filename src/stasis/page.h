@@ -391,7 +391,8 @@ static const size_t USABLE_SIZE_OF_PAGE = (PAGE_SIZE - sizeof(lsn_t) - sizeof(in
 
    @return The length of the record in bytes.
  */
-static inline size_t physical_slot_length(ssize_t type) {
+static inline size_t 
+stasis_record_type_to_size(ssize_t type) {
   return type >= 0 ? type : SLOT_TYPE_LENGTHS[0 - type];
 }
 

@@ -305,15 +305,15 @@ static LogEntry * LogAction(TransactionLog * l, Page * p, recordid rid, int oper
 
   argSize = operationsTable[operation].sizeofData;
 
-  if(argSize == SIZEOF_RECORD) argSize = physical_slot_length(rid.size);
+  if(argSize == SIZEOF_RECORD) argSize = stasis_record_type_to_size(rid.size);
   if(argSize == SIZEIS_PAGEID) argSize = rid.page;
 
   int undoType = operationsTable[operation].undo;
   
   if(undoType == NO_INVERSE) {
-    DEBUG("Creating %ld byte physical pre-image.\n", physical_slot_length(rid.size));
+    DEBUG("Creating %ld byte physical pre-image.\n", stasis_record_type_to_size(rid.size));
 
-    preImage = malloc(physical_slot_length(rid.size));
+    preImage = malloc(stasis_record_type_to_size(rid.size));
     stasis_record_read(l->xid, p, rid, preImage);
   } else if (undoType == NO_INVERSE_WHOLE_PAGE) {
     DEBUG("Logging entire page\n");
