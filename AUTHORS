@@ -1,17 +1,13 @@
 Author:
   Russell Sears	sears@cs.berkeley.edu
 
-The following people contribued to this software in the past:
+The following people contributed to this software in the past:
 ------------------------------------------------------------
 
 Initial version of library:
   Jason Bayer	bayer@xcf.berkeley.edu
   Jim Blomo	jim@xcf.berkeley.edu
   Jimmy Kittiyachavalit	jkit@xcf.berkeley.edu 
-
-B-Tree implementation:
-  Colleen Lewis
-
 
 
 The following libraries are bundled with this software:
@@ -30,7 +26,7 @@ Earlier versions of this software made use of:
   PBL - The Program Base Library
     http://www.mission-base.com/peter/source/
 
-  PBL has been replaced with our own re-entrant linear hash
-  implementation that includes (deprecated) compatiblity with the
+  PBL has been replaced with our own reentrant linear hash
+  implementation that includes (deprecated) compatibility with the
   pblHt* interface.
 
