@@ -16,9 +16,6 @@ namespace rose {
 template <class COMPRESSOR, class TYPE>
 void pStarLoaded(Page *p);
 
-template<class PAGEFORMAT, class COMPRESSOR, class TYPE>
-inline plugin_id_t plugin_id();
-
 template <class COMPRESSOR, class TYPE> class Pstar {
  public:
   // Initialize a new Pstar page

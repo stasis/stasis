@@ -8,7 +8,7 @@
 
 #include "pstar.h"  // for typedefs + consts (XXX add new header?)
 #include "tuple.h" // XXX rename tuple.hx
-
+#include "pluginDispatcher.h"
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: sears@google.com (Rusty Sears)
 
