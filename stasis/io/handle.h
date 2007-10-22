@@ -252,10 +252,11 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
 
    @param start_offset The logical offset of the first byte in the handle
    @param path The name of the file to be opened.
-   @param mode Flags to be passed to open()
+   @param mode Flags to be passed to open() (eg O_CREAT)
+   @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_file)
-    (lsn_t start_offset, char * path, int flags, int mode);
+    (lsn_t start_offset, char * path, int flags, int perm);
 /**
    Open a handle that is backed by a file.  This handle uses pread()
    and pwrite().  It never holds a mutex while perfoming I/O.
@@ -266,10 +267,11 @@ stasis_handle_t * stasis_handle(open_file)
 
    @param start_offset The logical offset of the first byte in the handle
    @param path The name of the file to be opened.
-   @param mode Flags to be passed to open().
+   @param mode Flags to be passed to open(). (eg O_CREAT)
+   @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_pfile)
-    (lsn_t start_offset, char * path, int flags, int mode);
+     (lsn_t start_offset, char * path, int flags, int perm);
 /**
    Given a factory for creating "fast" and "slow" handles, provide a
    handle that never makes callers wait for write requests to
