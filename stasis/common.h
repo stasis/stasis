@@ -115,9 +115,8 @@ typedef long long pageid_t;
   printf(__VA_ARGS__); fflush(NULL) 
 #else 
 #define DEBUG(...)
+#endif /*DEBUGGING*/
 
 #include "compensations.h"
-
-#endif /*DEBUGGING*/
 
 #endif /* __stasis_common_h */
