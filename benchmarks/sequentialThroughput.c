@@ -46,9 +46,21 @@ int main(int argc, char ** argv) {
     } else if(!strcmp(argv[i], "--deprecatedFH")) {
       bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_DEPRECATED;
       legacyFH = 1;
-    } else if(!strcmp(argv[i], "--pfile")) {
-      bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
+    } else if(!strcmp(argv[i], "--nb")) {
+      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING;
+      legacyBM = 0;
+      legacyFH = 0;
     } else if(!strcmp(argv[i], "--file")) {
+      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_FILE;
+      legacyBM = 0;
+      legacyFH = 0;
+    } else if(!strcmp(argv[i], "--pfile")) {
+      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_PFILE;
+      legacyBM = 0;
+      legacyFH = 0;
+    } else if(!strcmp(argv[i], "--nb_pfile")) {
+      bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
+    } else if(!strcmp(argv[i], "--nb_file")) {
       bufferManagerNonBlockingSlowHandleType = IO_HANDLE_FILE;
     } else if(!strcmp(argv[i], "--mb")) {
       i++;

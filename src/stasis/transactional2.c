@@ -136,27 +136,29 @@ int Tinit() {
 	LogInit(loggerType);
 	stasis_page_init();
 
+#ifndef HAVE_O_DIRECT
+	if(bufferManagerO_DIRECT) {
+	  printf("O_DIRECT not supported by this build; switching to conventional buffered I/O.\n");
+	  bufferManagerO_DIRECT = 0;
+	}
+#endif
+	int openMode;
+	if(bufferManagerO_DIRECT) {
+#ifdef HAVE_O_DIRECT
+	  openMode = O_CREAT | O_RDWR | O_DIRECT;
+#else
+              printf("Can't happen\n");
+              abort();
+#endif
+	} else {
+	  openMode = O_CREAT | O_RDWR;
+	}
         switch(bufferManagerFileHandleType) {
           case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
             struct sf_args * slow_arg = malloc(sizeof(sf_args));
             slow_arg->filename = STORE_FILE;
 
-#ifndef HAVE_O_DIRECT
-            if(bufferManagerO_DIRECT) {
-              printf("O_DIRECT not supported by this build; switching to conventional buffered I/O.\n");
-              bufferManagerO_DIRECT = 0;
-            }
-#endif
-            if(bufferManagerO_DIRECT) {
-#ifdef HAVE_O_DIRECT
-              slow_arg->openMode = O_CREAT | O_RDWR | O_DIRECT;
-#else
-              printf("Can't happen\n");
-              abort();
-#endif
-            } else {
-              slow_arg->openMode = O_CREAT | O_RDWR;
-            }
+	    slow_arg->openMode = openMode;
 
             slow_arg->filePerm = FILE_PERM;
             // Allow 4MB of outstanding writes.
@@ -183,7 +185,17 @@ int Tinit() {
             //pageFile = stasis_handle(open_debug)(pageFile);
             pageHandleOpen(pageFile);
           } break;
-          case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: { 
+	  case BUFFER_MANAGER_FILE_HANDLE_FILE: {
+	    stasis_handle_t * pageFile =
+	      stasis_handle_open_file(0, STORE_FILE, openMode, FILE_PERM);
+	    pageHandleOpen(pageFile);
+	  } break;
+	  case BUFFER_MANAGER_FILE_HANDLE_PFILE: {
+	    stasis_handle_t * pageFile =
+	      stasis_handle_open_pfile(0, STORE_FILE, openMode, FILE_PERM);
+	    pageHandleOpen(pageFile);
+	  } break;
+	  case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: { 
             printf("\nWarning: Using old I/O routines (with known bugs).\n");
             openPageFile();
           } break;
@@ -193,8 +205,6 @@ int Tinit() {
             abort();
           }
         }
-        //#else
-        //#endif // USE_PAGEFILE
 	bufInit(bufferManagerType);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
