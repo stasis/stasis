@@ -1,4 +1,5 @@
-/*--- This software is copyrighted by the Regents of the University of
+/*--- This software is copyrighted by the Regents of the University 
+of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
@@ -274,8 +275,8 @@ void load_handle(thread_arg* t) {
 }
 
 void handle_sequentialtest(stasis_handle_t * h) { 
-  time_t seed = time(0);
-  printf("\nSeed = %ld\n", seed);
+  time_t seed = 0; //time(0);
+  printf("Seed = %ld\n", seed);
   srandom(seed);
 
   int * values = malloc(VALUE_COUNT * sizeof(int));
@@ -325,6 +326,7 @@ void handle_concurrencytest(stasis_handle_t * h) {
    Check the memory I/O handle.
 */
 START_TEST(io_memoryTest) {
+  printf("io_memoryTest\n"); fflush(stdout);
   stasis_handle_t * h;
   h = stasis_handle(open_memory)(0);
   //  h = stasis_handle(open_debug)(h);
@@ -341,6 +343,7 @@ START_TEST(io_memoryTest) {
 } END_TEST
 
 START_TEST(io_fileTest) { 
+  printf("io_fileTest\n"); fflush(stdout);
   stasis_handle_t * h;
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   //  h = stasis_handle(open_debug)(h);
@@ -375,6 +378,7 @@ static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
 }
 
 START_TEST(io_pfileTest) {
+  printf("io_pfileTest\n"); fflush(stdout);
   load_handle_truncate_is_supported = 0;
 
   stasis_handle_t * h;
@@ -413,6 +417,7 @@ static stasis_handle_t * slow_factory(void * argsP) {
 }
 
 START_TEST(io_nonBlockingTest) { 
+  printf("io_nonBlockingTest\n"); fflush(stdout);
   stasis_handle_t * h;
 
   sf_args slow_args = {
