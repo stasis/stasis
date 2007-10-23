@@ -61,8 +61,9 @@ long myrandom(long x) {
   return (long)((r/max));
 }
 
+int handle_truncate_is_supported = 1;
 
-void handle_smoketest(stasis_handle_t * h) { 
+void handle_smoketest(stasis_handle_t * h) {
 
   const int one   = 0x11111111;
   const int two   = 0x22222222;
@@ -102,9 +103,9 @@ void handle_smoketest(stasis_handle_t * h) {
   w = h->append_buffer(h, sizeof(int));
   memcpy(w->buf, &four, sizeof(int));
   w->h->release_write_buffer(w);
-
-  h->truncate_start(h, 2 * sizeof(int));
-  
+  if(handle_truncate_is_supported) {
+    h->truncate_start(h, 2 * sizeof(int));
+  }
   int three_read = 0;
   int four_read = 0;
   ret = h->read(h, 2*sizeof(int), (byte*)&three_read, sizeof(int)); 
@@ -132,8 +133,6 @@ typedef struct {
 
 lsn_t trunc_val;
 pthread_mutex_t trunc_mut = PTHREAD_MUTEX_INITIALIZER;
-
-int load_handle_truncate_is_supported = 1; 
 
 void load_handle(thread_arg* t) {
   lsn_t * offsets = malloc(t->count * sizeof(lsn_t));
@@ -256,7 +255,7 @@ void load_handle(thread_arg* t) {
     }
 
     // Truncate 1% of the time.
-    if(!myrandom(100) && load_handle_truncate_is_supported) {
+    if(!myrandom(100) && handle_truncate_is_supported) {
       lsn_t pre_start = h->start_position(h);
       
       pthread_mutex_lock(&trunc_mut);
@@ -383,7 +382,7 @@ static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
 
 START_TEST(io_pfileTest) {
   printf("io_pfileTest\n"); fflush(stdout);
-  load_handle_truncate_is_supported = 0;
+  handle_truncate_is_supported = 0;
 
   stasis_handle_t * h;
   h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
@@ -406,7 +405,7 @@ START_TEST(io_pfileTest) {
 
   unlink("logfile.txt");
 
-  load_handle_truncate_is_supported = 1;
+  handle_truncate_is_supported = 1;
 } END_TEST
 
 typedef struct sf_args {
