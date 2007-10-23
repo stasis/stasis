@@ -462,6 +462,7 @@ START_TEST (recovery_multiple_xacts) {
   TuncleanShutdown();
 
   Tinit();
+  stasis_suppress_unclean_shutdown_warnings = 1;
   Tdeinit();
 
   Tinit();
@@ -480,6 +481,7 @@ START_TEST (recovery_multiple_xacts) {
   fail_unless(j3 == 4, NULL);
   fail_unless(j4 == 4, NULL);
   assert(j4 == 4);
+  stasis_suppress_unclean_shutdown_warnings = 1;
   Tdeinit();
 } END_TEST
 

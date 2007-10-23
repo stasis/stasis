@@ -1,10 +1,10 @@
 #include <pthread.h>
 #include <config.h>
 #include "bufferManager/bufferHash.h"
+
 #include <stasis/bufferPool.h>
 #include <stasis/doubleLinkedList.h>
 #include <stasis/lhtable.h>
-
 
 #include <stasis/bufferPool.h>
 #include <stasis/pageHandle.h>

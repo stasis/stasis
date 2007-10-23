@@ -15,7 +15,6 @@ static pthread_cond_t  shutdown_cond  = PTHREAD_COND_INITIALIZER;
 static pblHashTable_t * dirtyPages = 0;
 static pthread_mutex_t dirtyPages_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int lladd_enableAutoTruncation = 1;
 #ifdef LONG_TEST
 #define TARGET_LOG_SIZE (1024 * 1024 * 5)
 #define TRUNCATE_INTERVAL 1
@@ -114,8 +113,10 @@ void dirtyPagesDeinit() {
   int areDirty = 0;
   for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
     free(pblHtCurrent(dirtyPages));
-    if(!areDirty) { 
-      printf("Warning:  dirtyPagesDeinit detected dirty, unwritten pages.  Updates lost?\n");
+    if((!areDirty) &&
+       (!stasis_suppress_unclean_shutdown_warnings)) {
+      printf("Warning:  dirtyPagesDeinit detected dirty, unwritten pages.  "
+	     "Updates lost?\n");
       areDirty = 1;
     }
   }

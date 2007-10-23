@@ -38,4 +38,23 @@ extern int bufferManagerNonBlockingSlowHandleType;
    defining BUFFER_MANAGER_O_DIRECT.
 */
 extern int bufferManagerO_DIRECT;
+/**
+   If true, Stasis will suppress warnings regarding unclean shutdowns.
+   This is use to prevent spurious warnings during unit testing, and
+   must be set after Tinit() is called.  (Tinit() resets this value to
+   false).
+
+   (This should not be set by applications, or during compilation.)
+ */
+extern int stasis_suppress_unclean_shutdown_warnings;
+
+/*
+   Truncation options
+*/
+/**
+   If true, Stasis will spawn a background thread that periodically
+   truncates the log.
+ */
+extern int stasis_truncation_automatic;
+
 #endif

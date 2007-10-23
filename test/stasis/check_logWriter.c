@@ -72,7 +72,7 @@ static void setup_log() {
   lsn_t prevLSN = -1;
   int xid = 42;
   deleteLogWriter();
-  lladd_enableAutoTruncation = 0;
+  stasis_truncation_automatic = 0;
   Tinit();
   lsn_t firstLSN = -1;
   int  first = 1;
@@ -387,11 +387,10 @@ START_TEST(loggerCheckThreaded) {
 
 void reopenLogWorkload(int truncating) { 
 
-  lladd_enableAutoTruncation = 0;
-  
+  stasis_truncation_automatic = 0;
+
   const int ENTRY_COUNT = 1000;
   const int SYNC_POINT = 900;
-  lladd_enableAutoTruncation = 0;
 
   numActiveXactions = 0;
 
@@ -473,7 +472,7 @@ void reopenLogWorkload(int truncating) {
 
   assert(i == (ENTRY_COUNT * 2));  
 
-  lladd_enableAutoTruncation = 1;
+  stasis_truncation_automatic = 1;
   LogDeinit();
 }
 

@@ -72,7 +72,6 @@ terms specified in this license.
 #include <stasis/lockManager.h>
 #include <stasis/pageCache.h>
 #include <stasis/pageHandle.h>
-#include <stasis/truncation.h>
 
 #include <stasis/lhtable.h>
 

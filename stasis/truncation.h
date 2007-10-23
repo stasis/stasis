@@ -68,8 +68,6 @@ int  dirtyPages_isDirty(Page * p);
 void truncationInit();
 void truncationDeinit();
 
-extern int lladd_enableAutoTruncation;
-
 /**
    Spawn a periodic, demand-based log truncation thread.
 */

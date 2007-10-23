@@ -221,7 +221,7 @@ int Tinit() {
 	InitiateRecovery();
 	
 	truncationInit();
-	if(lladd_enableAutoTruncation) { 
+	if(stasis_truncation_automatic) {
 	  autoTruncate(); // should this be before InitiateRecovery?
 	}
 	return 0;
@@ -397,34 +397,40 @@ int Tabort(int xid) {
 }
 
 int Tdeinit() {
-	int i;
+  int i;
 
-	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
-		if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
-			fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", XactionTable[i].xid);
-			Tabort(XactionTable[i].xid);
-		}
-	}
-	assert( numActiveXactions == 0 );
-	truncationDeinit();
-	ThashDeinit();
-	TallocDeinit();
-	deinitNestedTopActions();
-	bufDeinit();
-        DEBUG("Closing page file tdeinit\n");
-	closePageFile();
-        if(slow_pfile) {
-          slow_close(slow_pfile);
-          slow_pfile = 0;
-          slow_close = 0;
-        }
-	stasis_page_deinit();
-	LogDeinit();
-	dirtyPagesDeinit();
-	return 0;
+  for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
+    if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
+      if(!stasis_suppress_unclean_shutdown_warnings) {
+	fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n",
+		XactionTable[i].xid);
+      }
+      Tabort(XactionTable[i].xid);
+    }
+  }
+  assert( numActiveXactions == 0 );
+  truncationDeinit();
+  ThashDeinit();
+  TallocDeinit();
+  deinitNestedTopActions();
+  bufDeinit();
+  DEBUG("Closing page file tdeinit\n");
+  closePageFile();
+  if(slow_pfile) {
+    slow_close(slow_pfile);
+    slow_pfile = 0;
+    slow_close = 0;
+  }
+  stasis_page_deinit();
+  LogDeinit();
+  dirtyPagesDeinit();
+  return 0;
 }
 
 int TuncleanShutdown() {
+  // We're simulating a crash; don't complain when writes get lost,
+  // and active transactions get rolled back.
+  stasis_suppress_unclean_shutdown_warnings = 1;
   truncationDeinit();
   ThashDeinit();
   simulateBufferManagerCrash();
@@ -437,6 +443,10 @@ int TuncleanShutdown() {
   LogDeinit();
   numActiveXactions = 0;
   dirtyPagesDeinit();
+
+  // Reset it here so the warnings will appear if a new stasis
+  // instance encounters problems during a clean shutdown.
+  stasis_suppress_unclean_shutdown_warnings = 0;
   return 0;
 }
 
