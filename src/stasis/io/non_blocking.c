@@ -49,7 +49,10 @@
 
 */
 
-#define INVALID_NODE 2
+#define INVALID_NODE 3
+#define NEEDS_FORCE  2
+#define DIRTY        1
+#define CLEAN        0
 /*
   This should probably be enabled by default.  It causes the writeback
   threads to coalesce write requests before passing them to the
@@ -90,9 +93,10 @@ typedef struct tree_node {
   /** The number of threads accessing this handle.  The handle cannot
       be deallocated unless this is zero. */
   int pin_count;
-  /** set to 1 when the handle is written to, 0 when the handle is
-      written back to disk, INVALID_NODE when the handle is not in
-      the tree.  */
+  /** set to DIRTY when the handle is written to, NEEDS_FORCE when
+      force() is called, and the node is dirty, CLEAN (0) when the
+      handle is written back to disk, INVALID_NODE when the handle is
+      not in the tree.  */
   int dirty;
 } tree_node;
 
@@ -142,9 +146,13 @@ typedef struct nbw_impl {
   // Fields to manage slow handles
   stasis_handle_t * (*slow_factory)(void * arg);
   void * slow_factory_arg;
+  int slow_force_once;
 
-  LinkedList * slow_handles;
-  int slow_handle_count;
+  LinkedList * available_slow_handles;
+  int available_slow_handle_count;
+
+  stasis_handle_t ** all_slow_handles;
+  int all_slow_handle_count;
 
   // These two track statistics on write coalescing.
   lsn_t requested_bytes_written;
@@ -164,6 +172,7 @@ typedef struct nbw_impl {
   // Fields to manage and signal worker threads
   pthread_t * workers;
   int worker_count;
+  pthread_cond_t force_completed_cond;
   pthread_cond_t pending_writes_cond;
   int still_open;
 } nbw_impl;
@@ -174,12 +183,20 @@ static inline void freeFastHandle(nbw_impl * impl, const tree_node * n);
     by calling impl->slow_factory.. */
 static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
   pthread_mutex_lock(&impl->mut);
-  stasis_handle_t * slow = (stasis_handle_t*)popMaxVal(&impl->slow_handles);
+  stasis_handle_t * slow
+    = (stasis_handle_t*)popMaxVal(&impl->available_slow_handles);
   assert(slow);
   if((long)slow == -1) {
-    impl->slow_handle_count++;
+    impl->available_slow_handle_count++;
     pthread_mutex_unlock(&impl->mut);
     slow = impl->slow_factory(impl->slow_factory_arg);
+    pthread_mutex_lock(&impl->mut);
+    impl->all_slow_handle_count++;
+    impl->all_slow_handles
+      = realloc(impl->all_slow_handles,
+		(impl->all_slow_handle_count) * sizeof(stasis_handle_t*));
+    impl->all_slow_handles[(impl->all_slow_handle_count)-1] = slow;
+    pthread_mutex_unlock(&impl->mut);
   } else {
     pthread_mutex_unlock(&impl->mut);
   }
@@ -189,7 +206,7 @@ static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
 static void releaseSlowHandle(nbw_impl * impl, stasis_handle_t * slow) {
   assert(slow);
   pthread_mutex_lock(&impl->mut);
-  addVal(&impl->slow_handles, (long)slow);
+  addVal(&impl->available_slow_handles, (long)slow);
   pthread_mutex_unlock(&impl->mut);
 }
 
@@ -197,7 +214,7 @@ static tree_node * allocTreeNode(lsn_t off, lsn_t len) {
   tree_node * ret = malloc(sizeof(tree_node));
   ret->start_pos = off;
   ret->end_pos = off + len;
-  ret->dirty = 0;
+  ret->dirty = CLEAN;
   ret->pin_count = 1;
   return ret;
 }
@@ -285,11 +302,11 @@ static inline int releaseFastHandle(nbw_impl * impl, const tree_node * n,
     free((void*)n);
     return 0;
   } else {
-    assert(setDirty == 0 || setDirty == 1);
-    assert(n->dirty == 0 || n->dirty == 1);
+    assert(setDirty == CLEAN || setDirty == DIRTY);
+    assert(n->dirty == CLEAN || n->dirty == DIRTY || n->dirty == NEEDS_FORCE);
     pthread_mutex_lock(&impl->mut);
     ((tree_node*)n)->pin_count--;
-    if(n->dirty == 0) {
+    if(n->dirty == CLEAN) {
       ((tree_node*)n)->dirty = setDirty;
     }
     pthread_mutex_unlock(&impl->mut);
@@ -322,7 +339,7 @@ static int nbw_close(stasis_handle_t * h) {
   // No longer need latch; this is the only thread allowed to touch the handle.
   free(impl->workers);
 
-  DEBUG("nbw had %d slow handles\n", impl->slow_handle_count);
+  DEBUG("nbw had %d slow handles\n", impl->available_slow_handle_count);
   DEBUG("fast handles = %d, used buffer = %lld\n", impl->fast_handle_count,
         impl->used_buffer_size);
   if(impl->requested_bytes_written < impl->total_bytes_written) {
@@ -337,13 +354,13 @@ static int nbw_close(stasis_handle_t * h) {
   RB_ENTRY(destroy)(impl->fast_handles);
   pthread_mutex_destroy(&impl->mut);
   stasis_handle_t * slow;
-  while(-1 != (long)(slow = (stasis_handle_t*)popMaxVal(&impl->slow_handles))) {
+  while(-1 != (long)(slow = (stasis_handle_t*)popMaxVal(&impl->available_slow_handles))) {
     slow->close(slow);
-    impl->slow_handle_count--;
+    impl->available_slow_handle_count--;
   }
-  destroyList(&impl->slow_handles);
-
-  assert(impl->slow_handle_count == 0);
+  destroyList(&impl->available_slow_handles);
+  free(impl->all_slow_handles);
+  assert(impl->available_slow_handle_count == 0);
 
   free(h->impl);
   free(h);
@@ -414,7 +431,7 @@ static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
   write_buffer_impl * w_impl = w->impl;
   const tree_node * n = w_impl->n;
   w_impl->w->h->release_write_buffer(w_impl->w);
-  releaseFastHandle(impl, n, 1);
+  releaseFastHandle(impl, n, DIRTY);
   free(w_impl);
   free(w);
   return 0;
@@ -450,7 +467,7 @@ static int nbw_release_read_buffer(stasis_read_buffer_t * r) {
   // XXX shouldn't need to check for this here; getFastHandle does
   // something similar...
   if(n) {
-    releaseFastHandle(impl, n, 0);
+    releaseFastHandle(impl, n, CLEAN);
   } else {
     assert(oldHandle);
     releaseSlowHandle(impl, oldHandle);
@@ -464,7 +481,7 @@ static int nbw_write(stasis_handle_t * h, lsn_t off,
   nbw_impl * impl = h->impl;
   const tree_node * n = allocFastHandle(impl, off, len);
   int ret = n->h->write(n->h, off, dat, len);
-  releaseFastHandle(impl, n, 1);
+  releaseFastHandle(impl, n, DIRTY);
   if(!ret) {
     pthread_mutex_lock(&impl->mut);
     assert(impl->start_pos <= impl->end_pos);
@@ -499,12 +516,53 @@ static int nbw_read(stasis_handle_t * h,
   // XXX should be handled by releaseFastHandle.
   if(n) {
     ret = n->h->read(n->h, off, buf, len);
-    releaseFastHandle(impl, n, 0);
+    releaseFastHandle(impl, n, CLEAN);
   } else {
     stasis_handle_t * slow = getSlowHandle(impl);
     ret = slow->read(slow, off, buf, len);
     releaseSlowHandle(impl, slow);
   }
+  return ret;
+}
+static int nbw_force(stasis_handle_t * h) {
+  nbw_impl * impl = h->impl;
+  pthread_mutex_lock(&impl->mut);
+  const tree_node * n = RB_ENTRY(min)(impl->fast_handles);
+  int blocked = 0;
+  while(n) {
+    if(n->dirty) {
+      // cast strips const
+      ((tree_node*)n)->dirty = NEEDS_FORCE;
+      blocked = 1;
+    }
+    n = RB_ENTRY(lookup)(RB_LUNEXT,n,impl->fast_handles);
+  }
+  pthread_cond_broadcast(&impl->pending_writes_cond);
+  while(blocked) {
+    pthread_cond_wait(&impl->force_completed_cond,&impl->mut);
+    blocked = 0;
+    n = RB_ENTRY(min)(impl->fast_handles);
+    while(n) {
+      if(n->dirty == NEEDS_FORCE) {
+	blocked = 1;
+      }
+      n = RB_ENTRY(lookup)(RB_LUNEXT,n,impl->fast_handles);
+    }
+  }
+  int ret = 0;
+  if(impl->slow_force_once) {
+    if(impl->all_slow_handle_count) {
+      stasis_handle_t * h = impl->all_slow_handles[0];
+      ret = h->force(h);
+    }
+  } else {
+    for(int i = 0; i < impl->all_slow_handle_count; i++) {
+      stasis_handle_t * h = impl->all_slow_handles[i];
+      int tmpret = h->force(h);
+      if(tmpret) { ret = tmpret; }
+    }
+  }
+  pthread_mutex_unlock(&impl->mut);
   return ret;
 }
 static int nbw_truncate_start(stasis_handle_t * h, lsn_t new_start) {
@@ -537,6 +595,7 @@ struct stasis_handle_t nbw_func = {
   .read = nbw_read,
   .read_buffer = nbw_read_buffer,
   .release_read_buffer = nbw_release_read_buffer,
+  .force = nbw_force,
   .truncate_start = nbw_truncate_start,
   .error = 0
 };
@@ -565,10 +624,14 @@ static void * nbw_worker(void * handle) {
     // cast strips const.
     tree_node * node = (tree_node*)RB_ENTRY(min)(impl->fast_handles);
     int writes = 0;
+    int contributed_to_force = 0;
     while(node) {
       tree_node next_node = *node;
       if(node->dirty && !node->pin_count) {
-	node->dirty = 0;
+	if(node->dirty == NEEDS_FORCE) {
+	  contributed_to_force = 1;
+	}
+	node->dirty = CLEAN;
 	node->pin_count++;
 	writes++;
 
@@ -617,7 +680,8 @@ static void * nbw_worker(void * handle) {
           memcpy(buf + buf_off, r2->buf, np_len);
           buf_off += np_len;
           r2->h->release_read_buffer(r2);
-          np->dirty = 0;
+	  if(np->dirty == NEEDS_FORCE) contributed_to_force = 1;
+          np->dirty = CLEAN;
           np->pin_count++;
           dummy.start_pos = np->end_pos;
           dummy.end_pos   = np->end_pos+1;
@@ -667,6 +731,9 @@ static void * nbw_worker(void * handle) {
       }
       node = new_node;
     }
+    if(contributed_to_force) {
+      pthread_cond_broadcast(&impl->force_completed_cond);
+    }
     if(!impl->fast_handle_count || !writes) {
       if(impl->still_open) {
 	pthread_cond_wait(&impl->pending_writes_cond, &impl->mut);
@@ -684,6 +751,7 @@ static void * nbw_worker(void * handle) {
 
 stasis_handle_t * stasis_handle(open_non_blocking)
     (stasis_handle_t * (*slow_factory)(void * arg), void * slow_factory_arg,
+     int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),
      void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
      int max_fast_handles) {
@@ -696,8 +764,12 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   impl->slow_factory = slow_factory;
   impl->slow_factory_arg = slow_factory_arg;
 
-  impl->slow_handles = 0;
-  impl->slow_handle_count = 0;
+  impl->slow_force_once = slow_force_once;
+
+  impl->available_slow_handles = 0;
+  impl->available_slow_handle_count = 0;
+  impl->all_slow_handles = malloc(sizeof(stasis_handle_t*));
+  impl->all_slow_handle_count = 0;
 
   impl->requested_bytes_written = 0;
   impl->total_bytes_written = 0;
@@ -716,6 +788,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   impl->worker_count = worker_thread_count;
 
   pthread_cond_init(&impl->pending_writes_cond, 0);
+  pthread_cond_init(&impl->force_completed_cond, 0);
 
   impl->still_open = 1;
 

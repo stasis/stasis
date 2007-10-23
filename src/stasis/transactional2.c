@@ -171,13 +171,13 @@ int Tinit() {
               slow_close = slow_pfile->close;
               slow_pfile->close = nop_close;
               pageFile =
-                  stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile, fast_factory,
-                                                   NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
+		stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile, 1, fast_factory,
+						 NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
 
             } else if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_FILE) {
               pageFile =
-                  stasis_handle(open_non_blocking)(slow_file_factory, slow_arg, fast_factory,
-                                                   NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
+		stasis_handle(open_non_blocking)(slow_file_factory, slow_arg, 0, fast_factory,
+						 NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
             } else {
               printf("Unknown value for config option bufferManagerNonBlockingSlowHandleType\n");
               abort();

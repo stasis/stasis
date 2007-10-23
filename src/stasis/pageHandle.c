@@ -54,10 +54,8 @@ static void phRead(Page * ret) {
   unlock(ret->rwlatch);
 }
 static void phForce() { 
-  if(!printedForceWarning) { 
-    printf("Warning!  pageHandle can't force the page file yet!\n");
-    fflush(stdout);
-  }
+  int err = h->force(h);
+  assert(!err);
 }
 static void phClose() { 
   int err = h->close(h);

@@ -145,6 +145,13 @@ static int debug_read(stasis_handle_t * h,
   printf("tid=%9ld retn read(%lx) = %d\n", pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
 }
+static int debug_force(stasis_handle_t *h) {
+  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
+  printf("tid=%9ld call force(%lx)\n", pthread_self(), (unsigned long)hh); fflush(stdout);
+  int ret = hh->force(hh);
+  printf("tid=%9ld retn force(%lx) = %d\n", pthread_self(), (unsigned long)hh, ret); fflush(stdout);
+  return ret;
+}
 static int debug_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
   printf("tid=%9ld call truncate_start(%lx, %lld)\n", pthread_self(), (unsigned long)hh, new_start); fflush(stdout);
@@ -167,6 +174,7 @@ struct stasis_handle_t debug_func = {
   .read = debug_read,
   .read_buffer = debug_read_buffer,
   .release_read_buffer = debug_release_read_buffer,
+  .force = debug_force,
   .truncate_start = debug_truncate_start,
   .error = 0
 };

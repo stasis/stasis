@@ -363,7 +363,21 @@ static int pfile_release_read_buffer(stasis_read_buffer_t *r) {
   free(r);
   return 0;
 }
-
+static int pfile_force(stasis_handle_t *h) {
+  pfile_impl *impl = h->impl;
+  if(!(impl->file_flags & O_SYNC)) {
+#ifdef HAVE_FDATASYNC
+    DEBUG("pfile_force() is calling fdatasync()\n");
+    fdatasync(impl->fd);
+#else
+    DEBUG("pfile_force() is calling fsync()\n");
+    fsync(impl->fd);
+#endif
+  } else {
+    DEBUG("File was opened with O_SYNC.  pfile_force() is a no-op\n");
+  }
+  return 0;
+}
 static int pfile_truncate_start(stasis_handle_t *h, lsn_t new_start) {
   static int truncate_warned = 0;
   if (!truncate_warned) {
@@ -388,6 +402,7 @@ struct stasis_handle_t pfile_func = {
   .read = pfile_read,
   .read_buffer = pfile_read_buffer,
   .release_read_buffer = pfile_release_read_buffer,
+  .force = pfile_force,
   .truncate_start = pfile_truncate_start,
   .error = 0
 };

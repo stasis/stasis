@@ -212,8 +212,9 @@ static int mem_read(stasis_handle_t * h,
   mem_release_read_buffer(r);
   return ret;
 }
-
-
+static int mem_force(stasis_handle_t *h) {
+  return 0;
+}
 static int mem_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   mem_impl* impl = (mem_impl*) h->impl;
   pthread_mutex_lock(&(impl->mut));
@@ -253,6 +254,7 @@ struct stasis_handle_t mem_func = {
   .read = mem_read,
   .read_buffer = mem_read_buffer,
   .release_read_buffer = mem_release_read_buffer,
+  .force = mem_force,
   .truncate_start = mem_truncate_start,
   .error = 0
 };

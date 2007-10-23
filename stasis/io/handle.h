@@ -194,6 +194,12 @@ typedef struct stasis_handle_t {
   int (*read)(struct stasis_handle_t * h,
 	      lsn_t off, byte * buf, lsn_t len);
   /**
+     Force any outstanding writes to disk.  In progress writes (those
+     whose calls to write() or release_write_buffer() have not yet
+     returned) may or may not be forced to disk.
+  */
+  int (*force)(struct stasis_handle_t * h);
+  /**
      Truncate bytes from the beginning of the file.  This is needed by
      the log manager.
 
@@ -295,6 +301,11 @@ stasis_handle_t * stasis_handle(open_pfile)
    @param slow_factory_arg A pointer to data that will be passed into
                            slow_factory.
 
+   @param slow_force_once If zero, call force on each slow handle when
+                          force is called.  When 1, only call force on
+                          one of the slow handles (this is useful when
+                          slow_factory returns a singleton handle...).
+
    @param fast_factory A callback function that returns a handle with
                        a given offest and length.  The handle need not
                        support persistant storage, and is used as
@@ -315,6 +326,7 @@ stasis_handle_t * stasis_handle(open_pfile)
 */
 stasis_handle_t * stasis_handle(open_non_blocking)
     (stasis_handle_t * (*slow_factory)(void * arg), void * slow_factory_arg,
+     int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
      void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
      int max_writes);

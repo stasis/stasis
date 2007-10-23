@@ -250,6 +250,10 @@ void load_handle(thread_arg* t) {
       };
       
     }
+    // Force 1% of the time.
+    if(!myrandom(100)) {
+      h->force(h);
+    }
 
     // Truncate 1% of the time.
     if(!myrandom(100) && load_handle_truncate_is_supported) {
@@ -275,7 +279,7 @@ void load_handle(thread_arg* t) {
 }
 
 void handle_sequentialtest(stasis_handle_t * h) { 
-  time_t seed = 0; //time(0);
+  time_t seed = time(0);
   printf("Seed = %ld\n", seed);
   srandom(seed);
 
@@ -426,7 +430,7 @@ START_TEST(io_nonBlockingTest) {
     FILE_PERM
   };
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
 				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //  h = stasis_handle(open_debug)(h);
@@ -435,7 +439,8 @@ START_TEST(io_nonBlockingTest) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0, 
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
+				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
@@ -443,7 +448,8 @@ START_TEST(io_nonBlockingTest) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, fast_factory, 0,
+  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
+				       fast_factory, 0,
 				       5, 1024 * 1024, 100);
   handle_concurrencytest(h);
   h->close(h);

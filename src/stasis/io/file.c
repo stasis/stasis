@@ -38,8 +38,10 @@ static int updateEOF(stasis_handle_t * h) {
 
 static int file_num_copies(stasis_handle_t * h) { return 0; }
 static int file_num_copies_buffer(stasis_handle_t * h) { return 0; }
+static int file_force(stasis_handle_t *h);
 
 static int file_close(stasis_handle_t * h) {
+  file_force(h);
   file_impl * impl = (file_impl*)h->impl;
   int fd = impl->fd;
   free(impl->filename);
@@ -406,7 +408,26 @@ static int file_release_read_buffer(stasis_read_buffer_t * r) {
   free(r);
   return 0;
 }
+static int file_force(stasis_handle_t * h) {
+  file_impl * impl = h->impl;
 
+  if(!impl->file_flags & O_SYNC) {
+    pthread_mutex_lock(&impl->mut);  // must latch because of truncate... :(
+    int fd = impl->fd;
+    pthread_mutex_unlock(&impl->mut);
+
+#ifdef HAVE_FDATASYNC
+    DEBUG("file_force() is calling fdatasync()\n");
+    fdatasync(fd);
+#else
+    DEBUG("file_force() is calling fsync()\n");
+    fsync(fd);
+#endif
+  } else {
+    DEBUG("File was opened with O_SYNC.  file_force() is a no-op\n");
+  }
+  return 0;
+}
 
 static int file_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   file_impl * impl = h->impl;
@@ -486,6 +507,7 @@ struct stasis_handle_t file_func = {
   .read = file_read,
   .read_buffer = file_read_buffer,
   .release_read_buffer = file_release_read_buffer,
+  .force = file_force,
   .truncate_start = file_truncate_start,
   .error = 0
 };
