@@ -101,7 +101,8 @@ static pthread_mutex_t ralloc_mutex;
 void * workerThreadWriting(void * q) {
 
   int offset = *(int*)q;
-  recordid rids[RECORDS_PER_THREAD];
+  recordid * rids;
+  rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
 
   int xid = Tbegin();
   int num_ops = 0;
@@ -171,7 +172,7 @@ void * workerThreadWriting(void * q) {
   }
   
   Tcommit(xid);
-
+  free(rids);
   return NULL;
 }
 
