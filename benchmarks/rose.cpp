@@ -185,7 +185,7 @@ class randomIterator {
     } else if(can_deref_ == RAND_TUP_NEVER) {
       can_deref_ = RAND_TUP_NO;
     } else {
-      assert(can_deref_ == RAND_TUP_BROKE);
+      can_deref_ = RAND_TUP_BROKE;
     }
   }
   inline void operator+=(int i) {
