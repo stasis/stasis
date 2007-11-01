@@ -50,6 +50,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/allocationPolicy.h>
+#include <stasis/common.h>
 
 #include <sys/time.h>
 #include <time.h>
@@ -156,24 +157,73 @@ START_TEST(allocationPolicy_smokeTest)
 #define AVAILABLE_PAGE_COUNT_B 10
 #define FREE_MUL 100
 #define XACT_COUNT 1000
+static const int MAX_DESIRED_FREESPACE =
+  (AVAILABLE_PAGE_COUNT_A + AVAILABLE_PAGE_COUNT_B) * FREE_MUL;
 
-#define PHASE_ONE_COUNT 10000
-#define PHASE_TWO_COUNT 50000
-
+#define PHASE_ONE_COUNT 100000
+#define PHASE_TWO_COUNT 500000
+static int nextxid = 0;
+int activexidcount = 0;
 static void takeRandomAction(allocationPolicy * ap, int * xids, 
 			     availablePage ** pages1, availablePage ** pages2) { 
   switch(myrandom(6)) { 
   case 0 : {   // find page
+    int thexid = myrandom(XACT_COUNT);
+    if(xids[thexid] == -1) {
+      xids[thexid] = nextxid;
+      nextxid++;
+      activexidcount++;
+      DEBUG("xid begins\n");
+    }
+    int thefreespace = myrandom(MAX_DESIRED_FREESPACE);
+    availablePage * p =
+      allocationPolicyFindPage(ap, xids[thexid], thefreespace);
+    if(p) {
+      DEBUG("alloc succeeds\n");
+      // xxx validate returned value...
+    } else {
+      DEBUG("alloc fails\n");
+    }
   } break;
   case 1 : {   // xact completed
+    if(!activexidcount) { break; }
+    int thexid;
+    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
+    allocationPolicyTransactionCompleted(ap, xids[thexid]);
+    xids[thexid] = -1;
+    activexidcount--;
+    DEBUG("complete");
   } break;
   case 2 : {   // update freespace unlocked
+    int thespacediff = myrandom(MAX_DESIRED_FREESPACE/2) - (MAX_DESIRED_FREESPACE/2);
+    int thexid;
+    if(!activexidcount) { break; }
+    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
+    int minfreespace;
+    if(thespacediff < 0) {
+      minfreespace = 0-thespacediff;
+    } else {
+      minfreespace = 0;
+    }
+    availablePage * p = allocationPolicyFindPage(ap, xids[thexid],
+                                                 minfreespace);
+    if(p && p->lockCount == 0) {
+      int thenewfreespace = p->freespace+thespacediff;
+      allocationPolicyUpdateFreespaceUnlockedPage(ap, p, thenewfreespace);
+      printf("updated freespace unlocked");
+    }
   } break;
   case 3 : {   // update freespace locked
   } break;
   case 4 : {   // lock page
   } break;
   case 5 : {   // alloced from page
+        int thexid;
+    if(!activexidcount) { break; }
+    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
+    pageid_t thepage=myrandom(AVAILABLE_PAGE_COUNT_A + pages2?AVAILABLE_PAGE_COUNT_B:0);
+    allocationPolicyAllocedFromPage(ap,thexid,thepage);
+
   } break;
 
   }
@@ -226,7 +276,7 @@ START_TEST(allocationPolicy_randomTest) {
 
   allocationPolicyAddPages(ap, pages2);
 
-  for(int k = 0; k < PHASE_ONE_COUNT; k++) { 
+  for(int k = 0; k < PHASE_TWO_COUNT; k++) { 
     takeRandomAction(ap, xids, pages1, pages2);
   }
 
