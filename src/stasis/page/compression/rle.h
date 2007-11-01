@@ -16,6 +16,8 @@ class Rle {
  public:
   typedef uint32_t block_index_t;
   typedef uint16_t copy_count_t;
+  typedef TYPE TYP;
+
   static const copy_count_t MAX_COPY_COUNT = USHRT_MAX;
 
   struct triple_t {

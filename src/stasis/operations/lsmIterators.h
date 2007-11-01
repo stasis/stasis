@@ -22,10 +22,21 @@
 
 namespace rose {
 
-template <class ITER, class ROW> class mergeIterator;
+template <class ITERA, class ITERB, class ROW> class mergeIterator;
+
+template <class ITERA, class ITERB, class ROW>
+inline const byte * toByteArray(mergeIterator<ITERA,ITERB,ROW> * const t);
+
+
+template <class ITER, class ROW> class versioningIterator;
 
 template <class ITER, class ROW>
-inline const byte * toByteArray(mergeIterator<ITER,ROW> * const t);
+inline const byte * toByteArray(versioningIterator<ITER,ROW> * const t);
+
+
+template <class STLITER, class ROW> class stlSetIterator;
+template <class STLITER, class ROW>
+inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t);
 
 
 /**
@@ -154,12 +165,9 @@ class treeIterator {
    This iterator takes two otehr iterators as arguments, and merges
    their output, dropping duplicate entries.
 
-   @todo LSM tree is not be very useful without support for deletion
-         (and, therefore, versioning).  Such support will require
-         modifications to mergeIterator (or perhaps, a new iterator
-         class).
+   It does not understand versioning or tombstones.
  */
-template<class ITER, class ROW>
+template<class ITERA, class ITERB, class ROW>
 class mergeIterator {
  private:
   static const int A = 0;
@@ -192,7 +200,7 @@ class mergeIterator {
     return cur;
   }
  public:
-  mergeIterator(ITER & a, ITER & b, ITER & aend, ITER & bend) :
+  mergeIterator(ITERA & a, ITERB & b, ITERA & aend, ITERB & bend) :
     off_(0),
     a_(a),
     b_(b),
@@ -211,7 +219,7 @@ class mergeIterator {
     before_eof_(i.before_eof_)
   { }
 
-  ROW& operator* () {
+  const ROW& operator* () {
     if(curr_ == A || curr_ == BOTH) { return *a_; }
     if(curr_ == B) { return *b_; }
     abort();
@@ -272,19 +280,153 @@ class mergeIterator {
   inline unsigned int offset() { return off_; }
  private:
   unsigned int off_;
-  ITER a_;
-  ITER b_;
-  ITER aend_;
-  ITER bend_;
+  ITERA a_;
+  ITERB b_;
+  ITERA aend_;
+  ITERB bend_;
   int curr_;
   int before_eof_;
-  friend const byte* toByteArray<ITER,ROW>(mergeIterator<ITER,ROW> * const t);
+  friend const byte*
+    toByteArray<ITERA,ITERB,ROW>(mergeIterator<ITERA,ITERB,ROW> * const t);
 };
 
+/**
+   This iterator takes an iterator that produces rows with versioning
+   information.  The rows should be sorted based on value, then sorted by
+   version, with the newest value first.
+ */
+template<class ITER, class ROW>
+class versioningIterator {
+ public:
+   versioningIterator(ITER & a, ITER & aend,
+		      int beginning_of_time) :
+    a_(a),
+    aend_(aend),
+    check_tombstone_(0),
+    tombstone_(0),
+    off_(0)
+  {}
+  explicit versioningIterator(versioningIterator &i) :
+    a_(i.a_),
+    aend_(i.aend_),
+    check_tombstone_(i.check_tombstone_),
+    tombstone_(i.tombstone_),
+    off_(i.off_)
+  {}
+
+  ROW& operator* () {
+    return *a_;
+  }
+  void seekEnd() {
+    a_ = aend_; // XXX good idea?
+  }
+  inline bool operator==(const versioningIterator &o) const {
+    return a_ == o.a_;
+  }
+  inline bool operator!=(const versioningIterator &o) const {
+    return !(*this == o);
+  }
+  inline void operator++() {
+    if(check_tombstone_) {
+      do {
+	++a_;
+      } while(a_ != aend_ && *a_ == tombstone_);
+    } else {
+      ++a_;
+    }
+    if((*a_).tombstone()) {
+      tombstone_.copyFrom(*a_);
+      check_tombstone_ = 1;
+    } else {
+      check_tombstone_ = 0;
+    }
+    off_++;
+  }
+  inline void operator--() {
+    --a_;
+    // need to remember that we backed up so that ++ can work...
+    // the cursor is always positioned on a live value, and -- can
+    // only be followed by ++, so this should do the right thing.
+    check_tombstone_ = 0;
+    off_--;
+  }
+  inline int  operator-(versioningIterator&i) {
+    return off_ - i.off_;
+  }
+  inline void operator=(versioningIterator const &i) {
+    a_ = i.a_;
+    aend_ = i.aend_;
+    check_tombstone_ = i.check_tombstone_;
+    tombstone_ = i.tombstone_;
+    //    scratch_ = *a_;
+    off_ = i.off_;
+  }
+  inline unsigned int offset() { return off_; }
+ private:
+  //  unsigned int off_;
+  ITER a_;
+  ITER aend_;
+  int check_tombstone_;
+  ROW tombstone_;
+  //  ROW &scratch_;
+  off_t off_;
+  //  int before_eof_;
+  //  typeof(ROW::TIMESTAMP) beginning_of_time_;
+  friend const byte*
+    toByteArray<ITER,ROW>(versioningIterator<ITER,ROW> * const t);
+};
+
+/**
+   This iterator takes an iterator that produces rows with versioning
+   information.  The rows should be sorted based on value, then sorted by
+   version, with the newest value first.
+ */
+ template<class STLITER,class ROW> class stlSetIterator {
+ public:
+   stlSetIterator( STLITER& it, STLITER& itend ) : it_(it), itend_(itend) {}
+   explicit stlSetIterator(stlSetIterator &i) : it_(i.it_), itend_(i.itend_){}
+   const ROW& operator* () { return *it_; }
+
+  void seekEnd() {
+    it_ = itend_; // XXX good idea?
+  }
+  stlSetIterator * end() { return new stlSetIterator(itend_,itend_); }
+  inline bool operator==(const stlSetIterator &o) const {
+    return it_ == o.it_;
+  }
+  inline bool operator!=(const stlSetIterator &o) const {
+    return !(*this == o);
+  }
+  inline void operator++() {
+    ++it_;
+  }
+  inline void operator--() {
+    --it_;
+  }
+  inline int  operator-(stlSetIterator&i) {
+    return it_ - i.it_;
+  }
+  inline void operator=(stlSetIterator const &i) {
+    it_ = i.it_;
+    itend_ = i.itend_;
+  }
+  //  inline unsigned int offset() { return off_; }
+ private:
+  //  unsigned int off_;
+  STLITER it_;
+  STLITER itend_;
+  friend const byte*
+    toByteArray<STLITER,ROW>(stlSetIterator<STLITER,ROW> * const t);
+};
+
+template <class STLITER,class ROW> 
+inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t) {
+  return (*(t->it_)).toByteArray();
+}
 /** Produce a byte array from the value stored at t's current
     position */
-template <class ITER, class ROW>
-inline const byte * toByteArray(mergeIterator<ITER,ROW> * const t) {
+template <class ITERA, class ITERB, class ROW>
+  inline const byte * toByteArray(mergeIterator<ITERA,ITERB,ROW> * const t) {
   if(t->curr_ == t->A || t->curr_ == t->BOTH) {
     return toByteArray(&t->a_);
   } else if(t->curr_ == t->B) {
@@ -293,12 +435,19 @@ inline const byte * toByteArray(mergeIterator<ITER,ROW> * const t) {
   abort();
 }
 
+/** Produce a byte array from the value stored at t's current
+    position */
+ template <class ITER, class ROW>
+   inline const byte * toByteArray(versioningIterator<ITER,ROW> * const t) {
+   return toByteArray(&t->a_);
+ }
+
 template <class PAGELAYOUT>
 inline const byte* toByteArray(treeIterator<int,PAGELAYOUT> *const t) {
   return (const byte*)&(**t);
 }
-template <class PAGELAYOUT,class TYPE>
-inline const byte* toByteArray(treeIterator<Tuple<TYPE>,PAGELAYOUT> *const t) {
+template <class PAGELAYOUT,class ROW>
+inline const byte* toByteArray(treeIterator<ROW,PAGELAYOUT> *const t) {
   return (**t).toByteArray();
 }
 

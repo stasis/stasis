@@ -47,13 +47,20 @@ class Tuple {
      }
      } */
   inline ~Tuple() { delete[] cols_; delete[] byteArray_; }
-
+  inline bool tombstone() {
+    return false;
+  }
   inline TYPE * set(column_number_t col,void* val) {
     cols_[col] = *(TYPE*)val;
     return (TYPE*)val;
   }
   inline TYPE * get(column_number_t col) const {
     return &(cols_[col]);
+  }
+  inline void copyFrom(Tuple<TYPE> t) {
+    for(int i = 0; i < count_; i++) {
+      set(i,t.get(i));
+    }
   }
   inline column_number_t column_count() const {
     return count_;
@@ -156,6 +163,7 @@ class Tuple {
     int off_;
     Tuple<TYPE> scratch_;
   };
+  static const uint32_t TIMESTAMP = 0;
  private:
   Tuple() { abort(); }
   explicit Tuple(const Tuple& t) { abort(); }

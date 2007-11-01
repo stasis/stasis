@@ -47,6 +47,8 @@ using rose::mergeThread;
 using rose::compressData;
 using rose::tv_to_double; // XXX
 
+using rose::initPage;
+
 static const int32_t GB = 1024 * 1024 * 1024;
 
 static int lsm_sim;  // XXX this global variable shouldn't be global!
@@ -54,6 +56,7 @@ static int lsm_sim;  // XXX this global variable shouldn't be global!
 
 #define FIRST_PAGE 1
 
+#define FAST_ALLOC 6
 /**
    Bypass stasis' allocation mechanisms.  Stasis' page allocation
    costs should be minimal, but this program doesn't support
@@ -350,8 +353,6 @@ void run_test(unsigned int inserts, column_number_t column_count,
 
   int num_pages = 0;
 
-  TlsmSetPageAllocator(roseFastAlloc, &num_pages);
-
   Tinit();
 
   recordid tree = NULLRID;
@@ -361,7 +362,7 @@ void run_test(unsigned int inserts, column_number_t column_count,
   pthread_cond_t  block_ready_cond = PTHREAD_COND_INITIALIZER;
   int max_waiters = 3; // merged, old, new.
   if(lsm_sim) {
-    struct insert_args<PAGELAYOUT,ENGINE,ITER,ROW,TYPE> args = {
+    struct insert_args<PAGELAYOUT,ENGINE,ITER,ROW> args = {
       comparator_idx,
       rowsize,
       &begin,
@@ -385,7 +386,13 @@ void run_test(unsigned int inserts, column_number_t column_count,
                    &args);
     pthread_t merger;
     pthread_create(&merger, 0,
-                   (void*(*)(void*))mergeThread<PAGELAYOUT,ENGINE,ITER,ROW,TYPE>,
+                   (void*(*)(void*))mergeThread
+		     <PAGELAYOUT,
+                      ENGINE,
+		      treeIterator<ROW,PAGELAYOUT>,
+		      treeIterator<ROW,PAGELAYOUT>,
+		      ROW,
+		      TYPE>,
                    &args);
 
     pthread_join(inserter,0);
@@ -398,11 +405,11 @@ void run_test(unsigned int inserts, column_number_t column_count,
   gettimeofday(&start_tv, 0);
 
   if(buildTree) {
-    tree = TlsmCreate(-1, comparator_idx,rowsize);
+    tree = TlsmCreate(-1, comparator_idx, roseFastAlloc, &num_pages, rowsize);
   }
 
   uint64_t insertedByCompress;
-  compressData<PAGELAYOUT,ENGINE,TYPE,ITER,ROW>
+  compressData<PAGELAYOUT,ENGINE,TYPE,ROW,ITER>
     (&begin, &end,buildTree,tree,roseFastAlloc,(void*)&num_pages,
      &insertedByCompress);
 

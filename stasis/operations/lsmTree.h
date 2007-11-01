@@ -23,8 +23,20 @@ typedef struct {
 } lladd_lsm_iterator;
 
 typedef int(*lsm_comparator_t)(const void* a, const void* b);
+typedef void*(*lsm_page_initializer_t)(Page *, void *);
+typedef pageid_t(*lsm_page_allocator_t)(int, void *);
 
 void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
+void lsmTreeRegisterPageInitializer(int id, lsm_page_initializer_t i);
+
+pageid_t TlsmRegionAlloc(int xid, void *conf);
+pageid_t TlsmRegionAllocRid(int xid, void *conf);
+typedef struct {
+  pageid_t nextPage;
+  pageid_t endOfRegion;
+  pageid_t regionSize;
+} TlsmRegionAllocConf_t;
+extern TlsmRegionAllocConf_t LSM_REGION_ALLOC_STATIC_INITIALIZER;
 
 /**
    Initialize a new LSM tree.
@@ -37,24 +49,23 @@ void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
 
    @param keySize
 */
-recordid TlsmCreate(int xid, int comparator, int keySize);
+recordid TlsmCreate(int xid, int comparator,
+		    lsm_page_allocator_t allocator, void *allocator_state,
+		    int keySize);
 /**
    Free the space associated with an LSM tree.
  */
-recordid TlsmDealloc(int xid, recordid tree);
+recordid TlsmDealloc(int xid,
+		     lsm_page_allocator_t allocator, void *allocator_state,
+		     recordid tree);
 /**
    Append a new leaf page to an LSM tree.  Leaves must be appended in
    ascending order; LSM trees do not support update in place.
 */
 recordid TlsmAppendPage(int xid, recordid tree,
-                        const byte *key,
-                        long pageid);
-
-/**
-   Override the page allocation algorithm that LSM tree uses by default
-*/
-void TlsmSetPageAllocator(pageid_t (*allocer)(int xid, void * ignored),
-                          void * config);
+			const byte *key,
+			lsm_page_allocator_t allocator, void *allocator_state,
+			long pageid);
 /**
    Lookup a leaf page.
 

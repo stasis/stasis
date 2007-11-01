@@ -8,12 +8,40 @@
 #include <pthread.h>
 
 static lsm_comparator_t comparators[MAX_LSM_COMPARATORS];
+static lsm_page_initializer_t initializers[MAX_LSM_PAGE_INITIALIZERS];
+
+TlsmRegionAllocConf_t LSM_REGION_ALLOC_STATIC_INITIALIZER =
+  { -1, -1, 1000 };
+
+pageid_t TlsmRegionAlloc(int xid, void *conf) {
+  TlsmRegionAllocConf_t * a = (TlsmRegionAllocConf_t*)conf;
+  if(a->nextPage == a->endOfRegion) {
+    a->nextPage = TregionAlloc(xid, a->regionSize,0);
+    a->endOfRegion = a->nextPage + a->regionSize;
+  }
+  pageid_t ret = a->nextPage;
+  (a->nextPage)++;
+  return ret;
+}
+
+pageid_t TlsmRegionAllocRid(int xid, void * ridp) {
+  recordid rid = *(recordid*)ridp;
+  TlsmRegionAllocConf_t conf;
+  Tread(xid,rid,&conf);
+  pageid_t ret = TlsmRegionAlloc(xid,&conf);
+  // XXX get rid of Tset by storing next page in memory, and losing it
+  //     on crash.
+  Tset(xid,rid,&conf);
+  return ret;
+}
 
 void lsmTreeRegisterComparator(int id, lsm_comparator_t i) {
   // XXX need to de-init this somewhere... assert(!comparators[id]);
   comparators[id] = i;
 }
-
+void lsmTreeRegisterPageInitializer(int id, lsm_page_initializer_t i) {
+  initializers[id] = i;
+}
 
 #define HEADER_SIZE (2 * sizeof(lsmTreeNodeRecord))
 
@@ -75,20 +103,6 @@ void lsmTreeRegisterComparator(int id, lsm_comparator_t i) {
    Defined by client.
 
 */
-
-static pageid_t defaultAllocator(int xid, void *ignored) {
-  return TpageAlloc(xid);
-}
-
-static pageid_t (*pageAllocator)(int xid, void *ignored) = defaultAllocator;
-static void *pageAllocatorConfig;
-void TlsmSetPageAllocator(pageid_t (*allocer)(int xid, void * ignored),
-                          void * config) {
-  pageAllocator = allocer;
-  pageAllocatorConfig = config;
-}
-
-
 
 typedef struct lsmTreeState {
   pageid_t lastLeaf;
@@ -197,13 +211,15 @@ void writeNodeRecordVirtualMethods(int xid, Page *p, int slot,
   stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
 }
 
-recordid TlsmCreate(int xid, int comparator, int keySize) {
+recordid TlsmCreate(int xid, int comparator,
+		    lsm_page_allocator_t allocator, void *allocator_state,
+		    int keySize) {
 
   // can the pages hold at least two keys?
   assert(HEADER_SIZE + 2 * (sizeof(lsmTreeNodeRecord) +keySize) <
          USABLE_SIZE_OF_PAGE - 2 * sizeof(short));
 
-  pageid_t root = pageAllocator(xid, pageAllocatorConfig);
+  pageid_t root = allocator(xid, allocator_state); //pageAllocatorConfig);
   DEBUG("Root = %lld\n", root);
   recordid ret = { root, 0, 0 };
 
@@ -244,13 +260,15 @@ recordid TlsmCreate(int xid, int comparator, int keySize) {
 
 static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
                                 int depth, const byte *key, size_t key_len,
-                                pageid_t val_page, pageid_t lastLeaf) {
+                                pageid_t val_page, pageid_t lastLeaf,
+				lsm_page_allocator_t allocator,
+				void *allocator_state) {
   // root is the recordid on the root page that should point to the
   // new subtree.
   assert(depth);
   DEBUG("buildPathToLeaf(depth=%d) (lastleaf=%lld) called\n",depth, lastLeaf);
 
-  pageid_t child = pageAllocator(xid, pageAllocatorConfig); // XXX Use some other function...
+  pageid_t child = allocator(xid,allocator_state);
   DEBUG("new child = %lld internal? %d\n", child, depth-1);
 
   Page *child_p = loadPage(xid, child);
@@ -266,7 +284,7 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
     stasis_record_alloc_done(xid, child_p, child_rec);
 
     ret = buildPathToLeaf(xid, child_rec, child_p, depth-1, key, key_len,
-                      val_page,lastLeaf);
+			  val_page,lastLeaf, allocator, allocator_state);
 
     unlock(child_p->rwlatch);
     releasePage(child_p);
@@ -328,7 +346,9 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
 static recordid appendInternalNode(int xid, Page *p,
                                    int depth,
                                    const byte *key, size_t key_len,
-                                   pageid_t val_page, pageid_t lastLeaf) {
+                                   pageid_t val_page, pageid_t lastLeaf,
+				   lsm_page_allocator_t allocator,
+				   void *allocator_state) {
   assert(*stasis_page_type_ptr(p) == LSM_ROOT_PAGE || 
 	 *stasis_page_type_ptr(p) == FIXED_PAGE);
   if(!depth) {
@@ -350,7 +370,7 @@ static recordid appendInternalNode(int xid, Page *p,
       Page *child_page = loadPage(xid, child_id);
       writelock(child_page->rwlatch,0);
       ret = appendInternalNode(xid, child_page, depth-1, key, key_len,
-                               val_page, lastLeaf);
+                               val_page, lastLeaf, allocator, allocator_state);
 
       unlock(child_page->rwlatch);
       releasePage(child_page);
@@ -360,7 +380,7 @@ static recordid appendInternalNode(int xid, Page *p,
       if(ret.size != INVALID_SLOT) {
         stasis_record_alloc_done(xid, p, ret);
         ret = buildPathToLeaf(xid, ret, p, depth, key, key_len, val_page,
-                              lastLeaf);
+                              lastLeaf, allocator, allocator_state);
 
         DEBUG("split tree rooted at %lld, wrote value to {%d %d %lld}\n",
               p->id, ret.page, ret.slot, ret.size);
@@ -418,6 +438,7 @@ static pageid_t findFirstLeaf(int xid, Page *root, int depth) {
 }
 recordid TlsmAppendPage(int xid, recordid tree,
                         const byte *key,
+			lsm_page_allocator_t allocator, void *allocator_state,
                         long val_page) {
   Page *p = loadPage(xid, tree.page);
   writelock(p->rwlatch, 0);
@@ -461,12 +482,13 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
     assert(tree.page == p->id);
     ret = appendInternalNode(xid, p, depth, key, keySize, val_page,
-                             s->lastLeaf == tree.page ? -1 : s->lastLeaf);
+			     s->lastLeaf == tree.page ? -1 : s->lastLeaf,
+			     allocator, allocator_state);
 
     if(ret.size == INVALID_SLOT) {
       DEBUG("Need to split root; depth = %d\n", depth);
 
-      pageid_t child = pageAllocator(xid, pageAllocatorConfig);
+      pageid_t child = allocator(xid, allocator_state);
       Page *lc = loadPage(xid, child);
       writelock(lc->rwlatch,0);
 
@@ -519,7 +541,8 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
       assert(tree.page == p->id);
       ret = appendInternalNode(xid, p, depth, key, keySize, val_page,
-                               s->lastLeaf == tree.page ? -1 : s->lastLeaf);
+                               s->lastLeaf == tree.page ? -1 : s->lastLeaf,
+			       allocator, allocator_state);
 
       assert(ret.size != INVALID_SLOT);
 
@@ -625,8 +648,8 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
 
   size_t keySize = getKeySize(xid,p);
 
-  const lsmTreeNodeRecord *depth_nr = readNodeRecord(xid, p , 0, keySize);
-  const lsmTreeNodeRecord *cmp_nr = readNodeRecord(xid, p , 1, keySize);
+  const lsmTreeNodeRecord *depth_nr = readNodeRecord(xid, p , DEPTH, keySize);
+  const lsmTreeNodeRecord *cmp_nr = readNodeRecord(xid, p , COMPARATOR, keySize);
 
   int depth = depth_nr->ptr;
 

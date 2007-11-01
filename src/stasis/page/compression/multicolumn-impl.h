@@ -2,7 +2,8 @@
 #define _ROSE_COMPRESSION_MULTICOLUMN_IMPL_H__
 
 #include "multicolumn.h"
-
+#include "for-impl.h"
+#include "rle-impl.h"
 namespace rose {
 
 /**

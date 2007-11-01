@@ -42,6 +42,8 @@ namespace rose {
 template <class TYPE>
 class For {
  public:
+  typedef TYPE TYP;
+
   static const int PLUGIN_ID = 0;
   /**
       Set the page offset.  For frame of reference, this is used to

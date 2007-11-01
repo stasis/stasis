@@ -3,16 +3,23 @@
 
 namespace rose {
 
-template<int N,
-  typename TYPE0, class TYPE1, class TYPE2, class TYPE3, class TYPE4,
-  class TYPE5, class TYPE6, class TYPE7, class TYPE8, class TYPE9>
-class StaticTuple {
- public:
+  template<int N, class TYPE0,
+    class TYPE1=bool, class TYPE2=bool, class TYPE3=bool, class TYPE4=bool,
+    class TYPE5=bool, class TYPE6=bool, class TYPE7=bool, class TYPE8=bool,
+    class TYPE9=bool>
+    class StaticTuple {
+  public:
+  static const char NORMAL = 0;
+  static const char TOMBSTONE = 1;
+  static const int TUPLE_ID = 1;
+
   explicit inline StaticTuple() {
+    s.flag_ = NORMAL;
     initializePointers();
   }
-
   explicit inline StaticTuple(StaticTuple& t) {
+    s.flag_ = t.s.flag_;
+    s.epoch_ = t.s.epoch_;
     if(0 < N) s.cols0_ = t.s.cols0_;
     if(1 < N) s.cols1_ = t.s.cols1_;
     if(2 < N) s.cols2_ = t.s.cols2_;
@@ -27,6 +34,21 @@ class StaticTuple {
   }
 
   inline ~StaticTuple() { }
+
+  static inline byte_off_t sizeofBytes() {
+    return sizeof(flag_t) + sizeof(epoch_t) +
+    (0 < N) ? sizeof(TYPE0) : 0 +
+    (1 < N) ? sizeof(TYPE1) : 0 +
+    (2 < N) ? sizeof(TYPE2) : 0 +
+    (3 < N) ? sizeof(TYPE3) : 0 +
+    (4 < N) ? sizeof(TYPE4) : 0 +
+    (5 < N) ? sizeof(TYPE5) : 0 +
+    (6 < N) ? sizeof(TYPE6) : 0 +
+    (7 < N) ? sizeof(TYPE7) : 0 +
+    (8 < N) ? sizeof(TYPE8) : 0 +
+    (9 < N) ? sizeof(TYPE9) : 0 ;
+
+  }
 
   inline void* set(column_number_t col, void* val) {
     memcpy(cols_[col],val,size_[col]);
@@ -44,7 +66,7 @@ class StaticTuple {
   inline TYPE8 * set8(TYPE8* val) { s.cols8_=*val; }
   inline TYPE9 * set9(TYPE9* val) { s.cols9_=*val; }
 
-  inline const void* get(column_number_t col) const {
+  inline void* get(column_number_t col) const {
     return cols_[col];
   }
   inline column_number_t column_count() const { return N; }
@@ -52,13 +74,23 @@ class StaticTuple {
   inline byte_off_t column_len(column_number_t col) const {
     return size_[col];
   }
-  inline byte* toByteArray() {
-    return &s;
+  inline byte* toByteArray() const {
+    return (byte*)&s;
   }
-  inline bool operator==(StaticTuple &t) {
-    return s == t.s;
+  inline bool operator==(const StaticTuple &t) const {
+    if(0 < N) if(s.cols0_ != t.s.cols0_) return 0;
+    if(1 < N) if(s.cols1_ != t.s.cols1_) return 0;
+    if(2 < N) if(s.cols2_ != t.s.cols2_) return 0;
+    if(3 < N) if(s.cols3_ != t.s.cols3_) return 0;
+    if(4 < N) if(s.cols4_ != t.s.cols4_) return 0;
+    if(5 < N) if(s.cols5_ != t.s.cols5_) return 0;
+    if(6 < N) if(s.cols6_ != t.s.cols6_) return 0;
+    if(7 < N) if(s.cols7_ != t.s.cols7_) return 0;
+    if(8 < N) if(s.cols8_ != t.s.cols8_) return 0;
+    if(9 < N) if(s.cols9_ != t.s.cols9_) return 0;
+    return 1;
   }
-  inline bool operator<(StaticTuple &t) {
+  inline bool operator<(const StaticTuple &t) const {
     if(0 < N) {
       if(s.cols0_ < t.s.cols0_) return 1;
     }
@@ -100,6 +132,30 @@ class StaticTuple {
     }
     return 0;
   }
+
+  static inline int cmp(const void *ap, const void *bp) {
+    const StaticTuple * a = (const StaticTuple*)ap;
+    const StaticTuple * b = (const StaticTuple*)bp;
+    if(*a < *b) {
+      return -1;
+    } else if(*a == *b) {
+      // Sort *backwards* on epoch values.
+      if(a->s.epoch_ > b->s.epoch_) { return 1; }
+      else if(a->s.epoch_ < b->s.epoch_) { return -1; }
+      else return 0;
+    } else {
+      return 1;
+    }
+
+  }
+
+  struct stl_cmp
+  {
+    bool operator()(const StaticTuple* s1, const StaticTuple* s2) const
+    {
+      return *s1 < *s2; 
+    }
+  };
 
   class iterator {
   public:
@@ -146,12 +202,14 @@ class StaticTuple {
     int off_;
     StaticTuple scratch_;
   };
- private:
+  private:
 
   explicit StaticTuple(const StaticTuple& t) { abort(); }
 
   void * cols_[N];
   size_t size_[N];
+  typedef char flag_t;
+  typedef unsigned int epoch_t;
   struct {
     TYPE0 cols0_;
     TYPE1 cols1_;
@@ -163,6 +221,8 @@ class StaticTuple {
     TYPE7 cols7_;
     TYPE8 cols8_;
     TYPE9 cols9_;
+    flag_t flag_;
+    epoch_t epoch_;
   } s;
 
   inline void initializePointers() {
@@ -188,7 +248,7 @@ class StaticTuple {
     if(8 < N) size_[8] = sizeof(s.cols8_);
     if(9 < N) size_[9] = sizeof(s.cols9_);
   }
-};
+  };
 
 }
 

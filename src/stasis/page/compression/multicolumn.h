@@ -68,6 +68,7 @@ template <class TUPLE> class Multicolumn {
  public:
   static page_impl impl();
   static const plugin_id_t PAGE_FORMAT_ID = 1;
+  typedef TUPLE TUP;
 
   Multicolumn(int xid, Page *p, column_number_t column_count,
               plugin_id_t * plugins);

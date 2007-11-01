@@ -32,15 +32,18 @@ int cmp(const void *ap, const void *bp) {
 void insertProbeIter(lsmkey_t NUM_ENTRIES) {
   int intcmp = 0;
   lsmTreeRegisterComparator(intcmp,cmp);
+  TlsmRegionAllocConf_t alloc_conf = LSM_REGION_ALLOC_STATIC_INITIALIZER;
 
   Tinit();
   int xid = Tbegin();
-  recordid tree = TlsmCreate(xid, intcmp, sizeof(lsmkey_t));
+  recordid tree = TlsmCreate(xid, intcmp, 
+			     TlsmRegionAlloc, &alloc_conf,
+			     sizeof(lsmkey_t));
   for(lsmkey_t i = 0; i < NUM_ENTRIES; i++) {
     long pagenum = TlsmFindPage(xid, tree, (byte*)&i);
     assert(pagenum == -1);
     DEBUG("TlsmAppendPage %d\n",i);
-    TlsmAppendPage(xid, tree, (const byte*)&i, i + OFFSET);
+    TlsmAppendPage(xid, tree, (const byte*)&i, TlsmRegionAlloc, &alloc_conf, i + OFFSET);
     pagenum = TlsmFindPage(xid, tree, (byte*)&i);
     assert(pagenum == i + OFFSET);
   }

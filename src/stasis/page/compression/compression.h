@@ -11,6 +11,7 @@ typedef uint32_t slot_index_t;
 typedef uint8_t plugin_id_t;
 typedef uint8_t column_number_t;
 typedef uint16_t column_offset_t;
+typedef uint16_t epoch_t;
 
 static const record_size_t VARIABLE_SIZE =  CHAR_MAX;
 static const slot_index_t  NOSPACE       =  UINT_MAX;
@@ -70,6 +71,12 @@ inline plugin_id_t plugin_id() {
 
   return ret;
 }
+
+double tv_to_double(struct timeval tv) {
+  return static_cast<double>(tv.tv_sec) +
+      (static_cast<double>(tv.tv_usec) / 1000000.0);
+}
+
 
 }
 
