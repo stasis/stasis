@@ -22,7 +22,7 @@ namespace rose {
     unlink("logfile.txt");
 
     sync();
-
+    stasis_page_impl_register(Multicolumn<typename PAGELAYOUT::FMT::TUP >::impl());
     bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
     Tinit();
@@ -33,9 +33,24 @@ namespace rose {
 
     Tcommit(xid);
 
-    TlsmTableStart<PAGELAYOUT>(lsmTable);
+    lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable);
 
-    TlsmTableStop<PAGELAYOUT>(lsmTable);
+    typename PAGELAYOUT::FMT::TUP t;
+
+
+    static const long INSERTS = 1000000;
+    long int count = INSERTS / 20;
+
+    for(long int i = 0; i < INSERTS; i++) {
+      t.set0(&i);
+      TlsmTableInsert(h,t);
+      count --;
+      if(!count) {
+	count = INSERTS / 20;
+	printf("%d pct complete\n", (i * 100) / INSERTS);
+      }
+    }
+    TlsmTableStop<PAGELAYOUT>(h);
 
     Tdeinit();
 
@@ -48,6 +63,7 @@ int main(int argc, char **argv) {
   // XXX multicolumn is deprecated; want static dispatch!
   return rose::main
     <rose::SingleColumnTypePageLayout
-      <rose::Multicolumn<tup>,rose::Rle<val_t> > >
+      <rose::Multicolumn<tup>,rose::For<val_t> > >
     (argc,argv);
+  return 0;
 }

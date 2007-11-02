@@ -46,14 +46,8 @@ inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t);
  */
 template <class ROW, class PAGELAYOUT>
 class treeIterator {
- public:
-  explicit treeIterator(recordid tree, ROW &scratch, int keylen) :
-    tree_(tree),
-    scratch_(scratch),
-    keylen_(keylen),
-    lsmIterator_(lsmTreeIterator_open(-1,tree)),
-    slot_(0)
-  {
+ private:
+  inline void init_helper() {
     if(!lsmTreeIterator_next(-1, lsmIterator_)) {
       currentPage_ = 0;
       pageid_ = -1;
@@ -66,12 +60,26 @@ class treeIterator {
       currentPage_ = (PAGELAYOUT*)p_->impl;
     }
   }
+ public:
+  explicit treeIterator(recordid tree, ROW &scratch, int keylen) :
+    tree_(tree),
+    scratch_(scratch),
+    keylen_(keylen),
+    lsmIterator_(lsmTreeIterator_open(-1,tree)),
+    slot_(0)
+  {
+    init_helper();
+  }
   typedef recordid handle;
   explicit treeIterator(recordid tree) :
     tree_(tree),
       scratch_(),
-      keylen_(ROW::sizeofBytes())
-    { }
+      keylen_(ROW::sizeofBytes()),
+      lsmIterator_(lsmTreeIterator_open(-1,tree)),
+      slot_(0)
+    {
+      init_helper();
+    }
   explicit treeIterator(treeIterator& t) :
     tree_(t.tree_),
     scratch_(t.scratch_),
@@ -391,9 +399,9 @@ class versioningIterator {
  private:
    typedef typename SET::iterator STLITER;
  public:
-   typedef SET handle;
+   typedef SET * handle;
 
-   stlSetIterator( SET& s ) : it_(s.begin()), itend_(s.end()) {}
+   stlSetIterator( SET * s ) : it_(s->begin()), itend_(s->end()) {}
    stlSetIterator( STLITER& it, STLITER& itend ) : it_(it), itend_(itend) {}
 
    explicit stlSetIterator(stlSetIterator &i) : it_(i.it_), itend_(i.itend_){}

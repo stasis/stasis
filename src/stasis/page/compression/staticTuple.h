@@ -17,7 +17,7 @@ namespace rose {
     s.flag_ = NORMAL;
     initializePointers();
   }
-  explicit inline StaticTuple(StaticTuple& t) {
+  explicit inline StaticTuple(const StaticTuple& t) {
     s.flag_ = t.s.flag_;
     s.epoch_ = t.s.epoch_;
     if(0 < N) s.cols0_ = t.s.cols0_;
@@ -151,9 +151,9 @@ namespace rose {
 
   struct stl_cmp
   {
-    bool operator()(const StaticTuple* s1, const StaticTuple* s2) const
+    bool operator()(const StaticTuple& s1, const StaticTuple& s2) const
     {
-      return *s1 < *s2; 
+      return s1 < s2;
     }
   };
 
@@ -178,6 +178,7 @@ namespace rose {
       if(9 < N) scratch_.set9((TYPE9*)dat_[9][off_]);
       return scratch_;
     }
+
     inline bool operator==(const iterator &a) const {
       return (off_==a.off_);
     }
@@ -203,8 +204,6 @@ namespace rose {
     StaticTuple scratch_;
   };
   private:
-
-  explicit StaticTuple(const StaticTuple& t) { abort(); }
 
   void * cols_[N];
   size_t size_[N];
