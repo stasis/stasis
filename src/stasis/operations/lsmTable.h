@@ -115,9 +115,11 @@ namespace rose {
 
     Tcommit(xid);
     // loop around here to produce multiple batches for merge.
+
+    gettimeofday(&start_tv,0);
+
     while(1) {
 
-      gettimeofday(&start_tv,0);
 
       pthread_mutex_lock(a->block_ready_mut);
 
@@ -183,6 +185,23 @@ namespace rose {
       // TlsmFree(wait_queue[0])  /// XXX Need to implement (de)allocation!
       // TlsmFree(wait_queue[1])
 
+      merge_count++;
+
+      double wait_elapsed  = tv_to_double(wait_tv) - tv_to_double(start_tv);
+      double work_elapsed  = tv_to_double(stop_tv) - tv_to_double(wait_tv);
+      double total_elapsed = wait_elapsed + work_elapsed;
+      double ratio = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
+	/ (double)(PAGE_SIZE * mergedPages);
+      double throughput = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
+	/ (1024.0 * 1024.0 * total_elapsed);
+
+      printf("merge # %-6d: comp ratio: %-9.3f  waited %6.1f sec   "
+	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6d pages\n", merge_count, ratio,
+	     wait_elapsed, work_elapsed, (unsigned long)insertedTuples, throughput, mergedPages);
+
+
+      gettimeofday(&start_tv,0);
+
       pthread_mutex_lock(a->block_ready_mut);
 
       static int threshold_calc = 1000; // XXX REALLY NEED TO FIX THIS!
@@ -212,20 +231,6 @@ namespace rose {
       oldtree = tree;
 
       pthread_mutex_unlock(a->block_ready_mut);
-
-      merge_count++;
-
-      double wait_elapsed  = tv_to_double(wait_tv) - tv_to_double(start_tv);
-      double work_elapsed  = tv_to_double(stop_tv) - tv_to_double(wait_tv);
-      double total_elapsed = wait_elapsed + work_elapsed;
-      double ratio = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
-	/ (double)(PAGE_SIZE * mergedPages);
-      double throughput = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
-	/ (1024.0 * 1024.0 * total_elapsed);
-
-      printf("merge # %-6d: comp ratio: %-9.3f  waited %6.1f sec   "
-	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6d pages\n", merge_count, ratio,
-	     wait_elapsed, work_elapsed, (unsigned long)insertedTuples, throughput, mergedPages);
 
       Tcommit(xid);
 

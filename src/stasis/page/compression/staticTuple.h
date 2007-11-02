@@ -37,17 +37,16 @@ namespace rose {
 
   static inline byte_off_t sizeofBytes() {
     return sizeof(flag_t) + sizeof(epoch_t) +
-    (0 < N) ? sizeof(TYPE0) : 0 +
-    (1 < N) ? sizeof(TYPE1) : 0 +
-    (2 < N) ? sizeof(TYPE2) : 0 +
-    (3 < N) ? sizeof(TYPE3) : 0 +
-    (4 < N) ? sizeof(TYPE4) : 0 +
-    (5 < N) ? sizeof(TYPE5) : 0 +
-    (6 < N) ? sizeof(TYPE6) : 0 +
-    (7 < N) ? sizeof(TYPE7) : 0 +
-    (8 < N) ? sizeof(TYPE8) : 0 +
-    (9 < N) ? sizeof(TYPE9) : 0 ;
-
+    ((0 < N) ? sizeof(TYPE0) : 0) +
+    ((1 < N) ? sizeof(TYPE1) : 0) +
+    ((2 < N) ? sizeof(TYPE2) : 0) +
+    ((3 < N) ? sizeof(TYPE3) : 0) +
+    ((4 < N) ? sizeof(TYPE4) : 0) +
+    ((5 < N) ? sizeof(TYPE5) : 0) +
+    ((6 < N) ? sizeof(TYPE6) : 0) +
+    ((7 < N) ? sizeof(TYPE7) : 0) +
+    ((8 < N) ? sizeof(TYPE8) : 0) +
+    ((9 < N) ? sizeof(TYPE9) : 0) ;
   }
 
   inline void* set(column_number_t col, void* val) {
