@@ -20,23 +20,18 @@ namespace rose {
   */
 
 
-  template<class PAGELAYOUT>
-    struct new_insert_args {
-      int comparator_idx;
-      int rowsize; //typedef int32_t val_t;
-      //  ITER *begin;
-      //  ITER *end;
+  template<class PAGELAYOUT, class ITERA, class ITERB>
+    struct merge_args {
       pageid_t(*pageAlloc)(int,void*);
       void *pageAllocState;
       pthread_mutex_t * block_ready_mut;
-      pthread_cond_t * block_needed_cond;
-      pthread_cond_t * block_ready_cond;
-      int max_waiters;
-      int wait_count;
-      recordid * wait_queue;
-      typename PAGELAYOUT::FMT::TUP *scratchA;
-      typename PAGELAYOUT::FMT::TUP *scratchB;
-      pageid_t mergedPages;
+      pthread_cond_t * in_block_needed_cond;
+      pthread_cond_t * out_block_needed_cond;
+      pthread_cond_t * in_block_ready_cond;
+      pthread_cond_t * out_block_ready_cond;
+      bool * still_open;
+      typename ITERA::handle ** out_tree;
+      typename ITERB::handle ** in_tree;
     };
 
   template <class PAGELAYOUT, class ITER>
@@ -101,38 +96,58 @@ namespace rose {
      ITERA is an iterator over the data structure that mergeThread creates (a lsm tree iterator).
      ITERB is an iterator over the data structures that mergeThread takes as input (lsm tree, or rb tree..)
   */
-  template<class PAGELAYOUT, class ITERA, class ITERB> //class PAGELAYOUTX, class ENGINE, class ITERA, class ITERB,
-    //  class ROW, class TYPE>
+  template<class PAGELAYOUT, class ITERA, class ITERB>
     void* mergeThread(void* arg) {
     // The ITER argument of a is unused (we don't look at it's begin or end fields...)
-    //insert_args<PAGELAYOUT,ENGINE,ITERA,ROW>* a =
-    //    (insert_args<PAGELAYOUT,ENGINE,ITERA,ROW>*)arg;
-    new_insert_args<PAGELAYOUT> * a = (new_insert_args<PAGELAYOUT>*)arg;
+    merge_args<PAGELAYOUT, ITERA, ITERB> * a = (merge_args<PAGELAYOUT, ITERA, ITERB>*)arg;
 
     struct timeval start_tv, wait_tv, stop_tv;
 
     int merge_count = 0;
+
+    int xid = Tbegin();
+
+    // Initialize tree with an empty tree.
+    // XXX hardcodes ITERA's type:
+    recordid oldtree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
+				  a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
+
+    Tcommit(xid);
     // loop around here to produce multiple batches for merge.
     while(1) {
+
 
       gettimeofday(&start_tv,0);
 
       pthread_mutex_lock(a->block_ready_mut);
-      while(a->wait_count <2) {
-	pthread_cond_wait(a->block_ready_cond,a->block_ready_mut);
+
+      if(!*(a->still_open)) {
+	pthread_mutex_unlock(a->block_ready_mut);
+	break;
+      }
+
+      while(!*(a->in_tree)) {
+	pthread_cond_signal(a->in_block_needed_cond);
+	pthread_cond_wait(a->in_block_ready_cond,a->block_ready_mut);
       }
 
       gettimeofday(&wait_tv,0);
 
-      recordid * oldTreeA = &a->wait_queue[0];
-      recordid * oldTreeB = &a->wait_queue[1];
+      xid = Tbegin();
+
+      recordid tree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
+			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
+
+      ITERA taBegin(oldtree);
+      ITERB tbBegin(**a->in_tree);
+
+      // XXX keep in_tree handle around so that it can be freed below.
+
+      free(*a->in_tree); // free's copy of handle; not tree
+      *a->in_tree = 0; // free slot for producer
+      pthread_cond_signal(a->in_block_needed_cond);
 
       pthread_mutex_unlock(a->block_ready_mut);
-
-      recordid tree = TlsmCreate(-1, a->comparator_idx,a->pageAlloc,a->pageAllocState,a->rowsize);
-
-      ITERA taBegin(*oldTreeA,*(a->scratchA),a->rowsize);
-      ITERB tbBegin(*oldTreeB,*(a->scratchB),a->rowsize);
 
       ITERA *taEnd = taBegin.end();
       ITERB *tbEnd = tbBegin.end();
@@ -143,28 +158,43 @@ namespace rose {
       mergeIterator<ITERA, ITERB, typename PAGELAYOUT::FMT::TUP>
 	mEnd(taBegin, tbBegin, *taEnd, *tbEnd);
 
-
       mEnd.seekEnd();
       uint64_t insertedTuples;
+
       pageid_t mergedPages = compressData<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
 	(&mBegin, &mEnd,tree,a->pageAlloc,a->pageAllocState,&insertedTuples);
+
       delete taEnd;
       delete tbEnd;
 
       gettimeofday(&stop_tv,0);
 
-      pthread_mutex_lock(a->block_ready_mut);
-
-      a->mergedPages = mergedPages;
-
       // TlsmFree(wait_queue[0])  /// XXX Need to implement (de)allocation!
       // TlsmFree(wait_queue[1])
 
-      memcpy(&a->wait_queue[0],&tree,sizeof(tree));
-      for(int i = 1; i + 1 < a->wait_count; i++) {
-	memcpy(&a->wait_queue[i],&a->wait_queue[i+1],sizeof(tree));
+      pthread_mutex_lock(a->block_ready_mut);
+
+      static int threshold_calc = 1000; // XXX REALLY NEED TO FIX THIS!
+      if(a->out_tree &&  // is there a upstream merger (note the lack of the * on a->out_tree)?
+	 mergedPages > threshold_calc // do we have enough data to bother it?
+	 ) {
+	while(*a->out_tree) { // we probably don't need the "while..."
+	  pthread_cond_wait(a->out_block_needed_cond, a->block_ready_mut);
+	}
+
+	// XXX C++?  Objects?  Constructors? Who needs them?
+	*a->out_tree = (recordid*)malloc(sizeof(tree));
+	**a->out_tree = tree;
+	pthread_cond_signal(a->out_block_ready_cond);
+
+	// This is a bit wasteful; allocate a new empty tree to merge against.
+	// We don't want to ever look at the one we just handed upstream...
+	// We could wait for an in tree to be ready, and then pass it directly
+	// to compress data (to avoid all those merging comparisons...)
+	tree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
+			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
+
       }
-      a->wait_count--;
       pthread_mutex_unlock(a->block_ready_mut);
 
       merge_count++;
@@ -172,83 +202,20 @@ namespace rose {
       double wait_elapsed  = tv_to_double(wait_tv) - tv_to_double(start_tv);
       double work_elapsed  = tv_to_double(stop_tv) - tv_to_double(wait_tv);
       double total_elapsed = wait_elapsed + work_elapsed;
-      double ratio = ((double)(insertedTuples * (uint64_t)a->rowsize))
+      double ratio = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
 	/ (double)(PAGE_SIZE * mergedPages);
-      double throughput = ((double)(insertedTuples * (uint64_t)a->rowsize))
+      double throughput = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
 	/ (1024.0 * 1024.0 * total_elapsed);
 
       printf("merge # %-6d: comp ratio: %-9.3f  waited %6.1f sec   "
 	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s)\n", merge_count, ratio,
 	     wait_elapsed, work_elapsed, (unsigned long)insertedTuples, throughput);
 
-      pthread_cond_signal(a->block_needed_cond);
+      Tcommit(xid);
+
     }
     return 0;
   }
-  /*
-
-    template<class PAGELAYOUT, class ITER>
-    void* insertThread(void* arg) {
-
-    new_insert_args<PAGELAYOUT> * a = (new_insert_args<PAGELAYOUT>*)arg;
-    struct timeval start_tv, start_wait_tv, stop_tv;
-
-    int insert_count = 0;
-
-    pageid_t lastTreeBlocks = 0;
-    uint64_t lastTreeInserts = 0;
-    pageid_t desiredInserts = 0;
-
-    // this is a hand-tuned value; it should be set dynamically, not staticly
-    double K = 0.18;
-
-    // loop around here to produce multiple batches for merge.
-    while(1) {
-    gettimeofday(&start_tv,0);
-    // XXX this needs to be an iterator over an in-memory tree.
-    ITER i(*(a->begin));
-    ITER j(desiredInserts ? *(a->begin) : *(a->end));
-    if(desiredInserts) {
-    j += desiredInserts;
-    }
-    recordid tree = TlsmCreate(-1, a->comparator_idx,a->rowsize);
-    lastTreeBlocks =
-    compressData<PAGELAYOUT,PAGELAYOUT::init_page,ITER>
-    (&i, &j,1,tree,a->pageAlloc,a->pageAllocState, &lastTreeInserts);
-
-    gettimeofday(&start_wait_tv,0);
-    pthread_mutex_lock(a->block_ready_mut);
-    while(a->wait_count >= a->max_waiters) {
-    pthread_cond_wait(a->block_needed_cond,a->block_ready_mut);
-    }
-
-    memcpy(&a->wait_queue[a->wait_count],&tree,sizeof(recordid));
-    a->wait_count++;
-
-    pthread_cond_signal(a->block_ready_cond);
-    gettimeofday(&stop_tv,0);
-    double work_elapsed = tv_to_double(start_wait_tv) - tv_to_double(start_tv);
-    double wait_elapsed = tv_to_double(stop_tv) - tv_to_double(start_wait_tv);
-    double elapsed = tv_to_double(stop_tv) - tv_to_double(start_tv);
-    printf("insert# %-6d                         waited %6.1f sec   "
-    "worked %6.1f sec inserts %-12ld (%9.3f mb/s)\n",
-    ++insert_count,
-    wait_elapsed,
-    work_elapsed,
-    (long int)lastTreeInserts,
-    (lastTreeInserts*(uint64_t)a->rowsize / (1024.0*1024.0)) / elapsed);
-
-    if(a->mergedPages != -1) {
-    desiredInserts = (pageid_t)(((double)a->mergedPages / K)
-    * ((double)lastTreeInserts
-    / (double)lastTreeBlocks));
-    }
-    pthread_mutex_unlock(a->block_ready_mut);
-
-    }
-    return 0;
-    }
-  */
   typedef struct {
     recordid bigTree;
     recordid bigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
@@ -257,6 +224,7 @@ namespace rose {
     epoch_t beginning;
     epoch_t end;
   } lsmTableHeader_t;
+
 
   template<class PAGELAYOUT>
     inline recordid TlsmTableAlloc(int xid) {
@@ -281,30 +249,107 @@ namespace rose {
     Tset(xid, ret, &h);
     return ret;
   }
+
+  /// XXX start should return a struct that contains these!
+  pthread_t merge1_thread;
+  pthread_t merge2_thread;
+  bool * still_open;
+
   template<class PAGELAYOUT>
     void TlsmTableStart(recordid tree) {
     /// XXX xid for daemon processes?
-
-    void * (*merger)(void*) = mergeThread
-      <PAGELAYOUT,
-      treeIterator<typename PAGELAYOUT::FMT::TUP, typename PAGELAYOUT::FMT>,
-      treeIterator<typename PAGELAYOUT::FMT::TUP, typename PAGELAYOUT::FMT> >;
-
-    /*mergeThread
-      <PAGELAYOUT,
-      treeIterator<typename PAGELAYOUT::FMT::TUP, typename PAGELAYOUT::FMT>,
-      stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
-                     typename PAGELAYOUT::FMT::TUP::stl_cmp>::iterator,
-                     typename PAGELAYOUT::FMT::TUP> > 
-		     (0); */
-
     lsmTableHeader_t h;
     Tread(-1, tree, &h);
+
+    typedef treeIterator<typename PAGELAYOUT::FMT::TUP,
+      typename PAGELAYOUT::FMT> LSM_ITER;
+
+    typedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
+      typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+      typename PAGELAYOUT::FMT::TUP> RB_ITER;
+
+    pthread_mutex_t * block_ready_mut =
+      (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_cond_t  * block0_needed_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_t  * block1_needed_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_t  * block2_needed_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_t  * block0_ready_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_t  * block1_ready_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+    pthread_cond_t  * block2_ready_cond =
+      (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+
+    pthread_mutex_init(block_ready_mut,0);
+    pthread_cond_init(block0_needed_cond,0);
+    pthread_cond_init(block1_needed_cond,0);
+    pthread_cond_init(block2_needed_cond,0);
+    pthread_cond_init(block0_ready_cond,0);
+    pthread_cond_init(block1_ready_cond,0);
+    pthread_cond_init(block2_ready_cond,0);
+
+    typename LSM_ITER::handle * block1_scratch =
+      (typename LSM_ITER::handle*) malloc(sizeof(typename LSM_ITER::handle));
+    still_open = (bool*)malloc(sizeof(bool));
+    *still_open = 1;
+    recordid * ridp = (recordid*)malloc(sizeof(recordid));
+    *ridp = h.bigTreeAllocState;
+
+    recordid ** block1_scratch_p = (recordid**)malloc(sizeof(block1_scratch));
+    *block1_scratch_p = block1_scratch;
+
+    merge_args<PAGELAYOUT, LSM_ITER, LSM_ITER> * args1 = (merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>));
+    merge_args<PAGELAYOUT, LSM_ITER, LSM_ITER> tmpargs1 =
+      {
+	TlsmRegionAllocRid,
+	ridp,
+	block_ready_mut,
+	block1_needed_cond,
+	block2_needed_cond,
+	block1_ready_cond,
+	block2_ready_cond,
+	still_open,
+	0,
+	block1_scratch_p
+      };
+    *args1 = tmpargs1;
+    void * (*merger1)(void*) = mergeThread
+      <PAGELAYOUT, LSM_ITER, LSM_ITER>;
+
+    ridp = (recordid*)malloc(sizeof(recordid));
+    *ridp = h.mediumTreeAllocState;
+
+    merge_args<PAGELAYOUT, LSM_ITER, RB_ITER> * args2 = (merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>));
+    merge_args<PAGELAYOUT, LSM_ITER, RB_ITER> tmpargs2 =
+      {
+	TlsmRegionAllocRid,
+	ridp,
+	block_ready_mut,
+	block0_needed_cond,
+	block1_needed_cond,
+	block0_ready_cond,
+	block1_ready_cond,
+	still_open,
+	block1_scratch_p,
+	0 // XXX how does this thing get fed new trees of tuples?
+      };
+    *args2 = tmpargs2;
+    void * (*merger2)(void*) = mergeThread
+      <PAGELAYOUT, LSM_ITER, RB_ITER>;
+
+
+    pthread_create(&merge1_thread, 0, merger1, args1);
+    pthread_create(&merge2_thread, 0, merger2, args2);
 
   }
   template<class PAGELAYOUT>
     void TlsmTableStop(recordid tree) {
-
+    *still_open = 0;
+    pthread_join(merge1_thread,0);
+    pthread_join(merge2_thread,0);
   }
 }
 

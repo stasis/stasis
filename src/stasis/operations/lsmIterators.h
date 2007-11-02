@@ -66,6 +66,12 @@ class treeIterator {
       currentPage_ = (PAGELAYOUT*)p_->impl;
     }
   }
+  typedef recordid handle;
+  explicit treeIterator(recordid tree) :
+    tree_(tree),
+      scratch_(),
+      keylen_(ROW::sizeofBytes())
+    { }
   explicit treeIterator(treeIterator& t) :
     tree_(t.tree_),
     scratch_(t.scratch_),
@@ -152,7 +158,7 @@ class treeIterator {
   void operator=(treeIterator & t) { abort(); }
   int operator-(treeIterator & t) { abort(); }
   recordid tree_;
-  ROW & scratch_;
+  ROW scratch_;
   int keylen_;
   lladdIterator_t * lsmIterator_;
   slot_index_t slot_;
@@ -381,9 +387,15 @@ class versioningIterator {
    information.  The rows should be sorted based on value, then sorted by
    version, with the newest value first.
  */
- template<class STLITER,class ROW> class stlSetIterator {
+ template<class SET,class ROW> class stlSetIterator {
+ private:
+   typedef typename SET::iterator STLITER;
  public:
+   typedef SET handle;
+
+   stlSetIterator( SET& s ) : it_(s.begin()), itend_(s.end()) {}
    stlSetIterator( STLITER& it, STLITER& itend ) : it_(it), itend_(itend) {}
+
    explicit stlSetIterator(stlSetIterator &i) : it_(i.it_), itend_(i.itend_){}
    const ROW& operator* () { return *it_; }
 
@@ -416,11 +428,11 @@ class versioningIterator {
   STLITER it_;
   STLITER itend_;
   friend const byte*
-    toByteArray<STLITER,ROW>(stlSetIterator<STLITER,ROW> * const t);
+    toByteArray<SET,ROW>(stlSetIterator<SET,ROW> * const t);
 };
 
-template <class STLITER,class ROW> 
-inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t) {
+template <class SET,class ROW> 
+inline const byte * toByteArray(stlSetIterator<SET,ROW> * const t) {
   return (*(t->it_)).toByteArray();
 }
 /** Produce a byte array from the value stored at t's current
