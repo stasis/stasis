@@ -414,7 +414,7 @@ void syncLog_LogWriter() {
 
   LogEntry * crc_entry = allocCommonLogEntry(log_crc, -1, INTERNALLOG);
   writeLogEntryUnlocked(crc_entry);
-
+  free(crc_entry);
   // Reset log_crc to zero each time a crc entry is written.
   log_crc = 0;
 
