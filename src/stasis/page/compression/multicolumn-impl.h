@@ -36,11 +36,6 @@ Multicolumn<TUPLE>::Multicolumn(int xid, Page *p, column_number_t column_count,
   p->impl = this;
 }
 
-/**
-   XXX this eagerly unpacks the page at load; that's a waste of
-   processor time and RAM, as read-only pages don't need to be
-   unpacked.
-*/
 template<class TUPLE>
 Multicolumn<TUPLE>::Multicolumn(Page * p) :
     p_(p),
@@ -68,7 +63,7 @@ Multicolumn<TUPLE>::Multicolumn(Page * p) :
 
   bytes_left_ = *exceptions_offset_ptr() - first_free;
 
-  assert(*stasis_page_type_ptr(p) == Multicolumn<TUPLE>::plugin_id());
+  assert(*stasis_page_type_ptr(p) == (Multicolumn<TUPLE>::plugin_id()));
 }
 
 template <class TUPLE>

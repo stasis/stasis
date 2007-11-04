@@ -2,7 +2,6 @@
 #define _ROSE_COMPRESSION_STATICTUPLE_H__
 
 namespace rose {
-
   template<int N, class TYPE0,
     class TYPE1=bool, class TYPE2=bool, class TYPE3=bool, class TYPE4=bool,
     class TYPE5=bool, class TYPE6=bool, class TYPE7=bool, class TYPE8=bool,
@@ -12,6 +11,18 @@ namespace rose {
   static const char NORMAL = 0;
   static const char TOMBSTONE = 1;
   static const int TUPLE_ID = 1;
+
+  typedef TYPE0 TYP0;
+  typedef TYPE1 TYP1;
+  typedef TYPE2 TYP2;
+  typedef TYPE3 TYP3;
+  typedef TYPE4 TYP4;
+  typedef TYPE5 TYP5;
+  typedef TYPE6 TYP6;
+  typedef TYPE7 TYP7;
+  typedef TYPE8 TYP8;
+  typedef TYPE9 TYP9;
+
 
   explicit inline StaticTuple() {
     s.flag_ = NORMAL;
@@ -50,8 +61,8 @@ namespace rose {
   }
 
   inline void* set(column_number_t col, void* val) {
-    memcpy(cols_[col],val,size_[col]);
-    return(cols_[col]);
+    memcpy(((byte*)&s)+cols_[col],val,size_[col]);
+    return(((byte*)&s)+cols_[col]);
   }
 
   inline TYPE0 * set0(TYPE0* val) { s.cols0_=*val; }
@@ -65,9 +76,20 @@ namespace rose {
   inline TYPE8 * set8(TYPE8* val) { s.cols8_=*val; }
   inline TYPE9 * set9(TYPE9* val) { s.cols9_=*val; }
 
-  inline void* get(column_number_t col) const {
-    return cols_[col];
-  }
+  inline const TYPE0 * get0() const { return &s.cols0_; }
+  inline const TYPE1 * get1() const { return &s.cols1_; }
+  inline const TYPE2 * get2() const { return &s.cols2_; }
+  inline const TYPE3 * get3() const { return &s.cols3_; }
+  inline const TYPE4 * get4() const { return &s.cols4_; }
+  inline const TYPE5 * get5() const { return &s.cols5_; }
+  inline const TYPE6 * get6() const { return &s.cols6_; }
+  inline const TYPE7 * get7() const { return &s.cols7_; }
+  inline const TYPE8 * get8() const { return &s.cols8_; }
+  inline const TYPE9 * get9() const { return &s.cols9_; }
+
+  /*  inline void* get(column_number_t col) const {
+    return ((byte*)&s) + cols_[col];
+    } */
   inline column_number_t column_count() const { return N; }
 
   inline byte_off_t column_len(column_number_t col) const {
@@ -203,12 +225,12 @@ namespace rose {
     StaticTuple scratch_;
   };
   private:
-
-  void * cols_[N];
-  size_t size_[N];
+  static bool first_;
+  static short cols_[N];
+  static byte_off_t size_[N];
   typedef char flag_t;
   typedef unsigned int epoch_t;
-  struct {
+  typedef struct {
     TYPE0 cols0_;
     TYPE1 cols1_;
     TYPE2 cols2_;
@@ -219,35 +241,61 @@ namespace rose {
     TYPE7 cols7_;
     TYPE8 cols8_;
     TYPE9 cols9_;
-    flag_t flag_;
-    epoch_t epoch_;
-  } s;
+    flag_t flag_ : 1;
+    epoch_t epoch_ : 31;
+  } st;
+
+  st s;
 
   inline void initializePointers() {
-    if(0 < N) cols_[0] = &s.cols0_;
-    if(1 < N) cols_[1] = &s.cols1_;
-    if(2 < N) cols_[2] = &s.cols2_;
-    if(3 < N) cols_[3] = &s.cols3_;
-    if(4 < N) cols_[4] = &s.cols4_;
-    if(5 < N) cols_[5] = &s.cols5_;
-    if(6 < N) cols_[6] = &s.cols6_;
-    if(7 < N) cols_[7] = &s.cols7_;
-    if(8 < N) cols_[8] = &s.cols8_;
-    if(9 < N) cols_[9] = &s.cols9_;
+    if(first_) {
+      st str;
+      if(0 < N) cols_[0] = (byte*)&str.cols0_ - (byte*)&str;
+      if(1 < N) cols_[1] = (byte*)&str.cols1_ - (byte*)&str;
+      if(2 < N) cols_[2] = (byte*)&str.cols2_ - (byte*)&str;
+      if(3 < N) cols_[3] = (byte*)&str.cols3_ - (byte*)&str;
+      if(4 < N) cols_[4] = (byte*)&str.cols4_ - (byte*)&str;
+      if(5 < N) cols_[5] = (byte*)&str.cols5_ - (byte*)&str;
+      if(6 < N) cols_[6] = (byte*)&str.cols6_ - (byte*)&str;
+      if(7 < N) cols_[7] = (byte*)&str.cols7_ - (byte*)&str;
+      if(8 < N) cols_[8] = (byte*)&str.cols8_ - (byte*)&str;
+      if(9 < N) cols_[9] = (byte*)&str.cols9_ - (byte*)&str;
 
-    if(0 < N) size_[0] = sizeof(s.cols0_);
-    if(1 < N) size_[1] = sizeof(s.cols1_);
-    if(2 < N) size_[2] = sizeof(s.cols2_);
-    if(3 < N) size_[3] = sizeof(s.cols3_);
-    if(4 < N) size_[4] = sizeof(s.cols4_);
-    if(5 < N) size_[5] = sizeof(s.cols5_);
-    if(6 < N) size_[6] = sizeof(s.cols6_);
-    if(7 < N) size_[7] = sizeof(s.cols7_);
-    if(8 < N) size_[8] = sizeof(s.cols8_);
-    if(9 < N) size_[9] = sizeof(s.cols9_);
+      if(0 < N) size_[0] = sizeof(str.cols0_);
+      if(1 < N) size_[1] = sizeof(str.cols1_);
+      if(2 < N) size_[2] = sizeof(str.cols2_);
+      if(3 < N) size_[3] = sizeof(str.cols3_);
+      if(4 < N) size_[4] = sizeof(str.cols4_);
+      if(5 < N) size_[5] = sizeof(str.cols5_);
+      if(6 < N) size_[6] = sizeof(str.cols6_);
+      if(7 < N) size_[7] = sizeof(str.cols7_);
+      if(8 < N) size_[8] = sizeof(str.cols8_);
+      if(9 < N) size_[9] = sizeof(str.cols9_);
+
+      first_ = 0;
+    }
   }
+
   };
 
-}
+  template<int N, class TYPE0,
+    class TYPE1, class TYPE2, class TYPE3, class TYPE4,
+    class TYPE5, class TYPE6, class TYPE7, class TYPE8,
+    class TYPE9>
+  short StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+    TYPE5,TYPE6,TYPE7,TYPE8,TYPE9>::cols_[N];
+  template<int N, class TYPE0,
+    class TYPE1, class TYPE2, class TYPE3, class TYPE4,
+    class TYPE5, class TYPE6, class TYPE7, class TYPE8,
+    class TYPE9>
+  byte_off_t StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+    TYPE5,TYPE6,TYPE7,TYPE8,TYPE9>::size_[N];
+  template<int N, class TYPE0,
+    class TYPE1, class TYPE2, class TYPE3, class TYPE4,
+    class TYPE5, class TYPE6, class TYPE7, class TYPE8,
+    class TYPE9>
+  bool StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+    TYPE5,TYPE6,TYPE7,TYPE8,TYPE9>::first_ = true;
 
+}
 #endif  // _ROSE_COMPRESSION_STATICTUPLE_H__

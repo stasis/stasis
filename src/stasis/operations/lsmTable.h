@@ -328,8 +328,8 @@ namespace rose {
   static const int RB_TREE_OVERHEAD = 450;
   static const pageid_t MEM_SIZE = 800 * 1000 * 1000;
   // How many pages should we try to fill with the first C1 merge?
-  static const pageid_t START_SIZE = 10 * 1000;
-  static const int R = 40;
+  static const pageid_t START_SIZE = /*10 **/ 1000;
+  static const int R = 10; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
 
   template<class PAGELAYOUT>
     lsmTableHandle <PAGELAYOUT> * TlsmTableStart(recordid& tree) {
@@ -444,7 +444,7 @@ namespace rose {
 	ret->still_open,
 	block0_size,
 	block1_size,
-	(R * MEM_SIZE) / (PAGE_SIZE * 4),  // 4 = estimated compression ratio
+	(R * MEM_SIZE) / (PAGE_SIZE * 4),  // XXX 4 = estimated compression ratio
 	R,
 	new typename LSM_ITER::treeIteratorHandle(NULLRID),
 	block0_scratch,

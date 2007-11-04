@@ -6,7 +6,8 @@
 #include <stasis/page.h>
 #include <stasis/constants.h>
 
-#include "pstar.h"  // for typedefs + consts (XXX add new header?)
+#include "compression.h"
+//#include "pstar.h"  // for typedefs + consts (XXX add new header?)
 #include "tuple.h" // XXX rename tuple.hx
 #include "pluginDispatcher.h"
 // Copyright 2007 Google Inc. All Rights Reserved.

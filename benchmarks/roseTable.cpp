@@ -1,16 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include "stasis/operations/lsmTable.h"
 
 #include "stasis/transactional.h"
 
 #include "stasis/page/compression/multicolumn-impl.h"
+#include "stasis/page/compression/staticMulticolumn.h"
 #include "stasis/page/compression/for-impl.h"
 #include "stasis/page/compression/rle-impl.h"
 #include "stasis/page/compression/staticTuple.h"
 #include "stasis/page/compression/pageLayout.h"
-
-typedef int32_t val_t; // XXX want multiple types!
 
 namespace rose {
   template<class PAGELAYOUT>
@@ -22,7 +22,7 @@ namespace rose {
     unlink("logfile.txt");
 
     sync();
-    stasis_page_impl_register(Multicolumn<typename PAGELAYOUT::FMT::TUP >::impl());
+    stasis_page_impl_register(PAGELAYOUT::FMT::impl());
     bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
     Tinit();
@@ -37,8 +37,12 @@ namespace rose {
 
     typename PAGELAYOUT::FMT::TUP t;
 
-
-  static const long INSERTS = 10000000;
+    long INSERTS; 
+    if(argc == 2) {
+      INSERTS = atoll(argv[1]);
+    } else {
+      INSERTS = 10 * 1000 * 1000;
+    }
     //    static const long INSERTS = 10000000;
 //  static const long INSERTS = 100000;
     static const long COUNT = INSERTS / 100;
@@ -51,13 +55,24 @@ namespace rose {
     start = rose::tv_to_double(start_tv);
     last_start = start;
 
-    printf("tuple 'size'%d\n", PAGELAYOUT::FMT::TUP::sizeofBytes());
+    printf("tuple 'size'%d ; %d\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
 
     for(long int i = 0; i < INSERTS; i++) {
-      t.set0(&i);
-      t.set1(&i);
-      t.set2(&i);
-      t.set3(&i);
+      typename PAGELAYOUT::FMT::TUP::TYP0 m = i;// % 65536;
+      typename PAGELAYOUT::FMT::TUP::TYP1 j = 0 / 65536;
+      typename PAGELAYOUT::FMT::TUP::TYP2 k = 0 / 12514500;
+      typename PAGELAYOUT::FMT::TUP::TYP3 l = 0 / 10000000;
+
+      t.set0(&m);
+      t.set1(&l);
+      t.set2(&l);
+      t.set3(&l);
+      t.set4(&l);
+      t.set5(&l);
+      t.set6(&l);
+      t.set7(&l);
+      t.set8(&l);
+      t.set9(&l);
       TlsmTableInsert(h,t);
       count --;
       if(!count) {
@@ -85,12 +100,43 @@ namespace rose {
 }
 
 int main(int argc, char **argv) {
-  //  typedef rose::StaticTuple<4,int64_t,int32_t,int16_t,int8_t> tup;
-  typedef rose::StaticTuple<4,int64_t,int64_t,int64_t,int64_t> tup;
-  // XXX multicolumn is deprecated; want static dispatch!
-  return rose::main
+
+  typedef int64_t typ0;
+  typedef int64_t typ1;
+  typedef int64_t typ2;
+  typedef int64_t typ3;
+  typedef int64_t typ4;
+  typedef int64_t typ5;
+  typedef int64_t typ6;
+  typedef int64_t typ7;
+  typedef int64_t typ8;
+  typedef int64_t typ9;
+
+  #define COLS 10
+
+  typedef rose::StaticTuple<COLS,typ0,typ1,typ2,typ3,typ4,typ5,typ6,typ7,typ8,typ9> tup;
+  using rose::For;
+  using rose::Rle;
+
+  // multicolumn is deprecated; want static dispatch!
+
+  /*  return rose::main
     <rose::SingleColumnTypePageLayout
       <rose::Multicolumn<tup>,rose::For<int64_t> > >
+      (argc,argv); */
+
+  return rose::main
+    <rose::MultiColumnTypePageLayout
+    <COLS,
+    rose::StaticMulticolumn<COLS,tup,
+    For<typ0>,Rle<typ1>,
+    Rle<typ2>,Rle<typ3>,
+    Rle<typ4>,Rle<typ5>,
+    Rle<typ6>,Rle<typ7>,
+    Rle<typ8>,Rle<typ9> >
+    >
+    >
     (argc,argv);
+
   return 0;
 }
