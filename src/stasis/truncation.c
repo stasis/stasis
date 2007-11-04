@@ -44,7 +44,11 @@ void dirtyPages_remove(Page * p) {
   //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
   //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
   p->dirty = 0;
+  lsn_t * old = pblHtLookup(dirtyPages, &(p->id),sizeof(int));
   pblHtRemove(dirtyPages, &(p->id), sizeof(int));
+  if(old) {
+    free(old);
+  }
   //assert(!ret); <--- Due to a bug in the PBL compatibility mode,
   //there is no way to tell whether the value didn't exist, or if it
   //was null.

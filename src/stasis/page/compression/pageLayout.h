@@ -28,7 +28,7 @@ namespace rose {
 
       plugin_id_t pluginid = plugin_id<FORMAT, COMPRESSOR, typename COMPRESSOR::TYP>();
 
-      plugin_id_t * plugins = new plugin_id_t[column_count];
+      plugin_id_t * plugins = (plugin_id_t*)malloc(column_count * sizeof(plugin_id_t));
       for(column_number_t c = 0; c < column_count; c++) {
 	plugins[c] = pluginid;
       }
@@ -38,6 +38,7 @@ namespace rose {
 	typename COMPRESSOR::TYP val = *(typename COMPRESSOR::TYP*)(t->get(c));
 	com->offset(val);
       }
+      free(plugins);
       return f;
     }
     static inline int cmp_id() {

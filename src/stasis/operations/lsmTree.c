@@ -253,6 +253,8 @@ recordid TlsmCreate(int xid, int comparator,
   writeNodeRecord(xid, p, DEPTH, dummy, keySize, 0);
   writeNodeRecord(xid, p, COMPARATOR, dummy, keySize, comparator);
 
+  free(dummy);
+
   unlock(p->rwlatch);
   releasePage(p);
   return ret;

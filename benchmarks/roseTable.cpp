@@ -38,8 +38,11 @@ namespace rose {
     typename PAGELAYOUT::FMT::TUP t;
 
 
-    static const long INSERTS = 1000000;
-    long int count = INSERTS / 20;
+  static const long INSERTS = 10000000;
+    //    static const long INSERTS = 10000000;
+//  static const long INSERTS = 100000;
+    static const long COUNT = INSERTS / 100;
+    long int count = COUNT;
 
     struct timeval start_tv, now_tv;
     double start, now, last_start;
@@ -48,12 +51,17 @@ namespace rose {
     start = rose::tv_to_double(start_tv);
     last_start = start;
 
+    printf("tuple 'size'%d\n", PAGELAYOUT::FMT::TUP::sizeofBytes());
+
     for(long int i = 0; i < INSERTS; i++) {
       t.set0(&i);
+      t.set1(&i);
+      t.set2(&i);
+      t.set3(&i);
       TlsmTableInsert(h,t);
       count --;
       if(!count) {
-	count = INSERTS / 20;
+	count = COUNT;
 	gettimeofday(&now_tv,0);
 	now = tv_to_double(now_tv);
 	printf("%3d%% complete "

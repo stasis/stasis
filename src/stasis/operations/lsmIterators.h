@@ -38,7 +38,6 @@ template <class STLITER, class ROW> class stlSetIterator;
 template <class STLITER, class ROW>
 inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t);
 
-
 /**
    Scans through an LSM tree's leaf pages, each tuple in the tree, in
    order.  This iterator is designed for maximum forward scan
@@ -70,12 +69,37 @@ class treeIterator {
   {
     init_helper();
   }
-  typedef recordid handle;
+    //  typedef recordid handle;
+    class treeIteratorHandle {
+    public:
+      treeIteratorHandle() : r_(NULLRID) {}
+      treeIteratorHandle(const recordid r) : r_(r) {}
+      /*      const treeIteratorHandle & operator=(const recordid *r) {
+	r_ = *r;
+	return this;
+	} */
+      treeIteratorHandle * operator=(const recordid &r) {
+	r_ = r;
+	return this;
+      }
+
+     recordid r_;
+    };
+    typedef treeIteratorHandle* handle;
   explicit treeIterator(recordid tree) :
     tree_(tree),
       scratch_(),
       keylen_(ROW::sizeofBytes()),
       lsmIterator_(lsmTreeIterator_open(-1,tree)),
+      slot_(0)
+    {
+      init_helper();
+    }
+  explicit treeIterator(treeIteratorHandle* tree) :
+    tree_(tree->r_),
+      scratch_(),
+      keylen_(ROW::sizeofBytes()),
+      lsmIterator_(lsmTreeIterator_open(-1,tree->r_)),
       slot_(0)
     {
       init_helper();
