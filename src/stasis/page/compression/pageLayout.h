@@ -80,9 +80,6 @@ namespace rose {
       init_num++;
     }
     static inline FORMAT * initPage(Page *p, const typename FORMAT::TUP * t) {
-      const column_number_t column_count = t->column_count();
-
-      //plugin_id_t pluginid = plugin_id<FORMAT, COMPRESSOR, typename COMPRESSOR::TYP>();
 
       plugin_id_t plugins[N];
       if(0 < N) plugins[0] = plugin_id<FORMAT, typename FORMAT::CMP0, typename FORMAT::CMP0::TYP>();
@@ -96,14 +93,8 @@ namespace rose {
       if(8 < N) plugins[8] = plugin_id<FORMAT, typename FORMAT::CMP8, typename FORMAT::CMP8::TYP>();
       if(9 < N) plugins[9] = plugin_id<FORMAT, typename FORMAT::CMP9, typename FORMAT::CMP9::TYP>();
 
-      FORMAT * f = new FORMAT(-1,p);//N,plugins);
+      FORMAT * f = new FORMAT(-1,p);
 
-      //plugin_id_t * plugins = (plugin_id_t*)malloc(column_count * sizeof(plugin_id_t));
-      //for(column_number_t c = 0; c < column_count; c++) {
-      //plugins[c] = pluginid;
-      //}
-      //      FORMAT * f = new FORMAT(-1,p,column_count,plugins);
-      
       if(0 < N) f->compressor0()->offset(*t->get0());
       if(1 < N) f->compressor1()->offset(*t->get1());
       if(2 < N) f->compressor2()->offset(*t->get2());
@@ -115,12 +106,6 @@ namespace rose {
       if(8 < N) f->compressor8()->offset(*t->get8());
       if(9 < N) f->compressor9()->offset(*t->get9());
 
-      /*for(column_number_t c = 0; c < column_count; c++) {
-	COMPRESSOR* com = (COMPRESSOR*) f->compressor(c);
-	typename COMPRESSOR::TYP val = *(typename COMPRESSOR::TYP*)(t->get(c));
-	com->offset(val);
-	}*/
-      //      free(plugins);
       return f;
     }
     static inline int cmp_id() {

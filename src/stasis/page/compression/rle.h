@@ -39,6 +39,11 @@ class Rle {
   /** @see For::recordRead */
   inline TYPE *recordRead(int xid, slot_index_t slot, byte *exceptions,
                           TYPE *scratch);
+  /** @see For::recordFind */
+  inline std::pair<slot_index_t,slot_index_t>*
+    recordFind(int xid, slot_index_t start, slot_index_t stop,
+	       byte *exceptions, TYPE value,
+	       std::pair<slot_index_t,slot_index_t>& scratch);
   /**
     This constructor initializes a new Rle region.
 
@@ -50,6 +55,10 @@ class Rle {
     n->index = 0;
     n->copies = 0;
     n->data = 0;
+  }
+  inline slot_index_t recordCount(int xid) {
+    triple_t *n = last_block_ptr();
+    return (n->index) + (n->copies);
   }
   /**
      This constructor is called when existing RLE data is read from

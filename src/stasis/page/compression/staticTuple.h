@@ -25,7 +25,7 @@ namespace rose {
 
 
   explicit inline StaticTuple() {
-    s.flag_ = NORMAL;
+    s.flag_ = NORMAL; s.epoch_ = 0 ;
     initializePointers();
   }
   explicit inline StaticTuple(const StaticTuple& t) {
@@ -47,34 +47,38 @@ namespace rose {
   inline ~StaticTuple() { }
 
   static inline byte_off_t sizeofBytes() {
-    return sizeof(flag_t) + sizeof(epoch_t) +
-    ((0 < N) ? sizeof(TYPE0) : 0) +
-    ((1 < N) ? sizeof(TYPE1) : 0) +
-    ((2 < N) ? sizeof(TYPE2) : 0) +
-    ((3 < N) ? sizeof(TYPE3) : 0) +
-    ((4 < N) ? sizeof(TYPE4) : 0) +
-    ((5 < N) ? sizeof(TYPE5) : 0) +
-    ((6 < N) ? sizeof(TYPE6) : 0) +
-    ((7 < N) ? sizeof(TYPE7) : 0) +
-    ((8 < N) ? sizeof(TYPE8) : 0) +
-    ((9 < N) ? sizeof(TYPE9) : 0) ;
+    // Computing by starting from zero, and adding up column costs wouldn't
+    // take struct padding into account.  This might over-estimate the
+    // size, but that's fine, since any in-memory copy will either be malloced
+    // according to what we say here, or will be an actual st struct.
+    return sizeof(st) -
+    ((0 >= N) ? sizeof(TYPE0) : 0) -
+    ((1 >= N) ? sizeof(TYPE1) : 0) -
+    ((2 >= N) ? sizeof(TYPE2) : 0) -
+    ((3 >= N) ? sizeof(TYPE3) : 0) -
+    ((4 >= N) ? sizeof(TYPE4) : 0) -
+    ((5 >= N) ? sizeof(TYPE5) : 0) -
+    ((6 >= N) ? sizeof(TYPE6) : 0) -
+    ((7 >= N) ? sizeof(TYPE7) : 0) -
+    ((8 >= N) ? sizeof(TYPE8) : 0) -
+    ((9 >= N) ? sizeof(TYPE9) : 0) ;
   }
 
-  inline void* set(column_number_t col, void* val) {
+  /*  inline void* set(column_number_t col, void* val) {
     memcpy(((byte*)&s)+cols_[col],val,size_[col]);
     return(((byte*)&s)+cols_[col]);
-  }
+    } */
 
-  inline TYPE0 * set0(TYPE0* val) { s.cols0_=*val; }
-  inline TYPE1 * set1(TYPE1* val) { s.cols1_=*val; }
-  inline TYPE2 * set2(TYPE2* val) { s.cols2_=*val; }
-  inline TYPE3 * set3(TYPE3* val) { s.cols3_=*val; }
-  inline TYPE4 * set4(TYPE4* val) { s.cols4_=*val; }
-  inline TYPE5 * set5(TYPE5* val) { s.cols5_=*val; }
-  inline TYPE6 * set6(TYPE6* val) { s.cols6_=*val; }
-  inline TYPE7 * set7(TYPE7* val) { s.cols7_=*val; }
-  inline TYPE8 * set8(TYPE8* val) { s.cols8_=*val; }
-  inline TYPE9 * set9(TYPE9* val) { s.cols9_=*val; }
+  inline void set0(TYPE0* val) { s.cols0_=*val; }
+  inline void set1(TYPE1* val) { s.cols1_=*val; }
+  inline void set2(TYPE2* val) { s.cols2_=*val; }
+  inline void set3(TYPE3* val) { s.cols3_=*val; }
+  inline void set4(TYPE4* val) { s.cols4_=*val; }
+  inline void set5(TYPE5* val) { s.cols5_=*val; }
+  inline void set6(TYPE6* val) { s.cols6_=*val; }
+  inline void set7(TYPE7* val) { s.cols7_=*val; }
+  inline void set8(TYPE8* val) { s.cols8_=*val; }
+  inline void set9(TYPE9* val) { s.cols9_=*val; }
 
   inline const TYPE0 * get0() const { return &s.cols0_; }
   inline const TYPE1 * get1() const { return &s.cols1_; }
@@ -90,11 +94,11 @@ namespace rose {
   /*  inline void* get(column_number_t col) const {
     return ((byte*)&s) + cols_[col];
     } */
-  inline column_number_t column_count() const { return N; }
+  //inline column_number_t column_count() const { return N; }
 
-  inline byte_off_t column_len(column_number_t col) const {
+  /*  inline byte_off_t column_len(column_number_t col) const {
     return size_[col];
-  }
+    } */
   inline byte* toByteArray() const {
     return (byte*)&s;
   }
@@ -154,7 +158,88 @@ namespace rose {
     return 0;
   }
 
+  static void printSt(void const * const sp) {
+    st const * const s = (st const * const)sp;
+    printf("(");
+    if(0<N) printf("%lld",(int64_t)s->cols0_);
+    if(1<N) printf(", %lld",(int64_t)s->cols1_);
+    if(2<N) printf(", %lld",(int64_t)s->cols2_);
+    if(3<N) printf(", %lld",(int64_t)s->cols3_);
+    if(4<N) printf(", %lld",(int64_t)s->cols4_);
+    if(5<N) printf(", %lld",(int64_t)s->cols5_);
+    if(6<N) printf(", %lld",(int64_t)s->cols6_);
+    if(7<N) printf(", %lld",(int64_t)s->cols7_);
+    if(8<N) printf(", %lld",(int64_t)s->cols8_);
+    if(9<N) printf(", %lld",(int64_t)s->cols9_);
+    printf(")");
+  }
+  static inline int noisycmp(const void *ap, const void *bp) {
+    st const * const a = (st const * const)ap;
+    st const * const b = (st const * const)bp;
+
+    int ret = cmp(ap,bp);
+    printSt(a); printf(" cmp "); printSt(b); printf(" = %d", ret); printf("\n");
+    return ret;
+  }
   static inline int cmp(const void *ap, const void *bp) {
+    st const * const a = (st const * const)ap;
+    st const * const b = (st const * const)bp;
+
+    if(0<N) {
+      if(a->cols0_ < b->cols0_)  return -1;
+      if(a->cols0_ != b->cols0_) return 1;
+      DEBUG("0 matched\n");;
+    }
+    if(1<N) {
+      if(a->cols1_  < b->cols1_)  return -1;
+      if(a->cols1_ != b->cols1_) return 1;
+      DEBUG("1 matched\n");
+    }
+    if(2<N) {
+      if(a->cols2_  < b->cols2_)  return -1;
+      if(a->cols2_ != b->cols2_) return 1;
+      DEBUG("2 matched\n");
+    }
+    if(3<N) {
+      if(a->cols3_  < b->cols3_)  return -1;
+      if(a->cols3_ != b->cols3_) return 1;
+      DEBUG("3 matched\n");
+    }
+    if(4<N) {
+      if(a->cols4_ < b->cols4_)  return -1;
+      if(a->cols4_ != b->cols4_) return 1;
+      DEBUG("4 matched\n");
+    }
+    if(5<N) {
+      if(a->cols5_ < b->cols5_)  return -1;
+      if(a->cols5_ != b->cols5_) return 1;
+      DEBUG("5 matched\n");
+    }
+    if(6<N) {
+      if(a->cols6_ < b->cols6_)  return -1;
+      if(a->cols6_ != b->cols6_) return 1;
+      DEBUG("6 matched\n");
+    }
+    if(7<N) {
+      if(a->cols7_ < b->cols7_)  return -1;
+      if(a->cols7_ != b->cols7_) return 1;
+      DEBUG("7 matched\n");
+    }
+    if(8<N) {
+      if(a->cols8_ < b->cols8_)  return -1;
+      if(a->cols8_ != b->cols8_) return 1;
+      DEBUG("8 matched\n");
+    }
+    if(9<N) {
+      if(a->cols9_ < b->cols9_)  return -1;
+      if(a->cols9_ != b->cols9_) return 1;
+      DEBUG("9 matched\n");
+    }
+    DEBUG("N matched\n");
+    return 0;
+  }
+
+  /*  static inline int cmp(const void *ap, const void *bp) {
     const StaticTuple * a = (const StaticTuple*)ap;
     const StaticTuple * b = (const StaticTuple*)bp;
     if(*a < *b) {
@@ -167,8 +252,7 @@ namespace rose {
     } else {
       return 1;
     }
-
-  }
+    } */
 
   struct stl_cmp
   {
@@ -231,6 +315,8 @@ namespace rose {
   typedef char flag_t;
   typedef unsigned int epoch_t;
   typedef struct {
+    flag_t flag_;
+    epoch_t epoch_;
     TYPE0 cols0_;
     TYPE1 cols1_;
     TYPE2 cols2_;
@@ -241,8 +327,6 @@ namespace rose {
     TYPE7 cols7_;
     TYPE8 cols8_;
     TYPE9 cols9_;
-    flag_t flag_ : 1;
-    epoch_t epoch_ : 31;
   } st;
 
   st s;

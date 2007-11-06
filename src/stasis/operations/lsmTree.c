@@ -604,8 +604,8 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
       }
 
     } else {
-
-      if(prev_cmp_key == 0) {
+      // XXX Doesn't handle runs of duplicates.
+      if(prev_cmp_key <= 0 && rec_cmp_key > 0) {
         return prev->ptr;
       }
     }
@@ -615,7 +615,7 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
   }
 
   if(depth) {
-
+    // this handles the rhs of the tree.
     if(prev_cmp_key <= 0) {
       pageid_t child_id = prev->ptr;
       Page *child_page = loadPage(xid, child_id);
@@ -625,13 +625,10 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
       releasePage(child_page);
       return ret;
     }
-
   } else {
-
-    if(prev_cmp_key == 0) {
+    if(prev_cmp_key <= 0) {
       return prev->ptr;
     }
-
   }
   return -1;
 }

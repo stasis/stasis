@@ -13,16 +13,34 @@
 #include "stasis/page/compression/pageLayout.h"
 
 namespace rose {
+  template<class PAGELAYOUT> 
+  void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
+    typename PAGELAYOUT::FMT::TUP::TYP0 m = i;
+    typename PAGELAYOUT::FMT::TUP::TYP1 j = i / 65536;
+    typename PAGELAYOUT::FMT::TUP::TYP2 k = i / 12514500;
+    typename PAGELAYOUT::FMT::TUP::TYP3 l = i / 10000000;
+
+    t.set0(&m);
+    t.set1(&j);
+    t.set2(&k);
+    t.set3(&l);
+    t.set4(&j);
+    t.set5(&k);
+    t.set6(&l);
+    t.set7(&j);
+    t.set8(&k);
+    t.set9(&l);
+  }
+
   template<class PAGELAYOUT>
   int main(int argc, char **argv) {
-    static int cmp_num = 1;
-    static int init_num = 1;
-
     unlink("storefile.txt");
     unlink("logfile.txt");
 
     sync();
-    stasis_page_impl_register(PAGELAYOUT::FMT::impl());
+
+    PAGELAYOUT::initPageLayout();
+
     bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
     Tinit();
@@ -36,6 +54,7 @@ namespace rose {
     lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable);
 
     typename PAGELAYOUT::FMT::TUP t;
+    typename PAGELAYOUT::FMT::TUP s;
 
     long INSERTS; 
     if(argc == 2) {
@@ -43,8 +62,6 @@ namespace rose {
     } else {
       INSERTS = 10 * 1000 * 1000;
     }
-    //    static const long INSERTS = 10000000;
-//  static const long INSERTS = 100000;
     static const long COUNT = INSERTS / 100;
     long int count = COUNT;
 
@@ -55,31 +72,19 @@ namespace rose {
     start = rose::tv_to_double(start_tv);
     last_start = start;
 
-    printf("tuple 'size'%d ; %d\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
+    printf("tuple 'size'%d ; %ld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
 
     for(long int i = 0; i < INSERTS; i++) {
-      typename PAGELAYOUT::FMT::TUP::TYP0 m = i;// % 65536;
-      typename PAGELAYOUT::FMT::TUP::TYP1 j = 0 / 65536;
-      typename PAGELAYOUT::FMT::TUP::TYP2 k = 0 / 12514500;
-      typename PAGELAYOUT::FMT::TUP::TYP3 l = 0 / 10000000;
-
-      t.set0(&m);
-      t.set1(&l);
-      t.set2(&l);
-      t.set3(&l);
-      t.set4(&l);
-      t.set5(&l);
-      t.set6(&l);
-      t.set7(&l);
-      t.set8(&l);
-      t.set9(&l);
+      getTuple<PAGELAYOUT>(i,t);
       TlsmTableInsert(h,t);
+      getTuple<PAGELAYOUT>(i,t);
+      assert(TlsmTableFind(xid,h,t,s));
       count --;
       if(!count) {
 	count = COUNT;
 	gettimeofday(&now_tv,0);
 	now = tv_to_double(now_tv);
-	printf("%3d%% complete "
+	printf("%3ld%% write "
 	       "%9.3f Mtup/sec (avg) %9.3f Mtup/sec (cur) "
 	       "%9.3f Mbyte/sec (avg) %9.3f Mbyte/sec (cur)\n",
 	       ((i+1) * 100) / INSERTS,
@@ -91,11 +96,45 @@ namespace rose {
 	last_start = now;
       }
     }
+    printf("insertions done.\n"); fflush(stdout);
+    count = COUNT;
+
+    gettimeofday(&start_tv,0);
+    start = rose::tv_to_double(start_tv);
+    last_start = start;
+
+    for(long int i = 0; i < INSERTS; i++) {
+
+      getTuple<PAGELAYOUT>(i,t);
+
+      typename PAGELAYOUT::FMT::TUP const * const sp = TlsmTableFind(xid,h,t,s);
+      assert(sp);
+      assert(*sp == s);
+      count--;
+      if(!count) {
+	count = COUNT;
+	gettimeofday(&now_tv,0);
+	now = tv_to_double(now_tv);
+	printf("%3ld%% read "
+	       "%9.3f Mtup/sec (avg) %9.3f Mtup/sec (cur) "
+	       "%9.3f Mbyte/sec (avg) %9.3f Mbyte/sec (cur)\n",
+	       ((i+1) * 100) / INSERTS,
+	       ((double)i/1000000.0)/(now-start),
+	       ((double)count/1000000.0)/(now-last_start),
+	       (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)i/1000000.0)/(now-start),
+	       (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)count/1000000.0)/(now-last_start)
+	       );
+	last_start = now;
+      }
+
+    }
+
     TlsmTableStop<PAGELAYOUT>(h);
 
     Tdeinit();
 
     printf("test\n");
+    return 0;
   }
 }
 
@@ -133,7 +172,7 @@ int main(int argc, char **argv) {
     Rle<typ2>,Rle<typ3>,
     Rle<typ4>,Rle<typ5>,
     Rle<typ6>,Rle<typ7>,
-    Rle<typ8>,Rle<typ9> >
+    Rle<typ8>,For<typ9> >
     >
     >
     (argc,argv);

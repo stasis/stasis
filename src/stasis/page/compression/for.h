@@ -1,6 +1,12 @@
 #ifndef _ROSE_COMPRESSION_FOR_H__
 #define _ROSE_COMPRESSION_FOR_H__
 
+#undef try
+#undef catch
+#undef end
+
+#include <algorithm>
+
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: sears@google.com (Rusty Sears)
 
@@ -99,6 +105,16 @@ class For {
   inline TYPE *recordRead(int xid, slot_index_t slot, byte *exceptions,
                            TYPE * buf);
   /**
+     Find the offset of a compressed value, assuming it falls within
+     the given range.
+
+     @return NULL if the value is not found.
+   */
+  inline std::pair<slot_index_t,slot_index_t>*
+    recordFind(int xid, slot_index_t start, slot_index_t stop,
+	       byte *exceptions, TYPE value,
+	       std::pair<slot_index_t,slot_index_t>& scratch);
+  /**
     This constructor initializes a new FOR region.
 
     @param xid the transaction that created the new region.
@@ -108,6 +124,10 @@ class For {
     *numdeltas_ptr() = 0;
   };
   For(void * mem): mem_(mem) { }
+
+  inline slot_index_t recordCount(int xid) {
+    return *numdeltas_ptr();
+  }
 
   For() : mem_(0) {}
   /**

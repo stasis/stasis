@@ -5,6 +5,7 @@
 // Author: sears@google.com (Rusty Sears)
 
 #include <assert.h>
+#include <algorithm>
 
 #include "rle.h"
 
@@ -31,7 +32,7 @@ Rle<TYPE>::append(int xid, const TYPE dat,
     // this key is not the same as the last one, or
     // the block is full
 
-    *free_bytes -= sizeof(triple_t);
+    (*free_bytes) -= sizeof(triple_t);
 
     // Write the changes in our overrun space
     triple_t *n = new_block_ptr();
@@ -70,7 +71,31 @@ Rle<TYPE>::recordRead(int xid, slot_index_t slot, byte* exceptions,
   } while (n < *block_count_ptr());
   return 0;
 }
-
+template <class TYPE>
+inline std::pair<slot_index_t,slot_index_t>*
+Rle<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
+		      byte *exceptions, TYPE value,
+		      std::pair<slot_index_t,slot_index_t>& scratch) {
+  //  TYPE v = nth_block_ptr(last_)->value <= value ? lastV_ : 0;
+  block_index_t n = 0;
+  std::pair<slot_index_t,slot_index_t>* ret = 0;
+  do {
+    triple_t * t = nth_block_ptr(n);
+    if(t->data  >= value) {
+      scratch.first = t->index;
+      do {
+	scratch.second = t->index + t->copies;
+	n++;
+	t = nth_block_ptr(n);
+      } while(n < *block_count_ptr() && t->data == value);
+      ret = &scratch;
+      break;
+    }
+    n++;
+  } while (n < *block_count_ptr());
+  assert(ret); //XXX
+  return ret;
+}
 } // namespace rose
 
 #endif  // _ROSE_COMPRESSION_RLE_IMPL_H__

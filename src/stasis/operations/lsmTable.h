@@ -39,9 +39,9 @@ namespace rose {
       pageid_t * out_tree_size;
       pageid_t max_size;
       pageid_t r_i;
-      typename ITERA::handle in_process_tree;
       typename ITERB::handle ** in_tree;
       typename ITERA::handle ** out_tree;
+      typename ITERA::handle my_tree;
     };
 
   template <class PAGELAYOUT, class ITER>
@@ -58,41 +58,29 @@ namespace rose {
     pageid_t pageCount = 0;
 
     if(*begin != *end) {
-      TlsmAppendPage(xid,tree,toByteArray(begin),pageAlloc,pageAllocState,p->id);
+      TlsmAppendPage(xid,tree,(**begin).toByteArray(),pageAlloc,
+		     pageAllocState,p->id);
     }
     pageCount++;
 
     typename PAGELAYOUT::FMT * mc = PAGELAYOUT::initPage(p, &**begin);
 
-    int lastEmpty = 0;
-
     for(ITER i(*begin); i != *end; ++i) {
       rose::slot_index_t ret = mc->append(xid, *i);
-
-      (*inserted)++;
 
       if(ret == rose::NOSPACE) {
 	p->dirty = 1;
 	mc->pack();
 	releasePage(p);
-
-	--(*end);
-	if(i != *end) {
-	  next_page = pageAlloc(xid,pageAllocState);
-	  p = loadPage(xid, next_page);
-
-	  mc = PAGELAYOUT::initPage(p, &*i);
-
-	  TlsmAppendPage(xid,tree,toByteArray(&i),pageAlloc,pageAllocState,p->id);
-
-	  pageCount++;
-	  lastEmpty = 0;
-	} else {
-	  lastEmpty = 1;
-	}
-	++(*end);
-	--i;
+	next_page = pageAlloc(xid,pageAllocState);
+	p = loadPage(xid, next_page);
+	mc = PAGELAYOUT::initPage(p, &*i);
+	TlsmAppendPage(xid,tree,(*i).toByteArray(),pageAlloc,pageAllocState,p->id);
+	pageCount++;
+	ret = mc->append(xid, *i);
+	assert(ret != rose::NOSPACE);
       }
+      (*inserted)++;
     }
 
     p->dirty = 1;
@@ -110,28 +98,22 @@ namespace rose {
     void* mergeThread(void* arg) {
     // The ITER argument of a is unused (we don't look at it's begin or end fields...)
     merge_args<PAGELAYOUT, ITERA, ITERB> * a = (merge_args<PAGELAYOUT, ITERA, ITERB>*)arg;
-
     struct timeval start_tv, wait_tv, stop_tv;
-
     int merge_count = 0;
 
     int xid = Tbegin();
-
     // Initialize tree with an empty tree.
     // XXX hardcodes ITERA's type:
-    typename ITERA::handle oldtree
+    typename ITERA::handle tree
       = new typename ITERA::treeIteratorHandle(
 		TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
-		  a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes()) );
-
+		a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes()) );
     Tcommit(xid);
-    // loop around here to produce multiple batches for merge.
 
+    // loop around here to produce multiple batches for merge.
     gettimeofday(&start_tv,0);
 
     while(1) {
-
-
       pthread_mutex_lock(a->block_ready_mut);
 
       int done = 0;
@@ -145,7 +127,6 @@ namespace rose {
 	pthread_cond_wait(a->in_block_ready_cond,a->block_ready_mut);
       }
       if(done) {
-	a->in_process_tree = oldtree;
 	pthread_cond_signal(a->out_block_ready_cond);
 	pthread_mutex_unlock(a->block_ready_mut);
 	break;
@@ -153,7 +134,7 @@ namespace rose {
 
       gettimeofday(&wait_tv,0);
 
-      ITERA taBegin(oldtree);
+      ITERA taBegin(tree);
       ITERB tbBegin(**a->in_tree);
 
       ITERA *taEnd = taBegin.end();
@@ -164,7 +145,7 @@ namespace rose {
 
       xid = Tbegin();
 
-      recordid tree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
+      tree->r_ = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
 			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
 
       mergeIterator<ITERA, ITERB, typename PAGELAYOUT::FMT::TUP>
@@ -178,7 +159,7 @@ namespace rose {
 
       pageid_t mergedPages = compressData
 	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
-	(xid, &mBegin, &mEnd,tree,a->pageAlloc,a->pageAllocState,&insertedTuples);
+	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);
 
       delete taEnd;
       delete tbEnd;
@@ -200,7 +181,7 @@ namespace rose {
 	/ (1024.0 * 1024.0 * total_elapsed);
 
       printf("worker %d merge # %-6d: comp ratio: %-9.3f  waited %6.1f sec   "
-	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6d pages (need %6d)\n", a->worker_id, merge_count, ratio,
+	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6ld pages (need %6ld)\n", a->worker_id, merge_count, ratio,
 	     wait_elapsed, work_elapsed, (unsigned long)insertedTuples, throughput, mergedPages, !a->out_tree_size ? -1 :  (FUDGE * *a->out_tree_size / a->r_i));
 
 
@@ -239,21 +220,22 @@ namespace rose {
 
 	// XXX C++?  Objects?  Constructors? Who needs them?
 	*a->out_tree = (typeof(*a->out_tree))malloc(sizeof(**a->out_tree));
-	**a->out_tree = new typename ITERA::treeIteratorHandle(tree);
+	**a->out_tree = new typename ITERA::treeIteratorHandle(tree->r_);
 	pthread_cond_signal(a->out_block_ready_cond);
 
 	// This is a bit wasteful; allocate a new empty tree to merge against.
 	// We don't want to ever look at the one we just handed upstream...
 	// We could wait for an in tree to be ready, and then pass it directly
 	// to compress data (to avoid all those merging comparisons...)
-	tree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
+	tree->r_ = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
 			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
 
       }
 
-      // XXX   TlsmFree(xid,oldtree);
+      // XXX   TlsmFree(xid,*a->tree);
 
-      *oldtree = tree;
+      assert(a->my_tree->r_.page != tree->r_.page);
+      *a->my_tree = *tree;
 
       pthread_mutex_unlock(a->block_ready_mut);
 
@@ -290,8 +272,8 @@ namespace rose {
     h.mediumTree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),
 			      TlsmRegionAllocRid,&h.mediumTreeAllocState,
 			      PAGELAYOUT::FMT::TUP::sizeofBytes());
-    epoch_t beginning = 0;
-    epoch_t end = 0;
+    //XXX epoch_t beginning = 0;
+    //XXX epoch_t end = 0;
     Tset(xid, ret, &h);
     return ret;
   }
@@ -420,9 +402,9 @@ namespace rose {
 	0, // biggest component computes its size directly.
 	0, // No max size for biggest component
 	R,
-	new typename LSM_ITER::treeIteratorHandle(NULLRID),
 	block1_scratch,
-	0
+	0,
+	new typename LSM_ITER::treeIteratorHandle(NULLRID)
       };
     *ret->args1 = tmpargs1;
     void * (*merger1)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, LSM_ITER>;
@@ -446,9 +428,10 @@ namespace rose {
 	block1_size,
 	(R * MEM_SIZE) / (PAGE_SIZE * 4),  // XXX 4 = estimated compression ratio
 	R,
-	new typename LSM_ITER::treeIteratorHandle(NULLRID),
+	//new typename LSM_ITER::treeIteratorHandle(NULLRID),
 	block0_scratch,
-	block1_scratch
+	block1_scratch,
+	new typename LSM_ITER::treeIteratorHandle(NULLRID)
       };
     *ret->args2 = tmpargs2;
     void * (*merger2)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, RB_ITER>;
@@ -488,18 +471,99 @@ namespace rose {
     void TlsmTableInsert( lsmTableHandle<PAGELAYOUT> *h,
 			  typename PAGELAYOUT::FMT::TUP &t) {
     h->scratch_handle->insert(t);
-    //XXX  4 = estimated compression ratio.
 
     uint64_t handleBytes = h->scratch_handle->size() * (RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
+    //XXX  4 = estimated compression ratio.
     uint64_t inputSizeThresh = (4 * PAGE_SIZE * *h->input_size); // / (PAGELAYOUT::FMT::TUP::sizeofBytes());
     uint64_t memSizeThresh = MEM_SIZE;
 
     if(handleBytes > inputSizeThresh || handleBytes > memSizeThresh) { // XXX ok?
-      printf("Handle mbytes %ld Input size: %ld input size thresh: %ld mbytes mem size thresh: %ld\n",
-	     handleBytes / (1024*1024), *h->input_size, inputSizeThresh / (1024*1024), memSizeThresh / (1024*1024));
+      printf("Handle mbytes %ld (%ld) Input size: %ld input size thresh: %ld mbytes mem size thresh: %ld\n",
+	     handleBytes / (1024*1024), h->scratch_handle->size(), *h->input_size, inputSizeThresh / (1024*1024), memSizeThresh / (1024*1024));
       TlsmTableFlush<PAGELAYOUT>(h);
     }
+  }
 
+  template<class PAGELAYOUT>
+    inline typename PAGELAYOUT::FMT::TUP *
+    getRecordHelper(int xid, recordid r,
+		    typename PAGELAYOUT::FMT::TUP& val,
+		    typename PAGELAYOUT::FMT::TUP& scratch,
+		    byte *arry) {
+    if(r.size == -1) {
+      DEBUG("no tree\n");
+      return 0;
+    }
+    pageid_t pid = TlsmFindPage(xid, r, arry);
+    if(pid == -1) {
+      DEBUG("no page\n");
+      return 0;
+    }
+    Page * p = loadPage(xid,pid);
+    typename PAGELAYOUT::FMT * f =
+      (typename PAGELAYOUT::FMT*)p->impl;
+    typename PAGELAYOUT::FMT::TUP * ret =
+      f->recordFind(xid, val, scratch);
+    if(!ret) {
+      DEBUG("not in tree");
+    }
+    releasePage(p);
+    return ret;
+  }
+
+  template<class PAGELAYOUT>
+    const typename PAGELAYOUT::FMT::TUP *
+    TlsmTableFind(int xid, lsmTableHandle<PAGELAYOUT> *h,
+		  typename PAGELAYOUT::FMT::TUP &val,
+		  typename PAGELAYOUT::FMT::TUP &scratch) {
+
+    pthread_mutex_lock(h->mut);
+    typename std::set
+      <typename PAGELAYOUT::FMT::TUP,
+       typename PAGELAYOUT::FMT::TUP::stl_cmp>::iterator i =
+      h->scratch_handle->find(val);
+    if(i != h->scratch_handle->end()) {
+      scratch = *i;
+      pthread_mutex_unlock(h->mut);
+      return &scratch;
+    }
+    DEBUG("Not in scratch_handle\n");
+    if(*h->args2->in_tree) {
+      i = (**h->args2->in_tree)->find(val);
+      if(i != (**h->args2->in_tree)->end()) {
+	scratch = *i;
+	pthread_mutex_unlock(h->mut);
+	return &scratch;
+      }
+    }
+    DEBUG("Not in first in_tree\n");
+    // need to check LSM trees.
+    byte * arry = val.toByteArray();
+
+    typename PAGELAYOUT::FMT::TUP * r = 0;
+    r = getRecordHelper<PAGELAYOUT>(xid, h->args2->my_tree->r_, val, scratch, arry);
+    if(r) { pthread_mutex_unlock(h->mut); return r; }
+
+    DEBUG("Not in first my_tree {%lld}\n", h->args2->my_tree->r_.size);
+
+    if(*h->args1->in_tree) {
+      r = getRecordHelper<PAGELAYOUT>(xid, (**h->args1->in_tree)->r_, val, scratch, arry);
+      if(r) { pthread_mutex_unlock(h->mut); return r; }
+    } else {
+      DEBUG("no tree");
+    }
+
+    DEBUG("Not in second in_tree\n");
+    if(h->args1->my_tree) {
+      r = getRecordHelper<PAGELAYOUT>(xid, h->args1->my_tree->r_, val, scratch, arry);
+      if(r) { pthread_mutex_unlock(h->mut); return r; }
+    } else {
+      DEBUG("no tree");
+    }
+
+    DEBUG("Not in any tree\n");
+    assert(r == 0);
+    return r;
   }
 }
 

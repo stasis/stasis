@@ -37,10 +37,10 @@ For<TYPE>::append(int xid, const TYPE dat,
     *(((TYPE*)(&exceptions[*except]))-1) = dat;
 
     // Allocate the delta and the exception (if possible)
-    *free_bytes -= sizeof(TYPE) + sizeof(delta_t);
+    (*free_bytes) -= (sizeof(TYPE) + sizeof(delta_t));
     int incr = *free_bytes >= 0;
-    *numdeltas_ptr() += incr;
-    *except -= incr * sizeof(TYPE);
+    (*numdeltas_ptr()) += incr;
+    (*except) -= incr * sizeof(TYPE);
 
     /* This does the same thing as the last few lines, but with a branch.  It's
        marginally slower:
@@ -58,8 +58,8 @@ For<TYPE>::append(int xid, const TYPE dat,
     *next_delta_ptr() = (delta_t) delta;
 
     // Allocate space for it, if possible
-    *free_bytes -= sizeof(delta_t);
-    *numdeltas_ptr() += *free_bytes >= 0;
+    (*free_bytes) -= sizeof(delta_t);
+    (*numdeltas_ptr()) += (*free_bytes >= 0);
   }
 
   return *numdeltas_ptr() - 1;
@@ -82,6 +82,50 @@ For<TYPE>::recordRead(int xid, slot_index_t slot, byte *exceptions,
     return scratch;
   }
 }
-
+template <class TYPE>
+inline std::pair<slot_index_t,slot_index_t>*
+For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
+		      byte *exceptions, TYPE value,
+		      std::pair<slot_index_t,slot_index_t>& scratch) {
+  std::pair<slot_index_t,slot_index_t>* ret = 0;
+  delta_t delta = value - *base_ptr();
+  slot_index_t i;
+  for(i = start; i < stop; i++) {
+    delta_t d = *nth_delta_ptr(i);
+    if(d >= 0) {
+      if(d == delta) {
+	scratch.first = i;
+	scratch.second = stop;
+	ret = &scratch;
+	i++;
+	break;
+      }
+    } else {
+      if(value == *(TYPE*)(exceptions + d + PAGE_SIZE - sizeof(TYPE))) {
+	scratch.first = i;
+	scratch.second = stop;
+	ret = &scratch;
+	i++;
+	break;
+      }
+    }
+  }
+  for(;i < stop; i++) {
+    delta_t d = *nth_delta_ptr(i);
+    if(d >= 0) {
+      if(d != delta) {
+	scratch.second = i;
+	break;
+      }
+    } else {
+      if(value != *(TYPE*)(exceptions +d + PAGE_SIZE - sizeof(TYPE))) {
+	scratch.second = i;
+	break;
+      }
+    }
+  }
+  assert(ret); //XXX
+  return ret;
+ }
 } // namespace rose
 #endif  // _ROSE_COMPRESSION_FOR_IMPL_H__

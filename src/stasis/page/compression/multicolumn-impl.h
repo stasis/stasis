@@ -99,28 +99,31 @@ void Multicolumn<TUPLE>::pack() {
 
 template <class TUPLE>
 Multicolumn<TUPLE>::~Multicolumn() {
-  byte_off_t first_free = 0;
-  byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
-  if(unpacked_) {
-    *exceptions_len_ptr() = USABLE_SIZE_OF_PAGE - first_exception_byte_;
-    last_free -= *exceptions_len_ptr();
+  // XXX this is doing the wrong thing; it should be freeing memory, and
+  // doing nothing else; instead, it's pack()ing the page and leaking
+  // space.
+  //byte_off_t first_free = 0;
+  //byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
+  //  if(unpacked_) {
+  //*exceptions_len_ptr() = USABLE_SIZE_OF_PAGE - first_exception_byte_;
+  //last_free -= *exceptions_len_ptr();
 
-    *exceptions_offset_ptr() = last_free;
-    memcpy(&(p_->memAddr[*exceptions_offset_ptr()]),
-	   exceptions_ + first_exception_byte_, *exceptions_len_ptr());
+  //*exceptions_offset_ptr() = last_free;
+  //memcpy(&(p_->memAddr[*exceptions_offset_ptr()]),
+  //exceptions_ + first_exception_byte_, *exceptions_len_ptr());
 
-    for(int i = 0; i < *column_count_ptr(); i++) {
-      *column_offset_ptr(i) = first_free;
+  for(int i = 0; i < *column_count_ptr(); i++) {
+    //*column_offset_ptr(i) = first_free;
 
-      byte_off_t bytes_used = dispatcher_.bytes_used(i);
-      memcpy(column_base_ptr(i), columns_[i], bytes_used);
-      first_free += bytes_used;
-      assert(first_free <= last_free);
-      delete [] columns_[i];
-    }
-
-    delete [] exceptions_;
+    //byte_off_t bytes_used = dispatcher_.bytes_used(i);
+    //memcpy(column_base_ptr(i), columns_[i], bytes_used);
+    //first_free += bytes_used;
+    //assert(first_free <= last_free);
+    if(unpacked_) delete [] columns_[i];
   }
+
+  if(unpacked_) delete [] exceptions_;
+
   delete [] columns_;
 }
 

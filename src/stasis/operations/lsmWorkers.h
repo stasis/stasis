@@ -142,9 +142,12 @@ pageid_t compressData(ITER * const begin, ITER * const end,
       p->dirty = 1;
       mc->pack();
       releasePage(p);
-
-      --(*end);
-      if(i != *end) {
+      // XXX this used to work by decrementing i, and then running
+      // through again.  That failed when i was right before end.
+      // figure out why it was broken, fix the iterators (?), and write
+      // a test case for this situation...
+      //      --(*end);
+      //      if(i != *end) {
         next_page = pageAlloc(-1,pageAllocState);
         p = loadPage(-1, next_page);
 
@@ -154,12 +157,14 @@ pageid_t compressData(ITER * const begin, ITER * const end,
 	  TlsmAppendPage(-1,tree,toByteArray(&i),pageAlloc,pageAllocState,p->id);
 	}
         pageCount++;
-        lastEmpty = 0;
-      } else {
-        lastEmpty = 1;
-      }
-      ++(*end);
-      --i;
+	ret = mc->append(-1, *i);
+	assert(ret != rose::NOSPACE);
+	//        lastEmpty = 0;
+	//      } else {
+	//        lastEmpty = 1;
+	//      }
+	//      ++(*end);
+	//      --i;
     }
   }
 
