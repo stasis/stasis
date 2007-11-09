@@ -39,12 +39,14 @@ void insertProbeIter(lsmkey_t NUM_ENTRIES) {
   recordid tree = TlsmCreate(xid, intcmp, 
 			     TlsmRegionAlloc, &alloc_conf,
 			     sizeof(lsmkey_t));
+  long oldpagenum = -1;
   for(lsmkey_t i = 0; i < NUM_ENTRIES; i++) {
     long pagenum = TlsmFindPage(xid, tree, (byte*)&i);
-    assert(pagenum == -1);
+    assert(pagenum == -1 || pagenum == oldpagenum || oldpagenum == -1);
     DEBUG("TlsmAppendPage %d\n",i);
     TlsmAppendPage(xid, tree, (const byte*)&i, TlsmRegionAlloc, &alloc_conf, i + OFFSET);
     pagenum = TlsmFindPage(xid, tree, (byte*)&i);
+    oldpagenum = pagenum;
     assert(pagenum == i + OFFSET);
   }
 
