@@ -23,6 +23,9 @@ namespace rose {
   typedef TYPE8 TYP8;
   typedef TYPE9 TYP9;
 
+  inline bool tombstone() const {
+    return s.flag_ == TOMBSTONE;
+  }
 
   explicit inline StaticTuple() {
     s.flag_ = NORMAL; s.epoch_ = 0 ;
@@ -156,6 +159,21 @@ namespace rose {
       else if(s.cols9_ < t.s.cols9_) return 1;
     }
     return 0;
+  }
+
+  inline void copyFrom(const StaticTuple& t) {
+    s.flag_=t.s.flag_;
+    s.epoch_=t.s.epoch_;
+    if(0 < N) { s.cols0_ = t.s.cols0_; }
+    if(1 < N) { s.cols1_ = t.s.cols1_; }
+    if(2 < N) { s.cols2_ = t.s.cols2_; }
+    if(3 < N) { s.cols3_ = t.s.cols3_; }
+    if(4 < N) { s.cols4_ = t.s.cols4_; }
+    if(5 < N) { s.cols5_ = t.s.cols5_; }
+    if(6 < N) { s.cols6_ = t.s.cols6_; }
+    if(7 < N) { s.cols7_ = t.s.cols7_; }
+    if(8 < N) { s.cols8_ = t.s.cols8_; }
+    if(9 < N) { s.cols9_ = t.s.cols9_; }
   }
 
   static void printSt(void const * const sp) {

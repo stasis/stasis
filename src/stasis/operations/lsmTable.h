@@ -19,11 +19,6 @@ namespace rose {
      dispatched), interface to the underlying primititves
   */
 
-  // Lower total work by perfomrming one merge at higher level
-  // for every FUDGE^2 merges at the immediately lower level.
-  // (Constrast to R, which controls the ratio of sizes of the trees.)
-  static const int FUDGE = 1;
-
   template<class PAGELAYOUT, class ITERA, class ITERB>
     struct merge_args {
       int worker_id;
@@ -69,7 +64,8 @@ namespace rose {
       rose::slot_index_t ret = mc->append(xid, *i);
 
       if(ret == rose::NOSPACE) {
-	p->dirty = 1;
+	dirtyPages_add(p);
+	//	p->dirty = 1;
 	mc->pack();
 	releasePage(p);
 	next_page = pageAlloc(xid,pageAllocState);
@@ -82,12 +78,27 @@ namespace rose {
       }
       (*inserted)++;
     }
-
-    p->dirty = 1;
+    dirtyPages_add(p);
+    //    p->dirty = 1;
     mc->pack();
     releasePage(p);
     return pageCount;
   }
+
+
+  // How many bytes of tuples can we afford to keep in RAM?
+  // this is just a guessed value... it seems about right based on
+  // experiments, but 450 bytes overhead per tuple is insane!
+  static const int RB_TREE_OVERHEAD = 400; // = 450;
+  static const pageid_t MEM_SIZE = 1000 * 1000 * 1000;
+  // How many pages should we try to fill with the first C1 merge?
+  static const int R = 3; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
+  static const pageid_t START_SIZE = MEM_SIZE * R /( PAGE_SIZE * 4); //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
+  // Lower total work by perfomrming one merge at higher level
+  // for every FUDGE^2 merges at the immediately lower level.
+  // (Constrast to R, which controls the ratio of sizes of the trees.)
+  static const int FUDGE = 1;
+
 
 
   /**
@@ -155,11 +166,25 @@ namespace rose {
 	mEnd(taBegin, tbBegin, *taEnd, *tbEnd);
 
       mEnd.seekEnd();
+
+      versioningIterator<mergeIterator
+	<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>,
+	typename PAGELAYOUT::FMT::TUP> vBegin(mBegin,mEnd,0);
+
+      versioningIterator<mergeIterator
+	<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>,
+	typename PAGELAYOUT::FMT::TUP> vEnd(mBegin,mEnd,0);
+
+      vEnd.seekEnd();
+
       uint64_t insertedTuples;
 
       pageid_t mergedPages = compressData
+	<PAGELAYOUT,versioningIterator<mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>, typename PAGELAYOUT::FMT::TUP> >
+	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples); 
+      /*      pageid_t mergedPages = compressData
 	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
-	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);
+	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  */
 
       delete taEnd;
       delete tbEnd;
@@ -303,15 +328,6 @@ namespace rose {
       typename PAGELAYOUT::FMT::TUP::stl_cmp>,
       typename PAGELAYOUT::FMT::TUP> > * args2;
   };
-
-  // How many bytes of tuples can we afford to keep in RAM?
-  // this is just a guessed value... it seems about right based on
-  // experiments, but 450 bytes overhead per tuple is insane!
-  static const int RB_TREE_OVERHEAD = 450;
-  static const pageid_t MEM_SIZE = 800 * 1000 * 1000;
-  // How many pages should we try to fill with the first C1 merge?
-  static const pageid_t START_SIZE = /*10 **/ 1000;
-  static const int R = 10; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
 
   template<class PAGELAYOUT>
     lsmTableHandle <PAGELAYOUT> * TlsmTableStart(recordid& tree) {

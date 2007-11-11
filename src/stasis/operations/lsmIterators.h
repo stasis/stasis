@@ -341,7 +341,7 @@ class versioningIterator {
     a_(a),
     aend_(aend),
     check_tombstone_(0),
-    tombstone_(0),
+    tombstone_(),
     off_(0)
   {}
   explicit versioningIterator(versioningIterator &i) :
@@ -352,11 +352,11 @@ class versioningIterator {
     off_(i.off_)
   {}
 
-  ROW& operator* () {
+  const ROW& operator* () {
     return *a_;
   }
   void seekEnd() {
-    a_ = aend_; // XXX good idea?
+    a_.seekEnd();// = aend_; // XXX good idea?
   }
   inline bool operator==(const versioningIterator &o) const {
     return a_ == o.a_;
@@ -372,7 +372,7 @@ class versioningIterator {
     } else {
       ++a_;
     }
-    if((*a_).tombstone()) {
+    if(a_ != aend_ && (*a_).tombstone()) {
       tombstone_.copyFrom(*a_);
       check_tombstone_ = 1;
     } else {
