@@ -182,9 +182,9 @@ static void pfForceRangePageFile(lsn_t start, lsn_t stop) {
   assert(!ret);
 #else
 #ifdef HAVE_FDATASYNC
-  fdatasync(fd);
+  fdatasync(stable);
 #else
-  fsync(fd);
+  fsync(stable);
 #endif
 #endif
   }
