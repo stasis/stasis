@@ -55,6 +55,8 @@ terms specified in this license.
 
 #include <stasis/transactional.h>
 
+BEGIN_C_DECLS
+
 #ifndef __LLADD_TRUNCATION_H
 #define __LLADD_TRUNCATION_H 1
 
@@ -64,6 +66,11 @@ void dirtyPagesDeinit();
 void dirtyPages_add(Page * p); 
 void dirtyPages_remove(Page * p);
 int  dirtyPages_isDirty(Page * p);
+
+/**
+   @todo forceWriteRange has nothing to do with the dirty pages api, or truncation.
+ */
+void dirtyPages_forceWriteRange(pageid_t start, pageid_t stop);
 
 void truncationInit();
 void truncationDeinit();
@@ -77,5 +84,5 @@ void autoTruncate();
 */
 int truncateNow();
 
-
+END_C_DECLS
 #endif
