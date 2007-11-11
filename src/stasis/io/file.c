@@ -450,6 +450,7 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     pthread_mutex_lock(&impl->mut);
     int fd = impl->fd;
     lsn_t off = impl->start_pos;
+    (void)off; 
     pthread_mutex_unlock(&impl->mut);
     {
       static int warned = 0;

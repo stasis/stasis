@@ -385,7 +385,7 @@ static int pfile_force(stasis_handle_t *h) {
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   pfile_impl * impl = h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
-  printf("Calling sync_file_range\n");
+  printf("pfile_force_range calling sync_file_range\n");
   int ret = sync_file_range(impl->fd, start-impl->start_pos, (stop-start),
 			      SYNC_FILE_RANGE_WAIT_BEFORE |
 			      SYNC_FILE_RANGE_WRITE |
@@ -400,11 +400,11 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   }
 #else
 #ifdef HAVE_FDATASYNC
-  printf("file_force_range() is calling fdatasync()\n");
-  fdatasync(fd);
+  printf("pfile_force_range() is calling fdatasync()\n");
+  fdatasync(impl->fd);
 #else
-  printf("file_force_range() is calling fsync()\n");
-  fsync(fd);
+  printf("pfile_force_range() is calling fsync()\n");
+  fsync(impl->fd);
 #endif
   int ret = 0;
 #endif
