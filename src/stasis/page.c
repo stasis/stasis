@@ -211,6 +211,7 @@ const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
     if(!recordWarnedAboutPageTypeKludge) {
       recordWarnedAboutPageTypeKludge = 1;
       printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+      abort();
     }
   }
   return page_impls[page_type].recordRead(xid, p, rid);
@@ -222,6 +223,7 @@ byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
     if(!recordWarnedAboutPageTypeKludge) {
       recordWarnedAboutPageTypeKludge = 1;
       printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
+      abort()
     }
   }
   return page_impls[page_type].recordWrite(xid, p, rid);

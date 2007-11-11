@@ -168,7 +168,18 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
       DEBUG("block %d\n", i);
       /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-
+      /* Iterate over the (large number) of new blocks, clearing their contents */
+      /* @todo XXX arraylist generates N log entries initing pages.
+	 It should generate 1 entry.  (Need better LSN handling first.)*/
+      {
+	recordid newpage;
+	newpage.slot = 0;
+	newpage.size = tlp.size;
+	for(int i = newFirstPage; i < newFirstPage + blockSize; i++) {
+	  newpage.page = i;
+	  TupdateRaw(xid, newpage, 0, OPERATION_FIXED_PAGE_ALLOC);
+	}
+      }
       TupdateRaw(xid, tmp, &newFirstPage, op);
       DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
     }

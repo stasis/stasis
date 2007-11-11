@@ -13,7 +13,7 @@ int stasis_fixed_records_per_page(size_t size) {
 void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
   assertlocked(page->rwlatch);
   // XXX fixed page asserts it's been given an UNINITIALIZED_PAGE...  Why doesn't that crash?
-  assert(*stasis_page_type_ptr(page) == UNINITIALIZED_PAGE);
+  //  assert(*stasis_page_type_ptr(page) == UNINITIALIZED_PAGE);
   *stasis_page_type_ptr(page) = FIXED_PAGE;
   *recordsize_ptr(page) = size;
   assert(count <= stasis_fixed_records_per_page(size));
@@ -28,6 +28,7 @@ static void checkRid(Page * page, recordid rid) {
       checkRidWarnedAboutUninitializedKludge = 1;
       printf("KLUDGE detected in checkRid. Fix it ASAP\n");
       fflush(stdout);
+      abort();
     }
     stasis_fixed_initialize_page(page, rid.size, stasis_fixed_records_per_page(rid.size));
   }
