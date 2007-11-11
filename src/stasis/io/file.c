@@ -1,4 +1,8 @@
 #include <config.h>
+#ifdef HAVE_SYNC_FILE_RANGE
+#define _GNU_SOURCE
+#endif
+#include <fcntl.h>
 #include <stasis/common.h>
 #include <stasis/io/handle.h>
 #include <stdlib.h>
@@ -11,7 +15,6 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 /** @file */
 
@@ -39,6 +42,7 @@ static int updateEOF(stasis_handle_t * h) {
 static int file_num_copies(stasis_handle_t * h) { return 0; }
 static int file_num_copies_buffer(stasis_handle_t * h) { return 0; }
 static int file_force(stasis_handle_t *h);
+static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop);
 
 static int file_close(stasis_handle_t * h) {
   file_force(h);
@@ -415,7 +419,17 @@ static int file_force(stasis_handle_t * h) {
     pthread_mutex_lock(&impl->mut);  // must latch because of truncate... :(
     int fd = impl->fd;
     pthread_mutex_unlock(&impl->mut);
-
+    {
+      static int warned = 0;
+      if(!warned) {
+	printf("Warning: There is a race condition between force() and "
+	       " truncate() in file.c (This shouldn't matter in practice, "
+	       "as the logger hasn't moved over to use file.c yet.\n");
+	warned = 1;
+      }
+    }
+    // XXX there is a race here; the file handle could have been invalidated
+    // by truncate.
 #ifdef HAVE_FDATASYNC
     DEBUG("file_force() is calling fdatasync()\n");
     fdatasync(fd);
@@ -428,7 +442,52 @@ static int file_force(stasis_handle_t * h) {
   }
   return 0;
 }
-
+static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
+  file_impl * impl = h->impl;
+  int ret = 0;
+  if(!impl->file_flags & O_SYNC) {
+    // not opened synchronously; we need to explicitly sync.
+    pthread_mutex_lock(&impl->mut);
+    int fd = impl->fd;
+    lsn_t off = impl->start_pos;
+    pthread_mutex_unlock(&impl->mut);
+    {
+      static int warned = 0;
+      if(!warned) {
+	printf("Warning: There is a race condition between force_range() and "
+	       " truncate() in file.c (This shouldn't matter in practice, "
+	       "as the logger hasn't moved over to use file.c yet.\n");
+	warned = 1;
+      }
+    }
+    //#ifdef HAVE_F_SYNC_RANGE
+#ifdef HAVE_SYNC_FILE_RANGE
+    printf("Calling sync_file_range\n");
+    ret = sync_file_range(fd, start-off, (stop-start),
+			      SYNC_FILE_RANGE_WAIT_BEFORE |
+			      SYNC_FILE_RANGE_WRITE |
+			      SYNC_FILE_RANGE_WAIT_AFTER);
+    if(ret) {
+      int error = errno;
+      assert(ret == -1);
+      // With the possible exceptions of ENOMEM and ENOSPACE, all of the sync
+      // errors are unrecoverable.
+      h->error = EBADF;
+      ret = error;
+    }
+#else
+#ifdef HAVE_FDATASYNC
+    printf("file_force_range() is calling fdatasync()\n");
+    fdatasync(fd);
+#else
+    printf("file_force_range() is calling fsync()\n");
+    fsync(fd);
+#endif
+    ret = 0;
+#endif
+  }
+  return ret;
+}
 static int file_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
   file_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
@@ -508,6 +567,7 @@ struct stasis_handle_t file_func = {
   .read_buffer = file_read_buffer,
   .release_read_buffer = file_release_read_buffer,
   .force = file_force,
+  .force_range = file_force_range,
   .truncate_start = file_truncate_start,
   .error = 0
 };

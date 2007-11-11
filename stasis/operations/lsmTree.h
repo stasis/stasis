@@ -25,6 +25,7 @@ typedef struct {
 typedef int(*lsm_comparator_t)(const void* a, const void* b);
 typedef void*(*lsm_page_initializer_t)(Page *, void *);
 typedef pageid_t(*lsm_page_allocator_t)(int, void *);
+typedef void(*lsm_page_deallocator_t)(int, void *);
 
 void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
 void lsmTreeRegisterPageInitializer(int id, lsm_page_initializer_t i);
@@ -32,10 +33,15 @@ void lsmTreeRegisterPageInitializer(int id, lsm_page_initializer_t i);
 pageid_t TlsmRegionAlloc(int xid, void *conf);
 pageid_t TlsmRegionAllocRid(int xid, void *conf);
 typedef struct {
+  recordid regionList;
+  pageid_t regionCount;
   pageid_t nextPage;
   pageid_t endOfRegion;
   pageid_t regionSize;
 } TlsmRegionAllocConf_t;
+
+void TlsmRegionDeallocRid(int xid, void *conf);
+
 extern TlsmRegionAllocConf_t LSM_REGION_ALLOC_STATIC_INITIALIZER;
 
 /**
@@ -66,6 +72,8 @@ recordid TlsmAppendPage(int xid, recordid tree,
 			const byte *key,
 			lsm_page_allocator_t allocator, void *allocator_state,
 			long pageid);
+void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
+	 void *allocator_state);
 /**
    Lookup a leaf page.
 

@@ -199,6 +199,7 @@ typedef struct stasis_handle_t {
      returned) may or may not be forced to disk.
   */
   int (*force)(struct stasis_handle_t * h);
+  int (*force_range)(struct stasis_handle_t * h, lsn_t start, lsn_t stop);
   /**
      Truncate bytes from the beginning of the file.  This is needed by
      the log manager.

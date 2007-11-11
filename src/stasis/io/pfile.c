@@ -1,9 +1,13 @@
 #include <config.h>
 #define _XOPEN_SOURCE 500
+#ifdef HAVE_SYNC_FILE_RANGE
+#define _GNU_SOURCE
+#endif
+#include <fcntl.h>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
@@ -378,6 +382,34 @@ static int pfile_force(stasis_handle_t *h) {
   }
   return 0;
 }
+static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
+  pfile_impl * impl = h->impl;
+#ifdef HAVE_SYNC_FILE_RANGE
+  printf("Calling sync_file_range\n");
+  int ret = sync_file_range(impl->fd, start-impl->start_pos, (stop-start),
+			      SYNC_FILE_RANGE_WAIT_BEFORE |
+			      SYNC_FILE_RANGE_WRITE |
+			      SYNC_FILE_RANGE_WAIT_AFTER);
+  if(ret) {
+    int error = errno;
+    assert(ret == -1);
+    // With the possible exceptions of ENOMEM and ENOSPACE, all of the sync
+    // errors are unrecoverable.
+    h->error = EBADF;
+    ret = error;
+  }
+#else
+#ifdef HAVE_FDATASYNC
+  printf("file_force_range() is calling fdatasync()\n");
+  fdatasync(fd);
+#else
+  printf("file_force_range() is calling fsync()\n");
+  fsync(fd);
+#endif
+  int ret = 0;
+#endif
+  return ret;
+}
 static int pfile_truncate_start(stasis_handle_t *h, lsn_t new_start) {
   static int truncate_warned = 0;
   if (!truncate_warned) {
@@ -403,6 +435,7 @@ struct stasis_handle_t pfile_func = {
   .read_buffer = pfile_read_buffer,
   .release_read_buffer = pfile_release_read_buffer,
   .force = pfile_force,
+  .force_range = pfile_force_range,
   .truncate_start = pfile_truncate_start,
   .error = 0
 };

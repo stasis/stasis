@@ -47,6 +47,7 @@ extern void (*pageRead)(Page * ret);
    as well...)
 */
 extern void (*forcePageFile)();
+extern void (*forceRangePageFile)();
 /**
    Force the page file to disk, then close it.
 */

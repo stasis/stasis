@@ -6,9 +6,10 @@
 #include <stasis/bufferPool.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
-void (*pageWrite)(Page * dat); 
+void (*pageWrite)(Page * dat);
 void (*pageRead)(Page * ret);
 void (*forcePageFile)();
+void (*forceRangePageFile)();
 void (*closePageFile)();
 
 int printedForceWarning = 0;
@@ -57,6 +58,10 @@ static void phForce() {
   int err = h->force(h);
   assert(!err);
 }
+static void phForceRange(lsn_t start, lsn_t stop) {
+  int err = h->force_range(h,start,stop);
+  assert(!err);
+}
 static void phClose() { 
   int err = h->close(h);
   DEBUG("Closing pageHandle\n");
@@ -72,6 +77,7 @@ void pageHandleOpen(stasis_handle_t * handle) {
   pageWrite = phWrite;
   pageRead  = phRead;
   forcePageFile = phForce;
+  forceRangePageFile = phForceRange;
   closePageFile = phClose;
   h = handle;
 }

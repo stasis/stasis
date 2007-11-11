@@ -149,7 +149,12 @@ extern void (*writeBackPage)(Page * p);
     a no-op.
 */
 extern void (*forcePages)();
+/**
+    Force written back pages that fall within a particular range to disk.
 
+    This does not force page that have not been written to with pageWrite().
+*/
+extern void (*forcePageRange)(pageid_t start, pageid_t stop);
 extern void (*simulateBufferManagerCrash)();
 
 int bufInit(int type);

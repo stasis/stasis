@@ -209,7 +209,7 @@ AC_FUNC_MEMCMP
 AC_FUNC_REALLOC
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([bzero fdatasync ftruncate getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir posix_memalign pow powl socket sqrt strchr strdup strerror strrchr strstr strtol strtoul tcase_set_timeout])
+AC_CHECK_FUNCS([bzero fdatasync floor ftruncate getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir posix_memalign pow powl socket sqrt strchr strdup strerror strrchr strstr strtol strtoul sync_file_range tcase_set_timeout])
 
 #AC_CONFIG_LIBMYSQLD
 

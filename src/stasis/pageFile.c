@@ -28,6 +28,7 @@ static int stable = -1;
 static pthread_mutex_t stable_mutex;
 static void pfForcePageFile();
 static void pfClosePageFile();
+static void pfForceRangePageFile(lsn_t start, lsn_t stop) ;
 inline static pageid_t myLseekNoLock(int f, pageid_t offset, int whence);
 
 static int oldOffset = -1;
@@ -134,6 +135,7 @@ void openPageFile() {
   pageRead = pfPageRead;
   pageWrite = pfPageWrite;
   forcePageFile = pfForcePageFile;
+  forceRangePageFile = pfForceRangePageFile;
   closePageFile = pfClosePageFile;
 
   DEBUG("Opening storefile.\n");
@@ -170,6 +172,23 @@ static void pfForcePageFile() {
   }
 }
 
+static void pfForceRangePageFile(lsn_t start, lsn_t stop) {
+  if(pageFile_isDurable) {
+#ifdef HAVE_SYNC_FILE_RANGE
+  int ret = sync_file_range(stable, start, stop,
+			      SYNC_FILE_RANGE_WAIT_BEFORE |
+			      SYNC_FILE_RANGE_WRITE |
+			      SYNC_FILE_RANGE_WAIT_AFTER);
+  assert(!ret);
+#else
+#ifdef HAVE_FDATASYNC
+  fdatasync(fd);
+#else
+  fsync(fd);
+#endif
+#endif
+  }
+}
 static void pfClosePageFile() {
   assert(stable != -1);
   forcePageFile();

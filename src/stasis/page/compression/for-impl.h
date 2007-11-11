@@ -124,7 +124,6 @@ For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
       }
     }
   }
-  assert(ret); //XXX
   return ret;
  }
 } // namespace rose

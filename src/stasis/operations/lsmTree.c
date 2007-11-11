@@ -11,17 +11,44 @@ static lsm_comparator_t comparators[MAX_LSM_COMPARATORS];
 static lsm_page_initializer_t initializers[MAX_LSM_PAGE_INITIALIZERS];
 
 TlsmRegionAllocConf_t LSM_REGION_ALLOC_STATIC_INITIALIZER =
-  { -1, -1, 1000 };
+  { {0,0,-1}, 0, -1, -1, 1000 };
 
 pageid_t TlsmRegionAlloc(int xid, void *conf) {
-  TlsmRegionAllocConf_t * a = (TlsmRegionAllocConf_t*)conf;
+  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
   if(a->nextPage == a->endOfRegion) {
+    if(a->regionList.size == -1) {
+      a->regionList = TarrayListAlloc(xid, 1, 4, sizeof(pageid_t));
+      a->regionCount = 0;
+    }
+    TarrayListExtend(xid,a->regionList,1);
+    a->regionList.slot = a->regionCount;
+    DEBUG("region lst slot %lld\n",a->regionList.slot);
+    a->regionCount++;
+    DEBUG("region count %lld\n",a->regionCount);
     a->nextPage = TregionAlloc(xid, a->regionSize,0);
+    DEBUG("next page %lld\n",a->nextPage);
     a->endOfRegion = a->nextPage + a->regionSize;
+    Tset(xid,a->regionList,&a->nextPage);
+    DEBUG("next page %lld\n",a->nextPage);
   }
+  DEBUG("%lld ?= %lld\n", a->nextPage,a->endOfRegion);
   pageid_t ret = a->nextPage;
+  DEBUG("ret %lld\n",ret);
   (a->nextPage)++;
   return ret;
+}
+
+void TlsmRegionDeallocRid(int xid, void *conf) {
+  recordid rid = *(recordid*)conf;
+  TlsmRegionAllocConf_t a;
+  Tread(xid,rid,&a);
+  //  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
+  for(int i = 0; i < a.regionCount; i++) {
+    a.regionList.slot = i;
+    pageid_t pid;
+    Tread(xid,a.regionList,&pid);
+    TregionDealloc(xid,pid);
+  }
 }
 
 pageid_t TlsmRegionAllocRid(int xid, void * ridp) {
@@ -574,6 +601,13 @@ recordid TlsmAppendPage(int xid, recordid tree,
   releasePage(p);
 
   return ret;
+}
+void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
+	      void *allocator_state) {
+  //  Tdealloc(xid,tree);
+  dealloc(xid,allocator_state);
+  // XXX fishy shouldn't caller do this?
+  Tdealloc(xid, *(recordid*)allocator_state);
 }
 
 static pageid_t lsmLookup(int xid, Page *node, int depth,

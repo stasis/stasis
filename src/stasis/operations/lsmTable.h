@@ -6,6 +6,7 @@
 
 #include <set>
 #include "lsmIterators.h"
+#include <stasis/truncation.h>
 
 namespace rose {
   /**
@@ -24,6 +25,7 @@ namespace rose {
       int worker_id;
       pageid_t(*pageAlloc)(int,void*);
       void *pageAllocState;
+      void *oldAllocState;
       pthread_mutex_t * block_ready_mut;
       pthread_cond_t * in_block_needed_cond;
       pthread_cond_t * out_block_needed_cond;
@@ -91,6 +93,7 @@ namespace rose {
   // experiments, but 450 bytes overhead per tuple is insane!
   static const int RB_TREE_OVERHEAD = 400; // = 450;
   static const pageid_t MEM_SIZE = 1000 * 1000 * 1000;
+  //  static const pageid_t MEM_SIZE = 100 * 1000;
   // How many pages should we try to fill with the first C1 merge?
   static const int R = 3; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
   static const pageid_t START_SIZE = MEM_SIZE * R /( PAGE_SIZE * 4); //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
@@ -115,6 +118,8 @@ namespace rose {
     int xid = Tbegin();
     // Initialize tree with an empty tree.
     // XXX hardcodes ITERA's type:
+    // We assume that the caller set pageAllocState for us; oldPageAllocState
+    // shouldn't be set (it should be NULLRID)
     typename ITERA::handle tree
       = new typename ITERA::treeIteratorHandle(
 		TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
@@ -155,7 +160,17 @@ namespace rose {
       pthread_mutex_unlock(a->block_ready_mut);
 
       xid = Tbegin();
-
+      // XXX hardcodes allocator type.
+      if(((recordid*)a->oldAllocState)->size != -1) {
+	// free the tree that we merged against during the last round.
+	TlsmFree(xid,tree->r_,TlsmRegionDeallocRid,a->oldAllocState);
+      }
+      // we're merging against old alloc state this round.
+      *(recordid*)(a->oldAllocState) = *(recordid*)(a->pageAllocState);
+      // we're merging into pagealloc state.
+      *(recordid*)(a->pageAllocState) =	Talloc(xid, sizeof(TlsmRegionAllocConf_t));
+      Tset(xid, *(recordid*)(a->pageAllocState),
+	   &LSM_REGION_ALLOC_STATIC_INITIALIZER);
       tree->r_ = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
 			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
 
@@ -189,11 +204,7 @@ namespace rose {
       delete taEnd;
       delete tbEnd;
 
-
       gettimeofday(&stop_tv,0);
-
-      // TlsmFree(wait_queue[0])  /// XXX Need to implement (de)allocation!
-      // TlsmFree(wait_queue[1])
 
       merge_count++;
 
@@ -252,6 +263,17 @@ namespace rose {
 	// We don't want to ever look at the one we just handed upstream...
 	// We could wait for an in tree to be ready, and then pass it directly
 	// to compress data (to avoid all those merging comparisons...)
+
+	// old alloc state contains the tree that we used as input for this merge... we can still free it
+
+	// XXX storage leak; upstream is going to have to free this somehow...
+	*(recordid*)(a->pageAllocState) = NULLRID;
+
+	// create a new allocator.
+	*(recordid*)(a->pageAllocState) = Talloc(xid, sizeof(TlsmRegionAllocConf_t));
+	Tset(xid, *(recordid*)(a->pageAllocState),
+	     &LSM_REGION_ALLOC_STATIC_INITIALIZER);
+
 	tree->r_ = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
 			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
 
@@ -272,8 +294,10 @@ namespace rose {
   typedef struct {
     recordid bigTree;
     recordid bigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
+    recordid oldBigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
     recordid mediumTree;
     recordid mediumTreeAllocState;
+    recordid oldMediumTreeAllocState;
     epoch_t beginning;
     epoch_t end;
   } lsmTableHeader_t;
@@ -287,11 +311,13 @@ namespace rose {
 
     recordid ret = Talloc(xid, sizeof(lsmTableHeader_t));
     lsmTableHeader_t h;
+    h.oldBigTreeAllocState = NULLRID;
     h.bigTreeAllocState = Talloc(xid,sizeof(TlsmRegionAllocConf_t));
     Tset(xid,h.bigTreeAllocState,&LSM_REGION_ALLOC_STATIC_INITIALIZER);
     h.bigTree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),
 			   TlsmRegionAllocRid,&h.bigTreeAllocState,
 			   PAGELAYOUT::FMT::TUP::sizeofBytes());
+    h.oldMediumTreeAllocState = NULLRID;
     h.mediumTreeAllocState = Talloc(xid,sizeof(TlsmRegionAllocConf_t));
     Tset(xid,h.mediumTreeAllocState,&LSM_REGION_ALLOC_STATIC_INITIALIZER);
     h.mediumTree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),
@@ -401,6 +427,8 @@ namespace rose {
 
     recordid * ridp = (recordid*)malloc(sizeof(recordid));
     *ridp = h.bigTreeAllocState;
+    recordid * oldridp = (recordid*)malloc(sizeof(recordid));
+    *oldridp = NULLRID;
 
     ret->args1 = (merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>));
     merge_args<PAGELAYOUT, LSM_ITER, LSM_ITER> tmpargs1 =
@@ -408,6 +436,7 @@ namespace rose {
 	1,
 	TlsmRegionAllocRid,
 	ridp,
+	oldridp,
 	block_ready_mut,
 	block1_needed_cond,
 	block2_needed_cond,
@@ -427,6 +456,8 @@ namespace rose {
 
     ridp = (recordid*)malloc(sizeof(recordid));
     *ridp = h.mediumTreeAllocState;
+    oldridp = (recordid*)malloc(sizeof(recordid));
+    *oldridp = NULLRID;
 
     ret->args2 = (merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>));
     merge_args<PAGELAYOUT, LSM_ITER, RB_ITER> tmpargs2 =
@@ -434,6 +465,7 @@ namespace rose {
 	2,
 	TlsmRegionAllocRid,
 	ridp,
+	oldridp,
 	block_ready_mut,
 	block0_needed_cond,
 	block1_needed_cond,
@@ -557,16 +589,17 @@ namespace rose {
     byte * arry = val.toByteArray();
 
     typename PAGELAYOUT::FMT::TUP * r = 0;
-    r = getRecordHelper<PAGELAYOUT>(xid, h->args2->my_tree->r_, val, scratch, arry);
-    if(r) { pthread_mutex_unlock(h->mut); return r; }
-
+    if(h->args2->my_tree) {
+      r = getRecordHelper<PAGELAYOUT>(xid, h->args2->my_tree->r_, val, scratch, arry);
+      if(r) { pthread_mutex_unlock(h->mut); return r; }
+    }
     DEBUG("Not in first my_tree {%lld}\n", h->args2->my_tree->r_.size);
 
     if(*h->args1->in_tree) {
       r = getRecordHelper<PAGELAYOUT>(xid, (**h->args1->in_tree)->r_, val, scratch, arry);
       if(r) { pthread_mutex_unlock(h->mut); return r; }
     } else {
-      DEBUG("no tree");
+      DEBUG("no second in_tree");
     }
 
     DEBUG("Not in second in_tree\n");

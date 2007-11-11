@@ -106,7 +106,31 @@ static void dirtyPages_flush() {
   }
   free(staleDirtyPages);
 }
+void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
+  int * staleDirtyPages = malloc(sizeof(int) * (MAX_BUFFER_SIZE));
+  int i;
+  Page * p = 0;
+  pthread_mutex_lock(&dirtyPages_mutex);
+  void *tmp;
+  i = 0;
+  for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
+    int num = *((int*) pblHtCurrentKey(dirtyPages));
+    if(num <= start && num < stop) {
+      staleDirtyPages[i] = num;
+      i++;
+    }
+  }
+  staleDirtyPages[i] = -1;
+  pthread_mutex_unlock(&dirtyPages_mutex);
 
+  for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
+    p = loadPage(-1, staleDirtyPages[i]);
+    writeBackPage(p);
+    releasePage(p);
+  }
+  free(staleDirtyPages);
+  forcePageRange(start,stop); // XXX
+}
 void dirtyPagesInit() { 
   dirtyPages = pblHtCreate();
 }

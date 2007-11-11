@@ -267,6 +267,9 @@ static void bhWriteBackPage(Page * p) {
 static void bhForcePages() { 
   forcePageFile(); 
 }
+static void bhForcePageRange() {
+  forceRangePageFile();
+}
 static void bhBufDeinit() { 
   running = 0;
 
@@ -325,6 +328,7 @@ void bhBufInit() {
   releasePageImpl = bhReleasePage;
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;
+  forcePageRange = bhForcePageRange;
   bufDeinit = bhBufDeinit;
   simulateBufferManagerCrash = bhSimulateBufferManagerCrash;
 

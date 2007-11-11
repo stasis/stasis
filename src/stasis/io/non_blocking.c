@@ -524,12 +524,16 @@ static int nbw_read(stasis_handle_t * h,
   }
   return ret;
 }
-static int nbw_force(stasis_handle_t * h) {
+static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
   nbw_impl * impl = h->impl;
-  pthread_mutex_lock(&impl->mut);
-  const tree_node * n = RB_ENTRY(min)(impl->fast_handles);
+  //  pthread_mutex_lock(&impl->mut);
+  tree_node scratch;
+  scratch.start_pos = start;
+  scratch.end_pos = start+1;
+  const tree_node * n = RB_ENTRY(lookup)(RB_LUGTEQ,&scratch,impl->fast_handles);   // min)(impl->fast_handles);
   int blocked = 0;
   while(n) {
+    if(n->start_pos >= stop) { break; }
     if(n->dirty) {
       // cast strips const
       ((tree_node*)n)->dirty = NEEDS_FORCE;
@@ -553,15 +557,31 @@ static int nbw_force(stasis_handle_t * h) {
   if(impl->slow_force_once) {
     if(impl->all_slow_handle_count) {
       stasis_handle_t * h = impl->all_slow_handles[0];
-      ret = h->force(h);
+      ret = h->force_range(h, start, stop);
     }
   } else {
     for(int i = 0; i < impl->all_slow_handle_count; i++) {
       stasis_handle_t * h = impl->all_slow_handles[i];
-      int tmpret = h->force(h);
+      int tmpret = h->force_range(h, start, stop);
       if(tmpret) { ret = tmpret; }
     }
   }
+  //  pthread_mutex_unlock(&impl->mut);
+  return ret;
+}
+static int nbw_force(stasis_handle_t * h) {
+  nbw_impl * impl = h->impl;
+  pthread_mutex_lock(&impl->mut);
+  int ret = nbw_force_range_impl(h, impl->start_pos, impl->end_pos);
+  pthread_mutex_unlock(&impl->mut);
+  return ret;
+}
+static int nbw_force_range(stasis_handle_t * h,
+			   off_t start,
+			   off_t stop) {
+  nbw_impl * impl = h->impl;
+  pthread_mutex_lock(&impl->mut);
+  int ret = nbw_force_range_impl(h, start, stop);
   pthread_mutex_unlock(&impl->mut);
   return ret;
 }
@@ -596,6 +616,7 @@ struct stasis_handle_t nbw_func = {
   .read_buffer = nbw_read_buffer,
   .release_read_buffer = nbw_release_read_buffer,
   .force = nbw_force,
+  .force_range = nbw_force_range,
   .truncate_start = nbw_truncate_start,
   .error = 0
 };
