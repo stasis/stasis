@@ -97,7 +97,7 @@ class StaticMulticolumn {
     exceptions_(new byte[USABLE_SIZE_OF_PAGE]),
     unpacked_(1)
 {
-
+  stasis_page_cleanup(p);
   *column_count_ptr() = N;
 
   bytes_left_ = first_header_byte_ptr()- p->memAddr;
@@ -106,7 +106,7 @@ class StaticMulticolumn {
   if(i < N) {						   \
     columns_[i] = new byte[USABLE_SIZE_OF_PAGE];           \
     cmp = new typ(xid,(void*)columns_[i]);		   \
-    cmp->init_mem(columns_[i]);	 			   \
+    cmp->init_mem(columns_[i]);				   \
     *column_plugin_id_ptr(i) = cmp->PLUGIN_ID;		   \
     bytes_left_ -= cmp->bytes_used();			   \
   }
@@ -127,7 +127,7 @@ class StaticMulticolumn {
 #define STATIC_MC_DEINIT(i,plug)		            \
     if(i < N) {						    \
       if(unpacked_) delete [] columns_[i];		    \
-      delete plug;					    \
+      delete plug;                                          \
     }
 
     STATIC_MC_DEINIT(0,plugin0);
@@ -501,7 +501,6 @@ template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
   class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
 static void staticMulticolumnCleanup(Page *p) {
-  //  printf("cleanup %d\n", N); fflush(stdout);
   delete (StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>*)p->impl;
   p->impl = 0;
 }

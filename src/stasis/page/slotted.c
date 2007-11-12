@@ -195,6 +195,7 @@ void slottedPageDeinit() {
 
 void stasis_slotted_initialize_page(Page * page) {
   assertlocked(page->rwlatch);
+  stasis_page_cleanup(page);
   *stasis_page_type_ptr(page) = SLOTTED_PAGE;
   *freespace_ptr(page) = 0;
   *numslots_ptr(page)  = 0;

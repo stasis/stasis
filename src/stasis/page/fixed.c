@@ -14,6 +14,7 @@ void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
   assertlocked(page->rwlatch);
   // XXX fixed page asserts it's been given an UNINITIALIZED_PAGE...  Why doesn't that crash?
   //  assert(*stasis_page_type_ptr(page) == UNINITIALIZED_PAGE);
+  stasis_page_cleanup(page);
   *stasis_page_type_ptr(page) = FIXED_PAGE;
   *recordsize_ptr(page) = size;
   assert(count <= stasis_fixed_records_per_page(size));

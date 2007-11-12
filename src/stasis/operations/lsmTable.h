@@ -62,6 +62,7 @@ namespace rose {
     }
     pageCount++;
 
+    stasis_page_cleanup(p);
     typename PAGELAYOUT::FMT * mc = PAGELAYOUT::initPage(p, &**begin);
 
     for(ITER i(*begin); i != *end; ++i) {
@@ -198,7 +199,7 @@ namespace rose {
 
       pageid_t mergedPages = compressData
 	<PAGELAYOUT,versioningIterator<mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>, typename PAGELAYOUT::FMT::TUP> >
-	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples); 
+	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);
       /*      pageid_t mergedPages = compressData
 	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
 	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  */
@@ -236,8 +237,17 @@ namespace rose {
 	//	TlsmFree(xid, ((typename ITERB::handle)old_in_tree)->r_,TlsmRegionDeallocRid,a->in_tree_allocer);
 	// XXX kludge; assumes C1 and C2 have same type of handle....
 	TlsmFree(xid, ((typename ITERA::handle)old_in_tree)->r_,TlsmRegionDeallocRid,a->in_tree_allocer);
+	delete old_in_tree;
+      } else {
+	((typename stlSetIterator<std::set<typename PAGELAYOUT::FMT::TUP, 
+	  typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+	  typename PAGELAYOUT::FMT::TUP>::handle)old_in_tree)->clear();
+	delete
+	  ((typename stlSetIterator<std::set<typename PAGELAYOUT::FMT::TUP,
+	    typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+	    typename PAGELAYOUT::FMT::TUP>::handle)old_in_tree);
       }
-      delete old_in_tree;
+
       free(*a->in_tree); // free pointer to handle
 
       // XXX should we delay this to this point?
@@ -526,6 +536,7 @@ namespace rose {
   template<class PAGELAYOUT>
     void TlsmTableStop( lsmTableHandle<PAGELAYOUT> * h) {
     TlsmTableFlush(h);
+    delete(h->scratch_handle);
     *(h->still_open) = 0;
     pthread_join(h->merge1_thread,0);
     pthread_join(h->merge2_thread,0);

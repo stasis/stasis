@@ -454,9 +454,7 @@ class versioningIterator {
     it_ = i.it_;
     itend_ = i.itend_;
   }
-  //  inline unsigned int offset() { return off_; }
  private:
-  //  unsigned int off_;
   STLITER it_;
   STLITER itend_;
   friend const byte*

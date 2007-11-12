@@ -10,6 +10,7 @@
 
 void indirectInitialize(Page * p, int height) {
   *level_ptr(p) = height;
+  stasis_page_cleanup(p);
   *stasis_page_type_ptr(p) = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }

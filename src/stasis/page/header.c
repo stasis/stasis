@@ -15,6 +15,7 @@ int headerPageInitialize() {
   if(*page_type_ptr(p) != LLADD_HEADER_PAGE) { 
     assert(*page_type_ptr(p) == 0) ;
     memset(p->memAddr, 0, PAGE_SIZE);
+    stasis_page_cleanup(p);
     *page_type_ptr(p) = LLADD_HEADER_PAGE;
     *headerFreepage_ptr(p) = 1;
     *headerFreepagelist_ptr(p) = 0;    
