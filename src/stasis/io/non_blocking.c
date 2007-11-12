@@ -577,8 +577,8 @@ static int nbw_force(stasis_handle_t * h) {
   return ret;
 }
 static int nbw_force_range(stasis_handle_t * h,
-			   off_t start,
-			   off_t stop) {
+			   lsn_t start,
+			   lsn_t stop) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
   int ret = nbw_force_range_impl(h, start, stop);

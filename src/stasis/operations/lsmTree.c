@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <stasis/operations/lsmTree.h>
+#include <stasis/truncation.h>
 #include <stasis/constants.h>
 //  XXX including fixed.h breaks page api encapsulation; we need a "last slot"
 // call.
