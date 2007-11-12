@@ -12,6 +12,8 @@
 #include "stasis/page/compression/staticTuple.h"
 #include "stasis/page/compression/pageLayout.h"
 
+//#define LEAK_TEST
+
 namespace rose {
   template<class PAGELAYOUT> 
   void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
@@ -95,6 +97,12 @@ namespace rose {
 	       );
 	last_start = now;
       }
+#ifdef LEAK_TEST
+      if(i == INSERTS-1) {
+	printf("Running leak test; restarting from zero.\n");
+	i = 0;
+      }
+#endif
     }
     printf("insertions done.\n"); fflush(stdout);
     count = COUNT;

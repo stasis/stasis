@@ -37,7 +37,9 @@ namespace rose {
       pageid_t max_size;
       pageid_t r_i;
       typename ITERB::handle ** in_tree;
+      void * in_tree_allocer;
       typename ITERA::handle ** out_tree;
+      void * out_tree_allocer;
       typename ITERA::handle my_tree;
     };
 
@@ -230,6 +232,11 @@ namespace rose {
 
       // keep actual handle around so that it can be freed below.
       typename ITERB::handle old_in_tree = **a->in_tree;
+      if(a->in_tree_allocer) {
+	//	TlsmFree(xid, ((typename ITERB::handle)old_in_tree)->r_,TlsmRegionDeallocRid,a->in_tree_allocer);
+	// XXX kludge; assumes C1 and C2 have same type of handle....
+	TlsmFree(xid, ((typename ITERA::handle)old_in_tree)->r_,TlsmRegionDeallocRid,a->in_tree_allocer);
+      }
       delete old_in_tree;
       free(*a->in_tree); // free pointer to handle
 
@@ -270,6 +277,7 @@ namespace rose {
 	// old alloc state contains the tree that we used as input for this merge... we can still free it
 
 	// XXX storage leak; upstream is going to have to free this somehow...
+	*(recordid*)(a->out_tree_allocer) = *(recordid*)(a->pageAllocState);
 	*(recordid*)(a->pageAllocState) = NULLRID;
 
 	// create a new allocator.
@@ -308,9 +316,6 @@ namespace rose {
 
   template<class PAGELAYOUT>
     inline recordid TlsmTableAlloc(int xid) {
-
-    // XXX use a (slow) page allocator in alloc, then create a new
-    // (fast) region allocator in start.
 
     recordid ret = Talloc(xid, sizeof(lsmTableHeader_t));
     lsmTableHeader_t h;
@@ -434,6 +439,8 @@ namespace rose {
     *oldridp = NULLRID;
 
     ret->args1 = (merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,LSM_ITER>));
+
+    recordid * allocer_scratch = (recordid*)malloc(sizeof(recordid));
     merge_args<PAGELAYOUT, LSM_ITER, LSM_ITER> tmpargs1 =
       {
 	1,
@@ -451,6 +458,8 @@ namespace rose {
 	0, // No max size for biggest component
 	R,
 	block1_scratch,
+	allocer_scratch,
+	0,
 	0,
 	new typename LSM_ITER::treeIteratorHandle(NULLRID)
       };
@@ -481,7 +490,9 @@ namespace rose {
 	R,
 	//new typename LSM_ITER::treeIteratorHandle(NULLRID),
 	block0_scratch,
+	0,
 	block1_scratch,
+	allocer_scratch,
 	new typename LSM_ITER::treeIteratorHandle(NULLRID)
       };
     *ret->args2 = tmpargs2;
