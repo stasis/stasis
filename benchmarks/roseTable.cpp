@@ -77,8 +77,8 @@ namespace rose {
     for(long int i = 0; i < INSERTS; i++) {
       getTuple<PAGELAYOUT>(i,t);
       TlsmTableInsert(h,t);
-      getTuple<PAGELAYOUT>(i,t);
-      assert(TlsmTableFind(xid,h,t,s));
+      //      getTuple<PAGELAYOUT>(i,t);
+      //      assert(TlsmTableFind(xid,h,t,s));
       count --;
       if(!count) {
 	count = COUNT;

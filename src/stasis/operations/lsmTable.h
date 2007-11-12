@@ -201,6 +201,9 @@ namespace rose {
 	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
 	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  */
 
+      // XXX hardcodes tree type.
+      TlsmForce(xid,tree->r_,TlsmRegionForceRid,a->pageAllocState);
+
       delete taEnd;
       delete tbEnd;
 
@@ -489,6 +492,7 @@ namespace rose {
 
     return ret;
   }
+  // XXX this does not force the table to disk... it simply forces everything out of the in-memory tree.
   template<class PAGELAYOUT>
     void TlsmTableFlush(lsmTableHandle<PAGELAYOUT> *h) {
       pthread_mutex_lock(h->mut);

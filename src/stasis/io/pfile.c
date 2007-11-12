@@ -385,8 +385,9 @@ static int pfile_force(stasis_handle_t *h) {
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   pfile_impl * impl = h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
-  printf("pfile_force_range calling sync_file_range\n");
-  int ret = sync_file_range(impl->fd, start-impl->start_pos, (stop-start),
+  printf("pfile_force_range calling sync_file_range %lld %lld\n",
+	 start-impl->start_pos, stop-start); fflush(stdout);
+  int ret = sync_file_range(impl->fd, start-impl->start_pos, stop-start,
 			      SYNC_FILE_RANGE_WAIT_BEFORE |
 			      SYNC_FILE_RANGE_WRITE |
 			      SYNC_FILE_RANGE_WAIT_AFTER);

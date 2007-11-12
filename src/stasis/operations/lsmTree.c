@@ -38,6 +38,19 @@ pageid_t TlsmRegionAlloc(int xid, void *conf) {
   return ret;
 }
 
+void TlsmRegionForceRid(int xid, void *conf) {
+  recordid rid = *(recordid*)conf;
+  TlsmRegionAllocConf_t a;
+  Tread(xid,rid,&a);
+  //  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
+  for(int i = 0; i < a.regionCount; i++) {
+    a.regionList.slot = i;
+    pageid_t pid;
+    Tread(xid,a.regionList,&pid);
+    dirtyPages_flushRange(pid, pid+a.regionSize);
+    //    TregionDealloc(xid,pid);
+  }
+}
 void TlsmRegionDeallocRid(int xid, void *conf) {
   recordid rid = *(recordid*)conf;
   TlsmRegionAllocConf_t a;
@@ -602,6 +615,11 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
   return ret;
 }
+void TlsmForce(int xid, recordid tree, lsm_page_forcer_t force,
+	       void *allocator_state) {
+  force(xid, allocator_state);
+}
+
 void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
 	      void *allocator_state) {
   //  Tdealloc(xid,tree);

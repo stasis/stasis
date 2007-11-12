@@ -129,7 +129,7 @@ void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
     releasePage(p);
   }
   free(staleDirtyPages);
-  forcePageRange(start,stop); // XXX
+  forcePageRange(start*PAGE_SIZE,stop*PAGE_SIZE);
 }
 void dirtyPagesInit() { 
   dirtyPages = pblHtCreate();

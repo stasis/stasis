@@ -26,12 +26,14 @@ typedef int(*lsm_comparator_t)(const void* a, const void* b);
 typedef void*(*lsm_page_initializer_t)(Page *, void *);
 typedef pageid_t(*lsm_page_allocator_t)(int, void *);
 typedef void(*lsm_page_deallocator_t)(int, void *);
+typedef void(*lsm_page_forcer_t)(int, void *);
 
 void lsmTreeRegisterComparator(int id, lsm_comparator_t i);
 void lsmTreeRegisterPageInitializer(int id, lsm_page_initializer_t i);
 
 pageid_t TlsmRegionAlloc(int xid, void *conf);
 pageid_t TlsmRegionAllocRid(int xid, void *conf);
+void TlsmRegionForceRid(int xid, void *conf);
 typedef struct {
   recordid regionList;
   pageid_t regionCount;
@@ -72,6 +74,8 @@ recordid TlsmAppendPage(int xid, recordid tree,
 			const byte *key,
 			lsm_page_allocator_t allocator, void *allocator_state,
 			long pageid);
+void TlsmForce(int xid, recordid tree, lsm_page_forcer_t force,
+	       void *allocator_state);
 void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
 	 void *allocator_state);
 /**

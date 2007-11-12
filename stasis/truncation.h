@@ -68,9 +68,10 @@ void dirtyPages_remove(Page * p);
 int  dirtyPages_isDirty(Page * p);
 
 /**
-   @todo forceWriteRange has nothing to do with the dirty pages api, or truncation.
+   @todo flushRange's API sucks.  It should be two functions, "startRangeFlush" and "waitRangeFlushes" or something.
+   @todo flushRange has nothing to do with the dirty pages api, or truncation.
  */
-void dirtyPages_forceWriteRange(pageid_t start, pageid_t stop);
+void dirtyPages_flushRange(pageid_t start, pageid_t stop);
 
 void truncationInit();
 void truncationDeinit();
