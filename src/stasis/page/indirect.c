@@ -9,8 +9,8 @@
 #include <stasis/operations.h>
 
 void indirectInitialize(Page * p, int height) {
-  *level_ptr(p) = height;
   stasis_page_cleanup(p);
+  *level_ptr(p) = height;
   *stasis_page_type_ptr(p) = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }
@@ -110,7 +110,7 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
   p.memAddr = buffer;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
-    
+  *stasis_page_type_ptr(&p) = UNINITIALIZED_PAGE;
     
   if(number_of_pages > 1) {
 
