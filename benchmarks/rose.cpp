@@ -26,7 +26,7 @@ typedef int32_t val_t; // XXX needed by lsmWorkers..
   decompressing the data actually matches the original dataset.
 */
 
-#define CHECK_OUTPUT
+//#define CHECK_OUTPUT
 
 using rose::Pstar;
 using rose::Multicolumn;

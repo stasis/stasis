@@ -11,7 +11,7 @@ namespace rose {
   static const char NORMAL = 0;
   static const char TOMBSTONE = 1;
   static const int TUPLE_ID = 1;
-
+  static const int NN = N;
   typedef TYPE0 TYP0;
   typedef TYPE1 TYP1;
   typedef TYPE2 TYP2;
