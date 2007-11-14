@@ -83,11 +83,11 @@ transactions.  Here, we apply it to archival of weather data.
 A \rows replica serves two purposes.  First, by avoiding seeks, \rows
 reduces the load on the replicas' disks, leaving surplus I/O capacity
 for read-only queries and allowing inexpensive hardware to handle
-workloads produced by specialized database machines.  This allows
-decision support and OLAP queries to scale linearly with the number of
-machines, regardless of lock contention and other bottlenecks
-associated with distributed transactions.  Second, \rows replica
-groups provide highly available copies of the database.  In
+workloads produced by database machines with tens of disks.  This
+allows decision support and OLAP queries to scale linearly with the
+number of machines, regardless of lock contention and other
+bottlenecks associated with distributed transactions.  Second, \rows
+replica groups provide highly available copies of the database.  In
 Internet-scale environments, decision support queries may be more
 important than update availability.
 
@@ -275,7 +275,6 @@ Conceptually, when the merge is complete, $C1$ is atomically replaced
 with the new tree, and $C0$ is atomically replaced with an empty tree.
 The process is then eventually repeated when $C1$ and $C2$ are merged.
 At that point, the insertion will not cause any more I/O operations.
-Therefore, each index insertion causes $2 R$ tuple comparisons.
 
 Although our prototype replaces entire trees at once, this approach
 introduces a number of performance problems.  The original LSM work
@@ -413,14 +412,16 @@ LSM-tree outperforms the B-tree when:
 on a machine that can store 1 GB in an in-memory tree, this yields a
 maximum ``interesting'' tree size of $R^2*1GB = $ 100 petabytes, well
 above the actual drive capacity of $750~GB$.  A $750~GB$ tree would
-have an R of $\sqrt{750}\approx27$; we would expect such a tree to
-have a sustained insertion throughput of approximately 8000 tuples /
-second, or 800 kbyte/sec\footnote{It would take 11 days to overwrite
-  every tuple on the drive in random order.}; two orders of magnitude
-above the 83 I/O operations that the drive can deliver per second, and
-well above the 41.5 tuples / sec we would expect from a B-tree with a
-$18.5~GB$ buffer pool.  Increasing \rowss system memory to cache 10 GB of
-tuples would increase write performance by a factor of $\sqrt{10}$.
+have a $C2$ component 750 times larger than the 1GB $C0$ component.
+Therefore, it would have an R of $\sqrt{750}\approx27$; we would
+expect such a tree to have a sustained insertion throughput of
+approximately 8000 tuples / second, or 800 kbyte/sec\footnote{It would
+  take 11 days to overwrite every tuple on the drive in random
+  order.}; two orders of magnitude above the 83 I/O operations that
+the drive can deliver per second, and well above the 41.5 tuples / sec
+we would expect from a B-tree with a $18.5~GB$ buffer pool.
+Increasing \rowss system memory to cache 10 GB of tuples would
+increase write performance by a factor of $\sqrt{10}$.
 
 % 41.5/(1-80/750) = 46.4552239
 
@@ -773,7 +774,7 @@ code-generation utilities.  We found that this set of optimizations
 improved compression and decompression performance by roughly an order
 of magnitude.  To illustrate this, Table~\ref{table:optimization}
 compares compressor throughput with and without compiler optimizations
-enabled.  While compressor throughput varies with data distributions
+enabled.  Although compressor throughput varies with data distributions
 and type, optimizations yield a similar performance improvement across
 varied datasets and random data distributions.
 
@@ -804,24 +805,24 @@ generally useful) callbacks.  The first, {\tt pageLoaded()}
 instantiates a new multicolumn page implementation when the page is
 first read into memory.  The second, {\tt pageFlushed()} informs our
 multicolumn implementation that the page is about to be written to
-disk, while the third {\tt pageEvicted()} invokes the multicolumn
+disk, and the third {\tt pageEvicted()} invokes the multicolumn
 destructor.  (XXX are these really non-standard?)
 
 As we mentioned above, pages are split into a number of temporary
 buffers while they are being written, and are then packed into a
-contiguous buffer before being flushed.  While this operation is
+contiguous buffer before being flushed.  Although this operation is
 expensive, it does present an opportunity for parallelism.  \rows
 provides a per-page operation, {\tt pack()} that performs the
 translation.  We can register {\tt pack()} as a {\tt pageFlushed()}
 callback or we can explicitly call it during (or shortly after)
 compression.
 
-While {\tt pageFlushed()} could be safely executed in a background
-thread with minimal impact on system performance, the buffer manager
-was written under the assumption that the cost of in-memory operations
-is negligible.  Therefore, it blocks all buffer management requests
-while {\tt pageFlushed()} is being executed.  In practice, this causes
-multiple  \rows threads to block on each {\tt pack()}.
+{\tt pageFlushed()} could be safely executed in a background thread
+with minimal impact on system performance.  However, the buffer
+manager was written under the assumption that the cost of in-memory
+operations is negligible.  Therefore, it blocks all buffer management
+requests while {\tt pageFlushed()} is being executed.  In practice,
+this causes multiple \rows threads to block on each {\tt pack()}.
 
 Also, {\tt pack()} reduces \rowss memory utilization by freeing up
 temporary compression buffers.  Delaying its execution for too long
@@ -865,13 +866,13 @@ bytes.  A frame of reference column header consists of 2 bytes to
 record the number of encoded rows and a single uncompressed
 value. Run length encoding headers consist of a 2 byte count of
 compressed blocks.  Therefore, in the worst case (frame of reference
-encoding 64bit integers, and \rowss 4KB pages) our prototype's
+encoding 64-bit integers, and \rowss 4KB pages) our prototype's
 multicolumn format uses $14/4096\approx0.35\%$ of the page to store
 each column header.  If the data does not compress well, and tuples
 are large, additional storage may be wasted because \rows does not
 split tuples across pages.  Tables~\ref{table:treeCreation}
-and~\ref{table:treeCreationTwo} (which draw column values from
-independent, identical distributions) show that \rowss compression
+and~\ref{table:treeCreationTwo}, which draw column values from
+independent, identical distributions, show that \rowss compression
 ratio can be significantly impacted by large tuples.
 
 % XXX graph of some sort to show this?
