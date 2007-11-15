@@ -927,15 +927,74 @@ linear search implementation will outperform approaches based upon
 binary search.
 
 \section{Evaluation}
-(graphs go here)
+(XXX graphs go here)
+\begin{figure}
+\centering
+\epsfig{file=MySQLthroughput.pdf, width=3.33in}
+\caption{InnoDB insertion throughput (average over 100,000 tuple windows).}
+\end{figure}
+\begin{figure}
+\centering
+\epsfig{file=mysql-ms-tuple.pdf, width=3.33in}
+\caption{InnoDB tuple insertion time (average over 100,000 tuple windows).}
+\end{figure}
 
 \subsection{The data set}
 
-Weather data\footnote{National Severe Storms Laboratory Historical
+In order to evaluate \rowss performance, we used it to index
+information reported by weather stations worldwide.  We obtained the
+data from\footnote{XXX National Severe Storms Laboratory Historical
   Weather Data Archives, Norman, Oklahoma, from their Web site at
-  http://data.nssl.noaa.gov}
+  http://data.nssl.noaa.gov}.  The data we used ranges from May 1,
+2007 to Nov 2, 2007, and contains reaidngs from ground stations around
+the world.  This data is approximately $1.3GB$ when stored in an
+uncompressed tab delimited file.  We duplicated the data by changing
+the date fields to cover ranges from 2001 to 2009, producing a 12GB
+dataset.
+
+Duplicating the data should have a limited effect on \rowss
+compression ratios.  Although we index on geographic position, placing
+all readings from a particular station in a contiguous range, we then
+index on date, seperating nearly identical tuples from each other.
+
+\rows only supports integer data types.  We encode the ASCII columns
+in the data by packing each character into 5 bits (the strings only
+contain the characters A-Z, +, -, and *).  Floating point columns in
+the raw data set are always represented with two digits of precision;
+we multiply them by 100, yielding an integer.  The datasource uses
+nonsensical readings (such as -9999.00) to represent NULL.  Our
+prototype does not understand NULL, so we leave these fields intact.
+
+We represent each column as a 32-bit integer (even when a 16-bit value
+would do), except current weather condititons, which is packed into a
+64-bit integer.  Table~[XXX] lists the columns and compression
+algorithms we assigned to each column.
+
+\rows targets seek limited applications; we assign a (single) random
+order to the tuples, and insert them in this order.  We compare \rowss
+performance with the MySQL InnoDB storage engine's bulk
+loader\footnote{We also evaluated MySQL's MyISAM table format.
+  Predictably, performance degraded as the tree grew; ISAM indices do not
+  support node splits.}.  This avoids the overhead of SQL insert
+statements.  To force InnoDB to update its B-tree index in place, we
+break the dataset into 100,000 tuple chunks, and bulk load each one in
+succession.
+
+If we did not do this, MySQL would simply sort the tuples, and then
+bulk load the index.  This behavior is unacceptable in a low-latency
+replication environment.  Breaking the bulk load into multiple chunks
+forces MySQL to make intermediate results available as the bulk load
+proceeds\footnote{MySQL's {\tt concurrent} keyword allows access to
+  {\em existing} data during a bulk load; new data is still exposed
+  atomically.}.
+
+XXX more information on mysql setup:
+
+Discuss graphs (1) relative performance of rose and mysql (2) compression ratio / R over time (3) merge throughput?
 
 \subsection{Merge throughput in practice}
+
+XXX what purpose does this section serve?
 
 RB <-> LSM tree merges contain different code and perform different
 I/O than LSM <-> LSM mergers.  The former must perform random memory
@@ -972,6 +1031,8 @@ as input) and other runtime effects into account.
 A hybrid between this greedy strategy and explicitly trying to balance
 $R$ across tree components might yield a system that is more tolerant
 of bursty workloads without decreasing maximum sustainable throughput.
+
+XXX either repeat r varying experiments or cut this section.
 
 \section{Conclusion}
 

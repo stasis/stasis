@@ -284,7 +284,7 @@ namespace rose {
 
 	target_R = sqrt(((double)(*a->out_tree_size+*a->my_tree_size)) / ((MEM_SIZE*(1-frac_wasted))/(4096*ratio)));
 	printf("R_C2-C1 = %6.1f R_C1-C0 = %6.1f target = %6.1f\n", 
-	       ((double)(*a->out_tree_size+*a->my_tree_size)) / ((double)*a->my_tree_size), 
+	       ((double)(*a->out_tree_size/*+*a->my_tree_size*/)) / ((double)*a->my_tree_size), 
 	       ((double)*a->my_tree_size) / ((double)(MEM_SIZE*(1-frac_wasted))/(4096*ratio)),target_R);
       }
 #else
@@ -300,9 +300,11 @@ namespace rose {
 	 (
 	  (
 #ifdef INFINITE_RESOURCES
-	  (*a->out_block_needed && 0)
+#ifndef THROTTLED
+	  (*a->out_block_needed)
+#endif
 #ifdef THROTTLED
-	  || ((double)*a->out_tree_size / ((double)*a->my_tree_size) < target_R)
+	  ((double)*a->out_tree_size / ((double)*a->my_tree_size) < target_R)
 #endif
 #else
 	  mergedPages > (FUDGE * *a->out_tree_size / a->r_i) // do we have enough data to bother it?
