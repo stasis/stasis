@@ -4,6 +4,9 @@
 #undef end
 #undef begin
 
+#define INFINITE_RESOURCES
+#define THROTTLED
+#include <math.h>
 #include <set>
 #include "lsmIterators.h"
 #include <stasis/truncation.h>
@@ -28,7 +31,9 @@ namespace rose {
       void *oldAllocState;
       pthread_mutex_t * block_ready_mut;
       pthread_cond_t * in_block_needed_cond;
+      bool * in_block_needed;
       pthread_cond_t * out_block_needed_cond;
+      bool * out_block_needed;
       pthread_cond_t * in_block_ready_cond;
       pthread_cond_t * out_block_ready_cond;
       bool * still_open;
@@ -53,15 +58,16 @@ namespace rose {
       return 0;
     }
     pageid_t next_page = pageAlloc(xid,pageAllocState);
-    Page *p = loadPage(xid, next_page);
+
     pageid_t pageCount = 0;
 
     if(*begin != *end) {
       TlsmAppendPage(xid,tree,(**begin).toByteArray(),pageAlloc,
-		     pageAllocState,p->id);
+		     pageAllocState,next_page);
     }
     pageCount++;
 
+    Page *p = loadPage(xid, next_page);
     stasis_page_cleanup(p);
     typename PAGELAYOUT::FMT * mc = PAGELAYOUT::initPage(p, &**begin);
 
@@ -74,9 +80,9 @@ namespace rose {
 	mc->pack();
 	releasePage(p);
 	next_page = pageAlloc(xid,pageAllocState);
+	TlsmAppendPage(xid,tree,(*i).toByteArray(),pageAlloc,pageAllocState,next_page);
 	p = loadPage(xid, next_page);
 	mc = PAGELAYOUT::initPage(p, &*i);
-	TlsmAppendPage(xid,tree,(*i).toByteArray(),pageAlloc,pageAllocState,p->id);
 	pageCount++;
 	ret = mc->append(xid, *i);
 	assert(ret != rose::NOSPACE);
@@ -98,8 +104,12 @@ namespace rose {
   static const pageid_t MEM_SIZE = 1000 * 1000 * 1000;
   //  static const pageid_t MEM_SIZE = 100 * 1000;
   // How many pages should we try to fill with the first C1 merge?
-  static const int R = 3; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
+  static int R = 10; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
+#ifdef THROTTLED
+  static const pageid_t START_SIZE = 100; //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
+#else
   static const pageid_t START_SIZE = MEM_SIZE * R /( PAGE_SIZE * 4); //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
+#endif
   // Lower total work by perfomrming one merge at higher level
   // for every FUDGE^2 merges at the immediately lower level.
   // (Constrast to R, which controls the ratio of sizes of the trees.)
@@ -115,7 +125,7 @@ namespace rose {
     void* mergeThread(void* arg) {
     // The ITER argument of a is unused (we don't look at it's begin or end fields...)
     merge_args<PAGELAYOUT, ITERA, ITERB> * a = (merge_args<PAGELAYOUT, ITERA, ITERB>*)arg;
-    struct timeval start_tv, wait_tv, stop_tv;
+    struct timeval start_tv, start_push_tv, wait_tv, stop_tv;
     int merge_count = 0;
 
     int xid = Tbegin();
@@ -127,17 +137,17 @@ namespace rose {
       = new typename ITERA::treeIteratorHandle(
 		TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
 		a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes()) );
-    Tcommit(xid);
 
     // loop around here to produce multiple batches for merge.
+    gettimeofday(&start_push_tv,0);
     gettimeofday(&start_tv,0);
-
     while(1) {
       pthread_mutex_lock(a->block_ready_mut);
 
       int done = 0;
 
       while(!*(a->in_tree)) {
+	*a->in_block_needed = true;
 	pthread_cond_signal(a->in_block_needed_cond);
 	if(!*(a->still_open)) {
 	  done = 1;
@@ -145,6 +155,7 @@ namespace rose {
 	}
 	pthread_cond_wait(a->in_block_ready_cond,a->block_ready_mut);
       }
+      *a->in_block_needed = false;
       if(done) {
 	pthread_cond_signal(a->out_block_ready_cond);
 	pthread_mutex_unlock(a->block_ready_mut);
@@ -153,15 +164,18 @@ namespace rose {
 
       gettimeofday(&wait_tv,0);
 
-      ITERA taBegin(tree);
-      ITERB tbBegin(**a->in_tree);
+      uint64_t insertedTuples;
+      pageid_t mergedPages;
+      ITERA *taBegin = new ITERA(tree);
+      ITERB *tbBegin = new ITERB(**a->in_tree);
 
-      ITERA *taEnd = taBegin.end();
-      ITERB *tbEnd = tbBegin.end();
-
+      ITERA *taEnd = taBegin->end();
+      ITERB *tbEnd = tbBegin->end();
+      { // this { protects us from recalcitrant iterators below (tree iterators hold stasis page latches...)
 
       pthread_mutex_unlock(a->block_ready_mut);
 
+      Tcommit(xid);
       xid = Tbegin();
       // XXX hardcodes allocator type.
       if(((recordid*)a->oldAllocState)->size != -1) {
@@ -178,37 +192,40 @@ namespace rose {
 			a->pageAllocState,PAGELAYOUT::FMT::TUP::sizeofBytes());
 
       mergeIterator<ITERA, ITERB, typename PAGELAYOUT::FMT::TUP>
-	mBegin(taBegin, tbBegin, *taEnd, *tbEnd);
+	mBegin(*taBegin, *tbBegin, *taEnd, *tbEnd);
 
       mergeIterator<ITERA, ITERB, typename PAGELAYOUT::FMT::TUP>
-	mEnd(taBegin, tbBegin, *taEnd, *tbEnd);
+	mEnd(*taBegin, *tbBegin, *taEnd, *tbEnd);
 
       mEnd.seekEnd();
 
-      versioningIterator<mergeIterator
+      /*      versioningIterator<mergeIterator
 	<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>,
 	typename PAGELAYOUT::FMT::TUP> vBegin(mBegin,mEnd,0);
 
       versioningIterator<mergeIterator
 	<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>,
-	typename PAGELAYOUT::FMT::TUP> vEnd(mBegin,mEnd,0);
+	typename PAGELAYOUT::FMT::TUP> vEnd(mBegin,mEnd,0); 
 
-      vEnd.seekEnd();
+	vEnd.seekEnd(); 
 
-      uint64_t insertedTuples;
 
-      pageid_t mergedPages = compressData
+      mergedPages = compressData
 	<PAGELAYOUT,versioningIterator<mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>, typename PAGELAYOUT::FMT::TUP> >
-	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);
-      /*      pageid_t mergedPages = compressData
+	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples); */
+      mergedPages = compressData
 	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
-	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  */
+	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  
 
-      // XXX hardcodes tree type.
-      TlsmForce(xid,tree->r_,TlsmRegionForceRid,a->pageAllocState);
+      // these tree iterators keep pages pinned!  Don't call force until they've been deleted, or we'll deadlock.
 
+      } // free all the stack allocated iterators...
+      delete taBegin;
+      delete tbBegin;
       delete taEnd;
       delete tbEnd;
+      // XXX hardcodes tree type.
+      TlsmForce(xid,tree->r_,TlsmRegionForceRid,a->pageAllocState);
 
       gettimeofday(&stop_tv,0);
 
@@ -216,18 +233,19 @@ namespace rose {
 
       double wait_elapsed  = tv_to_double(wait_tv) - tv_to_double(start_tv);
       double work_elapsed  = tv_to_double(stop_tv) - tv_to_double(wait_tv);
+      double push_elapsed = tv_to_double(start_tv) - tv_to_double(start_push_tv);
       double total_elapsed = wait_elapsed + work_elapsed;
       double ratio = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
 	/ (double)(PAGE_SIZE * mergedPages);
       double throughput = ((double)(insertedTuples * (uint64_t)PAGELAYOUT::FMT::TUP::sizeofBytes()))
 	/ (1024.0 * 1024.0 * total_elapsed);
 
-      printf("worker %d merge # %-6d: comp ratio: %-9.3f  waited %6.1f sec   "
+      printf("worker %d merge # %-6d: comp ratio: %-9.3f  stalled %6.1f sec backpressure %6.1f "
 	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6ld pages (need %6ld)\n", a->worker_id, merge_count, ratio,
-	     wait_elapsed, work_elapsed, (unsigned long)insertedTuples, throughput, mergedPages, !a->out_tree_size ? -1 :  (FUDGE * *a->out_tree_size / a->r_i));
+	     wait_elapsed, push_elapsed, work_elapsed,(unsigned long)insertedTuples, throughput, mergedPages, !a->out_tree_size ? -1 :  (FUDGE * *a->out_tree_size / a->r_i));
 
 
-      gettimeofday(&start_tv,0);
+      gettimeofday(&start_push_tv,0);
 
       pthread_mutex_lock(a->block_ready_mut);
 
@@ -254,9 +272,22 @@ namespace rose {
       //   otherwise, the contents of in_tree become temporarily unavailable to observers.
       *a->in_tree = 0; // tell producer that the slot is now open
 
+      // don't set in_block_needed = true; we're not blocked yet.
       pthread_cond_signal(a->in_block_needed_cond);
 
 
+#ifdef INFINITE_RESOURCES
+      *a->my_tree_size = mergedPages;
+      double target_R = 0;
+      if(a->out_tree) {
+	double frac_wasted = ((double)RB_TREE_OVERHEAD)/(double)(RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
+
+	target_R = sqrt(((double)(*a->out_tree_size+*a->my_tree_size)) / ((MEM_SIZE*(1-frac_wasted))/(4096*ratio)));
+	printf("R_C2-C1 = %6.1f R_C1-C0 = %6.1f target = %6.1f\n", 
+	       ((double)(*a->out_tree_size+*a->my_tree_size)) / ((double)*a->my_tree_size), 
+	       ((double)*a->my_tree_size) / ((double)(MEM_SIZE*(1-frac_wasted))/(4096*ratio)),target_R);
+      }
+#else
       if(a->out_tree_size) {
 	*a->my_tree_size = *a->out_tree_size / (a->r_i * FUDGE);
       } else {
@@ -264,16 +295,31 @@ namespace rose {
 	  *a->my_tree_size = mergedPages;
 	}
       }
-
+#endif
       if(a->out_tree &&  // is there a upstream merger? (note the lack of the * on a->out_tree)
-	 ((a->max_size && mergedPages > a->max_size )
+	 (
+	  (
+#ifdef INFINITE_RESOURCES
+	  (*a->out_block_needed && 0)
+#ifdef THROTTLED
+	  || ((double)*a->out_tree_size / ((double)*a->my_tree_size) < target_R)
+#endif
+#else
+	  mergedPages > (FUDGE * *a->out_tree_size / a->r_i) // do we have enough data to bother it?
+#endif
+	   )
 	  ||
-	  mergedPages > (FUDGE * *a->out_tree_size / a->r_i)) // do we have enough data to bother it?
-	 ) {
+	  (a->max_size && mergedPages > a->max_size )
+	  )) {
+
+	// XXX need to report backpressure here!
+
 	while(*a->out_tree) { // we probably don't need the "while..."
 	  pthread_cond_wait(a->out_block_needed_cond, a->block_ready_mut);
 	}
-
+#ifdef INFINITE_RESOURCES
+	//	printf("pushing tree R_eff = %6.1f target = %6.1f\n", ((double)*a->out_tree_size) / ((double)*a->my_tree_size), target_R);
+#endif
 	// XXX C++?  Objects?  Constructors? Who needs them?
 	*a->out_tree = (typeof(*a->out_tree))malloc(sizeof(**a->out_tree));
 	**a->out_tree = new typename ITERA::treeIteratorHandle(tree->r_);
@@ -281,12 +327,12 @@ namespace rose {
 
 	// This is a bit wasteful; allocate a new empty tree to merge against.
 	// We don't want to ever look at the one we just handed upstream...
-	// We could wait for an in tree to be ready, and then pass it directly
-	// to compress data (to avoid all those merging comparisons...)
+	// We could wait for an in tree to be ready, and then pretend
+	// that we've just finished merging against it (to avoid all
+	// those merging comparisons, and a table scan...)
 
 	// old alloc state contains the tree that we used as input for this merge... we can still free it
 
-	// XXX storage leak; upstream is going to have to free this somehow...
 	*(recordid*)(a->out_tree_allocer) = *(recordid*)(a->pageAllocState);
 	*(recordid*)(a->pageAllocState) = NULLRID;
 
@@ -307,9 +353,11 @@ namespace rose {
 
       pthread_mutex_unlock(a->block_ready_mut);
 
-      Tcommit(xid);
+      gettimeofday(&start_tv,0);
 
     }
+    Tcommit(xid);
+
     return 0;
   }
   typedef struct {
@@ -357,6 +405,7 @@ namespace rose {
         <typename PAGELAYOUT::FMT::TUP,
          typename PAGELAYOUT::FMT::TUP::stl_cmp>,
        typename PAGELAYOUT::FMT::TUP>::handle ** input_handle;
+    bool * input_needed;
     typename std::set
       <typename PAGELAYOUT::FMT::TUP,
       typename PAGELAYOUT::FMT::TUP::stl_cmp> * scratch_handle;
@@ -425,6 +474,13 @@ namespace rose {
     RB_HANDLE ** block0_scratch = (RB_HANDLE**) malloc(sizeof(RB_HANDLE*));
     *block0_scratch = 0;
 
+    bool *block0_needed = (bool*)malloc(sizeof(bool));
+    bool *block1_needed = (bool*)malloc(sizeof(bool));
+    bool *block2_needed = (bool*)malloc(sizeof(bool));
+    *block0_needed = false;
+    *block1_needed = false;
+    *block2_needed = false;
+
     lsmTableHandle<PAGELAYOUT> * ret = (lsmTableHandle<PAGELAYOUT>*)
       malloc(sizeof(lsmTableHandle<PAGELAYOUT>));
 
@@ -435,6 +491,7 @@ namespace rose {
     *ret->still_open = 1;
 
     ret->input_handle = block0_scratch;
+    ret->input_needed = block0_needed;
     ret->scratch_handle = new typeof(*ret->scratch_handle);
 
     ret->mut = block_ready_mut;
@@ -459,7 +516,9 @@ namespace rose {
 	oldridp,
 	block_ready_mut,
 	block1_needed_cond,
+	block1_needed,
 	block2_needed_cond,
+	block2_needed,
 	block1_ready_cond,
 	block2_ready_cond,
 	ret->still_open,
@@ -490,7 +549,9 @@ namespace rose {
 	oldridp,
 	block_ready_mut,
 	block0_needed_cond,
+	block0_needed,
 	block1_needed_cond,
+	block1_needed,
 	block0_ready_cond,
 	block1_ready_cond,
 	ret->still_open,
@@ -516,11 +577,24 @@ namespace rose {
   // XXX this does not force the table to disk... it simply forces everything out of the in-memory tree.
   template<class PAGELAYOUT>
     void TlsmTableFlush(lsmTableHandle<PAGELAYOUT> *h) {
+
+      struct timeval start_tv, stop_tv;
+      double start, stop;
+
+      static double last_start;
+      static bool first = 1;
+
+      gettimeofday(&start_tv,0);
+      start = tv_to_double(start_tv);
       pthread_mutex_lock(h->mut);
+
 
       while(*h->input_handle) {
 	pthread_cond_wait(h->input_needed_cond, h->mut);
       }
+
+      gettimeofday(&stop_tv,0);
+      stop = tv_to_double(stop_tv);
 
       typeof(h->scratch_handle)* tmp_ptr
 	= (typeof(h->scratch_handle)*) malloc(sizeof(void*));
@@ -531,6 +605,15 @@ namespace rose {
       h->scratch_handle = new typeof(*h->scratch_handle);
 
       pthread_mutex_unlock(h->mut);
+
+      if(first) {
+	printf("flush waited %lf sec\n", stop-start);
+	first = 0;
+      } else {
+	printf("flush waited %lf sec (worked %lf)\n",
+	       stop-start, start-last_start);
+      }
+      last_start = stop;
 
   }
   template<class PAGELAYOUT>
@@ -551,7 +634,25 @@ namespace rose {
     uint64_t inputSizeThresh = (4 * PAGE_SIZE * *h->input_size); // / (PAGELAYOUT::FMT::TUP::sizeofBytes());
     uint64_t memSizeThresh = MEM_SIZE;
 
-    if(handleBytes > inputSizeThresh || handleBytes > memSizeThresh) { // XXX ok?
+#ifdef INFINITE_RESOURCES
+    static const int LATCH_INTERVAL = 10000;
+    static int count = LATCH_INTERVAL; /// XXX HACK
+    bool go = false;
+    if(!count) {
+      pthread_mutex_lock(h->mut);
+      go = *h->input_needed;
+      pthread_mutex_unlock(h->mut);
+      count = LATCH_INTERVAL;
+    }
+    count --;
+#endif
+    if(
+#ifdef INFINITE_RESOURCES
+       go ||
+#else 
+       handleBytes > inputSizeThresh ||
+#endif
+       handleBytes > memSizeThresh) { // XXX ok?
       printf("Handle mbytes %ld (%ld) Input size: %ld input size thresh: %ld mbytes mem size thresh: %ld\n",
 	     handleBytes / (1024*1024), h->scratch_handle->size(), *h->input_size, inputSizeThresh / (1024*1024), memSizeThresh / (1024*1024));
       TlsmTableFlush<PAGELAYOUT>(h);

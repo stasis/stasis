@@ -46,7 +46,7 @@ void readlock (rwl *lock, int d)
       fflush(NULL); */
   
   pthread_mutex_lock (lock->mut);
-  if (lock->writers || lock->waiting) {
+  if (lock->writers) { // XXX avoids deadlock; lets writers starve... || lock->waiting) {
     do {
       /*      printf ("reader %d blocked. %d readers, %d writers, %d waiting\n", d, lock->readers,  lock->writers, lock->waiting);  */
       pthread_cond_wait (lock->readOK, lock->mut);

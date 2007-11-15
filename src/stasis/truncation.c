@@ -110,7 +110,9 @@ void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
   int * staleDirtyPages = malloc(sizeof(int) * (MAX_BUFFER_SIZE));
   int i;
   Page * p = 0;
+
   pthread_mutex_lock(&dirtyPages_mutex);
+
   void *tmp;
   i = 0;
   for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
@@ -130,6 +132,7 @@ void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
   }
   free(staleDirtyPages);
   forcePageRange(start*PAGE_SIZE,stop*PAGE_SIZE);
+
 }
 void dirtyPagesInit() { 
   dirtyPages = pblHtCreate();

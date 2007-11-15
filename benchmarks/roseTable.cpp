@@ -21,17 +21,23 @@ namespace rose {
     typename PAGELAYOUT::FMT::TUP::TYP1 j = i / 65536;
     typename PAGELAYOUT::FMT::TUP::TYP2 k = i / 12514500;
     typename PAGELAYOUT::FMT::TUP::TYP3 l = i / 10000000;
+    typename PAGELAYOUT::FMT::TUP::TYP4 n = i / 65536;
+    typename PAGELAYOUT::FMT::TUP::TYP5 o = i / 12514500;
+    typename PAGELAYOUT::FMT::TUP::TYP6 p = i / 10000000;
+    typename PAGELAYOUT::FMT::TUP::TYP7 q = i / 65536;
+    typename PAGELAYOUT::FMT::TUP::TYP8 r = i / 12514500;
+    typename PAGELAYOUT::FMT::TUP::TYP9 s = i / 10000000;
 
     t.set0(&m);
     t.set1(&j);
     t.set2(&k);
     t.set3(&l);
-    t.set4(&j);
-    t.set5(&k);
-    t.set6(&l);
-    t.set7(&j);
-    t.set8(&k);
-    t.set9(&l);
+    t.set4(&n);
+    t.set5(&o);
+    t.set6(&p);
+    t.set7(&q);
+    t.set8(&r);
+    t.set9(&s);
   }
 
   template<class PAGELAYOUT>
@@ -71,7 +77,9 @@ namespace rose {
       INSERTS = 10 * 1000 * 1000;
     }
 
-    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    //    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    //               0   1  2  3   4  5  6  7  8   9 
+    int column[] = { 3 , 4, 1, 11, 0, 5, 6, 9, 10, 14 };
     static long COUNT = INSERTS / 100;
     long int count = COUNT;
 
@@ -106,8 +114,13 @@ namespace rose {
 	return 1;
       }
       size_t read_len;
-      COUNT = 1000000;
-      count = 1000000;
+      COUNT = 100000;
+      count = 100000;
+
+      struct timeval cannonical_start_tv;
+      gettimeofday(&cannonical_start_tv,0);
+      double cannonical_start = tv_to_double(cannonical_start_tv);
+
       while(-1 != (read_len = getline(&line, &line_len, input))) {
 	int line_tok_count;
 	{
@@ -293,10 +306,11 @@ namespace rose {
 	    count = COUNT;
 	    gettimeofday(&now_tv,0);
 	    now = tv_to_double(now_tv);
-	    printf("Wrote %d tuples "
+	    printf("After %6.1f seconds, wrote %d tuples "
 		   "%9.3f Mtup/sec (avg) %9.3f Mtup/sec (cur) "
 		   "%9.3f Mbyte/sec (avg) %9.3f Mbyte/sec (cur)\n",
 		   inserts, //((inserts+1) * 100) / INSERTS,
+		   now - cannonical_start,
 		   ((double)inserts/1000000.0)/(now-start),
 		   ((double)count/1000000.0)/(now-last_start),
 		   (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)inserts/1000000.0)/(now-start),
@@ -381,16 +395,16 @@ namespace rose {
 
 int main(int argc, char **argv) {
 
-  typedef int64_t typ0;
-  typedef int64_t typ1;
-  typedef int64_t typ2;
+  typedef int32_t typ0;
+  typedef int32_t typ1;
+  typedef int32_t typ2;
   typedef int64_t typ3;
-  typedef int64_t typ4;
-  typedef int64_t typ5;
-  typedef int64_t typ6;
-  typedef int64_t typ7;
-  typedef int64_t typ8;
-  typedef int64_t typ9;
+  typedef int32_t typ4;
+  typedef int32_t typ5;
+  typedef int32_t typ6;
+  typedef int32_t typ7;
+  typedef int32_t typ8;
+  typedef int32_t typ9;
 
   #define COLS 10
 
@@ -405,7 +419,7 @@ int main(int argc, char **argv) {
       <rose::Multicolumn<tup>,rose::For<int64_t> > >
       (argc,argv); */
 
-  return rose::main
+  /*  return rose::main
     <rose::MultiColumnTypePageLayout
     <COLS,
     rose::StaticMulticolumn<COLS,tup,
@@ -414,6 +428,19 @@ int main(int argc, char **argv) {
     Rle<typ4>,Rle<typ5>,
     Rle<typ6>,Rle<typ7>,
     Rle<typ8>,For<typ9> >
+    >
+    >
+    (argc,argv);
+  */
+  return rose::main
+    <rose::MultiColumnTypePageLayout
+    <COLS,
+    rose::StaticMulticolumn<COLS,tup,
+    Rle<typ0>,Rle<typ1>,
+    For<typ2>,Rle<typ3>,
+    Rle<typ4>,Rle<typ5>,
+    For<typ6>,For<typ7>,
+    For<typ8>,Rle<typ9> >
     >
     >
     (argc,argv);

@@ -944,20 +944,34 @@ relative speeds are unpredictable.
 
 \subsection{Choosing R}
 
-We want to maximize the rate of insertion into $C0$, meaning we need
-to maximize the rate at which tuples are removed from $C0$.  This means
-that the rate of tuple consumption by the $C2$ merger should match
-that of the $C1$ merger\footnote{The LSM work uses I/O cost as a proxy
-  for throughput; with compression and superscalar effects, this is
-  less than ideal}.  Otherwise, $C2$ will back up, causing $C1$ to
-block, or $C2$ will starve, implying the $C1$ could run more quickly.
-Now, the C1 merger and C2 merger processes execute different code; C1
-consumes tuples from a red black tree, and a on disk tree, while C2
-consumes tuples from two on-disk trees.
+The original LSM tree work eexplains how to calculate $R$ for steady
+state systems; essentially, the ratios between the sizes of adjacent
+compoents should be equal.  \rows provides two runtime heuristics for
+setting $R$.  The first follows the lead of the LSM work, and sets R
+to be the square root of the ratio of the sizes of the smallest and
+largest tree components, $\sqrt{|C2|/|C0|}$.  However, computing this
+value is complicated by two factors.  First, \rows stores data
+uncompressed in memory, while it uses compression on disk.  Second,
+the red-black tree we use has significant memory overhead.  We take
+compression into account by dividing the number of items in the tree
+by the compression ratio.  Tree overhead is taken into account when we
+bound the number of tuples in $C0$.
 
-\subsection{Implementation performance constant}
-Measure peak merge throughput if n times drive throughput; can produce
-n drives worth of throughput at given compression ratio.
+The second approach to choosing tree sizes assumes that merge
+processes do not compete for resources.  Therefore, each time a merge
+process completes, it immediately requests a new batch of tuples for
+merge.  This minimizes the size of $C0$ and $C1$ when the system is
+under capacity, allowing it to gracefully handle bursts of load.
+However, by shrinking $C0$ and $C1$, it decreases the efficiency of
+$C2$'s merges.  As load increases, this creates a backlog of tuples
+for merge in $C1$ and $C0$ until the tree ratios equalize.  By
+allowing merges to continue as quickly as possible, this approach also
+takes superscalar (the two merge threads take different types of trees
+as input) and other runtime effects into account.
+
+A hybrid between this greedy strategy and explicitly trying to balance
+$R$ across tree components might yield a system that is more tolerant
+of bursty workloads without decreasing maximum sustainable throughput.
 
 \section{Conclusion}
 
