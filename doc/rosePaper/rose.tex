@@ -82,13 +82,14 @@ transactions.  Here, we apply it to archival of weather data.
 
 A \rows replica serves two purposes.  First, by avoiding seeks, \rows
 reduces the load on the replicas' disks, leaving surplus I/O capacity
-for read-only queries and allowing inexpensive hardware to handle
-workloads produced by database machines with tens of disks.  This
-allows decision support and OLAP queries to scale linearly with the
-number of machines, regardless of lock contention and other
-bottlenecks associated with distributed transactions.  Second, \rows
-replica groups provide highly available copies of the database.  In
-Internet-scale environments, decision support queries may be more
+for read-only queries and allowing inexpensive hardware to replicate
+workloads produced by database machines that are equipped with many
+disks and large amounts of RAM.  Read-only replication allows decision
+support and OLAP queries to scale linearly with the number of
+machines, regardless of lock contention and other bottlenecks
+associated with distributed transactions.  Second, a group of \rows
+replicas provides a highly available copy of the database.  In many
+Internet-scale environments, decision support queries are more
 important than update availability.
 
 %\rows targets seek-limited update-in-place OLTP applications, and uses
@@ -102,17 +103,15 @@ important than update availability.
 \rowss throughput is limited by sequential I/O bandwidth.  We use
 column compression to reduce this bottleneck.  Rather than reassemble
 rows from a column-oriented disk layout, we adapt existing column
-compression algorithms to a new row-oriented data layout.  This
-introduces negligible space overhead and can be applied to most
-single-pass, randomly accessible compression formats.  Our prototype
-uses lightweight (superscalar) column compression algorithms.
+compression algorithms to a novel row-oriented data layout.  This
+approach to database compression introduces negligible space overhead
+and can be applied to most single-pass, randomly accessible
+compression formats.  Our prototype uses lightweight (superscalar)
+column compression algorithms.
 
-Existing analytical models and our experiments show that, for disk
-bound workloads, \rows provides significantly higher replication
-throughput than conventional replication techniques.  Finally, we
-introduce an easily measured metric that predicts replication
-performance of \rows implementations in a variety of deployment
-scenarios.
+Existing analytical models and our experiments reveal that, for disk and
+CPU-bound workloads, \rows provides orders of magnitude greater
+throughput than conventional replication techniques.
 
 \end{abstract}
 
@@ -130,68 +129,152 @@ scenarios.
 \section{Introduction}
 
 \rows is a database replication engine for workloads with high volumes
-of in-place updates.  Traditional database updates are difficult to
-scale beyond a certain size.  Once data exceeds the size of RAM, any
-attempt to update data in place is severely limited by the cost of
-drive head seeks.  This can be addressed by adding more drives, which
-increases cost and decreases reliability.  Alternatively, the database
-can be run on a cluster of machines, providing improved scalability at
-great expense.
+of in-place updates.  It is designed to provide high-throughput,
+general purpose replication of transactional updates regardless of
+database size, query contention or access patterns.  In particular, it
+is designed to run real-time decision support and analytical
+processing queries against some of today's largest TPC-C style online
+transaction processing applications.
 
-These problems lead large-scale database installations to partition
+When faced with random access patterns, traditional database
+scalibility is limited by the size of memory.  If the system's working
+set does not fit in RAM, any attempt to update data in place is
+limited by the latency of hard disk seeks.  This bottleneck can be
+alleviated by adding more drives, which increases cost and decreases
+reliability.  Alternatively, the database can run on a cluster of
+machines, increasing the amount of available memory, cpus and disk
+heads, but introducing the overhead and complexity of distributed
+transactions and partial failure.
+
+These problems lead to large-scale database installations that partition
 their workloads across multiple servers, allowing linear scalability,
-but sacrificing consistency between data stored on different
+but sacrificing consistency between data stored in different
 partitions.  Fortunately, updates often deal with well-defined subsets
 of the data; with an appropriate partitioning scheme, one can achieve
 linear scalability for localized updates.
 
-The cost of partitioning is that no single coherent version of the
-data exists; queries that rely on disparate portions of the database
-must either run multiple queries, or, if they are too expensive to run
-on master database instances, are delegated to data warehousing
-systems.
+The cost of partitioning is that no globally coherent version of the
+data exists.  In the best case, queries that rely on a global view of
+the data run against each master database instance, then attempt to
+reconcile inconsistencies in their results.  If the queries are
+too expensive to run on master database instances they are delegated
+to data warehousing systems and produce stale results.
 
-Although \rows cannot process SQL update queries directly, it is able
-to replicate conventional database instances at a fraction of the cost
-of the master database server.  Like a data warehousing solution, this
-decreases the cost of large, read-only OLAP and decision support
-queries.  \rows does this without introducing significant replication
-latency.
+In order to address these issues, \rows gives up the ability to
+directly process SQL updates.  In exchange, it is able to replicate
+conventional database instances at a small fraction of the cost of a
+general-purpose database server.
 
-Therefore, we think of \rows as a compromise between data warehousing
-solutions (which provide extremely efficient access to data after a
-significant delay), and database replication systems (which cost
-nearly as much as the database instances they replicate).  The low cost
-of \rows replicas also allows database administrators to replicate
-multiple master databases on the same machine, simplifying queries
-that span partitions.
+Like a data warehousing solution, this decreases the cost of large,
+read-only analytical processing and decision support queries, and scales to extremely
+large database instances with high-throughput updates.  Unlike a data
+warehousing solution, \rows does this without introducing significant
+replication latency.
 
-\subsection{System design}
+Conventional database replicas provide low-latency replication at a
+cost comparable to the database instances being replicated.  This
+prevents conventional database replicas from scaling.  The additional
+read throughput they provide is nearly as expensive as read throughput
+on the master.  Because their performance is comparable to that of the
+master database, they are also unable to consolidate multiple database
+instances for centralized processing.  \rows suffers from neither of
+these limitations.
 
-A \rows replica takes a {\em replication log} as input.  The
-replication log should record each transaction begin, commit, and
-abort performed by the master database, along with the pre and post
-images associated with each tuple update.  The ordering of these
-entries should match the order in which they are applied at the
-database master.
+Unlike existing systems, \rows provides inexpensive, low-latency, and
+scalable replication of write-intensive relational databases,
+regardless of workload contention, database size, or update patterns.
+
+\subsection{Sample \rows deployment}
+
+Imagine a classic, disk bound TPC-C installation.  On modern hardware,
+such a system would have tens of disks, and would be seek limited.
+Consider the problem of producing a read-only low-latency replica of
+the system for analytical processing, decision support, or some other
+expensive query workload.  If we based the replica on the same storage
+engine as the master database, the replica's hardware resouces would
+be comparable to (certainly within an order of magnitude) of those of
+the master database machine.  As this paper will show, the I/O cost of
+maintaining a \rows replica can be 100 times less than the cost of
+maintaining the master database.
+
+Therefore, unless the replica's read-only query workload is seek
+limited, a \rows replica can make due with many fewer disks than the
+master database instance.  If the replica must service seek-limited
+queries, it will likely need to run on a machine similar to the master
+database, but will use almost none of its (expensive) I/O capacity for
+replication, increasing the resources available to queries.
+Furthermore, \rowss indexes are allocated sequentially, and are more
+compact than typical B-tree layouts, reducing the cost of index scans.
+Finally, \rows buffer pool stores compressed pages, increasing the
+effective size of system memory.
+
+The primary drawback of this approach is that it roughly doubles the
+cost of each random index probe.  Therefore, the attractiveness of
+\rows hinges on two factors: the fraction of the workload devoted to
+random tuple lookups, and the premium one must pay for a specialized
+storage hardware.
+
+\subsection{Paper structure}
+
+We begin by providing an overview of \rowss system design and then
+present a simplified analytical model of LSM-tree I/O behavior.  We
+apply this model to our test hardware, and predict that \rows will
+greatly outperform database replicas that store data in B-trees.  We
+proceed to present a row-oriented page layout that adapts most
+column-oriented compression schemes for use in \rows.  Next, we
+evaluate \rowss replication performance on a real-world dataset, and
+demonstrate orders of magnitude improvement over a MySQL InnoDB B-Tree
+index.  Our performance evaluations conclude with a detailed analysis
+of the \rows prototype's performance and shortcomings.  We defer
+related work to the end of the paper, as recent research suggests
+a number of ways in which \rows could be improved.
+
+\section{System overview}
+
+A \rows replica takes a replication log as input, and stores the
+changes it contains in a {\em log structured merge} (LSM)
+tree\cite{lsm}.
+
+An LSM-Tree is an index method that consists of multiple sub-trees
+(components).  The smallest component, $C0$ is a memory resident
+binary search tree.  The next smallest component, $C1$ is a bulk
+loaded B-Tree.  Updates are applied directly to $C0$.  As $C0$ grows,
+it is merged with $C1$.  The merge process consists of index scans,
+and produces a new (bulk loaded) version of $C1$ that contains the
+updates from $C0$.  LSM-Trees can have arbitrarily many components,
+though three components (two on-disk tress) are generally adequate.
+The memory-resident component, $C0$, is updated in place.  All other
+components are produced by repeated merges with the next smaller
+component.  Therefore, LSM-Trees are updated without resorting to
+random disk I/O.
+
+Unlike the original LSM work, \rows compresses the data using
+techniques from column-oriented databases, and is designed exclusively
+for database replication.  The replication log should record each
+transaction begin, commit, and abort performed by the master database,
+along with the pre- and post-images associated with each tuple update.
+The ordering of these entries should match the order in which they are
+applied at the database master.
 
 Upon receiving a log entry, \rows applies it to an in-memory tree, and
-the update is immediately reflected by inconsistent reads.  \rows
-provides snapshot consistency to readers that require transactional
-isolation.  It does so in a lock-free manner; transactions' reads and
-writes are not tracked, and no \rows transaction can ever force
-another to block or abort.  When given appropriate workloads, \rows
-provides extremely low-latency replication.  Transactionally
-consistent data becomes available after a delay on the order of the
-duration of a few update transactions.
+the update is immediately available to queries that do not require a
+consistent view of the data.  \rows provides snapshot consistency to
+readers that require transactional isolation.  It does so in a
+lock-free manner; transactions' reads and writes are not tracked, and
+no \rows transaction can ever force another to block or abort.  When
+given appropriate workloads, \rows provides extremely low-latency
+replication.  Transactionally consistent data becomes available after
+a delay on the order of the duration of a few update transactions.
+The details of \rowss concurrency control mechanisms are provided in
+Section~\ref{sec:isolation}.
 
-To prevent the in-memory tree from growing without bound, a merge
-process iterates over the (sorted) tree entries, and merges them with
-existing on-disk tree entries.  As the database increases in size, the
-on disk tree grows, forcing \rows to compare an ever-increasing number
-of existing tuples with each new tuple.  To mitigate this effect, the
-on-disk tree is periodically emptied by merging it with a second,
-larger tree.
+%To prevent the in-memory tree from growing without bound, a merge
+%process iterates over the (sorted) tree entries, and merges them with
+%existing on-disk tree entries.  As the database increases in size, the
+%on disk tree grows, forcing \rows to compare an ever-increasing number
+%of existing tuples with each new tuple.  To mitigate this effect, the
+%on-disk tree is periodically emptied by merging it with a second,
+%larger tree.
 
 In order to look up a tuple stored in \rows, a query must examine all
 three trees, typically starting with the in-memory (fastest, and most
@@ -203,78 +286,59 @@ them.  By waiting until the tuples are due to be merged, the
 range-scan can occur with zero I/O cost, at the expense of significant
 delay.
 
+\rows merges LSM-Tree components in background threads.  This allows
+it to continuously process updates and service index lookup requests.
+In order to minimize the overhead of thread synchronization, index
+probes lock entire tree components at a time.  Because on-disk tree
+components are read-only, these latches only affect tree deletion,
+allowing merges and index probes to occur concurrently.  $C0$ is
+updated in place, preventing inserts from occurring concurrently with
+merges and lookups.  However, operations on $C0$ are comparatively
+fast, reducing contention for $C0$'s latch.
+
+Recovery, space managment and atomic updates to \rowss metadata is
+handled by an existing transactional storage system.  \rows is
+implemented as an extension to the transaction system, and stores its
+data in a conventional database page file.  \rows does not use the
+underlying transaction system to log changes to its tree components.
+Instead, it force writes them to disk before commit, ensuring
+durability without significant logging overhead.
+
 Merge throughput is bounded by sequential I/O bandwidth, and index
 probe performance is limited by the amount of available memory.  \rows
 uses compression to trade surplus computational power for scarce
 storage resources.
 
-XXX provide a quick paper outline here.  1-2 paragraphs describing the flow of the paper.
-
-\section{Related Work}
-
-XXX This section isn't really written.  Instead, it just contains
-notes about what it should contain.
-
-\subsection{Row-based schemes, MySQL page compression}
-
-MySQL compression: Guess compression ratio.  If fits, great.  If not,
-split b-tree page.  Based on conventional compression algs.  Lots of
-database compression literature.  Generally accepted that compression
-increases throughput when memory / bandwidth savings is more important than
-CPU overhead.
-
-\subsection{Column-based compression}
-There are a few column oriented compression papers to cite.  Gather up
-the references.  Biggest distinction: We're near real-time regardless
-up update access patterns.  Prior perf studies focus on compression
-kernel throughput.  At least for \rows, the results don't apply, as
-other operations now dominate.   (Kernels for merges, etc could help.)
-
-\subsection{Snapshot consistency}
-cite '81 survey; two broad approaches: locking, timestamp / mvcc.  The
-later makes serialized order explicit.  (Useful for replication
-systems)
-
-\subsection{Replication techniques and log shipping}
-Large body of work on replication techniques and topologies.  Largely
-orthogonal to \rows.  We place two restrictions on the master.  First,
-it must ship writes (before and after images) for each update, not
-queries, as some DB's do.  \rows must be given, or be able to infer
-the order in which each transaction's data should be committed to the
-database, and such an order must exist.  If there is no such order,
-and the offending transactions are from different, \rows will commit
-their writes to the database in a different order than the master.
-
-\section{\rowss I/O performance}
-
 As far as we know, \rows is the first LSM-tree implementation.  This
-section provides an overview of LSM-trees, and steps through a rough
+section provides an overview of LSM-trees, and explains how we
+quantify the cost of tuple insertions.  It then steps through a rough
 analysis of LSM-tree performance on current hardware (we refer the
-reader to the original LSM work for a thorough analytical
-discussion of LSM performance).  We defer discussion of the CPU
-overhead of compression to later sections, and simply account for I/O
-and memory bottlenecks in this section.
+reader to the original LSM work for a thorough analytical discussion
+of LSM performance).  Finally, we explain how our implementation
+provides transactional isolation, exploits hardware parallelism, and
+supports crash recovery.  We defer discussion of \rowss compression
+techniques to the next section.
 
 \subsection{Tree merging}
 
-% XXX mention Sql server `bulk loaded' mode.
-% figures?
- % xxx am I counting right when I say three level lsm trees?
+% XXX figures?
 
-An LSM-tree consists of a number of underlying trees.  For simplicity,
+%An LSM-tree consists of a number of underlying trees.
+For simplicity,
 this paper considers three component LSM-trees.  Component zero ($C0$)
 is an in-memory binary search tree.  Components one and two ($C1$,
-$C2$) are read-only, bulk-loaded B-trees.  Only $C0$ is updated in
-place.  Each update is handled in three stages.  In the first stage,
-the update is applied to the in-memory tree.  Next, once enough
-updates have been applied, the tuple is merged with existing tuples in
-$C1$.  The merge process performs a sequential scan over the in-memory
-tree and $C1$, producing a new version of $C1$.
+$C2$) are read-only, bulk-loaded B-trees.  
+%Only $C0$ is updated in place.  
+Each update is handled in three stages.  In the first stage, the
+update is applied to the in-memory tree.  Next, once enough updates
+have been applied, a tree merge is initiated, and the tuple is
+eventually merged with existing tuples in $C1$.  The merge process
+performs a sequential scan over the in-memory tree and $C1$, producing
+a new version of $C1$.
 
 Conceptually, when the merge is complete, $C1$ is atomically replaced
 with the new tree, and $C0$ is atomically replaced with an empty tree.
 The process is then eventually repeated when $C1$ and $C2$ are merged.
-At that point, the insertion will not cause any more I/O operations.
 
 Although our prototype replaces entire trees at once, this approach
 introduces a number of performance problems.  The original LSM work
@@ -289,10 +353,21 @@ paper.)  We address this issue by allowing data to be inserted into
 the new version of the smaller component before the merge completes.
 This forces \rows to check both versions of components $C0$ and $C1$
 in order to look up each tuple, but it addresses the crossing iterator
-problem without resorting to fine-grained concurrency control.
-Applying this approach to subtrees reduces the impact of these extra
-probes, which could be filtered with a range comparison in the common
+problem without resorting to fine-grained latches.  Applying this
+approach to subtrees would reduce the impact of these extra probes,
+which could be filtered out with a range comparison in the common
 case.
+
+\subsection{Amortized insertion cost}
+
+In order to compute the amortized cost of insertion into an LSM-Tree,
+we need only consider the cost of comparing the inserted tuple with
+older tuples (otherwise, we would count the cost of each comparison
+twice).  Therefore, we say that each tuple insertion ultimately causes
+two rounds of I/O operations; one for the merge into $C1$, and another
+to merge into $C2$.  Once a tuple reaches $C2$ it does not contribute
+to the initiation of more I/O (For simplicity, we assume the LSM-Tree
+has reached a steady state).
 
 In a populated LSM-tree $C2$ is the largest component, and $C0$ is the
 smallest component.  The original LSM-tree work proves that throughput
@@ -301,26 +376,30 @@ the ratio between $C2$ and $C1$.  They call this ratio $R$.  Note that
 (on average in a steady state) for every $C0$ tuple consumed by a
 merge, $R$ tuples from $C1$ must be examined.  Similarly, each time a
 tuple in $C1$ is consumed, $R$ tuples from $C2$ are examined.
-Therefore, in a steady state, insertion throughput cannot exceed $R *
-cost_{read~and~write~C2}$, or $R * cost_{read~and~write~C1}$.  Note
-that the total size of the tree is approximately $R^2$ (neglecting the
-data stored in $C0$ and $C1$)\footnote{The proof that keeping R
-  constant across our three tree components follows from the fact that
-  the mergers compete for I/O bandwidth and $x(1-x)$ is maximized when
-  $x=0.5$.  The LSM-tree paper proves the general case.}.
+Therefore, in a steady state, insertion rate times the sum of $R *
+cost_{read~and~write~C2}$ and $R * cost_{read~and~write~C1}$ cannot
+exceed the drive's sequential I/O bandwidth.  Note that the total size
+of the tree is approximately $R^2 * |C0|$ (neglecting the data stored
+in $C0$ and $C1$)\footnote{The proof that keeping R constant across
+  our three tree components follows from the fact that the mergers
+  compete for I/O bandwidth and $x(1-x)$ is maximized when $x=0.5$.
+  The LSM-tree paper proves the general case.}.
 
 \subsection{Replication Throughput}
 
 LSM-trees have different asymptotic performance characteristics than
 conventional index structures.  In particular, the amortized cost of
 insertion is $O(\sqrt{n})$ in the size of the data.  This cost is
-$O(log~n)$ for a B-tree.  The relative costs of sequential
-and random I/O determine whether or not \rows is able to outperform
-B-trees in practice.
+$O(log~n)$ for a B-tree.  The relative costs of sequential and random
+I/O determine whether or not \rows is able to outperform B-trees in
+practice.  This section describes the impact of compression on B-tree
+and LSM-tree performance using (intentionally simplistic) models of
+their performance characteristics.
 
 Starting with the (more familiar) B-tree case, in the steady state, we
 can expect each index update to perform two random disk accesses (one
-evicts a page, the other reads a page):
+evicts a page, the other reads a page).  Tuple compression does not
+reduce the number of disk seeks:
 \[
    cost_{Btree~update}=2~cost_{random~io}
 \]
@@ -349,10 +428,11 @@ merger must read existing tuples into memory before writing them back
 to disk.
 
 The $compression~ratio$ is
-$\frac{uncompressed~size}{compressed~size}$.  For simplicity, we
-assume that the compression ratio is the same throughout each
-component of the LSM-tree; \rows addresses this at run time by
-dynamically adjusting component sizes\footnote{todo implement this}.
+$\frac{uncompressed~size}{compressed~size}$, so improved compression
+leads to less expensive LSM-Tree updates.  For simplicity, we assume
+that the compression ratio is the same throughout each component of
+the LSM-tree; \rows addresses this at run time by reasoning in terms
+of the number of pages used by each component.
 
 Our test hardware's hard drive is a 7200RPM, 750 GB Seagate Barracuda
 ES.  
@@ -360,7 +440,7 @@ ES.
 %$4.16~msec$, seek times of $8.5/9.5~msec$ (read/write), and a maximum
 %sustained throughput of $78~MB/s$.  
 Third party
-benchmarks\footnote{http://www.storagereview.com/ST3750640NS.sr}
+benchmarks\cite{hdBench} %\footnote{http://www.storagereview.com/ST3750640NS.sr}
 report random access times of $12.3/13.5~msec$ and $44.3-78.5~MB/s$
 sustained throughput.  Timing {\tt dd if=/dev/zero of=file; sync} on an
 empty ext3 file system suggests our test hardware provides $57.5MB/s$ of
@@ -416,12 +496,16 @@ have a $C2$ component 750 times larger than the 1GB $C0$ component.
 Therefore, it would have an R of $\sqrt{750}\approx27$; we would
 expect such a tree to have a sustained insertion throughput of
 approximately 8000 tuples / second, or 800 kbyte/sec\footnote{It would
-  take 11 days to overwrite every tuple on the drive in random
-  order.}; two orders of magnitude above the 83 I/O operations that
-the drive can deliver per second, and well above the 41.5 tuples / sec
-we would expect from a B-tree with a $18.5~GB$ buffer pool.
-Increasing \rowss system memory to cache 10 GB of tuples would
-increase write performance by a factor of $\sqrt{10}$.
+  take 11 days to overwrite every tuple on the drive in random order.}
+given our 100 byte tuples.
+
+Our hard drive's average access time tells
+us that we can expect the drive to deliver 83 I/O operations per
+second.  Therefore, we can expect an insertion throughput of 41.5
+tuples / sec from a B-tree with a $18.5~GB$ buffer pool.  With just $1GB$ of RAM, \rows should outperform the
+B-Tree by more than two orders of magnitude.  Increasing \rowss system
+memory to cache $10 GB$ of tuples would increase write performance by a
+factor of $\sqrt{10}$.
 
 % 41.5/(1-80/750) = 46.4552239
 
@@ -453,17 +537,18 @@ page.  \rows inherits a default page size of 4KB from the transaction
 system we based it upon.  Although 4KB is fairly small by modern
 standards, \rows is not particularly sensitive to page size; even with
 4KB pages, \rowss per-page overheads are negligible.  Assuming tuples
-are 100 bytes, $\sim\frac{1}{40}$th of our pages are dedicated to the
-lowest level of tree nodes, with $\frac{1}{40}$th that number devoted
+are 400 bytes, $\sim\frac{1}{10}$th of our pages are dedicated to the
+lowest level of tree nodes, with $\frac{1}{10}$th that number devoted
 to the next highest level, and so on.  See
-Table~\ref{table:treeCreation} for a comparison of compression
-performance with and without tree creation enabled.  The data was
-generated by applying \rowss compressors to randomly generated five
-column, 1,000,000 row tables.  Across five runs, RLE's page count had
-a standard deviation of $\sigma=2.35$; the other values had
-$\sigma=0$.
-
-(XXX the tables should match the text.  Measure 100 byte tuples?)
+Table~\ref{table:treeCreationTwo} for a comparison of compression
+performance with and without tree creation enabled\footnote{Our
+  analysis ignores page headers, per-column, and per-tuple overheads;
+  these factors account for the additional indexing overhead}.  The
+data was generated by applying \rowss compressors to randomly
+generated five column, 1,000,000 row tables.  Across five runs, in
+Table~\ref{table:treeCreation} RLE's page count had a standard
+deviation of $\sigma=2.35$; the other values had $\sigma=0$.  In
+Table~\ref{table:treeCreationTwo}, $\sigma < 7.26$ pages.
 
 %Throughput's $\sigma<6MB/s$.
 
@@ -474,8 +559,8 @@ $\sigma=0$.
 \label{table:treeCreation}
 \begin{tabular}{|l|c|c|c|} \hline
 Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
-FOR        & 1.96x       & 2494       \\ \hline %& 133.4 MB/s \\ \hline
-FOR + tree & 1.94x       & +80        \\ \hline %& 129.8 MB/s \\ \hline
+PFOR        & 1.96x       & 2494       \\ \hline %& 133.4 MB/s \\ \hline
+PFOR + tree & 1.94x       & +80        \\ \hline %& 129.8 MB/s \\ \hline
 RLE        & 3.24x       & 1505 \\ \hline %& 150.6 MB/s \\ \hline
 RLE + tree & 3.22x       & +21        \\  %& 148.4 MB/s \\
 \hline\end{tabular}
@@ -486,23 +571,21 @@ RLE + tree & 3.22x       & +21        \\  %& 148.4 MB/s \\
 \label{table:treeCreationTwo}
 \begin{tabular}{|l|c|c|c|} \hline
 Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
-FOR        & 1.37x       & 7143       \\ \hline %& 133.4 MB/s \\ \hline
-FOR + tree & 1.17x       & 8335        \\ \hline %& 129.8 MB/s \\ \hline
+PFOR        & 1.37x       & 7143       \\ \hline %& 133.4 MB/s \\ \hline
+PFOR + tree & 1.17x       & 8335        \\ \hline %& 129.8 MB/s \\ \hline
 RLE        & 1.75x       & 5591 \\ \hline %& 150.6 MB/s \\ \hline
 RLE + tree & 1.50x       & 6525        \\  %& 148.4 MB/s \\
 
 \hline\end{tabular}
 \end{table}
 
-As the size of the tuples increases, as in
-Table~\ref{table:treeCreationTwo} ($N=5$; $\sigma < 7.26$ pages), the
-number of compressed pages that each internal tree node points to
-decreases, increasing the overhead of tree creation.  In such
-circumstances, internal tree node compression and larger pages should
-improve the situation.
+As the size of the tuples increases, the number of compressed pages
+that each internal tree node points to decreases, increasing the
+overhead of tree creation.  In such circumstances, internal tree node
+compression and larger pages should improve the situation.
 
 \subsection{Isolation}
-
+\label{sec:isolation}
 \rows groups replicated transactions into snapshots.  Each transaction
 is assigned to a snapshot according to a timestamp; two snapshots are
 active at any given time.  \rows assigns incoming transactions to the
@@ -547,7 +630,7 @@ read-only transactions are assigned to snapshot $t-1$.  Each such
 transaction is granted a shared lock on the existence of the snapshot,
 protecting that version of the database from garbage collection.  In
 order to ensure that new snapshots are created in a timely and
-predictable fashion, the time between them should acceptably short,
+predictable fashion, the time between them should be acceptably short,
 but still slightly longer than the longest running transaction.
 
 \subsubsection{Isolation performance impact}
@@ -588,18 +671,29 @@ old versions of frequently updated data.
 
 \rows merges components by iterating over them in order, removing
 obsolete and duplicate tuples and writing the rest into a new version
-of the largest component.  In order to determine whether or not a
-tuple is obsolete, \rows compares the tuple's timestamp with any
-matching tombstones (or record creations, if the tuple is a
-tombstone), and with any tuples that match on primary key.  Upon
-encountering such candidates for deletion, \rows compares their
-timestamps with the set of locked snapshots.  If there are no
-snapshots between the tuple being examined and the updated version,
-then the tuple can be deleted.  Tombstone tuples can also be deleted once
-they reach $C2$ and any older matching tuples have been removed.
-Once \rows completes its scan over existing components (and registers
-new ones in their places), it frees the regions of pages that stored
-the components.
+of the largest component.  Because \rows provides snapshot consistency
+to queries, it must be careful not to delete a version of a tuple that
+is visible to any outstanding (or future) queries.  Because \rows
+never performs disk seeks to service writes, it handles deletions by
+inserting a special tombstone tuple into the tree.  The tombstone's
+purpose is to record the deletion event until all older versions of
+the tuple have been garbage collected.  At that point, the tombstone
+is deleted.
+
+In order to determine whether or not a tuple is obsolete, \rows
+compares the tuple's timestamp with any matching tombstones (or record
+creations, if the tuple is a tombstone), and with any tuples that
+match on primary key.  Upon encountering such candidates for deletion,
+\rows compares their timestamps with the set of locked snapshots.  If
+there are no snapshots between the tuple being examined and the
+updated version, then the tuple can be deleted.  Tombstone tuples can
+also be deleted once they reach $C2$ and any older matching tuples
+have been removed.
+
+Actual reclamation of pages is handled by the underlying transaction
+manager; once \rows completes its scan over existing components (and
+registers new ones in their places), it frees the regions of the page
+file that stored the components.
 
 \subsection{Parallelism}
 
@@ -614,23 +708,29 @@ components do not interact with the merge processes.
 Our prototype exploits replication's piplelined parallelism by running
 each component's merge process in a separate thread.  In practice,
 this allows our prototype to exploit two to three processor cores
-during replication.[XXX need experimental evidence...]  During bulk
-load, the buffer manager, which uses Linux's {\tt sync\_file\_range}
-function allows \rows to asynchronously force regions [XXX currently,
-  we do a synchronous force with sync\_file\_range....] of the page
-file to disk.  \rows has control over region size; if the system is
-CPU bound \rows can ensure that the time spent waiting for synchronous
-page writes is negligible, by choosing an appropriate region size.  On
-the other hand, if the system is disk bound, the same asynchronous
-force mechanism ensures that \rows overlaps computation with I/O. [XXX
-  this is probably too detailed; we should just say that \rows uses
-  standard techniques to overlap computation and I/O]
+during replication.  Remaining cores could be used by queries, or (as
+hardware designers increase the number of processor cores per package)
+by using data parallelism to split each merge across multiple threads.
 
-Remaining cores can be used by queries, or (as hardware designers
-increase the number of processor cores per package) by using data
-parallelism to split each merge across multiple threads.  Therefore,
-given ample storage bandwidth, we expect the throughput of \rows
-replication to increase with Moore's law for the foreseeable future.
+Finally, \rows is capable of using standard database implementations
+techniques to overlap I/O requests with computation.  Therefore, the
+I/O wait time of CPU bound workloads should be neglibile, and I/O
+bound workloads should be able to take complete advantage of the
+disk's sequenial I/O bandwidth.  Therefore, given ample storage
+bandwidth, we expect the throughput of \rows replication to increase
+with Moore's law for the foreseeable future.
+
+%[XXX need experimental evidence...]  During bulk
+%load, the buffer manager, which uses Linux's {\tt sync\_file\_range}
+%function allows \rows to asynchronously force regions [XXX currently,
+%  we do a synchronous force with sync\_file\_range....] of the page
+%file to disk.  \rows has control over region size; if the system is
+%CPU bound \rows can ensure that the time spent waiting for synchronous
+%page writes is negligible, by choosing an appropriate region size.  On
+%the other hand, if the system is disk bound, the same asynchronous
+%force mechanism ensures that \rows overlaps computation with I/O. [XXX
+% this is probably too detailed; we should just say that \rows uses
+% standard techniques to overlap computation and I/O]
 
 \subsection{Recovery}
 
@@ -676,8 +776,7 @@ assumption that pages are indexed in an order that yields easily
 compressible columns.  \rowss compression formats are based on our
 {\em multicolumn} compression format.  In order to store data from
 an $N$ column table, we divide the page into $N+1$ variable length
-regions.  $N$ of these regions each contain a compressed column in an
-existing column-based compression format[XXX cite them].  The
+regions.  $N$ of these regions each contain a compressed column.  The
 remaining region contains ``exceptional'' column data (potentially
 from more than one columns).
 
@@ -685,20 +784,57 @@ For example, a column might be encoded using the {\em frame of
   reference} (FOR) algorithm, which stores a column of integers as a
 single offset value and a list of deltas.  When a value too different
 from the offset to be encoded as a delta is encountered, an offset
-into the exceptions region is stored.  The resulting algorithm is
-called {\em patched frame of reference} (PFOR) in the literature.
+into the exceptions region is stored.  The resulting algorithm is MonetDB's
+ {\em patched frame of reference} (PFOR)~\cite{pfor}.
+
 \rowss multicolumn pages extend this idea by allowing multiple columns
 (each with its own compression algorithm) to coexist on each page.
-This section discusses the computational and storage overhead of the
-multicolumn compression approach.
+This reduces the cost of reconstructing tuples during index lookups,
+and yields a new approach to superscalar compression with a number of
+new, and potentially interesting properties.  This section discusses
+the computational and storage overhead of the multicolumn compression
+approach.
 
 \subsection{Multicolumn computational overhead}
 
 \rows builds upon compression algorithms that are amenable to
 superscalar optimization, and can achieve throughputs in excess of
 1GB/s on current hardware.  Although multicolumn support introduces
-significant overhead, \rowss variants of these approaches run within
-an order of magnitude of published speeds.
+significant overhead, \rowss variants of these approaches are slower
+than published speeds, but typically within an order of magnitude.
+Table~\ref{table:perf} compares single column page layouts with \rowss
+dynamically dispatched (not hardcoded to table format) multicolumn
+format.
+
+
+%sears@davros:~/stasis/benchmarks$ ./rose -n 10 -p 0.01
+%Compression scheme: Time trial (multiple engines)
+%Page size:          4096
+%P(bump):            0.010000
+%Random seed:        0
+%Column count:       10
+
+%WARNING: Pstar will only use the first column.
+
+%Compression scheme   #pages      ratio  comp gb/s  decom gb/s
+%Pstar        (For)      493      3.96x      0.544       2.982
+%Multicolumn  (For)     5129      3.81x      0.253       0.712
+%Pstar        (Rle)       40     48.83x      0.961       1.593
+%Multicolumn  (Rle)      416     46.95x      0.377       0.692
+
+\begin{table}
+\caption{Compressor throughput - Random data, 10 columns (80 bytes/tuple)}
+\centering
+\label{table:perf}
+\begin{tabular}{|l|c|c|c|} \hline
+Format     & Ratio & Comp. & Decomp. \\ \hline %& Throughput\\ \hline
+PFOR (one column)       &   3.96x      &    544 mb/s     &    2.982 gb/s  \\ \hline %& 133.4 MB/s \\ \hline
+PFOR (multicolumn) & 3.81x  &  253mb/s &   712 mb/s  \\ \hline %& 129.8 MB/s \\ \hline
+RLE (one column)       &   48.83x    &  961 mb/s & 1.593 gb/s \\ \hline %& 150.6 MB/s \\ \hline
+RLE (multicolumn) & 46.95x  & 377 mb/s & 692 mb/s      \\  %& 148.4 MB/s \\
+\hline\end{tabular}
+\end{table}
+
 
 Additional computational overhead is introduced in two areas.  First,
 \rows compresses each column in a separate buffer, then uses {\tt
@@ -718,7 +854,7 @@ request.
 
 \subsection{The {\tt \large append()} operation}
 
-\rowss compressed pages provide an {\tt tupleAppend()} operation that
+\rowss compressed pages provide a {\tt tupleAppend()} operation that
 takes a tuple as input, and returns {\tt false} if the page does not have
 room for the new tuple.  {\tt tupleAppend()} consists of a dispatch
 routine that calls {\tt append()} on each column in turn.  Each
@@ -733,7 +869,7 @@ where {\tt value} is the value to be appended to the column, {\tt
   exception\_offset} is a pointer to the first free byte in the
 exceptions region, {\tt exceptions\_base} and {\tt column\_base} point
 to (page sized) buffers used to store exceptions and column data as
-the page is being written to.  One copy of these buffers exist for
+the page is being written to.  One copy of these buffers exists for
 each page that \rows is actively writing to (one per disk-resident
 LSM-tree component); they do not significantly increase \rowss memory
 requirements.  Finally, {\tt freespace} is a pointer to the number of
@@ -741,10 +877,12 @@ free bytes remaining on the page.  The multicolumn format initializes
 these values when the page is allocated.
 
 As {\tt append()} implementations are called they update this data
-accordingly.  Initially, our multicolumn module
-managed these values and the exception space.  This led to
-extra arithmetic operations and conditionals and did not
-significantly simplify the code.
+accordingly.  Initially, our multicolumn module managed these values
+and the exception space.  This led to extra arithmetic operations and
+conditionals and did not significantly simplify the code.  Note that,
+compared to techniques that store each tuple contiguously on the page,
+our format avoids encoding the (variable) length of each tuple; rather
+it must encode the length of each column.
 
 % contrast with prior work
 
@@ -772,9 +910,7 @@ Such optimizations are possible in C, but, because of limitations of
 the preprocessor, would be difficult to express or require separate
 code-generation utilities.  We found that this set of optimizations
 improved compression and decompression performance by roughly an order
-of magnitude.  To illustrate this, Table~\ref{table:optimization}
-compares compressor throughput with and without compiler optimizations
-enabled.  Although compressor throughput varies with data distributions
+of magnitude.  Although compressor throughput varies with data distributions
 and type, optimizations yield a similar performance improvement across
 varied datasets and random data distributions.
 
@@ -794,19 +930,34 @@ for previously unseen table layouts.
 
 \rows uses a preexisting, conventional database buffer manager.  Each
 page contains an LSN (which is largely unused, as we bulk-load \rowss
-trees) and a page implementation number.  Pages are stored in a
+trees) and a page implementation number.  This allows it to coexist
+with conventional write ahead logging mechanisms.  As mentioned above,
+this greatly simplifies crash recovery without introducing significant
+logging overhead.
+
+Pages are stored in a
 hashtable keyed by page number, and replaced using an LRU
 strategy\footnote{LRU is a particularly poor choice, given that \rowss
   I/O is dominated by large table scans.  Eventually, we hope to add
-  support for a DBMIN[xxx cite]-style page replacement policy.}.
+  support for explicit eviciton of pages read by the merge processes.}.
 
-In implementing \rows, we made use of a number of non-standard (but
-generally useful) callbacks.  The first, {\tt pageLoaded()}
-instantiates a new multicolumn page implementation when the page is
-first read into memory.  The second, {\tt pageFlushed()} informs our
-multicolumn implementation that the page is about to be written to
-disk, and the third {\tt pageEvicted()} invokes the multicolumn
-destructor.  (XXX are these really non-standard?)
+In implementing \rows, we made use of a number of generally useful
+callbacks that are of particular interest to \rows and other database
+compression schemes.  The first, {\tt pageLoaded()} instantiates a new
+multicolumn page implementation when the page is first read into
+memory.  The second, {\tt pageFlushed()} informs our multicolumn
+implementation that the page is about to be written to disk, and the
+third {\tt pageEvicted()} invokes the multicolumn destructor.
+
+We need to register implementations for these functions because the
+transaction manager maintains background threads that may evict \rowss
+pages from memory.  Registering these callbacks provides an extra
+benefit; we only need to parse the page headers, calculate offsets,
+and choose optimized compression routines when a page is read from
+disk.  If a page is accessed many times before being evicted from the
+buffer pool, this cost is amortized over the requests.  If the page is
+only accessed a single time, the cost of header processing is dwarfed
+by the cost of disk I/O.
 
 As we mentioned above, pages are split into a number of temporary
 buffers while they are being written, and are then packed into a
@@ -890,7 +1041,7 @@ their compressed data into blocks to maximize compression ratios.
 Although \rowss smaller compressed block size benefits some
 compression implementations (and does not adversely impact either of
 the algorithms we implemented), it creates an additional constraint,
-and may interact poorly with some compression algorithms. [XXX saw paper that talks about this]
+and may interact poorly with some compression algorithms.
 
 \subsection{Supporting Random Access}
 
@@ -927,30 +1078,16 @@ linear search implementation will outperform approaches based upon
 binary search.
 
 \section{Evaluation}
-(XXX graphs go here)
-\begin{figure}
-\centering
-\epsfig{file=MySQLthroughput.pdf, width=3.33in}
-\caption{InnoDB insertion throughput (average over 100,000 tuple windows).}
-\end{figure}
-\begin{figure}
-\centering
-\epsfig{file=mysql-ms-tuple.pdf, width=3.33in}
-\caption{InnoDB tuple insertion time (average over 100,000 tuple windows).}
-\end{figure}
 
 \subsection{The data set}
 
 In order to evaluate \rowss performance, we used it to index
-information reported by weather stations worldwide.  We obtained the
-data from\footnote{XXX National Severe Storms Laboratory Historical
-  Weather Data Archives, Norman, Oklahoma, from their Web site at
-  http://data.nssl.noaa.gov}.  The data we used ranges from May 1,
-2007 to Nov 2, 2007, and contains reaidngs from ground stations around
-the world.  This data is approximately $1.3GB$ when stored in an
+weather data.  The data we used ranges from May 1,
+2007 to Nov 2, 2007, and contains readings from ground stations around
+the world~\cite{nssl}.  This data is approximately $1.3GB$ when stored in an
 uncompressed tab delimited file.  We duplicated the data by changing
 the date fields to cover ranges from 2001 to 2009, producing a 12GB
-dataset.
+ASCII dataset that contains approximately 122 million tuples.
 
 Duplicating the data should have a limited effect on \rowss
 compression ratios.  Although we index on geographic position, placing
@@ -959,7 +1096,7 @@ index on date, seperating nearly identical tuples from each other.
 
 \rows only supports integer data types.  We encode the ASCII columns
 in the data by packing each character into 5 bits (the strings only
-contain the characters A-Z, +, -, and *).  Floating point columns in
+contain the characters A-Z, ``+,'' ``-,'' and ``*'').  Floating point columns in
 the raw data set are always represented with two digits of precision;
 we multiply them by 100, yielding an integer.  The datasource uses
 nonsensical readings (such as -9999.00) to represent NULL.  Our
@@ -967,9 +1104,31 @@ prototype does not understand NULL, so we leave these fields intact.
 
 We represent each column as a 32-bit integer (even when a 16-bit value
 would do), except current weather condititons, which is packed into a
-64-bit integer.  Table~[XXX] lists the columns and compression
-algorithms we assigned to each column.
+64-bit integer.  Table~\ref{tab:schema} lists the columns and
+compression algorithms we assigned to each column.  The ``Key'' column refers
+to whether or not the field was used as part of a MySQL primary key.
+InnoDB performance tuning guides suggest limiting the length of the
+table's primary key.  \rows does not support this optimization, so we
+indexed the \rows table on all columns.
 
+\begin{table}
+\caption{Weather data schema}
+\centering
+\label{tab:schema}
+\begin{tabular}{|l|c|c|} \hline
+Column Name     & Compression Format &  Key \\ \hline
+Longitude       & RLE       & *       \\ \hline
+Latitude        & RLE       & *       \\\hline
+Timestamp       & PFOR       & *       \\\hline
+Weather conditions& RLE       &        \\\hline
+Station ID        & RLE       &        \\\hline
+Elevation        & RLE       &        \\\hline
+Temperature      & PFOR       &        \\\hline
+Wind Direction        & PFOR       &        \\\hline
+Wind Speed        & PFOR       &        \\\hline
+Wind Gust Speed   & RLE       &        \\
+\hline\end{tabular}
+\end{table}
 \rows targets seek limited applications; we assign a (single) random
 order to the tuples, and insert them in this order.  We compare \rowss
 performance with the MySQL InnoDB storage engine's bulk
@@ -988,74 +1147,342 @@ proceeds\footnote{MySQL's {\tt concurrent} keyword allows access to
   {\em existing} data during a bulk load; new data is still exposed
   atomically.}.
 
-XXX more information on mysql setup:
+We set InnoDB's buffer pool size to 1GB, MySQL's bulk insert buffer
+size to 900MB, the log buffer size to 100MB, and disabled InnoDB's
+double buffer, which sequentially writes a copy of each updated page
+to a sequential log.  The double buffer increases the amount of I/O
+performed by InnoDB, but allows it to decrease the frequency with
+which it needs to fsync() the buffer pool to disk.  Once the system
+reaches steady state, this would not save InnoDB from performing
+random I/O, but it increases I/O overhead.
 
-Discuss graphs (1) relative performance of rose and mysql (2) compression ratio / R over time (3) merge throughput?
+We compiled \rowss C components with ``-O2'', and the C++ components
+with ``-O3''.  The later compiler flag is crucial, as compiler
+inlining and other optimizations improve \rowss compression throughput
+significantly.  \rows was set to allocate $1GB$ to $C0$ and another
+$1GB$ to its buffer pool.  The later memory is essentially wasted,
+given the buffer pool's LRU page replacement policy, and \rowss
+sequential I/O patterns.
 
-\subsection{Merge throughput in practice}
+Our test hardware has two dual core 64 bit 3GHz Xeon processors with
+2MB of cache (Linux reports CPUs) and 8GB of RAM.  All software used during our tests
+was compiled for 64 bit architectures.  We used a 64-bit Ubuntu Gutsy
+(Linux ``2.6.22-14-generic'') installation, and the
+``5.0.45-Debian\_1ubuntu3'' build of MySQL.
 
-XXX what purpose does this section serve?
+\subsection{Comparison with conventional techniques}
 
-RB <-> LSM tree merges contain different code and perform different
-I/O than LSM <-> LSM mergers.  The former must perform random memory
-accesses, and performs less I/O.  They run at different speeds.  Their
-relative speeds are unpredictable.
+\begin{figure}
+\centering \epsfig{file=average-throughput.pdf, width=3.33in}
+\caption{Insertion throughput (log-log, average over entire run).}
+\label{fig:avg-thru}
+\end{figure}
+\begin{figure}
+\centering
+\epsfig{file=average-ms-tup.pdf, width=3.33in}
+\caption{Tuple insertion time (log-log, average over entire run).}
+\label{fig:avg-tup}
+\end{figure}
 
-\subsection{Choosing R}
+As Figure~\ref{fig:avg-thru} shows, on an empty tree, \rows provides
+roughly 7.5 times more throughput than InnoDB.  As the tree size
+increases, InnoDB's performance degrades rapidly.  After 35 million
+tuple insertions, we terminated the InnoDB run, as \rows was providing
+nearly 100 times more throughput.  We continued the \rows run until
+the dataset was exhausted; at this point, it was providing
+approximately $\frac{1}{10}$th its original throughput, and had a
+target $R$ value of $7.1$.  Figure~\ref{fig:avg-tup} suggests that
+InnoDB was not actually disk bound during our experiments; its
+worst-case average tuple insertion time was approximately $3.4 ms$;
+well above the drive's average access time.  Therefore, we believe
+that the operating system's page cache was insulating InnoDB from disk
+bottlenecks\footnote{In the process of running our experiments, we
+  found that while \rows correctly handles 64-bit file offsets, and
+  runs on 64-bit platforms, it crashes when given more than 2GB of
+  RAM.}.  This problem with our experimental setup should work in InnoDB's favor.
+\begin{figure}
+\centering
+\epsfig{file=instantaneous-throughput.pdf, width=3.33in}
+\caption{Instantaneous insertion throughput (average over 100,000 tuple windows).}
+\label{fig:inst-thru}
+\end{figure}
 
-The original LSM tree work eexplains how to calculate $R$ for steady
-state systems; essentially, the ratios between the sizes of adjacent
-compoents should be equal.  \rows provides two runtime heuristics for
-setting $R$.  The first follows the lead of the LSM work, and sets R
-to be the square root of the ratio of the sizes of the smallest and
-largest tree components, $\sqrt{|C2|/|C0|}$.  However, computing this
-value is complicated by two factors.  First, \rows stores data
-uncompressed in memory, while it uses compression on disk.  Second,
-the red-black tree we use has significant memory overhead.  We take
-compression into account by dividing the number of items in the tree
-by the compression ratio.  Tree overhead is taken into account when we
-bound the number of tuples in $C0$.
+%\begin{figure}
+%\centering
+%\epsfig{file=instantaneous-ms-tup.pdf, width=3.33in}
+%\caption{Instantaneous tuple insertion time (average over 100,000 tuple windows).}
+%\end{figure}
 
-The second approach to choosing tree sizes assumes that merge
-processes do not compete for resources.  Therefore, each time a merge
-process completes, it immediately requests a new batch of tuples for
-merge.  This minimizes the size of $C0$ and $C1$ when the system is
-under capacity, allowing it to gracefully handle bursts of load.
-However, by shrinking $C0$ and $C1$, it decreases the efficiency of
-$C2$'s merges.  As load increases, this creates a backlog of tuples
-for merge in $C1$ and $C0$ until the tree ratios equalize.  By
-allowing merges to continue as quickly as possible, this approach also
-takes superscalar (the two merge threads take different types of trees
-as input) and other runtime effects into account.
+\subsection{Protoype evaluation}
 
-A hybrid between this greedy strategy and explicitly trying to balance
-$R$ across tree components might yield a system that is more tolerant
-of bursty workloads without decreasing maximum sustainable throughput.
+\rows outperforms B-tree based solutions, as expected.  However, the
+prior section says little about the overall quality of our prototype
+implementation.  In this section, we measure update latency, and
+compare our implementation's performance with our simplified
+analytical model.
 
-XXX either repeat r varying experiments or cut this section.
+Figure~\ref{fig:inst-thru} reports \rowss replication throughput
+averaged over windows of 100,000 tuple insertions.  The large downward
+spikes occur periodically throughout our experimental run, though the
+figure is truncated to only show the first 10 million inserts.  They
+occur for two reasons.  First, $C0$ accepts insertions at a much
+greater rate than $C1$ or $C2$ can accept them.  Over 100,000 tuples
+fit in memory, so multiple samples are taken before each new $C0$
+component blocks on the disk bound mergers.  Second, \rows merges
+entire trees at once, causing smaller components to occasionally block
+for long periods of time while larger components complete a merge
+step.  Both of these problems could be masked by rate limiting the
+updates presented to \rows.  A better solution would perform
+incremental tree merges instead of merging entire components at once.
+
+This paper has mentioned a number of limitations in our prototype
+implementation.  Figure~\ref{fig:4R} seeks to quantify the effects of
+these limitations.  This figure uses our simplistic analytical model
+to calculate \rowss effective disk throughput utilization from \rows
+reported value of $R$ and instantaneous throughput.  According to our
+model, we should expect an ideal, uncompressed version of \rows to
+perform about twice as fast as our prototype.  During our tests, \rows
+maintains a compression ratio of two.  Therefore, our model suggests
+that the prototype is running at $\frac{1}{4}$th its ideal speed.
+
+A number of factors contribute to the discrepency between our model
+and our prototype's performance.  First, the prototype's
+whole-tree-at-a-time approach to merging forces us to make extremely
+coarse and infrequent runtime adjustments to the ratios between tree
+components.  This prevents \rows from reliably keeping the ratios near
+its current target value for $R$.  Second, \rows currently
+synchronously forces tree components to disk.  Given our large buffer
+pool, a significant fraction of each new tree component is in the
+buffer pool or operating system cache when the merge thread forces it
+to disk.  This prevents \rows from overlapping I/O with computation.
+Finally, our analytical model is slightly optimistic and neglects some
+minor sources of disk I/O.
+
+One other factor significantly limits our prototype's performance.
+Replacing $C0$ atomically doubles \rows peak memory utilization,
+halving the effective size of $C0$.  The balanced tree implementation
+that we use roughly doubles memory utilization again.  Therefore, in
+our tests, the prototype was wasting approximately $750MB$ of the
+$1GB$ we allocated for $C0$.
+
+Our performance figures show that \rows significantly outperforms a
+popular, production quality B-Tree implementation.  Our experiments
+reveal a number of performance deficiencies in our prototype
+implementation, suggesting that further implementation efforts would
+improve its performance significantly.  Finally, though our prototype
+could be improved and performs at roughly $\frac{1}{4}$th of its ideal
+throughput, our analytical models suggest that it would significantly
+outperform an ideal B-Tree implementation.
+
+
+\begin{figure}
+\centering
+\epsfig{file=4R-throughput.pdf, width=3.33in}
+\caption{The \rows prototype's effective bandwidth utilization.  Given
+  infinite CPU time and a perfect implementation, our simplified model predicts $4R * throughput = sequential~disk~bandwidth *
+  compression~ratio$.  (Our experimental setup never updates tuples in
+  place)}
+\label{fig:4R}
+\end{figure}
+
+\section{Related Work}
+
+\subsection{LSM-trees}
+
+The original LSM-tree work\cite{lsm} provides a more detailed
+analytical model than the one presented below.  It focuses on update
+intensive OLTP (TPC-A) workloads, and hardware provisioning for steady
+state conditions.  LSM-trees are particularly attractive in update
+intensive scenarios; while LSM-Tree lookups cost approximately twice
+as much a a B-Tree lookup, updates can be hundreds of times less
+expensive.  \rows is intended to replicate OLTP workloads.  In such
+scenarios, the master database can inexpensively produce the
+before-image of a tuple, avoid LSM-Tree lookups during tuple updates.
+
+Later work proposes the reuse of existing B-tree implementations as
+the underlying storage mechanism for LSM-trees\cite{cidrPartitionedBTree}.  Many
+standard B-tree operations (such as prefix compression and bulk insertion)
+would benefit LSM-tree implementations.  \rows uses a custom tree
+implementation so that it can take advantage of compression.
+Compression algorithms used in B-tree implementations must provide for
+efficient, in place updates of tree nodes.  The bulk-load update of
+\rows updates imposes fewer constraints upon our compression
+algorithms.
+
+Recent work on optimizing B-trees for write intensive updates dynamically
+relocates regions of B-trees during
+writes~\cite{bTreeHighUpdateRates}.  This reduces index fragmentation,
+but still relies upon random I/O in the worst case.  In contrast,
+LSM-trees never use disk-seeks to service write requests, and produce
+perfectly laid out B-trees.
+
+The problem of {\em Online B-tree merging} is closely related to
+optimizations of LSM-Trees' merge process.  B-Tree merging addresses
+situations where the contents of a single table index has been split
+across two physical B-Trees that now need to be reconciled.  This
+situation arises, for example, during rebalancing of partitions within
+a cluster of database machines.
+
+One particularly interesting approach lazily piggybacks merge
+operations on top of tree access requests.  Upon servicing an index
+probe or range scan, the system must read leaf node from both B-Trees.
+Rather than simply evicting the pages from cache, lazy merging merges
+the portion of the tree that has already been brought into
+memory~\cite{onlineMerging}.
+
+The original LSM-Tree paper proposes a mechanism that provides delayed
+LSM-Tree index scans with no additional I/O.  The idea is to wait for
+the merge thread to make a pass over the index, and to supply the
+pages it produces to the index scan before evicting them from the
+buffer pool.
+
+If one were to applying lazy merging to an LSM-tree, it would service
+range scans immediately without significantly increasing the amount of
+I/O performed by the system.
+
+\subsection{Row-based database compression}
+
+Row-oriented database compression techniques compress each tuple
+individually, and (in some cases) ignore similarities between adjacent
+data items.  One such approach (for low cardinality data) builds a
+table-wide mapping from short identifier codes to longer string
+values. The mapping table is stored in memory for convenient
+compression and decompression.  Other approaches include NULL
+suppression, which stores runs of NULL values as a single count, and
+leading zero suppression which stores integers in a variable length
+format that suppresses leading zeros.  Row-based schemes typically
+allow for easy decompression of individual tuples.  Therefore, they
+generally store the offset of each tuple explicitly at the head of
+each page.
+
+Another approach is to compress page data using a generic compression
+algorithm, such as gzip.  The primary drawback to this approach is
+that the size of the compressed page is not known until after
+compression.  Also, general purpose compression techniques are
+typically more processor intensive than specialized database
+compression techniques~\cite{rowImplementationPerf}.
+
+\subsection{Column-oriented database compression}
+
+Column-based compression is based on the observation that sorted
+columns of data are often easier to compress than sorted tuples.  Each
+column contains a single data type, and sorting decreases the
+cardinality and range of data stored on each page.  This increases the
+effectiveness of simple, special purpose, compression schemes.
+
+\rows makes use of two existing column compression algorithms.  The
+first, run length encoding, stores values as a list of distinct values
+and repitition counts.
+
+The other format, {\em patched frame of reference} (PFOR) was
+introduced as an extension to the MonetDB\cite{pfor} column-oriented
+database, along with two other formats (PFOR-delta, which is similar
+to PFOR, but stores values as deltas, and PDICT, which encodes columns
+as keys and a dictionary that maps to the original values) that we
+plan to add to \rows in the future.  \rowss novel {\em multicolumn}
+page format is a generalization of these formats.  We chose these
+formats as a starting point because they are amenable to superscalar
+optimization, and compression is \rowss primary CPU bottleneck.  Like
+MonetDB, each \rows table is supported by custom-generated code.
+
+C-Store, another column oriented database, has relational operators
+that have been optimized to work directly on compressed
+data\cite{compExec}.  For example, when joining two run length encoded
+columns, it is unnecessary to explicitly represent each row during the
+join.  This optimization would be particularly useful in \rows, as its
+merge processes perform repeated joins over compressed data.  Our
+prototype does not make use of these optimizations, though they would
+likely improve performance for CPU-bound workloads.
+
+A recent paper that provides a survey of database compression
+techniques and characterizes the interaction between compression
+algorithms, processing power and memory bus bandwidth.  To the extent
+that multiple columns from the same tuple are stored within the same
+page, all formats within their classification scheme group information
+from the same tuple together~\cite{bitsForChronos}.
+
+\rows, which does not split tuples across pages, takes a different
+approach, and stores each column seperately within a page.  Our column
+oriented page layouts incur different types of per-page overhead, and
+have fundamentally different processor
+cache behaviors and instruction-level parallelism properties than the
+schemes they consider.
+
+In addition to supporting compression, column databases typically
+optimize for queries that project away columns during processing.
+They do this by precomputing the projection and potentially resorting
+and recompressing the data.  This reduces the amount of data on the
+disk and the amount of I/O performed by the query.  In a
+column store, such optimizations happen off-line, leading to
+high-latency inserts.  \rows can support such optimizations by
+producing multiple LSM-trees for a single table.
+
+Unlike read-optimized column-oriented databases, \rows is optimized
+for write throughput, and provides low-latency, in-place updates.
+This property does not come without cost; compared to a column
+store, \rows must merge replicated data more often, achieves lower
+compression ratios, and performs index lookups that are roughly twice
+as expensive as a B-Tree lookup.
+
+\subsection{Snapshot consistency}
+
+\rows relies upon the correctness of the master database's concurrency
+control algorithms to provide snapshot consistency to queries.  \rows
+is compatible with the two most popular approaches to concurrency
+control in OLTP environments: two-phase locking and timestamps
+(multiversion concurrency control).
+
+\rows only processes read-only transactions.  Therefore, its
+concurrency control algorithms need only address read-write conflicts.
+Well-understood techniques protect against read-write conflicts
+without causing requests to block, deadlock or
+livelock~\cite{concurrencyControl}.
+
+\subsection{Log shipping}
+
+Log shipping mechanisms are largely outside the scope of this paper;
+any protocol that provides \rows replicas with up-to-date, intact
+copies of the replication log will do.  Depending on the desired level
+of durability, a commit protocol could be used to ensure that the
+\rows replica recieves updates before the master commits.  Because
+\rows is already bound by sequential I/O throughput, and because the
+replication log might not be appropriate for database recovery, large
+deployments would probably opt to store recovery and logs on machines
+that are not used for repliaction.
+
+Large body of work on replication techniques and topologies.  Largely
+orthogonal to \rows.  We place two restrictions on the master.  First,
+it must ship writes (before and after images) for each update, not
+queries, as some DB's do.  \rows must be given, or be able to infer
+the order in which each transaction's data should be committed to the
+database, and such an order must exist.  If there is no such order,
+and the offending transactions are from different, \rows will commit
+their writes to the database in a different order than the master.
+
+
 
 \section{Conclusion}
 
 Compressed LSM trees are practical on modern hardware.  As CPU
-resources increase XXX ... Our implementation is a first cut at a
-working system; we have mentioned a number of implementation
-limitations throughput this paper.  In particular, while superscalar
-compression algorithms provide significant benefits to \rows, their
-real world performance (whether reading data from a parser, or working
-within a \rows merge) is significantly lower than their performance in
-isolation.  On the input end of things, this is primarily due to the
-expense of parsing, random memory I/O and moving uncompressed data
-over the bus.  Merge processes suffer from none of these limitations,
-but are CPU bound due to the cost of decompressing, comparing, and
-recompressing each tuple.  Existing work to perform relational
-operations (particularly join) on compressed representations of data
-may improve the situation.  In particular, it might be possible to
-adapt column-oriented optimizations to \rowss multicolumn page layout.
+resources increase, increasingly sophisticated compression schemes
+will become practical.  Improved compression ratios improve \rowss
+throughput by decreasing its sequential I/O requirements.
 
-[real conclusion here; the prior paragraph is future work]
+Our implementation is a first cut at a working version of \rows; we
+have mentioned a number of potential improvements throughout this
+paper.  Even without these changes, LSM-Trees outperform B-Tree based
+indices by many orders of magnitude.  With real-world database
+compression ratios ranging from 5-20x, we expect \rows to improve upon
+LSM-trees by an additional factor of ten.
 
-
-XXX\cite{bowman:reasoning}
+We implemented \rows to address scalability issues faced by large
+scale database installations.  \rows addresses large scale
+applications that perform real time analytical and decision support
+queries over extremely large, frequently updated data sets.  We know
+of no other database technologies capable of addressing this class of
+application.  As automated financial transactions, and other real-time
+data acquisition applications are deployed, applications with these
+requirements are becoming increasingly common.
 
 \bibliographystyle{abbrv}
 \bibliography{rose}  % sigproc.bib is the name of the Bibliography in this case
