@@ -9,7 +9,7 @@
 // unsigned long crc = -1L
 // crc = crc32(buffer, length, crc)
 
-unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc);
+unsigned int stasis_crc32(const void *buffer, unsigned int count, unsigned int crc);
 static int BuildCRCTable(void);
 
 static unsigned int CRCTable[256];	// Table constructed for fast lookup.
@@ -36,7 +36,7 @@ static int BuildCRCTable(void)
 	return 0;
 }
 /* changed long to int, void to const void - rusty. */
-unsigned int crc32(const void *buffer, unsigned int count, unsigned int crc)
+unsigned int stasis_crc32(const void *buffer, unsigned int count, unsigned int crc)
 {
 	unsigned int temp1, temp2;
 	static int firsttime = 1;

@@ -51,7 +51,7 @@ unsigned int hash(const void * val, long val_length,
 		  unsigned char tableBits, unsigned int nextExtension) {
   // Calculate the hash value as it was before this round of splitting.
   unsigned int oldTableLength = twoToThe(tableBits - 1);
-  unsigned int unmixed = crc32(val, val_length, (unsigned int)-1);
+  unsigned int unmixed = stasis_crc32(val, val_length, (unsigned int)-1);
   unsigned int ret = unmixed & (oldTableLength - 1); 
 
   // If the hash value is before the point in this round where we've split,

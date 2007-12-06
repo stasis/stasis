@@ -61,7 +61,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
 
     if(myFifo == -1) {
       if(useCRC) {
-	myFifo = crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned int)-1) % pool->fifoCount;
+	myFifo = stasis_crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned int)-1) % pool->fifoCount;
       } else { 
 	myFifo = rid->page % pool->fifoCount;
       }
@@ -87,7 +87,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
 	nextRid = dereferenceArrayListRid(xid, p, nextRid.slot); 
 	releasePage(p);
 
-	int thisFifo = crc32((byte*)&(nextRid.page), sizeof(nextRid.page), (unsigned int)-1) % pool->fifoCount;
+	int thisFifo = stasis_crc32((byte*)&(nextRid.page), sizeof(nextRid.page), (unsigned int)-1) % pool->fifoCount;
 	/*	if(nextRid.page == rid->page) {
 	  assert(thisFifo == myFifo);
 	  }*/

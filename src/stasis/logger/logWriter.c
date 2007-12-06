@@ -143,7 +143,7 @@ static unsigned int log_crc;
 #define BUFSIZE (1024 * 1024)
 
 static inline void update_log_crc(const LogEntry * le, unsigned int * crc) { 
-  *crc = crc32(le, sizeofLogEntry(le), *crc);
+  *crc = stasis_crc32(le, sizeofLogEntry(le), *crc);
 }
 
 static LogEntry * readLogEntry();
