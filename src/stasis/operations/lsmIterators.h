@@ -484,10 +484,12 @@ template <class ITERA, class ITERB, class ROW>
    return toByteArray(&t->a_);
  }
 
+#ifdef DEFINED_VAL_T
 template <class PAGELAYOUT>
-inline const byte* toByteArray(treeIterator<int,PAGELAYOUT> *const t) {
+inline const byte* toByteArray(treeIterator<val_t,PAGELAYOUT> *const t) {
   return (const byte*)&(**t);
 }
+#endif
 template <class PAGELAYOUT,class ROW>
 inline const byte* toByteArray(treeIterator<ROW,PAGELAYOUT> *const t) {
   return (**t).toByteArray();

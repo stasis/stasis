@@ -15,7 +15,7 @@ namespace rose {
    cast from a TYPE to a byte *.  These were written to make it easier
    to write templates that work with different types of iterators.
 */
-inline const byte * toByteArray(int const *const *const i) {
+inline const byte * toByteArray(val_t const *const *const i) {
   return (const byte*)*i;
 }
 inline const byte * toByteArray(Tuple<val_t>::iterator * const t) {
@@ -25,7 +25,7 @@ inline const byte * toByteArray(Tuple<val_t>::iterator * const t) {
 template<class PAGELAYOUT,class ENGINE,class ITER,class ROW>
 struct insert_args {
   int comparator_idx;
-  int rowsize;typedef int32_t val_t;
+  int rowsize;
   ITER *begin;
   ITER *end;
   pageid_t(*pageAlloc)(int,void*);
