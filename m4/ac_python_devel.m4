@@ -251,9 +251,11 @@ $ac_distutils_result])
   via the LDFLAGS environment variable.
   Example: ./configure LDFLAGS="-L/usr/non-standard-path/python/lib"
   ============================================================================
-   ERROR!
    You probably have to install the development version of the Python package
    for your distribution.  The exact name of this package varies among them.
+
+   For example, in Debian and Ubuntu, you would install the python-dev package
+
   ============================================================================
 	   ])
 	  PYTHON_VERSION=""
