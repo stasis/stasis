@@ -467,7 +467,7 @@ stasis_handle_t *stasis_handle(open_pfile)(lsn_t start_offset,
   }
   impl->end_pos = file_len + start_offset;
   DEBUG("file len = %lld, start_off = %lld, end = %lld\n",
-        file_len, start_offset, impl->end_pos);
+        (long long) file_len, start_offset, impl->end_pos);
 
   impl->filename = strdup(filename);
   impl->file_flags = flags;

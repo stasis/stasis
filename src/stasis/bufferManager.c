@@ -498,7 +498,7 @@ Page * (*loadPageImpl)(int xid, int pageid) = 0;
 void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
-void (*forcePageRange)() = 0;
+void (*forcePageRange)(pageid_t start, pageid_t stop) = 0;
 void   (*bufDeinit)()  = 0;
 void   (*simulateBufferManagerCrash)()  = 0;
 

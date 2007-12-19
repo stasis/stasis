@@ -267,8 +267,8 @@ static void bhWriteBackPage(Page * p) {
 static void bhForcePages() { 
   forcePageFile(); 
 }
-static void bhForcePageRange() {
-  forceRangePageFile();
+static void bhForcePageRange(pageid_t start, pageid_t stop) {
+  forceRangePageFile(start, stop);
 }
 static void bhBufDeinit() { 
   running = 0;
