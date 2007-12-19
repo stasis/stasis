@@ -51,7 +51,7 @@ my $automake_base = `which automake` || die `aclocal not found!`;
 chomp $aclocal_base;
 chomp $automake_base;
 
-my @good_versions = qw(1.9 1.8 1.7 1.6);
+my @good_versions = qw(1.10 1.9 1.8 1.7 1.6);
 
 foreach my $i (@ARGV) { 
     if ($i eq "-h" || $i eq "--help") { 
