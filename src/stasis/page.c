@@ -214,7 +214,7 @@ const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
       abort();
     }
   }
-  return page_impls[page_type].recordRead(xid, p, rid);
+ return page_impls[page_type].recordRead(xid, p, rid);
 }
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
   int page_type = *stasis_page_type_ptr(p);
@@ -226,6 +226,7 @@ byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
       abort();
     }
   }
+  assert(stasis_record_length_read(xid, p, rid) ==  stasis_record_type_to_size(rid.size));
   return page_impls[page_type].recordWrite(xid, p, rid);
 }
 void stasis_record_read_done(int xid, Page *p, recordid rid, const byte *b) {
@@ -241,8 +242,10 @@ void stasis_record_write_done(int xid, Page *p, recordid rid, byte *b) {
   }
 }
 int stasis_record_type_read(int xid, Page *p, recordid rid) {
-  return page_impls[*stasis_page_type_ptr(p)]
-    .recordGetType(xid, p, rid);
+  if(page_impls[*stasis_page_type_ptr(p)].recordGetType) 
+    return page_impls[*stasis_page_type_ptr(p)].recordGetType(xid, p, rid);
+  else
+    return INVALID_SLOT;
 }
 void stasis_record_type_write(int xid, Page *p, recordid rid, int type) {
   page_impls[*stasis_page_type_ptr(p)]
