@@ -107,6 +107,7 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 
   Page p;
   byte buffer[PAGE_SIZE];
+  memset(buffer,0,PAGE_SIZE);
   p.memAddr = buffer;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
