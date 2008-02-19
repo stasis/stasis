@@ -78,7 +78,7 @@ void bufferPoolInit() {
   assert(!ret);
   addressFromMalloc = bufferSpace;
   #else*/
-  bufferSpace = malloc(PAGE_SIZE * (MAX_BUFFER_SIZE + 2));
+  bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
   assert(bufferSpace);
   addressFromMalloc = bufferSpace;
   bufferSpace = (byte*)(((long)bufferSpace) + 
@@ -90,6 +90,7 @@ void bufferPoolInit() {
     pool[i].rwlatch = initlock();
     pool[i].loadlatch = initlock();
     pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
+    pool[i].dirty = 0;
   }
 }
 
