@@ -239,6 +239,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define USER_DEFINED_PAGE(n) (100+n)  // 0 <= n < 155
 #define MAX_PAGE_TYPE       255
 
+#define REGION_FIRST_TAG   0
 #define TALLOC_REGION_SIZE 100  // Pages
 
 #define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)

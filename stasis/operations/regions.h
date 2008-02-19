@@ -32,6 +32,9 @@ unsigned int TregionSize(int xid, unsigned int firstPage);
 /** Currently, this function is O(n) in the number of regions, so be careful! */
 void TregionFindNthActive(int xid, unsigned int n, unsigned int * firstPage, unsigned int * size);
 
+int TregionNextBoundaryTag(int xid, pageid_t*pid, boundary_tag *tag, int allocationManager);
+int TregionReadBoundaryTag(int xid, pageid_t pid, boundary_tag *tag);
+
 Operation getAllocBoundaryTag();
 
 Operation getAllocRegion();
