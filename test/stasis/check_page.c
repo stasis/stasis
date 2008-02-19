@@ -109,8 +109,9 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
         rid[k] = stasis_record_alloc_begin(-1,p,sizeof(short));
       }
       stasis_record_alloc_done(-1,p,rid[k]);
-      int * buf = (int*)stasis_record_write_begin(-1,p,rid[k]);
+      short * buf = (short*)stasis_record_write_begin(-1,p,rid[k]);
       *buf = i+k;
+      stasis_record_write_done(-1,p,rid[k],(byte*)buf);
       stasis_page_lsn_write(-1, p, this_lsn);
       assert(stasis_page_lsn_read(p) >= this_lsn);
       unlock(p->rwlatch);
@@ -127,7 +128,6 @@ static void* fixed_worker_thread(void * arg_ptr) {
   Page * p = (Page*)arg_ptr;
   int i;
   lsn_t this_lsn;
-  int j;
   int first = 1;
   recordid rid;
 
@@ -139,13 +139,16 @@ static void* fixed_worker_thread(void * arg_ptr) {
 
     writelock(p->rwlatch,0);
     if(! first ) {
-      j = *(int*)stasis_record_read_begin(-1,p,rid);
-      assert((j + 1) ==  i);
+      int * buf = (int*)stasis_record_read_begin(-1,p,rid);
+      assert(((*buf) + 1) ==  i);
+      stasis_record_read_done(-1,p,rid,(byte*)buf);
     }
     first = 0;
     rid = stasis_record_alloc_begin(-1, p, sizeof(int));
     stasis_record_alloc_done(-1, p, rid);
-    (*(int*)stasis_record_write_begin(-1,p,rid)) = i;
+    int * buf = (int*)stasis_record_write_begin(-1,p,rid);
+    *buf = i;
+    stasis_record_write_done(-1,p,rid,(byte*)buf);
     stasis_page_lsn_write(-1, p,lsn);
     assert(stasis_page_lsn_read(p) >= this_lsn);
     unlock(p->rwlatch);
@@ -191,6 +194,7 @@ static void* worker_thread(void * arg_ptr) {
       int * buf = (int*)stasis_record_write_begin(-1, p, rid);
       stasis_page_lsn_write(-1,p,this_lsn);
       *buf = i;
+      stasis_record_write_done(-1,p,rid,(byte*)buf);
       assert(stasis_page_lsn_read(p) >= this_lsn);
     }
     unlock(p->rwlatch);
@@ -220,6 +224,7 @@ START_TEST(pageNoThreadTest)
   Tinit();
   p = loadPage(-1, 0);
   writelock(p->rwlatch,0);
+  memset(p->memAddr, 0, PAGE_SIZE);
   stasis_slotted_initialize_page(p);
   unlock(p->rwlatch);
   worker_thread(p);
@@ -342,6 +347,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
 
   Page * p = loadPage(xid,pid);
   writelock(p->rwlatch,0);
+  memset(p->memAddr, 0, PAGE_SIZE);
   stasis_slotted_initialize_page(p);
 
   checkPageIterators(xid,p,10);
@@ -352,6 +358,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
 
   p = loadPage(xid,pid);
   writelock(p->rwlatch,0);
+  memset(p->memAddr, 0, PAGE_SIZE);
   stasis_fixed_initialize_page(p,sizeof(int64_t),0);
 
   checkPageIterators(xid,p,10);
@@ -378,6 +385,7 @@ START_TEST(pageNoThreadMultPageTest)
   Tinit();
 
   p = loadPage(-1, 1);
+  memset(p->memAddr, 0, PAGE_SIZE);
   p->LSN = 0;
   *stasis_page_lsn_ptr(p) = p->LSN;
 
@@ -421,6 +429,7 @@ START_TEST(pageThreadTest) {
 
   Page * p = loadPage(-1, 2);
   writelock(p->rwlatch,0);
+  memset(p->memAddr, 0, PAGE_SIZE);
   stasis_slotted_initialize_page(p);
   unlock(p->rwlatch);
   p->LSN = 0;
@@ -461,6 +470,7 @@ START_TEST(fixedPageThreadTest) {
   Tinit();
   Page * p = loadPage(-1, 2);
   writelock(p->rwlatch,0);
+  memset(p->memAddr, 0, PAGE_SIZE);
   stasis_fixed_initialize_page(p, sizeof(int), 0);
   unlock(p->rwlatch);
   p->LSN = 0;
