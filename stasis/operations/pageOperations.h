@@ -60,11 +60,6 @@ terms specified in this license.
 #ifndef __PAGE_OPERATIONS_H__
 #define __PAGE_OPERATIONS_H__
 
-/** If defined, then pageOperations.h will reuse freed pages.
-    Unfortunately, the current support is not safe for programs with
-    multiple concurrent transactions. */
-/*#define REUSE_PAGES */
-
 compensated_function int TpageAlloc(int xid/*, int type*/);
 compensated_function recordid TfixedPageAlloc(int xid, int size);
 compensated_function int TpageAllocMany(int xid, int count/*, int type*/);
