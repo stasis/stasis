@@ -171,7 +171,7 @@ terms specified in this license.
 
 /* Storage managers */
 #define STORAGE_MANAGER_TALLOC 1
-#define STORAGE_MANAGER_NAIVE_PAGE_ALLOC  1
+#define STORAGE_MANAGER_NAIVE_PAGE_ALLOC  2
 
 /* number above should be less than number below */
 #define MAX_OPERATIONS 80
@@ -239,7 +239,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define USER_DEFINED_PAGE(n) (100+n)  // 0 <= n < 155
 #define MAX_PAGE_TYPE       255
 
-#define REGION_FIRST_TAG   0
+#define REGION_FIRST_TAG   1
 #define TALLOC_REGION_SIZE 100  // Pages
 
 #define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
