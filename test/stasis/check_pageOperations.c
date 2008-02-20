@@ -130,9 +130,7 @@ START_TEST(pageOpCheckRecovery) {
 */
 
 START_TEST(pageOpCheckAllocDealloc) {
-
-#ifdef REUSE_PAGES
-
+  /*
   Tinit();
 
   int xid = Tbegin();
@@ -173,12 +171,8 @@ START_TEST(pageOpCheckAllocDealloc) {
   Tcommit(xid);
 
   Tdeinit();
-
-#else
-
-  printf(" Skipping 1 check for page leaks since page reuse is diabled.\n");
-
-#endif
+  */
+  //  printf(" Skipping 1 check for page leaks since page reuse is diabled.\n");
 
 } END_TEST
 
