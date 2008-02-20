@@ -244,8 +244,6 @@ int openLogWriter() {
   const LogEntry * le;
   
   nextAvailableLSN =  sizeof(lsn_t) + global_offset;
-  flushedLSN_stable = nextAvailableLSN;
-  flushedLSN_internal = nextAvailableLSN;
 
   unsigned int crc = 0;
   
@@ -287,6 +285,8 @@ int openLogWriter() {
   // Reset log_crc to zero (nextAvailableLSN immediately follows a crc
   // entry).
 
+  flushedLSN_stable = nextAvailableLSN;
+  flushedLSN_internal = nextAvailableLSN;
   log_crc = 0;
 
   return 0;
@@ -391,11 +391,11 @@ static void syncLogInternal() {
 
   pthread_mutex_lock(&nextAvailableLSN_mutex);
   newFlushedLSN = nextAvailableLSN;
-  pthread_mutex_unlock(&nextAvailableLSN_mutex);
-
-  fflush(log);
-
-  writelock(flushedLSN_lock, 0);
+  if(newFlushedLSN > flushedLSN_internal) {
+    pthread_mutex_unlock(&nextAvailableLSN_mutex);
+    fflush(log);
+    writelock(flushedLSN_lock, 0);
+  }
   if(newFlushedLSN > flushedLSN_internal) {
     flushedLSN_internal = newFlushedLSN;
   }
@@ -493,12 +493,11 @@ static LogEntry * readLogEntry() {
       return (LogEntry*)LLADD_IO_ERROR;
     } else { 
       lsn_t newSize = size - bytesRead;
-      lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
+      lsn_t newBytesRead = read (roLogFD, ((byte*)&size)+bytesRead, newSize);
 
       fprintf(stdout, "Trying to piece together short read.\n"); fflush(stderr);
 
       if(newBytesRead == 0) { 
-	abort();
 	return NULL;
       }
       fprintf(stderr, "short read from log.  Expected %lld bytes, got %lld.\nFIXME: This is 'normal', but currently not handled", (long long) sizeof(lsn_t), (long long) bytesRead);
@@ -521,8 +520,8 @@ static LogEntry * readLogEntry() {
     if(bytesRead == 0) {
       fprintf(stderr, "eof reading entry\n");
       fflush(stderr);
-      abort();
-      //      return(NULL);
+      free(ret);
+      return(NULL);
     } else if(bytesRead == -1) {
       perror("error reading log");
       abort();
@@ -531,12 +530,12 @@ static LogEntry * readLogEntry() {
       lsn_t newSize = size - bytesRead;
       lsn_t newBytesRead = read (roLogFD, ((byte*)ret)+bytesRead, newSize);
 
-      fprintf(stdout, "Trying to piece together short log entry.\n"); fflush(stderr);
-
-      if(newBytesRead == 0) { 
-	abort();
+      if(newBytesRead == 0) {
+	free(ret);
 	return NULL;
       }
+
+      fprintf(stdout, "Trying to piece together short log entry.\n"); fflush(stderr);
 
       fprintf(stderr, "short read from log w/ lsn %lld.  Expected %lld bytes, got %lld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
       fflush(stderr);
@@ -548,8 +547,8 @@ static LogEntry * readLogEntry() {
     } 
   }
 
-  entrySize = sizeofLogEntry(ret);
-  assert(size == entrySize);
+  //  entrySize = sizeofLogEntry(ret);
+  //  assert(size == entrySize);
 
   return ret;
 }
