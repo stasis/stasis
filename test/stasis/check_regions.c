@@ -65,13 +65,13 @@ START_TEST(regions_smokeTest) {
   int xid = Tbegin();
 
   int max_page = 0;
-  int page = TregionAlloc(xid, 100, 1);
+  int page = TregionAlloc(xid, 100, 0);
   int new_page = page;
   if(new_page + 1 + 100 > max_page) { 
     max_page = new_page + 1 + 100;
   }
 
-  new_page = TregionAlloc(xid, 1, 1);
+  new_page = TregionAlloc(xid, 1, 0);
   if(new_page + 2 > max_page) { 
     max_page = new_page + 2;
   }
@@ -80,7 +80,7 @@ START_TEST(regions_smokeTest) {
   unsigned int pages[50];
 
   for(int i = 0; i < 50; i++) { 
-    new_page = TregionAlloc(xid, 1, 1);
+    new_page = TregionAlloc(xid, 1, 0);
     pages[i] = new_page;
     if(new_page + 2 > max_page) { 
       max_page = new_page + 2;
@@ -95,7 +95,7 @@ START_TEST(regions_smokeTest) {
 
   xid = Tbegin();
   for(int i = 0; i < 50; i+=2) { 
-    new_page = TregionAlloc(xid, 1, 1);
+    new_page = TregionAlloc(xid, 1, 0);
     if(new_page + 2 > max_page) { 
       max_page = new_page + 2;
     }
@@ -103,7 +103,7 @@ START_TEST(regions_smokeTest) {
   Tabort(xid);
   xid = Tbegin();
   for(int i = 0; i < 50; i+=2) { 
-    new_page = TregionAlloc(xid, 1, 1);
+    new_page = TregionAlloc(xid, 1, 0);
     if(new_page + 2 > max_page) { 
       max_page = new_page + 2;
     }
@@ -143,7 +143,7 @@ START_TEST(regions_randomizedTest) {
 
     if(myrandom(2)) { 
       unsigned int size = myrandom(100);
-      TregionAlloc(xid, size, 1);
+      TregionAlloc(xid, size, 0);
       pagesAlloced += size;
       regionsAlloced ++;
     } else {
@@ -211,7 +211,7 @@ START_TEST(regions_randomizedTest) {
 START_TEST(regions_lockSmokeTest) {
   Tinit();
   int xid = Tbegin();
-  int pageid = TregionAlloc(xid, 100,1);
+  int pageid = TregionAlloc(xid, 100,0);
   fsckRegions(xid);
   Tcommit(xid);
   
@@ -222,7 +222,7 @@ START_TEST(regions_lockSmokeTest) {
   TregionDealloc(xid, pageid);
   
   for(int i = 0; i < 50; i++) {
-    TregionAlloc(xid2, 1, 1);
+    TregionAlloc(xid2, 1, 0);
   }
 
   fsckRegions(xid);
@@ -283,7 +283,7 @@ START_TEST(regions_lockRandomizedTest) {
 
     if(myrandom(2)) {
       // alloc
-      xidRegions[xids[j]][xidRegionCounts[xids[j]]] = TregionAlloc(xids[j], myrandom(100), 1);
+      xidRegions[xids[j]][xidRegionCounts[xids[j]]] = TregionAlloc(xids[j], myrandom(100), 0);
 	xidRegionCounts[xids[j]]++;
     } else {
       // free
@@ -319,8 +319,8 @@ START_TEST(regions_recoveryTest) {
   int xid1 = Tbegin();
   int xid2 = Tbegin();
   for(int i = 0; i < 50; i+=2) { 
-    pages[i] = TregionAlloc(xid1, myrandom(4)+1, 1);
-    pages[i+1] = TregionAlloc(xid2, myrandom(2)+1, 1);
+    pages[i] = TregionAlloc(xid1, myrandom(4)+1, 0);
+    pages[i+1] = TregionAlloc(xid2, myrandom(2)+1, 0);
   }
   
   fsckRegions(xid1);
