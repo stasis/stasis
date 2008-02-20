@@ -105,7 +105,7 @@ int TregionReadBoundaryTag(int xid, pageid_t page, boundary_tag* tag) {
   pthread_mutex_lock(&region_mutex);
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
-  int ret = readBoundaryTag(xid,page,tag);
+  int ret = readBoundaryTag(xid,page-1,tag);
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
   return ret;
@@ -173,16 +173,17 @@ int TregionNextBoundaryTag(int xid, pageid_t* pid, boundary_tag * tag, int type)
   holding_mutex = pthread_self();
 
 
-  int ret = readBoundaryTag(xid, *pid, tag);
+  int ret = readBoundaryTag(xid, *pid-1, tag);
   if(ret) { 
     while(1) {
       if(tag->size == UINT32_MAX) {
 	ret = 0;
 	break;
       }
-      *pid += tag->size;
-      ret = readBoundaryTag(xid,*pid, tag);
-      assert(ret); // detected boundary tag corruption.
+      *pid += tag->size+1;
+      int succ = readBoundaryTag(xid,*pid-1, tag);
+      assert(succ); // detect missing boundary tags
+      DEBUG("tag status = %d\n",tag->status);
       if(tag->status == REGION_ZONED && ((!type) || (tag->allocation_manager == type))) {
 	break;
       }
