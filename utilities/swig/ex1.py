@@ -18,7 +18,7 @@ def runit(argv):
   record_id = stasis.Talloc(xid, 4);
 
   print "update"
-  write_data = array.array('l', (42,))
+  write_data = array.array('i', (42,))
   data_out = write_data.tostring()
   assert len(data_out) == 4
 
@@ -32,7 +32,7 @@ def runit(argv):
   # Read from Stasis into memory for data_in
   data_in = '1234'
   stasis.TreadStr(xid, record_id, data_in)
-  read_data = array.array('l', data_in)
+  read_data = array.array('i', data_in)
   assert read_data[0] == 42
 
   print "done"
