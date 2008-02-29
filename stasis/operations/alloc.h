@@ -21,6 +21,7 @@ void allocTransactionAbort(int xid);
 void allocTransactionCommit(int xid);
 
 void TallocInit();
+void TallocPostInit();
 void TallocDeinit();
 /** 
     Allocate a record.  

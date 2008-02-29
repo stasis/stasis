@@ -29,6 +29,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stasis/allocationPolicy.h>
 #include <stasis/lhtable.h>
 #include <stasis/redblack.h>
@@ -81,7 +82,7 @@ static int cmpFreespace(const void * ap, const void * bp, const void * param) {
 }
 
 inline static availablePage* getAvailablePage(allocationPolicy * ap, int pageid) {
-  return  (availablePage*) LH_ENTRY(find)(ap->allPages, &pageid, sizeof(int));
+  return  (availablePage*) LH_ENTRY(find)(ap->allPages, &pageid, sizeof(pageid));
 }
 
 inline static void insert_xidAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
@@ -96,6 +97,7 @@ inline static void insert_xidAlloced(allocationPolicy * ap, int xid, availablePa
 }
 
 inline static void remove_xidAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
+  assert(p->lockCount);
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   assert(pages);
   const availablePage * check = RB_ENTRY(delete)(p, pages);
@@ -150,14 +152,16 @@ inline static void     lockAlloced(allocationPolicy * ap, int xid, availablePage
 inline static void   unlockAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
   remove_xidAlloced(ap, xid, p);
 
-  assert(p->lockCount == 1);
-  p->lockCount = 0;
-
-  const availablePage * check = RB_ENTRY(search)(p, ap->availablePages);
-  assert(check == p);
+  p->lockCount--;
+  //  assert(p->lockCount == 1);
+  //  p->lockCount = 0;
+  if(!p->lockCount) {
+    const availablePage * check = RB_ENTRY(search)(p, ap->availablePages);
+    assert(check == p);
+  }
   int * xidp = LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
-  assert(*xidp == xid);
-  free(xidp);
+  //assert(*xidp == xid);
+  if(xidp) { free(xidp); }
 
 }
 
@@ -202,12 +206,14 @@ inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage *
 }
 
 inline static void unlockDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
-  assert(p->lockCount);
+  assert(p->lockCount > 0);
   p->lockCount--;
-  assert(p->lockCount >= 0);
+
   remove_xidDealloced(ap, xid, p);
   if(!p->lockCount) { 
     // put it back into available pages.
+    LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid)); // XXX new feb-29
+
     const availablePage * check = RB_ENTRY(search)(p, ap->availablePages);
     assert(check == p);
   }
@@ -286,10 +292,10 @@ availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int fre
     // No; get a page from the availablePages. 
 
     ret = RB_ENTRY(lookup)(RB_LUGREAT, &tmp, ap->availablePages);
-    if(ret) {
+    /*if(ret) {
       assert(ret->lockCount == 0);
       lockAlloced(ap, xid, (availablePage*) ret);
-    }
+      } */
   }
 
   // Done.  (If ret is null, then it's the caller's problem.)
@@ -300,11 +306,20 @@ void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, int pageid) 
   availablePage * p = getAvailablePage(ap, pageid);
   const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
   int * xidp = LH_ENTRY(find)(ap->pageOwners, &(pageid), sizeof(pageid));
-  assert(xidp || check1);
+  if(!(xidp || check1)) {
+    // the page is not available, and is not owned.
+    // this can happen if more than one transaction deallocs from the same page
+    assert(p->lockCount);
+    printf("Two transactions concurrently dealloced from page; now a "
+	   "transaction has alloced from it.  This leads to unrecoverable "
+	   "schedules.  Refusing to continue.");
+    fflush(stdout);
+    abort();
+  }
   if(check1) {
     assert(p->lockCount == 0);
     lockAlloced(ap, xid, (availablePage*)p);
-  }
+  } 
 }
 
 void allocationPolicyLockPage(allocationPolicy *ap, int xid, int pageid) { 
@@ -350,6 +365,7 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
 
 void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availablePage * key, int newFree) {
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, ap->availablePages);
+  assert(key == p);
   p->freespace = newFree;
   const availablePage * ret = RB_ENTRY(search)(p, ap->availablePages);
   assert(ret == p);
@@ -357,6 +373,7 @@ void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availabl
 
 void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, availablePage * key, int newFree) {
   struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(int));
+  assert(key);
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, locks);
   assert(p);
   p->freespace = newFree;

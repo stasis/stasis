@@ -210,7 +210,7 @@ static void takeRandomAction(allocationPolicy * ap, int * xids,
     if(p && p->lockCount == 0) {
       int thenewfreespace = p->freespace+thespacediff;
       allocationPolicyUpdateFreespaceUnlockedPage(ap, p, thenewfreespace);
-      printf("updated freespace unlocked");
+      //      printf("updated freespace unlocked");
     }
   } break;
   case 3 : {   // update freespace locked
@@ -295,7 +295,7 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
-  tcase_add_test(tc, allocationPolicy_smokeTest);
+  //  tcase_add_test(tc, allocationPolicy_smokeTest);
   tcase_add_test(tc, allocationPolicy_randomTest);
 
   /* --------------------------------------------- */

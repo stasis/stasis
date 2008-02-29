@@ -284,6 +284,7 @@ void InitiateRecovery() {
   DEBUG("Redo started\n");
   Redo();
   DEBUG("Undo started\n");
+  TallocPostInit();
   Undo(1);
   DEBUG("Recovery complete.\n");
 
