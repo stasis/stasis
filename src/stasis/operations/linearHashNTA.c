@@ -391,6 +391,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
 	free(key);
 	free(value);
       }
+      TlinkedListClose(xid, it);
     }
   } end;
 
