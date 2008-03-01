@@ -15,6 +15,7 @@ compensated_function recordid TpagedListAlloc(int xid) {
   try_ret(NULLRID) {
     ret = Talloc(xid, sizeof(pagedListHeader));
     pagedListHeader header;
+    memset(&header,0,sizeof(header));
     header.thisPage = 0;
     header.nextPage = NULLRID;
     Tset(xid, ret, &header);
@@ -30,12 +31,7 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     recordid headerRid = list;
 
     pagedListHeader firstHeader = header;
-    /* byte * garbage;
-       ret = (TpagedListFind(xid, list, key, keySize, &garbage) != -1);
-    if(ret) {
-      free(garbage);
-      TpagedListRemove(xid, list, key, keySize);
-      } */
+
     ret = 0;
     int entrySize = sizeof(pagedListEntry) + keySize + valueSize;
     
@@ -47,19 +43,11 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     while(rid.size == -1) {
       if(compensation_error()) { break; }
       if(header.nextPage.size == -1)  {
-	/*	header.nextPage = Talloc(xid, sizeof(pagedListHeader));
-	DEBUG("allocing on new page %d\n", header.nextPage.page);
-	Tset(xid, headerRid, &header);
-	pagedListHeader newHead;
-	newHead.thisPage = 0;
-	newHead.nextPage.page =0;
-	newHead.nextPage.slot =0;
-	newHead.nextPage.size =-1;
-	Tset(xid, header.nextPage, &newHead); */
 	// We're at the end of the list
 
 	recordid newHeadRid = Talloc(xid, sizeof(pagedListHeader));
 	pagedListHeader newHead;
+	memset(&newHead,0,sizeof(newHead));
 	newHead.thisPage = 0;
 	newHead.nextPage = firstHeader.nextPage;
 
@@ -227,7 +215,9 @@ compensated_function lladd_pagedList_iterator * TpagedListIterator(int xid, reco
   
   return it;
 }
-
+void TpagedListClose(int xid, lladd_pagedList_iterator * it) {
+  free(it);
+}
 compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it,
 		   byte ** key, int * keySize,
 		   byte ** value, int * valueSize) {

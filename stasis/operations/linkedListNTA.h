@@ -40,6 +40,7 @@ compensated_function int TlinkedListMove(int xid, recordid start_list, recordid 
 
     @return a new iterator initialized to the head of the list.  */
 compensated_function lladd_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize);
+void TlinkedListClose(int xid, lladd_linkedList_iterator * it);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/

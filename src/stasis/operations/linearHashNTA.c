@@ -50,6 +50,8 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
   recordid hashHeader;
   lladd_hash_header lhh;
 
+  memset(&lhh,0,sizeof(lhh));
+
   try_ret(NULLRID) {
     hashHeader = Talloc(xid, sizeof(lladd_hash_header));
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
@@ -168,7 +170,7 @@ Operation getLinearHashRemove() {
 compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize) {
   pthread_mutex_lock(&linear_hash_mutex);
   int argSize = sizeof(linearHash_insert_arg)+keySize;
-  linearHash_insert_arg * arg = malloc(argSize);
+  linearHash_insert_arg * arg = calloc(1,argSize);
   arg->hashHeader = hashHeader;
   arg->keySize = keySize;
   memcpy(arg+1, key, keySize);
@@ -259,7 +261,7 @@ compensated_function int ThashRemove(int xid, recordid hashHeader, const byte * 
   begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     
     int argSize = sizeof(linearHash_remove_arg) + keySize + valueSize;
-    linearHash_remove_arg * arg = malloc(argSize);
+    linearHash_remove_arg * arg = calloc(1,argSize);
     arg->hashHeader = hashHeader;
     arg->keySize = keySize;
     arg->valueSize = valueSize;
@@ -396,7 +398,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
   return;
 }
 lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, int valueSize) {
-  lladd_hash_iterator * it = malloc(sizeof(lladd_hash_iterator));
+  lladd_hash_iterator * it = calloc(1,sizeof(lladd_hash_iterator));
   begin_action_ret(free, it, NULL) {
     it->hashHeader = hashHeader;
     lladd_hash_header lhh;
@@ -434,9 +436,11 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
 	if(compensation_error()) { return 0; }
 	it->bucket.slot++;
 	if(it->bucket.slot < it->numBuckets) {
+	  TlinkedListClose(xid, it->it);
 	  it->it = TlinkedListIterator(xid, it->bucket, it->keySize, it->valueSize); 
 	} else {
-	  free(it);
+	  TlinkedListClose(xid, it->it);
+	  it->it = 0;
 	  return 0;
 	}
       }
@@ -448,9 +452,11 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
 	if(it->bucket.slot < it->numBuckets) {
 	  recordid bucketList;
 	  Tread(xid, it->bucket, &bucketList);
+	  TpagedListClose(xid,it->pit);
 	  it->pit = TpagedListIterator(xid, bucketList);
 	} else {
-	  free(it);
+	  TpagedListClose(xid,it->pit);
+	  it->pit = 0;
 	  return 0;
 	}
       }
@@ -461,10 +467,10 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
 
 void ThashDone(int xid, lladd_hash_iterator * it) {
   if(it->it) {
-    free(it->it);
-  } 
+    TlinkedListClose(xid, it->it);
+  }
   if(it->pit) {
-    free(it->pit);
+    TpagedListClose(xid, it->pit);
   }
   free(it);
 }
@@ -492,10 +498,9 @@ lladdIterator_t * ThashGenericIterator(int xid, recordid hash) {
 
 void linearHashNTAIterator_close(int xid, void * impl) {
   lladd_linearHashNTA_generic_it * it = impl;
-  
-  if(it->lastKey || it->lastValue) {
-    ThashDone(xid, it->hit);  // otherwise, ThashNext returned zero, and freed it for us... 
-  }
+
+  ThashDone(xid, it->hit);
+
   if(it->lastKey) {
     free(it->lastKey);
   }

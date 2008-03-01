@@ -100,6 +100,7 @@ compensated_function int TpagedListMove(int xid, recordid start_list, recordid e
 
     @return a new iterator initialized to the head of the list.  */
 lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list);
+void TpagedListClose(int xid, lladd_pagedList_iterator *it);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/
