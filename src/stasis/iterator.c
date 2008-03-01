@@ -8,7 +8,7 @@
 
 static lladdIterator_def_t iterators[MAX_ITERATOR_TYPES];
 
-static void lladdIterator_register(int type, lladdIterator_def_t info) {
+void lladdIterator_register(int type, lladdIterator_def_t info) {
   assert(type < MAX_ITERATOR_TYPES);
   iterators[type] = info;
 }

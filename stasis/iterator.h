@@ -6,12 +6,6 @@
 
 BEGIN_C_DECLS
 
-#define MAX_ITERATOR_TYPES 10
-#define LINEAR_HASH_NTA_ITERATOR 0
-#define ARRAY_ITERATOR           1
-#define LOG_MEMORY_ITERATOR      2
-#define POINTER_ITERATOR         3
-
 typedef struct { 
   //  void * new(void * arg);
   void (*close)(int xid, void * it);
@@ -30,7 +24,7 @@ typedef struct {
 
 void iterator_init();
 
-//void lladdIterator_register(int type, lladdIterator_def_t info);
+void lladdIterator_register(int type, lladdIterator_def_t info);
 
 //lladdIterator_t Titerator(int type, void * arg);
 
@@ -105,6 +99,10 @@ int Titerator_value(int xid, lladdIterator_t * it, byte ** value);
     all iterators are reentrant.)
 */
 void Titerator_tupleDone(int xid, lladdIterator_t * it);
+/**
+   @todo what is Titerator_releaseLock for?!?  It's never called, and
+   I can't remember why it's here...  Delete it?
+ */
 void Titerator_releaseLock(int xid, lladdIterator_t * it);
 
 END_C_DECLS
