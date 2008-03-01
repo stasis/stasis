@@ -130,6 +130,7 @@ START_TEST(linearHashNTAVariableSizetest)
   
   int xid = Tbegin();
   recordid val;
+  memset(&val,0,sizeof(val));
   recordid hashHeader = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
   recordid * val2;
   recordid ** bval2 = &val2;
