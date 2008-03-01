@@ -399,7 +399,9 @@ void TlinkedListClose(int xid, lladd_linkedList_iterator * it) {
 }
 compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * keySize, byte **value, int * valueSize) {
 
-  if(it->next.size == -1)  { free(it); return 0; }
+  if(it->next.size == -1)  {
+    return 0;
+  }
 
   int done = 0;
   int ret = 0;
@@ -456,9 +458,7 @@ compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it
     ret = 1;    
   } else {
     // This entry was empty (this case occurs with empty lists)
-    free(it);
-    
-    ret = 0;    
+    ret = 0;
   }
   free(entry);  
   
