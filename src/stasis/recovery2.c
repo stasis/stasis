@@ -102,7 +102,7 @@ static void Analysis () {
       /* We've removed this XACT's last LSN from the list of LSN's to
 	 be rolled back, so we're done. */
       break;
-    case XEND:
+    case XEND: {
       /* 
 	 XEND means this transaction reached stable storage.
 	 Therefore, we can skip redoing any of its operations.  (The
@@ -113,7 +113,10 @@ static void Analysis () {
 	 transactionLSN before redoing its actions.  Therefore, if we
 	 remove this transaction from the hash, it will not be redone.
       */
-      pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
+	lsn_t* free_lsn = pblHtLookup(transactionLSN, &(e->xid), sizeof(int));
+	pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
+	free(free_lsn);
+      }
       break;
     case UPDATELOG:
     case CLRLOG:
@@ -288,8 +291,11 @@ void InitiateRecovery() {
   Undo(1);
   DEBUG("Recovery complete.\n");
 
+  for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {
+    free(pblHtCurrent(transactionLSN));
+  }
   pblHtDelete(transactionLSN);
-  
+
   destroyList(&rollbackLSNs);
   assert(rollbackLSNs==0);
 }
