@@ -225,6 +225,7 @@ AC_CONFIG_FILES([Makefile
                  src/apps/cht/Makefile
                  src/apps/readOnlyHash/Makefile
                  src/apps/cyrus/Makefile
+                 src/apps/referential/Makefile
                  src/libdfa/Makefile
                  src/stasis/Makefile
                  src/pobj/Makefile

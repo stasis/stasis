@@ -1,0 +1,5 @@
+ADD_LIBRARY(referential algebra.c dml.c)
+SET(COMMON_LIBRARIES referential ${COMMON_LIBRARIES})
+IF(CHECK_LIBRARY)
+  CREATE_CHECK_OPT(toplevel ${CMAKE_CURRENT_SOURCE_DIR}/test-script.ref)
+ENDIF(CHECK_LIBRARY)

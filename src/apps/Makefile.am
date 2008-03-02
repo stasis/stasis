@@ -1,1 +1,1 @@
-SUBDIRS = cht readOnlyHash #cyrus
+SUBDIRS = cht readOnlyHash referential #cyrus

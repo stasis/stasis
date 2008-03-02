@@ -1,0 +1,26 @@
+query
+query TABLES
+query {s (1) TABLES}
+query {s (TABLES,*,*,*) TABLES}
+query {s (TABLES,*,*,*,*) TABLES}
+query {p (1,2,3,4) TABLES}
+query {p (0,1,2,3) TABLES}
+query {p (0,0,0,0) TABLES}
+query {p (0,1,2,3,0,1,2,3,0) TABLES}
+query {p (0,1,2,3,0,1,2,3,0) xxx}
+query {p (0) xxx}
+query {s (*) xxx}
+query {j (1=1) xxx yyy}
+query {p (a,b,c) TABLES}
+query {p (0,1,2) TABLES}
+query {s () TABLES}
+query {p () TABLES}
+query {s () {p () TABLES} }
+query {j () TABLES TABLES}
+query {j (0=0) TABLES TABLES}
+query {j (0=0,1=1) TABLES TABLES}
+query {j (0=0,1=2) TABLES TABLES}
+query {j (0<0) TABLES TABLES}
+query {x y z}
+create foo
+insert foo bar
