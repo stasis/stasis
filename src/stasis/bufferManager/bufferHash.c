@@ -1,6 +1,6 @@
 #include <pthread.h>
 #include <config.h>
-#include "bufferManager/bufferHash.h"
+#include <stasis/bufferManager/bufferHash.h>
 
 #include <stasis/bufferPool.h>
 #include <stasis/doubleLinkedList.h>
@@ -11,7 +11,7 @@
 
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferManager.h>
-
+#include <stasis/page.h>
 #include <assert.h>
 
 //#define LATCH_SANITY_CHECKING

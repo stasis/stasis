@@ -41,7 +41,7 @@ terms specified in this license.
 #include <check.h>
 #include <config.h>
 #include <stasis/common.h>
-#include <../../src/stasis/latches.h>
+#include <stasis/latches.h>
 #include <assert.h>
 
 #include <stasis/transactional.h>

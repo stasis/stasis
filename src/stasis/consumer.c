@@ -1,7 +1,7 @@
 #include <stasis/consumer.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <logger/logMemory.h>
+#include <stasis/logger/logMemory.h>
 
 static lladdConsumer_def_t consumers[MAX_CONSUMER_TYPES];
 

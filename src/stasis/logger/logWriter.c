@@ -59,8 +59,8 @@ terms specified in this license.
 #include <stasis/crc32.h>
 #include "logWriter.h"
 #include "logHandle.h"
-#include "latches.h"
-#include "io.h"
+#include <stasis/latches.h>
+#include <stasis/io.h>
 #include <assert.h>
 
 

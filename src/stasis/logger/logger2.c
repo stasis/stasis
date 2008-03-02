@@ -57,7 +57,7 @@ terms specified in this license.
 
 #include "logWriter.h"
 #include "inMemoryLog.h"
-#include "page.h"  
+#include "../page.h"  
 
 #ifdef USE_LOGGER
 int loggerType = USE_LOGGER;

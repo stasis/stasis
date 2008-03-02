@@ -47,7 +47,7 @@ terms specified in this license.
  * $Id$
  */
 
-#include "page.h"
+#include "bufferManager.h"
 
 void bufferPoolInit();
 

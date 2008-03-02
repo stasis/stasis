@@ -61,7 +61,7 @@ terms specified in this license.
 #endif
 
 #include <stasis/common.h>
-#include <latches.h>
+#include "latches.h"
 #include <assert.h>
 
 #include <stasis/bufferManager.h>
@@ -74,6 +74,7 @@ terms specified in this license.
 #include <stasis/pageHandle.h>
 
 #include <stasis/lhtable.h>
+#include "page.h"
 
 #undef loadPage
 #undef releasePage

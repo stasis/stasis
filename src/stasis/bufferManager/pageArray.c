@@ -4,8 +4,9 @@
 #include <stasis/bufferManager.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
-#include "latches.h"
-#include "bufferManager/pageArray.h"
+#include <stasis/latches.h>
+#include <stasis/bufferManager/pageArray.h>
+#include <stasis/page.h>
 
 static Page ** pageMap;
 static int pageCount;
