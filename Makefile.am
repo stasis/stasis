@@ -41,7 +41,7 @@ coverage: precoverage
 #	make check || true
 	rm -rf coverage
 	mkdir coverage
-	cp ~/cron_stuff/CMakeCache.txt coverage
+	cp /home/sears/cron_stuff/CMakeCache.txt coverage
 	cd coverage ; pwd
 	cd coverage ; cmake ..
 	cd coverage ; mv DartConfiguration.tcl DartConfiguration.tcl~
