@@ -474,6 +474,9 @@ terms specified in this license.
 
 */
 /**
+ * @defgroup pageFormats Page format implementations
+ */
+/**
  * @defgroup OPERATIONS  Logical Operations
  *
  * Implementations of logical operations, and the interfaces that allow new operations to be added.
