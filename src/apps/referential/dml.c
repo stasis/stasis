@@ -6,15 +6,16 @@
 #include "algebra.h"
 int executeInsert(int xid, recordid tables, char * insert) {
   char * linecopy = strdup(insert+strlen("insert"));
-  char * tbl = strtok(linecopy," ");
-  char * tup = strtok(NULL,"\r\n");
+  char * strtoks;
+  char * tbl = strtok_r(linecopy," ",&strtoks);
+  char * tup = strtok_r(NULL,"\r\n",&strtoks);
   if((!tbl) || (!tup)) {
     printf("parse error\n");
     return 0;
   }
   char * tupcopy = strdup(tup);
-  char * key = strtok(tupcopy,",");
-  char * trunctup = strtok(NULL,"\r\n");
+  char * key = strtok_r(tupcopy,",",&strtoks);
+  char * trunctup = strtok_r(NULL,"\r\n",&strtoks);
   char * table;
   if(!trunctup) {
     trunctup = "";
@@ -35,15 +36,16 @@ int executeInsert(int xid, recordid tables, char * insert) {
 }
 int executeDelete(int xid, recordid tables, char * delete) {
   char * linecopy = strdup(delete+strlen("delete"));
-  char * tbl = strtok(linecopy," ");
-  char * tup = strtok(NULL,"\r\n");
+  char * strtoks;
+  char * tbl = strtok_r(linecopy," ",&strtoks);
+  char * tup = strtok_r(NULL,"\r\n",&strtoks);
   if((!tbl) || (!tup)) {
     printf("parse error\n");
     return 0;
   }
   char * table;
   char * tupcopy = strdup(tup);
-  char * key = strtok(tupcopy,",");
+  char * key = strtok_r(tupcopy,",",&strtoks);
   int sz = ThashLookup(xid, tables, (byte*)tbl, strlen(tbl)+1, (byte**)&table);
   if(sz == -1) {
     printf("Unknown table %s\n", tbl);

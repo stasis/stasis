@@ -21,7 +21,7 @@ static int ts_tryNext(int xid, void * it) {
 
 }
 static int ts_key(int xid, void * it, byte ** key) {
-  
+
 }
 static int ts_value(int xid, void * it, byte ** val) {
 
@@ -40,13 +40,14 @@ static void ts_releaseLock(int xid, void *it) {
 char ** split(char * in, char ** freeme, int* count, char * delim) {
   *freeme = strdup(in);
   *count = 0;
-  char * tok = strtok(*freeme, delim);
+  char * strtoks;
+  char * tok = strtok_r(*freeme, delim,&strtoks);
   char ** ret = 0;
   while(tok) {
     (*count)++;
     ret = realloc(ret, sizeof(char*) * *count);
     ret[(*count)-1] = tok;
-    tok = strtok(NULL,delim);
+    tok = strtok_r(NULL,delim,&strtoks);
   }
   ret = realloc(ret, sizeof(char*) * ((*count)+1));
   ret[*count]=0;
@@ -93,6 +94,48 @@ void tplFree(char ** tup) {
     free(tup[i]);
   }
   free(tup);
+}
+
+int isWhitelistChar(char c) {
+  return(c == ';'
+	 ||
+	 c == '/'
+	 ||
+	 c == '?'
+	 ||
+	 c == ':'
+	 ||
+	 c == '@'
+	 ||
+	 c == '&'
+	 ||
+	 c == '='
+	 ||
+	 c == '+'
+	 ||
+	 c == '$'
+	 ||
+	 c == '['
+	 ||
+	 c == ']'
+	 ||
+	 c == '-'
+	 ||
+	 c == '_'
+	 ||
+	 c == '.'
+	 ||
+	 c == '!'
+	 ||
+	 c == '~'
+	 ||
+	 c == '*'
+	 ||
+	 c == '\''
+	 ||
+	 c == '%'
+	 ||
+	 c == '\\');
 }
 
 lladdIterator_t* ReferentialAlgebra_OpenTableScanner(int xid, recordid catalog,
@@ -201,7 +244,7 @@ static void kv_tupleDone(int xid, void * it) {
 static void kv_releaseLock(int xid, void *it) {
   kv_impl * kv = it;
   Titerator_releaseLock(xid, kv->it);
-} 
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
@@ -222,6 +265,41 @@ lladdIterator_t* ReferentialAlgebra_Select(int xid, lladdIterator_t * it, char *
   return new_it;
 }
 
+char * strtokempt(char *str, const char * delim, char ** saveptr, int * extra) {
+  char * ret;
+  if(str) {
+    *saveptr = str;
+  }
+  ret = *saveptr;
+
+  if(!(**saveptr)) {
+    if(*extra) {
+      *extra = 0;
+      return ret;
+    } else {
+      return 0;
+    }
+  }
+  do {
+    for(int i = 0; delim[i]; i++) {
+      if(**saveptr == delim[i]) {
+	// terminate returned string
+	**saveptr = 0;
+	// consume deliminator character from last time.
+	(*saveptr)++;
+	//printf("extra: %d\n",*extra);
+	*extra = 1;
+	return ret;
+      }
+    }
+    // consume character we just looked at.
+    (*saveptr)++;
+  } while(**saveptr);
+  //  printf("extra: %d\n",*extra);
+  *extra = 0;
+  return ret;
+}
+
 static int matchPredicate(const char const * tup, char ** pred) {
   char * tupcpy = strdup(tup);
   int colcount = 0;
@@ -230,8 +308,10 @@ static int matchPredicate(const char const * tup, char ** pred) {
   char ** tok = malloc((predcount+1) * sizeof(char**));
 
   char * ths;
-  const char const * DELIM = ", ";
-  if((ths = strtok(tupcpy, DELIM))) {
+  const char const * DELIM = ",";
+  char * strtoks;
+  int extra = 0;
+  if((ths = strtokempt(tupcpy, DELIM,&strtoks,&extra))) {
     colcount++;
     if(colcount > predcount) {
       free(tupcpy);
@@ -241,7 +321,7 @@ static int matchPredicate(const char const * tup, char ** pred) {
       tok[colcount-1] = ths;
     }
   }
-  while((ths = strtok(NULL, DELIM))) {
+  while((ths = strtokempt(NULL, DELIM,&strtoks,&extra))) {
     colcount++;
     if(colcount > predcount) {
       free(tupcpy);
@@ -438,7 +518,7 @@ static int matchComparator(char ** tup1,
   while(pred[col] && match) {
     char * lhs_start = pred[col];
     char * lhs_end = lhs_start;
-    while(isalnum(*lhs_end)) { lhs_end++; }
+    while(isWhitelistChar(*lhs_end)||isalnum(*lhs_end)) { lhs_end++; }
     int lhs_len = lhs_end - lhs_start;
 
     char * lhs = calloc(lhs_len+1,sizeof(char));
@@ -447,7 +527,7 @@ static int matchComparator(char ** tup1,
     char * op_start = lhs_end;
     while(isblank(*op_start)) { op_start++; }
     char * op_end = op_start;
-    while(!(isblank(*op_end) || isalnum(*op_end))) { op_end++; }
+    while(!(isblank(*op_end) || isWhitelistChar(*lhs_end)||isalnum(*op_end))) { op_end++; }
     int op_len = op_end - op_start;
 
     char * op = calloc(op_len+1,sizeof(char));
@@ -456,7 +536,7 @@ static int matchComparator(char ** tup1,
     char * rhs_start = op_end;
     while(isblank(*rhs_start)) { rhs_start++; }
     char * rhs_end = rhs_start;
-    while(isalnum(*rhs_end)) { rhs_end++; }
+    while(isWhitelistChar(*lhs_end)||isalnum(*rhs_end)) { rhs_end++; }
     int rhs_len = rhs_end - rhs_start;
 
     char * rhs = calloc(rhs_len+1,sizeof(char));
@@ -644,31 +724,38 @@ void ReferentialAlgebra_init() {
   @return one of the above.  If returns STRING, set *tok to be the new
   token. (*tok should be freed by caller in this case)
  */
-int nextToken(char ** head, char ** tok);
+int nextToken(char ** head, char ** tok, int breakOnSpace);
 
 char** parseTuple(char ** head) {
   char **tok = calloc(1,sizeof(char*));;
   char * mytok;
-  char ret = nextToken(head, &mytok);
+  char ret = nextToken(head, &mytok,0);
   assert(ret == LBRACKET);
   int count = 0;
   while(1) {
-    ret = nextToken(head, &mytok);
+    ret = nextToken(head, &mytok,0);
     if(ret == RBRACKET) {
       break;
     }
-    assert(ret == STRING);
-    count++;
-    tok = realloc(tok, sizeof(char*)*(count+1));
-    tok[count] = 0;
-    tok[count-1] = mytok;
-
-    ret = nextToken(head, &mytok);
-    if(ret == STRING) { free(mytok); }
-    if(ret == RBRACKET) { 
-      break;
-    }
-    if(ret != COMMA) {
+    if(ret == COMMA) {
+      tok = realloc(tok, sizeof(char*)*(count+1));
+      tok[count] = 0;
+      tok[count-1] = calloc(1,sizeof(char));
+    } else if(ret == STRING) {
+      count++;
+      tok = realloc(tok, sizeof(char*)*(count+1));
+      tok[count] = 0;
+      tok[count-1] = mytok;
+      ret = nextToken(head, &mytok,0);
+      if(ret == STRING) { free(mytok); }
+      if(ret == RBRACKET) {
+	break;
+      }
+      if(ret != COMMA) {
+	tplFree(tok);
+	return 0;
+      }
+    } else {
       tplFree(tok);
       return 0;
     }
@@ -719,12 +806,17 @@ lladdIterator_t * parseExpression(int xid, recordid catalog,
       return 0;
     }
     char * foo;
-    char ret = nextToken(head, &foo);
-    assert(ret == RPAREN);
-    return it;
+    char ret = nextToken(head, &foo,0);
+
+    if(ret != RPAREN) {
+      Titerator_close(xid,it);
+      return 0;
+    } else {
+      return it;
+    }
   } else {
     char * tablename;
-    char ret = nextToken(head, &tablename);
+    char ret = nextToken(head, &tablename,1);
     assert(ret == STRING);
     lladdIterator_t * it2 =
       ReferentialAlgebra_OpenTableScanner(xid, catalog, tablename);
@@ -740,7 +832,7 @@ lladdIterator_t * parseExpression(int xid, recordid catalog,
   abort();
 }
 
-int nextToken(char ** head, char ** tok) {
+int nextToken(char ** head, char ** tok, int breakOnSpace) {
   while(isblank(**head) && **head) { (*head)++; }
   switch(**head) {
   case LPAREN: {
@@ -770,10 +862,25 @@ int nextToken(char ** head, char ** tok) {
   default: {
     if(!**head) { return EOS; };
     char * first = *head;
-    while(isalnum(**head)||**head=='*'||**head=='=') { (*head)++; }
+    while(isalnum(**head)
+	  ||isWhitelistChar(**head)
+	  ||(**head==' '&&!breakOnSpace)) {
+      (*head)++;
+    }
     char * last = *head;
     *tok = calloc(1 + last - first, sizeof(char));
-    strncpy(*tok, first, last - first);  // The remaining byte is the null terminator.
+    // The remaining byte is the null terminator
+    strncpy(*tok, first, last - first);
+    int i = (last-first)-1;
+    int firstloop = 1;
+    while((*tok)[i] == ' ') {
+      (*tok)[i] = '\0';
+      i++;
+      if(firstloop) {
+	(*head)--;
+	firstloop = 0;
+      }
+    }
     return STRING;
   } break;
   }

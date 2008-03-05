@@ -134,7 +134,8 @@ int openInterpreter(FILE * in, FILE * out, recordid hash) {
       if(!strncmp(line,"create",strlen("create"))) {
 
 	char * linecopy = strdup(line+strlen("create"));
-	char * tablename = strtok(linecopy, " \r\n");
+	char * strtoks;
+	char * tablename = strtok_r(linecopy, " \r\n",&strtoks);
 	size_t sz;
 	byte* delme;
 
@@ -312,7 +313,7 @@ int main(int argc, char * argv[]) {
   int xid = Tbegin();
   if(TrecordType(xid, ROOT_RECORD) == INVALID_SLOT) {
     printf("Creating new store\n");
-    
+
     rootEntry = Talloc(xid, sizeof(recordid));
     assert(rootEntry.page == ROOT_RECORD.page);
     assert(rootEntry.slot == ROOT_RECORD.slot);
@@ -344,7 +345,7 @@ int main(int argc, char * argv[]) {
     } else {
       startServer(argv[2], hash);
     }
-    
+
     printf("Shutting down...\n");
   } else {
     if(argc == 2) {
