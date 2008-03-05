@@ -7,10 +7,15 @@ use Referential;
 sub printResponse {
     my $t = shift;
 
-    print "<p>$$t[0]: ".($$t[1]?'Yes':'No')."</p>\n";
-    if(defined ($$t[2]) && $$t[2] =~ /\S/) {
-	print "<b>Comment:</b><pre>\n".$$t[2]."</pre>";
+    print "<p>$$t[0]: ".($$t[1]?'Yes':'No')."</p><p>Interests: \n";
+    my $int = $$t[2];
+    my @tok = split '~', $int;
+    print (join ", ", @tok);
+    print("</p>\n");
+    if(defined ($$t[3]) && $$t[3] =~ /\S/) {
+	print "<b>Comment:</b><pre>\n".$$t[3]."</pre>";
     }
+
 }
 
 my $ref = new Referential("6667");
@@ -22,22 +27,39 @@ if(param('name')) {
     my $name = $ref->escape(param('name'));
     my $vote = $ref->escape(param('vote'));
     my $comments = $ref->escape(param('comments'));
+
+    my @names = $cgi->param;
+    my %interests;
+    my $interests;
+    my $first = 1;
+    foreach my $i (@names) {
+	if($i=~/^t_(.+)$/) {
+	    $interests{$1}++;
+	    if($first) { 
+		$interests = $1;
+		$first = 0;
+	    } else {
+		$interests .= "~$1";
+	    }
+	}
+    }
+
     print header;
     print "\n\n<html><head><title>Survey repsonse completed</title></head></html>\n";
     print "<body><h1>Thanks!</h1>\n";
-    my $tups = $ref->query("{s ($name,*,*) peeps}");
+    my $tups = $ref->query("{s ($name,*,*,*) peeps}");
 
     if(defined $$tups[0][0]) {
-	print "<h2>Found and deleted old response:</h2>";
+	print "<h2>Deleted old response:</h2>";
 	printResponse($$tups[0]);
     }
 
-    $ref->insert("peeps $name,$vote,$comments");
+    $ref->insert("peeps $name,$vote,$interests,$comments");
 
-    $tups = $ref->query("{s ($name,*,*) peeps}");
+    $tups = $ref->query("{s ($name,*,*,*) peeps}");
 
     if(defined $$tups[0][0]) {
-	print "<h2>Recorded your response:</h2>";
+	print "<h2>Recorded response:</h2>";
 	printResponse($$tups[0]);
     } else {
 	print "query failed!\n";
@@ -66,6 +88,27 @@ if(param('name')) {
 <h1>Survey</h1>
 <form>
 Name: <input type='text' name='name'/>
+<br>
+<p>Which topics are you interested in?</p>
+<input type="checkbox" name="t_tpsReports">
+TPS Reports
+</input>
+<br>
+<input type="checkbox" name="t_efficiency">
+Consultants
+</input>
+<br>
+<input type="checkbox" name="t_family">
+Family
+</input>
+<br>
+<input type="checkbox" name="t_academic">
+Academic
+</input>
+<br>
+<input type="checkbox" name="t_balance">
+Balance
+</input>
 <br>
 <p>Will you attend?</p>
 <input type="radio" name="vote" value="1">Yes</input>
