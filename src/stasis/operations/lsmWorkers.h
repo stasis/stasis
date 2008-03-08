@@ -131,7 +131,7 @@ pageid_t compressData(ITER * const begin, ITER * const end,
   PAGELAYOUT * mc;
   initPage<COMPRESSOR,TYPE,ROW>(&mc, p, **begin);
 
-  int lastEmpty = 0;
+  //  int lastEmpty = 0;
 
   for(ITER i(*begin); i != *end; ++i) {
     rose::slot_index_t ret = mc->append(-1, *i);
