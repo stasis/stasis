@@ -92,7 +92,10 @@ template <class TUPLE> class Multicolumn {
   }
   inline slot_index_t append(int xid, TUPLE const & dat);
   inline TUPLE * recordRead(int xid, slot_index_t slot, TUPLE * buf);
+  inline TUPLE * recordFind(int xid, TUPLE& val, TUPLE& scratch);
+  inline slot_index_t recordCount(int xid);
   inline void pack();
+
  private:
 
   typedef struct column_header {
@@ -157,7 +160,10 @@ template <class TUPLE> class Multicolumn {
   byte ** columns_;
   byte_off_t first_exception_byte_;
   byte * exceptions_;
+
+ public:
   PluginDispatcher dispatcher_;
+ private:
   int bytes_left_;
   int unpacked_;
   friend void multicolumnLoaded<TUPLE>(Page *p);

@@ -62,7 +62,7 @@ namespace rose {
   //// --- multicolumn static page layout
 
   template <int N, class FORMAT>
-    class MultiColumnTypePageLayout {
+    class StaticMultiColumnTypePageLayout {
   public:
     typedef FORMAT FMT;
     static inline void initPageLayout() {
@@ -80,18 +80,6 @@ namespace rose {
       init_num++;
     }
     static inline FORMAT * initPage(Page *p, const typename FORMAT::TUP * t) {
-
-      plugin_id_t plugins[N];
-      if(0 < N) plugins[0] = plugin_id<FORMAT, typename FORMAT::CMP0, typename FORMAT::CMP0::TYP>();
-      if(1 < N) plugins[1] = plugin_id<FORMAT, typename FORMAT::CMP1, typename FORMAT::CMP1::TYP>();
-      if(2 < N) plugins[2] = plugin_id<FORMAT, typename FORMAT::CMP2, typename FORMAT::CMP2::TYP>();
-      if(3 < N) plugins[3] = plugin_id<FORMAT, typename FORMAT::CMP3, typename FORMAT::CMP3::TYP>();
-      if(4 < N) plugins[4] = plugin_id<FORMAT, typename FORMAT::CMP4, typename FORMAT::CMP4::TYP>();
-      if(5 < N) plugins[5] = plugin_id<FORMAT, typename FORMAT::CMP5, typename FORMAT::CMP5::TYP>();
-      if(6 < N) plugins[6] = plugin_id<FORMAT, typename FORMAT::CMP6, typename FORMAT::CMP6::TYP>();
-      if(7 < N) plugins[7] = plugin_id<FORMAT, typename FORMAT::CMP7, typename FORMAT::CMP7::TYP>();
-      if(8 < N) plugins[8] = plugin_id<FORMAT, typename FORMAT::CMP8, typename FORMAT::CMP8::TYP>();
-      if(9 < N) plugins[9] = plugin_id<FORMAT, typename FORMAT::CMP9, typename FORMAT::CMP9::TYP>();
 
       FORMAT * f = new FORMAT(-1,p);
 
@@ -119,14 +107,56 @@ namespace rose {
     static int my_init_num;
   };
   template <int N, class FORMAT>
-    int MultiColumnTypePageLayout<N,FORMAT>::my_cmp_num = -1;
+    int StaticMultiColumnTypePageLayout<N,FORMAT>::my_cmp_num = -1;
   template <int N, class FORMAT>
-    int MultiColumnTypePageLayout<N,FORMAT>::my_init_num = -1;
+    int StaticMultiColumnTypePageLayout<N,FORMAT>::my_init_num = -1;
 
   template <class PAGELAYOUT>
     recordid TlsmTableAlloc();
 
+  template <class FORMAT>
+    class DynamicMultiColumnTypePageLayout {
+  public:
+    typedef FORMAT FMT;
+    static inline void initPageLayout(plugin_id_t * plugins) {
+      stasis_page_impl_register(FMT::impl());
 
+      lsmTreeRegisterComparator(cmp_num, FMT::TUP::cmp);
+      lsmTreeRegisterPageInitializer
+	(init_num, (lsm_page_initializer_t)initPage);
+      my_cmp_num = cmp_num;
+      cmp_num++;
+      my_init_num = init_num;
+      init_num++;
+      my_plugins = plugins;
+    }
+    static inline FORMAT * initPage(Page *p, const typename FORMAT::TUP * t) {
+      const column_number_t column_count = t->column_count();
+
+      FORMAT * f = new FORMAT(-1, p, column_count, my_plugins);
+
+      for(column_number_t i = 0; i < column_count; i++) {
+	f->dispatcher_.offset(i, t->get(i));
+      }
+      return f;
+    }
+    static inline int cmp_id() {
+      return my_cmp_num;
+    }
+    static inline int init_id() {
+      return my_init_num;
+    }
+  private:
+    static int my_cmp_num;
+    static plugin_id_t* my_plugins;
+    static int my_init_num;
+  };
+  template <class FORMAT>
+    int DynamicMultiColumnTypePageLayout<FORMAT>::my_cmp_num = -1;
+  template <class FORMAT>
+    plugin_id_t* DynamicMultiColumnTypePageLayout<FORMAT>::my_plugins = 0;
+  template <class FORMAT>
+    int DynamicMultiColumnTypePageLayout<FORMAT>::my_init_num = -1;
 
 }
 #endif  // _ROSE_COMPRESSION_PAGELAYOUT_H__

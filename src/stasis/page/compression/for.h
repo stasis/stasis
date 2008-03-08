@@ -125,7 +125,7 @@ class For {
   };
   For(void * mem): mem_(mem) { }
 
-  inline slot_index_t recordCount(int xid) {
+  inline slot_index_t recordCount() {
     return *numdeltas_ptr();
   }
 

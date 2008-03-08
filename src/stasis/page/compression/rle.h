@@ -56,7 +56,7 @@ class Rle {
     n->copies = 0;
     n->data = 0;
   }
-  inline slot_index_t recordCount(int xid) {
+  inline slot_index_t recordCount() {
     triple_t *n = last_block_ptr();
     return (n->index) + (n->copies);
   }

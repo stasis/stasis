@@ -232,16 +232,16 @@ class StaticMulticolumn {
    slot_index_t recordCount;
    slot_index_t c;
    // XXX memoize this function
-   if(0 < N) recordCount = plugin0->recordCount(xid);
-   if(1 < N) { c = plugin1->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(2 < N) { c = plugin2->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(3 < N) { c = plugin3->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(4 < N) { c = plugin4->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(5 < N) { c = plugin5->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(6 < N) { c = plugin6->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(7 < N) { c = plugin7->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(8 < N) { c = plugin8->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
-   if(9 < N) { c = plugin9->recordCount(xid); recordCount = recordCount > c ? c :recordCount; }
+   if(0 < N) recordCount = plugin0->recordCount();
+   if(1 < N) { c = plugin1->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(2 < N) { c = plugin2->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(3 < N) { c = plugin3->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(4 < N) { c = plugin4->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(5 < N) { c = plugin5->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(6 < N) { c = plugin6->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(7 < N) { c = plugin7->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(8 < N) { c = plugin8->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(9 < N) { c = plugin9->recordCount(); recordCount = recordCount > c ? c :recordCount; }
    return recordCount;
  }
  /* inline slot_index_t recordCount(int xid) {

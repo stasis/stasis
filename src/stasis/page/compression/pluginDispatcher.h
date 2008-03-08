@@ -79,6 +79,9 @@ class PluginDispatcher{
 #define caseRead(off,plug_type,col,type,m,ret,fcn,xid,slot,except,scratch) \
       case off: { ret = ((plug_type*)plugins_[col])->fcn(xid,slot,except,(type*)scratch); } break
 
+#define caseFind(off,plug_type,col,type,ret,fcn,xid,first,last,except,key,scratch) \
+ case off: { ret = ((plug_type*)plugins_[col])->fcn(xid,first,last,except,*(type*)key,scratch); } break
+
 #define caseNoArg(off,plug_type,col,type,m,ret,fcn) \
       case off: { ret = ((plug_type*)plugins_[col])->fcn(); } break
 
@@ -91,14 +94,17 @@ class PluginDispatcher{
 #define caseCompressor(off,plug_type,col,type,nil) \
       case off: { ret = (plug_type*)plugins_[col]; } break
 
-  inline slot_index_t recordAppend(int xid, column_number_t col,
-				 const void *dat, byte_off_t* except,
-				 byte *exceptions, int *free_bytes) {
-    slot_index_t ret;
-    dispatchSwitch(col,caseAppend,append,ret,xid,dat,except,exceptions,
-		   free_bytes);
-    return ret;
-  }
+#define caseOffset(off,plug_type,col,type,val) \
+      case off: { ((plug_type*)plugins_[col])->offset(*(type*)val); } break
+
+ inline slot_index_t recordAppend(int xid, column_number_t col,
+				  const void *dat, byte_off_t* except,
+				  byte *exceptions, int *free_bytes) {
+   slot_index_t ret;
+   dispatchSwitch(col,caseAppend,append,ret,xid,dat,except,exceptions,
+		  free_bytes);
+   return ret;
+ }
 
   inline void *recordRead(int xid, byte *mem, column_number_t col,
                           slot_index_t slot, byte* exceptions, void *scratch) {
@@ -106,10 +112,23 @@ class PluginDispatcher{
     dispatchSwitch(col,caseRead,mem,ret,recordRead,xid,slot,exceptions,scratch);
     return ret;
   }
+  inline std::pair<slot_index_t,slot_index_t> *recordFind(int xid, column_number_t col,
+                          slot_index_t first, slot_index_t last, byte* exceptions,
+			  const void * key, std::pair<slot_index_t,slot_index_t>& pair_scratch) {
+    std::pair<slot_index_t,slot_index_t> * ret;
+    dispatchSwitch(col,caseFind,ret,recordFind,xid,first,last,exceptions,key,pair_scratch);
+    return ret;
+  }
 
   inline byte_off_t bytes_used(column_number_t col) {
     byte_off_t ret;
     dispatchSwitch(col,caseNoArg,mem,ret,bytes_used);
+    return ret;
+  }
+
+  inline slot_index_t recordCount(column_number_t col) {
+    byte_off_t ret;
+    dispatchSwitch(col,caseNoArg,mem,ret,recordCount);
     return ret;
   }
 
@@ -125,25 +144,29 @@ class PluginDispatcher{
     dispatchSwitch(col,caseCompressor,0);
     return ret;
   }
+  inline void offset(column_number_t col, void * val) {
+    dispatchSwitch(col,caseOffset,val);
+  }
   PluginDispatcher(column_number_t column_count) :
   column_count_(column_count), plugin_ids_(new plugin_id_t[column_count]), plugins_(new void*[column_count]) {
     for(column_number_t i = 0; i < column_count; i++) {
       plugin_ids_[i] = 0;
+      plugins_[i] = 0;
     }
   }
 
-  PluginDispatcher(int xid, byte *mem,column_number_t column_count, plugin_id_t * plugins) :
+  /*  PluginDispatcher(int xid, byte *mem,column_number_t column_count, plugin_id_t * plugins) :
       column_count_(column_count), plugin_ids_(new plugin_id_t[column_count]), plugins_(new void*[column_count]) {
     for(column_number_t i = 0; i < column_count; i++) {
       plugin_ids_[i] = 0;
       set_plugin(mem,i,plugins[i]);
     }
-  }
+    } */
 
   inline void set_plugin(byte *mem,column_number_t c, plugin_id_t p) {
-    if(plugin_ids_[c]) {
+    /*    if(plugin_ids_[c]) {
       dispatchSwitch(c,caseDelPlugin,0);
-    }
+      } */
     plugin_ids_[c] = p;
     dispatchSwitch(c,caseSetPlugin,mem);
   }
@@ -160,9 +183,11 @@ class PluginDispatcher{
 #undef caseSetPlugin
 #undef caseDelPlugin
 #undef caseRead
+#undef caseFind
 #undef caseNoArg
 #undef caseInitMem
 #undef caseCompressor
+#undef caseOffset
 
  private:
 

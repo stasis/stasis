@@ -12,6 +12,10 @@ namespace rose {
   static const char TOMBSTONE = 1;
   static const int TUPLE_ID = 1;
   static const int NN = N;
+  /** Compatibility for dynamic dispatch stuff */
+  inline int column_count() const { return NN; }
+  inline void* get(int i) const { return ((byte*)&s) + cols_[i]; }
+
   typedef TYPE0 TYP0;
   typedef TYPE1 TYP1;
   typedef TYPE2 TYP2;
