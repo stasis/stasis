@@ -45,7 +45,8 @@ class PluginDispatcher{
  public:
 
 #define dispatchSwitch(col,cases,...) \
-    static const int base = USER_DEFINED_PAGE(0) + 2 * 2 * 4;\
+    static const int base = USER_DEFINED_PAGE(0) + 3 * 2 * 4;\
+    /*printf("page = %d pluginid = %d base = %d\n", USER_DEFINED_PAGE(0), plugin_ids_[col], base); fflush(stdout);*/ \
     switch(plugin_ids_[col]-base) {                     \
       cases(0, For<uint8_t>, col,uint8_t, __VA_ARGS__); \
       cases(1, For<uint16_t>,col,uint16_t,__VA_ARGS__); \
@@ -63,6 +64,14 @@ class PluginDispatcher{
       cases(13,Rle<int16_t>, col,int16_t, __VA_ARGS__); \
       cases(14,Rle<int32_t>, col,int32_t, __VA_ARGS__); \
       cases(15,Rle<int64_t>, col,int64_t, __VA_ARGS__); \
+      cases(16,Nop<uint8_t>, col,uint8_t, __VA_ARGS__); \
+      cases(17,Nop<uint16_t>,col,uint16_t,__VA_ARGS__); \
+      cases(18,Nop<uint32_t>,col,uint32_t,__VA_ARGS__); \
+      cases(19,Nop<uint64_t>,col,uint64_t,__VA_ARGS__); \
+      cases(20,Nop<int8_t>,  col,int8_t,  __VA_ARGS__); \
+      cases(21,Nop<int16_t>, col,int16_t, __VA_ARGS__); \
+      cases(22,Nop<int32_t>, col,int32_t, __VA_ARGS__); \
+      cases(23,Nop<int64_t>, col,int64_t, __VA_ARGS__); \
       default: abort();                                 \
     };
 

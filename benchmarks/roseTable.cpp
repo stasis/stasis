@@ -20,19 +20,20 @@ int main(int argc, char **argv) {
   typedef rose::StaticTuple<COLS,typ0,typ1,typ2,typ3,typ4,typ5,typ6,typ7,typ8,typ9> tup;
   using rose::For;
   using rose::Rle;
+  using rose::Nop;
   int ret;
   // multicolumn is deprecated; want static dispatch!
 
   rose::plugin_id_t * plugins = (rose::plugin_id_t*)malloc(10 * sizeof(rose::plugin_id_t));
 
   plugins[0] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ0>, typ0>();
-  plugins[1] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ1>, typ1>();
+  plugins[1] = rose::plugin_id<rose::Multicolumn<tup>, Nop<typ1>, typ1>(); // rle
   plugins[2] = rose::plugin_id<rose::Multicolumn<tup>, For<typ2>, typ2>();
   plugins[3] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ3>, typ3>();
-  plugins[4] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ4>, typ4>();
+  plugins[4] = rose::plugin_id<rose::Multicolumn<tup>, Nop<typ4>, typ4>(); // rle
   plugins[5] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ5>, typ5>();
   plugins[6] = rose::plugin_id<rose::Multicolumn<tup>, For<typ6>, typ6>();
-  plugins[7] = rose::plugin_id<rose::Multicolumn<tup>, For<typ7>, typ7>();
+  plugins[7] = rose::plugin_id<rose::Multicolumn<tup>, Nop<typ7>, typ7>(); // for
   plugins[8] = rose::plugin_id<rose::Multicolumn<tup>, For<typ8>, typ8>();
   plugins[9] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ9>, typ9>();
 

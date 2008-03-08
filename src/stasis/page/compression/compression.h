@@ -60,11 +60,11 @@ inline plugin_id_t plugin_id() {
 
   //  assert(sizeof(TYPE) <= 8 && type_idx[sizeof(TYPE)] >= 0);
 
-  // XXX first '2' hardcodes the number of COMPRESSOR implementations...
+  // XXX '3' hardcodes the number of COMPRESSOR implementations...
 
   plugin_id_t ret = USER_DEFINED_PAGE(0)
       // II         S    C
-      + idx_count * 2 *  2 * PAGEFORMAT::PAGE_FORMAT_ID
+      + idx_count * 2 *  3 * PAGEFORMAT::PAGE_FORMAT_ID
       + idx_count * 2 *  COMPRESSOR::PLUGIN_ID
       + idx_count * (is_signed < 0)
       + type_idx[sizeof(TYPE)];

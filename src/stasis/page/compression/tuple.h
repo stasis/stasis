@@ -15,6 +15,7 @@
 #include "compression.h"
 #include "for.h"
 #include "rle.h"
+#include "nop.h"
 #include "string.h"
 
 namespace rose {
