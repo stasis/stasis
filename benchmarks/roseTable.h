@@ -5,6 +5,7 @@
 
 #include "stasis/transactional.h"
 
+#include "stasis/page/compression/nop.h"
 #include "stasis/page/compression/multicolumn-impl.h"
 #include "stasis/page/compression/staticMulticolumn.h"
 #include "stasis/page/compression/for-impl.h"
@@ -62,7 +63,7 @@ namespace rose {
     typename PAGELAYOUT::FMT::TUP t;
     typename PAGELAYOUT::FMT::TUP s;
 
-    long INSERTS; 
+    long INSERTS = 0;
     int file_mode = 0;
     char * file = 0;
     if(argc == 2) {
@@ -119,7 +120,7 @@ namespace rose {
       gettimeofday(&cannonical_start_tv,0);
       double cannonical_start = tv_to_double(cannonical_start_tv);
 
-      while(-1 != (read_len = getline(&line, &line_len, input))) {
+      while(-1 != (int)(read_len = getline(&line, &line_len, input))) {
 	int line_tok_count;
 	{
 	  char * saveptr;

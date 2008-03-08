@@ -53,7 +53,8 @@ class treeIterator {
       p_ = 0;
     } else {
       pageid_t * pid_tmp;
-      lsmTreeIterator_value(-1,lsmIterator_,(byte**)&pid_tmp);
+      pageid_t ** hack = &pid_tmp;
+      lsmTreeIterator_value(-1,lsmIterator_,(byte**)hack);
       pageid_ = *pid_tmp;
       p_ = loadPage(-1,pageid_);
       currentPage_ = (PAGELAYOUT*)p_->impl;
@@ -132,8 +133,8 @@ class treeIterator {
         pageid_t *pid_tmp;
 
         slot_ = 0;
-
-        lsmTreeIterator_value(-1,lsmIterator_,(byte**)&pid_tmp);
+	pageid_t **hack = &pid_tmp;
+        lsmTreeIterator_value(-1,lsmIterator_,(byte**)hack);
         pageid_ = *pid_tmp;
         p_ = loadPage(-1,pageid_);
 

@@ -241,7 +241,7 @@ namespace rose {
 	/ (1024.0 * 1024.0 * total_elapsed);
 
       printf("worker %d merge # %-6d: comp ratio: %-9.3f  stalled %6.1f sec backpressure %6.1f "
-	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6ld pages (need %6ld)\n", a->worker_id, merge_count, ratio,
+	     "worked %6.1f sec inserts %-12ld (%9.3f mb/s) %6lld pages (need %6lld)\n", a->worker_id, merge_count, ratio,
 	     wait_elapsed, push_elapsed, work_elapsed,(unsigned long)insertedTuples, throughput, mergedPages, !a->out_tree_size ? -1 :  (FUDGE * *a->out_tree_size / a->r_i));
 
 
@@ -609,10 +609,10 @@ namespace rose {
       pthread_mutex_unlock(h->mut);
 
       if(first) {
-	printf("flush waited %lf sec\n", stop-start);
+	printf("flush waited %f sec\n", stop-start);
 	first = 0;
       } else {
-	printf("flush waited %lf sec (worked %lf)\n",
+	printf("flush waited %f sec (worked %f)\n",
 	       stop-start, start-last_start);
       }
       last_start = stop;
@@ -655,7 +655,7 @@ namespace rose {
        handleBytes > inputSizeThresh ||
 #endif
        handleBytes > memSizeThresh) { // XXX ok?
-      printf("Handle mbytes %ld (%ld) Input size: %ld input size thresh: %ld mbytes mem size thresh: %ld\n",
+      printf("Handle mbytes %ld (%ld) Input size: %lld input size thresh: %ld mbytes mem size thresh: %ld\n",
 	     handleBytes / (1024*1024), h->scratch_handle->size(), *h->input_size, inputSizeThresh / (1024*1024), memSizeThresh / (1024*1024));
       TlsmTableFlush<PAGELAYOUT>(h);
     }
