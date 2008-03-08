@@ -42,3 +42,4 @@ LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis ${CMAKE_CURRENT_BINARY_D
 
 SET(COMMON_LIBRARIES stasis rw m pthread)
 SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT ${CMAKE_C_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT ${CMAKE_CXX_FLAGS}")
