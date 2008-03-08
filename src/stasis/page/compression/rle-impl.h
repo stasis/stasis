@@ -76,7 +76,6 @@ inline std::pair<slot_index_t,slot_index_t>*
 Rle<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
 		      byte *exceptions, TYPE value,
 		      std::pair<slot_index_t,slot_index_t>& scratch) {
-  //  TYPE v = nth_block_ptr(last_)->value <= value ? lastV_ : 0;
   block_index_t n = 0;
   std::pair<slot_index_t,slot_index_t>* ret = 0;
   do {
@@ -93,7 +92,11 @@ Rle<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
     }
     n++;
   } while (n < *block_count_ptr());
-  assert(ret); //XXX
+  if(scratch.first >= stop) {
+    return 0;
+  } else if(scratch.second > stop) {
+    scratch.second=stop;
+  }
   return ret;
 }
 } // namespace rose
