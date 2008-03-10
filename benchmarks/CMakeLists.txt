@@ -2,6 +2,14 @@ ADD_EXECUTABLE(rose rose.cpp)
 TARGET_LINK_LIBRARIES(rose ${COMMON_LIBRARIES})
 ADD_EXECUTABLE(roseTable roseTable.cpp)
 TARGET_LINK_LIBRARIES(roseTable ${COMMON_LIBRARIES})
+
+ADD_EXECUTABLE(roseTableTpcCH-workload1 roseTableTpcCH-workload1.cpp)
+TARGET_LINK_LIBRARIES(roseTableTpcCH-workload1 ${COMMON_LIBRARIES})
+
+ADD_EXECUTABLE(roseTableTpcCH-workload2 roseTableTpcCH-workload2.cpp)
+TARGET_LINK_LIBRARIES(roseTableTpcCH-workload2 ${COMMON_LIBRARIES})
+
+
 #ADD_LIBRARY(referential algebra.c dml.c)
 #SET(COMMON_LIBRARIES referential ${COMMON_LIBRARIES})
 IF(CHECK_LIBRARY)
