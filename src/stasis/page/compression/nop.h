@@ -26,18 +26,14 @@ namespace rose {
 
     static const int PLUGIN_ID = 2;
     inline void offset(TYPE o) {}
-    inline size_t max_overrun() { return 0; }
+    inline size_t max_overrun() { return sizeof(TYPE); }
     inline slot_index_t append(int xid, const TYPE dat, byte_off_t * except,
 			       byte * exceptions, int *free_bytes) {
-      if(*free_bytes >= (int)sizeof(TYPE)) {
-	slot_index_t ret = *numentries_ptr();
-	((TYPE*)(numentries_ptr()+1))[ret] = dat;
-	(*free_bytes)-=sizeof(TYPE);
-	(*numentries_ptr())++;
-	return ret;
-      } else {
-	return NOSPACE;
-      }
+      slot_index_t ret = *numentries_ptr();
+      ((TYPE*)(numentries_ptr()+1))[ret] = dat;
+      (*free_bytes) -= sizeof(TYPE);
+      (*numentries_ptr())++;
+      return ret;
     }
     inline TYPE *recordRead(int xid, slot_index_t slot, byte *exceptions,
 			    TYPE *buf) {

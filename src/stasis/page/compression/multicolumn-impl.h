@@ -29,7 +29,7 @@ Multicolumn<TUPLE>::Multicolumn(int xid, Page *p, column_number_t column_count,
     columns_[i] = new byte[USABLE_SIZE_OF_PAGE];
     dispatcher_.set_plugin(columns_[i],i,plugins[i]);
     dispatcher_.init_mem(columns_[i],i);
-    bytes_left_ -= dispatcher_.bytes_used(i);
+    bytes_left_ -= (dispatcher_.bytes_used(i) + dispatcher_.max_overrun(i));
   }
 
   *stasis_page_type_ptr(p) = plugin_id();

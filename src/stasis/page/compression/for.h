@@ -147,12 +147,12 @@ class For {
 
  private:
 
-  /*typedef int8_t delta_t;
+  typedef int8_t delta_t;
   static const delta_t DELTA_MAX = CHAR_MAX;
-  static const delta_t DELTA_MIN = CHAR_MIN;*/
-  typedef int16_t delta_t;
+  static const delta_t DELTA_MIN = CHAR_MIN;
+  /*  typedef int16_t delta_t;
   static const delta_t DELTA_MAX = SHRT_MAX;
-  static const delta_t DELTA_MIN = SHRT_MIN; 
+  static const delta_t DELTA_MIN = SHRT_MIN;  */
   /*typedef int32_t delta_t;
   static const delta_t DELTA_MAX = INT_MAX;
   static const delta_t DELTA_MIN = INT_MIN;*/

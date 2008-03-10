@@ -135,6 +135,12 @@ class PluginDispatcher{
     return ret;
   }
 
+  inline byte_off_t max_overrun(column_number_t col) {
+    byte_off_t ret;
+    dispatchSwitch(col,caseNoArg,mem,ret,max_overrun);
+    return ret;
+  }
+
   inline slot_index_t recordCount(column_number_t col) {
     byte_off_t ret;
     dispatchSwitch(col,caseNoArg,mem,ret,recordCount);

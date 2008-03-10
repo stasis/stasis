@@ -108,7 +108,7 @@ class StaticMulticolumn {
     cmp = new typ(xid,(void*)columns_[i]);		   \
     cmp->init_mem(columns_[i]);				   \
     *column_plugin_id_ptr(i) = cmp->PLUGIN_ID;		   \
-    bytes_left_ -= cmp->bytes_used();			   \
+    bytes_left_ -= (cmp->bytes_used() + cmp->max_overrun());	\
   }
 
   STATIC_MC_INIT(0, CMP0, plugin0) STATIC_MC_INIT(1, CMP1, plugin1) STATIC_MC_INIT(2, CMP2, plugin2) ;
