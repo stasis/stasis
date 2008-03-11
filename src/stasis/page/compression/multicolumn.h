@@ -159,7 +159,6 @@ template <class TUPLE> class Multicolumn {
   Page * p_;
   byte ** columns_;
   byte_off_t first_exception_byte_;
-  byte * exceptions_;
 
  public:
   PluginDispatcher dispatcher_;

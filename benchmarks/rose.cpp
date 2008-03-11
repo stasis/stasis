@@ -28,7 +28,7 @@ typedef int64_t val_t;   // rose executable's input contains 64 bit values
   decompressing the data actually matches the original dataset.
 */
 
-//#define CHECK_OUTPUT
+#define CHECK_OUTPUT
 
 using rose::Pstar;
 using rose::Multicolumn;

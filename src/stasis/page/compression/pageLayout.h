@@ -93,6 +93,16 @@ namespace rose {
       if(7 < N) f->compressor7()->offset(*t->get7());
       if(8 < N) f->compressor8()->offset(*t->get8());
       if(9 < N) f->compressor9()->offset(*t->get9());
+      if(10 < N) f->compressor10()->offset(*t->get10());
+      if(11 < N) f->compressor11()->offset(*t->get11());
+      if(12 < N) f->compressor12()->offset(*t->get12());
+      if(13 < N) f->compressor13()->offset(*t->get13());
+      if(14 < N) f->compressor14()->offset(*t->get14());
+      if(15 < N) f->compressor15()->offset(*t->get15());
+      if(16 < N) f->compressor16()->offset(*t->get16());
+      if(17 < N) f->compressor17()->offset(*t->get17());
+      if(18 < N) f->compressor18()->offset(*t->get18());
+      if(19 < N) f->compressor19()->offset(*t->get19());
 
       return f;
     }

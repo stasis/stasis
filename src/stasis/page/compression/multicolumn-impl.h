@@ -14,15 +14,15 @@ Multicolumn<TUPLE>::Multicolumn(int xid, Page *p, column_number_t column_count,
                                 plugin_id_t * plugins) :
     p_(p),
     columns_(new byte*[column_count]),
-    first_exception_byte_(USABLE_SIZE_OF_PAGE),
-    exceptions_(new byte[USABLE_SIZE_OF_PAGE]),
+    first_exception_byte_(-1),
     dispatcher_(column_count),
     unpacked_(1)
 {
 
   *column_count_ptr() = column_count;
 
-  bytes_left_ = first_header_byte_ptr()- p->memAddr;
+  bytes_left_ = first_header_byte_ptr()- p_->memAddr;
+  first_exception_byte_ = first_header_byte_ptr() - p_->memAddr;
 
   for(int i = 0; i < column_count; i++) {
     *column_plugin_id_ptr(i) = plugins[i];
@@ -40,8 +40,7 @@ template<class TUPLE>
 Multicolumn<TUPLE>::Multicolumn(Page * p) :
     p_(p),
     columns_(new byte*[*column_count_ptr()]),
-    first_exception_byte_(USABLE_SIZE_OF_PAGE - *exceptions_len_ptr()),
-    exceptions_(p_->memAddr + *exceptions_offset_ptr()),
+    first_exception_byte_(*exceptions_offset_ptr()),
     dispatcher_(*column_count_ptr()),
     unpacked_(0)  {
 
@@ -54,9 +53,6 @@ Multicolumn<TUPLE>::Multicolumn(Page * p) :
 
     byte_off_t column_length = dispatcher_.bytes_used(i);
     columns_[i] = p_->memAddr + *column_offset_ptr(i);
-    //    dispatcher_.set_plugin(columns_[i],i, *column_plugin_id_ptr(i));
-    //    assert(columns_[i] == page_column_ptr);
-
     first_free = *column_offset_ptr(i) + column_length;
   }
 
@@ -73,12 +69,11 @@ void Multicolumn<TUPLE>::pack() {
   byte_off_t first_free = 0;
   byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
   if(unpacked_) {
-    *exceptions_len_ptr() = USABLE_SIZE_OF_PAGE - first_exception_byte_;
+    *exceptions_len_ptr() = last_free - first_exception_byte_;
+
     last_free -= *exceptions_len_ptr();
 
     *exceptions_offset_ptr() = last_free;
-    memcpy(&(p_->memAddr[*exceptions_offset_ptr()]),
-	   exceptions_ + first_exception_byte_, *exceptions_len_ptr());
 
     for(int i = 0; i < *column_count_ptr(); i++) {
       *column_offset_ptr(i) = first_free;
@@ -91,10 +86,8 @@ void Multicolumn<TUPLE>::pack() {
 
       delete [] columns_[i];
       columns_[i] = column_base_ptr(i);
-      dispatcher_.mem(columns_[i],i); //compressor(i))->mem(columns_[i]);
+      dispatcher_.mem(columns_[i],i);
     }
-    delete [] exceptions_;
-    exceptions_ = p_->memAddr + *exceptions_offset_ptr();
     unpacked_ = 0;
   }
 }
@@ -104,8 +97,6 @@ Multicolumn<TUPLE>::~Multicolumn() {
   for(int i = 0; i < *column_count_ptr(); i++) {
     if(unpacked_) delete [] columns_[i];
   }
-
-  if(unpacked_) delete [] exceptions_;
 
   delete [] columns_;
 }
@@ -137,7 +128,7 @@ inline slot_index_t Multicolumn<TUPLE>::append(int xid,
 
     slot_index_t newret = dispatcher_.recordAppend(xid, i, dat.get(i),
                                                    &first_exception_byte_,
-                                                   exceptions_, &bytes_left_);
+                                                   p_->memAddr, &bytes_left_);
     //assert(ret == NOSPACE || newret == NOSPACE || newret == ret);
     ret = newret;
     i++;
@@ -160,7 +151,7 @@ inline TUPLE* Multicolumn<TUPLE>::recordRead(int xid, slot_index_t slot,
   column_number_t cols = buf->column_count();
 
   do {
-    void * ret = dispatcher_.recordRead(xid,columns_[i],i,slot,exceptions_,
+    void * ret = dispatcher_.recordRead(xid,columns_[i],i,slot,p_->memAddr,
                                         buf->get(i));
     if(!ret) {
       return 0;
@@ -194,7 +185,7 @@ Multicolumn<TUPLE>::recordFind(int xid, TUPLE& val, TUPLE& scratch) {
 
   for(column_number_t i = 0; ret && i < cols; i++) {
     ret = dispatcher_.recordFind(xid, i, ret->first, ret->second,
-				 exceptions_, val.get(i), pair_scratch);
+				 p_->memAddr, val.get(i), pair_scratch);
   }
   if(ret) {
     recordRead(xid,ret->first, &scratch);

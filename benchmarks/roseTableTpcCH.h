@@ -79,7 +79,8 @@ namespace rose {
     //    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     //               0   1  2  3   4  5  6  7  8   9 
 //    int column[] = { 3 , 4, 1, 11, 0, 5, 6, 9, 10, 14 };
-    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    int column[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
     static long COUNT = INSERTS / 100;
     long int count = COUNT;
 
@@ -298,6 +299,159 @@ namespace rose {
 	    }
 	    scratch.set9(&t);
 	  }
+
+	  if(10 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP10 t = strtoll(toks[column[10]], &endptr, 0);
+	    if(strlen(toks[column[10]]) - (size_t)(endptr-toks[column[10]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[10], toks[column[10]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[10],toks[column[10]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set10(&t);
+	  }
+	  if(11 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP11 t = strtoll(toks[column[11]], &endptr, 0);
+	    if(strlen(toks[column[11]]) - (size_t)(endptr-toks[column[11]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[11], toks[column[11]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[11],toks[column[11]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set11(&t);
+	  }
+	  if(12 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP12 t = strtoll(toks[column[12]], &endptr, 0);
+	    if(strlen(toks[column[12]]) - (size_t)(endptr-toks[column[12]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[12], toks[column[12]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[12],toks[column[12]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set12(&t);
+	  }
+	  if(13 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP13 t = strtoll(toks[column[13]], &endptr, 0);
+	    if(strlen(toks[column[13]]) - (size_t)(endptr-toks[column[13]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[13], toks[column[13]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[13],toks[column[13]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set13(&t);
+	  }
+	  if(14 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP14 t = strtoll(toks[column[14]], &endptr, 0);
+	    if(strlen(toks[column[14]]) - (size_t)(endptr-toks[column[14]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[14], toks[column[14]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[14],toks[column[14]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set14(&t);
+	  }
+	  if(15 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP15 t = strtoll(toks[column[15]], &endptr, 0);
+	    if(strlen(toks[column[15]]) - (size_t)(endptr-toks[column[15]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[15], toks[column[15]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[15],toks[column[15]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set15(&t);
+	  }
+	  if(16 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP16 t = strtoll(toks[column[16]], &endptr, 0);
+	    if(strlen(toks[column[16]]) - (size_t)(endptr-toks[column[16]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[16], toks[column[16]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[16],toks[column[16]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set16(&t);
+	  }
+	  if(17 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP17 t = strtoll(toks[column[17]], &endptr, 0);
+	    if(strlen(toks[column[17]]) - (size_t)(endptr-toks[column[17]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[17], toks[column[17]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[17],toks[column[17]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set17(&t);
+	  }
+	  if(18 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP18 t = strtoll(toks[column[18]], &endptr, 0);
+	    if(strlen(toks[column[18]]) - (size_t)(endptr-toks[column[18]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[18], toks[column[18]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[18],toks[column[18]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set18(&t);
+	  }
+	  if(19 < PAGELAYOUT::FMT::TUP::NN) {
+	    char * endptr;
+	    errno = 0;
+	    typename PAGELAYOUT::FMT::TUP::TYP19 t = strtoll(toks[column[19]], &endptr, 0);
+	    if(strlen(toks[column[19]]) - (size_t)(endptr-toks[column[19]]) > 1) {
+	      printf("couldnt parse token #%d: ->%s<-\n", column[19], toks[column[19]]);
+	      return 1;
+	    }
+	    if(errno) {
+	      printf("Couldn't parse token #%d: ->%s<-", column[19],toks[column[19]]);
+	      perror("strtoll error is");
+	      return 1;
+	    }
+	    scratch.set19(&t);
+	  }
+
+
 
 	  //	  abort();
 	  TlsmTableInsert(h,scratch);

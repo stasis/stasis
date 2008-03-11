@@ -40,7 +40,7 @@ For<TYPE>::append(int xid, const TYPE dat,
     (*free_bytes) -= (sizeof(TYPE) + sizeof(delta_t));
     int incr = *free_bytes >= 0;
     (*numdeltas_ptr()) += incr;
-    (*except) -= incr * sizeof(TYPE);
+    (*except) -= (incr * sizeof(TYPE));
 
     /* This does the same thing as the last few lines, but with a branch.  It's
        marginally slower:

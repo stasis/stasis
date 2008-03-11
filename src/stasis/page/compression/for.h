@@ -123,13 +123,13 @@ class For {
     *base_ptr() = -1;
     *numdeltas_ptr() = 0;
   };
-  For(void * mem): mem_(mem) { }
+ For(void * mem): mem_(mem) {}
 
   inline slot_index_t recordCount() {
     return *numdeltas_ptr();
   }
 
-  For() : mem_(0) {}
+ For() : mem_(0) {}
   /**
       @return the length of the FOR region, in bytes
   */

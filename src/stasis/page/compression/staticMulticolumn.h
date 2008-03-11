@@ -66,14 +66,22 @@ namespace rose {
  */
 template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
-  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
+  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
+  class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
+  class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
 void staticMulticolumnLoaded(Page *p);
 
 template <int N, class TUPLE,
   class COMP0, class COMP1 = For<bool>, class COMP2 = For<bool>,
   class COMP3=For<bool>, class COMP4=For<bool>, class COMP5=For<bool>,
   class COMP6=For<bool>, class COMP7=For<bool>, class COMP8=For<bool>,
-  class COMP9=For<bool> >
+  class COMP9=For<bool>,
+  class COMP10=For<bool>, class COMP11 = For<bool>, class COMP12 = For<bool>,
+  class COMP13=For<bool>, class COMP14=For<bool>, class COMP15=For<bool>,
+  class COMP16=For<bool>, class COMP17=For<bool>, class COMP18=For<bool>,
+  class COMP19=For<bool> 
+
+>
 class StaticMulticolumn {
  public:
   static page_impl impl();
@@ -90,17 +98,27 @@ class StaticMulticolumn {
  typedef COMP7 CMP7;
  typedef COMP8 CMP8;
  typedef COMP9 CMP9;
+ typedef COMP10 CMP10;
+ typedef COMP11 CMP11;
+ typedef COMP12 CMP12;
+ typedef COMP13 CMP13;
+ typedef COMP14 CMP14;
+ typedef COMP15 CMP15;
+ typedef COMP16 CMP16;
+ typedef COMP17 CMP17;
+ typedef COMP18 CMP18;
+ typedef COMP19 CMP19;
 
  StaticMulticolumn(int xid, Page *p) :
     p_(p),
-    first_exception_byte_(USABLE_SIZE_OF_PAGE),
-    exceptions_(new byte[USABLE_SIZE_OF_PAGE]),
+    first_exception_byte_(0),
     unpacked_(1)
 {
   stasis_page_cleanup(p);
   *column_count_ptr() = N;
 
   bytes_left_ = first_header_byte_ptr()- p->memAddr;
+  first_exception_byte_ = first_header_byte_ptr() - p_->memAddr;
 
 #define STATIC_MC_INIT(i,typ,cmp)			   \
   if(i < N) {						   \
@@ -115,6 +133,10 @@ class StaticMulticolumn {
   STATIC_MC_INIT(3, CMP3, plugin3) STATIC_MC_INIT(4, CMP4, plugin4) STATIC_MC_INIT(5, CMP5, plugin5) ;
   STATIC_MC_INIT(6, CMP6, plugin6) STATIC_MC_INIT(7, CMP7, plugin7) STATIC_MC_INIT(8, CMP8, plugin8) ;
   STATIC_MC_INIT(9, CMP9, plugin9);
+  STATIC_MC_INIT(10, CMP10, plugin10) STATIC_MC_INIT(11, CMP11, plugin11) STATIC_MC_INIT(12, CMP12, plugin12) ;
+  STATIC_MC_INIT(13, CMP13, plugin13) STATIC_MC_INIT(14, CMP14, plugin14) STATIC_MC_INIT(15, CMP15, plugin15) ;
+  STATIC_MC_INIT(16, CMP16, plugin16) STATIC_MC_INIT(17, CMP17, plugin17) STATIC_MC_INIT(18, CMP18, plugin18) ;
+  STATIC_MC_INIT(19, CMP19, plugin19);
 
 #undef STATIC_MC_INIT
 
@@ -140,8 +162,16 @@ class StaticMulticolumn {
     STATIC_MC_DEINIT(7,plugin7);
     STATIC_MC_DEINIT(8,plugin8);
     STATIC_MC_DEINIT(9,plugin9);
-
-    if(unpacked_) delete [] exceptions_;
+    STATIC_MC_DEINIT(10,plugin10);
+    STATIC_MC_DEINIT(11,plugin11);
+    STATIC_MC_DEINIT(12,plugin12);
+    STATIC_MC_DEINIT(13,plugin13);
+    STATIC_MC_DEINIT(14,plugin14);
+    STATIC_MC_DEINIT(15,plugin15);
+    STATIC_MC_DEINIT(16,plugin16);
+    STATIC_MC_DEINIT(17,plugin17);
+    STATIC_MC_DEINIT(18,plugin18);
+    STATIC_MC_DEINIT(19,plugin19);
 
  }
 
@@ -169,63 +199,121 @@ class StaticMulticolumn {
   COMP7 * compressor7() const { return plugin7; }
   COMP8 * compressor8() const { return plugin8; }
   COMP9 * compressor9() const { return plugin9; }
+  COMP10 * compressor10() const { return plugin10; }
+  COMP11 * compressor11() const { return plugin11; }
+  COMP12 * compressor12() const { return plugin12; }
+  COMP13 * compressor13() const { return plugin13; }
+  COMP14 * compressor14() const { return plugin14; }
+  COMP15 * compressor15() const { return plugin15; }
+  COMP16 * compressor16() const { return plugin16; }
+  COMP17 * compressor17() const { return plugin17; }
+  COMP18 * compressor18() const { return plugin18; }
+  COMP19 * compressor19() const { return plugin19; }
 
   inline slot_index_t append(int xid, TUPLE const & dat) {
     slot_index_t ret = 0;
     slot_index_t newret = 0;
     if(0 < N) ret = plugin0->append(xid, *dat.get0(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     if(1 < N) newret = plugin1->append(xid, *dat.get1(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(2 < N) newret = plugin2->append(xid, *dat.get2(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(3 < N) newret = plugin3->append(xid, *dat.get3(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(4 < N) newret = plugin4->append(xid, *dat.get4(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(5 < N) newret = plugin5->append(xid, *dat.get5(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(6 < N) newret = plugin6->append(xid, *dat.get6(),&first_exception_byte_,
-				    exceptions_, &bytes_left_);
+				    p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(7 < N) newret = plugin7->append(xid, *dat.get7(),&first_exception_byte_,
-				   exceptions_, &bytes_left_);
+				   p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(8 < N) newret = plugin8->append(xid, *dat.get8(),&first_exception_byte_,
-				   exceptions_, &bytes_left_);
+				   p_->memAddr, &bytes_left_);
     //    if(bytes_left_ >= 0) {
     //      assert(newret == ret);
     if(9 < N) newret = plugin9->append(xid, *dat.get9(),&first_exception_byte_,
-				   exceptions_, &bytes_left_);
+				   p_->memAddr, &bytes_left_);
     //    }}}}}}}}}
-    assert(N == 1 || bytes_left_ < 0 || newret == ret);
+    if(10 < N) newret = plugin10->append(xid, *dat.get10(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    if(11 < N) newret = plugin11->append(xid, *dat.get11(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(12 < N) newret = plugin12->append(xid, *dat.get12(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(13 < N) newret = plugin13->append(xid, *dat.get13(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(14 < N) newret = plugin14->append(xid, *dat.get14(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(15 < N) newret = plugin15->append(xid, *dat.get15(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(16 < N) newret = plugin16->append(xid, *dat.get16(),&first_exception_byte_,
+				    p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(17 < N) newret = plugin17->append(xid, *dat.get17(),&first_exception_byte_,
+				   p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(18 < N) newret = plugin18->append(xid, *dat.get18(),&first_exception_byte_,
+				   p_->memAddr, &bytes_left_);
+    //    if(bytes_left_ >= 0) {
+    //      assert(newret == ret);
+    if(19 < N) newret = plugin19->append(xid, *dat.get19(),&first_exception_byte_,
+				   p_->memAddr, &bytes_left_);
+    //    }}}}}}}}}
+    //    assert(N == 1 || bytes_left_ < 0 || newret == ret);
     return (bytes_left_ < 0) ? NOSPACE : ret;
   }
  inline TUPLE * recordRead(int xid, slot_index_t slot, TUPLE * buf) {
    bool ret = 1;
-   if(0 < N) ret = plugin0->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP0*>(buf->get0())) ? ret : 0;
-   if(1 < N) ret = plugin1->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP1*>(buf->get1())) ? ret : 0;
-   if(2 < N) ret = plugin2->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP2*>(buf->get2())) ? ret : 0;
-   if(3 < N) ret = plugin3->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP3*>(buf->get3())) ? ret : 0;
-   if(4 < N) ret = plugin4->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP4*>(buf->get4())) ? ret : 0;
-   if(5 < N) ret = plugin5->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP5*>(buf->get5())) ? ret : 0;
-   if(6 < N) ret = plugin6->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP6*>(buf->get6())) ? ret : 0;
-   if(7 < N) ret = plugin7->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP7*>(buf->get7())) ? ret : 0;
-   if(8 < N) ret = plugin8->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP8*>(buf->get8())) ? ret : 0;
-   if(9 < N) ret = plugin9->recordRead(xid,slot,exceptions_,const_cast<typename TUP::TYP9*>(buf->get9())) ? ret : 0;
+   if(0 < N) ret = plugin0->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP0*>(buf->get0())) ? ret : 0;
+   if(1 < N) ret = plugin1->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP1*>(buf->get1())) ? ret : 0;
+   if(2 < N) ret = plugin2->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP2*>(buf->get2())) ? ret : 0;
+   if(3 < N) ret = plugin3->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP3*>(buf->get3())) ? ret : 0;
+   if(4 < N) ret = plugin4->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP4*>(buf->get4())) ? ret : 0;
+   if(5 < N) ret = plugin5->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP5*>(buf->get5())) ? ret : 0;
+   if(6 < N) ret = plugin6->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP6*>(buf->get6())) ? ret : 0;
+   if(7 < N) ret = plugin7->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP7*>(buf->get7())) ? ret : 0;
+   if(8 < N) ret = plugin8->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP8*>(buf->get8())) ? ret : 0;
+   if(9 < N) ret = plugin9->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP9*>(buf->get9())) ? ret : 0;
+   if(10 < N) ret = plugin10->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP10*>(buf->get10())) ? ret : 0;
+   if(11 < N) ret = plugin11->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP11*>(buf->get11())) ? ret : 0;
+   if(12 < N) ret = plugin12->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP12*>(buf->get12())) ? ret : 0;
+   if(13 < N) ret = plugin13->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP13*>(buf->get13())) ? ret : 0;
+   if(14 < N) ret = plugin14->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP14*>(buf->get14())) ? ret : 0;
+   if(15 < N) ret = plugin15->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP15*>(buf->get15())) ? ret : 0;
+   if(16 < N) ret = plugin16->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP16*>(buf->get16())) ? ret : 0;
+   if(17 < N) ret = plugin17->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP17*>(buf->get17())) ? ret : 0;
+   if(18 < N) ret = plugin18->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP18*>(buf->get18())) ? ret : 0;
+   if(19 < N) ret = plugin19->recordRead(xid,slot,p_->memAddr,const_cast<typename TUP::TYP19*>(buf->get19())) ? ret : 0;
    return ret ? buf : 0;
  }
  inline slot_index_t recordCount(int xid) {
@@ -242,6 +330,16 @@ class StaticMulticolumn {
    if(7 < N) { c = plugin7->recordCount(); recordCount = recordCount > c ? c :recordCount; }
    if(8 < N) { c = plugin8->recordCount(); recordCount = recordCount > c ? c :recordCount; }
    if(9 < N) { c = plugin9->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(10 < N) { c = plugin10->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(11 < N) { c = plugin11->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(12 < N) { c = plugin12->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(13 < N) { c = plugin13->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(14 < N) { c = plugin14->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(15 < N) { c = plugin15->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(16 < N) { c = plugin16->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(17 < N) { c = plugin17->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(18 < N) { c = plugin18->recordCount(); recordCount = recordCount > c ? c :recordCount; }
+   if(19 < N) { c = plugin19->recordCount(); recordCount = recordCount > c ? c :recordCount; }
    return recordCount;
  }
  /* inline slot_index_t recordCount(int xid) {
@@ -263,34 +361,64 @@ class StaticMulticolumn {
    //   printf("static multiclumn record find\n"); fflush(stdout);
 
    if(0 < N) ret = plugin0->recordFind(xid, 0, recordCount(xid),
-				       exceptions_, *val.get0(), pair_scratch);
+				       p_->memAddr, *val.get0(), pair_scratch);
    //assert(ret);
    if(1 < N) if(ret) ret = plugin1->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get1(), pair_scratch);
+				       p_->memAddr, *val.get1(), pair_scratch);
    //assert(ret);
    if(2 < N) if(ret) ret = plugin2->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get2(), pair_scratch);
+				       p_->memAddr, *val.get2(), pair_scratch);
    //assert(ret);
    if(3 < N) if(ret) ret = plugin3->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get3(), pair_scratch);
+				       p_->memAddr, *val.get3(), pair_scratch);
    //assert(ret);
    if(4 < N) if(ret) ret = plugin4->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get4(), pair_scratch);
+				       p_->memAddr, *val.get4(), pair_scratch);
    //assert(ret);
    if(5 < N) if(ret) ret = plugin5->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get5(), pair_scratch);
+				       p_->memAddr, *val.get5(), pair_scratch);
    //assert(ret);
    if(6 < N) if(ret) ret = plugin6->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get6(), pair_scratch);
+				       p_->memAddr, *val.get6(), pair_scratch);
    //assert(ret);
    if(7 < N) if(ret) ret = plugin7->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get7(), pair_scratch);
+				       p_->memAddr, *val.get7(), pair_scratch);
    //assert(ret);
    if(8 < N) if(ret) ret = plugin8->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get8(), pair_scratch);
+				       p_->memAddr, *val.get8(), pair_scratch);
    //assert(ret);
    if(9 < N) if(ret) ret = plugin9->recordFind(xid, ret->first, ret->second,
-				       exceptions_, *val.get9(), pair_scratch);
+				       p_->memAddr, *val.get9(), pair_scratch);
+   //assert(ret);
+   if(10 < N) if(ret) ret = plugin10->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get10(), pair_scratch);
+   //assert(ret);
+   if(11 < N) if(ret) ret = plugin11->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get11(), pair_scratch);
+   //assert(ret);
+   if(12 < N) if(ret) ret = plugin12->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get12(), pair_scratch);
+   //assert(ret);
+   if(13 < N) if(ret) ret = plugin13->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get13(), pair_scratch);
+   //assert(ret);
+   if(14 < N) if(ret) ret = plugin14->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get14(), pair_scratch);
+   //assert(ret);
+   if(15 < N) if(ret) ret = plugin15->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get15(), pair_scratch);
+   //assert(ret);
+   if(16 < N) if(ret) ret = plugin16->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get16(), pair_scratch);
+   //assert(ret);
+   if(17 < N) if(ret) ret = plugin17->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get17(), pair_scratch);
+   //assert(ret);
+   if(18 < N) if(ret) ret = plugin18->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get18(), pair_scratch);
+   //assert(ret);
+   if(19 < N) if(ret) ret = plugin19->recordFind(xid, ret->first, ret->second,
+				       p_->memAddr, *val.get19(), pair_scratch);
    //assert(ret);
    if(ret) {
      // XXX slow, doesn't return whole range...
@@ -304,12 +432,9 @@ class StaticMulticolumn {
     byte_off_t first_free = 0;
     byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
     if(unpacked_) {
-      *exceptions_len_ptr() = USABLE_SIZE_OF_PAGE - first_exception_byte_;
+      *exceptions_len_ptr() = last_free - first_exception_byte_;
       last_free -= *exceptions_len_ptr();
-
       *exceptions_offset_ptr() = last_free;
-      memcpy(&(p_->memAddr[*exceptions_offset_ptr()]),
-	     exceptions_ + first_exception_byte_, *exceptions_len_ptr());
 
 #define STATIC_MC_PACK(i,comp)				              \
       if(i < N) {						      \
@@ -328,11 +453,14 @@ class StaticMulticolumn {
       STATIC_MC_PACK(4,plugin4) STATIC_MC_PACK(5,plugin5) ;
       STATIC_MC_PACK(6,plugin6) STATIC_MC_PACK(7,plugin7) ;
       STATIC_MC_PACK(8,plugin8) STATIC_MC_PACK(9,plugin9) ;
+      STATIC_MC_PACK(10,plugin10) STATIC_MC_PACK(11,plugin11) ;
+      STATIC_MC_PACK(12,plugin12) STATIC_MC_PACK(13,plugin13) ;
+      STATIC_MC_PACK(14,plugin14) STATIC_MC_PACK(15,plugin15) ;
+      STATIC_MC_PACK(16,plugin16) STATIC_MC_PACK(17,plugin17) ;
+      STATIC_MC_PACK(18,plugin18) STATIC_MC_PACK(19,plugin19) ;
 
 #undef STATIC_MC_PACK
 
-      delete [] exceptions_;
-      exceptions_ = p_->memAddr + *exceptions_offset_ptr();
       unpacked_ = 0;
     }
   }
@@ -340,6 +468,9 @@ class StaticMulticolumn {
   COMP0* plugin0; COMP1* plugin1; COMP2* plugin2; COMP3* plugin3;
   COMP4* plugin4; COMP5* plugin5; COMP6* plugin6; COMP7* plugin7;
   COMP8* plugin8; COMP9* plugin9;
+  COMP10* plugin10; COMP11* plugin11; COMP12* plugin12; COMP13* plugin13;
+  COMP14* plugin14; COMP15* plugin15; COMP16* plugin16; COMP17* plugin17;
+  COMP18* plugin18; COMP19* plugin19;
 
   typedef struct column_header {
     byte_off_t off;
@@ -351,8 +482,7 @@ class StaticMulticolumn {
   */
  StaticMulticolumn(Page * p) :
     p_(p),
-    first_exception_byte_(USABLE_SIZE_OF_PAGE - *exceptions_len_ptr()),
-    exceptions_(p_->memAddr + *exceptions_offset_ptr()),
+    first_exception_byte_(*exceptions_offset_ptr()),
     unpacked_(0)  {
       byte_off_t first_free = 0;
       assert(N == *column_count_ptr());
@@ -374,6 +504,16 @@ class StaticMulticolumn {
       STATIC_MC_INIT(7, plugin7,COMP7) ;
       STATIC_MC_INIT(8, plugin8,COMP8) ;
       STATIC_MC_INIT(9, plugin9,COMP9) ;
+      STATIC_MC_INIT(10, plugin10,COMP10) ;
+      STATIC_MC_INIT(11, plugin11,COMP11) ;
+      STATIC_MC_INIT(12, plugin12,COMP12) ;
+      STATIC_MC_INIT(13, plugin13,COMP13) ;
+      STATIC_MC_INIT(14, plugin14,COMP14) ;
+      STATIC_MC_INIT(15, plugin15,COMP15) ;
+      STATIC_MC_INIT(16, plugin16,COMP16) ;
+      STATIC_MC_INIT(17, plugin17,COMP17) ;
+      STATIC_MC_INIT(18, plugin18,COMP18) ;
+      STATIC_MC_INIT(19, plugin19,COMP19) ;
 
 #undef STATIC_MC_INIT
 
@@ -439,10 +579,13 @@ class StaticMulticolumn {
   Page * p_;
   byte * columns_[N];
   byte_off_t first_exception_byte_;
-  byte * exceptions_;
   int bytes_left_;
   int unpacked_;
-  friend void staticMulticolumnLoaded<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>(Page *p);
+ friend void staticMulticolumnLoaded
+     <
+        N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,
+        COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19
+     >(Page *p);
 };
 
 
@@ -484,40 +627,45 @@ static const page_impl static_multicolumn_impl = {
 
 template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
-  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
+  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
+  class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
+  class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
 void staticMulticolumnLoaded(Page *p) {
   p->LSN = *stasis_page_lsn_ptr(p);
-  assert(*stasis_page_type_ptr(p) == (StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>::plugin_id()));
-  p->impl = new StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>(p);
+  p->impl = new StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>(p);
 }
 template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
-  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
+  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
+  class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
+  class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
 static void staticMulticolumnFlushed(Page *p) {
   *stasis_page_lsn_ptr(p) = p->LSN;
-  ((StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>*)(p->impl))->pack();
+  ((StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>*)(p->impl))->pack();
 }
 template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
-  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
+  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
+  class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
+  class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
 static void staticMulticolumnCleanup(Page *p) {
-  delete (StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>*)p->impl;
+  delete (StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>*)p->impl;
   p->impl = 0;
 }
 
 template <int N, class TUPLE,
   class COMP0, class COMP1, class COMP2, class COMP3, class COMP4,
-  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9>
-page_impl StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>::impl() {
+  class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
+  class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
+  class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
+page_impl StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>::impl() {
   page_impl ret = static_multicolumn_impl;
-  ret.page_type = StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>::plugin_id();
-  ret.pageLoaded = staticMulticolumnLoaded<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>;
-  ret.pageFlushed = staticMulticolumnFlushed<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>;
-  ret.pageCleanup = staticMulticolumnCleanup<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9>;
+  ret.page_type = StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>::plugin_id();
+  ret.pageLoaded = staticMulticolumnLoaded<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>;
+  ret.pageFlushed = staticMulticolumnFlushed<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>;
+  ret.pageCleanup = staticMulticolumnCleanup<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>;
   return ret;
 }
-
-
 
 }  // namespace rose
 
