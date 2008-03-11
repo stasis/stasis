@@ -18,6 +18,7 @@ Multicolumn<TUPLE>::Multicolumn(int xid, Page *p, column_number_t column_count,
     dispatcher_(column_count),
     unpacked_(1)
 {
+  stasis_page_cleanup(p_);
 
   *column_count_ptr() = column_count;
 

@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   using rose::Nop;
   int ret;
   // multicolumn is deprecated; want static dispatch!
-  
+  /*
   rose::plugin_id_t * plugins = (rose::plugin_id_t*)malloc(COLS * sizeof(rose::plugin_id_t));
 
   // todo try Rle / For
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 
   ret = rose::main
   <rose::DynamicMultiColumnTypePageLayout<rose::Multicolumn<tup> > >(argc,argv); 
-  
+  */
   /*  return rose::main
     <rose::MultiColumnTypePageLayout
     <COLS,
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     >
     (argc,argv);
   */
-  /*
+  
   rose::StaticMultiColumnTypePageLayout
     <COLS,
     rose::StaticMulticolumn<COLS,tup,
@@ -127,6 +127,6 @@ int main(int argc, char **argv) {
     >
     >
     (argc,argv);
-  */
+  
   return ret;
 }

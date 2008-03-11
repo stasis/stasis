@@ -20,6 +20,7 @@ template <class COMPRESSOR, class TYPE> class Pstar {
  public:
   // Initialize a new Pstar page
   Pstar(int xid, Page *p): p_(p), plug_(COMPRESSOR(xid, p->memAddr)) {
+    stasis_page_cleanup(p);
     *stasis_page_type_ptr(p) = plugin_id<Pstar<COMPRESSOR,TYPE>,COMPRESSOR,TYPE>();
     *freespace_ptr() = (intptr_t)recordsize_ptr() - (intptr_t)p_->memAddr;
     *recordsize_ptr() = sizeof(TYPE);
