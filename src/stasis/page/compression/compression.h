@@ -7,17 +7,17 @@ namespace rose {
 
 typedef int8_t record_size_t;
 typedef uint16_t byte_off_t;
-typedef uint32_t slot_index_t;
+typedef uint16_t slot_index_t;
 typedef uint8_t plugin_id_t;
 typedef uint8_t column_number_t;
 typedef uint16_t column_offset_t;
-typedef uint16_t epoch_t;
+typedef uint64_t epoch_t;
 
 static const record_size_t VARIABLE_SIZE =  CHAR_MAX;
-static const slot_index_t  NOSPACE       =  UINT_MAX;
-static const slot_index_t  EXCEPTIONAL   =  UINT_MAX-1;
-static const slot_index_t  MAX_INDEX     =  UINT_MAX-2;
-
+static const slot_index_t  NOSPACE       =  USHRT_MAX; //UINT_MAX;
+static const slot_index_t  EXCEPTIONAL   =  USHRT_MAX-1;//UINT_MAX-1;
+static const slot_index_t  MAX_INDEX     =  USHRT_MAX-2;//UINT_MAX-2;
+static const slot_index_t  INVALID_COL   =  UCHAR_MAX;
 /**
    This function computes a page type (an integer stored in the page header)
    so that Stasis can dispatch calls to the appropriate page implemenation.
