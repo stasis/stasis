@@ -58,7 +58,7 @@ namespace rose {
 
     Tcommit(xid);
 
-    lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable);
+    lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable, XID_COL);
 
     typename PAGELAYOUT::FMT::TUP t;
     typename PAGELAYOUT::FMT::TUP s;
@@ -79,7 +79,8 @@ namespace rose {
     //    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     //               0   1  2  3   4  5  6  7  8   9 
 //    int column[] = { 3 , 4, 1, 11, 0, 5, 6, 9, 10, 14 };
-    int column[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    const int column[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
 
     static long COUNT = INSERTS / 100;
     long int count = COUNT;
@@ -91,6 +92,8 @@ namespace rose {
     start = rose::tv_to_double(start_tv);
     last_start = start;
 
+    epoch_t this_xid = 0;
+    epoch_t last_ts_col = 0;
 
     printf("tuple 'size'%d ; %ld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
 
@@ -98,11 +101,12 @@ namespace rose {
       typename PAGELAYOUT::FMT::TUP scratch;
 
       int max_col_number = 0;
-      for(int col =0; col < PAGELAYOUT::FMT::TUP::NN ; col++) {
+      for(int col =0; col < PAGELAYOUT::FMT::TUP::NN; col++) {
 	max_col_number = max_col_number < column[col]
 	  ? column[col] : max_col_number;
       }
       char ** toks = (char**)malloc(sizeof(char*)*(max_col_number+1));
+      char * mode;
       printf("Reading from file %s\n", file);
       int inserts = 0;
       size_t line_len = 100;
@@ -127,7 +131,8 @@ namespace rose {
 	{
 	  char * saveptr;
 	  int i;
-	  toks[0] = strtok_r(line, ",\n", &saveptr);
+	  mode = strtok_r(line, ",\n", &saveptr);
+	  toks[0] = strtok_r(0, ",\n", &saveptr);
 	  for(i = 1; i < (max_col_number+1); i++) {
 	    toks[i] = strtok_r(0, ",\n", &saveptr);
 	    if(!toks[i]) {
@@ -451,10 +456,35 @@ namespace rose {
 	    scratch.set19(&t);
 	  }
 
+	  int needupdate = 0;
+	  if(last_ts_col != *(epoch_t*)scratch.get(XID_COL)) {
+	    this_xid++;
+	    last_ts_col = *(epoch_t*)scratch.get(XID_COL);
+	    needupdate = 1;
+	  }
 
+	  if(!strcmp(mode, "add")) {
+	    (*(epoch_t*)scratch.get(XID_COL)) = this_xid * 2;  // will be *2 + 1 for deletes
+	    //	  abort();
+	    TlsmTableInsert(h,scratch);
+	    if(needupdate) { TlsmTableUpdateTimestamp(h,(this_xid-1) * 2); }
 
-	  //	  abort();
-	  TlsmTableInsert(h,scratch);
+	  } else if(!strcmp(mode, "delete")) {
+	    (*(epoch_t*)scratch.get(XID_COL)) = this_xid * 2 + 1;  // + 1 => delete
+	    TlsmTableInsert(h,scratch);
+	    if(needupdate) { TlsmTableUpdateTimestamp(h,(this_xid-1) * 2 + 1); }
+	  } else if(!strcmp(mode, "deliver")) {
+	    TlsmTableInsert(h,scratch);
+	    (*(epoch_t*)scratch.get(XID_COL)) = this_xid * 2 + 1;  // + 1 => delete
+	    (*(epoch_t*)scratch.get(PAGELAYOUT::FMT::TUP::NN-1)) = 0;   // undelivered tuple
+	    TlsmTableInsert(h,scratch);
+	    if(needupdate) { TlsmTableUpdateTimestamp(h,(this_xid-1) * 2 + 1); }
+	  } else if(!strcmp(mode, "status")) {
+	    typename PAGELAYOUT::FMT::TUP scratch2;
+	    // XXX never finds tuples; gets to correct page, then
+	    // fails because it doesn't know the xid, so no tuples match.
+	    TlsmTableFind(xid,h,scratch, scratch2);
+	  }
 	  count --;
 	  if(!count) {
 	    count = COUNT;
@@ -471,6 +501,8 @@ namespace rose {
 		   (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)count/1000000.0)/(now-last_start)
 		   );
 	    last_start = now;
+	    int count = TlsmTableCount(xid,h);
+	    printf("counted %d tuples\n", count);
 	  }
 	}
       }
@@ -546,4 +578,3 @@ namespace rose {
     return 0;
   }
 }
-

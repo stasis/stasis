@@ -58,7 +58,7 @@ namespace rose {
 
     Tcommit(xid);
 
-    lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable);
+    lsmTableHandle<PAGELAYOUT>* h = TlsmTableStart<PAGELAYOUT>(lsmTable, INVALID_COL);
 
     typename PAGELAYOUT::FMT::TUP t;
     typename PAGELAYOUT::FMT::TUP s;

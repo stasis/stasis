@@ -717,6 +717,9 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
 }
 
 pageid_t TlsmLastPage(int xid, recordid tree) {
+  if(tree.page == 0 && tree.slot == 0 && tree.size == -1) {
+    return -1;
+  }
   Page * root = loadPage(xid, tree.page);
   readlock(root->rwlatch,0);
   lsmTreeState *state = root->impl;
@@ -781,6 +784,7 @@ page_impl lsmRootImpl() {
 ///---------------------  Iterator implementation
 
 lladdIterator_t *lsmTreeIterator_open(int xid, recordid root) {
+  if(root.page == 0 && root.slot == 0 && root.size == -1) { return 0; }
   Page *p = loadPage(xid,root.page);
   readlock(p->rwlatch,0);
   size_t keySize = getKeySize(xid,p);

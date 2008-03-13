@@ -12,6 +12,7 @@
 #include <stasis/truncation.h>
 
 namespace rose {
+
   /**
      @file
 
@@ -46,6 +47,8 @@ namespace rose {
       typename ITERA::handle ** out_tree;
       void * out_tree_allocer;
       typename ITERA::handle my_tree;
+      epoch_t * last_complete_xact;
+      column_number_t ts_col;
     };
 
   template <class PAGELAYOUT, class ITER>
@@ -72,6 +75,9 @@ namespace rose {
     typename PAGELAYOUT::FMT * mc = PAGELAYOUT::initPage(p, &**begin);
 
     for(ITER i(*begin); i != *end; ++i) {
+      /*      for(int c = 0; c < (*i).column_count(); c++) {
+	assert(*(byte*)(*i).get(c) || !*(byte*)(*i).get(c));
+	} */
       rose::slot_index_t ret = mc->append(xid, *i);
 
       if(ret == rose::NOSPACE) {
@@ -164,6 +170,8 @@ namespace rose {
 
       gettimeofday(&wait_tv,0);
 
+      epoch_t current_timestamp = a->last_complete_xact ? *(a->last_complete_xact) : 0;
+
       uint64_t insertedTuples;
       pageid_t mergedPages;
       ITERA *taBegin = new ITERA(tree);
@@ -213,10 +221,19 @@ namespace rose {
       mergedPages = compressData
 	<PAGELAYOUT,versioningIterator<mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP>, typename PAGELAYOUT::FMT::TUP> >
 	(xid, &vBegin, &vEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples); */
-      mergedPages = compressData
-	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
-	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);  
 
+      /*      mergedPages = compressData
+	<PAGELAYOUT,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> >
+	(xid, &mBegin, &mEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples);   */
+
+      gcIterator<typename PAGELAYOUT::FMT::TUP,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> > gcBegin(&mBegin, &mEnd, current_timestamp, a->ts_col);
+      gcIterator<typename PAGELAYOUT::FMT::TUP,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> > gcEnd(&mEnd, &mEnd, current_timestamp, a->ts_col);
+
+      //++gcBegin;
+
+      mergedPages = compressData
+	<PAGELAYOUT, gcIterator<typename PAGELAYOUT::FMT::TUP,mergeIterator<ITERA,ITERB,typename PAGELAYOUT::FMT::TUP> > >
+	(xid, &gcBegin, &gcEnd,tree->r_,a->pageAlloc,a->pageAllocState,&insertedTuples); 
       // these tree iterators keep pages pinned!  Don't call force until they've been deleted, or we'll deadlock.
 
       } // free all the stack allocated iterators...
@@ -422,10 +439,12 @@ namespace rose {
       typename PAGELAYOUT::FMT>, stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
       typename PAGELAYOUT::FMT::TUP::stl_cmp>,
       typename PAGELAYOUT::FMT::TUP> > * args2;
+    epoch_t last_xact;
   };
 
   template<class PAGELAYOUT>
-    lsmTableHandle <PAGELAYOUT> * TlsmTableStart(recordid& tree) {
+    // XXX ts_col should be an argument to TlsmTableAlloc, not start!!!
+    lsmTableHandle <PAGELAYOUT> * TlsmTableStart(recordid& tree, column_number_t ts_col) {
     /// XXX xid for daemon processes?
     lsmTableHeader_t h;
     Tread(-1, tree, &h);
@@ -502,6 +521,8 @@ namespace rose {
     ret->input_needed_cond = block0_needed_cond;
     ret->input_size = block0_size;
 
+    ret->last_xact = 0;
+
     recordid * ridp = (recordid*)malloc(sizeof(recordid));
     *ridp = h.bigTreeAllocState;
     recordid * oldridp = (recordid*)malloc(sizeof(recordid));
@@ -532,7 +553,9 @@ namespace rose {
 	allocer_scratch,
 	0,
 	0,
-	new typename LSM_ITER::treeIteratorHandle(NULLRID)
+	new typename LSM_ITER::treeIteratorHandle(NULLRID),
+	&(ret->last_xact),
+	ts_col
       };
     *ret->args1 = tmpargs1;
     void * (*merger1)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, LSM_ITER>;
@@ -566,7 +589,9 @@ namespace rose {
 	0,
 	block1_scratch,
 	allocer_scratch,
-	new typename LSM_ITER::treeIteratorHandle(NULLRID)
+	new typename LSM_ITER::treeIteratorHandle(NULLRID),
+	0,
+	ts_col
       };
     *ret->args2 = tmpargs2;
     void * (*merger2)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, RB_ITER>;
@@ -627,8 +652,20 @@ namespace rose {
     pthread_join(h->merge2_thread,0);
   }
   template<class PAGELAYOUT>
+    void TlsmTableUpdateTimestamp(lsmTableHandle<PAGELAYOUT> *h,
+				  epoch_t ts) {
+    pthread_mutex_lock(h->mut);
+    assert(h->last_xact <= ts);
+    h->last_xact = ts;
+    pthread_mutex_unlock(h->mut);
+  }
+  template<class PAGELAYOUT>
     void TlsmTableInsert( lsmTableHandle<PAGELAYOUT> *h,
 			  typename PAGELAYOUT::FMT::TUP &t) {
+    /*    for(int i = 0; i < t.column_count(); i++) { // This helps valgrind warn earlier...
+      assert(*((char*)t.get(i)) || *((char*)t.get(i))+1);
+      } */
+
     h->scratch_handle->insert(t);
 
     uint64_t handleBytes = h->scratch_handle->size() * (RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
@@ -689,6 +726,99 @@ namespace rose {
   }
 
   template<class PAGELAYOUT>
+    int TlsmTableCount(int xid, lsmTableHandle<PAGELAYOUT> *h) {
+    /*    treeIterator<typename PAGELAYOUT::FMT::TUP, typename PAGELAYOUT::FMT> it1(NULLRID);
+    treeIterator<typename PAGELAYOUT::FMT::TUP, typename PAGELAYOUT::FMT> it2(NULLRID;
+    stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP>,
+                   typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+                   typename PAGELAYOUT::FMT::TUP> it3(???);*/
+    
+    //    typename std::set<typename 
+    typedef treeIterator<typename PAGELAYOUT::FMT::TUP,
+      typename PAGELAYOUT::FMT> LSM_ITER;
+    /*    taypedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
+      typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+      typename PAGELAYOUT::FMT::TUP> RB_ITER; */
+    typedef std::_Rb_tree_const_iterator<typename PAGELAYOUT::FMT::TUP> RB_ITER;
+    //    typedef mergeIterator<LSM_ITER,RB_ITER,typename PAGELAYOUT::FMT::TUP> INNER_MERGE;
+    typedef mergeIterator<LSM_ITER,LSM_ITER,typename PAGELAYOUT::FMT::TUP> LSM_LSM ;
+    typedef mergeIterator<RB_ITER,RB_ITER,typename PAGELAYOUT::FMT::TUP> RB_RB ;
+    typedef mergeIterator<LSM_ITER,LSM_LSM,typename PAGELAYOUT::FMT::TUP> LSM_M_LSM_LSM;
+    typedef mergeIterator<LSM_M_LSM_LSM,RB_RB,typename PAGELAYOUT::FMT::TUP> M_LSM_LSM_LSM_M_RB_RB;
+    LSM_ITER * it1end;
+    LSM_ITER * it2end;
+    LSM_ITER * it3end;
+    int ret =0;
+    pthread_mutex_lock(h->mut);
+
+    {
+
+      LSM_ITER it2(*h->args1->in_tree ? **h->args1->in_tree : 0);
+      it2end = it2.end();
+
+    //    while(it2 != *it2end) { *it2; ++it2; ret++;}
+
+
+      RB_ITER it4(*h->args2->in_tree ? (**h->args2->in_tree)->begin() : h->scratch_handle->end());
+      RB_ITER it4end(*h->args2->in_tree ? (**h->args2->in_tree)->end() : h->scratch_handle->end());
+
+    //    while(it4 != it4end) { *it4; ++it4; ret++; }
+
+      LSM_ITER it1(h->args1->my_tree);
+      it1end = it1.end();
+
+    //    while(it1 != *it1end) { *it1; ++it1; ret++;  }
+
+      LSM_ITER it3(h->args2->my_tree);
+      it3end = it3.end();
+
+    //    while(it3 != *it3end) { *it3; ++it3; ret++; }
+
+      RB_ITER  it5 = h->scratch_handle->begin();
+      RB_ITER  it5end = h->scratch_handle->end();
+
+    //    while(it5 != it5end) { *it5; ++it5; ret++; }
+
+      RB_RB m45(it4,it5,it4end,it5end);
+      RB_RB m45end(it4,it5,it4end,it5end);
+      m45end.seekEnd();
+
+    //    while(m45 != m45end) { ++m45; }
+
+      LSM_LSM m23(it2,it3,*it2end,*it3end);
+      LSM_LSM m23end(it2,it3,*it2end,*it3end);
+      m23end.seekEnd();
+
+    //    while(m23 != m23end) { ++m23; }
+
+      LSM_M_LSM_LSM m123(it1,m23,*it1end,m23end);
+      LSM_M_LSM_LSM m123end(it1,m23,*it1end,m23end);
+      m123end.seekEnd();
+
+    //    if(m123 != m123end) { ++m123; }
+
+      M_LSM_LSM_LSM_M_RB_RB m12345(m123,m45,m123end,m45end);
+      M_LSM_LSM_LSM_M_RB_RB m12345end(m123,m45,m123end,m45end);
+      m12345end.seekEnd(); 
+
+      while(m12345 != m12345end) {
+	*m12345;
+	++ret;
+	++m12345;
+      }
+
+
+  } // free the stack allocated iterators
+    delete it2end;
+    delete it1end;
+    delete it3end;
+
+    pthread_mutex_unlock(h->mut);
+
+    return ret;
+  }
+
+  template<class PAGELAYOUT>
     const typename PAGELAYOUT::FMT::TUP *
     TlsmTableFind(int xid, lsmTableHandle<PAGELAYOUT> *h,
 		  typename PAGELAYOUT::FMT::TUP &val,
@@ -738,7 +868,7 @@ namespace rose {
     } else {
       DEBUG("no tree");
     }
-
+    pthread_mutex_unlock(h->mut);
     DEBUG("Not in any tree\n");
     assert(r == 0);
     return r;

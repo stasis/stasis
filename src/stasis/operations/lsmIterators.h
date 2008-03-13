@@ -38,6 +38,107 @@ template <class STLITER, class ROW> class stlSetIterator;
 template <class STLITER, class ROW>
 inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t);
 
+
+
+/**
+   Scans over another iterator, checking for tombstones, and garbage collecting old tuples.
+ */
+template <class ROW, class ITER>
+class gcIterator {
+ public:
+  explicit gcIterator(ITER * i, ITER * iend, epoch_t beginning_of_time, column_number_t ts_col) : i_(i), newest_(), newTS_(-1), iend_(iend), freeIt(0), beginning_of_time_(beginning_of_time), ts_col_(ts_col) { /*++(*i);*/ if(*i_ != *iend_) { ++(*this);} }
+  explicit gcIterator(gcIterator& t) : i_(new ITER(*(t.i_))), newest_(t.newest_), newTS_(t.newTS_), iend_(t.iend_), freeIt(1), beginning_of_time_(t.beginning_of_time_), ts_col_(t.ts_col_) { }
+
+  ~gcIterator() {
+    if (freeIt) {
+      delete i_;
+    }
+  }
+  ROW & operator*() {
+    return newest_;
+  }
+  inline bool operator==(const gcIterator &a) const {
+    return (*i_) == (*a.i_);
+  }
+  inline bool operator!=(const gcIterator &a) const {
+    return (*i_) != (*a.i_);
+  }
+  inline void operator++() {
+    do {
+      if(*i_ == *iend_) { return; }
+      assert(*i_ != *iend_);
+      newest_ = **i_;
+      newTS_ = *(epoch_t*)newest_.get(ts_col_);
+      ++(*i_);
+      while(ts_col_ != INVALID_COL && (*i_ != *iend_)  && myTupCmp(newest_,**i_)) {
+	const ROW& r = (**i_);
+	epoch_t ts = *(epoch_t*)r.get(ts_col_); //r.column_count()-1);
+
+	if(ts >= newTS_) {
+	  //      if(*(int*)((**i_).get((**i_).column_count()-1)) >= newTS_) {
+	  //	newTS_ = *(int*)(**i_).get((**i_).column_count()-1);
+	  newTS_ = ts;
+
+	  newest_ = r;//**i_;
+	}
+	++(*i_);
+      }
+      /*      if (((newTS_ & 0x1) && (newTS_ < beginning_of_time_) && (ts_col_ != INVALID_COL))) {
+	printf("gc'ed tombstone!!!\n");
+	} */
+    } while ((newTS_ & 0x1) && (newTS_ < beginning_of_time_) && (ts_col_ != INVALID_COL));
+  }
+  inline void operator--() {
+    (*i_)--;
+  }
+  /*  inline gcIterator* end() {
+    return new gcIterator(i_->end());
+    } */
+ private:
+  bool myTupCmp(const ROW &a, const ROW &b) {
+    /*    for(int i = 0; i < cnt; i++) {
+      if(a.get(i) != b.get(i)) {
+	return 0;
+      }
+      }*/
+    if(ROW::NN > 0) if(*a.get0() != *b.get0()) { if(0 != ts_col_) return 0; }
+    if(ROW::NN > 1) if(*a.get1() != *b.get1()) { if(1 != ts_col_) return 0; }
+    if(ROW::NN > 2) if(*a.get2() != *b.get2()) { if(2 != ts_col_) return 0; }
+    if(ROW::NN > 3) if(*a.get3() != *b.get3()) { if(3 != ts_col_) return 0; }
+    if(ROW::NN > 4) if(*a.get4() != *b.get4()) { if(4 != ts_col_) return 0; }
+    if(ROW::NN > 5) if(*a.get5() != *b.get5()) { if(5 != ts_col_) return 0; }
+    if(ROW::NN > 6) if(*a.get6() != *b.get6()) { if(6 != ts_col_) return 0; }
+    if(ROW::NN > 7) if(*a.get7() != *b.get7()) { if(7 != ts_col_) return 0; }
+    if(ROW::NN > 8) if(*a.get8() != *b.get8()) { if(8 != ts_col_) return 0; }
+    if(ROW::NN > 9) if(*a.get9() != *b.get9()) { if(9 != ts_col_) return 0; }
+    if(ROW::NN > 10) if(*a.get10() != *b.get10()) { if(10 != ts_col_) return 0; }
+    if(ROW::NN > 11) if(*a.get11() != *b.get11()) { if(11 != ts_col_) return 0; }
+    if(ROW::NN > 12) if(*a.get12() != *b.get12()) { if(12 != ts_col_) return 0; }
+    if(ROW::NN > 13) if(*a.get13() != *b.get13()) { if(13 != ts_col_) return 0; }
+    if(ROW::NN > 14) if(*a.get14() != *b.get14()) { if(14 != ts_col_) return 0; }
+    if(ROW::NN > 15) if(*a.get15() != *b.get15()) { if(15 != ts_col_) return 0; }
+    if(ROW::NN > 16) if(*a.get16() != *b.get16()) { if(16 != ts_col_) return 0; }
+    if(ROW::NN > 17) if(*a.get17() != *b.get17()) { if(17 != ts_col_) return 0; }
+    if(ROW::NN > 18) if(*a.get18() != *b.get18()) { if(18 != ts_col_) return 0; }
+    if(ROW::NN > 19) if(*a.get19() != *b.get19()) { if(19 != ts_col_) return 0; }
+    return 1;
+  }
+
+  explicit gcIterator() { abort(); }
+  void operator=(gcIterator & t) { abort(); }
+  int operator-(gcIterator & t) { abort(); }
+  ITER * i_;
+  ROW newest_;
+  epoch_t newTS_;
+  ITER * iend_;
+  bool freeIt;
+  epoch_t beginning_of_time_;
+  column_number_t ts_col_;
+};
+
+//---------------------------------------------------------------------------
+
+
 /**
    Scans through an LSM tree's leaf pages, each tuple in the tree, in
    order.  This iterator is designed for maximum forward scan
@@ -47,7 +148,11 @@ template <class ROW, class PAGELAYOUT>
 class treeIterator {
  private:
   inline void init_helper() {
-    if(!lsmTreeIterator_next(-1, lsmIterator_)) {
+    if(!lsmIterator_) {
+      currentPage_ = 0;
+      pageid_ = -1;
+      p_ = 0;
+    } else if(!lsmTreeIterator_next(-1, lsmIterator_)) {
       currentPage_ = 0;
       pageid_ = -1;
       p_ = 0;
@@ -97,10 +202,10 @@ class treeIterator {
       init_helper();
     }
   explicit treeIterator(treeIteratorHandle* tree) :
-    tree_(tree->r_),
+    tree_(tree?tree->r_:NULLRID),
       scratch_(),
       keylen_(ROW::sizeofBytes()),
-      lsmIterator_(lsmTreeIterator_open(-1,tree->r_)),
+      lsmIterator_(lsmTreeIterator_open(-1,tree?tree->r_:NULLRID)),
       slot_(0)
     {
       init_helper();
@@ -109,15 +214,16 @@ class treeIterator {
     tree_(t.tree_),
     scratch_(t.scratch_),
     keylen_(t.keylen_),
-    lsmIterator_(lsmTreeIterator_copy(-1,t.lsmIterator_)),
+    lsmIterator_(t.lsmIterator_?lsmTreeIterator_copy(-1,t.lsmIterator_):0),
     slot_(t.slot_),
     pageid_(t.pageid_),
     p_((Page*)((t.p_)?loadPage(-1,t.p_->id):0)),
     currentPage_((PAGELAYOUT*)((p_)?p_->impl:0)) {
   }
   ~treeIterator() {
-
-    lsmTreeIterator_close(-1, lsmIterator_);
+    if(lsmIterator_) {
+      lsmTreeIterator_close(-1, lsmIterator_);
+    }
     if(p_) {
       releasePage(p_);
       p_ = 0;
@@ -148,10 +254,13 @@ class treeIterator {
         abort();
       }
     }
+    /*    for(int c = 0; c < (scratch_).column_count(); c++) {
+      assert(*(byte*)(scratch_).get(c) || !*(byte*)(scratch_).get(c));
+      } */
     return scratch_;
   }
   inline bool operator==(const treeIterator &a) const {
-    return (slot_ == a.slot_ && pageid_ == a.pageid_);
+    return (slot_ == a.slot_ && pageid_ == a.pageid_)/* || !(lsmIterator_ && a.lsmIterator_)*/ ;
   }
   inline bool operator!=(const treeIterator &a) const {
     return !(*this==a);
@@ -259,8 +368,12 @@ class mergeIterator {
   { }
 
   const ROW& operator* () {
-    if(curr_ == A || curr_ == BOTH) { return *a_; }
-    if(curr_ == B) { return *b_; }
+    if(curr_ == A) { return *a_; }
+    if(curr_ == B || curr_ == BOTH) { return *b_; }
+    //    abort();
+    curr_ = calcCurr(A);
+    if(curr_ == A) { return *a_; }
+    if(curr_ == B || curr_ == BOTH) { return *b_; }
     abort();
   }
   void seekEnd() {
@@ -402,15 +515,11 @@ class versioningIterator {
   }
   inline unsigned int offset() { return off_; }
  private:
-  //  unsigned int off_;
   ITER a_;
   ITER aend_;
   int check_tombstone_;
   ROW tombstone_;
-  //  ROW &scratch_;
   off_t off_;
-  //  int before_eof_;
-  //  typeof(ROW::TIMESTAMP) beginning_of_time_;
   friend const byte*
     toByteArray<ITER,ROW>(versioningIterator<ITER,ROW> * const t);
 };
@@ -470,9 +579,9 @@ inline const byte * toByteArray(stlSetIterator<SET,ROW> * const t) {
     position */
 template <class ITERA, class ITERB, class ROW>
   inline const byte * toByteArray(mergeIterator<ITERA,ITERB,ROW> * const t) {
-  if(t->curr_ == t->A || t->curr_ == t->BOTH) {
+  if(t->curr_ == t->A) {
     return toByteArray(&t->a_);
-  } else if(t->curr_ == t->B) {
+  } else if(t->curr_ == t->B || t->curr_ == t->BOTH) {
     return toByteArray(&t->b_);
   }
   abort();
