@@ -53,15 +53,15 @@ int main(int argc, char **argv) {
   typedef int64_t  typ18;
   typedef int64_t  typ19;
   #define COLS 7
-  typedef rose::StaticTuple<COLS,typ0,typ1,typ2,typ3,typ4,typ5,typ6,typ7
-    /*,typ6,typ7,typ8,typ9,typ10,typ11,typ12,typ13,typ14,typ15,typ16,typ17,
-      typ18,typ19*/ > tup;
+  typedef rose::StaticTuple<COLS,typ0,typ1,typ2,typ3,typ4,typ5,/*,typ6,typ7 */
+    typ6,typ7,typ8,typ9,typ10,typ11,typ12,typ13,typ14,typ15,typ16,typ17,
+      typ18,typ19> tup;
   using rose::For;
   using rose::Rle;
   using rose::Nop;
   int ret;
   // multicolumn is deprecated; want static dispatch!
-  
+  /*  
   rose::plugin_id_t * plugins = (rose::plugin_id_t*)malloc(COLS * sizeof(rose::plugin_id_t));
 
   // todo try Rle / For
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 
   ret = rose::main
   <rose::DynamicMultiColumnTypePageLayout<rose::Multicolumn<tup> > >(argc,argv);
-
+  */
   /*  return rose::main
     <rose::MultiColumnTypePageLayout
     <COLS,
@@ -112,19 +112,19 @@ int main(int argc, char **argv) {
     (argc,argv);
   */
   
-  /*  rose::StaticMultiColumnTypePageLayout
+  rose::StaticMultiColumnTypePageLayout
     <COLS,
     rose::StaticMulticolumn<COLS,tup,
     Rle<typ0>,Rle<typ1>,
-    Rle<typ2>,Rle<typ3>,
-    For<typ4>,Rle<typ5>,
-    Nop<typ6>,For<typ7>,
-    Rle<typ8>,Rle<typ9>,
-    Rle<typ10>,Rle<typ11>,
-    Rle<typ12>,Rle<typ13>,
-    For<typ14>,Rle<typ15>,
-    Nop<typ16>,For<typ17>,
-    Rle<typ18>,Rle<typ19>
+    Nop<typ2>,Nop<typ3>,
+    Nop<typ4>,Nop<typ5>,
+    Rle<typ6>,Nop<typ7>,
+    Nop<typ8>,Nop<typ9>,
+    Nop<typ10>,Nop<typ11>,
+    Nop<typ12>,Nop<typ13>,
+    Nop<typ14>,Nop<typ15>,
+    Nop<typ16>,Nop<typ17>,
+    Nop<typ18>,Nop<typ19>
     >
     >::initPageLayout();
 
@@ -133,19 +133,19 @@ int main(int argc, char **argv) {
     <COLS,
     rose::StaticMulticolumn<COLS,tup,
     Rle<typ0>,Rle<typ1>,
-    Rle<typ2>,Rle<typ3>,
-    For<typ4>,Rle<typ5>,
-    Nop<typ6>,For<typ7>,
-    Rle<typ8>,Rle<typ9>,
-    Rle<typ10>,Rle<typ11>,
-    Rle<typ12>,Rle<typ13>,
-    For<typ14>,Rle<typ15>,
-    Nop<typ16>,For<typ17>,
-    Rle<typ18>,Rle<typ19>
+    Nop<typ2>,Nop<typ3>,
+    Nop<typ4>,Nop<typ5>,
+    Rle<typ6>,Nop<typ7>,
+    Nop<typ8>,Nop<typ9>,
+    Nop<typ10>,Nop<typ11>,
+    Nop<typ12>,Nop<typ13>,
+    Nop<typ14>,Nop<typ15>,
+    Nop<typ16>,Nop<typ17>,
+    Nop<typ18>,Nop<typ19>
     >
     >
     >
-    (argc,argv);*/
+    (argc,argv);
   /*
   rose::StaticMultiColumnTypePageLayout
     <COLS,

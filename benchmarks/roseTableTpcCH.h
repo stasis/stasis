@@ -79,8 +79,9 @@ namespace rose {
     //    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     //               0   1  2  3   4  5  6  7  8   9 
 //    int column[] = { 3 , 4, 1, 11, 0, 5, 6, 9, 10, 14 };
-    const int column[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
+//    const int column[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    const int column[] = {2, 7, 5, 6, 0, 3, 10};
 
     static long COUNT = INSERTS / 100;
     long int count = COUNT;
@@ -467,7 +468,10 @@ namespace rose {
 	    (*(epoch_t*)scratch.get(XID_COL)) = this_xid * 2;  // will be *2 + 1 for deletes
 	    //	  abort();
 	    TlsmTableInsert(h,scratch);
-	    if(needupdate) { TlsmTableUpdateTimestamp(h,(this_xid-1) * 2); }
+	    if(needupdate) {
+	      TlsmTableUpdateTimestamp(h,(this_xid-1) * 2);
+	      count--;
+	    }
 
 	  } else if(!strcmp(mode, "delete")) {
 	    (*(epoch_t*)scratch.get(XID_COL)) = this_xid * 2 + 1;  // + 1 => delete
@@ -483,9 +487,9 @@ namespace rose {
 	    typename PAGELAYOUT::FMT::TUP scratch2;
 	    // XXX never finds tuples; gets to correct page, then
 	    // fails because it doesn't know the xid, so no tuples match.
-	    TlsmTableFind(xid,h,scratch, scratch2);
+	    //	    TlsmTableFindC0(xid,h,scratch, scratch2);
 	  }
-	  count --;
+	  //count --;
 	  if(!count) {
 	    count = COUNT;
 	    gettimeofday(&now_tv,0);
@@ -501,8 +505,8 @@ namespace rose {
 		   (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)count/1000000.0)/(now-last_start)
 		   );
 	    last_start = now;
-	    int count = TlsmTableCount(xid,h);
-	    printf("counted %d tuples\n", count);
+	    //int count = TlsmTableCount(xid,h);
+	    //printf("counted %d tuples\n", count);
 	  }
 	}
       }

@@ -820,6 +820,25 @@ namespace rose {
 
   template<class PAGELAYOUT>
     const typename PAGELAYOUT::FMT::TUP *
+    TlsmTableFindC0(int xid, lsmTableHandle<PAGELAYOUT> *h,
+		  typename PAGELAYOUT::FMT::TUP &val,
+		  typename PAGELAYOUT::FMT::TUP &scratch) {
+
+    pthread_mutex_lock(h->mut);
+    typename std::set
+      <typename PAGELAYOUT::FMT::TUP,
+       typename PAGELAYOUT::FMT::TUP::stl_cmp>::iterator i =
+      h->scratch_handle->find(val);
+    if(i != h->scratch_handle->end()) {
+      scratch = *i;
+      pthread_mutex_unlock(h->mut);
+      return &scratch;
+    }
+    pthread_mutex_unlock(h->mut);
+    return 0;
+  }
+  template<class PAGELAYOUT>
+    const typename PAGELAYOUT::FMT::TUP *
     TlsmTableFind(int xid, lsmTableHandle<PAGELAYOUT> *h,
 		  typename PAGELAYOUT::FMT::TUP &val,
 		  typename PAGELAYOUT::FMT::TUP &scratch) {
