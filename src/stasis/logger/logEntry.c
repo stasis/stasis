@@ -48,9 +48,9 @@ terms specified in this license.
 #include "../page.h" // For stasis_record_type_to_size()
 #include <stasis/logger/logger2.h> // needed for LoggerSizeOfInternalLogEntry()
 #include <stasis/logger/logEntry.h>
-
+#include <stasis/crc32.h>
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
-  LogEntry * ret = malloc(sizeof(struct __raw_log_entry));
+  LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry));
   ret->LSN     = -1;
   ret->prevLSN = prevLSN;
   ret->xid     = xid;
@@ -96,12 +96,14 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   /** Use calloc since the struct might not be packed in memory;
       otherwise, we'd leak uninitialized bytes to the log. */
 
-  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry) + 
-			     sizeof(UpdateLogEntry) + argSize +
-			     ((!invertible) ? stasis_record_type_to_size(rid.size) 
-			                    : 0) + 
-			     (whole_page_phys ? PAGE_SIZE 
-			                      : 0));
+  size_t logentrysize =  
+    sizeof(struct __raw_log_entry) + 
+    sizeof(UpdateLogEntry) + argSize +
+    ((!invertible) ? stasis_record_type_to_size(rid.size) 
+     : 0) + 
+    (whole_page_phys ? PAGE_SIZE 
+     : 0);
+  LogEntry * ret = calloc(1,logentrysize);
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
@@ -121,6 +123,9 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
     memcpy((void*)getUpdatePreImage(ret), preImage, 
 	   PAGE_SIZE);
   }
+  //assert(logentrysize == sizeofLogEntry(ret));
+  // XXX checks for uninitialized values in valgrind
+  //  stasis_crc32(ret, sizeofLogEntry(ret), 0);
   return ret;
 }
 
@@ -138,7 +143,7 @@ LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
   // Could handle other types, but we should never encounter them here.
   assert(old_e->type == UPDATELOG); 
 
-  LogEntry * ret = malloc(sizeofLogEntry(old_e));
+  LogEntry * ret = calloc(1, sizeofLogEntry(old_e));
   memcpy(ret, old_e, sizeofLogEntry(old_e));
   ret->LSN = -1;
   // prevLSN is OK already

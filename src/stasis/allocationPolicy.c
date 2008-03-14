@@ -101,7 +101,7 @@ inline static void remove_xidAlloced(allocationPolicy * ap, int xid, availablePa
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   assert(pages);
   const availablePage * check = RB_ENTRY(delete)(p, pages);
-  assert(check == p);
+  assert(check == p);  // sometimes fails
 }
 
 inline static void insert_xidDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
@@ -319,7 +319,9 @@ void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, int pageid) 
   if(check1) {
     assert(p->lockCount == 0);
     lockAlloced(ap, xid, (availablePage*)p);
-  } 
+  } else {
+    assert(*xidp == xid); // new
+  }
 }
 
 void allocationPolicyLockPage(allocationPolicy *ap, int xid, int pageid) { 
@@ -375,7 +377,7 @@ void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, a
   struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(int));
   assert(key);
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, locks);
-  assert(p);
+  assert(p); // sometimes fails
   p->freespace = newFree;
   key->freespace = newFree;
   const availablePage * ret = RB_ENTRY(search)(p, locks);

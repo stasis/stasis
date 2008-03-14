@@ -4,7 +4,7 @@
 # Dashboard is opened for submissions for a 24 hour period starting at
 # the specified NIGHLY_START_TIME. Time is specified in 24 hour format.
 SET (CTEST_NIGHTLY_START_TIME "23:00:00 EDT")
-
+SET (CTEST_TIME_OUT 3000)
 # Dart server to submit results (used by client)
 IF(CTEST_DROP_METHOD MATCHES http)
 #  SET (CTEST_DROP_SITE "public.kitware.com")
