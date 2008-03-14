@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="280.98944"
+   height="162.16336"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.45.1"
+   version="1.0"
+   sodipodi:docbase="/home/sears/stasis/doc/rosePaper"
+   sodipodi:docname="multicolumn-page-format.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="132.73162"
+     inkscape:cy="30.517738"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     width="280px"
+     height="180px"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     showgrid="true"
+     gridspacingx="4px"
+     gridspacingy="4px"
+     inkscape:object-bbox="true"
+     inkscape:object-points="true"
+     gridoriginy="10px"
+     gridoriginx="10px"
+     inkscape:window-width="1024"
+     inkscape:window-height="697"
+     inkscape:window-x="0"
+     inkscape:window-y="25" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-117.08223,-291.8518)">
+    <rect
+       style="fill:#f9f9f9;stroke:#000000;stroke-width:0.98061073;stroke-opacity:1"
+       id="rect2166"
+       width="279.77896"
+       height="160.85112"
+       x="-397.3515"
+       y="292.3421"
+       transform="scale(-1,1)" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect2168"
+       width="85.005547"
+       height="19.22419"
+       x="312.81766"
+       y="434.5965" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3141"
+       width="108.20895"
+       height="19.152477"
+       x="204.80223"
+       y="434.63232"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="323.96994"
+       y="436.37152"
+       id="text3145"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3147"
+         x="323.96994"
+         y="436.37152">Stasis Header</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="213.87624"
+       y="436.37152"
+       id="text3153"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3155"
+         x="213.87624"
+         y="436.37152">Exceptions Offset</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38706583;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3157"
+       width="86.527702"
+       height="19.033598"
+       x="118.27373"
+       y="434.63321"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="124.44187"
+       y="436.37152"
+       id="text3159"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3161"
+         x="124.44187"
+         y="436.37152">Column Count</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3163"
+       width="107.25899"
+       height="19.155249"
+       x="290.61823"
+       y="414.9855"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="301.72488"
+       y="417.16913"
+       id="text3165"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3167"
+         x="301.72488"
+         y="417.16913">Col 1 Type, Offset</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38831821;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3169"
+       width="86.126579"
+       height="19.025717"
+       x="204.50259"
+       y="415.17267"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="214.36745"
+       y="417.16913"
+       id="text3171"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3173"
+         x="214.36745"
+         y="417.16913">Col 2 Typ, Off</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38764301;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3175"
+       width="86.365944"
+       height="19.091061"
+       x="118.13908"
+       y="415.10672"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.375;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="124.44187"
+       y="417.16913"
+       id="text3177"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3179"
+         x="124.44187"
+         y="417.16913">Col 3 Typ, Off</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="-81.317284"
+       y="40.900974"
+       id="text3185"
+       transform="translate(108.07143,281.86218)"><tspan
+         sodipodi:role="line"
+         id="tspan3187"
+         x="-81.317284"
+         y="40.900974" /></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3189"
+       width="271.71997"
+       height="38.386063"
+       x="121.06407"
+       y="296.76135"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="131.07556"
+       y="304.29724"
+       id="text3191"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3193"
+         x="131.07556"
+         y="304.29724">Col 1 Compressor Header (algorithm specific)</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.25929606;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3195"
+       width="265.78973"
+       height="15.701597"
+       x="124.31957"
+       y="299.71146"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="131.07556"
+       y="322.16653"
+       id="text3197"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3199"
+         x="131.07556"
+         y="322.16653">Column 1 Compressed Data</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3205"
+       width="103.50066"
+       height="42.99099"
+       x="121.71822"
+       y="338.40137"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="131.07556"
+       y="346.6619"
+       id="text3207"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3209"
+         x="131.07556"
+         y="346.6619">Col 2 Header </tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.25929606;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3211"
+       width="96.049118"
+       height="17.423143"
+       x="125.06249"
+       y="342.15256"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="131.07556"
+       y="366.1185"
+       id="text3213"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3215"
+         x="131.07556"
+         y="366.1185">Column 2 Data</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3217"
+       width="165.41344"
+       height="42.746548"
+       x="227.36838"
+       y="338.40137"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="239.41331"
+       y="346.6619"
+       id="text3219"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3221"
+         x="239.41331"
+         y="346.6619">Col 3 Header </tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.25929606;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3223"
+       width="158.4341"
+       height="17.262974"
+       x="230.42352"
+       y="342.23267"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="239.41331"
+       y="366.1185"
+       id="text3225"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3227"
+         x="239.41331"
+         y="366.1185">Column 3 Data</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.38894409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3229"
+       width="271.53696"
+       height="22.889219"
+       x="121.81098"
+       y="384.41553"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:11.69771481px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="130.58435"
+       y="389.9104"
+       id="text3231"
+       transform="scale(0.9748967,1.0257497)"><tspan
+         sodipodi:role="line"
+         id="tspan3233"
+         x="130.58435"
+         y="389.9104">Exceptional (non-compressible) data)</tspan><tspan
+         sodipodi:role="line"
+         x="130.58435"
+         y="404.53254"
+         id="tspan3241" /></text>
+  </g>
+</svg>
