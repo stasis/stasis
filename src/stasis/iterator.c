@@ -4,7 +4,7 @@
 
 #include <stasis/operations.h>
 #include <stasis/arrayCollection.h>
-#include "logger/logMemory.h"
+#include <stasis/logger/logMemory.h>
 
 static lladdIterator_def_t iterators[MAX_ITERATOR_TYPES];
 

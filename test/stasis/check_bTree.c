@@ -47,7 +47,7 @@ terms specified in this license.
 #include <stasis/transactional.h>
 
 
-#include "../../src/stasis/page.h"
+#include <stasis/page.h>
 
 #include <assert.h>
 #include <limits.h>

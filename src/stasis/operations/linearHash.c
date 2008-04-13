@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "../page.h"
+#include <stasis/page.h>
 
 /**
 

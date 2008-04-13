@@ -19,10 +19,10 @@
 /** @todo Add better log iterator guard support and remove this include.*/
 #include <stasis/operations/prepare.h>
 
-#include "logger/logHandle.h"
+#include <stasis/logger/logHandle.h>
 /** @todo Get rid of linkedlist.[ch] */
-#include "linkedlist.h"
-#include "page.h" // Needed for pageReadLSN. 
+#include <stasis/linkedlist.h>
+#include <stasis/page.h> // Needed for pageReadLSN. 
 
 
 static pblHashTable_t * transactionLSN;

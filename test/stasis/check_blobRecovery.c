@@ -46,7 +46,6 @@ terms specified in this license.
 
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
-#include "../../src/stasis/logger/logWriter.h"
 #include "../check_includes.h"
 #include <assert.h>
 

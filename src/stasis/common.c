@@ -3,7 +3,7 @@
 #include <config.h>
 #include <stasis/common.h>
 
-#include "latches.h"
+#include <stasis/latches.h>
 
 #include <pbl/pbl.h>
 #include <errno.h>

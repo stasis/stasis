@@ -75,7 +75,7 @@ terms specified in this license.
   */
 
 #include <stasis/common.h>
-#include "../page.h"
+#include <stasis/page.h>
 
 #define units_from_start_raw(unit,page,count) (((unit*)(page->memAddr))+(count))
 

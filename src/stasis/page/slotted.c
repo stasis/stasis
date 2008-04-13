@@ -1,8 +1,8 @@
 /** $Id$ */
 
 #include "config.h"
-#include "../page.h"
-#include "slotted.h"
+#include <stasis/page.h>
+#include <stasis/page/slotted.h>
 #include <assert.h>
 /** @todo should page implementations provide readLSN / writeLSN??? */
 #include <stasis/truncation.h>

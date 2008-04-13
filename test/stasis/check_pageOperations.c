@@ -44,19 +44,18 @@ terms specified in this license.
 #include <config.h>
 #include <check.h>
 
-#include "../../src/stasis/page.h"
+#include <stasis/page.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
 #include <stasis/truncation.h>
 #include <stasis/logger/logger2.h>
 
-#include "../../src/stasis/latches.h"
+#include <stasis/latches.h>
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"
 
 #define LOG_NAME   "check_pageOperations.log"
-#include "../../src/stasis/logger/logWriter.h"
 extern int numActiveXactions;
 
 START_TEST(pageOpCheckRecovery) {

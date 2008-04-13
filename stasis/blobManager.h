@@ -2,7 +2,7 @@
 #define __BLOB_MANAGER_H
 
 #include <stasis/common.h>
-#include "page.h"
+#include <stasis/page.h>
 BEGIN_C_DECLS
 
 /**    

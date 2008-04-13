@@ -47,7 +47,7 @@ terms specified in this license.
 #include <stasis/bufferManager.h>
 #include <stasis/truncation.h>
 #include "../check_includes.h"
-#include "../../src/stasis/page.h"
+#include <stasis/page.h>
 #define LOG_NAME   "check_operations.log"
 
 #include <stdio.h>

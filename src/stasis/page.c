@@ -74,20 +74,20 @@ terms specified in this license.
 
 #include <config.h>
 #include <stasis/common.h>
-#include "latches.h"
-#include "page.h"
+#include <stasis/latches.h>
+#include <stasis/page.h>
 
 #include <assert.h>
 #include <stdio.h>
 
 #include <stasis/constants.h>
 #include <assert.h>
-#include "blobManager.h"
+#include <stasis/blobManager.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
-#include "page/slotted.h"
-#include "page/fixed.h"
-#include "page/indirect.h"
+#include <stasis/page/slotted.h>
+#include <stasis/page/fixed.h>
+#include <stasis/page/indirect.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>

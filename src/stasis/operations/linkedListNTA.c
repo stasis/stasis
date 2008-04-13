@@ -1,7 +1,7 @@
 #define __USE_GNU 
 #define _GNU_SOURCE
-#include "../latches.h"
 
+#include <stasis/latches.h>
 #include <stasis/transactional.h>
 #include <stasis/hash.h>
 #include <stdlib.h>

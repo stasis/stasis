@@ -50,7 +50,7 @@ terms specified in this license.
 #include <stasis/logger/logger2.h>
 #include <stasis/bufferManager.h>
 
-#include "page.h"
+#include <stasis/page.h>
 
 
 Operation operationsTable[MAX_OPERATIONS];

@@ -47,7 +47,7 @@ terms specified in this license.
 #include <config.h>
 #include <stasis/common.h>
 
-#include "linkedlist.h"
+#include <stasis/linkedlist.h>
 
 #include <stdio.h>
 

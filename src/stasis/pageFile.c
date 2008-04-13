@@ -4,10 +4,10 @@
 
 */
 #include "config.h"
-#include "page.h"
+#include <stasis/page.h>
 #include <stasis/bufferManager.h>
 
-#include "pageFile.h"
+#include <stasis/pageFile.h>
 #include <stasis/pageHandle.h>
 #include <assert.h>
 #include <stasis/logger/logger2.h>

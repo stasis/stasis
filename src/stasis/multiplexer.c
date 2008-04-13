@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stasis/operations/linearHashNTA.h>
 
-#include "logger/logMemory.h"
+#include <stasis/logger/logMemory.h>
 
 lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it, 
 					    void (*multiplexer)(byte * key,

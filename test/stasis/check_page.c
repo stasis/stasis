@@ -49,14 +49,14 @@ terms specified in this license.
 #include <config.h>
 #include <check.h>
 
-#include "../../src/stasis/page.h"
-#include "../../src/stasis/page/indirect.h"
-#include "../../src/stasis/page/slotted.h"
-#include "../../src/stasis/blobManager.h"
+#include <stasis/page.h>
+#include <stasis/page/indirect.h>
+#include <stasis/page/slotted.h>
+#include <stasis/blobManager.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
 
-#include "../../src/stasis/latches.h"
+#include <stasis/latches.h>
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"

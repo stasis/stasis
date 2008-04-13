@@ -61,12 +61,12 @@ terms specified in this license.
 #endif
 
 #include <stasis/common.h>
-#include "latches.h"
+#include <stasis/latches.h>
 #include <assert.h>
 
 #include <stasis/bufferManager.h>
-#include "bufferManager/pageArray.h"
-#include "bufferManager/bufferHash.h"
+#include <stasis/bufferManager/pageArray.h>
+#include <stasis/bufferManager/bufferHash.h>
 #include <stasis/bufferPool.h>
 
 #include <stasis/lockManager.h>
@@ -74,7 +74,7 @@ terms specified in this license.
 #include <stasis/pageHandle.h>
 
 #include <stasis/lhtable.h>
-#include "page.h"
+#include <stasis/page.h>
 
 #undef loadPage
 #undef releasePage

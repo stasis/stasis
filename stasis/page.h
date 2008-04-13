@@ -102,7 +102,7 @@ terms specified in this license.
 #define __PAGE_H__
 
 #include <stasis/common.h>
-#include "latches.h"
+#include <stasis/latches.h>
 #include <stasis/transactional.h>
 
 BEGIN_C_DECLS

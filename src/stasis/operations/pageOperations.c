@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "config.h"
-#include "../page.h"
+#include <stasis/page.h>
 #include <stasis/operations/pageOperations.h>
 #include <assert.h>
 #include <alloca.h>

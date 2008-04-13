@@ -55,9 +55,9 @@ terms specified in this license.
 
 #include <stasis/logger/logger2.h>
 
-#include "logWriter.h"
-#include "inMemoryLog.h"
-#include "../page.h"  
+#include <stasis/logger/logWriter.h>
+#include <stasis/logger/inMemoryLog.h>
+#include <stasis/page.h>
 
 #ifdef USE_LOGGER
 int loggerType = USE_LOGGER;

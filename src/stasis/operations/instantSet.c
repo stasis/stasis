@@ -46,7 +46,7 @@ terms specified in this license.
  **********************************************/
 
 #include <stasis/operations.h>
-#include "../page.h"
+#include <stasis/page.h>
 
 static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   stasis_record_write(xid, p, lsn, rid, dat); 

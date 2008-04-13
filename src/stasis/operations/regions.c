@@ -1,5 +1,5 @@
 #include "config.h"
-#include "../page.h"
+#include <stasis/page.h>
 #include <stasis/operations.h>
 #include <assert.h>
 

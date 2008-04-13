@@ -2,7 +2,7 @@
 #include <config.h>
 #include <stasis/common.h>
 
-#include "../page.h"
+#include <stasis/page.h>
 #include <stasis/operations/pageOperations.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/transactional.h>

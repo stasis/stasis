@@ -4,16 +4,16 @@
 #include <fcntl.h>
 
 #include <stasis/common.h>
-#include "latches.h"
+#include <stasis/latches.h>
 #include <stasis/transactional.h>
 #include <stasis/recovery.h>
 #include <stasis/bufferManager.h>
 #include <stasis/consumer.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
-#include "pageFile.h"
+#include <stasis/pageFile.h>
 #include <stasis/pageHandle.h>
-#include "page.h"
+#include <stasis/page.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>

@@ -1,6 +1,6 @@
 #include <config.h>
 #include <stasis/common.h>
-#include "latches.h"
+#include <stasis/latches.h>
 
 #include <math.h>
 

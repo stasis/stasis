@@ -2,7 +2,7 @@
 #include <stasis/crc32.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "logger/logMemory.h"
+#include <stasis/logger/logMemory.h>
 
 #include <string.h>
 #include <assert.h>

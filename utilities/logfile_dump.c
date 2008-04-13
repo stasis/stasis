@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../src/stasis/logger/logHandle.h"
-#include "../src/stasis/logger/logWriter.h"
+#include <stasis/logger/logHandle.h>
+#include <stasis/logger/logWriter.h>
 
 
 static char * logEntryToString(const LogEntry * le) {

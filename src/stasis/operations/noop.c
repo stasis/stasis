@@ -46,7 +46,7 @@ terms specified in this license.
  **********************************************/
 
 #include <stasis/operations.h>
-#include "../page.h"
+#include <stasis/page.h>
 
 int noop(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
   /* If p is null, then this is a logical no-op that spans pages, so do nothing.

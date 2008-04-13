@@ -44,7 +44,7 @@ terms specified in this license.
 
 #include <stdlib.h>
 
-#include "logHandle.h"
+#include <stasis/logger/logHandle.h>
 
 /**
    Sets the next and prev field of h, but does not set h.file_offset.

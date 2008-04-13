@@ -2,7 +2,7 @@
 #include <stasis/truncation.h>
 #include <pbl/pbl.h>
 #include <stasis/logger/logger2.h>
-#include "page.h"
+#include <stasis/page.h>
 #include <assert.h>
 
 static int initialized = 0;

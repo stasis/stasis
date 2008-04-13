@@ -1,5 +1,5 @@
-#include "inMemoryLog.h"
-#include "../latches.h"
+#include <stasis/logger/inMemoryLog.h>
+#include <stasis/latches.h>
 #include <string.h>
 #include <assert.h>
 static rwl * flushedLSN_lock;

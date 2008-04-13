@@ -2,7 +2,7 @@
 #include <stasis/hash.h>
 #include <limits.h>
 #include <assert.h>
-#include "../latches.h"
+#include <stasis/latches.h>
 /**
 
    A from-scratch implementation of linear hashing.  Uses the

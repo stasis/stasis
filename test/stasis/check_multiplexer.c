@@ -51,7 +51,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/multiplexer.h>
-#include "../../src/stasis/logger/logMemory.h"
+#include <stasis/logger/logMemory.h>
 
 #include <sys/time.h>
 #include <time.h>

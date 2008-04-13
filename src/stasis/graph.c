@@ -2,7 +2,7 @@
 #include <alloca.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "page.h"
+#include <stasis/page.h>
 #include <stasis/crc32.h>
 
 int numOut = 0;

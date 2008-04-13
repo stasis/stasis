@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include "latches.h"
+#include <stasis/latches.h>
 
 #define FILL_FACTOR (0.5)
 

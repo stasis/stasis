@@ -46,8 +46,8 @@ terms specified in this license.
 
 #include "../check_includes.h"
 #include <stasis/bufferManager.h>
-#include "src/stasis/page.h"
-#include "../../src/stasis/page/indirect.h"
+#include <stasis/page.h>
+#include <stasis/page/indirect.h>
 
 #include <assert.h>
 

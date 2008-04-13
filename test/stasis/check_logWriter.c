@@ -51,11 +51,11 @@ terms specified in this license.
 #include <check.h>
 
 #include <stasis/transactional.h>
-#include "../../src/stasis/logger/logHandle.h"
+#include <stasis/logger/logHandle.h>
 #include <stasis/logger/logger2.h>
-#include "../../src/stasis/logger/logWriter.h"
+#include <stasis/logger/logWriter.h>
 
-#include "../../src/stasis/latches.h"
+#include <stasis/latches.h>
 #include <sched.h>
 #include <assert.h>
 #include "../check_includes.h"

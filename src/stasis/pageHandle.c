@@ -7,7 +7,7 @@
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
 
-#include "page.h"
+#include <stasis/page.h>
 
 void (*pageWrite)(Page * dat);
 void (*pageRead)(Page * ret);

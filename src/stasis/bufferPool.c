@@ -54,7 +54,7 @@ terms specified in this license.
 #include <stasis/bufferPool.h>
 #include <assert.h>
 #include <stasis/truncation.h>
-#include "page.h"
+#include <stasis/page.h>
 /* TODO:  Combine with buffer size... */
 static int nextPage = 0;
 static pthread_mutex_t pageMallocMutex;

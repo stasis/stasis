@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "logMemory.h"
+#include <stasis/logger/logMemory.h>
 #include <errno.h>
 #include <stasis/compensations.h>
 

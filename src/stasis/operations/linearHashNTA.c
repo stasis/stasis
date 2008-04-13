@@ -1,6 +1,6 @@
 #define __USE_GNU
 #define _GNU_SOURCE
-#include "../latches.h"
+#include <stasis/latches.h>
 #include <stasis/transactional.h>
 #include <stasis/hash.h>
 #include <assert.h>
@@ -8,7 +8,7 @@
 // The next two #includes are for deprecated code.
 #include <stasis/fifo.h>
 #include <stasis/multiplexer.h>
-#include "../logger/logMemory.h"
+#include <stasis/logger/logMemory.h>
 /**
    re-entrant implementation of a linear hash hable, using nested top actions.
 

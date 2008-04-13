@@ -1,8 +1,8 @@
 #include <config.h>
 #include <check.h>
 #include <stasis/transactional.h>
-#include "../../src/stasis/latches.h"
-#include "../../src/stasis/page.h"
+#include <stasis/latches.h>
+#include <stasis/page.h>
 #include <stasis/bufferManager.h>
 #include <sched.h>
 #include <assert.h>

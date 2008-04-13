@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stasis/transactional.h>
 #include <unistd.h>
-#include "../src/stasis/page/raw.h"
+#include <stasis/page/raw.h>
 #include <string.h>
 
 int main(int argc, char** argv) { 

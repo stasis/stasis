@@ -1,10 +1,10 @@
-#include "indirect.h"
-#include "slotted.h"
+#include <stasis/page.h>
+#include <stasis/page/indirect.h>
+#include <stasis/page/slotted.h>
 #include <math.h>
 #include <string.h>
 #include <assert.h>
-#include "../blobManager.h"
-#include "../page.h"
+#include <stasis/blobManager.h>
 
 #include <stasis/operations.h>
 

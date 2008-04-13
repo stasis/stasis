@@ -3,7 +3,7 @@
 #include <stasis/compensations.h>
 #include <sys/time.h>
 #include <time.h>
-#include "latches.h"
+#include <stasis/latches.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>

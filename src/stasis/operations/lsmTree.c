@@ -5,7 +5,7 @@
 #include <stasis/constants.h>
 //  XXX including fixed.h breaks page api encapsulation; we need a "last slot"
 // call.
-#include "../page/fixed.h"
+#include <stasis/page/fixed.h>
 #include <pthread.h>
 
 static lsm_comparator_t comparators[MAX_LSM_COMPARATORS];

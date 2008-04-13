@@ -8,7 +8,7 @@
 #include <config.h>
 #include <stasis/common.h>
 
-#include "page.h"
+#include <stasis/page.h>
 #include <stasis/pageCache.h>
 #include <stasis/bufferManager.h>
 
