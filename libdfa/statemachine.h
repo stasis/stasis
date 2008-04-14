@@ -47,7 +47,7 @@ terms specified in this license.
 #include <time.h>
 #include <stasis/transactional.h>
 #include <libdfa/messages.h>
-#include "../src/stasis/page.h"
+#include <stasis/page.h>
 #include <sys/types.h>
 #include <pthread.h>
 
