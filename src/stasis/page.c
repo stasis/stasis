@@ -152,9 +152,6 @@ int stasis_page_impl_register(page_impl p) {
   page_impls[p.page_type] = p;
   return 0;
 }
-/**
-   @todo this updates the LSN of the page that points to blob, even if the page is otherwise untouched!!  This is slow and breaks recovery.
-*/
 void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );

@@ -259,7 +259,7 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
 
    @param start_offset The logical offset of the first byte in the handle
    @param path The name of the file to be opened.
-   @param mode Flags to be passed to open() (eg O_CREAT)
+   @param flags Flags to be passed to open() (eg O_CREAT)
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_file)
@@ -274,7 +274,7 @@ stasis_handle_t * stasis_handle(open_file)
 
    @param start_offset The logical offset of the first byte in the handle
    @param path The name of the file to be opened.
-   @param mode Flags to be passed to open(). (eg O_CREAT)
+   @param flags Flags to be passed to open(). (eg O_CREAT)
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_pfile)
@@ -319,7 +319,7 @@ stasis_handle_t * stasis_handle(open_pfile)
    @param worker_thread_count This many workers will be spawned in
                               order to service this handle
 
-   @param buffers_size The maximum number of outstanding bytes to
+   @param buffer_size The maximum number of outstanding bytes to
                        buffer before blocking.
 
    @param max_writes The maximum number of outstanding writes to allow

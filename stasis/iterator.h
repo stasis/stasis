@@ -30,19 +30,26 @@ void lladdIterator_register(int type, lladdIterator_def_t info);
 
 void Titerator_close(int xid, lladdIterator_t * it);
 
-/** 
+/**
+   Advance the iterator by one position.  This should be called before
+   you attempt to read from the iterator, and can block if the
+   iterator is currently locked.
+
     @param xid transaction id
-    @param it the iterator 
 
-    @return 1 if the iterator position could advance, or 0 at end of iterator. 
+    @param it the iterator
 
-    @throw stanard lladd error values.
-
+    @return 1 if the iterator position could advance, or 0 at end of iterator.
 */
 int Titerator_next(int xid, lladdIterator_t * it);
 
 /**
+   Attempt to advance the iterator by one position.  This function
+   will return immediately, even if the iterator is locked (in such
+   cases, the call has no effect).
+
    @param xid transaction id
+
    @param it the iterator 
 
    @return 1 if the iterator position advanced, and releaseTuple must be called,

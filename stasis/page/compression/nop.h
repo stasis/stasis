@@ -8,7 +8,9 @@
 #include <algorithm>
 
 /**
-   @file A 'no-op' compression implementation
+   @file
+
+   A 'no-op' compression implementation
 
    This file implements a COMPRESSOR plugin that stores data in
    uncompressed form.

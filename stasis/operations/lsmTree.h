@@ -55,6 +55,12 @@ extern TlsmRegionAllocConf_t LSM_REGION_ALLOC_STATIC_INITIALIZER;
           (It must have been registered with lsmTreeRegisterComparator
           before TlsmCreate() is called.
 
+   @param allocator A callback that will return an allocated page when called.
+          This is used as the tree is extended.
+
+   @param allocator_state A pointer that will be paseed into allocator
+          when it is called.
+
    @param keySize
 */
 recordid TlsmCreate(int xid, int comparator,

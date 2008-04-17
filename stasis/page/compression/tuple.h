@@ -5,7 +5,9 @@
 // Author: sears@google.com (Rusty Sears)
 
 /**
-  @file Implementation of tuples (Tuple) and dispatch routines for
+  @file
+
+  Implementation of tuples (Tuple) and dispatch routines for
   column wide compression (PluginDispatcher).
 */
 

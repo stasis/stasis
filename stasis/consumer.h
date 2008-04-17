@@ -25,7 +25,8 @@ void consumer_init();
 
 void Tconsumer_close(int xid, lladdConsumer_t * it);
 /**
-   
+   Insert a value into this consumer.
+
    @param xid Transaction id @param it  The consumer
    @param key Can be null if there is no key.
    @param keySize Length of key in bytes

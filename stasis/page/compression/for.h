@@ -11,7 +11,9 @@
 // Author: sears@google.com (Rusty Sears)
 
 /**
-   @file Implementation of Frame of Reference compression
+   @file
+
+   Implementation of Frame of Reference compression
 
    This file implements a COMPRESSOR plugin that handles compresion
    for a column of data in a page.  Rather than hardcoding a
@@ -118,6 +120,7 @@ class For {
     This constructor initializes a new FOR region.
 
     @param xid the transaction that created the new region.
+    @param mem A pointer to the buffer manager's copy of this page.
   */
   For(int xid, void * mem): mem_(mem) {
     *base_ptr() = -1;

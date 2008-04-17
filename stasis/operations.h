@@ -114,7 +114,7 @@ typedef struct {
         writing a checkpoint operation.  No writes can be serviced
         during the sync, and this implies 'no steal'.  See: 
 
-        @inproceedings{ woo97accommodating,
+        @@inproceedings{ woo97accommodating,
 	author = "Seung-Kyoon Woo and Myoung-Ho Kim and Yoon-Joon Lee",
 	title = "Accommodating Logical Logging under Fuzzy Checkpointing in Main Memory Databases",
 	booktitle = "International Database Engineering and Application Symposium",

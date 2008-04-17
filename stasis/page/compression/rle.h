@@ -47,7 +47,9 @@ class Rle {
   /**
     This constructor initializes a new Rle region.
 
-    @param xid the transaction that created the new region.
+    @param xid the transaction that created the new region.  Passing
+           in a XID implies that the page has just been allocated.
+    @param mem A pointer to the buffer manager's copy of the Rle page.
   */
   Rle(int xid, void * mem): mem_(mem), last_(0) {
     *block_count_ptr() = 1;

@@ -101,9 +101,6 @@ inline Multicolumn<ROW> * initPage(Multicolumn<ROW> ** mc,
    Create pages that are managed by Pstar<COMPRESSOR, TYPE>, and
    use them to store a compressed representation of the data set.
 
-   @param dataset A pointer to the data that should be compressed.
-   @param inserts The number of elements in dataset.
-
    @return the number of pages that were needed to store the
    compressed data.
 */

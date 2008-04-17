@@ -1,5 +1,7 @@
 /** 
-    @file Indirect block implementation.
+    @file
+
+    Indirect block implementation.
 
     On disk layout of indirect blocks:
 END

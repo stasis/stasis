@@ -16,7 +16,9 @@
 // Author: sears@google.com (Rusty Sears)
 
 /**
-  @file Page implementation for multi-column, compressed data
+  @file
+
+  Page implementation for multi-column, compressed data
 
  STRUCTURE OF A MULTICOLUMN PAGE
 
@@ -24,7 +26,7 @@
  +----------------------------------------------------------------------+
  | col #0 compressed data (opaque) | col #1 compressed data (opaque)    |
  +-----+---------------------------+-----+------------------------------|
- | ... | col #N compressed data (opaque) |                              |
+ | ... | col  N compressed data (opaque) |                              |
  +-----+---------------------------------+                              |
  |  Free space                                                          |
  |                                                                      |
@@ -40,7 +42,7 @@
  |                                      +---------------+---------------+
  |                                  ... | exception # 1 | exception # 0 |
  +-----------------------+--------------------+----+--------------------+
- |  first header byte -> | col #N off, plugin | .. | col #1 off, plugin |
+ |  first header byte -> | col  N off, plugin | .. | col #1 off, plugin |
  +--------------------+--+-------------+------+----+----+-----------+---+
  | col #0 off, plugin | exceptions len | exceptions off | # of cols | ? |
  +--------------------+----------------+----------------+-----------+---+
@@ -175,7 +177,7 @@ class StaticMulticolumn {
 
  }
 
-  /**
+  /* *
      @return the compressor used for a column.  The nature of the
      mapping between table region and compressor instance is
      implementation defined, but there will never be more than one

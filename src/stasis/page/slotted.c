@@ -249,6 +249,7 @@ static size_t slottedFreespaceForSlot(Page * page, int slot) {
   For now, we make sure that we don't alloc off a page that another active
   transaction dealloced from.
 
+  @param page A pointer to the page.
   @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
 */
 static void really_do_ralloc(Page * page, recordid rid) {

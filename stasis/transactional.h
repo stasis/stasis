@@ -45,14 +45,13 @@ terms specified in this license.
  *
  * The minimal subset of Stasis necessary to implement transactional consistency.
  *
- * This module includes the standard API (excluding operations), the
- * logger, the buffer manager, and recovery code.
+ * This module includes page manipulation API's, the logger, the
+ * buffer manager, recovery code, and other primitives can be used to
+ * implement custom transactional data structures.
  *
- * In theory, the other .h files that are installed in /usr/include
- * aren't needed for application developers.
- *
- * @todo Move as much of the stuff in stasis/ to src/stasis/ as possible.  Alternatively, move all headers to stasis/, and be done with it!
- *
+ * This section does not include @ref OPERATIONS, which include
+ * implementations of higher level transactional data structures, such
+ * as hashtables, and record / blob manipulation.
  */
 /**
    @mainpage Introduction to Stasis

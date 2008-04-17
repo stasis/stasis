@@ -52,6 +52,7 @@ template <class COMPRESSOR, class TYPE> class Pstar {
       Read a value from a page managed by pstar.
 
       @param xid the transaction reading the record.
+      @param slot The slot in this page that should be read.
       @param buf scratch space for recordRead.
 
       @return NULL if there is no such slot, or a pointer to rhe
