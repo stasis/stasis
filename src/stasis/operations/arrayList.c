@@ -12,19 +12,6 @@
 #define _XOPEN_SOURCE 600
 #include <math.h>
 
-
-
-/** 
-    Implement resizable arrays, just like java's ArrayList class.
-
-    Essentially, the base page contains a fixed size array of rids
-    pointing at contiguous blocks of pages.  Each block is twice as
-    big as the previous block.
-
-    The base block is of type FIXED_PAGE, of int's. The first few slots are reserved:
-
-*/
-
 typedef struct {
   int firstPage;
   int initialSize;
@@ -166,7 +153,6 @@ static compensated_function int TarrayListExtendInternal(int xid, recordid rid, 
       int blockSize = tlp.initialSize * pow(tlp.multiplier, i);
       int newFirstPage = TpageAllocMany(xid, blockSize);
       DEBUG("block %d\n", i);
-      /* We used to call OPERATION_INITIALIZE_FIXED_PAGE on each page in current indirection block. */
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
       /* Iterate over the (large number) of new blocks, clearing their contents */
       /* @todo XXX arraylist generates N log entries initing pages.

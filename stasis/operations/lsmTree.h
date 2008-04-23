@@ -87,12 +87,14 @@ void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
 /**
    Lookup a leaf page.
 
+   @param xid The transaction that is looking up this page
+
+   @param tree The tree to be queried.
+
    @param key The value you're looking for.  The first page that may
               contain this value will be returned.  (lsmTree supports
-              duplicate keys...)
-
-   @param keySize Must match the keySize passed to TlsmCreate.
-                  Currently unused.
+              duplicate keys...)  LSM trees currently store fixed
+              length keys, so there is no keySize parameter.
 */
 pageid_t TlsmFindPage(int xid, recordid tree,
                  const byte *key);

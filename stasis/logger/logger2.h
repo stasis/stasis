@@ -43,7 +43,9 @@ terms specified in this license.
 /**
  * @file
  *
- * New version of logger.  Based on logger.h
+ * Interface to Stasis' log file.
+ *
+ * @ingroup LOGGING_DISCIPLINE
  * 
  * $Id$
  * 

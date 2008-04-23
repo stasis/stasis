@@ -45,10 +45,21 @@ terms specified in this license.
  *
  * Interface for defining new logical operations.
  *
- * @ingroup LLADD_CORE OPERATIONS
+ * @ingroup OPERATIONS
  * @todo The functions in operations.h don't belong in the API, but it defines some constants and typedefs that should be there.
  * $Id$
  */
+/**
+   @defgroup COLLECTIONS Collections
+
+   Stasis provides a number of general-purpose data structures for use
+   by applications.
+
+   Stasis provides a number of general-purpose data structures for use
+   by applications.  This section documents these data structures and
+   associated interfaces, such as iterators.
+*/
+
 
 #ifndef __OPERATIONS_H__
 #define __OPERATIONS_H__

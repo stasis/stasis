@@ -68,9 +68,7 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_NOOP] = getNoop();
 	operationsTable[OPERATION_INSTANT_SET] = getInstantSet();
 	operationsTable[OPERATION_ARRAY_LIST_ALLOC]  = getArrayListAlloc();
-	//	operationsTable[OPERATION_INITIALIZE_FIXED_PAGE] = getInitFixed();
 	operationsTable[OPERATION_INITIALIZE_PAGE] = getInitializePage();
-	//	operationsTable[OPERATION_UNINITIALIZE_PAGE] = getUnInitPage();
 
 	operationsTable[OPERATION_LINEAR_INSERT] = getLinearInsert();
 	operationsTable[OPERATION_UNDO_LINEAR_INSERT] = getUndoLinearInsert();

@@ -15,7 +15,6 @@ ACLOCAL_AMFLAGS = -I m4
 #-Wconversion
 
 docs:
-	doxygen doc/Doxyfile-api
 	doxygen doc/Doxyfile-developers
 
 tidy: precoverage

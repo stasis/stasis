@@ -1,6 +1,8 @@
 /** 
 
-   @file Implements three phase recovery
+   @file
+
+   Implements three phase recovery
 
 */
 
@@ -20,7 +22,7 @@
 #include <stasis/operations/prepare.h>
 
 #include <stasis/logger/logHandle.h>
-/** @todo Get rid of linkedlist.[ch] */
+/** @todo Get rid of linkedlist */
 #include <stasis/linkedlist.h>
 #include <stasis/page.h> // Needed for pageReadLSN. 
 
@@ -28,7 +30,7 @@
 static pblHashTable_t * transactionLSN;
 static LinkedList * rollbackLSNs = NULL;
 /** @todo There is no real reason to have this mutex (which prevents
-    concurrent aborts, except that we need to protect rollbackLSNs's
+    concurrent aborts), except that we need to protect rollbackLSNs's
     from concurrent modifications. */
 static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
 

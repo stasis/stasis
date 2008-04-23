@@ -56,13 +56,59 @@ terms specified in this license.
 /**
    @mainpage Introduction to Stasis
    
-   This is the main section.
-   <ul>
-     <li>@ref gettingStarted</li>
-     <li>@ref pageFormats</li>
-     <li>@ref LLADD_CORE</li>
-     <li>@ref OPERATIONS</li>
-   </ul>
+   Stasis is a <i>flexible</i> transactional storage library.  Unlike
+   existing systems, it provides application and server developers
+   with much freedom, but little guidance regarding page file layouts,
+   data models, and concurrency schemes.  This often means that Stasis
+   can outperform general purpose storage solutions by orders of
+   magnitude, but it does require more effort on the part of its end
+   users.  We are in the process of implementing a library of commonly
+   used, general-purpose transactional data structures on top of
+   Stasis.
+
+   @section The Stasis data model
+
+   Stasis does not really have a data model.  While designing and
+   implementing Stasis, we focused on providing end users with
+   <i>mechanisms, not policy</i>.  As much as possible, we have
+   avoiding hardcoding application-specific implmentation details such
+   as data formats and concurrency models.  Instead, Stasis provides a
+   number of reusable lower-level mechanisms that make it easy for
+   applications to implement custom transactional storage systems.
+
+   At the lowest level, Stasis provides <i>transactional pages</i>;
+   the buffer manager manages a set of pages and regions on disk, and
+   coordinates with the log and other Stasis mechanisms to provide
+   recovery and concurrent transactions.  On top of this low level
+   API, we have developed record oriented interfaces that facilitate
+   development and interchangability of new page formats.  Conformance
+   to these APIs is recommended, but not required.  Stasis records are
+   simply arrays of bytes (not tuples).  A Stasis recordid is simply a
+   record that contains a pointer to another record.
+
+   Stasis's @ref OPERATIONS provide a set of methods that manipulate
+   records in a transactional, durable fashion.  They are implemented
+   on top of the record (and sometimes page) API's, and range from low
+   level access methods like record reads and writes to higher level
+   data structure implementations, such as hash tables and log-oriented
+   tree indexes.  Stasis' library of operations makes use of a number of
+   different @ref LOGGING_DISCIPLINES.  Most new operations will want to
+   choose one of these disciplines, as many subtlties arise during the
+   development of new concurrent, high-performance recovery
+   algorithms.
+
+   @image html "StasisDBMS.png" "Stasis' place in a conventional DBMS architecture"
+
+   @section Tutorial
+
+   @ref gettingStarted explains how to download and compile Stasis,
+   and includes a number of sample programs.
+
+   The "Modules" section in the navigation pane contains detailed
+   documentation of Stasis' major components.
+
+   @see <a href="modules.html">Modules</a>
+
 */
 
 /**
@@ -109,11 +155,11 @@ terms specified in this license.
    This will fail if your system defaults to an old (pre-1.7) version
    of autotools.  Fortunately, multiple versions of autotools may
    exist on the same system.  Execute the following commands to
-   compile with version 1.8 of autotools:
+   compile with version 1.8 (or 1.9) of autotools:
 
    @code
 
-   $ ./reconf-1.8
+   $ ./reconf-1.8  # or ./reconf-1.9
    $ ./configure --quiet
    $ make -j4 > /dev/null
    $ cd test/stasis
@@ -133,7 +179,7 @@ terms specified in this license.
 
    @section usage Using Stasis in your software
 
-   Synopsis:
+   Synopsis (examples/ex1.c):
 
    @include examples/ex1.c
 
@@ -153,25 +199,27 @@ terms specified in this license.
    or naming of objects within the page file.  This means that the application 
    must maintain such information manually.
    
-   In order to facilitate this, Stasis provides the function TgetRecordType() and
-   guarantees that the first recordid returned by any allocation will point to 
-   the same page and slot as the constant ROOT_RECORD.  TgetRecordType 
-   will return NULLRID if the record passed to it does not exist.  
+   In order to facilitate this, Stasis provides the function
+   TrecordType() and guarantees that the first recordid returned by
+   any allocation will point to the same page and slot as the constant
+   ROOT_RECORD.  TrecordType() will return UNINITIALIZED_RECORD if the
+   record passed to it does not exist.  A second function,
+   TrecordSize() returns the size of a record in bytes, or -1 if the
+   record does not exist.
    
-   Therefore, the following code will safely initialize or reopen a data 
-   store:
+   Therefore, the following code (found in examples/ex2.c) will safely
+   initialize or reopen a data store:
    
    @include examples/ex2.c
-
-   @see test.c for a complete, executable example of reopening an existing store.
 
    @todo Explain how to determine the correct value of rootEntry.size in the case
          of a hashtable.
 
 
-   @see OPERATIONS for more operations that may be useful for your software.
+   @see OPERATIONS for other transactional primitives that may be
+        useful for your software.
 
-   @subsection consistency  Using Stasis in multithreaded applications.
+   @subsection consistency  Using Stasis in multithreaded applications
 
    Unless otherwise noted, Stasis' operations are re-entrant.  This
    means that an application may call them concurrently without
@@ -229,7 +277,7 @@ terms specified in this license.
    Stasis components can be classified as follows:
 
    - I/O utilities (file handles, OS compatibility wrappers)
-   - Write ahead logging component interfaces (logger.h, XXX)
+   - Write ahead logging component interfaces (logger.h, logger/inMemoryLog.h  logger/logEntry.h  logger/logger2.h  logger/logHandle.h  logger/logMemory.h  logger/logWriter.h)
    - Write ahead logging component implementations (hash based buffer manager, in memory log, etc...)
    - Page formats and associated operations (page/slotted.c page/fixed.c)
    - Application visible methods (Talloc, Tset, ThashInsert, etc)
@@ -353,106 +401,50 @@ terms specified in this license.
    Interesting files in this part of Stasis include logger2.c,
    bufferManager.c, and recovery2.c.
 
-   @subsection page Page types
+   @subsection page Custom page formats
 
-   Page types define the layout of data on pages.  Currently, all
-   pages contain a header with an LSN and a page type in it.  This
-   information is used by recovery and the buffer manager to invoke
-   callbacks at appropriate times.  (LSN-free pages are currently not
-   supported.)
+   Stasis provides a default @ref PAGE_RECORD_INTERFACE to custom page
+   implementations.  Methods that define their own log disciplines, or
+   otherwise need to bypass Stasis' default recovery mechanisms should
+   call into this API.
 
-   XXX: This section is not complete.
-
-   @todo Discuss readRecord, writeRecord (high level page access
-   methods)
-
-   @todo Explain the latching convention.  (Also, explain which
-   latches are not to be used by page implementations, and which
-   latches may not be used by higher level code.)
-
-   @par Registering new page type implementations
-
-   Page implementations are registered with Stasis by passing a
-   page_impl struct into registerPageType().  page_impl.page_type
-   should contain an integer that is unique across all page types,
-   while the rest of the fields contain function pointers to the page
-   type's implementation.
-
-   @par Pointer arithmetic
-
-   Stasis page type implementations typically do little more than
-   pointer arithmetic.  However, implementing page types cleanly and
-   portably is a bit tricky.  Stasis has settled upon a compromise in
-   this matter.  Its page file formats are compatible within a single
-   architecture, but not across systems with varying lengths of
-   primitive types, or that vary in endianness.
-
-   Over time, types that vary in length such as "int", "long", etc
-   will be removed from Stasis, but their usage still exists in a few
-   places.  Once they have been removed, file compatibility problems
-   should be limited to endianness (though application code will still
-   be free to serialize objects in a non-portable manner).
-
-   Most page implementations leverage C's pointer manipulation
-   semantics to lay out pages.  Rather than casting pointers to
-   char*'s and then manually calculating byte offsets using sizeof(),
-   the existing page types prefer to cast pointers to appropriate
-   types, and then add or subtract the appropriate number of values.
-
-   For example, instead of doing this:
-
-   @code
-   // p points to an int, followed by a two bars, then the foo whose address
-   // we want to calculate
-
-   int * p;
-   foo* f = (foo*)( ((char*)p) + sizeof(int) + 2 * sizeof(bar))
-   @endcode
-
-   the implementations would do this:
-
-   @code
-   int * p;
-   foo * f = (foo*)( ((bar*)(p+1)) + 2 )
-   @endcode
-
-   The main disadvantage of this approach is the large number of ()'s
-   involved.  However, it lets the compiler deal with the underlying
-   multiplications, and often reduces the number of casts, leading to
-   slightly more readable code.  Take this implementation of
-   stasis_page_type_ptr(), for example:
-
-   @code
-   int * stasis_page_type_ptr(Page *p) { 
-      return ( (int*)stasis_page_lsn_ptr(Page *p) ) - 1; 
-   }
-   @endcode
-
-   Here, the page type is stored as an integer immediately before the
-   LSN pointer.  Using arithmetic over char*'s would require an extra
-   cast to char*, and a multiplication by sizeof(int).
+   By defining these methods and registering appropriate callbacks,
+   page implementations allow callers to access their data through
+   standard Stasis methods such as Tread() and Tset().  This module
+   also includes a set of utility methods to simplify the pointer
+   arithmetic associated with manipulating the buffer manager's copy
+   of pages.
 
    @par A note on storage allocation
 
-   Finally, while Stasis will correctly call appropriate functions
-   when it encounters a properly registered third party page type, it
-   currently provides few mechanisms to allocate such pages in the
-   first place.  There are examples of three approaches in the current
-   code base:
+   Stasis currently provides a few different mechanisms that allocate
+   entire pages and page ranges at once.  There are examples of three
+   approaches in the current code base:
 
-   # Implement a full-featured, general purpose allocator, like the
+   - Implement a full-featured, general purpose allocator, like the
      one in alloc.h.  This is more difficult than it sounds.
 
-   # Allocate entire regions at a time, and manually initialize pages
-     within them.  arrayList.h attempts to do this, but gets it wrong
-     by relying upon lazy initialization to eventually set page types
-     correctly.  Doing so is problematic if the page was deallocated,
-     then reused without being reset.
+   - Allocate entire regions at a time, and manually initialize pages
+     within them.  arrayList.h does this.  This is the most flexible
+     and efficient approach, but requires extra management code if
+     region allocation is not a natural approach.
 
-   # Allocate a single page at a time using TallocPage(), and
-     TsetPage().  This is currently the most attractive route, though
-     TsetPage() does not call pageLoaded() when it resets page types,
-     which can lead to trouble.
+   - Allocate a single page at a time using TallocPage(), then call
+     page initialization methods on each page.  Currently,
+     TallocPage() is poorly implemented and wastes one page for every
+     page it allocates.
+
+   Note that before you initialize a new page you need to call
+   stasis_page_cleanup() to notify the page's old format that it should
+   free resources associated with the old version of the page.
+   Stasis' allocation routines guarantee that the pages they return
+   were freed by committed transactions (and therefore, that their
+   contents can be discarded).  Therefore, you do not need to log the
+   preimage of pages returned by the allocator.
+
+   @todo Should we change the API so that allocation routines (TpageAlloc(), TregionAlloc()) call stasis_page_cleanup() on behalf of their callers?
+
+   @todo Optimize page, region allocation to call page initializers automatically during forward operation and redo?
 
    @see page.h, fixed.h, and slotted.h for more information on the
    page API's, and the implementations of two common page formats.
@@ -461,8 +453,7 @@ terms specified in this license.
 
    These methods start with "T".  Look at the examples above.  These
    are the "wrapper functions" from the OSDI paper.  They are
-   supported by operation implementations, which can be found in the
-   operations/ directory.
+   supported by @ref OPERATIONS.
 
    @section extending Implementing you own operations
 
@@ -473,9 +464,6 @@ terms specified in this license.
 
 */
 /**
- * @defgroup pageFormats Page format implementations
- */
-/**
  * @defgroup OPERATIONS  Logical Operations
  *
  * Implementations of logical operations, and the interfaces that allow new operations to be added.
@@ -483,6 +471,53 @@ terms specified in this license.
  * @todo Write a brief howto to explain the implementation of new operations.
  *
  */
+/**
+ * @defgroup LOGGING_DISCIPLINES Logging Disciplines
+ *
+ * Stasis' log API provides a number of methods that directly
+ * manipulate the log.  
+ *
+ * @section SNF STEAL/NO-FORCE recovery
+ * Stasis includes a function, Tupdate(), that
+ * provides traditional STEAL/NO-FORCE logging for recovery.  The
+ * STEAL/NO-FORCE strategy allows dirty, uncommitted pages to be
+ * written back to disk (STEAL), which prevents long running
+ * transactions from exhausting RAM.  It does not force write pages to
+ * disk at commit (NO-FORCE), and instead only forces the log.  This
+ * prevents the hard drive head from performing unnecessary seeks
+ * during commit.  Recovery works by "repeating history"; all actions
+ * are redone up to some point in time after the last successful
+ * transaction committed, but before the crash.  Conceptually, any
+ * partially commited transactions are then rolled back using
+ * Tabort(), as they would be during normal operation.  For more
+ * information about STEAL/NO-FORCE recovery strategies, see the ARIES
+ * paper (XXX cite aries properly)
+ *
+ *
+ * @section SF STEAL/FORCE and bulk-logged recovery
+ *
+ * Stasis supports other logging disciplines as well.  In particular,
+ * the buffer manager allows REGIONS (XXX document region allocator)
+ * to be synchronously written to disk, allowing operations to make
+ * use of a STEAL/FORCE recovery strategy.  This is attractive when a
+ * transaction is writing a large, contiguous region of disk, as
+ * STEAL/FORCE operations do not write redo information to the log.
+ * If the STEAL/FORCE transaction is overwriting newly allocated
+ * pages, it can also avoid writing undo information to the log, as
+ * the newly allocated pages do not contain useful data.  This allows
+ * large objects to be written with no tangible logging overhead, and
+ * has been implemented by a number of commercial systems.  It is used
+ * by the Stasis' Rose indexes. (XXX cite LSM trees, etc.)
+ *
+ * @section LSNFREE LSN-Free pages
+ *
+ * Stasis' third (and most exotic) logging strategy makes use of
+ * LSN-free pages.  By constraining the behavior of redo and undo log
+ * entries, we can entirely avoid storing Stasis metadata on pages.
+ * This logging discipline is under development.
+ *
+ */
+
 
 /**
  * @file 

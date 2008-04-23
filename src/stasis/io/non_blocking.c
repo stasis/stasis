@@ -180,7 +180,7 @@ typedef struct nbw_impl {
 static inline void freeFastHandle(nbw_impl * impl, const tree_node * n);
 
 /** Obtain a slow handle from the pool of existing ones, or obtain a new one
-    by calling impl->slow_factory.. */
+    by calling impl.slow_factory. */
 static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
   pthread_mutex_lock(&impl->mut);
   stasis_handle_t * slow

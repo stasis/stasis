@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="467.8634"
+   height="273.87051"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.45.1"
+   version="1.0"
+   sodipodi:docbase="/home/sears/stasis2/doc/figures"
+   sodipodi:docname="StasisDBMS.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   inkscape:export-filename="/home/sears/stasis2/doc/figures/StasisDBMS.png"
+   inkscape:export-xdpi="115.42"
+   inkscape:export-ydpi="115.42">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.99398774"
+     inkscape:cx="-11.130951"
+     inkscape:cy="208.68131"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:window-width="1024"
+     inkscape:window-height="697"
+     inkscape:window-x="0"
+     inkscape:window-y="25" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-12.799133,-122.42533)">
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.85751379px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 352.27169,295.59456 C 353.13804,295.34748 354.0044,295.10039 354.87074,294.85332 C 359.44837,293.54776 367.28377,300.00533 365.71035,302.82009 C 363.94019,305.98682 357.7786,303.87593 356.06326,306.57676 C 354.66475,308.7787 362.21113,308.32685 364.82553,309.73253 C 364.94009,309.79413 358.34688,310.93254 362.24941,313.98578 C 370.00807,320.05596 363.52428,322.81314 354.0442,324.93376 C 351.48366,325.50654 347.84187,325.56353 345.21409,325.63003"
+       id="path3470"
+       inkscape:transform-center-y="8.3452194"
+       inkscape:transform-center-x="-7.7749744" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#caf3de;stroke-width:20.81105804;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 470.25702,194.16441 C 469.51314,194.10733 468.76928,194.05027 468.02542,193.99319 C 463.89542,193.67631 461.73569,191.44175 457.53742,190.87359 C 454.01504,190.39689 461.99375,196.50751 462.21516,196.65964 C 463.0745,197.25 468.97563,201.19071 463.24856,199.33673 C 457.7478,197.55603 451.97815,195.75797 444.58573,194.53534 C 436.39855,193.18129 454.57898,202.54295 454.94615,202.7122 C 458.66372,204.42582 466.8846,208.64197 466.69798,209.27249 C 466.69398,209.28598 462.74815,207.3485 455.94233,205.51506 C 443.13204,202.06402 433.56843,197.72331 419.97086,194.42149 C 414.65013,193.12948 424.1112,198.81186 430.33127,202.59833 C 437.21221,206.78709 451.29961,210.04283 457.45792,214.27359 C 459.36241,215.58197 448.18175,212.01455 440.49849,209.88583 C 422.40901,204.87401 411.53242,198.02851 394.93233,192.65469 C 394.37692,192.47491 393.82154,192.29511 393.26614,192.11533 C 392.9882,192.02533 395.52814,195.2967 398.85141,197.91954 C 408.94434,205.88526 430.47521,212.42861 449.76529,218.67323 C 452.26839,219.48353 455.25091,220.17345 457.75403,220.98376 C 465.46992,223.48157 450.37782,218.73372 448.96941,218.2778 C 428.38858,211.61533 409.33941,204.87139 390.19268,197.8725 C 373.49095,191.76733 382.21559,196.62919 388.01252,200.61168 C 398.96247,208.13428 413.48532,215.19652 432.53648,221.3638 C 452.17429,227.72098 418.60544,216.24403 416.47746,215.47616 C 399.3409,209.29245 384.981,201.871 365.07972,196.35719 C 356.50304,193.98097 368.04574,203.47011 376.97163,208.61259 C 384.09584,212.71704 400.3326,218.6186 410.8303,220.67577 C 413.80016,221.25773 405.62258,219.26551 403.25811,218.50007 C 383.93797,212.24572 363.68837,206.25703 347.32274,199.29016 C 337.16151,194.96452 320.60902,187.76194 319.7193,190.76772 C 317.64131,197.78807 332.11653,204.86084 343.93558,210.73333 C 344.38579,210.95701 371.39068,221.86095 363.03627,220.22383 C 344.09987,216.51299 328.53555,210.21161 314.53134,205.21069 C 312.90758,204.63085 284.27148,191.78382 282.95571,196.22913 C 281.46757,201.25669 299.82776,211.26074 308.75661,215.46755 C 310.55914,216.3168 336.67691,227.12412 318.46293,221.22785 C 297.56,214.46112 277.98215,207.58503 259.38133,200.31046 C 254.86861,198.54558 236.0845,188.06605 230.31205,193.65607 C 224.86328,198.9327 239.34305,210.17547 247.76623,214.8776 C 259.9679,221.68901 259.86762,221.27545 244.18044,216.19718 C 225.94879,210.29516 211.87112,202.45165 198.22076,195.66927 C 188.13074,190.65591 192.89099,200.60952 193.2578,201.64157 C 195.54103,208.06567 209.29883,214.32626 217.88353,220.22394 C 223.19904,223.8757 190.71696,212.13557 190.20567,211.95299 C 170.49299,204.91357 155.12058,197.0336 137.9606,189.52818 C 130.00115,186.0469 135.36045,196.95752 138.31521,200.66686 C 143.60031,207.30159 156.04204,213.45045 165.09811,219.67193 C 165.40261,219.88115 165.57906,220.10323 165.81953,220.31887 C 165.93727,220.42445 161.17592,218.81563 154.5729,216.67809 C 134.76803,210.26684 119.75823,201.90414 104.97598,194.55936 C 91.799584,188.01245 98.621923,197.68006 100.23635,199.77716 C 104.7433,205.63152 117.70124,211.03848 121.18765,216.89443 C 123.05865,220.03709 106.56609,211.44614 105.58239,211.01587 C 90.842862,204.56913 80.012212,197.51434 65.863713,190.99256 C 53.856068,185.45758 58.919336,194.50133 59.651117,196.5603 C 61.858785,202.7718 72.710387,208.59526 75.276017,214.70928 C 76.873162,218.51539 66.636913,212.21984 64.862472,211.33818 C 55.697221,206.78429 50.123003,201.65001 42.184797,196.96919 C 40.083578,195.7302 41.092874,203.79549 41.387235,204.28993 C 43.408514,207.68496 46.007677,211.13152 47.031036,214.52265 C 47.890792,217.37162 38.951563,212.44901 38.246434,211.81668 C 37.578472,211.21768 27.324375,201.75513 30.206265,206.59574 C 32.083262,209.74847 34.604311,213.1375 35.091412,216.30727 C 35.488334,218.89009 28.33316,217.24762 25.562388,216.11629"
+       id="path9844" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#cfe4f4;stroke-width:24.11679649;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 25.362386,371.46916 C 26.113829,371.66758 26.865273,371.866 27.616716,372.06441 C 31.788793,373.16606 34.31699,382.03853 38.599221,384.14508 C 42.192079,385.9125 33.211296,361.73466 32.964994,361.1337 C 32.009071,358.80145 25.463705,343.24015 31.486019,350.44041 C 37.270349,357.35614 43.325764,364.33037 50.903256,368.93061 C 59.295406,374.02541 39.595615,337.2281 39.201072,336.56438 C 35.20641,329.8447 26.301352,313.2739 26.381897,310.73778 C 26.38362,310.68354 30.643414,318.29152 37.738163,325.36531 C 51.092293,338.68 61.357374,355.69532 75.471715,368.37947 C 80.994646,373.34277 70.607155,350.94293 63.76953,336.01328 C 56.205439,319.4974 41.610308,307.01818 34.759862,290.3043 C 32.641345,285.1355 44.389665,298.98362 52.408974,307.20555 C 71.289637,326.56317 83.283659,353.56929 100.7395,374.43946 C 101.32353,375.13772 101.90754,375.83599 102.49157,376.53423 C 102.78386,376.88372 99.702831,363.86906 95.949173,353.48709 C 84.549123,321.95654 61.97976,296.59825 41.695268,272.34616 C 39.063126,269.19918 35.972996,266.5546 33.340853,263.40763 C 25.227187,253.70694 41.074227,272.12864 42.555235,273.89932 C 64.197035,299.7742 84.324883,326.03849 104.59274,353.32126 C 122.27243,377.12012 112.75684,357.9805 106.30838,342.24743 C 94.127816,312.52901 78.460921,284.80295 58.427646,260.8512 C 37.777487,236.1619 73.179,280.81189 75.429913,283.80408 C 93.556439,307.90006 109.12097,337.07325 129.89266,358.36968 C 138.84443,367.54762 125.74337,329.96726 115.98005,309.71063 C 108.18744,293.5428 91.005584,270.54139 80.191311,262.72166 C 77.131903,260.50945 85.621333,268.1638 88.10771,271.13652 C 108.42384,295.4264 129.62244,318.6129 147.11122,345.88103 C 157.96982,362.81152 175.68444,391.0173 176.06843,378.92719 C 176.96525,350.68946 161.34411,322.91922 148.57305,299.85356 C 148.0866,298.97496 119.32752,256.35415 127.93387,262.57729 C 147.44132,276.68301 164.0195,301.31526 178.82393,320.79636 C 180.54045,323.05514 211.25177,373.40121 211.81963,355.52097 C 212.46188,335.29884 192.47522,295.93273 182.86565,279.42841 C 180.92569,276.09657 153.06754,233.82681 172.22048,256.72604 C 194.201,283.00592 214.87826,309.77847 234.64783,338.18907 C 239.44409,345.08173 259.93315,386.33725 264.75412,363.68406 C 269.30476,342.30094 252.98074,297.8085 243.79254,279.29716 C 230.48268,252.4819 230.65193,254.13621 247.14781,273.85866 C 266.31934,296.78014 281.67307,327.65747 296.42292,354.29698 C 307.32566,373.98831 300.91118,334.26764 300.37253,330.14399 C 297.01957,304.47585 282.24994,279.93322 272.70046,256.63411 C 266.78753,242.20763 301.14925,287.95741 301.68976,288.66868 C 322.52882,316.09077 339.17996,347.06128 357.55116,376.45658 C 366.07242,390.09121 358.90023,346.55735 355.33216,331.80333 C 348.95006,305.41343 335.51172,281.26499 325.43787,256.68659 C 325.09915,255.86013 324.88598,254.97676 324.61004,254.12183 C 324.47493,253.70329 329.49303,259.95994 336.43644,268.26146 C 357.26227,293.16077 373.63259,326.0819 389.60549,354.93037 C 403.84321,380.645 395.42005,342.1558 393.45873,333.81217 C 387.98337,310.51982 374.15442,289.36763 369.69665,266.02711 C 367.30433,253.50111 385.19169,287.277 386.24484,288.9621 C 402.02475,314.21111 414.008,342.05839 429.21102,367.63253 C 442.11363,389.33697 435.54933,353.27743 434.47469,345.05064 C 431.2327,320.23204 419.43475,297.32329 415.85207,272.91022 C 413.62178,257.71247 424.88508,282.53954 426.80244,286.00247 C 436.70593,303.88902 443.12512,324.25001 451.82607,342.69578 C 454.12918,347.57833 451.77194,315.27666 451.39555,313.30592 C 448.81111,299.7741 445.64169,286.05933 444.05316,272.50222 C 442.7186,261.11262 452.4584,280.48709 453.26754,282.99391 C 454.03404,285.36865 465.84549,322.89509 462.16064,303.60153 C 459.76067,291.03548 456.67879,277.54817 455.66216,264.85682 C 454.83376,254.51559 462.24495,260.80914 465.19782,265.23257"
+       id="path4658" />
+    <path
+       style="fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#6e9499;stroke-width:3.6915431;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 19.635731,236.71777 C 22.887101,236.918 33.626101,232.23388 36.933002,231.72478 C 43.322217,230.74115 49.413903,231.48259 55.311354,232.39052 C 61.460763,233.33722 68.180904,235.11278 73.689705,236.38491 C 78.336633,237.458 86.312553,237.71637 92.068056,237.71637 C 98.0558,237.71637 104.818,236.43641 109.36533,235.3863 C 114.5448,234.19023 117.04892,233.38911 124.50044,233.38911 C 131.52149,233.38911 135.05881,233.6637 139.63556,234.72058 C 146.20026,236.23654 146.55455,235.71918 148.28419,235.71918"
+       id="path3685" />
+    <path
+       style="fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#6e9499;stroke-width:3.03635597;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 272.26196,239.4078 C 272.82559,239.63928 285.76016,236.00808 287.5976,235.75654 C 295.0212,234.74023 299.7384,235.42186 306.26705,236.85192 C 314.50451,238.65627 317.21296,239.04267 326.27006,239.04267 C 336.25602,239.04267 344.20601,238.85402 354.27427,239.77292 C 366.56529,240.89471 377.12392,239.56578 388.94615,237.9473 C 401.94944,236.16712 408.03879,239.19189 420.28418,240.8683 C 430.31781,242.24193 439.83003,239.16264 449.62191,240.50318 C 457.97571,241.64683 462.20504,245.29661 469.62492,241.23343"
+       id="path3687" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.61970472;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect2160"
+       width="124.79104"
+       height="35.724258"
+       x="152.23189"
+       y="122.73518" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51315171;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3166"
+       width="85.312355"
+       height="35.830814"
+       x="125.78846"
+       y="203.50175" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51315171;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3186"
+       width="85.312355"
+       height="35.830814"
+       x="211.55647"
+       y="203.50175" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.61970472;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3202"
+       width="124.79104"
+       height="35.724258"
+       x="152.23189"
+       y="160.67102" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.52413839;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3320"
+       width="88.823135"
+       height="35.820427"
+       x="93.645309"
+       y="244.27599" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51375002;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3402"
+       width="67.930901"
+       height="35.885712"
+       x="183.25385"
+       y="244.24333" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51375002;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3412"
+       width="85.312355"
+       height="35.830814"
+       x="251.61296"
+       y="244.27077" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51375002;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3517"
+       width="85.312355"
+       height="35.830814"
+       x="89.030739"
+       y="289.741" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51375002;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3545"
+       width="85.312355"
+       height="35.830814"
+       x="174.79875"
+       y="289.74103" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.51375002;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3557"
+       width="85.312355"
+       height="35.830814"
+       x="261.03802"
+       y="289.74103" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.54627436;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3629"
+       width="223.15393"
+       height="30.162682"
+       x="110.82613"
+       y="332.97052" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="165.21823"
+       y="143.8024"
+       id="text7766"><tspan
+         sodipodi:role="line"
+         id="tspan7768"
+         x="165.21823"
+         y="143.8024">Query Processor</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="214.82077"
+       y="174.34369"
+       id="text7770"><tspan
+         sodipodi:role="line"
+         x="214.82077"
+         y="174.34369"
+         id="tspan7774">Relational</tspan><tspan
+         sodipodi:role="line"
+         x="214.82077"
+         y="189.34369"
+         id="tspan7778">Storage API</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="168.78156"
+       y="224.72771"
+       id="text7780"><tspan
+         sodipodi:role="line"
+         x="168.78156"
+         y="224.72771"
+         id="tspan7784">Tuple Store</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="254.27417"
+       y="217.22771"
+       id="text7788"><tspan
+         sodipodi:role="line"
+         x="254.27417"
+         y="217.22771"
+         id="tspan7796">Indices / Ref.</tspan><tspan
+         sodipodi:role="line"
+         x="254.27417"
+         y="232.22771"
+         id="tspan7800">Integrity</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="138.55492"
+       y="257.99677"
+       id="text7802"><tspan
+         sodipodi:role="line"
+         id="tspan7804"
+         x="138.55492"
+         y="257.99677">Allocation and</tspan><tspan
+         sodipodi:role="line"
+         x="138.55492"
+         y="272.99677"
+         id="tspan7806">space mgmt</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="216.80914"
+       y="265.31216"
+       id="text7808"><tspan
+         sodipodi:role="line"
+         id="tspan7810"
+         x="216.80914"
+         y="265.31216">Recovery</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="293.97617"
+       y="258.68811"
+       id="text7812"><tspan
+         sodipodi:role="line"
+         x="293.97617"
+         y="258.68811"
+         id="tspan7816">Page formats</tspan><tspan
+         sodipodi:role="line"
+         x="293.97617"
+         y="273.68811"
+         id="tspan7820">/ metadata</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="131.10391"
+       y="303.46695"
+       id="text7822"><tspan
+         sodipodi:role="line"
+         id="tspan7824"
+         x="131.10391"
+         y="303.46695">Buffer</tspan><tspan
+         sodipodi:role="line"
+         x="131.10391"
+         y="318.46695"
+         id="tspan7826">Manager</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="216.87192"
+       y="310.78241"
+       id="text7828"><tspan
+         sodipodi:role="line"
+         id="tspan7830"
+         x="216.87192"
+         y="310.78241">Logger</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="303.62094"
+       y="304.15839"
+       id="text7832"><tspan
+         sodipodi:role="line"
+         id="tspan7834"
+         x="303.62094"
+         y="304.15839">Page eviction</tspan><tspan
+         sodipodi:role="line"
+         x="303.62094"
+         y="319.15839"
+         id="tspan7836">LRU/DBMIN/?</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="222.21266"
+       y="343.75693"
+       id="text7842"><tspan
+         sodipodi:role="line"
+         id="tspan7844"
+         x="222.21266"
+         y="343.75693">OS Wrappers: I/O, Memory mgmt</tspan><tspan
+         sodipodi:role="line"
+         x="222.21266"
+         y="358.75693"
+         id="tspan7846">Threading, etc...</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:19"
+       x="27.8965"
+       y="294.55219"
+       id="text7848"
+       inkscape:export-xdpi="115.42"
+       inkscape:export-ydpi="115.42"><tspan
+         sodipodi:role="line"
+         x="27.8965"
+         y="294.55219"
+         style="font-size:19"
+         id="tspan9828">Stasis</tspan><tspan
+         sodipodi:role="line"
+         x="27.8965"
+         y="318.30219"
+         style="font-size:19"
+         id="tspan9834">Core</tspan><tspan
+         sodipodi:role="line"
+         x="27.8965"
+         y="342.05219"
+         style="font-size:19"
+         id="tspan9830">Library</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:start;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="330.97623"
+       y="226.31837"
+       id="text7852"><tspan
+         sodipodi:role="line"
+         id="tspan7854"
+         x="330.97623"
+         y="226.31837">Operations API</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="415.38751"
+       y="265.61475"
+       id="text7864"><tspan
+         sodipodi:role="line"
+         id="tspan7866"
+         x="415.38751"
+         y="265.61475">Record API</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Bitstream Vera Sans"
+       x="423.41174"
+       y="300.4202"
+       id="text7868"><tspan
+         sodipodi:role="line"
+         id="tspan7870"
+         x="423.41174"
+         y="300.4202">Transactional</tspan><tspan
+         sodipodi:role="line"
+         x="423.41174"
+         y="320.4202"
+         id="tspan7872">Page API</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:19;text-anchor:middle;text-align:center"
+       x="69.480774"
+       y="198.53194"
+       id="text9820"><tspan
+         sodipodi:role="line"
+         x="69.480774"
+         y="198.53194"
+         style="font-size:19;text-anchor:middle;text-align:center"
+         id="tspan9822">Stasis</tspan><tspan
+         sodipodi:role="line"
+         x="69.480774"
+         y="222.28194"
+         style="font-size:19;text-anchor:middle;text-align:center"
+         id="tspan9824">Extensions</tspan></text>
+    <path
+       style="fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#6e9499;stroke-width:3.6915431;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 23.73458,173.59036 C 26.98595,173.79059 37.72495,169.10647 41.03185,168.59737 C 47.42107,167.61374 53.51275,168.35518 59.4102,169.26311 C 65.55961,170.20981 72.27975,171.98537 77.78855,173.2575 C 82.43548,174.33059 90.4114,174.58896 96.16691,174.58896 C 102.15465,174.58896 108.91685,173.309 113.46418,172.25889 C 118.64365,171.06282 121.14777,170.2617 128.59929,170.2617 C 135.62034,170.2617 139.15766,170.53629 143.73441,171.59317 C 150.29911,173.10913 150.6534,172.59177 152.38304,172.59177"
+       id="path9840" />
+    <path
+       style="fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#6e9499;stroke-width:3.03635597;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 276.36081,176.28039 C 276.92444,176.51187 289.85901,172.88067 291.69645,172.62913 C 299.12005,171.61282 303.83725,172.29445 310.3659,173.72451 C 318.60336,175.52886 321.31181,175.91526 330.36891,175.91526 C 340.35487,175.91526 348.30486,175.72661 358.37312,176.64551 C 370.66414,177.7673 381.22277,176.43837 393.045,174.81989 C 406.04829,173.03971 412.13764,176.06448 424.38303,177.74089 C 434.41666,179.11452 443.92888,176.03523 453.72076,177.37577 C 462.07456,178.51942 466.30389,182.1692 473.72377,178.10602"
+       id="path9842" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.61970472;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect11784"
+       width="124.79104"
+       height="35.724258"
+       x="288.42435"
+       y="156.20139" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="308.31888"
+       y="177.37405"
+       id="text11786"><tspan
+         sodipodi:role="line"
+         id="tspan11788"
+         x="308.31888"
+         y="177.37405">Lock Manager</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.21695054;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 296.60575,200.64572 C 321.65217,208.11628 291.2209,214.6853 311.38132,216.7662 C 331.58426,218.8515 331.82454,221.22691 311.07532,223.50996 C 290.29161,225.79681 321.75574,234.92006 296.6363,241.84105"
+       id="path12763"
+       sodipodi:nodetypes="cszz" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.21695054;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 336.87189,241.85742 C 361.91831,249.32798 331.48704,255.897 351.64746,257.9779 C 371.8504,260.0632 372.09068,262.43861 351.34146,264.72166 C 330.55775,267.00851 362.02188,276.13176 336.90244,283.05275"
+       id="path12765"
+       sodipodi:nodetypes="cszz" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.21695054;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 346.90819,287.25058 C 371.9546,294.72114 341.52333,301.29016 361.68376,303.37106 C 381.88669,305.45636 382.12697,307.83177 361.37775,310.11482 C 340.59405,312.40167 372.05817,321.52492 346.93873,328.44591"
+       id="path12767"
+       sodipodi:nodetypes="cszz" />
+  </g>
+</svg>

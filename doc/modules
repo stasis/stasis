@@ -1,0 +1,50 @@
+/**
+    @defgroup LLADD_CORE
+*//**
+      @defgroup BUFFER_MANAGER
+      @ingroup LLADD_CORE
+*//**     @defgroup BUFFER_MANAGER_IMPLEMENTATIONS
+	@ingroup BUFFER_MANAGER
+*//**
+	@defgroup PAGE_EVICTION
+	@ingroup BUFFER_MANAGER
+*//**
+      @defgroup LOGGER
+      @ingroup LLADD_CORE
+*//**
+        @defgroup LOGGING_DISCIPLINES
+	@ingroup LOGGER
+*//**
+      @defgroup RECOVERY
+      @ingroup LLADD_CORE
+*//**
+      @defgroup PAGE_FORMATS
+*//**
+        @defgroup PAGE_HOWTO
+        @ingroup PAGE_FORMATS
+*//**
+        @defgroup PAGE_HEADER
+        @ingroup PAGE_FORMATS
+*//**
+        @defgroup PAGE_UTIL
+        @ingroup PAGE_FORMATS
+*//**
+        @defgroup PAGE_RECORD_INTERFACE
+        @ingroup PAGE_FORMATS
+*//**
+        @defgroup PAGE_IMPLEMENTATIONS
+        @ingroup PAGE_FORMATS
+*//**
+      @defgroup ALLOCATION
+*//**
+      @defgroup OPERATIONS
+*//**
+        @defgroup COLLECTIONS
+        @ingroup OPERATIONS
+*//**
+          @defgroup ARRAY_LIST
+          @ingroup COLLECTIONS
+*//**
+        @defgroup ROSE
+        @ingroup OPERATIONS
+*/

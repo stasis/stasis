@@ -41,7 +41,9 @@ terms specified in this license.
 ---*/
 
 /**
- * @file Implementation of in memory buffer pool
+ * @file
+ *
+ * Implementation of in memory buffer pool
  *
  * $Id$
  * 

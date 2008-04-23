@@ -48,13 +48,13 @@ terms specified in this license.
  * This file provides a re-entrant interface for pages that are labeled
  * with an LSN and a page type.
  *
- * @ingroup LLADD_CORE pageFormats
+ * @ingroup PAGE_FORMATS
  *
  * $Id$
  */
 
 /**
-   @defgroup pageFormats Page format implementations
+   @defgroup PAGE_FORMATS Page layouts
 
    Stasis allows developers to define their own on-disk page formats.
    Currently, each page format must end with a hard-coded header
@@ -90,7 +90,7 @@ terms specified in this license.
    and APIs.  However, Stasis's record oriented page interface
    provides a default set of methods for page access. 
    
-   @see pageRecordInterface
+   @see PAGE_RECORD_INTERFACE
 
    @todo Page deallocators should call stasis_page_cleanup()
    @todo Create variant of loadPage() that takes a page type
@@ -196,8 +196,7 @@ struct Page_s {
 /*@}*/
 
 /**
-   @defgroup pageLSNHeaderGeneric LSN and Page Types
-   @ingroup pageFormats
+   @defgroup PAGE_HEADER Default page header
 
    Most Stasis pages contain an LSN and a page type.  These are used
    by recovery to determine whether or not to perform redo.  At
@@ -279,8 +278,7 @@ lsn_t stasis_page_lsn_read(const Page * page);
 /*@}*/
 
 /**
-   @defgroup pageUtils Utility methods for page manipulation
-   @ingroup pageFormats
+   @defgroup PAGE_UTIL Byte-level page manipulation
 
    These methods make it easy to manipulate pages that use a standard
    Stasis header (one with an LSN and page type).
@@ -290,6 +288,60 @@ lsn_t stasis_page_lsn_read(const Page * page);
    pointers (and can accept const Page pointers as arguments).
    Methods with "_ptr_" in their names take non-const pages, and
    return non-const pointers.
+
+   @par Implementing new pointer arithmetic macros
+
+   Stasis page type implementations typically do little more than
+   pointer arithmetic.  However, implementing page types cleanly and
+   portably is a bit tricky.  Stasis has settled upon a compromise in
+   this matter.  Its page file formats are compatible within a single
+   architecture, but not across systems with varying lengths of
+   primitive types, or that vary in endianness.
+
+   Over time, types that vary in length such as "int", "long", etc
+   will be removed from Stasis, but their usage still exists in a few
+   places.  Once they have been removed, file compatibility problems
+   should be limited to endianness (though application code will still
+   be free to serialize objects in a non-portable manner).
+
+   Most page implementations leverage C's pointer manipulation
+   semantics to lay out pages.  Rather than casting pointers to
+   char*'s and then manually calculating byte offsets using sizeof(),
+   the existing page types prefer to cast pointers to appropriate
+   types, and then add or subtract the appropriate number of values.
+
+   For example, instead of doing this:
+
+   @code
+   // p points to an int, followed by a two bars, then the foo whose address
+   // we want to calculate
+
+   int * p;
+   foo* f = (foo*)( ((char*)p) + sizeof(int) + 2 * sizeof(bar))
+   @endcode
+
+   the implementations would do this:
+
+   @code
+   int * p;
+   foo * f = (foo*)( ((bar*)(p+1)) + 2 )
+   @endcode
+
+   The main disadvantage of this approach is the large number of ()'s
+   involved.  However, it lets the compiler deal with the underlying
+   multiplications, and often reduces the number of casts, leading to
+   slightly more readable code.  Take this implementation of
+   stasis_page_type_ptr(), for example:
+
+   @code
+   int * stasis_page_type_ptr(Page *p) { 
+      return ( (int*)stasis_page_lsn_ptr(Page *p) ) - 1; 
+   }
+   @endcode
+
+   Here, the page type is stored as an integer immediately before the
+   LSN pointer.  Using arithmetic over char*'s would require an extra
+   cast to char*, and a multiplication by sizeof(int).
 
 */
 /*@{*/
@@ -365,14 +417,37 @@ void stasis_page_init();
 void stasis_page_deinit();
 
 /**
-    @defgroup pageRecordInterface Record-oriented page interface
-    @ingroup pageFormats
+    @defgroup PAGE_RECORD_INTERFACE Record interface
+    @ingroup PAGE_FORMATS
 
-    Stasis provides a default record-oriented interface to page
-    implementations.  By defining these methods, and registering
-    appropriate callbacks, page implementations allow callers to
-    access their data through standard Stasis methods such as Tread()
-    and Tset().
+   Page formats define the layout of data on pages.  Currently, all
+   pages contain a header with an LSN and a page type in it.  This
+   information is used by recovery and the buffer manager to invoke
+   callbacks at appropriate times.  (LSN-free pages are currently not
+   supported.)
+
+   Stasis' record-oriented page interface uses the page type to determine
+   which page implementation should be used to access or modify
+   records.  This API's functions begin with "stasis_record".  Two
+   commonly used examples are stasis_read_record() and
+   stasis_write_record().
+
+   This interface is not re-entrant.  Rather, page implementations
+   assume that their callers will latch pages using
+   readLock(p->rwlatch) and writeLock(p-rwlatch) before attempting to
+   access the page.  A second latch, p->loadlatch, should not be
+   acquired by page manipulation code.  Instead, it is used by the
+   buffer manager to protect against races during page eviction.
+
+   @par Registering new page type implementations
+
+   Page implementations are registered with Stasis by passing a
+   page_impl struct into registerPageType().  page_impl.page_type
+   should contain an integer that is unique across all page types,
+   while the rest of the fields contain function pointers to the page
+   type's implementation.
+
+
 */
 /*@{*/
 static const size_t USABLE_SIZE_OF_PAGE = (PAGE_SIZE - sizeof(lsn_t) - sizeof(int));

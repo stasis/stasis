@@ -73,7 +73,7 @@ terms specified in this license.
        When such a value is returned, the transaction aborts, and an
        error is passed up to the application.
 
- * @ingroup LLADD_CORE
+       @ingroup BUFFER_MANAGER
  * $Id$
  */
 

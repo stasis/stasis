@@ -40,34 +40,86 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**
-   @file 
+   @file
 
-   Implements an extendible array of fixed length records with O(1) 
-   complexity for all operations.
+   @ingroup ARRAY_LIST
 
-   @ingroup OPERATIONS
+   @defgroup ARRAY_LIST ArrayList
+
+   O(1) growable array.
+
+   ArrayList provides an growable array of fixed length records with
+   O(1) complexity for all operations.  The list grows by doubling the
+   amount of space it reserves each time the list is extended.
+   Therefore, this data structure can use up to twice as much storage
+   as is strictly necessary.
+
+   These arrays are similar to those in Java's ArrayList class.
+   Essentially, the base page contains a fixed size array of recordid's
+   pointing at contiguous blocks of pages.  Each block is twice as big
+   as the previous block.
+
+   The base block is of type FIXED_PAGE, of int values. The first few slots
+   are reserved and store information about the arrayList (size of
+   array entries, number/size of allocated regions, etc.)
+
+   @todo arrayList's base block should store pageid_t values, not ints.
+
+   @ingroup COLLECTIONS
 
    $Id$
 */
 
+
+/** @ingroup ARRAY_LIST */
+/** @{ */
 #ifndef __ARRAY_LIST_H
 #define __ARRAY_LIST_H
 
+/** Allocate a new array list.
+
+    @param xid The transaction allocating the new arrayList.
+
+    @param numPages The number of pages to be allocated as part of the
+           first region.  (The arraylist starts with zero capacity
+           regardless of this parameter's value.)
+
+    @param multiplier Each time the array list runs out of space, the
+           allocate multipler times more space than last time.
+
+    @param recordSize The size of the things stored in this arrayList.
+           Must fit on a single page (arrayList cannot store blobs.)
+
+*/
+
 compensated_function recordid TarrayListAlloc(int xid, int numPages, int multiplier, int recordSize);
+/**
+   Extend the ArrayList in place.
+
+   @param xid the transaction performing the expansion
+   @param rid the recordid pointing to the ArrayList.
+   @param slots the number of slots to end to the end of the ArrayList.
+ */
+compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
+/**
+    Do not call this function.
+
+    @deprecated This function is known to be broken, and is only
+                called by a deprecated hash implementation.
+ */
+compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
+/**
+   Get the length of an ArrayList.
+
+   @param xid the transaction performing the expansion
+   @param rid the recordid pointing to the ArrayList.
+   @return The number of items stored in the ArrayList.
+ */
+compensated_function int TarrayListLength(int xid, recordid rid); 
+
+/** Used by Tread() and Tset() to map from arrayList index to recordid. */
+recordid dereferenceArrayListRid(int xid, Page * p, int offset);
 
 Operation getArrayListAlloc();
-Operation getInitFixed();
-Operation getUnInitPage();
-
-/** Initialized a fixed page with the maximum possible number of slots
-    allocated.  The rid.size field is used to determine the size of
-    record that the slots can hold. */
-#define TinitFixed(xid, rid) Tupdate(xid, rid, NULL, OPERATION_INITIALIZE_FIXED_PAGE)
-/** Un-initializes a page. */
-#define TunInitPage(xid, rid) Tupdate(xid, rid, NULL, OPERATION_UNINITIALIZE_PAGE)
-
-recordid dereferenceArrayListRid(int xid, Page * p, int offset);
-compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
-compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
-compensated_function int TarrayListLength(int xid, recordid rid); 
+/** @} */
 #endif
