@@ -548,8 +548,7 @@ BEGIN_C_DECLS
  * @todo recordid.page should be 64bit.
  * @todo int64_t (for recordid.size) is a stopgap fix.
  */
-#pragma pack(push)
-#pragma pack(1)
+#pragma pack(push,1)
 typedef struct {
   int page;  // XXX needs to be pageid_t, but that breaks unit tests.
   int slot;

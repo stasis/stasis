@@ -204,9 +204,12 @@ AC_SYS_LARGEFILE
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
-AC_FUNC_MALLOC
+## Assume we have these, and that they work.
+## (otherwise, bad stuff happens sometimes)
+#AC_FUNC_MALLOC
+#AC_FUNC_REALLOC
+
 AC_FUNC_MEMCMP
-AC_FUNC_REALLOC
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([bzero fdatasync floor ftruncate getcwd gettimeofday inet_ntoa localtime_r memmove memset mkdir posix_memalign pow powl socket sqrt strchr strdup strerror strrchr strstr strtol strtoul sync_file_range tcase_set_timeout])
