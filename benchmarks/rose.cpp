@@ -673,13 +673,13 @@ int main(int argc, char **argv) {
 
   switch (engine) {
     case Rle<val_t>::PLUGIN_ID: {
-      engine_name = "RLE";
+      engine_name = const_cast<char*>("RLE");
     } break;
     case For<val_t>::PLUGIN_ID: {
-      engine_name = "PFOR";
+      engine_name = const_cast<char*>("PFOR");
     } break;
     case -1: {
-      engine_name = "Time trial (multiple engines)";
+      engine_name = const_cast<char*>("Time trial (multiple engines)");
     } break;
     default: {
       printf("Specify a valid compression scheme\n");
