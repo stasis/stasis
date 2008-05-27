@@ -27,7 +27,11 @@ Rle<TYPE>::append(int xid, const TYPE dat,
 
   ret = last_block_ptr()->index + last_block_ptr()->copies;
 
-  if (dat != last_block_ptr()->data  ||
+  if(ret == MAX_INDEX) {
+    // out of address space
+    *free_bytes = -1;
+    ret = NOSPACE;
+  } else if (dat != last_block_ptr()->data  ||
       last_block_ptr()->copies == MAX_COPY_COUNT) {
     // this key is not the same as the last one, or
     // the block is full
@@ -42,11 +46,6 @@ Rle<TYPE>::append(int xid, const TYPE dat,
 
     // Finalize the changes unless we're out of space
     (*block_count_ptr()) += (*free_bytes >= 0);
-
-  } else if(ret == MAX_INDEX) {
-    // out of address space
-    *free_bytes = -1;
-    ret = NOSPACE;
   } else {
     // success; bump number of copies of this item, and return.
     last_block_ptr()->copies++;
