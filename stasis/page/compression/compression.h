@@ -1,7 +1,12 @@
-#include <limits.h>
-
 #ifndef _ROSE_COMPRESSION_COMPRESSION_H__
 #define _ROSE_COMPRESSION_COMPRESSION_H__
+
+#include <limits.h>
+#define  __STDC_LIMIT_MACROS 1
+#include <stdint.h>
+#ifndef UINT16_MAX // XXX should be defined in stdint.h.
+#define UINT16_MAX             (65535)
+#endif
 
 namespace rose {
 
@@ -14,9 +19,10 @@ typedef uint16_t column_offset_t;
 typedef uint64_t epoch_t;
 
 static const record_size_t VARIABLE_SIZE =  CHAR_MAX;
-static const slot_index_t  NOSPACE       =  USHRT_MAX; //UINT_MAX;
-static const slot_index_t  EXCEPTIONAL   =  USHRT_MAX-1;//UINT_MAX-1;
-static const slot_index_t  MAX_INDEX     =  USHRT_MAX-2;//UINT_MAX-2;
+
+static const slot_index_t  NOSPACE       =  UINT16_MAX;
+static const slot_index_t  EXCEPTIONAL   =  UINT16_MAX-1;
+static const slot_index_t  MAX_INDEX     =  UINT16_MAX-2;
 static const slot_index_t  INVALID_COL   =  UCHAR_MAX;
 /**
    This function computes a page type (an integer stored in the page header)

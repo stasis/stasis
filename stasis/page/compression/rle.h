@@ -14,11 +14,13 @@ template <class TYPE>
 class Rle {
 
  public:
-  typedef uint32_t block_index_t;
-  typedef uint16_t copy_count_t;
+  /** XXX this stuff is performance critical; should be template param.*/
+  typedef byte_off_t block_index_t;
+  typedef uint8_t copy_count_t;
+  static const copy_count_t MAX_COPY_COUNT = UCHAR_MAX;
+
   typedef TYPE TYP;
 
-  static const copy_count_t MAX_COPY_COUNT = USHRT_MAX;
 
   struct triple_t {
     slot_index_t index;
