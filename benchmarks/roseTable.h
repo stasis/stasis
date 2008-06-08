@@ -18,7 +18,7 @@ namespace rose {
   void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
     typename PAGELAYOUT::FMT::TUP::TYP0 m = i;
     typename PAGELAYOUT::FMT::TUP::TYP1 j = i / 65536;
-    typename PAGELAYOUT::FMT::TUP::TYP2 k = i / 12514500;
+    typename PAGELAYOUT::FMT::TUP::TYP2 k = i / 3; //12514500;
     typename PAGELAYOUT::FMT::TUP::TYP3 l = i / 10000000;
     typename PAGELAYOUT::FMT::TUP::TYP4 n = i / 65536;
     typename PAGELAYOUT::FMT::TUP::TYP5 o = i / 12514500;
