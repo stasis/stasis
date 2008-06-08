@@ -1,6 +1,8 @@
 #ifndef _ROSE_COMPRESSION_FOR_IMPL_H__
 #define _ROSE_COMPRESSION_FOR_IMPL_H__
 
+#include <stasis/page/compression/binary_search.h>
+
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: sears@google.com (Rusty Sears)
 
@@ -82,6 +84,8 @@ For<TYPE>::recordRead(int xid, slot_index_t slot, byte *exceptions,
     return scratch;
   }
 }
+
+#ifndef COMPRESSION_BINARY_FIND
 template <class TYPE>
 inline std::pair<slot_index_t,slot_index_t>*
 For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
@@ -126,5 +130,87 @@ For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
   }
   return ret;
  }
+#else // COMPRESSION_BINARY_FIND
+template <class TYPE>
+inline std::pair<slot_index_t,slot_index_t>*
+For<TYPE>::recordFind(int xid, slot_index_t low, slot_index_t high,
+		      byte *exceptions, TYPE value,
+		      std::pair<slot_index_t,slot_index_t>& scratch) {
+  delta_t delta = value - *base_ptr();
+  int64_t bs_ret;
+
+  //printf("delta = %d\n", delta);
+  if(delta >= 0) {
+
+    {
+      int64_t bs_low = low;
+      int64_t bs_high = high;
+      while(nth_delta_ptr(bs_low) < 0 && bs_low < bs_high) { bs_low++; }
+      while(nth_delta_ptr(bs_high) < 0 && bs_low < bs_high) { bs_high--; }
+
+      DEBUG("low: %d->%ld, high %d->%ld\n", low, bs_low, high, bs_high);
+
+      delta_t bs_value = delta;
+      rose_binary_search(nth_delta_ptr);
+    }
+    if(bs_ret == -1) { printf("not found by for\n"); return 0; }
+
+    while(scratch.first != low) {
+      if(*nth_delta_ptr(scratch.first-1) == delta) {
+	scratch.first --;
+      } else {
+	break;
+      }
+    }
+    while(scratch.second != high) {
+      if(*nth_delta_ptr(scratch.second+1) == delta) {
+	scratch.second++;
+      } else {
+	break;
+      }
+    }
+    DEBUG("front: %ld->%d, back: %ld\n",bs_ret, scratch.first, scratch.second);
+    return &scratch;
+  } else { // @todo Optimize lookup of exceptional data.  (It can be binary searched too...)
+    std::pair<slot_index_t,slot_index_t>* ret = 0;
+    slot_index_t i;
+    for(i = low; i < high; i++) {
+      delta_t d = *nth_delta_ptr(i);
+      if(d >= 0) {
+	if(d == delta) {
+	  scratch.first = i;
+	  scratch.second = high;
+	  ret = &scratch;
+	  i++;
+	  break;
+	}
+      } else {
+	if(value == *(TYPE*)(exceptions + d + PAGE_SIZE - sizeof(TYPE))) {
+	  scratch.first = i;
+	  scratch.second = high;
+	  ret = &scratch;
+	  i++;
+	  break;
+	}
+      }
+    }
+    for(;i < high; i++) {
+      delta_t d = *nth_delta_ptr(i);
+      if(d >= 0) {
+	if(d != delta) {
+	  scratch.second = i;
+	  break;
+	}
+      } else {
+	if(value != *(TYPE*)(exceptions +d + PAGE_SIZE - sizeof(TYPE))) {
+	  scratch.second = i;
+	  break;
+	}
+      }
+    }
+    return ret;
+  }
+ }
+#endif // COMPRESSION_BINARY_FIND
 } // namespace rose
 #endif  // _ROSE_COMPRESSION_FOR_IMPL_H__

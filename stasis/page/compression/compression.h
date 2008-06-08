@@ -10,6 +10,8 @@
 
 namespace rose {
 
+#define COMPRESSION_BINARY_FIND
+
 typedef int8_t record_size_t;
 typedef uint16_t byte_off_t;
 typedef uint16_t slot_index_t;

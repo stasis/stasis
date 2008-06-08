@@ -101,6 +101,23 @@ class Rle {
   inline triple_t* nth_block_ptr(block_index_t n) {
     return reinterpret_cast<triple_t*>(block_count_ptr()+1) + n;
   }
+  inline slot_index_t nth_low_index(block_index_t n) {
+    //    return (reinterpret_cast<triple_t*>(block_count_ptr()+1) + n)->index;
+    return nth_block_ptr(n)->index;
+  }
+  inline slot_index_t nth_high_index(block_index_t n) {
+    triple_t* r = nth_block_ptr(n); // reinterpret_cast<triple_t*>(block_count_ptr()+1) + n;
+    return r->index + r->copies - 1;
+  }
+  inline slot_index_t nth_high_bound(block_index_t n) {
+    triple_t* r = nth_block_ptr(n); // reinterpret_cast<triple_t*>(block_count_ptr()+1) + n;
+    return r->index + r->copies;
+  }
+  inline TYPE* nth_data_ptr(block_index_t n) {
+    //    printf("data %d: %lld\n", n, (long long) ((reinterpret_cast<triple_t*>(block_count_ptr()+1) + n)->data));
+    //    return &((reinterpret_cast<triple_t*>(block_count_ptr()+1) + n)->data);
+    return &(nth_block_ptr(n)->data);
+  }
   inline triple_t* last_block_ptr() {
     return nth_block_ptr(*block_count_ptr()-1);
   }
