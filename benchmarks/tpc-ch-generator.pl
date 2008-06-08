@@ -1,6 +1,10 @@
 #!/usr/bin/perl -w
 use strict;
 
+## sample invocation:
+#perl tpc-ch-generator.pl --sf=30 | sort -S 2G -T /mnt/sdb1/tmp -t, -k9,9n -k7,7n -k8,8n -k2,2n -k1,1 -k3,3n -k4,4n -k5,5n -k6,6n -k10,10n -k11,11n -k12,12n > /home/sears/workload-vldb/sf30.sort
+
+
 sub pickCountry {
     my $a = shift;
     my @big_fish = @{$a};
