@@ -46,8 +46,49 @@ inline const byte * toByteArray(stlSetIterator<STLITER,ROW> * const t);
 template <class ROW, class ITER>
 class gcIterator {
  public:
-  explicit gcIterator(ITER * i, ITER * iend, epoch_t beginning_of_time, column_number_t ts_col) : i_(i), newest_(), newTS_(-1), iend_(iend), freeIt(0), beginning_of_time_(beginning_of_time), ts_col_(ts_col) { /*++(*i);*/ if(*i_ != *iend_) { ++(*this);} }
-  explicit gcIterator(gcIterator& t) : i_(new ITER(*(t.i_))), newest_(t.newest_), newTS_(t.newTS_), iend_(t.iend_), freeIt(1), beginning_of_time_(t.beginning_of_time_), ts_col_(t.ts_col_) { }
+  explicit gcIterator(ITER * i, ITER * iend, epoch_t beginning_of_time, column_number_t ts_col)
+    : i_(i),
+    newest_(),
+    current_(),
+    have_newest_(0),
+    have_current_(0),
+    went_back_(0),
+    at_end_(0),
+    //newTS_(-1),
+    iend_(iend),
+    freeIt(0),
+    beginning_of_time_(beginning_of_time),
+    ts_col_(ts_col) {
+      get_next();
+      if(have_newest_) {
+	have_current_ = true; // needed by ++.
+	++(*this);
+	// 	assert(have_current_); // Should pass; commented out for perf.
+      }
+    }
+  explicit gcIterator()
+    : i_(0),
+    newest_(),
+    current_(),
+    have_newest_(false),
+    have_current_(false),
+    at_end_(true),
+    freeIt(0),
+    beginning_of_time_(0),
+    ts_col_(0) {}
+
+  explicit gcIterator(gcIterator& t)
+    : i_(new ITER(*(t.i_))),
+    newest_(t.newest_),
+    current_(t.current_),
+    have_newest_(t.have_newest_),
+    have_current_(t.have_current_),
+    went_back_(t.went_back_),
+    at_end_(t.at_end_),
+    iend_(t.iend_),
+    freeIt(1),
+    beginning_of_time_(t.beginning_of_time_),
+    ts_col_(t.ts_col_) { }
 
   ~gcIterator() {
     if (freeIt) {
@@ -55,41 +96,72 @@ class gcIterator {
     }
   }
   ROW & operator*() {
-    return newest_;
+    // Both should pass, comment out for perf
+    //assert(!went_back_);
+    //assert(have_current_);
+    return current_;
+  }
+  bool get_next() {
+    //    assert(!went_back_);
+    //    assert(!at_end_);
+    while(!have_newest_) {
+      have_newest_ = true;
+      newest_ = **i_;
+      if(ts_col_ != INVALID_COL) {
+	epoch_t newest_time = *(epoch_t*)newest_.get(ts_col_);
+	while(1) {
+	  ++(*i_);
+	  if(*i_ == *iend_) { at_end_=true; return true; }
+	  if(!myTupCmp(newest_,**i_)) { break; }
+	  if(newest_time >= beginning_of_time_) { break; }
+
+	  epoch_t this_time = *(epoch_t*)(**i_).get(ts_col_);
+	  if(this_time > newest_time) {
+	    newest_= **i_;
+	    newest_time = this_time;
+	  }
+	}
+	// is it a tombstone we can forget?
+	if (newest_time & 0x1 && newest_time < beginning_of_time_) {
+	  have_newest_ = 0;
+	}
+      } else {
+	++(*i_);
+	if(*i_ == *iend_) { at_end_=true; return false; }
+      }
+    }
+    return true; // newest_;
   }
   inline bool operator==(const gcIterator &a) const {
-    return (*i_) == (*a.i_);
+    //    return (*i_) == (*a.i_);
+    if((!have_current_) && at_end_) { return a.at_end_; }
+    return false;
   }
   inline bool operator!=(const gcIterator &a) const {
-    return (*i_) != (*a.i_);
+    //    return (*i_) != (*a.i_);
+    return !(*this == a);
   }
   inline void operator++() {
-    do {
-      if(*i_ == *iend_) { return; }
-      assert(*i_ != *iend_);
-      newest_ = **i_;
-      newTS_ = *(epoch_t*)newest_.get(ts_col_);
-      ++(*i_);
-      while(ts_col_ != INVALID_COL && (*i_ != *iend_)  && myTupCmp(newest_,**i_)) {
-	const ROW& r = (**i_);
-	epoch_t ts = *(epoch_t*)r.get(ts_col_); //r.column_count()-1);
-
-	if(ts >= newTS_) {
-	  //      if(*(int*)((**i_).get((**i_).column_count()-1)) >= newTS_) {
-	  //	newTS_ = *(int*)(**i_).get((**i_).column_count()-1);
-	  newTS_ = ts;
-
-	  newest_ = r;//**i_;
+    if(went_back_) {
+      went_back_ = false;
+    } else {
+      //      assert(have_current_);
+      if(have_newest_) {
+	current_ = newest_;
+	have_current_ = have_newest_;
+	have_newest_ = false;
+	if(!at_end_) {
+	  get_next();
 	}
-	++(*i_);
+      } else {
+	// assert(at_end_);
+	have_current_ = false;
       }
-      /*      if (((newTS_ & 0x1) && (newTS_ < beginning_of_time_) && (ts_col_ != INVALID_COL))) {
-	printf("gc'ed tombstone!!!\n");
-	} */
-    } while ((newTS_ & 0x1) && (newTS_ < beginning_of_time_) && (ts_col_ != INVALID_COL));
+    }
   }
   inline void operator--() {
-    (*i_)--;
+    //    assert(!went_back_);
+    went_back_ = true;
   }
   /*  inline gcIterator* end() {
     return new gcIterator(i_->end());
@@ -124,12 +196,17 @@ class gcIterator {
     return 1;
   }
 
-  explicit gcIterator() { abort(); }
+  //explicit gcIterator() { abort(); }
   void operator=(gcIterator & t) { abort(); }
   int operator-(gcIterator & t) { abort(); }
   ITER * i_;
   ROW newest_;
-  epoch_t newTS_;
+  ROW current_;
+  bool have_newest_;
+  bool have_current_;
+  bool went_back_;
+  bool at_end_;
+  //  epoch_t newTS_;
   ITER * iend_;
   bool freeIt;
   epoch_t beginning_of_time_;
@@ -247,7 +324,7 @@ class treeIterator {
         currentPage_ = (PAGELAYOUT*)p_->impl;
 
         readTuple = currentPage_->recordRead(-1,slot_, &scratch_);
-        assert(readTuple);
+	//        assert(readTuple);
       } else {
         // past end of iterator!  "end" should contain the pageid of the
         // last leaf, and 1+ numslots on that page.
@@ -370,7 +447,7 @@ class mergeIterator {
   const ROW& operator* () {
     if(curr_ == A) { return *a_; }
     if(curr_ == B || curr_ == BOTH) { return *b_; }
-    //    abort();
+    abort();
     curr_ = calcCurr(A);
     if(curr_ == A) { return *a_; }
     if(curr_ == B || curr_ == BOTH) { return *b_; }
