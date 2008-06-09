@@ -131,6 +131,9 @@ namespace rose {
 
     printf("tuple 'size'%d ; %ld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
 
+    COUNT = 100000; // XXX kludgey
+    count = 100000;
+
     if(file_mode) {
       typename PAGELAYOUT::FMT::TUP scratch;
 
@@ -360,6 +363,9 @@ namespace rose {
       }
       printf("insertions done.\n");
     } else {
+      struct timeval cannonical_start_tv;
+      gettimeofday(&cannonical_start_tv,0);
+      double cannonical_start = tv_to_double(cannonical_start_tv);
       for(long int i = 0; i < INSERTS; i++) {
 	getTuple<PAGELAYOUT>(i,t);
 	TlsmTableInsert(h,t);
@@ -368,6 +374,20 @@ namespace rose {
 	count --;
 	if(!count) {
 	  count = COUNT;
+	  gettimeofday(&now_tv,0);
+	  now = tv_to_double(now_tv);
+	  printf("After %6.1f seconds, wrote %ld tuples "
+		 "%9.3f Mtup/sec (avg) %9.3f Mtup/sec (cur) "
+		 "%9.3f Mbyte/sec (avg) %9.3f Mbyte/sec (cur)\n",
+		 now - cannonical_start,
+		 i+1, //((inserts+1) * 100) / INSERTS,
+		 ((double)(i+1)/1000000.0)/(now-start),
+		 ((double)count/1000000.0)/(now-last_start),
+		 (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)(i+1)/1000000.0)/(now-start),
+		 (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)count/1000000.0)/(now-last_start)
+		 );
+	  last_start = now;
+	  /*	  count = COUNT;
 	  gettimeofday(&now_tv,0);
 	  now = tv_to_double(now_tv);
 	  printf("%3ld%% write "
@@ -379,7 +399,7 @@ namespace rose {
 		 (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)i/1000000.0)/(now-start),
 		 (((double)PAGELAYOUT::FMT::TUP::sizeofBytes())*(double)count/1000000.0)/(now-last_start)
 		 );
-	  last_start = now;
+		 last_start = now; */
 	}
 #ifdef LEAK_TEST
 	if(i == INSERTS-1) {
