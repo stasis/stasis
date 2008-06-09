@@ -14,6 +14,8 @@
 #include "stasis/page/compression/pageLayout.h"
 
 namespace rose {
+
+#ifdef TESTING
   template<class PAGELAYOUT> 
   void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
     typename PAGELAYOUT::FMT::TUP::TYP0 m = i;
@@ -38,7 +40,44 @@ namespace rose {
     t.set8(&r);
     t.set9(&s);
   }
+#else
+  template<class PAGELAYOUT> 
+  void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
+    static int64_t val = 0;
+    double prob = 0.15;
 
+    if(i == 0) {
+      srand(42);
+      val = 0;
+    }
+
+    if(rand() < prob * (double)RAND_MAX) { val++; }
+
+    typename PAGELAYOUT::FMT::TUP::TYP0 m = val;
+    typename PAGELAYOUT::FMT::TUP::TYP1 j = val;
+    typename PAGELAYOUT::FMT::TUP::TYP2 k = i;
+    typename PAGELAYOUT::FMT::TUP::TYP3 l = val;
+    typename PAGELAYOUT::FMT::TUP::TYP4 n = val;
+    typename PAGELAYOUT::FMT::TUP::TYP5 o = val;
+    typename PAGELAYOUT::FMT::TUP::TYP6 p = val;
+    typename PAGELAYOUT::FMT::TUP::TYP7 q = val;
+    typename PAGELAYOUT::FMT::TUP::TYP8 r = val;
+    typename PAGELAYOUT::FMT::TUP::TYP9 s = val;
+    //    printf("Val = %lld\n", val);
+
+
+    t.set0(&m);
+    t.set1(&j);
+    t.set2(&k);
+    t.set3(&l);
+    t.set4(&n);
+    t.set5(&o);
+    t.set6(&p);
+    t.set7(&q);
+    t.set8(&r);
+    t.set9(&s);
+  }
+#endif
   template<class PAGELAYOUT>
   int main(int argc, char **argv) {
     unlink("storefile.txt");
