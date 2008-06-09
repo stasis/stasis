@@ -34,6 +34,13 @@ pageid_t TlsmRegionAlloc(int xid, void *conf) {
   }
   DEBUG("%lld ?= %lld\n", a->nextPage,a->endOfRegion);
   pageid_t ret = a->nextPage;
+  // Ensure the page is in buffer cache without accessing disk (this
+  // sets it to clean and all zeros if the page is not in cache).
+  // Hopefully, future reads will get a cache hit, and avoid going to
+  // disk.
+
+  Page * p = loadUninitializedPage(xid, ret);
+  releasePage(p);
   DEBUG("ret %lld\n",ret);
   (a->nextPage)++;
   return ret;

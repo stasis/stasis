@@ -168,7 +168,7 @@ static void * writeBackWorker(void * ignored) {
   return 0;
 }
 
-static Page * bhLoadPageImpl(int xid, const int pageid) {
+static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized) {
   
   // Note:  Calls to loadlatch in this function violate lock order, but
   // should be safe, since we make sure no one can have a writelock
@@ -220,14 +220,22 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
 
   ret->id = pageid;
 
-  // Now, it is safe to release the mutex; other threads won't 
-  // try to read this page from disk.
-  pthread_mutex_unlock(&mut);
+  if(!uninitialized) {
 
-  pageRead(ret);
+    // Now, it is safe to release the mutex; other threads won't 
+    // try to read this page from disk.
+    pthread_mutex_unlock(&mut);
 
-  pthread_mutex_lock(&mut);
+    pageRead(ret);
 
+    pthread_mutex_lock(&mut);
+
+  } else {
+    memset(ret->memAddr,0,PAGE_SIZE);
+    *stasis_page_lsn_ptr(ret) = ret->LSN;
+    ret->dirty = 0;
+    stasis_page_loaded(ret);
+  }
   *pagePendingPtr(ret) = 0;
   // Would remove from lru, but getFreePage() guarantees that it isn't
   // there.
@@ -248,6 +256,15 @@ static Page * bhLoadPageImpl(int xid, const int pageid) {
   checkPageState (ret);
   return ret;
 }
+
+static Page * bhLoadPageImpl(int xid, const int pageid) {
+  return bhLoadPageImpl_helper(xid,pageid,0);
+}
+static Page * bhLoadUninitPageImpl(int xid, const int pageid) {
+  return bhLoadPageImpl_helper(xid,pageid,1); // 1 means dont care about preimage of page.
+}
+
+
 static void bhReleasePage(Page * p) { 
   pthread_mutex_lock(&mut);
   checkPageState(p);
@@ -325,6 +342,7 @@ void bhBufInit() {
 #endif
 
   loadPageImpl = bhLoadPageImpl;
+  loadUninitPageImpl = bhLoadUninitPageImpl;
   releasePageImpl = bhReleasePage;
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;

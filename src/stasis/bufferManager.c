@@ -112,6 +112,7 @@ static pthread_key_t lastPage;
 
 static void bufManBufDeinit();
 static compensated_function Page *bufManLoadPage(int xid, int pageid);
+static compensated_function Page *bufManLoadUninitPage(int xid, int pageid);
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
 
@@ -119,6 +120,7 @@ static int bufManBufInit() {
 
     releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
+    loadUninitPageImpl = bufManLoadUninitPage;
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
     forcePageRange = forceRangePageFile;
@@ -204,7 +206,7 @@ static void bufManReleasePage (Page * p) {
 
 }
 
-static Page * getPage(int pageid, int locktype) {
+static Page * getPage(int pageid, int locktype, int uninitialized) {
   Page * ret;
   int spin  = 0;
 
@@ -350,8 +352,16 @@ static Page * getPage(int pageid, int locktype) {
     }
 
     pageFree(ret, pageid);
+    if(!uninitialized) {
+      pageRead(ret);
+    } else {
+      memset(ret->memAddr, 0, PAGE_SIZE);
+      ret->dirty = 0;
+      *stasis_page_lsn_ptr(ret) = ret->LSN;
 
-    pageRead(ret);
+      // XXX need mutex for this call?
+      stasis_page_loaded(ret);
+    }
 
     writeunlock(ret->loadlatch);
  
@@ -393,7 +403,7 @@ static Page * getPage(int pageid, int locktype) {
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n"); 
       fflush(NULL);
-      return getPage(pageid, locktype);
+      return getPage(pageid, locktype, uninitialized);
     }
 
   }
@@ -482,7 +492,38 @@ static compensated_function Page *bufManLoadPage(int xid, int pageid) {
     ret = 0;
   }
   if(!ret) { 
-    ret = getPage(pageid, RO);
+    ret = getPage(pageid, RO, 0);
+    pthread_setspecific(lastPage, ret);
+  }
+
+#ifdef PIN_COUNT
+  pthread_mutex_lock(&pinCount_mutex);
+  pinCount ++;
+  pthread_mutex_unlock(&pinCount_mutex);
+#endif
+
+  return ret;
+}
+
+static compensated_function Page *bufManLoadUninitPage(int xid, int pageid) {
+
+  Page * ret = pthread_getspecific(lastPage);
+
+  if(ret && ret->id == pageid) { 
+    pthread_mutex_lock(&loadPagePtr_mutex);
+    readlock(ret->loadlatch, 1);
+    if(ret->id != pageid) { 
+      unlock(ret->loadlatch);
+      ret = 0;
+    } else { 
+      cacheHitOnPage(ret);
+      pthread_mutex_unlock(&loadPagePtr_mutex);
+    }
+  } else { 
+    ret = 0;
+  }
+  if(!ret) { 
+    ret = getPage(pageid, RO, 1);
     pthread_setspecific(lastPage, ret);
   }
 
@@ -496,6 +537,7 @@ static compensated_function Page *bufManLoadPage(int xid, int pageid) {
 }
 
 Page * (*loadPageImpl)(int xid, int pageid) = 0;
+Page * (*loadUninitPageImpl)(int xid, int pageid) = 0;
 void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
@@ -510,6 +552,15 @@ Page * loadPage(int xid, int pageid) {
   } end_ret(NULL);
 
   return loadPageImpl(xid, pageid);
+
+}
+Page * loadUninitializedPage(int xid, int pageid) { 
+  try_ret(NULL) {
+    // This lock is released at Tcommit()
+    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+  } end_ret(NULL);
+
+  return loadUninitPageImpl(xid, pageid);
 
 }
 

@@ -108,11 +108,14 @@ typedef struct Page_s Page;
  */
 Page * loadPage(int xid, int pageid);
 
+Page * loadUninitializedPage(int xid, int pageid);
+
 /** 
     This is the function pointer that bufInit sets in order to
     override loadPage.
 */
 extern Page * (*loadPageImpl)(int xid, int pageid);
+extern Page * (*loadUninitPageImpl)(int xid, int pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
