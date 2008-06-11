@@ -9,6 +9,8 @@ TARGET_LINK_LIBRARIES(roseTableTpcCH-workload1 ${COMMON_LIBRARIES})
 ADD_EXECUTABLE(roseTableTpcCH-workload2 roseTableTpcCH-workload2.cpp)
 TARGET_LINK_LIBRARIES(roseTableTpcCH-workload2 ${COMMON_LIBRARIES})
 
+ADD_EXECUTABLE(sequentialThroughput sequentialThroughput.c)
+TARGET_LINK_LIBRARIES(sequentialThroughput ${COMMON_LIBRARIES})
 
 #ADD_LIBRARY(referential algebra.c dml.c)
 #SET(COMMON_LIBRARIES referential ${COMMON_LIBRARIES})
