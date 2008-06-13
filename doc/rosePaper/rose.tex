@@ -85,8 +85,8 @@ near-realtime decision support and analytical processing queries.
 database replicas using purely sequential I/O, allowing it to provide
 orders of magnitude more write throughput than B-tree based replicas.
 
-\rowss write performance is based on the fact that replicas do not
-perform read old values before performing updates.  Random LSM-tree lookups are
+\rowss write performance relies on the fact that replicas do not
+read old values before performing updates.  Random LSM-tree lookups are
 roughly twice as expensive as B-tree lookups.  Therefore, if \rows
 read each tuple before updating it then its write throughput would be
 lower than that of a B-tree.  Although we target replication, \rows provides
@@ -162,8 +162,8 @@ Traditional database replication technologies provide acceptable
 performance if the application write set fits in RAM or if the
 storage system is able to update data in place quickly enough to keep
 up with the replication workload.  Transaction processing (OLTP)
-systems are optimized for small, low-latency reads and writes, and
-allow tables to become fragmented.  They scale by increasing memory
+systems optimize for small, low-latency reads and writes by fragmenting tables.
+They scale by increasing memory
 size and adding additional drives, increasing the number of available
 I/O operations per second.  Data warehousing technologies introduce
 latency, giving them time to reorganize data for bulk insertion.
@@ -173,7 +173,7 @@ access to individual tuples.
 \rows combines the best properties of these approaches:
 
 \begin{itemize}
-\item High throughput, small, random writes
+\item High throughput writes, regardless of update patterns
 \item Scan performance comparable to bulk-loaded structures
 \item Low latency updates
 \end{itemize}
@@ -183,22 +183,22 @@ only met two of these three requirements.  \rows achieves all three
 goals, providing orders of magnitude better write throughput than
 B-tree replicas.
 
-\rows is based upon LSM-trees, which reflect updates
-immediately without performing disk seeks or resorting to
-fragmentation.  This allows them to provide better write and scan
-throughput than B-trees.  Unlike existing LSM-tree implementations,
-\rows makes use of compression, further improving performance of sequential operations.
+\rows is based upon LSM-trees, which reflect updates immediately
+without performing disk seeks or resorting to fragmentation.  This
+allows them to provide better write and scan throughput than B-trees.
+Unlike existing LSM-tree implementations, \rows makes use of
+compression, further increasing replication and scan performance.
 
 However, like LSM-Trees, \rowss random reads are up to twice as
 expensive as B-Tree lookups.  If the application read an old value
-each time it performed a write, \rowss replications performance would
+each time it performed a write, \rowss replication performance would
 degrade to that of other systems that rely upon random I/O.
 Therefore, we target systems that write data without performing reads.
 We focus on replication, but append-only, streaming and versioning
 databases would also achieve high write throughput with \rows.
 
 We focus on replication because it is a common, well-understood
-workload, requires complete transactional semantics, and avoids
+workload, requires complete transactional semantics and avoids
 reading data during updates regardless of application behavior.
 Finally, we know of no other scalable replication approach that
 provides real-time analytical queries over transaction
@@ -628,11 +628,12 @@ An update of a tuple is handled as an insertion of the new
 tuple and a deletion of the old tuple.  Deletion is simply an insertion
 of a tombstone tuple, leading to the third factor of two.
 
-Updates that do not modify primary key fields avoid this final factor of two.
-\rows only keeps one tuple per primary key per timestamp.  Since the
-update is part of a transaction, the timestamps of the insertion and
-deletion must match.  Therefore, the tombstone can be deleted as soon
-as the insert reaches $C0$.
+Updates that do not modify primary key fields avoid this final factor
+of two.  If update is an atomic operation then the delete and insert
+will always occur during the same snapshot.  Since the delete and
+insert share the same primary key and the same snapshot number, the
+insertion will always supercede the deletion.  Therefore, there is no
+need to insert a tombstone.
 
 %
 % Merge 1:
@@ -742,64 +743,44 @@ throughput than a seek-bound B-Tree.
 
 \subsection{Indexing}
 
-\xxx{Don't reference tables that talk about compression algorithms here; we haven't introduced compression algorithms yet.}
-
 Our analysis ignores the cost of allocating and initializing
-LSM-Trees' internal nodes.  The compressed data pages are the leaf
-pages of the tree.  Each time the compression process fills a page, it
+LSM-Trees' internal nodes.  The merge process uses compressed pages as
+tree leaf pages.  Each time the compression process fills a page it
 inserts an entry into the leftmost entry in the tree, allocating
-additional internal nodes if necessary.  Our prototype does not compress
-internal tree nodes\footnote{This is a limitation of our prototype;
-  not our approach.  Internal tree nodes are append-only and, at the
-  very least, the page ID data is amenable to compression. Like B-Tree
-  compression, this would decrease the memory used by lookups.},
-so it writes one tuple into the tree's internal nodes per compressed
-page.
+additional internal nodes if necessary.  Our prototype does not
+compress internal tree nodes.
 
-\rows inherits a default page size of 4KB from Stasis.
-Although this is fairly small by modern standards, even with
-4KB pages, \rowss per-page overheads are acceptable.  Assuming tuples
-are 400 bytes, $\sim\frac{1}{10}$th of our pages are dedicated to the
-lowest level of tree nodes, with $\frac{1}{10}$th that number devoted
-to the next highest level, and so on.
-Table~\ref{table:treeCreationTwo} provides a comparison of compression
-performance with and without tree creation enabled\footnote{Our
-  analysis ignores page headers, per-column, and per-tuple overheads;
-  these factors account for the additional indexing overhead.}.  The
-data was generated by applying \rowss compressors to randomly
-generated five column, 1,000,000 row tables.  Across five runs, in
-Table~\ref{table:treeCreation} RLE's page count had a standard
-deviation of $\sigma=2.35$; the other page counts had $\sigma=0$.  In
-Table~\ref{table:treeCreationTwo}, $\sigma < 7.26$ pages.
+The space overhead of building these tree nodes depends on the number
+of tuples that fit in each page.  If tuples are small, \rows gets good
+fan-out on internal nodes, reducing the fraction of storage reserved
+for tree pages.  \rows inherits a default page size of 4KB from
+Stasis.  Although this is fairly small by modern standards, even with
+4KB pages, \rowss per-page overheads are acceptable.  For the tuple
+sizes used in our experiments tree node overhead amounts to a few
+percent.  For larger, or very compressible tuples, tree overhead can
+be more significant.
+
+Consider a tree that can store 10 compressed tuples in each 4K page.
+If an uncompressed tuple is 400 bytes long, then roughly a tenth of
+the pages are dedicated to the lowest level of tree nodes, with a
+tenth that number devoted to the next highest level, and so on.  With
+a 2x compression ratio, uncompressed tuples occupy 800 bytes and each
+higher level in the tree is only a fifth the size of the level below
+it.  Larger page sizes and compression of internal nodes would reduce
+the overhead of tree creation.
+
+%Table~\ref{table:treeCreationTwo} provides a comparison of compression
+%performance with and without tree creation enabled\footnote{Our
+%  analysis ignores page headers, per-column, and per-tuple overheads;
+%  these factors account for the additional indexing overhead.}.  The
+%data was generated by applying \rowss compressors to randomly
+%generated five column, 1,000,000 row tables.  Across five runs, in
+%Table~\ref{table:treeCreation} RLE's page count had a standard
+%deviation of $\sigma=2.35$; the other page counts had $\sigma=0$.  In
+%Table~\ref{table:treeCreationTwo}, $\sigma < 7.26$ pages.
 
 %Throughput's $\sigma<6MB/s$.
 
-
-\begin{table}
-\caption{Tree creation overhead - five columns (20 bytes/column)}
-\centering
-\label{table:treeCreation}
-\begin{tabular}{|l|c|c|c|} \hline
-Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
-PFOR        & 1.96x       & 2494       \\ \hline %& 133.4 MB/s \\ \hline
-PFOR + tree & 1.94x       & +80        \\ \hline %& 129.8 MB/s \\ \hline
-RLE        & 3.24x       & 1505 \\ \hline %& 150.6 MB/s \\ \hline
-RLE + tree & 3.22x       & +21        \\  %& 148.4 MB/s \\
-\hline\end{tabular}
-\end{table}
-\begin{table}
-\caption{Tree creation overhead - 100 columns (400 bytes/column)}
-\centering
-\label{table:treeCreationTwo}
-\begin{tabular}{|l|c|c|c|} \hline
-Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
-PFOR        & 1.37x       & 7143       \\ \hline %& 133.4 MB/s \\ \hline
-PFOR + tree & 1.17x       & 8335        \\ \hline %& 129.8 MB/s \\ \hline
-RLE        & 1.75x       & 5591 \\ \hline %& 150.6 MB/s \\ \hline
-RLE + tree & 1.50x       & 6525        \\  %& 148.4 MB/s \\
-
-\hline\end{tabular}
-\end{table}
 
 %% As the size of the tuples increases, the number of compressed pages
 %% that each internal tree node points to decreases, increasing the
@@ -1065,6 +1046,33 @@ with memory size, compression ratios and I/O bandwidth for the foreseeable futur
 %% appropriate portion of the replication log to be truncated.
 
 \section{Row compression}
+
+\begin{table}
+\caption{Compression ratios and index overhead - five columns (20 bytes/column)}
+\centering
+\label{table:treeCreation}
+\begin{tabular}{|l|c|c|c|} \hline
+Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
+PFOR        & 1.96x       & 2494       \\ \hline %& 133.4 MB/s \\ \hline
+PFOR + tree & 1.94x       & +80        \\ \hline %& 129.8 MB/s \\ \hline
+RLE        & 3.24x       & 1505 \\ \hline %& 150.6 MB/s \\ \hline
+RLE + tree & 3.22x       & +21        \\  %& 148.4 MB/s \\
+\hline\end{tabular}
+\end{table}
+\begin{table}
+\caption{Compression ratios and index overhead - 100 columns (400 bytes/column)}
+\centering
+\label{table:treeCreationTwo}
+\begin{tabular}{|l|c|c|c|} \hline
+Format     & Compression & Page count \\ \hline %& Throughput\\ \hline
+PFOR        & 1.37x       & 7143       \\ \hline %& 133.4 MB/s \\ \hline
+PFOR + tree & 1.17x       & 8335        \\ \hline %& 129.8 MB/s \\ \hline
+RLE        & 1.75x       & 5591 \\ \hline %& 150.6 MB/s \\ \hline
+RLE + tree & 1.50x       & 6525        \\  %& 148.4 MB/s \\
+
+\hline\end{tabular}
+\end{table}
+
 
 \rows stores tuples in a sorted, append-only format.  This greatly
 simplifies compression and provides a number of new opportunities for
@@ -1535,15 +1543,12 @@ describing the position and type of each column.  The type and number
 of columns could be encoded in the ``page type'' field or be
 explicitly represented using a few bytes per page column.  Allocating
 16 bits for the page offset and 16 bits for the column type compressor
-uses 4 bytes per column.  Therefore, the additional overhead for an N
-column page's header is
-\[
-   (N-1) * (4 + |average~compression~format~header|)
-\]
-\xxx{kill formula?}
-% XXX the first mention of RLE is here.  It should come earlier.
-bytes.  A frame of reference column header consists of 2 bytes to
-record the number of encoded rows and a single uncompressed value. Run
+uses 4 bytes per column.  Therefore, the additional overhead for each
+additional column is four bytes plus the size of the compression
+format's header.
+
+A frame of reference column header consists a single uncompressed
+value and 2 bytes to record the number of encoded rows.  Run
 length encoding headers consist of a 2 byte count of compressed
 blocks.  Therefore, in the worst case (frame of reference encoding
 64-bit integers, and 4KB pages) our prototype's multicolumn format
@@ -1604,7 +1609,7 @@ weather data.  The data set ranges from May 1,
 the world~\cite{nssl}.  Our implementation assumes these values will never be deleted or modified.  Therefore, for this experiment the tree merging threads do not perform versioning or snapshotting.  This data is approximately $1.3GB$ when stored in an
 uncompressed tab delimited file.  We duplicated the data by changing
 the date fields to cover ranges from 2001 to 2009, producing a 12GB
-ASCII dataset that contains approximately 122 million tuples.
+ASCII dataset that contains approximately 132 million tuples.
 
 Duplicating the data should have a limited effect on \rowss
 compression ratios.  Although we index on geographic position, placing
@@ -1649,14 +1654,13 @@ Wind Gust Speed   & RLE       &        \\
 \end{table}
 %\rows targets seek limited applications; we assign a (single) random
 %order to the tuples, and insert them in this order.  
-In this experiment, we randomized the order of the tuples and
-inserted them into the index.  We compare \rowss performance with the
-MySQL InnoDB storage engine.  We chose InnoDB because it
-has been tuned for good bulk load performance.
-We made use of MySQL's bulk load interface, which avoids the overhead of SQL insert
-statements.  To force InnoDB to incrementally update its B-Tree, we
-break the dataset into 100,000 tuple chunks, and bulk-load each one in
-succession.
+In this experiment we randomized the order of the tuples and inserted
+them into the index.  We compare \rowss performance with the MySQL
+InnoDB storage engine.  We chose InnoDB because it has been tuned for
+good bulk load performance.  We avoided the overhead of SQL insert
+statements and MySQL transactions by using MySQL's bulk load
+interface.  We loaded the data 100,000 tuples at a time, forcing
+MySQL to periodically reflect inserted values in its index.
 
 %If we did not do this, MySQL would simply sort the tuples, and then
 %bulk load the index.  This behavior is unacceptable in low-latency
@@ -1666,27 +1670,28 @@ succession.
 %  {\em existing} data during a bulk load; new data is still exposed
 %  atomically.}.
 
-We set InnoDB's buffer pool size to 2GB the log file size to 1GB.  We
-also enabled InnoDB's double buffer, which writes a copy of each
-updated page to a sequential log.  The double buffer increases the
-amount of I/O performed by InnoDB, but allows it to decrease the
-frequency with which it calls fsync() while writing buffer pool to disk.
+We set InnoDB's buffer pool size to 2GB, and the log file size to 1GB.
+We enabled InnoDB's double buffer, which writes a copy of each updated
+page to a sequential log.  The double buffer increases the amount of
+I/O performed by InnoDB, but allows it to decrease the frequency with
+which it calls fsync() while writing buffer pool to disk.  This
+increases replication throughput for this workload.
 
 We compiled \rowss C components with ``-O2'', and the C++ components
 with ``-O3''.  The later compiler flag is crucial, as compiler
 inlining and other optimizations improve \rowss compression throughput
 significantly.  \rows was set to allocate $1GB$ to $C0$ and another
 $1GB$ to its buffer pool.  In this experiment \rowss buffer pool is
-essentially wasted; it is managed using an LRU page replacement policy
-and \rows accesses it sequentially.
-
+essentially wasted once it's page file size exceeds 1GB.  \rows
+accesses the page file sequentially, and evicts pages using LRU,
+leading to a cache hit ratio near zero.
 
 Our test hardware has two dual core 64-bit 3GHz Xeon processors with
 2MB of cache (Linux reports 4 CPUs) and 8GB of RAM.  We disabled the
 swap file and unnecessary system services.  Datasets large enough to
-become disk bound on this system are unwieldy, so we {\tt mlock()} 4.75GB of
+become disk bound on this system are unwieldy, so we {\tt mlock()} 5.25GB of
 RAM to prevent it from being used by experiments.
-The remaining 1.25GB is used to cache
+The remaining 750MB is used to cache
 binaries and to provide Linux with enough page cache to prevent it
 from unexpectedly evicting portions of the \rows binary.  We monitored
 \rows throughout the experiment, confirming that its resident memory
@@ -1694,42 +1699,43 @@ size was approximately 2GB.
 
 All software used during our tests
 was compiled for 64 bit architectures.  We used a 64-bit Ubuntu Gutsy
-(Linux ``2.6.22-14-generic'') installation, and its prebuilt
-``5.0.45-Debian\_1ubuntu3'' version of MySQL.
+(Linux 2.6.22-14-generic) installation and
+its prebuilt MySQL package (5.0.45-Debian\_1ubuntu3).
 
 \subsection{Comparison with conventional techniques}
 
 \begin{figure}
 \centering \epsfig{file=average-throughput.pdf, width=3.33in}
-\caption{Insertion throughput (log-log, average over entire run).}
+\caption{Mean insertion throughput (log-log)}
 \label{fig:avg-thru}
 \end{figure}
 \begin{figure}
 \centering
 \epsfig{file=average-ms-tup.pdf, width=3.33in}
-\caption{Tuple insertion time (log-log, average over entire run).}
+\caption{Tuple insertion time (``instantaneous'' is mean over 100,000
+  tuple windows).}
 \label{fig:avg-tup}
 \end{figure}
 
-\rows provides
-roughly 7.5 times more throughput than InnoDB on an empty tree (Figure~\ref{fig:avg-thru}).  As the tree size
-increases, InnoDB's performance degrades rapidly.  After 35 million
-tuple insertions, we terminated the InnoDB run, because \rows was providing
-nearly 100 times more throughput.  We continued the \rows run until
-the dataset was exhausted; at this point, it was providing
-approximately $\frac{1}{10}$th its original throughput, and had a
-target $R$ value of $7.1$.  Figure~\ref{fig:avg-tup} suggests that
-InnoDB was not actually disk bound during our experiments; its
-worst-case average tuple insertion time was approximately $3.4 ms$;
-well below the drive's average access time.  Therefore, we believe
-that the operating system's page cache was insulating InnoDB from disk
-bottlenecks. \xxx{re run?}
-\begin{figure}
-\centering
-\epsfig{file=instantaneous-throughput.pdf, width=3.33in}
-\caption{Instantaneous insertion throughput (average over 100,000 tuple windows).}
-\label{fig:inst-thru}
-\end{figure}
+\rows provides roughly 4.7 times more throughput than InnoDB on an
+empty tree (Figure~\ref{fig:avg-thru}).  InnoDB's performance remains
+constant while its tree fits in memory.  It then falls back on random
+I/O, causing a sharp drop in throughput.  \rowss performance begins to
+fall off earlier due to merging, and because it has half as much page
+cache as InnoDB.  However, \rows does not fall back on random I/O, and
+maintains significantly higher throughput than InnoDB throughout the
+run.  InnoDB's peak write throughput was 1.8 mb/s and dropped by
+orders of magnitude\xxx{final number} before we terminated the
+experiment.  \rows was providing 1.13 mb/sec write throughput when it
+exhausted the dataset.
+
+
+%\begin{figure}
+%\centering
+%\epsfig{file=instantaneous-throughput.pdf, width=3.33in}
+%\caption{Instantaneous insertion throughput (average over 100,000 tuple windows).}
+%\label{fig:inst-thru}
+%\end{figure}
 
 %\begin{figure}
 %\centering
@@ -1824,9 +1830,9 @@ bandwidth for the foreseeable future.
 \begin{figure}
 \centering
 \epsfig{file=4R-throughput.pdf, width=3.33in}
-\caption{The hard disk bandwidth required for an uncompressed LSM-tree
-  to match \rowss throughput.  Ignoring buffer management overheads,
-  \rows is nearly optimal.}
+\caption{The hard disk bandwidth an uncompressed LSM-tree would
+  require to match \rowss throughput.  Our buffer manager delivered
+  22-45 mb/s during the tests.}
 \label{fig:4R}
 \end{figure}
 
@@ -1834,9 +1840,9 @@ bandwidth for the foreseeable future.
 
 TPC-H is an analytical processing benchmark that targets periodically
 bulk-loaded data warehousing systems.  In particular, compared to
-TPC-C, it de-emphasizes transaction processing and rollback, and it
+TPC-C, it de-emphasizes transaction processing and rollback.  Also, it
 allows database vendors to permute the dataset off-line.  In real-time
-database replication environments, faithful reproduction of
+database replication environments faithful reproduction of
 transaction processing schedules is important and there is no
 opportunity to resort data before making it available to queries.
 Therefore, we insert data in chronological order.
@@ -1847,22 +1853,56 @@ and attempt to process and appropriately optimize SQL queries on top
 of \rows, we chose a small subset of the TPC-H and C benchmark
 queries, and wrote custom code to invoke appropriate \rows tuple
 modifications, table scans and index lookup requests.  For simplicity
-the updates and queries are requested by a
-single thread.
+updates and queries are performed by a single thread.
 
 When modifying TPC-H and C for our experiments, we follow an existing
-approach~\cite{entropy,bitsForChronos} and start with a pre-computed join
-and projection of the TPC-H dataset.  We deviate from the data
-generation setup of~\cite{bitsForChronos} by using the schema
-described in Table~\ref{tab:tpc-schema}.  The distribution of each
-column follows the TPC-H specification.  We used a scale factor of 30
-when generating the data.
+approach~\cite{entropy,bitsForChronos} and start with a pre-computed
+join and projection of the TPC-H dataset.  We use the schema described
+in Table~\ref{tab:tpc-schema}.  We populate the table by using a scale
+factor of 30 and following the random distributions dictated by the
+TPC-H specification.
 
-Many of the columns in the
-TPC dataset have a low, fixed cardinality but are not correlated to the values we sort on.
-Neither our PFOR nor our RLE compressors handle such columns well, so
-we do not compress those fields.  In particular, the day of week field
-could be packed into three bits, and the week field is heavily skewed.  Bit-packing would address both of these issues.
+We generated a dataset containing a list of product orders.  We insert
+tuples for each order (one for each part number in the order), then
+add a number of extra transactions.  The following updates are applied in chronological order:
+
+\begin{itemize}
+\item Following TPC-C's lead, 1\% of orders are immediately cancelled
+  and rolled back.  This is handled by inserting a tombstone for the
+  order.
+\item Remaining orders are delivered in full within the next 14 days.
+  The order completion time is chosen uniformly at random between 0
+  and 14 days after the order was placed.
+\item  The status of each line item is changed to ``delivered'' at a time
+  chosen uniformly at random before the order completion time.
+\end{itemize}
+The following read-only transactions measure the performance of \rowss
+access methods:
+\begin{itemize}
+\item Every 100,000 orders we initiate a table scan over the entire
+  data set.  The per-order cost of this scan is proportional to the
+  number of orders processed so far.
+\item 50\% of orders are checked with order status queries.  These are
+  simply index probes.  Orders that are checked with status queries
+  are checked 1, 2, or 3 times with equal probability.
+\item Order status queries happen with a uniform random delay of 1.3
+  times the order processing time.  For example, if an order
+  is fully delivered 10 days after it is placed, then order status queries are
+  timed uniformly at random within the 13 days after the order is
+  placed.
+\end{itemize}
+
+The script that we used to generate our dataset is publicly available,
+along with Stasis' and the rest of \rowss source code.
+
+This dataset is not easily compressible using the algorithms provided
+by \rows.  Many columns fit in a single byte, rendering \rowss version
+of FOR useless.  These fields change frequently enough to limit the
+effectiveness of run length encoding.  Both of these issues would be
+reduced by bit packing.  Also, occasionally revaluating and modifing
+compression strategies is known to improve compression of TPC-H data.
+TPC-H orders are clustered in the last few weeks of years during the
+20th century.\xxx{check}
 
 \begin{table}
 \caption{TPC-C/H schema}
@@ -1880,50 +1920,51 @@ Delivery Status & RLE       & int8               \\\hline
 \end{tabular}
 \end{table}
 
-We generated a dataset based on this schema then
-added transaction rollbacks, line item delivery transactions and
-order status queries.  Every 100,000 orders we initiate a table scan
-over the entire dataset.  Following TPC-C's lead, 1\% of new orders are immediately cancelled
-and rolled back; the remainder are delivered in full within the
-next 14 days.  We choose an order completion time uniformly at
-random within the next 14 days then choose part delivery times
-uniformly at random within that range.
+%% We generated a dataset based on this schema then
+%% added transaction rollbacks, line item delivery transactions and
+%% order status queries.  Every 100,000 orders we initiate a table scan
+%% over the entire dataset.  Following TPC-C's lead, 1\% of new orders are immediately cancelled
+%% and rolled back; the remainder are delivered in full within the
+%% next 14 days.  We choose an order completion time uniformly at
+%% random within the next 14 days then choose part delivery times
+%% uniformly at random within that range.
 
-We decided that $50\%$ of orders would be checked
-using order status queries; the number of status queries for such
-transactions was chosen uniformly at random from one to four, inclusive.
-Order status queries happen with a uniform random delay of up to 1.3 times
-the order processing time (if an order takes 10 days
-to arrive then we perform order status queries within the 13 day
-period after the order was initiated).  Therefore, order status
-queries have excellent temporal locality and generally succeed after accessing
-$C0$.   These queries have minimal impact on replication
-throughput, as they simply increase the amount of CPU time between
-tuple insertions.  Since replication is disk bound and asynchronous, the time spent
-processing order status queries overlaps I/O wait time.
+%% We decided that $50\%$ of orders would be checked
+%% using order status queries; the number of status queries for such
+%% transactions was chosen uniformly at random from one to four, inclusive.
+%% Order status queries happen with a uniform random delay of up to 1.3 times
+%% the order processing time (if an order takes 10 days
+%% to arrive then we perform order status queries within the 13 day
+%% period after the order was initiated).
 
-Although order status queries showcase \rowss ability to service
-certain tree lookups inexpensively, they do not provide an interesting
-evaluation of \rowss tuple lookup behavior.  Therefore, we run two sets
-of experiments with different versions of the order status query.  In
-one (which we call ``Lookup: C0''), each order status query only examines C0.
-In the other (which we call ``Lookup: All components''), we force each order status query
-to examine every tree component.  This keeps \rows from exploiting the fact that most order status queries can be serviced from $C0$.
+Order status queries have excellent temporal locality and generally
+succeed after accessing $C0$.  These queries simply increase the
+amount of CPU time between tuple insertions and have minimal impact on
+replication throughput.  \rows overlaps their processing with the
+asynchronous I/O peformed by merges.
 
-The other type of query we process is a table scan that could be used
-to track the popularity of each part over time.  We know that \rowss
-replication throughput is significantly lower than its sequential
-table scan throughput, so we expect to see good scan performance for
-this query.  However, these sequential scans compete with merge
-processes for I/O bandwidth, so we expect them to have a measurable impact on
-replication throughput.
+We force \rows to become seek bound by running a second set of
+experiments a different version of the order status query.  In one set
+of experiments (which we call ``Lookup C0''), the order status query
+only examines C0.  In the other (which we call ``Lookup all
+components''), we force each order status query to examine every tree
+component.  This keeps \rows from exploiting the fact that most order
+status queries can be serviced from $C0$.
+
+%% The other type of query we process is a table scan that could be used
+%% to track the popularity of each part over time.  We know that \rowss
+%% replication throughput is significantly lower than its sequential
+%% table scan throughput, so we expect to see good scan performance for
+%% this query.  However, these sequential scans compete with merge
+%% processes for I/O bandwidth, so we expect them to have a measurable impact on
+%% replication throughput.
 
 Figure~\ref{fig:tpch} plots the number of orders processed by \rows
-per second vs. the total number of orders stored in the \rows replica.
-For this experiment we configured \rows to reserve approximately
-400MB of RAM and let Linux manage page eviction.  All tree components
-fit in page cache for this experiment; the performance degradation is
-due to the cost of fetching pages from operating system cache.
+per second agasint the total number of orders stored in the \rows
+replica.  For this experiment we configure \rows to reserve 1GB for
+the page cache and 2GB for $C0$.  We {\tt mlock()} 4.5GB of RAM, leaving
+500MB for the kernel, system services, and Linux's page cache.
+
 %% In order to
 %% characterize query performance, we re-ran the experiment with various
 %% read-only queries disabled.  In the figure, ``All queries'' line contains all
@@ -1932,17 +1973,29 @@ due to the cost of fetching pages from operating system cache.
 %% replica when performing index probes that access each tree component,
 %% while ``Lookup: C0'' measures performance when the index probes match
 %% data in $C0$.  
+
 As expected, the cost of searching $C0$ is negligible, while randomly
 accessing the larger components is quite expensive.  The overhead of
 index scans increases as the table increases in size, leading to a
 continuous downward slope throughout runs that perform scans.  Index
 probes are out of $C0$ until $C1$ and $C2$ are materialized.  Soon
 after that, the system becomes seek bound as each index lookup
-accesses disk.  \xxx{Replot after re-run is complete}
+accesses disk.
+
+Suprisingly, performing periodic table scans improves lookup
+performance for $C1$ and $C2$.  The effect is most pronounced after
+approximately 3 million orders are processed.  That is approximately
+when Stasis' page file exceeds the size of the buffer pool, which is
+managed using LRU.  When a merge completes half of the pages it read
+become obsolete.  Index scans rapidly replace these pages with live
+data using sequential I/O.  This increases the likelihood that index
+probes will be serviced from memory.  A more sophisticated page
+replacement policy would further improve performance by evicting
+obsolete pages before accessible pages.
 
 \begin{figure}
 \centering \epsfig{file=query-graph.pdf, width=3.33in}
-\caption{\rows query overheads}
+\caption{\rowss TPC-C/H query costs}
 \label{fig:tpch}
 \end{figure}
 
