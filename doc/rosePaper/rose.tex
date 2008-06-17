@@ -80,11 +80,11 @@ Eric Brewer\\
   Engine} is a database storage engine for high-throughput
 replication. It targets seek-limited,
 write-intensive transaction processing workloads that perform
-near-realtime decision support and analytical processing queries.
+near real-time decision support and analytical processing queries.
 \rows uses {\em log structured merge} (LSM) trees to create full
 database replicas using purely sequential I/O, allowing it to provide
 orders of magnitude more write throughput than B-tree based replicas.
-LSM-trees cannot become fragmented, allowing them to provide fast, predictable index scans.
+Also, LSM-trees cannot become fragmented and provide fast, predictable index scans.
 
 \rowss write performance relies on replicas' ability to perform writes without
 looking up old values.  LSM-tree lookups have
@@ -508,17 +508,16 @@ last tuple written to $C0$ before the merge began.
 
 % XXX figures?
 %An LSM-tree consists of a number of underlying trees.
-\rowss LSM-trees consist of three components ($C0$, $C1$ and $C2$).  $C0$
-is an uncompressed in-memory binary search tree.  $C1$ and $C2$
-are bulk-loaded compressed B-trees.  \rows applies
-updates by inserting them into the in-memory tree.
-
-\rows uses repeated tree merges to limit the size of $C0$.  These tree
+\rowss LSM-trees always consist of three components ($C0$, $C1$ and
+$C2$), as this provides a good balance between insertion throughput
+and lookup cost.
+Updates are applied directly to the in-memory tree, and repeated tree merges
+limit the size of $C0$.  These tree
 merges produce a new version of $C1$ by combining tuples from $C0$ with
 tuples in the existing version of $C1$.  When the merge completes
 $C1$ is atomically replaced with the new tree and $C0$ is atomically
 replaced with an empty tree.  The process is eventually repeated when
-C1 and C2 are merged.
+$C1$ and $C2$ are merged.
 
 Replacing entire trees at once introduces a number of problems.  It
 doubles the number of bytes used to store each component, which is
@@ -587,7 +586,7 @@ from and write to C1 and C2.
 
 LSM-trees have different asymptotic performance characteristics than
 conventional index structures.  In particular, the amortized cost of
-insertion is $O(\sqrt{n})$ in the size of the data and is proportional
+insertion is $O(\sqrt{n}~log~n)$ in the size of the data and is proportional
  to the cost of sequential I/O.  In a B-tree, this cost is
 $O(log~n)$ but is proportional to the cost of random I/O.
 %The relative costs of sequential and random
@@ -867,8 +866,8 @@ are the oldest remaining reference to a tuple.
 %% translate transaction ids to snapshots, preventing the mapping from
 %% growing without bound.
 
-\rowss snapshots have minimal performance impact and provide
-transactional concurrency control without rolling back transactions,
+\rowss snapshots have minimal performance impact, and provide
+transactional concurrency control without rolling back transactions
 or blocking the merge and replication processes.  However,
 long-running updates prevent queries from accessing the results of
 recent transactions, leading to stale results.  Long-running queries
@@ -1080,7 +1079,7 @@ service larger read sets without resorting to random I/O.
 Row-oriented database compression techniques must cope with random,
 in-place updates and provide efficient random access to compressed
 tuples.  In contrast, compressed column-oriented database layouts
-focus on high-throughput sequential access and do not provide in-place
+focus on high-throughput sequential access, and do not provide in-place
 updates or efficient random access.  \rows never updates data in
 place, allowing it to use append-only compression techniques
 from the column database literature.  Also, \rowss tuples never span pages and
@@ -1182,7 +1181,7 @@ extra column values, potentially performing additional binary searches.
 To lookup a tuple by value, the second operation takes a range of slot
 ids and a value, and returns the offset of the first and last instance
 of the value within the range.  This operation is $O(log~n)$ in the
-number of slots in the range for frame of reference columns, and
+number of slots in the range for frame of reference columns and
 $O(log~n)$ in the number of runs on the page for run length encoded
 columns.  The multicolumn implementation uses this method to look up
 tuples by beginning with the entire page in range and calling each
@@ -1401,7 +1400,7 @@ The original PFOR implementation~\cite{pfor} assumes it has access to
 a buffer of uncompressed data and is able to make multiple
 passes over the data during compression.  This allows it to remove
 branches from loop bodies, improving compression throughput.  We opted
-to avoid this approach in \rows, as it would increase the complexity
+to avoid this approach in \rows because it would increase the complexity
 of the {\tt append()} interface and add a buffer to \rowss merge threads.
 
 %% \subsection{Static code generation}
@@ -1449,7 +1448,9 @@ layouts control the byte level format of pages and must register
 callbacks that will be invoked by Stasis at appropriate times.  The
 first three are invoked by the buffer manager when it loads an
 existing page from disk, writes a page to disk, and evicts a page
-from memory.  The fourth is invoked by page allocation
+from memory.
+
+The fourth is invoked by page allocation
 routines immediately before a page is reformatted to use a different
 layout.  This allows the page's old layout's implementation to
 free any in-memory resources that it associated with the page during
@@ -1625,9 +1626,9 @@ the date fields to cover ranges from 2001 to 2009, producing a 12GB
 ASCII dataset that contains approximately 132 million tuples.
 
 Duplicating the data should have a limited effect on \rowss
-compression ratios.  Although we index on geographic position, placing
-all readings from a particular station in a contiguous range, we then
-index on date.  This separates most duplicate versions of the same tuple
+compression ratios.  We index on geographic position, placing
+all readings from a particular station in a contiguous range.  We then
+index on date, separating duplicate versions of the same tuple
 from each other.
 
 \rows only supports integer data types.  We store ASCII columns for this benchmark by
@@ -1760,7 +1761,7 @@ figure is truncated to show the first 75 million insertions.\xxx{show
   the whole run???}  The spikes occur when an insertion blocks waiting
 for a tree merge to complete.  This happens when one copy of $C0$ is
 full and the other one is being merged with $C1$.  Admission control
-would provide consistent insertion times..
+would provide consistent insertion times.
 
 \begin{figure}
 \centering
@@ -1975,9 +1976,9 @@ asynchronous I/O performed by merges.
 
 We force \rows to become seek bound by running a second set of
 experiments with a different version of the order status query.  In one set
-of experiments (which we call ``Lookup C0''), the order status query
-only examines $C0$.  In the other (which we call ``Lookup all
-components''), we force each order status query to examine every tree
+of experiments, which we call ``Lookup C0,'' the order status query
+only examines $C0$.  In the other, which we call ``Lookup all
+components,'' we force each order status query to examine every tree
 component.  This keeps \rows from exploiting the fact that most order
 status queries can be serviced from $C0$.
 
@@ -1991,7 +1992,7 @@ status queries can be serviced from $C0$.
 
 Figure~\ref{fig:tpch} plots the number of orders processed by \rows
 per second against the total number of orders stored in the \rows
-replica.  For this experiment we configure \rows to reserve 1GB for
+replica.  For this experiment, we configure \rows to reserve 1GB for
 the page cache and 2GB for $C0$.  We {\tt mlock()} 4.5GB of RAM, leaving
 500MB for the kernel, system services, and Linux's page cache.
 
@@ -2011,7 +2012,7 @@ continuous downward slope throughout runs that perform scans.
 
 Surprisingly, periodic table scans improve lookup
 performance for $C1$ and $C2$.  The effect is most pronounced after
-approximately 3 million orders are processed.  That is approximately
+3 million orders are processed.  That is approximately
 when Stasis' page file exceeds the size of the buffer pool, which is
 managed using LRU.  After each merge, half the pages it read
 become obsolete.  Index scans rapidly replace these pages with live
@@ -2040,7 +2041,7 @@ average.  However, by the time the experiment concludes, pages in $C1$
 are accessed R times more often ($\sim6.6$) than those in $C2$, and
 the page file is 3.9GB.  This allows \rows to keep $C1$ cached in
 memory, so each order uses approximately half a disk seek.  At larger
-scale factors, \rowss access time should double, but still be well
+scale factors, \rowss access time should double, but remain well
 below the time a B-tree would spend applying updates.
 
 After terminating the InnoDB run, we allowed MySQL to quiesce, then
@@ -2117,8 +2118,8 @@ data~\cite{lham}.
 
 Partitioned exponential files are similar to LSM-trees, except that
 they range partition data into smaller indices~\cite{partexp}.  This solves a number
-of issues that are left unaddressed by \rows.  The two most
-important are skewed update patterns and merge storage
+of issues that are left unaddressed by \rows, most notably
+skewed update patterns and merge storage
 overhead.
 
 \rows is optimized for uniform random insertion patterns
@@ -2154,8 +2155,8 @@ Partitioning can be used to limit the number of tree components.  We
 have argued that allocating two unpartitioned on-disk components is adequate for
 \rowss target applications.
 
-Other work proposes the reuse of existing B-tree implementations as
-the underlying storage mechanism for LSM-trees~\cite{cidrPartitionedBTree}.  Many
+Reusing existing B-tree implementations as
+the underlying storage mechanism for LSM-trees has been proposed~\cite{cidrPartitionedBTree}.  Many
 standard B-tree optimizations, such as prefix compression and bulk insertion,
 would benefit LSM-tree implementations.  However, \rowss custom bulk-loaded tree
 implementation benefits compression.  Unlike B-tree compression, \rowss
@@ -2242,12 +2243,12 @@ disk and bus bandwidth.  Updates are performed by storing the index in
 partitions and replacing entire partitions at a
 time.  Partitions are rebuilt offline~\cite{searchengine}.
 
-A recent paper provides a survey of database compression techniques
+A recent paper~\cite{bitsForChronos} provides a survey of database compression techniques
 and characterizes the interaction between compression algorithms,
 processing power and memory bus bandwidth.  The formats within their
 classification scheme either split tuples across pages or group
 information from the same tuple in the same portion of the
-page~\cite{bitsForChronos}.
+page.
 
 \rows, which does not split tuples across pages, takes a different
 approach and stores each column separately within a page.  Our
@@ -2345,7 +2346,7 @@ are available at:
 
 \section{Acknowledgements}
 
-We would like to thank Petros Maniatis, Tyson Condie, and the
+We would like to thank Petros Maniatis, Tyson Condie and the
 anonymous reviewers for their feedback.  Portions of this work were
 performed at Intel Research, Berkeley.
 
