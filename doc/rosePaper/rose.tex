@@ -1729,7 +1729,7 @@ dataset.
 \rows merged $C0$ and $C1$ 59 times and merged $C1$ and $C2$ 15 times.
 At the end of the run (132 million tuple insertions) $C2$ took up
 2.8GB and $C1$ was 250MB.  The actual page
-file was 8.7GB, and the minimum possible size was 6GB.\xxx{rerun to confirm pagefile size!}  InnoDB used
+file was 8.0GB, and the minimum possible size was 6GB.  InnoDB used
 5.3GB after 53 million tuple insertions.
 
 
@@ -1755,10 +1755,9 @@ throughput.
 Figure~\ref{fig:avg-tup} shows tuple insertion times for \rows and InnoDB.
 The ``\rows (instantaneous)'' line reports insertion times
 averaged over 100,000 insertions, while the other lines are averaged
-over the entire run.  The large spikes in instantaneous tuple
-insertion times occur periodically throughput the run, though the
-figure is truncated to show the first 75 million insertions.\xxx{show
-  the whole run???}  The spikes occur when an insertion blocks waiting
+over the entire run.
+The periodic spikes in instantaneous tuple
+insertion times occur when an insertion blocks waiting
 for a tree merge to complete.  This happens when one copy of $C0$ is
 full and the other one is being merged with $C1$.  Admission control
 would provide consistent insertion times.
@@ -1876,13 +1875,16 @@ join and projection of the TPC-H dataset.  We use the schema described
 in Table~\ref{tab:tpc-schema}, and populate the table by using a scale
 factor of 30 and following the random distributions dictated by the
 TPC-H specification.  The schema for this experiment is designed to
-have poor locality for updates.
+have poor update locality.
 
 Updates from customers are grouped by
-order id.
-This schema forces the database to permute these updates
-into an order more interesting to suppliers; the index is sorted by
-product and date, providing inexpensive access to lists of orders to
+order id, but the index is sorted by product and date.
+This forces the database to permute these updates
+into an order that would provide suppliers with
+% more interesting to suppliers 
+%the index is sorted by
+%product and date, 
+inexpensive access to lists of orders to
 be filled and historical sales information for each product.
 
 We generate a dataset containing a list of product orders, and insert
@@ -1925,8 +1927,8 @@ of PFOR useless.  These fields change frequently enough to limit the
 effectiveness of run length encoding.  Both of these issues would be
 addressed by bit packing.  Also, occasionally re-evaluating and modifying
 compression strategies is known to improve compression of TPC-H data.
-which is clustered in the last few weeks of years during the
-20th century.\xxx{check}
+TPC-H dates are clustered during weekdays, from 1995-2005, and around
+Mother's Day and the last few weeks of each year.
 
 \begin{table}
 \caption{TPC-C/H schema}
@@ -1980,7 +1982,9 @@ of experiments, which we call ``Lookup C0,'' the order status query
 only examines $C0$.  In the other, which we call ``Lookup all
 components,'' we force each order status query to examine every tree
 component.  This keeps \rows from exploiting the fact that most order
-status queries can be serviced from $C0$.
+status queries can be serviced from $C0$.  Finally, \rows provides
+versioning for this test; though its garbage collection code is
+executed, it never collects overwritten or deleted tuples.
 
 %% The other type of query we process is a table scan that could be used
 %% to track the popularity of each part over time.  We know that \rowss
@@ -2143,7 +2147,7 @@ are long enough to guarantee good sequential scan performance.
 \rows always allocates regions of the same length, guaranteeing that
 Stasis can reuse all freed regions before extending the page file.
 This can waste nearly an entire region per component, which does not
-matter in \rows, but could be a significant overhead for a system with
+matter in \rows, but could be significant to systems with
 many small partitions.
 
 Some LSM-tree implementations do not support concurrent insertions,
@@ -2187,12 +2191,12 @@ memory.
 LSM-trees can service delayed
 LSM-tree index scans without performing additional I/O.  Queries that request table scans wait for
 the merge processes to make a pass over the index.
-By combining this idea with lazy merging an LSM-tree could service
+By combining this idea with lazy merging an LSM-tree implementation
+could service
 range scans immediately without significantly increasing the amount of
 I/O performed by the system.
 
 \subsection{Row-based database compression}
-\xxx{shorten?}
 Row-oriented database compression techniques compress each tuple
 individually and sometimes ignore similarities between adjacent
 tuples.  One such approach compresses low cardinality data by building
@@ -2202,12 +2206,11 @@ compression and decompression.  Other approaches include NULL
 suppression, which stores runs of NULL values as a single count and
 leading zero suppression which stores integers in a variable length
 format that does not store zeros before the first non-zero digit of each
-number.  Row-based schemes typically allow for easy decompression of
-individual tuples.  Therefore, they generally store the offset of each
-tuple explicitly at the head of each page.
+number.  Row oriented compression schemes typically provide efficient random access to
+tuples, often by explicitly storing tuple offsets at the head of each page.
 
 Another approach is to compress page data using a generic compression
-algorithm, such as gzip.  The primary drawback to this approach is
+algorithm, such as gzip.  The primary drawback of this approach is
 that the size of the compressed page is not known until after
 compression.  Also, general purpose compression techniques typically
 do not provide random access within pages and are often more processor
@@ -2225,7 +2228,7 @@ effectiveness of simple, special purpose, compression schemes.
 PFOR was introduced as an extension to
 MonetDB~\cite{pfor}, a column-oriented database, along with two other
 formats.  PFOR-DELTA is similar to PFOR, but stores differences between values as
-deltas.\xxx{check}  PDICT encodes columns as keys and a dictionary that
+deltas.  PDICT encodes columns as keys and a dictionary that
 maps to the original values.  We plan to add both these formats to
 \rows in the future.  We chose to implement RLE and PFOR because they
 provide high compression and decompression bandwidth.  Like MonetDB,
