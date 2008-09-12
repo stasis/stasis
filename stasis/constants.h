@@ -212,7 +212,6 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define XCOMMIT 2
 #define XABORT 3
 #define UPDATELOG 4
-#define DEFERLOG 5
 /** 
     XEND is used for after the pages touched by a transaction have
     been flushed to stable storage.

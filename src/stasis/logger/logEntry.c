@@ -59,8 +59,7 @@ LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
 }
 
 const byte * getUpdateArgs(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG || 
-	 ret->type == DEFERLOG  || 
+  assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
   if(ret->update.argSize == 0) {
     return NULL;
@@ -72,8 +71,7 @@ const byte * getUpdateArgs(const LogEntry * ret) {
 }
 
 const byte * getUpdatePreImage(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG || 
-	 ret->type == DEFERLOG  || 
+  assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
   if(operationsTable[ret->update.funcID].undo != NO_INVERSE && 
      operationsTable[ret->update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
@@ -129,15 +127,6 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   return ret;
 }
 
-LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
-				 unsigned int funcID, recordid rid, 
-				 const byte * args, unsigned int argSize, 
-				 const byte * preImage) {
-  LogEntry * ret = allocUpdateLogEntry(prevLSN, xid, funcID, rid, 
-				       args, argSize, preImage);
-  ret->type = DEFERLOG;
-  return ret;
-}
 LogEntry * allocCLRLogEntry(const LogEntry * old_e) { 
 
   // Could handle other types, but we should never encounter them here.
@@ -160,7 +149,7 @@ long sizeofLogEntry(const LogEntry * log) {
   switch (log->type) {
   case CLRLOG:
   case UPDATELOG:
-  case DEFERLOG: { 
+  {
     int undoType = operationsTable[log->update.funcID].undo;
     return sizeof(struct __raw_log_entry) + 
       sizeof(UpdateLogEntry) + log->update.argSize + 

@@ -263,7 +263,7 @@ int Tbegin() {
 
 static compensated_function void TactionHelper(int xid, recordid rid, 
 					       const void * dat, int op, 
-					       Page * p, int deferred) {
+					       Page * p) {
   LogEntry * e;
   assert(xid >= 0);
   try { 
@@ -271,20 +271,12 @@ static compensated_function void TactionHelper(int xid, recordid rid,
       globalLockManager.writeLockPage(xid, rid.page);
     }
   } end;
-  if(! deferred) { 
-    e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-    assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
-    DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-    doUpdate(e, p);
-    FreeLogEntry(e);
-  } else { 
-    e = LogDeferred(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
-    assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);    
-    DEBUG("Deferring e->LSN: %ld\n", e->LSN);
-    // XXX update XactionTable...
-    //XXX deferred_push(e);
-  }
 
+  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+  DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
+  doUpdate(e, p);
+  FreeLogEntry(e);
 
 }
 
@@ -292,7 +284,7 @@ compensated_function void TupdateRaw(int xid, recordid rid,
 				     const void * dat, int op) { 
   assert(xid >= 0);
   Page * p = loadPage(xid, rid.page);
-  TactionHelper(xid, rid, dat, op, p, 0); // 0 -> not deferred
+  TactionHelper(xid, rid, dat, op, p);
   releasePage(p);
 }
 
@@ -311,20 +303,7 @@ compensated_function void Tupdate(int xid, recordid rid,
     p = loadPage(xid, rid.page);
   }
   
-  TactionHelper(xid, rid, dat, op, p, 0); // 0 -> not deferred
-  releasePage(p);
-}
-
-compensated_function void Tdefer(int xid, recordid rid, 
-				 const void * dat, int op) {
-
-  Page * p = loadPage(xid, rid.page);
-  recordid newrid = stasis_record_dereference(xid, p, rid);
-  // Caller cannot rely on late or early binding of rid.
-  assert(rid.page == newrid.page && 
-	 rid.slot == newrid.slot && 
-	 rid.size == newrid.size);  
-  TactionHelper(xid, rid, dat, op, p, 1); // 1 -> deferred.
+  TactionHelper(xid, rid, dat, op, p);
   releasePage(p);
 }
 

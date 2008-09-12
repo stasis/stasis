@@ -298,8 +298,8 @@ lsn_t LogTransAbort(TransactionLog * l) {
     here?  Shouldn't it be in logEntry.c, or perhaps with other code
     that reasons about the various operation types?
 */
-static LogEntry * LogAction(TransactionLog * l, Page * p, recordid rid, int operation,
-		     const byte * args, int deferred) {
+LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
+		     const byte * args) {
   void * preImage = NULL;
   long argSize  = 0;
   LogEntry * e;
@@ -326,14 +326,9 @@ static LogEntry * LogAction(TransactionLog * l, Page * p, recordid rid, int oper
     DEBUG("No pre-image");
   }
   
-  if(!deferred) { 
-    e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, 
-			    preImage);
-  } else { 
-    e = allocDeferredLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize,
-			      preImage);
-  }
-  
+  e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, 
+                          preImage);
+
   LogWrite(e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
@@ -344,15 +339,6 @@ static LogEntry * LogAction(TransactionLog * l, Page * p, recordid rid, int oper
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   return e;
-}
-
-LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
-		     const byte * args) {
-  return LogAction(l, p, rid, operation, args, 0); // 0 -> not deferred
-}
-LogEntry * LogDeferred(TransactionLog * l, Page * p, recordid rid, int operation,
-		     const byte * args) {
-  return LogAction(l, p, rid, operation, args, 1); // 1 -> deferred
 }
 
 lsn_t LogCLR(const LogEntry * old_e) { 

@@ -628,8 +628,6 @@ compensated_function void TupdateStr(int xid, recordid rid,
                                      const char *dat, int op);
 compensated_function void TupdateRaw(int xid, recordid rid, 
 				     const void *dat, int op);
-compensated_function void TupdateDeferred(int xid, recordid rid, 
-					  const void *dat, int op);
 /**
  * Read the value of a record.
  * 

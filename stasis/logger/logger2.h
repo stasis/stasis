@@ -152,14 +152,6 @@ lsn_t LogTransAbort(TransactionLog * l);
 */
 LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
 		     const byte * args);
-/**
-  LogDeferred writes a DEFERLOG log record to the log tail
-
-  @see LogUpdate is analagous to this function, but wrutes UPDATELOG entries 
-       instead.
-*/
-LogEntry * LogDeferred(TransactionLog * l, Page * p, recordid rid, 
-		       int operation, const byte * args);
 
 /**
    Any LogEntry that is returned by a function in logger2.h or

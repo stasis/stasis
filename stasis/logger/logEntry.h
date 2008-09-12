@@ -102,18 +102,6 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 			       const byte * args, unsigned int argSize, 
 			       const byte * preImage);
 /**
-   Alloc a deferred log entry.  This is just like allocUpdateLogEntry(), except 
-   the log entry's type will be DEFERLOG instead UPDATELOG.  This is usually
-   called inside of Tdefer().
-
-   @return a LogEntry that should be freed with free().
-
-*/
-LogEntry * allocDeferredLogEntry(lsn_t prevLSN, int xid, 
-				 unsigned int operation, recordid rid, 
-				 const byte * args, unsigned int argSize, 
-				 const byte * preImage);
-/**
    Allocate a CLR entry.  These are written during recovery as log
    entries are undone.  This moves undo operations into the redo
    phase, by recording the inverse of the original operation, and sets

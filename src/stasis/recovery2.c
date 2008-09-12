@@ -171,10 +171,6 @@ static void Redo() {
 	  redoUpdate(e);
 	  FreeLogEntry(e);
 	} break;
-      case DEFERLOG: 
-	{ 
-	  // XXX deferred_push(e);
-	} break;
       case XCOMMIT:
 	{
 	  if(globalLockManager.commit)
@@ -249,11 +245,6 @@ static void Undo(int recovery) {
 
 	  break;
 	}
-      case DEFERLOG:
-	// The transaction is aborting, so it never committed.  Therefore
-	// actions deferred to commit have never been applied; ignore this
-	// log entry.
-	break;
       case CLRLOG:
 	// Don't undo CLRs; they were undone during Redo
 	break;
