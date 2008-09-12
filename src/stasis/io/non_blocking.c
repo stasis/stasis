@@ -652,6 +652,7 @@ static void * nbw_worker(void * handle) {
 	if(node->dirty == NEEDS_FORCE) {
 	  contributed_to_force = 1;
 	}
+        assert(node->dirty != INVALID_NODE);
 	node->dirty = CLEAN;
 	node->pin_count++;
 	writes++;
@@ -702,6 +703,7 @@ static void * nbw_worker(void * handle) {
           buf_off += np_len;
           r2->h->release_read_buffer(r2);
 	  if(np->dirty == NEEDS_FORCE) contributed_to_force = 1;
+          assert(np->dirty != INVALID_NODE);
           np->dirty = CLEAN;
           np->pin_count++;
           dummy.start_pos = np->end_pos;
@@ -730,7 +732,10 @@ static void * nbw_worker(void * handle) {
 #ifdef MERGE_WRITES
         for(int i = 0; i < dummy_count; i++) {
           np = (tree_node*)RB_ENTRY(find)(&dummies[i], impl->fast_handles);
+          assert(np);
           assert(np->pin_count);
+          assert(np->dirty != INVALID_NODE);
+
           np->pin_count--;
           if(!np->dirty && !np->pin_count) {
             impl->used_buffer_size -= (np->end_pos - np->start_pos);
@@ -742,6 +747,7 @@ static void * nbw_worker(void * handle) {
 	  free(dummies);
 	}
 #endif
+        assert(node->pin_count);
 	node->pin_count--;
       }
       tree_node *new_node = (tree_node*)RB_ENTRY(lookup)(RB_LUGREAT, &next_node,
