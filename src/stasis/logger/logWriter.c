@@ -297,7 +297,7 @@ int openLogWriter() {
     @internal 
 
     Unfortunately, this function can't just seek to the end of the
-    log.  If it did, and a prior instance of LLADD crashed (and wrote
+    log.  If it did, and a prior instance of Stasis crashed (and wrote
     a partial entry), then the log would be corrupted.  Therefore, we
     need to be a little bit smarter, and track the next LSN value
     manually.  Calculating it the first time would require a scan over
@@ -310,9 +310,6 @@ int openLogWriter() {
     The first time writeLogEntry is called, we seek from the highest
     LSN encountered so far to the end of the log.
 
-    @todo writeLogEntry implicitly ignores all log entries with xid = -1.  
-    This is probably the wrong thing to do...
-    
 */
 
 static int writeLogEntryUnlocked(LogEntry * e) {
@@ -481,7 +478,6 @@ static LogEntry * readLogEntry() {
   LogEntry * ret = 0;
   lsn_t size;
   lsn_t entrySize;
-  
   lsn_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
 
   if(bytesRead != sizeof(lsn_t)) { 

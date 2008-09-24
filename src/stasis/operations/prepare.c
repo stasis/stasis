@@ -51,7 +51,7 @@ terms specified in this license.
 
 #include <stdlib.h>
 #include <assert.h>
-
+#include <stdio.h>
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
@@ -75,6 +75,7 @@ typedef struct{
   int continueIterating;
   int prevLSN;
   int xid;
+  int aborted;
 } PrepareGuardState;
 
 void * getPrepareGuardState() { 
@@ -82,6 +83,7 @@ void * getPrepareGuardState() {
   s->continueIterating = 1;
   s->prevLSN = -1;
   s->xid = -1;
+  s->aborted = 0;
   return s;
 }
 
@@ -89,11 +91,14 @@ void * getPrepareGuardState() {
 int prepareGuard(const LogEntry * e, void * state) {
   PrepareGuardState * pgs = state; 
   int ret = pgs->continueIterating;
-  if(e->type == UPDATELOG) {
+  if(e->type == UPDATELOG && !pgs->aborted) {
     if(e->update.funcID == OPERATION_PREPARE) { 
       pgs->continueIterating = 0;
       pgs->prevLSN           = e->prevLSN;
     }
+  } else if (e->type == XABORT) {
+    printf("xid %d aborted.\n", e->xid);
+    pgs->aborted = 1;
   }
   if(pgs->xid == -1) {
     pgs->xid = e->xid;
@@ -109,9 +114,10 @@ int prepareGuard(const LogEntry * e, void * state) {
 int prepareAction(void * state) {
   PrepareGuardState * pgs = state; 
   int ret;
-  if(!pgs->continueIterating) {
-    assert(pgs->prevLSN != -1);
-    Trevive(pgs->xid, pgs->prevLSN);
+  if(!(pgs->continueIterating || pgs->aborted)) {
+    //assert(pgs->prevLSN != -1);
+    abort();
+    //    Trevive(pgs->xid, pgs->prevLSN);
     ret = 1;
   } else {
     ret = 0;

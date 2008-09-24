@@ -57,7 +57,16 @@ LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   ret->type    = type;
   return ret;
 }
-
+LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
+  LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeof(lsn_t));
+  ret->LSN = -1;
+  ret->prevLSN = prevLSN;
+  ret->xid = xid;
+  ret->type = XPREPARE;
+  *(lsn_t*)(((struct __raw_log_entry*)ret)+1)=recLSN;
+  //  assert(sizeofLogEntry(ret) == sizeof(struct __raw_log_entry)+sizeof(lsn_t));
+  return ret;
+}
 const byte * getUpdateArgs(const LogEntry * ret) {
   assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
@@ -84,6 +93,11 @@ const byte * getUpdatePreImage(const LogEntry * ret) {
   }
 }
 
+lsn_t getPrepareRecLSN(const LogEntry *e) {
+  lsn_t ret = *(lsn_t*)(((struct __raw_log_entry*)e)+1);
+  if(ret == -1) { ret = e->LSN; }
+  return ret;
+}
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
 			       unsigned int funcID, recordid rid, 
 			       const byte * args, unsigned int argSize, 
@@ -159,6 +173,8 @@ long sizeofLogEntry(const LogEntry * log) {
   }
   case INTERNALLOG:
     return LoggerSizeOfInternalLogEntry(log);
+  case XPREPARE:
+    return sizeof(struct __raw_log_entry)+sizeof(lsn_t);
   default:
     return sizeof(struct __raw_log_entry);
   }

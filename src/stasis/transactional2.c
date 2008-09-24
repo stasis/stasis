@@ -48,7 +48,7 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
 	operationsTable[OPERATION_ALLOC]     = getAlloc();
-	operationsTable[OPERATION_PREPARE]   = getPrepare();
+	//	operationsTable[OPERATION_PREPARE]   = getPrepare();
 	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
@@ -350,6 +350,14 @@ int Tcommit(int xid) {
   return 0;
 }
 
+int Tprepare(int xid) {
+  assert(xid >= 0);
+  off_t i = xid % MAX_TRANSACTIONS;
+  assert(XactionTable[i].xid == xid);
+  LogTransPrepare(&XactionTable[i]);
+  return 0;
+}
+
 int Tabort(int xid) {
   lsn_t lsn;
   assert(xid >= 0);
@@ -427,24 +435,26 @@ int TuncleanShutdown() {
   return 0;
 }
 
-void Trevive(int xid, long lsn) {
+void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn) {
   assert(xid >= 0);
+  assert(reclsn != -1);
   int index = xid % MAX_TRANSACTIONS;
   pthread_mutex_lock(&transactional_2_mutex);
 
   DEBUG("Reviving xid %d at lsn %ld\n", xid, lsn);
   
   if(XactionTable[index].xid != INVALID_XTABLE_XID) {
-    if(xid != XactionTable[index].xid) {
+    abort();
+    /*    if(xid != XactionTable[index].xid) {
       fprintf(stderr, "Clashing Tprepare()'ed XID's encountered on recovery!!\n");
       abort();
     }
     assert(XactionTable[index].xid == xid);
-    assert(XactionTable[index].prevLSN == lsn);
+    assert(XactionTable[index].prevLSN == lsn); */
   } else {
     XactionTable[index].xid = xid;
-    XactionTable[index].prevLSN = lsn;
-
+    XactionTable[index].prevLSN = prevlsn;
+    XactionTable[index].recLSN = reclsn;
     numActiveXactions++;
 
   }
@@ -472,6 +482,22 @@ lsn_t transactions_minRecLSN() {
   return minRecLSN;
 }
 
+int* TlistActiveTransactions() {
+  pthread_mutex_lock(&transactional_2_mutex);
+  int * ret = malloc(sizeof(*ret));
+  ret[0] = 0;
+  int retcount = 0;
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    if(XactionTable[i].xid != INVALID_XTABLE_XID) {
+      ret[retcount] = XactionTable[i].xid;
+      retcount++;
+      ret = realloc(ret, (retcount+1) * sizeof(*ret));
+      ret[retcount] = 0;
+    }
+  }
+  pthread_mutex_unlock(&transactional_2_mutex);
+  return ret;
+}
 int TisActiveTransaction(int xid) { 
   if(xid < 0) { return 0; }
   pthread_mutex_lock(&transactional_2_mutex);

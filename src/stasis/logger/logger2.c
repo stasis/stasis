@@ -229,23 +229,37 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
   return ret;
 
 }
+static lsn_t LogTransCommonPrepare(TransactionLog * l) {
+  LogEntry * e = allocPrepareLogEntry(l->prevLSN, l->xid, l->recLSN);
+  lsn_t ret;
 
-/**
-   @todo This should be usable by all calls that sync the log; not just commit.
-*/
-static lsn_t groupCommit(TransactionLog * l) {
+  DEBUG("Log prepare xid = %d prevlsn = %lld reclsn = %lld, %lld\n",e->xid,e->prevLSN,l->recLSN, getPrepareRecLSN(e));
+  LogWrite(e);
+
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  l->prevLSN = e->LSN;
+  DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
+	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
+
+  ret = e->LSN;
+
+  FreeLogEntry(e);
+
+  return ret;
+
+}
+
+static void groupForce(lsn_t l) {
   static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
   static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
-
-  lsn_t ret = LogTransCommon(l, XCOMMIT);
 
   struct timeval now;
   struct timespec timeout;
   
   pthread_mutex_lock(&check_commit);
-  if(LogFlushedLSN() >= ret) {
+  if(LogFlushedLSN() >= l) {
     pthread_mutex_unlock(&check_commit);
-    return ret;
+    return;
   }
   gettimeofday(&now, NULL);
   timeout.tv_sec = now.tv_sec;
@@ -266,21 +280,32 @@ static lsn_t groupCommit(TransactionLog * l) {
 	printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by a signal in groupCommit().  Acting as though it timed out.\n", __FILE__, __LINE__);
 	break;
       }
-      if(LogFlushedLSN() >= ret) {
+      if(LogFlushedLSN() >= l) {
 	pendingCommits--;
 	pthread_mutex_unlock(&check_commit);
-	return ret;
+	return;
       }
     }
   } 
-  if(LogFlushedLSN() < ret) {
+  if(LogFlushedLSN() < l) {
     syncLog_LogWriter();
     syncLogCount++;
     pthread_cond_broadcast(&tooFewXacts);
   }
-  assert(LogFlushedLSN() >= ret);
+  assert(LogFlushedLSN() >= l);
   pendingCommits--;
   pthread_mutex_unlock(&check_commit);
+  return;
+}
+
+static lsn_t groupCommit(TransactionLog * l) {
+  lsn_t ret = LogTransCommon(l, XCOMMIT);
+  groupForce(ret);
+  return ret;
+}
+static lsn_t groupPrepare(TransactionLog * l) {
+  lsn_t ret = LogTransCommonPrepare(l);
+  groupForce(ret);
   return ret;
 }
 
@@ -291,7 +316,9 @@ lsn_t LogTransCommit(TransactionLog * l) {
 lsn_t LogTransAbort(TransactionLog * l) {
   return LogTransCommon(l, XABORT);
 }
-
+lsn_t LogTransPrepare(TransactionLog * l) {
+  return groupPrepare(l);
+}
 
 /** 
     @todo Does the handling of operation types / argument sizes belong

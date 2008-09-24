@@ -239,7 +239,7 @@ START_TEST(operation_prepare) {
   Tset(loser, a, &three);
   Tset(prepared, b, &three);
 
-  Tprepare(prepared, a);
+  Tprepare(prepared); //, a);
 
   Tset(prepared, b, &two);
 
@@ -292,7 +292,7 @@ START_TEST(operation_prepare) {
   Tset(loser, a, &three);
   Tset(prepared, b, &three);
 
-  Tprepare(prepared, a);
+  Tprepare(prepared); //, a);
 
   Tset(prepared, b, &two);
 

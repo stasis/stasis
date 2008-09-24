@@ -90,7 +90,7 @@ extern recordid prepare_bogus_rec;
     @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
 
 */
-#define Tprepare(xid, rec) Tupdate(xid, rec, 0, OPERATION_PREPARE)
+//#define Tprepare(xid) Tupdate(xid, NULLRID, 0, OPERATION_PREPARE)
 
 Operation getPrepare();
 

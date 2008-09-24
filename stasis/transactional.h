@@ -591,7 +591,7 @@ extern const recordid NULLRID;
  */
 typedef struct {
 	int xid;
-	long LSN;
+	lsn_t LSN;
 } Transaction;
 
 
@@ -679,10 +679,11 @@ int TuncleanShutdown();
  *  Revives Tprepare'ed transactions.
  *
  * @param xid  The xid that is to be revived. 
- * @param lsn  The lsn of that xid's most recent PREPARE entry in the log.
+ * @param prevlsn  The lsn of that xid's most recent PREPARE entry in the log.
+ * @param reclsn The lsn of the transaction's BEGIN record.
  */
-void Trevive(int xid, long lsn);
-
+void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
+int Tprepare(int xid);
 /**
  *  Used by the recovery process. 
  *
@@ -692,6 +693,13 @@ void Trevive(int xid, long lsn);
  * @param xid  The new active transaction count. 
  */
 void TsetXIDCount(int xid);
+
+/**
+   List all active transactions.
+
+   @return an array of transaction ids.
+ */
+int* TlistActiveTransactions();
 
 /**
  * Checks to see if a transaction is still active.

@@ -131,17 +131,24 @@ lsn_t LogNextEntry(const LogEntry * e);
 TransactionLog LogTransBegin(int xid);
 
 /**
+  Write a transaction PREPARE to the log tail.  Blocks until the
+  prepare record is stable.
+
+  @return the lsn of the prepare log entry
+ */
+lsn_t LogTransPrepare(TransactionLog * l);
+/**
   Write a transaction COMMIT to the log tail.  Blocks until the commit
   record is stable.
 
-  @return The lsn of the commit log entry.  
+  @return the lsn of the commit log entry.
 */
 lsn_t LogTransCommit(TransactionLog * l);
 
 /**
-  Write a transaction ABORT to the log tail.
+  Write a transaction ABORT to the log tail.  Does not force the log.
 
-  @return The lsn of the abort log entry.
+  @return the lsn of the abort log entry.
 */
 lsn_t LogTransAbort(TransactionLog * l);
 

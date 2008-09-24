@@ -215,13 +215,14 @@ extern const short SLOT_TYPE_LENGTHS[];
 /** 
     XEND is used for after the pages touched by a transaction have
     been flushed to stable storage.
-    
-    @todo Actually write XEND entries to the log so that log
-    truncation can be implemented!
 
+    @todo Actually write XEND entries to the log so that we can
+    use analysis to optimize redo.
 */
 #define XEND 6
 #define CLRLOG 7
+
+#define XPREPARE 8
 
 /* Page types */
 

@@ -90,6 +90,8 @@ typedef struct {
    @return a LogEntry that should be freed with free().
  */
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type);
+
+LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
 /** 
    Allocate a log entry associated with an operation implemention.  This
    is usually called inside of Tupdate().
@@ -123,6 +125,8 @@ const byte * getUpdateArgs(const LogEntry * e);
    phsysical undo.
 */
 const byte * getUpdatePreImage(const LogEntry * e);
+
+lsn_t getPrepareRecLSN(const LogEntry *e);
 
 END_C_DECLS
 

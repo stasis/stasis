@@ -19,7 +19,7 @@
 #include <stasis/lockManager.h>
 
 /** @todo Add better log iterator guard support and remove this include.*/
-#include <stasis/operations/prepare.h>
+//#include <stasis/operations/prepare.h>
 
 #include <stasis/logger/logHandle.h>
 /** @todo Get rid of linkedlist */
@@ -60,13 +60,9 @@ static void Analysis () {
       log was so that we don't accidentally reuse XID's.  This keeps
       track of that value. */
   int highestXid = 0;
-  
-  /** @todo loadCheckPoint() - Jump forward in the log to the last
-      checkpoint.  (getLogHandle should do this automatically,
-      since the log will be truncated on checkpoint anyway.) */
 
   while((e = nextInLog(&lh))) {
-    
+
     lsn_t * xactLSN = (lsn_t*)pblHtLookup(transactionLSN,    &(e->xid), sizeof(int));
 
     if(highestXid < e->xid) {
@@ -140,6 +136,9 @@ static void Analysis () {
       DEBUG("Adding %ld\n", e->LSN);
       addSortedVal(&rollbackLSNs, e->LSN);
       break;  
+    case XPREPARE:
+      addSortedVal(&rollbackLSNs, e->LSN);
+      break; // XXX check to see if the xact exists?
     case INTERNALLOG:
       // Created by the logger, just ignore it
       // Make sure the log entry doesn't interfere with real xacts.
@@ -186,35 +185,34 @@ static void Redo() {
 	{
 	  FreeLogEntry(e);
 	} break;
+      case XPREPARE:
+	{
+	  FreeLogEntry(e);
+	} break;
       default:
 	abort();
       }
     } 
   }
 }
-/**
-    @todo Guards shouldn't be hardcoded in Undo()
-*/
 static void Undo(int recovery) {
   LogHandle lh;
-  void * prepare_guard_state;
 
   while(rollbackLSNs != NULL) {
     const LogEntry * e;
     lsn_t rollback = popMaxVal(&rollbackLSNs);
 
-    prepare_guard_state = getPrepareGuardState();
-
     DEBUG("Undoing LSN %ld\n", (long int)rollback);
 
-    if(recovery) {
-      lh = getGuardedHandle(rollback, &prepareGuard, prepare_guard_state);
-    } else {
-      lh = getLSNHandle(rollback);
-    } 
+    lh = getLSNHandle(rollback);
 
     int thisXid = -1;
-    while((e = previousInTransaction(&lh))) {
+
+    // Is this transaction just a loser, or was it aborted?
+    int reallyAborted = 0;
+    // Have we reached a XPREPARE that we should pay attention to?
+    int prepared = 0;
+    while((!prepared) && (e = previousInTransaction(&lh))) {
       thisXid = e->xid;
       lsn_t this_lsn, clr_lsn;
       switch(e->type) {
@@ -229,9 +227,9 @@ static void Undo(int recovery) {
 
 	    // If this fails, something is wrong with redo or normal operation.
 	    this_lsn = stasis_page_lsn_read(p);
-	    assert(e->LSN <= this_lsn);  
+	    assert(e->LSN <= this_lsn);
 
-	  } else { 
+	  } else {
 	    // The log entry is not associated with a particular page.
 	    // (Therefore, it must be an idempotent logical log entry.)
 	  }
@@ -249,12 +247,25 @@ static void Undo(int recovery) {
 	// Don't undo CLRs; they were undone during Redo
 	break;
       case XABORT:
-	// Since XABORT is a no-op, we can silentlt ignore it.  XABORT
+	printf("Found abort for %d\n", e->xid);
+	reallyAborted = 1;
+	// Since XABORT is a no-op, we can silently ignore it.  XABORT
 	// records may be passed in by undoTrans.
 	break;
       case XCOMMIT:
 	// Should never abort a transaction that contains a commit record
 	abort();
+      case XPREPARE: {
+        printf("found prepared xact %d\n", e->xid);
+
+	if(!reallyAborted) {
+	  printf("xact wasn't aborted\n");
+	  prepared = 1;
+	  Trevive(e->xid, e->LSN, getPrepareRecLSN(e));
+	} else {
+	  printf("xact was aborted\n");
+	}
+      } break;
       default:
 	printf
 	  ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
@@ -264,9 +275,7 @@ static void Undo(int recovery) {
       }
       FreeLogEntry(e);
     }
-    int transactionWasPrepared = prepareAction(prepare_guard_state);
-    free(prepare_guard_state);
-    if(!transactionWasPrepared && globalLockManager.abort) {
+    if((!prepared) && globalLockManager.abort) {
       globalLockManager.abort(thisXid);
     }
   }
