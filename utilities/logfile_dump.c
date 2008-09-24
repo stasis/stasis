@@ -35,6 +35,12 @@ static char * logEntryToString(const LogEntry * le) {
 
     }
     break;
+  case XPREPARE:
+    {
+      asprintf(&ret, "PREPARE\tlsn=%9lld\tprevlsn=%9lld\txid=%4d,reclsn=%9lld\n", le->LSN, le->prevLSN, le->xid, getPrepareRecLSN(le));
+
+    }
+    break;
   case XEND:
     {
       asprintf(&ret, "END  \tlsn=%9lld\tprevlsn=%9lld\txid=%4d\n", le->LSN, le->prevLSN, le->xid);
