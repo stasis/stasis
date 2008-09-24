@@ -294,12 +294,12 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
-
-  //  tcase_add_test(tc, allocationPolicy_smokeTest);
+  // XXX this test might be flawed.
+  tcase_add_test(tc, allocationPolicy_smokeTest);
   tcase_add_test(tc, allocationPolicy_randomTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

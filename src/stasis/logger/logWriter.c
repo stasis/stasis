@@ -543,8 +543,8 @@ static LogEntry * readLogEntry() {
     } 
   }
 
-  //  entrySize = sizeofLogEntry(ret);
-  //  assert(size == entrySize);
+  entrySize = sizeofLogEntry(ret);
+  assert(size == entrySize);
 
   return ret;
 }

@@ -338,10 +338,10 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
 
   if(locks) {
 
-    const availablePage * next;
+    availablePage * next;
 
-    while(( next = RB_ENTRY(min)(locks) )) { 
-      unlockAlloced(ap, xid, (availablePage*)next);           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
+    while(( next = (void*)RB_ENTRY(min)(locks) )) { 
+      unlockAlloced(ap, xid, (next));           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 
     LH_ENTRY(remove)(ap->xidAlloced, &xid, sizeof(int));
@@ -352,9 +352,9 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
   locks = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(int));
 
   if(locks) {
-    const availablePage * next;
+    availablePage * next;
     
-    while(( next = RB_ENTRY(min)(locks) )) { 
+    while(( next = (void*)RB_ENTRY(min)(locks) )) { 
       unlockDealloced(ap, xid, (availablePage*)next);         // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 

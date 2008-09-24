@@ -229,6 +229,9 @@ struct Page_s {
 static inline lsn_t* stasis_page_lsn_ptr(Page *p) {
   return ((lsn_t*)(&(p->memAddr[PAGE_SIZE])))-1;
 }
+static inline const lsn_t* stasis_page_lsn_cptr(const Page *p) {
+  return ((const lsn_t*)(&(p->memAddr[PAGE_SIZE])))-1;
+}
 
 /**
    Returns a pointer to the page's type.  This information is stored with the LSN.
@@ -243,7 +246,7 @@ static inline int* stasis_page_type_ptr(Page *p) {
   return ((int*)stasis_page_lsn_ptr(p))-1;
 }
 static inline const int* stasis_page_type_cptr(const Page *p) {
-  return (const int*)stasis_page_type_ptr((Page*)p);
+  return ((const int*)stasis_page_lsn_cptr(p))-1;
 }
 
 /**
@@ -389,11 +392,11 @@ stasis_page_int16_cptr_from_start(const Page *p, int count) {
 
 static inline const int16_t*
 stasis_page_int16_cptr_from_end(const Page *p, int count) {
-  return (const int16_t*)stasis_page_int16_ptr_from_end((Page*)p,count);
+  return ((int16_t*)stasis_page_type_cptr(p))-count;
 }
 static inline const int32_t*
 stasis_page_int32_cptr_from_start(const Page *p, int count) {
-  return (const int32_t*)stasis_page_int32_ptr_from_start((Page*)p,count);
+  return ((const int32_t*)(p->memAddr))+count;
 }
 
 static inline const int32_t*
