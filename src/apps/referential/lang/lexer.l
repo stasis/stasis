@@ -3,7 +3,7 @@
 #include <string.h>
 #include "ast.h"
 #include "y.tab.h"
-#include "parser_private.h"
+#include "src/apps/referential/lang/parser_private.h"
 //#define DBG(x) printf("%s\t",x); ECHO 
 #define DBG(x)
 

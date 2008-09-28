@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ast.h"
+#include "src/apps/referential/lang/ast.h"
 
-#include "/home/sears/stasis/src/apps/referential/lang/parser_private.h"
+#include "src/apps/referential/lang/parser_private.h"
 
 
 void    parse(char *buf, expr_list **result)
