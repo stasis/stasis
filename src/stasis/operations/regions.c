@@ -21,13 +21,8 @@ static void TdeallocBoundaryTag(int xid, unsigned int page);
 /** This doesn't need a latch since it is only initiated within nested
     top actions (and is local to this file.  During abort(), the nested 
     top action's logical undo grabs the necessary latches.
-
-    @todo opearate_alloc_boundary_tag is executed without holding the
-    proper mutex during REDO.  For now this doesn't matter, but it
-    could matter in the future.
 */
 static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
-  writelock(p->rwlatch, 0);
   stasis_slotted_initialize_page(p);
   recordid rid = {p->id, 0, sizeof(boundary_tag)};
   assert(e->update.arg_size == sizeof(boundary_tag));
@@ -36,7 +31,6 @@ static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
   byte * buf = stasis_record_write_begin(e->xid, p, rid);
   memcpy(buf, getUpdateArgs(e), stasis_record_length_read(e->xid, p, rid));
   stasis_record_write_done(e->xid, p, rid, buf);
-  unlock(p->rwlatch);
   return 0;
 }
 
@@ -164,8 +158,9 @@ void regionsInit() {
     // hack; allocate a fake log entry; pass it into ourselves.
     LogEntry * e = allocUpdateLogEntry(0,0,OPERATION_ALLOC_BOUNDARY_TAG,
                                        p->id, (const byte*)&t, sizeof(boundary_tag));
-
+    writelock(p->rwlatch,0);
     op_alloc_boundary_tag(e,p);
+    unlock(p->rwlatch);
     FreeLogEntry(e);
   }
   holding_mutex = 0;

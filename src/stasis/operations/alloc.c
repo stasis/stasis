@@ -96,8 +96,6 @@ typedef struct {
 } alloc_arg;
 
 static int op_alloc(const LogEntry* e, Page* p) { //(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  writelock(p->rwlatch, 0);
-
   assert(e->update.arg_size >= sizeof(alloc_arg));
 
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
@@ -116,12 +114,11 @@ static int op_alloc(const LogEntry* e, Page* p) { //(int xid, Page * p, lsn_t ls
     // otherwise, no preimage
     assert(e->update.arg_size == sizeof(alloc_arg));
   }
-  unlock(p->rwlatch);
+
   return ret;
 }
 
 static int op_dealloc(const LogEntry* e, Page* p) { //deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  writelock(p->rwlatch,0);
   assert(e->update.arg_size >= sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
   recordid rid = {
@@ -134,12 +131,10 @@ static int op_dealloc(const LogEntry* e, Page* p) { //deoperate(int xid, Page * 
 
   stasis_record_free(e->xid, p, rid);
   assert(stasis_record_type_read(e->xid, p, rid) == INVALID_SLOT);
-  unlock(p->rwlatch);
   return 0;
 }
 
 static int op_realloc(const LogEntry* e, Page* p) { //reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
-  writelock(p->rwlatch,0);
   assert(e->update.arg_size >= sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
 
@@ -157,8 +152,6 @@ static int op_realloc(const LogEntry* e, Page* p) { //reoperate(int xid, Page *p
   byte * buf = stasis_record_write_begin(e->xid,p,rid);
   memcpy(buf, arg+1, stasis_record_length_read(e->xid,p,rid));
   stasis_record_write_done(e->xid,p,rid,buf);
-  unlock(p->rwlatch);
-
   return ret;
 }
 
@@ -411,21 +404,22 @@ compensated_function void Tdealloc(int xid, recordid rid) {
     p = loadPage(xid, rid.page);
   } end;
 
-  
+  readlock(p->rwlatch,0);
+
   recordid newrid = stasis_record_dereference(xid, p, rid);
   allocationPolicyLockPage(allocPolicy, xid, newrid.page);
 
-  readlock(p->rwlatch,0);
   int64_t size = stasis_record_length_read(xid,p,rid);
-  unlock(p->rwlatch);
 
   byte * preimage = malloc(sizeof(alloc_arg)+rid.size);
-  
+
   ((alloc_arg*)preimage)->slot = rid.slot;
   ((alloc_arg*)preimage)->size = size;
 
   begin_action(releasePage, p) {
     stasis_record_read(xid, p, rid, preimage+sizeof(alloc_arg));
+    unlock(p->rwlatch);
+
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
     Tupdate(xid, rid, preimage, sizeof(alloc_arg)+rid.size, OPERATION_DEALLOC);
   } compensate;
@@ -469,7 +463,6 @@ void TinitializeFixedPage(int xid, int pageid, int slotLength) {
 }
 
 static int op_initialize_page(const LogEntry* e, Page* p) { //int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
-  writelock(p->rwlatch, 0);
   assert(e->update.arg_size == sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
 
@@ -483,7 +476,6 @@ static int op_initialize_page(const LogEntry* e, Page* p) { //int xid, Page *p, 
   default:
     abort();
   }
-  unlock(p->rwlatch);
   return 0;
 }
 

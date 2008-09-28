@@ -277,12 +277,15 @@ static compensated_function void TactionHelper(int xid, recordid rid,
     }
   } end;
 
+  writelock(p->rwlatch,0);
+
   e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, op, dat, datlen);
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   doUpdate(e, p);
   FreeLogEntry(e);
 
+  unlock(p->rwlatch);
 }
 
 // XXX remove this function once it's clear that nobody is failing the assert in Tupdate()
@@ -302,9 +305,10 @@ compensated_function void TupdateStr(int xid, recordid rid,
 compensated_function void Tupdate(int xid, recordid rid, 
 				  const void *dat, size_t datlen, int op) { 
   Page * p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   recordid rid2 = stasis_record_dereference(xid, p, rid);
-
   assert(rid2.page == rid.page);
+  unlock(p->rwlatch);
 
   TactionHelper(xid, rid, dat, datlen, op, p);
   releasePage(p);
@@ -320,10 +324,14 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
   } end;
 
+  readlock(p->rwlatch,0);
+
   rid = stasis_record_dereference(xid, p, rid);
   if(rid.page != p->id) { 
+    unlock(p->rwlatch);
     releasePage(p);
     p = loadPage(xid, rid.page);
+    readlock(p->rwlatch,0);
   }
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     DEBUG("call readBlob %lld %lld %lld\n", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
@@ -332,6 +340,7 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
   } else {
     stasis_record_read(xid, p, rid, dat);
   }
+  unlock(p->rwlatch);
   releasePage(p);
 }
 
@@ -340,8 +349,9 @@ compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
   try { 
     p = loadPage(xid, rid.page);
   } end;
-
+  readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, dat);
+  unlock(p->rwlatch);
   releasePage(p);
 }
 

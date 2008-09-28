@@ -103,11 +103,9 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
 }
 
 int op_fixed_page_alloc(const LogEntry* e, Page* p) {
-  writelock(p->rwlatch,0);
   assert(e->update.arg_size == sizeof(int));
   int slot_size = *(const int*)getUpdateArgs(e);
   stasis_fixed_initialize_page(p, slot_size, stasis_fixed_records_per_page(slot_size));
-  unlock(p->rwlatch);
   return 0;
 }
 

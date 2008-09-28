@@ -51,7 +51,6 @@ terms specified in this license.
 #include <string.h>
 #include <assert.h>
 static int op_set(const LogEntry *e, Page *p) {
-  readlock(p->rwlatch,0);
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
   const byte * b = getUpdateArgs(e);
   recordid rid;
@@ -66,12 +65,9 @@ static int op_set(const LogEntry *e, Page *p) {
 
   stasis_record_write(e->xid, p, e->LSN, rid, b);
 
-  unlock(p->rwlatch);
-
   return 0;
 }
 static int op_set_inverse(const LogEntry *e, Page *p) {
-  readlock(p->rwlatch,0);
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
   const byte * b = getUpdateArgs(e);
   recordid rid;
@@ -85,8 +81,6 @@ static int op_set_inverse(const LogEntry *e, Page *p) {
 
   stasis_record_write(e->xid, p, e->LSN, rid, b+rid.size);
 
-  unlock(p->rwlatch);
-
   return 0;
 }
 
@@ -97,13 +91,15 @@ typedef struct {
 
 int Tset(int xid, recordid rid, const void * dat) {
   Page * p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   rid = stasis_record_dereference(xid,p,rid);
-
   rid.size = stasis_record_type_to_size(rid.size);
   if(rid.size > BLOB_THRESHOLD_SIZE) {
     writeBlob(xid,p,rid,dat);
+    unlock(p->rwlatch);
     releasePage(p);
   } else {
+    unlock(p->rwlatch);
     releasePage(p);
 
     size_t sz = sizeof(slotid_t) + sizeof(int64_t) + 2 * rid.size;
@@ -141,7 +137,6 @@ int TsetRaw(int xid, recordid rid, const void * dat) {
 }
 
 static int op_set_range(const LogEntry* e, Page* p) {
-  readlock(p->rwlatch,0);
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
@@ -160,12 +155,10 @@ static int op_set_range(const LogEntry* e, Page* p) {
   stasis_record_write(e->xid, p, e->LSN, rid, tmp);
 
   free(tmp);
-  unlock(p->rwlatch);
   return 0;
 }
 
 static int op_set_range_inverse(const LogEntry* e, Page* p) {
-  readlock(p->rwlatch,0);
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
@@ -183,7 +176,6 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
   stasis_record_write(e->xid, p, e->LSN, rid, tmp);
 
   free(tmp);
-  unlock(p->rwlatch);
   return 0;
 }
 compensated_function void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
@@ -195,7 +187,6 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
 
   ///  XXX rewrite without malloc (use read_begin, read_done)
   set_range_t * range = malloc(sizeof(set_range_t) + 2 * length);
-  byte * record = malloc(rid.size);
 
   range->offset = offset;
   range->slot = rid.slot;
@@ -206,18 +197,19 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   // No further locking is necessary here; readRecord protects the 
   // page layout, but attempts at concurrent modification have undefined 
   // results.  (See page.c)
-  stasis_record_read(xid, p, rid, record);
+  readlock(p->rwlatch,0);
 
+  const byte* record = stasis_record_read_begin(xid,p,rid);
   // Copy old value into log structure
   memcpy((byte*)(range + 1) + length, record+offset, length);
+  stasis_record_read_done(xid,p,rid,record);
 
-  free(record);
-  /** @todo will leak 'range' if interrupted with pthread_cancel */
-  begin_action(releasePage, p) {
-    Tupdate(xid, rid, range, sizeof(set_range_t) + 2 * length, OPERATION_SET_RANGE);
-    free(range);
-  } compensate;
+  unlock(p->rwlatch);
 
+  Tupdate(xid, rid, range, sizeof(set_range_t) + 2 * length, OPERATION_SET_RANGE);
+  free(range);
+
+  releasePage(p);
 }
 
 Operation getSet() { 

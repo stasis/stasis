@@ -412,7 +412,9 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
 
   assert(headerRidB);
   Page * p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   recordid * check = malloc(stasis_record_type_to_size(stasis_record_dereference(xid, p, rid).size));
+  unlock(p->rwlatch);
   releasePage(p);
   rid.slot = 0;
   Tread(xid, rid, check);

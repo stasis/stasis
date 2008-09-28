@@ -150,27 +150,23 @@ int stasis_page_impl_register(page_impl p) {
   return 0;
 }
 void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
-
+  assertlocked(p->rwlatch);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
-
-  readlock(p->rwlatch, 225);
   assert(rid.size <= BLOB_THRESHOLD_SIZE);
 
   byte * buf = stasis_record_write_begin(xid, p, rid);
   memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
-  unlock(p->rwlatch);
-
+  stasis_record_write_done(xid,p,rid,buf);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
 int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
+  assertlocked(p->rwlatch);
   assert(rid.page == p->id);
-
   assert(rid.size <= BLOB_THRESHOLD_SIZE);
 
-  readlock(p->rwlatch, 0);
   const byte * dat = stasis_record_read_begin(xid,p,rid);
   memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
-  unlock(p->rwlatch);
+
   return 0;
 
 }
@@ -178,6 +174,8 @@ int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
    @todo stasis_record_dereference should dispatch via page_impl...
  */
 recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
+  assertlocked(p->rwlatch);
+
   int page_type = *stasis_page_type_ptr(p);
   if(page_type == INDIRECT_PAGE) {
     rid = dereferenceIndirectRID(xid, rid);
@@ -191,6 +189,8 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
 
 static int recordWarnedAboutPageTypeKludge = 0;
 const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
+  assertlocked(p->rwlatch);
+
   int page_type = *stasis_page_type_ptr(p);
   if(!page_type) {
     page_type = FIXED_PAGE;
@@ -203,6 +203,8 @@ const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
  return page_impls[page_type].recordRead(xid, p, rid);
 }
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
+  assertlocked(p->rwlatch);
+
   int page_type = *stasis_page_type_ptr(p);
   if(!page_type) {
     page_type = FIXED_PAGE;
@@ -228,16 +230,19 @@ void stasis_record_write_done(int xid, Page *p, recordid rid, byte *b) {
   }
 }
 int stasis_record_type_read(int xid, Page *p, recordid rid) {
+  assertlocked(p->rwlatch);
   if(page_impls[*stasis_page_type_ptr(p)].recordGetType) 
     return page_impls[*stasis_page_type_ptr(p)].recordGetType(xid, p, rid);
   else
     return INVALID_SLOT;
 }
 void stasis_record_type_write(int xid, Page *p, recordid rid, int type) {
+  assertlocked(p->rwlatch);
   page_impls[*stasis_page_type_ptr(p)]
     .recordSetType(xid, p, rid, type);
 }
 int stasis_record_length_read(int xid, Page *p, recordid rid) {
+  assertlocked(p->rwlatch);
   return page_impls[*stasis_page_type_ptr(p)]
     .recordGetLength(xid,p,rid);
 }

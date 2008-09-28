@@ -195,7 +195,12 @@ static void Redo() {
           if(ce->update.page == INVALID_PAGE) {
             // logical redo of end of NTA; no-op
           } else {
-            undoUpdate(ce, e->LSN);
+            // ughh; need to grab page here so that abort() can be atomic below...
+            Page * p = loadPage(e->xid, ce->update.page);
+            writelock(p->rwlatch,0);
+            undoUpdate(ce, e->LSN, p);
+            unlock(p->rwlatch);
+            releasePage(p);
           }
           FreeLogEntry(ce);
 	} break;
@@ -252,11 +257,26 @@ static void Undo(int recovery) {
             // we've finished physical undo for this op
           } else {
             DEBUG("physical update\n");
+
+            // atomically log (getting clr), and apply undo.
+            // otherwise, there's a race where the page's LSN is
+            // updated before we undo.
+            Page* p = NULL;
+            if(e->update.page != INVALID_PAGE) {
+              p = loadPage(e->xid, e->update.page);
+              writelock(p->rwlatch,0);
+            }
+
             // Log a CLR for this entry
             lsn_t clr_lsn = LogCLR(e);
             DEBUG("logged clr\n");
 
-            undoUpdate(e, clr_lsn);
+            undoUpdate(e, clr_lsn, p);
+
+            if(p) {
+              unlock(p->rwlatch);
+              releasePage(p);
+            }
 
             DEBUG("rolled back clr's update\n");
           }
@@ -267,7 +287,7 @@ static void Undo(int recovery) {
           const LogEntry * ce = LogReadLSN(((CLRLogEntry*)e)->clr.compensated_lsn);
           if(ce->update.page == INVALID_PAGE) {
             DEBUG("logical clr\n");
-            undoUpdate(ce, 0); // logical undo; effective LSN doesn't matter
+            undoUpdate(ce, 0, 0); // logical undo; effective LSN doesn't matter
           } else {
             DEBUG("physical clr: op %d lsn %lld\n", ce->update.funcID, ce->LSN);
             // no-op.  Already undone during redo.  This would redo the original op.

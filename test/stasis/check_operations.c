@@ -101,20 +101,24 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("B\n");
   
   p = loadPage(xid, rid.page);
-  // manually fill in UNDO field 
-  //stasis_record_read(xid, p, rid, ((byte*)(setToTwo) + sizeofLogEntry(setToTwo) - rid.size));
-
+  writelock(p->rwlatch,0);
+  // manually fill in UNDO field
   stasis_record_write(xid, p, lsn, rid, (byte*)&buf);
+  unlock(p->rwlatch);
   releasePage(p);
   setToTwo->LSN = 10;
   
   DEBUG("C\n");
   p = loadPage(xid, rid.page);
+  writelock(p->rwlatch,0);
   doUpdate(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
+  unlock(p->rwlatch);
   releasePage(p);
 
   p = loadPage(xid, rid.page);
+  writelock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
+  unlock(p->rwlatch);
   releasePage(p);
 
   assert(buf == 2);
@@ -125,29 +129,33 @@ START_TEST(operation_physical_do_undo) {
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   assert(10 == stasis_page_lsn_read(p)); // "page lsn not set correctly."
-  unlock(p->rwlatch);
 
   setToTwo->LSN = 5;
 
-  undoUpdate(setToTwo, 12); //, p, 8);  /* Should succeed: log LSN is lower than page LSN, but effective LSN is higher than page LSN */
+  undoUpdate(setToTwo, 12, p); /* Should succeed: log LSN is lower than page LSN, but effective LSN is higher than page LSN */
+
+  unlock(p->rwlatch);
   releasePage(p);
 
   p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
+  unlock(p->rwlatch);
   releasePage(p);
 
   assert(buf == 1);
-  
+
   DEBUG("E\n");
   redoUpdate(setToTwo);
-  
 
   p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
+  unlock(p->rwlatch);
   releasePage(p);
 
   assert(buf == 1);
-  
+
   /* Now, simulate scenarios from normal operation:
          do the operation, and update the LSN, (update happens)
 	 then undo, and update the LSN again.  (undo happens)
@@ -162,13 +170,14 @@ START_TEST(operation_physical_do_undo) {
   buf = 1;
 
   p = loadPage(xid, rid.page);
+  writelock(p->rwlatch,0);
   stasis_record_write(xid, p, lsn, rid, (byte*)&buf);
+  unlock(p->rwlatch);
   releasePage(p);
-  /* Trace of test: 
+  /* Trace of test:
 
   PAGE LSN     LOG LSN      CLR LSN    TYPE        SUCCEED?
-              
-  2             10          -          do write    YES      (C) 
+  2             10          -          do write    YES      (C)
   10             5          8          undo write  YES      (D)
   8              5          -          redo write  NO       (E)
   8             10          -          redo write  YES      (F)
@@ -190,14 +199,15 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);
 
   p = loadPage(xid, rid.page);
+  writelock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 2);
 
   DEBUG("G undo set to 2\n");
-  undoUpdate(setToTwo, 20); //, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
+  undoUpdate(setToTwo, 20, p);   /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
-
+  unlock(p->rwlatch);
   assert(buf == 1);
   releasePage(p);
   
@@ -205,7 +215,7 @@ START_TEST(operation_physical_do_undo) {
   redoUpdate(setToTwo);        /* Fails */
 
   p = loadPage(xid, rid.page);
-
+  writelock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
   assert(buf == 1);
@@ -214,12 +224,16 @@ START_TEST(operation_physical_do_undo) {
 
   DEBUG("I redo set to 2\n");
 
+  unlock(p->rwlatch);
   releasePage(p);
-  redoUpdate(setToTwo);        /* Succeeds */
-  p = loadPage(xid, rid.page);
-  stasis_record_read(xid, p, rid, (byte*)&buf);
 
+  redoUpdate(setToTwo);        /* Succeeds */
+
+  p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
+  stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 2);
+  unlock(p->rwlatch);
   releasePage(p);
   Tdeinit();
 }
@@ -233,25 +247,25 @@ START_TEST(operation_prepare) {
   /* Check this sequence prepare, action, crash, recover, read, action, abort, read again. */
 
   Tinit();
-  
+
   int loser = Tbegin();
   int prepared = Tbegin();
   int winner = Tbegin();
-  
+
   recordid a = Talloc(winner, sizeof(int));
   recordid b = Talloc(winner, sizeof(int));
-  
+
   int one =1;
   int two =2;
   int three=3;
 
   Tset(winner, a, &one);
   Tset(winner, b, &one);
-  
+
   Tset(loser, a, &three);
   Tset(prepared, b, &three);
 
-  Tprepare(prepared); //, a);
+  Tprepare(prepared);
 
   Tset(prepared, b, &two);
 
@@ -416,7 +430,7 @@ START_TEST(operation_instant_set) {
   Tinit();
 
   int xid = Tbegin();
-  recordid rid = Talloc(xid, sizeof(int));  /** @todo probably need an immediate version of TpageAlloc... */
+  recordid rid = Talloc(xid, sizeof(int));  // @todo probably need an immediate version of TpageAlloc... 
   int one = 1;
   int two = 2;
   int three = 3;
@@ -447,7 +461,7 @@ START_TEST(operation_instant_set) {
  
 
 
-} END_TEST
+} END_TEST 
 
 START_TEST(operation_set_range) {
   Tinit();
@@ -589,11 +603,18 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
+  /*(void)operation_physical_do_undo;
+  (void)operation_nestedTopAction;
+  (void)operation_set_range;
+  (void)operation_prepare;
+  (void)operation_alloc_test;
+  (void)operation_array_list;*/
+
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_set_range);
-  if(loggerType != LOG_TO_MEMORY) { 
+  if(loggerType != LOG_TO_MEMORY) {
     tcase_add_test(tc, operation_prepare);
   }
   tcase_add_test(tc, operation_alloc_test);

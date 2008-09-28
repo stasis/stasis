@@ -88,16 +88,15 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
     unlock(p->rwlatch);
     pthread_mutex_unlock(&lsn_mutex);
 
-    if(! first ) {
+    if(!first) {
       for(k = 0; k < 100; k++) {
-	stasis_record_read(1, p, rid[k], (byte*)&j);
-
-	assert((j + 1) ==  i + k);
         writelock(p->rwlatch,0);
+        stasis_record_read(1, p, rid[k], (byte*)&j);
+        assert((j + 1) ==  i + k);
         stasis_record_free(-1, p, rid[k]);
         stasis_page_lsn_write(-1, p, this_lsn);
         unlock(p->rwlatch);
-	sched_yield();
+        sched_yield();
       }
     } 
     
@@ -175,9 +174,9 @@ static void* worker_thread(void * arg_ptr) {
     pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {
+      writelock(p->rwlatch,0);
       stasis_record_read(1, p, rid, (byte*)&j);
       assert((j + 1) ==  i);
-      writelock(p->rwlatch,0);
       stasis_record_free(-1, p, rid);
       stasis_page_lsn_write(-1, p, this_lsn);
       unlock(p->rwlatch);

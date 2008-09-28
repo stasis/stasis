@@ -202,10 +202,10 @@ void testFunctions(){
   Page *  p1 = loadPage(xid, pageid1);
 
   // calling functions
-  
+  writelock(p1->rwlatch,0);
   initializeNewBTreeNode(xid, p1, rid1);
   insert(xid, p1, rid1, 3);
-
+  unlock(p1->rwlatch);
 
   // cleaning up
 
@@ -277,13 +277,14 @@ int SimpleExample(){
   rid2.slot = 0; 
 
   // @todo This is a messy way to do this...
-  unlock(p1->rwlatch);
- 
+
   stasis_record_write(xid, p1, 1, rid2, b1);
   stasis_record_read(xid, p1, rid2, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
   //  initializeNewBTreeNode(p1, rid1); 
+
+  unlock(p1->rwlatch);
 
   releasePage(p1);
   Tcommit(xid);

@@ -66,40 +66,17 @@ terms specified in this license.
 
 #include <stasis/constants.h>
 #include <stasis/transactional.h>
-#include <stasis/logger/logEntry.h> 
+#include <stasis/logger/logEntry.h>
 #include <stasis/bufferManager.h>
 #include <stasis/iterator.h>
 #include <stasis/arrayCollection.h>
 BEGIN_C_DECLS
 
 
-/** 
+/**
  * function pointer that the operation will run
  */
-//typedef int (*Function)(int xid, Page * p, slotid_t slot, int64_t arg_size, lsn_t lsn, const void *d);
-typedef int (*Function)(const LogEntry* e, Page * p); //, slotid_t slot, int64_t arg_size, lsn_t lsn, const void *d);
-
-/**
-
-*/
-
-/**
-   If the Operation struct's sizeofData is set to this value, then the
-   size field of the recordid is used to determine the size of the
-   argument passed into the operation.
- */
-//#define SIZEOF_RECORD -1
-/** 
-    Logical log entries (such as those used by nested top actions
-    have a null recordid, as they are not assoicated with a specific page
-    
-    If a log entry is not associated with a specific page, the page id can 
-    be overloaded to hold the size of the associated log entry.  Contrast
-    this with the description of SIZEOF_RECORD, which is used when the
-    operation uses a variable length argument, but is associated with 
-    a specfic page.
-*/
-//#define SIZEIS_PAGEID -2
+typedef int (*Function)(const LogEntry* e, Page * p);
 
 typedef struct {
   /**
@@ -114,7 +91,7 @@ typedef struct {
 
       - Periodically checkpoint, syncing the data store to disk, and
         writing a checkpoint operation.  No writes can be serviced
-        during the sync, and this implies 'no steal'.  See: 
+        during the sync, and this implies 'no steal'.  See:
 
         @@inproceedings{ woo97accommodating,
 	author = "Seung-Kyoon Woo and Myoung-Ho Kim and Yoon-Joon Lee",
@@ -127,7 +104,7 @@ typedef struct {
 	for a more complex scheme involving a hybrid logical/physical
 	logging system that does not implement steal.
 
-	The other option: 
+	The other option:
 
       - Get rid of operations that span records entirely by
         splitting complex logical operations into simpler ones.
@@ -141,7 +118,6 @@ typedef struct {
 	general, since other transactions could read dirty information
 	from the pinned pages, producsing nonsensical log entries that
 	preceed the current transaction's log entry.
-	
    */
   /**
      index into operations table of undo function
@@ -174,13 +150,20 @@ typedef struct {
 
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 
-/** Performs an operation during normal execution. 
+/**
+    Performs an operation during normal execution.
 
     Does not write to the log, and assumes that the operation's
     results are not already in the buffer manager.
-*/
+
+    @param e the logentry to play forward.  will be played forward regardless of lsn's
+
+    @param p the page the update should be applied to (no support for
+             logical redo).  p->rwlatch should be writelock()'ed
+ */
 void doUpdate(const LogEntry * e, Page * p);
-/** Undo the update under normal operation, and during recovery. 
+/**
+    Undo the update under normal operation, and during recovery.
 
     For logical undo, this unconditionally executes the requested operation.
 
@@ -189,9 +172,11 @@ void doUpdate(const LogEntry * e, Page * p);
 
     @param e The log entry containing the operation to be undone.
     @param clr_lsn The lsn of the clr that records this undo operation.
+    @param p Like doUpdate(), this function is called during forward operation,
+             so p->rwlatch must be writelock()'ed
 */
-void undoUpdate(const LogEntry * e, lsn_t clr_lsn);
-/** 
+void undoUpdate(const LogEntry * e, lsn_t clr_lsn, Page * p);
+/**
     Redoes an operation during recovery.  This is different than
     doUpdate because it checks to see if the operation needs to be redone
     before redoing it. (if(e->lsn > e->rid.lsn) { doUpdate(e); } return)
@@ -199,7 +184,8 @@ void undoUpdate(const LogEntry * e, lsn_t clr_lsn);
     Also, this is the only function in operations.h that can take
     either CLR or UPDATE log entries.  The other functions can     handle update entries.
 
-    Does not write to the log.
+    Does not write to the log.  No need for a page parameter, Stasis' recovery is
+    single-threaded, so redoUpdate can latch the page itself.
 */
 void redoUpdate(const LogEntry * e);
 

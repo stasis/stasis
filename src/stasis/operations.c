@@ -58,16 +58,14 @@ Operation operationsTable[MAX_OPERATIONS];
 
 void doUpdate(const LogEntry * e, Page * p) {
   assert(p);
-
+  assertlocked(p->rwlatch);
 
   operationsTable[e->update.funcID].run(e, p);
 
-  writelock(p->rwlatch,0);
   DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
          e->LSN, e->update.page, stasis_page_lsn_read(p));
 
   stasis_page_lsn_write(e->xid, p, e->LSN);
-  unlock(p->rwlatch);
 
 }
 
@@ -89,20 +87,18 @@ void redoUpdate(const LogEntry * e) {
     // is for this log type.
 
     // contrast with doUpdate(), which doesn't check the .id field.
-    stasis_page_lsn_write(e->xid, p, e->LSN); //XXX do this after run();
-    unlock(p->rwlatch); /// XXX keep lock while calling run();
-
     operationsTable[operationsTable[e->update.funcID].id]
       .run(e,p);
+    stasis_page_lsn_write(e->xid, p, e->LSN);
   } else {
     DEBUG("OPERATION xid %d skip redo, %lld {%lld:%lld}\n", e->xid,
            e->LSN, e->update.page, stasis_page_lsn_read(p));
-    unlock(p->rwlatch);
   }
+  unlock(p->rwlatch);
   releasePage(p);
 }
 
-void undoUpdate(const LogEntry * e, lsn_t effective_lsn) {
+void undoUpdate(const LogEntry * e, lsn_t effective_lsn, Page * p) {
   // Only handle update entries
   assert(e->type == UPDATELOG);
 
@@ -116,19 +112,16 @@ void undoUpdate(const LogEntry * e, lsn_t effective_lsn) {
 
     operationsTable[undo].run(e,0);
   } else {
-    Page * p = loadPage(e->xid, e->update.page);
-    writelock(p->rwlatch,0);
+    assert(p->id == e->update.page);
+
     if(stasis_page_lsn_read(p) < effective_lsn) {
       DEBUG("OPERATION xid %d Undo, %lld {%lld:%lld}\n", e->xid,
              e->LSN, e->update.page, stasis_page_lsn_read(p));
-      stasis_page_lsn_write(e->xid, p, effective_lsn); // XXX call after run()
-      unlock(p->rwlatch);  // release after run()
       operationsTable[undo].run(e,p);
+      stasis_page_lsn_write(e->xid, p, effective_lsn);
     } else {
       DEBUG("OPERATION xid %d skip undo, %lld {%lld:%lld}\n", e->xid,
              e->LSN, e->update.page, stasis_page_lsn_read(p));
-      unlock(p->rwlatch);
     }
-    releasePage(p);
   }
 }

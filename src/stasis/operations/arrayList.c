@@ -67,9 +67,6 @@ static int op_array_list_alloc(const LogEntry* e, Page* p) {
   int multiplier = tlp->multiplier;
   int size = tlp->size;
 
-  /* Allocing this page -> implicit lock, but latch to conformt to
-   fixedPage's interface. */
-  writelock(p->rwlatch, 0);
   stasis_fixed_initialize_page(p, sizeof(int), stasis_fixed_records_per_page(sizeof(int)));
 
   recordid countRid, multiplierRid, slotSizeRid, maxOffset, firstDataPageRid;
@@ -95,7 +92,6 @@ static int op_array_list_alloc(const LogEntry* e, Page* p) {
   ret.page = firstPage;
   ret.slot = 0;        /* slot = # of slots in array... */
   ret.size = size;
-  unlock(p->rwlatch);
 
   return 0;
 }
@@ -190,9 +186,6 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
 
 /*----------------------------------------------------------------------------*/
 
-/** 
-    @todo XXX latching for dereference arraylist rid (and other dereference functions...) 
-*/
 recordid dereferenceArrayListRid(int xid, Page * p, int offset) {
   readlock(p->rwlatch,0);
   TarrayListParameters tlp = pageToTLP(xid, p);
