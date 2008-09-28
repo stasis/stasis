@@ -4,38 +4,15 @@
 #include <string.h>
 #include <ctype.h>
 #include "algebra.h"
+//#include "old_algebra.h"
+#include "lang/ast.h"
 #include <stdlib.h>
 #include <errno.h>
 #define SELECT_ITERATOR (USER_DEFINED_ITERATOR+1)
 #define PROJECT_ITERATOR (USER_DEFINED_ITERATOR+2)
 #define KEYVAL_ITERATOR (USER_DEFINED_ITERATOR+3)
 #define JOIN_ITERATOR (USER_DEFINED_ITERATOR+4)
-
-/* static void ts_close(int xid, void * it) {
-
-}
-static int ts_next(int xid, void * it) {
-
-}
-static int ts_tryNext(int xid, void * it) {
-
-}
-static int ts_key(int xid, void * it, byte ** key) {
-
-}
-static int ts_value(int xid, void * it, byte ** val) {
-
-}
-static void ts_tupleDone(int xid, void * it) {
-
-}
-static void ts_releaseLock(int xid, void *it) {
-
-} */
-/*static const lladdIterator_def_t ts_it = {
-  ts_close, ts_next, ts_tnext, ts_key, ts_value, ts_tupleDone, noopTupDone
-  }; */
-
+#define KEYVALTUP_ITERATOR (USER_DEFINED_ITERATOR+3)
 
 char ** split(char * in, char ** freeme, int* count, char * delim) {
   *freeme = strdup(in);
@@ -52,48 +29,6 @@ char ** split(char * in, char ** freeme, int* count, char * delim) {
   ret = realloc(ret, sizeof(char*) * ((*count)+1));
   ret[*count]=0;
   return ret;
-}
-
-char * tplRid(recordid rid) {
-  char * ret;
-  asprintf(&ret, "%lld,%lld,%lld", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
-  return ret;
-}
-recordid ridTpl(char * tpl) {
-  int count;
-  char * freeme;
-  char ** tok = split(tpl, &freeme, &count, ", ");
-  recordid ret;
-  errno = 0;
-  assert(count == 3);
-  ret.page = strtol(tok[0],NULL,10);
-  ret.slot = strtol(tok[1],NULL,10);
-  ret.size = strtol(tok[2],NULL,10);
-  if(errno) {
-    perror("Couldn't parse rid");
-    abort();
-  }
-  free(freeme);
-  free(tok);
-  return ret;
-}
-
-char ** tplDup(char ** tup) {
-  int i = 0;
-  for(; tup[i]; i++) { } // i = num non-null entries
-  char ** ret = malloc(sizeof(char**) * (i+1));
-  ret[i] = 0;
-  while(i) {
-    i--;
-    ret[i] = strdup(tup[i]);
-  }
-  return ret;
-}
-void tplFree(char ** tup) {
-  for(int i = 0; tup[i]; i++) {
-    free(tup[i]);
-  }
-  free(tup);
 }
 
 int isWhitelistChar(char c) {
@@ -138,17 +73,56 @@ int isWhitelistChar(char c) {
 	 c == '\\');
 }
 
+
+
+/* static void ts_close(int xid, void * it) {
+
+}
+static int ts_next(int xid, void * it) {
+
+}
+static int ts_tryNext(int xid, void * it) {
+
+}
+static int ts_key(int xid, void * it, byte ** key) {
+
+}
+static int ts_value(int xid, void * it, byte ** val) {
+
+}
+static void ts_tupleDone(int xid, void * it) {
+
+}
+static void ts_releaseLock(int xid, void *it) {
+
+} */
+/*static const lladdIterator_def_t ts_it = {
+  ts_close, ts_next, ts_tnext, ts_key, ts_value, ts_tupleDone, noopTupDone
+  }; */
+
+
+static lladdIterator_t* ReferentialAlgebra_KeyValTupIterator(int xid, lladdIterator_t * it, datatype_t typ);
+
 lladdIterator_t* ReferentialAlgebra_OpenTableScanner(int xid, recordid catalog,
 						    char * tablename) {
-  char * table;
+  byte * table;
   size_t sz = ThashLookup(xid, catalog, (byte*)tablename, strlen(tablename)+1, (byte**)&table);
   if(sz == -1) {
     printf("Unknown table %s\n", tablename);
     return 0;
   }
-  assert(sz == strlen(table)+1);
-  recordid tableRid = ridTpl(table);
-  lladdIterator_t * it = ThashGenericIterator(xid, tableRid);
+  //  assert(sz == strlen(table)+1);
+  /*recordid tableRid = ridTpl(table); */
+  tuple_t tpl = tupleByte(table);
+  recordid tableRid = ridTuple(tpl);
+
+  assert(tpl.count >=4);
+  assert(tpl.type[3] == int64_typ);
+
+  // XXX assumes first column is a string
+  lladdIterator_t * it = ReferentialAlgebra_KeyValTupIterator(xid, ThashGenericIterator(xid, tableRid), tpl.col[3].int64);
+
+  tupleFree(tpl);
   free(table);
   return it;
 }
@@ -160,12 +134,98 @@ typedef struct select_predicate {
 
 typedef struct select_impl {
   lladdIterator_t * it;
-  char ** p;
+  union_cmp * p;
 } select_impl;
 
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
 ///                KEY VALUE TABLE FORMAT                                      ///
+///                                                                            ///
+//////////////////////////////////////////////////////////////////////////////////
+
+typedef struct kvt_impl {
+  datatype_t keytype;
+  tuple_t t;
+  lladdIterator_t * it;
+} kvt_impl;
+
+static lladdIterator_t* ReferentialAlgebra_KeyValTupIterator(int xid, lladdIterator_t * it, datatype_t typ) {
+  kvt_impl * kvt = malloc(sizeof(kvt_impl));
+  kvt->keytype = typ;
+  kvt->t = tupleAlloc();
+  kvt->it = it;
+  lladdIterator_t * new_it = malloc(sizeof(lladdIterator_t));
+  new_it->type = KEYVALTUP_ITERATOR;
+  new_it->impl = kvt;
+  return new_it;
+}
+
+static void kvt_close(int xid, void * it) {
+  kvt_impl * kvt = it;
+  Titerator_close(xid, kvt->it);
+  tupleFree(kvt->t);
+  free(kvt);
+}
+static int mkKvtTuple(int xid, kvt_impl * kvt) {
+    byte * keybytes;
+    byte * valbytes;
+    Titerator_key(xid,kvt->it,&keybytes);
+    Titerator_value(xid,kvt->it,&valbytes);
+    kvt->t = tupleAlloc();
+    if(kvt->keytype == string_typ) {
+      kvt->t = tupleCatString(kvt->t, (char*)keybytes);
+    } else if(kvt->keytype == int64_typ) {
+      kvt->t = tupleCatInt64(kvt->t, *(int64_t*)keybytes);
+    } else {
+      abort();
+    }
+    tuple_t valtuple = tupleByte(valbytes);
+    kvt->t = tupleCatTuple(kvt->t, valtuple);
+    tupleFree(valtuple);
+    return 1;
+}
+
+static int kvt_next(int xid, void * it) {
+  kvt_impl * kvt = it;
+  int ret;
+  if((ret=Titerator_next(xid, kvt->it))) {
+    tupleFree(kvt->t);
+    mkKvtTuple(xid, kvt);
+  }
+  return ret;
+}
+static int kvt_tryNext(int xid, void * it) {
+  kvt_impl * kvt = it;
+  //  if(kv->catted) { free(kv->catted); kv->catted = 0; }
+  int ret;
+  if((ret = Titerator_tryNext(xid, kvt->it))) {
+    tupleFree(kvt->t);
+    mkKvtTuple(xid,kvt);
+  }
+  return ret;
+}
+static int kvt_key(int xid, void * it, byte ** key) {
+  kvt_impl * kvt = it;
+  *key = (byte*)&kvt->t;
+  return 1;
+}
+static int kvt_value(int xid, void * it, byte ** val) {
+  kvt_impl * kvt = it;
+  *val = (byte*)&kvt->t;
+  return 1;
+}
+static void kvt_tupleDone(int xid, void * it) {
+  kvt_impl * kvt = it;
+  Titerator_tupleDone(xid, kvt->it);
+}
+static void kvt_releaseLock(int xid, void *it) {
+  kvt_impl * kvt = it;
+  Titerator_releaseLock(xid, kvt->it);
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+///                                                                            ///
+///                KEY VALUE TABLE FORMAT (obsolete version)                   ///
 ///                                                                            ///
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -201,17 +261,17 @@ static int kv_tryNext(int xid, void * it) {
   return Titerator_tryNext(xid, kv->it);
 }
 static int mkCatted(int xid, kv_impl * kv) {
-  char * key = 0;
-  char * val = 0;
+  byte * key = 0;
+  byte * val = 0;
   Titerator_key(xid, kv->it, (byte**)&key);
   Titerator_value(xid, kv->it, (byte**)&val);
 
-  if(!strlen(val)) {
-    kv->catted = strdup(key);
+  if(!strlen((char*)val)) {
+    kv->catted = strdup((char*)key);
   } else {
-    kv->catted = malloc(strlen(key) + 1 + strlen(val) + 1);
+    kv->catted = malloc(strlen((char*)key) + 1 + strlen((char*)val) + 1);
     kv->catted[0]=0;
-    strcat(strcat(strcat(kv->catted,key),","),val);
+    strcat(strcat(strcat(kv->catted,(char*)key),","),(char*)val);
   }
   return(strlen(kv->catted));
 }
@@ -251,11 +311,8 @@ static void kv_releaseLock(int xid, void *it) {
 ///                SELECT                                                      ///
 ///                                                                            ///
 //////////////////////////////////////////////////////////////////////////////////
-lladdIterator_t* ReferentialAlgebra_Select(int xid, lladdIterator_t * it, char ** pred) {
-  if(!it) {
-    tplFree(pred);
-    return 0;
-  }
+lladdIterator_t* ReferentialAlgebra_Select(int xid, lladdIterator_t * it, union_cmp * pred) {
+  if(!it) return 0;
   select_impl * s = malloc(sizeof(select_impl));
   s->p = pred;
   s->it = it;
@@ -300,64 +357,110 @@ char * strtokempt(char *str, const char * delim, char ** saveptr, int * extra) {
   return ret;
 }
 
-static int matchPredicate(const char const * tup, char ** pred) {
-  char * tupcpy = strdup(tup);
-  int colcount = 0;
-  int predcount = 0;
-  while(pred[predcount]) {predcount++;}
-  char ** tok = malloc((predcount+1) * sizeof(char**));
+static int matchUnionCmp(tuple_t tup, union_cmp * cmp) {
+  assert(cmp->count == 1); // not implmented
 
-  char * ths;
-  const char const * DELIM = ",";
-  char * strtoks;
-  int extra = 0;
-  if((ths = strtokempt(tupcpy, DELIM,&strtoks,&extra))) {
-    colcount++;
-    if(colcount > predcount) {
-      free(tupcpy);
-      free(tok);
-      return 0;
-    } else {
-      tok[colcount-1] = ths;
-    }
-  }
-  while((ths = strtokempt(NULL, DELIM,&strtoks,&extra))) {
-    colcount++;
-    if(colcount > predcount) {
-      free(tupcpy);
-      free(tok);
-      return 0;
-    } else {
-      tok[colcount-1] = ths;
-    }
-  }
-  int match = 0;
-  if(colcount == predcount) {
-    match=1;
-    for(int i = 0; i < predcount; i++) {
-      if(strcmp(pred[i],"*") && strcmp(pred[i], tok[i])) {
-	match = 0;
-	break;
+  for(col_t i = 0; i < cmp->ents[0]->count; i++) {
+    assert(cmp->ents[0]->ents[i]->comparator == equal_typ); // XXX
+    enum cmp_side_typ l = cmp->ents[0]->ents[i]->lhs_typ;
+    enum cmp_side_typ r = cmp->ents[0]->ents[i]->rhs_typ;
+
+    if(l == col_typ && r == val_typ) {
+      col_entry * lc = cmp->ents[0]->ents[i]->lhs.colent;
+      val_entry * rv = cmp->ents[0]->ents[i]->rhs.valent;
+
+      assert(lc->typ == colint_typ); //XXX colstr_typ unimplemented
+
+      // (0) Does the column exist?
+      if(tup.count <= lc->u.colnum) { printf("XXX tuple is too short\n"); return 0; }
+      // (1) No type coercion.
+      if(tup.type[lc->u.colnum] != rv->typ) { return 0; }
+
+      // (2) Enumerate over known types
+      if(rv->typ == int64_typ) {
+	if(tup.col[lc->u.colnum].int64 != rv->u.integ) { return 0; }
+      } else if(rv->typ == string_typ) {
+	if(strcmp(tup.col[lc->u.colnum].string, rv->u.str)) { return 0; }
+      } else {
+	abort();
       }
+    } else if (l == val_typ && r == col_typ) {
+      col_entry * rc = cmp->ents[0]->ents[i]->rhs.colent;
+      val_entry * lv = cmp->ents[0]->ents[i]->lhs.valent;
+
+      assert(rc->typ == colint_typ); //XXX colstr_typ unimplemented
+
+      // (0) Does the column exist?
+      if(tup.count <= rc->u.colnum) { printf("XXX tuple is too short\n"); return 0; }
+
+      // (1) No type coercion.
+      if(tup.type[rc->u.colnum] != lv->typ) { return 0; }
+
+      // (2) Enumerate over known types
+      if(lv->typ == int64_typ) {
+	if(tup.col[rc->u.colnum].int64 != lv->u.integ) { return 0; }
+      } else if(lv->typ == string_typ) {
+	if(strcmp(tup.col[rc->u.colnum].string, lv->u.str)) { return 0; }
+      } else {
+	abort();
+      }
+    } else if (l == col_typ && r == col_typ) {
+      col_entry * rc = cmp->ents[0]->ents[i]->rhs.colent;
+      col_entry * lc = cmp->ents[0]->ents[i]->lhs.colent;
+      assert(rc->typ == colint_typ); //XXX unimplemented
+      assert(lc->typ == colint_typ); //XXX unimplemented
+
+      // (0) Do the columns exist?
+      if(tup.count <= lc->u.colnum || tup.count <= rc->u.colnum) {
+	printf("XXX tuple is too short\n");
+	return 0;
+      }
+
+      // (1) No type coercion
+      if(tup.type[rc->u.colnum] != tup.type[lc->u.colnum]) { return 0; }
+
+      // (2) Enumerate over types
+      if(tup.type[rc->u.colnum] == int64_typ) {
+	if(tup.col[rc->u.colnum].int64 != tup.col[lc->u.colnum].int64) { return 0; }
+      } else if(tup.type[rc->u.colnum] == string_typ) {
+	if(strcmp(tup.col[rc->u.colnum].string, tup.col[lc->u.colnum].string)) { return 0; }
+      } else {
+	abort();
+      }
+    } else if (l == val_typ && r == val_typ) {
+      val_entry * rv = cmp->ents[0]->ents[i]->rhs.valent;
+      val_entry * lv = cmp->ents[0]->ents[i]->lhs.valent;
+      // (0) Don't need length check; not examining tuple
+      // (1) No type coercion.
+      if(rv->typ != lv->typ) { return 0; }
+      // (2) Enumerate over types
+      if(rv->typ == int64_typ) {
+	if(rv->u.integ != lv->u.integ) { return 0; }
+      } else if(rv->typ == string_typ) {
+	if(strcmp(rv->u.str, lv->u.str)) { return 0; }
+      } else {
+	abort();
+      }
+    } else {
+      abort();
     }
   }
-  free(tupcpy);
-  free(tok);
-  return match;
+  return 1;
 }
+
 static void s_close(int xid, void * it) {
   select_impl * impl = it;
   Titerator_close(xid, impl->it);
-  tplFree(impl->p);
+  //tplFree(impl->p);
   free(impl);
 }
 static int s_next(int xid, void * it) {
   select_impl * impl = it;
   while(Titerator_next(xid,impl->it)) {
-    char * val;
-    Titerator_value(xid, impl->it, (byte**)&val);
+    byte* val;
+    Titerator_value(xid, impl->it, &val);
     //    printf("matching w/ %s\n", val);
-    if(matchPredicate(val, impl->p)) {
+    if(matchUnionCmp(*(tuple_t*)val, impl->p)) {
       return 1;
     } else {
       Titerator_tupleDone(xid, impl->it);
@@ -391,99 +494,74 @@ typedef struct project_impl {
   int count;
   short * cols;
   lladdIterator_t * it;
-  char * val;
+  tuple_t tup;
+  int haveTup;
 } project_impl;
 
-lladdIterator_t* ReferentialAlgebra_Project(int xid, lladdIterator_t * it, char ** project) {
-  if(!it) {
-    if(project) {
-      tplFree(project);
-    }
-    return 0;
-  }
+lladdIterator_t* ReferentialAlgebra_Project(int xid, lladdIterator_t * it, col_tuple * project) {
+  if(!it) return 0;
   project_impl * p = malloc(sizeof(project_impl));
-  int projectcount = 0;
-  while(project[projectcount]){projectcount++;}
-  p->count = projectcount;
-  p->cols = malloc(sizeof(short) * projectcount);
+  p->count = project->count;
+  p->cols = malloc(sizeof(short) * p->count);
   p->it = it;
-  p->val = 0;
-  for(int i = 0; project[i]; i++) {
+  p->haveTup = 0;
+  for(int i = 0; i < p->count; i++) {
     errno = 0;
-    char * eos;
-    long col = strtol(project[i], &eos, 10);
-    if(*eos!='\0' || ((col == LONG_MIN || col == LONG_MAX) && errno)) {
-      printf("Couldn't parse column descriptor\n");
-      tplFree(project);
-      free(p->cols);
-      free(p);
-      return 0;
-    } else {
-      p->cols[i] = col;
-    }
+    assert(project->ents[i]->typ == colint_typ); // XXX
+    p->cols[i] = project->ents[i]->u.colnum;
   }
   lladdIterator_t * new_it = malloc(sizeof(lladdIterator_t));
   new_it->type = PROJECT_ITERATOR;
   new_it->impl = p;
-  tplFree(project);
   return new_it;
 }
 
 static void p_close(int xid, void * it) {
   project_impl * impl = it;
   Titerator_close(xid, impl->it);
+  if(impl->haveTup) { tupleFree(impl->tup); }
   free(impl->cols);
   free(impl);
 }
 static int p_next(int xid, void * it) {
   project_impl * impl = it;
+  if(impl->haveTup) {
+    tupleFree(impl->tup);
+    impl->haveTup = 0;
+  }
   return Titerator_next(xid, impl->it);
+
 }
 static int p_tryNext(int xid, void * it) {
   project_impl * impl = it;
+  abort();
   return Titerator_tryNext(xid, impl->it);
 }
+static int p_value(int xid, void * it, byte ** val) ;
 static int p_key(int xid, void * it, byte ** key) {
-  project_impl * impl = it;
-  return Titerator_key(xid,impl->it,key);
+  return p_value(xid, it, key);
 }
 static int p_value(int xid, void * it, byte ** val) {
   project_impl * impl = it;
   byte * in_val;
-  if(impl->val) {
-    *val = (byte*)impl->val;
+  if(impl->haveTup) {
+    *val = (byte*)&(impl->tup);
     return 1;
   }
   int ret = Titerator_value(xid,impl->it,&in_val);
   if(ret) {
-    char * freeme;
-    int count;
-    char ** tok = split((char*)in_val, &freeme, &count, ", ");
-    *val = malloc(sizeof(char));
-    (*val)[0] = '\0';
-
-    for(int i = 0; i < impl->count; i++) {
-      if(impl->cols[i] < count) {
-	if(i) {
-	  (*val) = realloc((*val), strlen((char*)(*val)) + 1 + strlen(tok[impl->cols[i]]) + 1);
-	  (*val) = (byte*)strcat(strcat((char*)(*val), ","), tok[impl->cols[i]]);
-	} else {
-	  (*val) = realloc((*val), strlen((char*)(*val)) + strlen(tok[impl->cols[i]]) + 1);
-	  (*val) = (byte*)strcat((char*)(*val), tok[impl->cols[i]]);
-	}
-      } else {
-	printf("Tuple is too short for pattern.\n");
-      }
+    impl->tup = tupleAlloc();
+    for(col_t i = 0; i < impl->count; i++) {
+      impl->tup = tupleCatCol(impl->tup, *(tuple_t*)in_val, impl->cols[i]);
     }
-    free(freeme);
-    free(tok);
+    impl->haveTup = 1;
+    *val = (byte*)&(impl->tup);
   }
-  impl->val = (char*)*val;
   return ret;
 }
 static void p_tupleDone(int xid, void * it) {
   project_impl * impl = it;
-  if(impl->val) { free(impl->val); impl->val = 0; }
+  if(impl->haveTup) { tupleFree(impl->tup); impl->haveTup = 0; }
   Titerator_tupleDone(xid,impl->it);
 }
 static void p_releaseLock(int xid, void *it) {
@@ -498,80 +576,118 @@ static void p_releaseLock(int xid, void *it) {
 //////////////////////////////////////////////////////////////////////////////////
 
 typedef struct join_impl {
-  char *** inner_tpls;
-  char ** inner_strs;
-  char ** freethese;
+  tuple_t * inner_tpls;
+  uint64_t inner_count;
   lladdIterator_t * outer_it;
   lladdIterator_t * inner_it;
-  char ** pred;
-  int inner_pos;
-  char ** outer_tpl;
-  char * outer_str;
-  char * freeouter;
+  cmp_tuple * pred;
+  uint64_t inner_pos;
+  int have_outer;
+  tuple_t outer_tpl;
+  tuple_t t;
 } join_impl;
 
-static int matchComparator(char ** tup1,
-			   char ** tup2,
-			   char ** pred) {
-  int match = 1;
-  int col = 0;
-  while(pred[col] && match) {
-    char * lhs_start = pred[col];
-    char * lhs_end = lhs_start;
-    while(isWhitelistChar(*lhs_end)||isalnum(*lhs_end)) { lhs_end++; }
-    int lhs_len = lhs_end - lhs_start;
+// return the value of a column, given a tuple and cmp->lhs_typ, cmp->lhs
+static int resolveColName(/*OUT*/val_col_int *colnum, datatype_t * datatype, int64_t *val_int64, char **val_string,
+			  /*IN*/ tuple_t tup, enum cmp_side_typ cmp_typ, col_entry * colent, val_entry * valent) {
+  //val_col_int colnum;
+  //datatype_t datatype;
+  switch(cmp_typ) {
+  case col_typ: {
+    datatype_t lhs_colreftype = colent->typ;
 
-    char * lhs = calloc(lhs_len+1,sizeof(char));
-    memcpy(lhs, lhs_start, lhs_len);
-
-    char * op_start = lhs_end;
-    while(isblank(*op_start)) { op_start++; }
-    char * op_end = op_start;
-    while(!(isblank(*op_end) || isWhitelistChar(*lhs_end)||isalnum(*op_end))) { op_end++; }
-    int op_len = op_end - op_start;
-
-    char * op = calloc(op_len+1,sizeof(char));
-    memcpy(op, op_start, op_len);
-
-    char * rhs_start = op_end;
-    while(isblank(*rhs_start)) { rhs_start++; }
-    char * rhs_end = rhs_start;
-    while(isWhitelistChar(*lhs_end)||isalnum(*rhs_end)) { rhs_end++; }
-    int rhs_len = rhs_end - rhs_start;
-
-    char * rhs = calloc(rhs_len+1,sizeof(char));
-    memcpy(rhs, rhs_start, rhs_len);
-
-    long col1 = strtol(lhs, NULL, 10);
-    long col2 = strtol(rhs, NULL, 10);
-
-    int colcount1 = 0;
-    int colcount2 = 0;
-    while(tup1[colcount1]) { colcount1++; }
-    while(tup2[colcount2]) { colcount2++; }
-
-    if(colcount1 <= col1 || colcount2 <= col2) {
-      printf("not enough columns for join!\n");
-      match = 0;
-    } else if(!strcmp(op,"=")) {
-      if(strcmp(tup1[col1], tup2[col2])) {
-	match = 0;
-      }
+    switch(lhs_colreftype) {
+    case colstr_typ: {
+      //      lhs_str = cmp->lhs.colent->u.colstr;
+      abort(); // xxx lookup column number in schema
+    } break;
+    case colint_typ: {
+      *colnum = colent->u.colnum;
+    } break;
+    default: abort(); return 0; //xxx
     }
-    col++;
-    free(rhs);
-    free(lhs);
-    free(op);
+
+    if(*colnum >= tup.count) { return 0; }
+    *datatype = tup.type[*colnum];
+
+    switch(*datatype) {
+    case int64_typ: {
+      *val_int64 =  tup.col[*colnum].int64;
+    } break;
+    case string_typ: {
+      *val_string =  tup.col[*colnum].string;
+    } break;
+    default: abort(); return 0; //xxx
+    }
+
+  } break;
+  case val_typ: {
+    *datatype = valent->typ;
+    switch(*datatype) {
+    case int64_typ: {
+      *val_int64 = valent->u.integ; //tup.col[*colnum].int64;
+    } break;
+    case string_typ: {
+      *val_string = valent->u.str; //tup.col[*colnum].string;
+    } break;
+    default: abort(); return 0;
+    }
+  } break;
+  default: abort(); return 0;
+  }
+  return 1;
+}
+
+static int matchPredicate(tuple_t tup1, tuple_t tup2, cmp_entry* cmp) {
+  datatype_t lhs_datatype;
+  val_col_int    lhs_colnum;
+  int64_t lhs_int64;
+  char* lhs_string;
+
+  datatype_t rhs_datatype;
+  val_col_int    rhs_colnum;
+  int64_t rhs_int64;
+  char* rhs_string;
+
+  if(!resolveColName(&lhs_colnum, &lhs_datatype, &lhs_int64, &lhs_string, tup1, cmp->lhs_typ, cmp->lhs.colent, cmp->lhs.valent)) { printf("Tuple too short\n"); return 0; }
+  if(!resolveColName(&rhs_colnum, &rhs_datatype, &rhs_int64, &rhs_string, tup2, cmp->rhs_typ, cmp->rhs.colent, cmp->rhs.valent)) { printf("Tuple too short\n"); return 0; }
+
+  switch(cmp->comparator) {
+  case equal_typ: {
+    if(lhs_datatype!=rhs_datatype) { return 0; }
+    switch(lhs_datatype) {
+    case int64_typ: {
+      if(lhs_int64==rhs_int64) { return 1; }
+    } break;
+    case string_typ: {
+      if(!strcmp(lhs_string, rhs_string)) { return 1; }
+    } break;
+    default: abort();
+    }
+  } break;
+  default: abort();
+  }
+  return 0;
+}
+static int matchComparator(tuple_t tup1,
+			   tuple_t tup2,
+			   cmp_tuple * pred) {
+  int match = 1;
+  for(int i = 0; i < pred->count; i++) {
+    if(!matchPredicate(tup1,tup2,pred->ents[i])) {
+      //printf("failed on pred %d\n",i);
+      match = 0;
+      break;
+    }
   }
   return match;
 }
 
 lladdIterator_t* ReferentialAlgebra_Join(int xid,
-					 char ** pred,
 					 lladdIterator_t * outer_it,
-					 lladdIterator_t * inner_it) {
+					 lladdIterator_t * inner_it,
+					 cmp_tuple * pred) {
   if(!(outer_it && inner_it)) {
-    if(pred) { tplFree(pred); }
     return 0;
   }
 
@@ -579,34 +695,26 @@ lladdIterator_t* ReferentialAlgebra_Join(int xid,
 
   j->inner_it = inner_it;
   j->outer_it = outer_it;
+  j->have_outer = 0;
   j->pred = pred;
 
-  j->inner_tpls = calloc(1, sizeof(char ***));
-  j->inner_strs = calloc(1, sizeof(char **));
-  j->freethese = malloc(sizeof(char**));
+  j->inner_tpls = calloc(1, sizeof(tuple_t*));
   int i = 0;
   while(Titerator_next(xid, inner_it)) {
-    char * in_val;
+    byte * in_val;
     Titerator_value(xid, inner_it, (byte**)&in_val);
-    int count;
-    char ** tok = split((char*)in_val, (j->freethese)+i, &count, ", ");
-    j->inner_tpls = realloc(j->inner_tpls, sizeof(char***)*(i+2));
-    j->inner_strs = realloc(j->inner_strs, sizeof(char**)*(i+2));
-    j->freethese = realloc(j->freethese, sizeof(char**)*(i+2));
-    j->inner_tpls[i] = tok;
-    j->inner_tpls[i+1] = 0;
-    j->freethese[i+1] = 0;
-    j->inner_strs[i] = strdup(in_val);
-    j->inner_strs[i+1] = 0;
+    j->inner_tpls = realloc(j->inner_tpls, sizeof(tuple_t)*(i+1));
+    j->inner_tpls[i] = tupleDup(*(tuple_t*)in_val);
     Titerator_tupleDone(xid, inner_it);
     i++;
   }
+  j->inner_count = i;
   j->inner_pos = 0;
-  j->outer_tpl = 0;
+  j->have_outer = 0;
   lladdIterator_t * new_it = malloc(sizeof(lladdIterator_t));
   new_it->type = JOIN_ITERATOR;
   new_it->impl = j;
-  return ReferentialAlgebra_KeyValCat(xid,new_it);
+  return new_it;
 }
 
 
@@ -614,39 +722,52 @@ static void j_close(int xid, void * it) {
   join_impl * j = it;
   Titerator_close(xid,j->outer_it);
   Titerator_close(xid,j->inner_it);
-  for(int i = 0; j->inner_tpls[i]; i++) {
+  for(int i = 0; i < j->inner_count; i++) {
     //    tplFree(j->inner_tpls[i]);
-    free(j->freethese[i]);
-    free(j->inner_strs[i]);
-    free(j->inner_tpls[i]);
+    //free(j->freethese[i]);
+    //    free(j->inner_strs[i]);
+    tupleFree(j->inner_tpls[i]);
   }
-  tplFree(j->pred);
+  //  tplFree(j->pred);
   free(j->inner_tpls);
-  free(j->inner_strs);
-  free(j->freethese);
-  if(j->freeouter) { free(j->freeouter); }
+
+  if(j->have_outer) {
+    tupleFree(j->outer_tpl);
+  }
   // don't free pred; that's the caller's problem.
   free(j);
 }
 static int j_next(int xid, void * it) {
   join_impl * j = it;
   while(1) {
-    if((!j->inner_tpls[j->inner_pos]) || (!j->outer_tpl)) {
+    //printf("checking %d\n", j->inner_pos);
+    if((j->inner_pos == j->inner_count) || (!j->have_outer)) {
       j->inner_pos = 0;
-      Titerator_tupleDone(xid, j->outer_it);
+      if(j->have_outer) {
+	Titerator_tupleDone(xid, j->outer_it);
+	tupleFree(j->t);
+      }
       if(Titerator_next(xid, j->outer_it)) {
-	int count;
-	Titerator_value(xid, j->outer_it, (byte**)&j->outer_str);
-	j->outer_tpl = split((char*)j->outer_str, &j->freeouter, &count, ", ");
+	byte * this_tpl;
+	Titerator_value(xid, j->outer_it, &this_tpl);
+	j->outer_tpl = *(tuple_t*)this_tpl;
       } else {
+	j->have_outer = 0;
 	return 0;
       }
     }
-    if(matchComparator(j->outer_tpl, j->inner_tpls[j->inner_pos], j->pred)) {
-      j->inner_pos++;
-      return 1;
-    } else {
-      j->inner_pos++;
+    while(j->inner_pos != j->inner_count) {
+      if(matchComparator(j->outer_tpl, j->inner_tpls[j->inner_pos], j->pred)) {
+	j->have_outer = 1;
+	j->t = tupleAlloc();
+	j->t = tupleCatTuple(j->t, j->outer_tpl);
+	j->t = tupleCatTuple(j->t, j->inner_tpls[j->inner_pos]);
+	j->inner_pos++;
+	return 1;
+      } else {
+	j->have_outer = 0;
+	j->inner_pos++;
+      }
     }
   }
 }
@@ -655,30 +776,66 @@ static int j_tryNext(int xid, void * it) {
 }
 static int j_key(int xid, void * it, byte ** key) {
   join_impl * j = it;
-  *key = (byte*)j->outer_str;
+  *key = (byte*)&(j->t);
   return 1;
 }
 static int j_value(int xid, void * it, byte ** val) {
   join_impl * j = it;
-  *val = (byte*)j->inner_strs[j->inner_pos-1];
+  *val = (byte*)&(j->t); //inner_tpls[j->inner_pos-1]);
   return 1;
 }
 static void j_tupleDone(int xid, void * it) {
-  join_impl * j = it;
-  free(j->outer_tpl);
-  free(j->freeouter);
-  j->outer_tpl = 0;
-  j->freeouter = 0;
 }
 static void j_releaseLock(int xid, void *it) {
   // noop
 }
+
+//////////////////////////////////////////////////////////////////////////////////
+///                                                                            ///
+///                AST INTERPRETER FUNCTIONS                                   ///
+///                                                                            ///
+//////////////////////////////////////////////////////////////////////////////////
+
+lladdIterator_t* ReferentialAlgebra_ExecuteQuery(int xid,
+						 ReferentialAlgebra_context_t* c,
+						 union_qry *q) {
+
+  if(q->count != 1) { abort(); } // unimplemented;
+
+  switch(q->ents[0]->typ) {
+  case scan_typ: {
+    return ReferentialAlgebra_OpenTableScanner(xid, c->hash, q->ents[0]->u.scn->table);
+  } break;
+  case select_typ: {
+    return ReferentialAlgebra_Select(xid,
+				     ReferentialAlgebra_ExecuteQuery(xid, c, q->ents[0]->u.sel->q),
+				     q->ents[0]->u.sel->t);
+  } break;
+  case project_typ: {
+    return ReferentialAlgebra_Project(xid,
+				      ReferentialAlgebra_ExecuteQuery(xid, c, q->ents[0]->u.prj->q),
+				      q->ents[0]->u.prj->t);
+  } break;
+  case join_typ: {
+    return ReferentialAlgebra_Join(xid,
+				   ReferentialAlgebra_ExecuteQuery(xid, c, q->ents[0]->u.jn->lhs),
+				   ReferentialAlgebra_ExecuteQuery(xid, c, q->ents[0]->u.jn->rhs),
+				   q->ents[0]->u.jn->t);
+  } break;
+  default: abort(); // select, project, join, etc unimplemented.
+  }
+
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
 ///                ININTIALIZATION                                             ///
 ///                                                                            ///
 //////////////////////////////////////////////////////////////////////////////////
 
+/**
+   Initialize module (Must be called before anything else in this file).
+ */
 void ReferentialAlgebra_init() {
   lladdIterator_def_t select_def = {
     s_close, s_next, s_tryNext, s_key, s_value, s_tupleDone, s_releaseLock
@@ -692,218 +849,35 @@ void ReferentialAlgebra_init() {
     kv_close, kv_next, kv_tryNext, kv_key, kv_value, kv_tupleDone, kv_releaseLock
   };
   lladdIterator_register(KEYVAL_ITERATOR, keyval_def);
+  lladdIterator_def_t keyvaltup_def = {
+    kvt_close, kvt_next, kvt_tryNext, kvt_key, kvt_value, kvt_tupleDone, kvt_releaseLock
+  };
+  lladdIterator_register(KEYVALTUP_ITERATOR, keyvaltup_def);
   lladdIterator_def_t j_def = {
     j_close, j_next, j_tryNext, j_key, j_value, j_tupleDone, j_releaseLock
   };
   lladdIterator_register(JOIN_ITERATOR, j_def);
 }
-
-
-//////////////////////////////////////////////////////////////////////////////////
-///                                                                            ///
-///                PARSER                                                      ///
-///                                                                            ///
-//////////////////////////////////////////////////////////////////////////////////
-
-// Reserved characters:  (, ), [, ], ",", " ".
-// Grammar:
-// E = (s [tuple] E) | (p [tuple] E) | (j [tuple] E E) | TABLENAME
-// tuple = V | V,tuple
-// V = string of non-reserved characters
-// TABLENAME = string of non-reserved characters
-
-#define LPAREN   '{'
-#define RPAREN   '}'
-#define LBRACKET '('
-#define RBRACKET ')'
-#define COMMA    ','
-#define SPACE    ' '
-#define STRING   's'
-#define EOS      '\0'
-/*
-  @return one of the above.  If returns STRING, set *tok to be the new
-  token. (*tok should be freed by caller in this case)
+/**
  */
-int nextToken(char ** head, char ** tok, int breakOnSpace);
+ReferentialAlgebra_context_t * ReferentialAlgebra_openContext(int xid, recordid rid) {
+  ReferentialAlgebra_context_t * ret = malloc(sizeof(ReferentialAlgebra_context_t));
+  ret->hash = rid;
 
-char** parseTuple(char ** head) {
-  char **tok = calloc(1,sizeof(char*));;
-  char * mytok;
-  char ret = nextToken(head, &mytok,0);
-  assert(ret == LBRACKET);
-  int count = 0;
-  while(1) {
-    ret = nextToken(head, &mytok,0);
-    if(ret == RBRACKET) {
-      break;
-    }
-    if(ret == COMMA) {
-      tok = realloc(tok, sizeof(char*)*(count+1));
-      tok[count] = 0;
-      tok[count-1] = calloc(1,sizeof(char));
-    } else if(ret == STRING) {
-      count++;
-      tok = realloc(tok, sizeof(char*)*(count+1));
-      tok[count] = 0;
-      tok[count-1] = mytok;
-      ret = nextToken(head, &mytok,0);
-      if(ret == STRING) { free(mytok); }
-      if(ret == RBRACKET) {
-	break;
-      }
-      if(ret != COMMA) {
-	tplFree(tok);
-	return 0;
-      }
-    } else {
-      tplFree(tok);
-      return 0;
-    }
-  }
-  return tok;
+  return ret;
 }
 
-lladdIterator_t * parseExpression(int xid, recordid catalog,
-				  char **head) {
-  while(isblank(**head)) { (*head)++; }
-  if(**head == LPAREN) {
-    (*head)++;
-    lladdIterator_t * it;
-    if(**head == 's') {
-      (*head)++;
-      char ** pred = parseTuple(head);
-      lladdIterator_t * it2 =  parseExpression(xid, catalog, head);
-      it  =  ReferentialAlgebra_Select(xid, it2, pred);
-      if(it2 && !it) {
-	Titerator_close(xid,it2);
-      }
-    } else if(**head == 'p') {
-      (*head)++;
-      char ** pred = parseTuple(head);
-      lladdIterator_t * it2 =  parseExpression(xid, catalog, head);
-      it  =  ReferentialAlgebra_Project(xid, it2, pred);
-      if(it2 && !it) {
-	Titerator_close(xid,it2);
-      }
-    } else if(**head == 'j') {
-      (*head)++;
-      char ** pred = parseTuple(head);
-      lladdIterator_t * outer = parseExpression(xid, catalog, head);
-      lladdIterator_t * inner = parseExpression(xid, catalog, head);
-      it = ReferentialAlgebra_Join(xid, pred, outer, inner);
-      if(outer && !it) {
-	Titerator_close(xid,outer);
-      }
-      if(inner && !it) {
-	Titerator_close(xid,inner);
-      }
-    } else {
-      printf("Unknown operator\n");
-      it = 0;
-    }
-    if(!it) {
-      printf("parse error\n");
-      return 0;
-    }
-    char * foo;
-    char ret = nextToken(head, &foo,0);
-
-    if(ret != RPAREN) {
-      Titerator_close(xid,it);
-      return 0;
-    } else {
-      return it;
-    }
-  } else {
-    char * tablename;
-    char ret = nextToken(head, &tablename,1);
-    assert(ret == STRING);
-    lladdIterator_t * it2 =
-      ReferentialAlgebra_OpenTableScanner(xid, catalog, tablename);
-    free(tablename);
-
-    if(!it2) { return 0; }
-
-
-    lladdIterator_t * it = ReferentialAlgebra_KeyValCat(xid,it2);
-
-    return it;
-  }
-  abort();
-}
-
-int nextToken(char ** head, char ** tok, int breakOnSpace) {
-  while(isblank(**head) && **head) { (*head)++; }
-  switch(**head) {
-  case LPAREN: {
-    (*head)++;
-    return LPAREN;
-  } break;
-  case RPAREN: {
-    (*head)++;
-    return RPAREN;
-  } break;
-  case LBRACKET: {
-    (*head)++;
-    return LBRACKET;
-  } break;
-  case RBRACKET: {
-    (*head)++;
-    return RBRACKET;
-  } break;
-  case COMMA: {
-    (*head)++;
-    return COMMA;
-  } break;
-  case SPACE: {
-    (*head)++;
-    return SPACE;
-  } break;
-  default: {
-    if(!**head) { return EOS; };
-    char * first = *head;
-    while(isalnum(**head)
-	  ||isWhitelistChar(**head)
-	  ||(**head==' '&&!breakOnSpace)) {
-      (*head)++;
-    }
-    char * last = *head;
-    *tok = calloc(1 + last - first, sizeof(char));
-    // The remaining byte is the null terminator
-    strncpy(*tok, first, last - first);
-    int i = (last-first)-1;
-    int firstloop = 1;
-    while((*tok)[i] == ' ') {
-      (*tok)[i] = '\0';
-      i++;
-      if(firstloop) {
-	(*head)--;
-	firstloop = 0;
-      }
-    }
-    return STRING;
-  } break;
-  }
-}
-
-char ** executeQuery(int xid, recordid hash, char * line) {
-  char * lineptr = line;
-
-  lladdIterator_t * it = parseExpression(xid,hash,&lineptr);
-  if(it) {
-    char ** tuples = malloc(sizeof(char*));
-    int count = 0;
-    while(Titerator_next(xid, it)) {
-      count++;
-      tuples = realloc(tuples, sizeof(char*)*(count+1));
-      Titerator_value(xid,it,(byte**)(tuples+count-1));
-      tuples[count-1] = strdup(tuples[count-1]);
-      Titerator_tupleDone(xid,it);
-    }
-    Titerator_close(xid,it);
-    tuples[count] = 0;
-    return tuples;
-  } else {
-    return 0;
-  }
+recordid ReferentialAlgebra_allocContext(int xid) {
+  recordid hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+  tuple_t tpl = tupleRid(hash);
+  tpl = tupleCatInt64(tpl,string_typ);
+  tpl = tupleCatInt64(tpl,int64_typ);
+  tpl = tupleCatInt64(tpl,int64_typ);
+  tpl = tupleCatInt64(tpl,int64_typ);
+  tpl = tupleCatInt64(tpl,star_typ);
+  size_t tplLen = 0;
+  byte * tplBytes = byteTuple(tpl,&tplLen);
+  ThashInsert(xid,hash,(byte*)"TABLES",strlen("TABLES")+1,tplBytes,tplLen);
+  free(tplBytes);
+  return hash;
 }

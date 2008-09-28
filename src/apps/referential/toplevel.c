@@ -12,7 +12,13 @@
 #include <stasis/transactional.h>
 
 #include "algebra.h"
+#include "tuple.h"
+#include "ddl.h"
 #include "dml.h"
+
+
+#include "lang/ast.h"
+//XXX#include "lang/context.h"
 
 #define MAX_CONN_QUEUE 10
 #define THREAD_POOL 20
@@ -35,6 +41,8 @@ int shuttingdown = 0;
 char interpreterStates[THREAD_POOL];
 pthread_t interpreters[THREAD_POOL];
 FILE * interpreterConnections[THREAD_POOL];
+
+ReferentialAlgebra_context_t * context;
 
 int openInterpreter(FILE * in, FILE * out, recordid hash);
 
@@ -112,7 +120,7 @@ int openInterpreter(FILE * in, FILE * out, recordid hash) {
 	  AUTOCOMMIT = 1;
 	  Tcommit(xid);
 	}
-      } else if(!strncmp(line+1,"parseTuple",strlen("parseToken"))) {
+   /* } else if(!strncmp(line+1,"parseTuple",strlen("parseToken"))) {
 	char * c = line + 1 + strlen("parseToken");
 	char ** toks = parseTuple(&c);
 	for(int i = 0; toks[i]; i++) {
@@ -123,7 +131,7 @@ int openInterpreter(FILE * in, FILE * out, recordid hash) {
 			 strlen("parseExpression"))) {
 	char * c = line + 1 + strlen("parseExpression");
 	lladdIterator_t * it = parseExpression(xid, hash, &c);
-	it = 0;
+	it = 0; */
       } else if(!strncmp(line+1,"exit",strlen("exit"))) {
 	break;
       } else if(!strncmp(line+1,"shutdown",strlen("shutdown"))) {
@@ -131,63 +139,51 @@ int openInterpreter(FILE * in, FILE * out, recordid hash) {
 	break;
       }
     } else {
-      if(!strncmp(line,"create",strlen("create"))) {
-
-	char * linecopy = strdup(line+strlen("create"));
-	char * strtoks;
-	char * tablename = strtok_r(linecopy, " \r\n",&strtoks);
-	size_t sz;
-	byte* delme;
-
-	if(AUTOCOMMIT) xid = Tbegin();
-
-	if(-1 == (sz=ThashLookup(xid, hash, (byte*)tablename,strlen(tablename)+1,&delme))) {
-	  fprintf(out, "Creating table %s\n", tablename);
-	  recordid newHash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
-	  char * tpl = tplRid(newHash);
-	  char * insert;
-	  asprintf(&insert, "insert TABLES %s,%s\n", tablename, tpl);
-
-	  executeInsert(xid, hash, insert);
-
-	  free(insert);
-	  free(tpl);
-	} else {
-	  fprintf(out, "Table already exists: %s\n", tablename);
-	  free(delme);
-	  //	  assert(sz == sizeof(recordid));
-	}
-
-	if(AUTOCOMMIT) Tcommit(xid);
-
-	free(linecopy);
-      } else if(!strncmp(line,"query",strlen("query"))) {
-	char * linecopy = strdup(line+strlen("query"));
-
-	char ** result = executeQuery(xid, hash, linecopy);
-
-	int i = 0;
-	if(result) {
-	  while(result[i]) {
-	    fprintf(out, "%s\n", result[i]);
-	    free(result[i]);
-	    i++;
+      expr_list * results = 0;
+      parse(line, &results);
+      for(int i = 0; results && i < results->count; i++) {
+	expr * e = results->ents[i];
+	switch(e->typ) {
+	case query_typ: {
+	  lladdIterator_t * it = ReferentialAlgebra_ExecuteQuery(xid, context, e->u.q);
+	  if(it) {
+	    while(Titerator_next(xid,it)) {
+	      byte * tup;
+	      Titerator_value(xid,it, &tup);
+	      char * tupleString = stringTuple(*(tuple_t*)tup);
+	      fprintf(out, "%s\n", tupleString);
+	      free(tupleString);
+	    }
+	    Titerator_close(xid,it);
 	  }
-	  free(result);
-	} else {
-	  fprintf(out, "query failed\n");
+	} break;
+	case insert_typ: {
+	  if(AUTOCOMMIT) { xid = Tbegin(); }
+	  ReferentialDML_ExecuteInsert(xid, context, e->u.i);
+	  if(AUTOCOMMIT) { Tcommit(xid); xid = -1;}
+	} break;
+	case delete_typ: {
+	  if(AUTOCOMMIT) { xid = Tbegin(); }
+	  ReferentialDML_ExecuteDelete(xid, context, e->u.d);
+	  if(AUTOCOMMIT) { Tcommit(xid); xid = -1;}
+	} break;
+	case create_typ: {
+	  if(AUTOCOMMIT) { xid = Tbegin(); }
+	  ReferentialDDL_CreateTable(xid, context, e->u.c);
+	  if(AUTOCOMMIT) { xid = Tcommit(xid); xid = -1;}
+	} break;
+	default:
+	  abort();
 	}
-	free(linecopy);
-      } else if(!strncmp(line,"insert",strlen("insert"))) {
-	if(AUTOCOMMIT) xid = Tbegin();
-	executeInsert(xid, hash, line);
-	if(AUTOCOMMIT) Tcommit(xid);
-      } else if(!strncmp(line,"delete",strlen("delete"))) {
-	if(AUTOCOMMIT) xid = Tbegin();
-	executeDelete(xid, hash, line);
-	if(AUTOCOMMIT) Tcommit(xid);
+      }
+
+      //XXX typecheck(context, results);
+      if(results) {
+	char * str = pp_expr_list(results);
+	printf("%s", str);
+	free(str);
       } else {
-	fprintf(out, "I don't understand...\n");
+	printf("No results\n");
       }
     }
     fprintf(out, "> ");
@@ -318,13 +314,9 @@ int main(int argc, char * argv[]) {
     assert(rootEntry.page == ROOT_RECORD.page);
     assert(rootEntry.slot == ROOT_RECORD.slot);
 
-    hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+    hash = ReferentialAlgebra_allocContext(xid);
 
     Tset(xid, rootEntry, &hash);
-
-    char * tpl = tplRid(hash);
-
-    ThashInsert(xid,hash,(byte*)"TABLES", strlen("TABLES")+1, (byte*)tpl, strlen(tpl)+1);
 
   } else {
     printf("Opened existing store\n");
@@ -333,7 +325,10 @@ int main(int argc, char * argv[]) {
     rootEntry.size = sizeof(recordid);
 
     Tread(xid, rootEntry, &hash);
+
   }
+
+  context = ReferentialAlgebra_openContext(xid,hash);
 
   Tcommit(xid);
 

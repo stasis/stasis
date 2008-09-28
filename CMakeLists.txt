@@ -3,11 +3,18 @@ Project(Stasis)
 SET(PACKAGE_VERSION 1)
 
 SUBDIRS(src test utilities benchmarks examples)
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+SET(FLEX_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+SET(BISON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Main decisions
 SET(BUILD_SHARED_LIBS ON)
 #ENABLE_TESTING()
 INCLUDE(CTest)
+
+FIND_PACKAGE(FLEX)
+FIND_PACKAGE(BISON)
+
 
 # Look for include files
 INCLUDE (CheckIncludeFiles)
