@@ -94,11 +94,11 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
 
   // if DEBUGERROR ==1 this causes a seg fault below! 
   if (DEBUGERROR) {printf("\n***page->id  = %lld\n", p->id);}
-  printf("\n***rid.page  = %d\n\n", rid.page);
+  printf("\n***rid.page  = %lld\n\n", (long long)rid.page);
 
 
-  if(DEBUG) {printf("\nrid.page  = %d\n", rid.page);}
-  if(DEBUG) {printf("\nrid.slot  = %d\n", rid.slot);}
+  if(DEBUG) {printf("\nrid.page  = %lld\n", (long long)rid.page);}
+  if(DEBUG) {printf("\nrid.slot  = %lld\n", (long long)rid.slot);}
 
   
   // Figure out how many entries are in the node
@@ -167,7 +167,7 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
 
   // fixedWrite(p, rid, valueInBuff); // page/fixed.c:58: checkRid: Assertion `page->id == rid.page' failed.
   printf("\n***page->id  = %lld\n", p->id);
-  printf("\n***rid.page  = %d\n", rid.page);
+  printf("\n***rid.page  = %lld\n", (long long)rid.page);
 
  
   return 0;
@@ -249,7 +249,7 @@ int SimpleExample(){
   /* check to make sure page is recorded as a FIXED_PAGE */
   assert( *stasis_page_type_ptr(p1) == FIXED_PAGE);
   
-  if (DEBUGP) { printf("\n%d\n", rid1.page); }
+  if (DEBUGP) { printf("\n%lld\n", (long long)rid1.page); }
   byte * b1 = (byte *) malloc (sizeof (int));
   byte * b2 = (byte *) malloc (sizeof (int));
   byte * b3 = (byte *) malloc (sizeof (int));
