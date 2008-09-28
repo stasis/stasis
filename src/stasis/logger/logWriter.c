@@ -477,7 +477,7 @@ lsn_t debug_lsn = -1;
 static LogEntry * readLogEntry() {
   LogEntry * ret = 0;
   lsn_t size;
-  lsn_t entrySize;
+
   lsn_t bytesRead = read(roLogFD, &size, sizeof(lsn_t));
 
   if(bytesRead != sizeof(lsn_t)) { 
@@ -543,8 +543,7 @@ static LogEntry * readLogEntry() {
     } 
   }
 
-  entrySize = sizeofLogEntry(ret);
-  assert(size == entrySize);
+  assert(sizeofLogEntry(ret) == size);
 
   return ret;
 }
