@@ -17,7 +17,7 @@ int bufferManagerO_DIRECT = 0;
 #ifdef BUFFER_MANAGER_FILE_HANDLE_TYPE
 int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_TYPE
 #else
-int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING;
+int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_PFILE;
 #endif
 
 #ifdef BUFFER_MANAGER_SLOW_HANDLE_TYPE
