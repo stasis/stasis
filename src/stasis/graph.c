@@ -25,7 +25,7 @@ void naiveTraverse(int xid, recordid rid, int num) {
 
   node[transClos_outdegree] = num;
   numTset++;
-  Tset(xid, rid, node);
+  Tset(xid, rid, (const byte*)node);
 
   int i = 0;
 
@@ -78,7 +78,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
 
       node[transClos_outdegree] = num;
       numTset++;
-      Tset(xid, localRid, node);  /// @todo TsetRange?
+      Tset(xid, localRid, (const byte*)node);  /// @todo TsetRange?
       int i;
       for(i =0 ; i < transClos_outdegree; i++) { 
 	recordid nextRid = arrayList;

@@ -320,49 +320,17 @@ lsn_t LogTransPrepare(TransactionLog * l) {
   return groupPrepare(l);
 }
 
-/** 
-    @todo Does the handling of operation types / argument sizes belong
-    here?  Shouldn't it be in logEntry.c, or perhaps with other code
-    that reasons about the various operation types?
-*/
-LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
-		     const byte * args) {
-  void * preImage = NULL;
-  long argSize  = 0;
-  LogEntry * e;
+LogEntry * LogUpdate(TransactionLog * l, Page * p, unsigned int op,
+		     const byte * arg, size_t arg_size) {
 
-
-  argSize = operationsTable[operation].sizeofData;
-
-  if(argSize == SIZEOF_RECORD) argSize = stasis_record_type_to_size(rid.size);
-  if(argSize == SIZEIS_PAGEID) argSize = rid.page;
-
-  int undoType = operationsTable[operation].undo;
-  
-  if(undoType == NO_INVERSE) {
-    DEBUG("Creating %ld byte physical pre-image.\n", stasis_record_type_to_size(rid.size));
-
-    preImage = malloc(stasis_record_type_to_size(rid.size));
-    stasis_record_read(l->xid, p, rid, preImage);
-  } else if (undoType == NO_INVERSE_WHOLE_PAGE) {
-    DEBUG("Logging entire page\n");
-
-    preImage = malloc(PAGE_SIZE);
-    memcpy(preImage, p->memAddr, PAGE_SIZE);
-  } else { 
-    DEBUG("No pre-image");
-  }
-  
-  e = allocUpdateLogEntry(l->prevLSN, l->xid, operation, rid, args, argSize, 
-                          preImage);
+  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
+                                     p ? p->id : INVALID_PAGE,
+                                     arg, arg_size);
 
   LogWrite(e);
-  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (argSize %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) argSize);
+  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid, 
+	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
 
-  if(preImage) {
-    free(preImage);
-  }
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   return e;
@@ -374,15 +342,16 @@ lsn_t LogCLR(const LogEntry * old_e) {
 
   DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
   	 e->LSN, LSN, prevLSN);
-
   lsn_t ret = e->LSN;
   FreeLogEntry(e);
+
   return ret;
 }
 
-lsn_t LogDummyCLR(int xid, lsn_t prevLSN) { 
-  LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP, 
-				     NULLRID, NULL, 0, 0);
+lsn_t LogDummyCLR(int xid, lsn_t prevLSN, lsn_t compensatedLSN) {
+  LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
+                                     INVALID_PAGE, NULL, 0);
+  e->LSN = compensatedLSN;
   lsn_t ret = LogCLR(e);
   FreeLogEntry(e);
   return ret;

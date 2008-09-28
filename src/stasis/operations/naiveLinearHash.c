@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <stasis/latches.h>
+#include <stasis/page.h>
 /**
 
    A from-scratch implementation of linear hashing.  Uses the
@@ -78,7 +79,7 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
     
     hashRid.slot = bucket_number;
     nextEntry = hashRid;
-    
+
     found = 0;
     
     while(nextEntry.size != -1 && nextEntry.size != 0) {
@@ -99,8 +100,9 @@ int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key,
 }
 
 
-void expand (int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
+void expand(int xid, recordid hash, int next_split, int i, int keySize, int valSize) {
   /* Total hack; need to do this better, by storing stuff in the hash table headers.*/
+
   static int count = 4096 * .25;
   count --;
 #define AMORTIZE 1000
@@ -167,8 +169,6 @@ void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, 
       free(D_contents);
       free(A_contents);
       free(B_contents);
-      /*    printf("Expand was a noop.\n");
-	  fflush(NULL); */
       return; 
     }
     
@@ -216,8 +216,6 @@ void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, 
 	free(D_contents);
 	free(A_contents);
 	free(B_contents);
-	/*      printf("Loop 1 returning.\n");
-		fflush(NULL); */
 	return;
       } 
       assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
@@ -228,9 +226,7 @@ void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, 
       
       new_hash = hash(A_contents+1, keySize, i,   UINT_MAX) + 2;
     }
-    /*  printf("Got past loop 1\n");
-	fflush(NULL); */
-    
+
     B = A_contents->next;
     
     while(B.size != -1) {
@@ -286,7 +282,7 @@ void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, 
 }
 void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
 		      hashEntry * e, int keySize, int valSize, int skipDelete) {
-  recordid deleteMe; 
+  recordid deleteMe;
   if(!skipDelete) {
     if(deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, valSize, &deleteMe)) {
       Tdealloc(xid, deleteMe);
@@ -300,10 +296,12 @@ void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * 
   /*@todo consider recovery for insertIntoBucket. */
 
   hashRid.slot = bucket_number;
-  assert(hashRid.size == sizeof(hashEntry) + valSize + keySize);
+  //  Page * p = loadPage(xid, hashRid.page);
+  //  assert(stasis_record_type_to_size(stasis_record_dereference(xid, p, hashRid).size) == sizeof(hashEntry) + valSize + keySize);
+  //  releasePage(p);
+
   Tread(xid, hashRid, bucket_contents);
 
-  assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   if(!bucket_contents->next.size) {  // Size = 0 -> nothing in bucket.  Size != 0 -> bucket occupied.
     e->next.page = 0;
     e->next.slot = 0;
@@ -311,13 +309,15 @@ void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * 
     Tset(xid, hashRid, e);
   } else {
     recordid newEntry =  Talloc(xid, sizeof(hashEntry) + keySize + valSize);
+    assert(newEntry.size);
     e->next = bucket_contents->next;
     bucket_contents->next = newEntry;
-    assert(newEntry.size == sizeof(hashEntry) + keySize + valSize);
+
     Tset(xid, newEntry, e);
-    assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
     Tset(xid, hashRid,  bucket_contents);
   }
+  Tread(xid, hashRid, bucket_contents);
+  assert(bucket_contents->next.size);
 }
 
 int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
@@ -384,7 +384,8 @@ int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * buck
 
 recordid ThashAlloc(int xid, int keySize, int valSize) {
   /* Want 16 buckets, doubling on overflow. */
-  recordid rid = TarrayListAlloc(xid, 4096, 2, sizeof(hashEntry) + keySize + valSize); 
+  recordid rid = TarrayListAlloc(xid, 4096, 2, sizeof(hashEntry) + keySize + valSize);
+  assert(rid.size == sizeof(hashEntry) + keySize + valSize);
   TarrayListExtend(xid, rid, 4096+2);
 
   recordid  * headerRidA = calloc (1, sizeof(recordid) + keySize + valSize);
@@ -409,10 +410,10 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   
   pblHtInsert(openHashes, &(rid.page), sizeof(int), headerRidB);
 
-  assert(headerRidB);	
-
-  recordid * check = malloc(rid.size);
-	
+  assert(headerRidB);
+  Page * p = loadPage(xid, rid.page);
+  recordid * check = malloc(stasis_record_type_to_size(stasis_record_dereference(xid, p, rid).size));
+  releasePage(p);
   rid.slot = 0;
   Tread(xid, rid, check);
   assert(headerRidB);
@@ -455,10 +456,8 @@ void TnaiveHashInsert(int xid, recordid hashRid,
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
 
-  /*   printf("header: %d %d\n", headerHashBits, headerNextSplit); */
-
   int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
-  
+
   hashEntry * e = calloc(1,sizeof(hashEntry) + keySize + valSize);
   memcpy(e+1, key, keySize);
   memcpy(((byte*)(e+1)) + keySize, val, valSize);
@@ -526,9 +525,6 @@ int ThashClose(int xid, recordid hashRid) {
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
-  /*  printf("lookup header: %d %d\n", headerHashBits, headerNextSplit); */
-  recordid tmp = hashRid;
-  tmp.slot = 1;
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
   return ret;

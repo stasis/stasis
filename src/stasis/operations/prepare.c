@@ -54,17 +54,16 @@ terms specified in this license.
 #include <stdio.h>
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
-static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void *dat) {
-  LogForce(lsn);
+static int op_prepare(const LogEntry * e, Page * p) {
+  LogForce(e->LSN);
   return 0;
 }
 
 Operation getPrepare() { 
 	Operation o = {
 		OPERATION_PREPARE, /* id */
-		0, /* No extra data. */
 		OPERATION_NOOP, 
-		&operate /* Function */
+		&op_prepare /* Function */
 	};
 	return o;
 }

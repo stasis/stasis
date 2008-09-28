@@ -543,25 +543,14 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-/**
- * represents how to look up a record on a page
- * @todo recordid.page should be 64bit.
- * @todo int64_t (for recordid.size) is a stopgap fix.
- */
+//XXX doesn't belong here.
 #pragma pack(push,1)
-typedef struct {
-  int page;  // XXX needs to be pageid_t, but that breaks unit tests.
-  int slot;
-  int64_t size; //signed long long size;
-} recordid;
-
 typedef struct {
   size_t offset;
   size_t size;
   // unsigned fd : 1;
 } blob_record_t;
 #pragma pack(pop)
-
 
 extern const recordid ROOT_RECORD;
 extern const recordid NULLRID;
@@ -576,8 +565,6 @@ extern const recordid NULLRID;
 */
 #define RECORD_ARRAY (-1)
 
-
-#include "operations.h"
 
 /**
  * Currently, Stasis has a fixed number of transactions that may be
@@ -623,11 +610,11 @@ int Tbegin();
  * @see operations.h set.h
  */
 compensated_function void Tupdate(int xid, recordid rid, 
-				  const void *dat, int op);
+				  const void *dat, size_t datlen, int op);
 compensated_function void TupdateStr(int xid, recordid rid, 
-                                     const char *dat, int op);
+                                     const char *dat, size_t datlen, int op);
 compensated_function void TupdateRaw(int xid, recordid rid, 
-				     const void *dat, int op);
+				     const void *dat, size_t datlen, int op);
 /**
  * Read the value of a record.
  * 
@@ -636,6 +623,15 @@ compensated_function void TupdateRaw(int xid, recordid rid,
  * @param dat buffer into which data goes
  */
 compensated_function void Tread(int xid, recordid rid, void *dat);
+/**
+ * Read a value of a record without first dereferencing the record.
+ * Use Tread() unless you're implementing code that provides
+ * dereferencible records.
+ *
+ * @see arrayList for a data structure that uses recordid
+ *      dereferencing to transparently provide records to its callers.
+ */
+compensated_function void TreadRaw(int xid, recordid rid, void *dat);
 compensated_function void TreadStr(int xid, recordid rid, char *dat);
 
 /**
@@ -683,6 +679,18 @@ int TuncleanShutdown();
  * @param reclsn The lsn of the transaction's BEGIN record.
  */
 void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
+/**
+    Prepare transaction for commit.  Currently, a transaction may be
+    prepared multiple times.  Once Tprepare() returns, the caller is
+    guaranteed that the current transaction will resume exactly where
+    it was the last time Tprepare() was called.
+
+    @todo move prepare to prepare.[ch]
+
+    @param xid Transaction id.
+    @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
+
+*/
 int Tprepare(int xid);
 /**
  *  Used by the recovery process. 
@@ -709,6 +717,8 @@ int* TlistActiveTransactions();
  */
 int TisActiveTransaction(int xid);
 
+int stasis_transaction_table_set_prev_lsn(int xid, lsn_t lsn);
+
 /** 
     This is used by log truncation.
 */
@@ -725,6 +735,9 @@ lsn_t transactions_minRecLSN();
    after a crash.
 */
 int TdurabilityLevel();
+
+#include "operations.h"
+
 END_C_DECLS
 
 #endif

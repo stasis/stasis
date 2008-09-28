@@ -16,7 +16,7 @@
 #define __LINKED_LIST_NTA_H
 typedef struct {
   recordid next;
-} lladd_linkedList_entry;
+} stasis_linkedList_entry;
 typedef struct {
   int keySize;
   int valueSize;
@@ -27,7 +27,7 @@ typedef struct {
       the head of the list, then the iterator needs to reset itself. */
   int first;
   recordid listRoot;
-} lladd_linkedList_iterator;
+} stasis_linkedList_iterator;
 
 compensated_function int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
 compensated_function int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
@@ -39,12 +39,12 @@ compensated_function int TlinkedListMove(int xid, recordid start_list, recordid 
     was first called.
 
     @return a new iterator initialized to the head of the list.  */
-compensated_function lladd_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize);
-void TlinkedListClose(int xid, lladd_linkedList_iterator * it);
+compensated_function stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize);
+void TlinkedListClose(int xid, stasis_linkedList_iterator * it);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/
-compensated_function int TlinkedListNext(int xid, lladd_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
+compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
 compensated_function recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
 compensated_function void TlinkedListDelete(int xid, recordid list);
 

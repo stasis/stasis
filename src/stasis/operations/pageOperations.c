@@ -9,13 +9,32 @@
 
 static pthread_mutex_t pageAllocMutex;
 
-int __pageSet(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
-  memcpy(p->memAddr, d, PAGE_SIZE);
-  stasis_page_lsn_write(xid, p, lsn);
+static int op_page_set_range(const LogEntry* e, Page* p) {
+  assert(e->update.arg_size >= sizeof(int));
+  assert(!((e->update.arg_size - sizeof(int)) % 2));
+
+  int off = *(int*)getUpdateArgs(e);
+  int len = (e->update.arg_size - sizeof(int)) >> 1;
+
+  assert(off+len <=PAGE_SIZE);
+
+  memcpy(p->memAddr + off, getUpdateArgs(e)+sizeof(int), len);
+  return 0;
+}
+static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
+  assert(e->update.arg_size >= sizeof(int));
+  assert(!((e->update.arg_size - sizeof(int)) % 2));
+
+  int off = *(int*)getUpdateArgs(e);
+  int len = (e->update.arg_size - sizeof(int)) >> 1;
+
+  assert(off+len <=PAGE_SIZE);
+
+  memcpy(p->memAddr + off, getUpdateArgs(e)+sizeof(int)+len, len);
   return 0;
 }
 
-compensated_function int TpageGet(int xid, int pageid, byte *memAddr) {
+compensated_function int TpageGet(int xid, int pageid, void *memAddr) {
   Page * q = 0;
   try_ret(compensation_error()) {
     q = loadPage(xid, pageid);
@@ -27,14 +46,29 @@ compensated_function int TpageGet(int xid, int pageid, byte *memAddr) {
   return 0;
 }
 
-compensated_function int TpageSet(int xid, int pageid, byte * memAddr) {
+compensated_function int TpageSet(int xid, int pageid, const void * memAddr) {
+  return TpageSetRange(xid, pageid, 0, memAddr, PAGE_SIZE);
+}
+
+int TpageSetRange(int xid, int pageid, int offset, const void * memAddr, int len) {
+  // XXX need to pack offset into front of log entry
+
   recordid rid;
   rid.page = pageid;
   rid.slot = 0;
   rid.size = 0;
-  try_ret(compensation_error()) { 
-    Tupdate(xid,rid,memAddr, OPERATION_PAGE_SET);
+  Page * p = loadPage(xid, rid.page);
+  byte * logArg = malloc(sizeof(int) + 2 * len);
+
+  *(int*)logArg = offset;
+  memcpy(logArg+sizeof(int),     ((const byte*)memAddr), len);
+  memcpy(logArg+sizeof(int)+len, p->memAddr+offset,         len);
+
+  try_ret(compensation_error()) {
+    Tupdate(xid,rid,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
   } end_ret(compensation_error());
+
+  free(logArg);
   return 0;
 }
 
@@ -68,10 +102,11 @@ compensated_function int TpageAlloc(int xid /*, int type */) {
   return TregionAlloc(xid, 1, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 
-int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
+int op_fixed_page_alloc(const LogEntry* e, Page* p) {
   writelock(p->rwlatch,0);
-  stasis_fixed_initialize_page(p, r.size, stasis_fixed_records_per_page(r.size));
-  stasis_page_lsn_write(xid, p, lsn);
+  assert(e->update.arg_size == sizeof(int));
+  int slot_size = *(const int*)getUpdateArgs(e);
+  stasis_fixed_initialize_page(p, slot_size, stasis_fixed_records_per_page(slot_size));
   unlock(p->rwlatch);
   return 0;
 }
@@ -84,17 +119,19 @@ int __fixedPageAlloc(int xid, Page * p, lsn_t lsn, recordid r, const void * d) {
 */
 recordid TfixedPageAlloc(int xid, int size) {
   int page = TpageAlloc(xid);
+
   recordid rid = {page, stasis_fixed_records_per_page(size), size};
-  Tupdate(xid, rid, 0, OPERATION_FIXED_PAGE_ALLOC);
+
+  Tupdate(xid, rid, &size, sizeof(int), OPERATION_FIXED_PAGE_ALLOC);
+
   return rid;
 }
 
 Operation getFixedPageAlloc() {
   Operation o = {
     OPERATION_FIXED_PAGE_ALLOC,
-    0,
     OPERATION_NOOP,
-    &__fixedPageAlloc
+    &op_fixed_page_alloc
   };
   return o;
 }
@@ -148,12 +185,20 @@ int TpageGetType(int xid, int pageid) {
 
 */
 
-Operation getPageSet() {
+Operation getPageSetRange() {
   Operation o = {
-    OPERATION_PAGE_SET,
-    PAGE_SIZE,              /* This is the type of the old page, for undo purposes */
-    /*OPERATION_PAGE_SET, */  NO_INVERSE_WHOLE_PAGE, 
-    &__pageSet
+    OPERATION_PAGE_SET_RANGE,
+    OPERATION_PAGE_SET_RANGE_INVERSE,
+    op_page_set_range
+  };
+  return o;
+}
+
+Operation getPageSetRangeInverse() {
+  Operation o = {
+    OPERATION_PAGE_SET_RANGE_INVERSE,
+    OPERATION_PAGE_SET_RANGE,
+    &op_page_set_range_inverse
   };
   return o;
 }

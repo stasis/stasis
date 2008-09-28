@@ -76,7 +76,8 @@ BEGIN_C_DECLS
 /** 
  * function pointer that the operation will run
  */
-typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d);
+//typedef int (*Function)(int xid, Page * p, slotid_t slot, int64_t arg_size, lsn_t lsn, const void *d);
+typedef int (*Function)(const LogEntry* e, Page * p); //, slotid_t slot, int64_t arg_size, lsn_t lsn, const void *d);
 
 /**
 
@@ -87,7 +88,7 @@ typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d)
    size field of the recordid is used to determine the size of the
    argument passed into the operation.
  */
-#define SIZEOF_RECORD -1
+//#define SIZEOF_RECORD -1
 /** 
     Logical log entries (such as those used by nested top actions
     have a null recordid, as they are not assoicated with a specific page
@@ -98,23 +99,13 @@ typedef int (*Function)(int xid, Page * p, lsn_t lsn, recordid r, const void *d)
     operation uses a variable length argument, but is associated with 
     a specfic page.
 */
-#define SIZEIS_PAGEID -2
-/** If the Operation struct's undo field is set to this value, then
-    physical logging is used in lieu of logical logging.
- */
+//#define SIZEIS_PAGEID -2
 
-#define NO_INVERSE -1
 typedef struct {
   /**
    * ID of operation, also index into operations table
    */
 	int id;
-  /** 
-      This value is the size of the arguments that this operation
-      takes.  If set to SIZEOF_RECORD, then the size of the record
-      that the operation affects will be used instead.
-  */
-	long sizeofData;
   /**
      Implementing operations that may span records is subtle.
      Recovery assumes that page writes (and therefore logical
@@ -191,20 +182,15 @@ extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 void doUpdate(const LogEntry * e, Page * p);
 /** Undo the update under normal operation, and during recovery. 
 
-    Checks to see if the operation's results are reflected in the
-    contents of the buffer manager.  If they are, then it performs the
-    undo.  
+    For logical undo, this unconditionally executes the requested operation.
 
-    Does not write to the log.
+    For physical undo, this compares the page LSN to clr_lsn, and runs
+        it if the page is out of date.
 
-    This function does not generate CLR because this would result in
-    extra CLRs being generated during recovery.
-
-    @param e The log entry containing the operation to be undone.  
-    @param p A pointer to the memory resident copy of the page that is being managed by bufferManager.
-    @param clr_lsn The lsn of the clr that corresponds to this undo operation.
+    @param e The log entry containing the operation to be undone.
+    @param clr_lsn The lsn of the clr that records this undo operation.
 */
-void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn);
+void undoUpdate(const LogEntry * e, lsn_t clr_lsn);
 /** 
     Redoes an operation during recovery.  This is different than
     doUpdate because it checks to see if the operation needs to be redone

@@ -52,134 +52,83 @@ terms specified in this license.
 
 #include <stasis/page.h>
 
+#include <stasis/transactional.h> /// XXX for xactiontable
 
 Operation operationsTable[MAX_OPERATIONS];
 
-/**
-   @todo operations.c should handle LSN's for non-logical operations.
-*/
 void doUpdate(const LogEntry * e, Page * p) {
-  DEBUG("OPERATION update arg length %d, lsn = %ld\n",
-	e->contents.update.argSize, e->LSN);
+  assert(p);
 
-  operationsTable[e->update.funcID].run(e->xid, p, e->LSN, 
-					e->update.rid, getUpdateArgs(e));
+
+  operationsTable[e->update.funcID].run(e, p);
+
+  writelock(p->rwlatch,0);
+  DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
+         e->LSN, e->update.page, stasis_page_lsn_read(p));
+
+  stasis_page_lsn_write(e->xid, p, e->LSN);
+  unlock(p->rwlatch);
+
 }
 
 void redoUpdate(const LogEntry * e) {
-  if(e->type == UPDATELOG) {
-    recordid rid = e->update.rid;
-    Page * p;
-    lsn_t pageLSN;
-    try {
-      if(operationsTable[e->update.funcID].sizeofData == SIZEIS_PAGEID) {
-	p = NULL;
-	pageLSN = 0;
-      } else {
-	p = loadPage(e->xid, rid.page);
-	pageLSN = stasis_page_lsn_read(p);
-      } 
-    } end;
+  // Only handle update log entries
+  assert(e->type == UPDATELOG);
+  // If this is a logical operation, something is broken
+  assert(e->update.page != INVALID_PAGE);
 
-    if(e->LSN > pageLSN) {
-      DEBUG("OPERATION Redo, %ld > %ld {%d %d %ld}\n",
-	    e->LSN, pageLSN, rid.page, rid.slot, rid.size);
-      // Need to check the id field to find out what the _REDO_ action
-      // is for this log type.  contrast with doUpdate(), which
-      // doesn't use the .id field.
-      operationsTable[operationsTable[e->update.funcID].id]
-	.run(e->xid, p, e->LSN, e->update.rid, getUpdateArgs(e));
+  if(operationsTable[operationsTable[e->update.funcID].id].run == noop) 
+    return;
 
-    } else {
-      DEBUG("OPERATION Skipping redo, %ld <= %ld {%d %d %ld}\n",
-	    e->LSN, pageLSN, rid.page, rid.slot, rid.size);
-    }
-    if(p) { 
-      releasePage(p);
-    }
-  } else if(e->type == CLRLOG) {
-    recordid rid = e->update.rid;
-    Page * p = NULL;
-    lsn_t pageLSN;
-    
-    int isNullRid = !memcmp(&rid, &NULLRID, sizeof(recordid));
-    if(!isNullRid) {
-      if(operationsTable[e->update.funcID].sizeofData == SIZEIS_PAGEID) {
-	p = NULL;
-	pageLSN = 0;
-      } else { 
-	try { 
-	  p = loadPage(e->xid, rid.page);
-	  pageLSN = stasis_page_lsn_read(p);
-	} end;
-      }
-    }
-      
-      /* See if the page contains the result of the undo that this CLR
-	 is supposed to perform. If it doesn't, or this was a logical
-	 operation, then undo the original operation. */
-      
-      
-    if(isNullRid || e->LSN > pageLSN) {
-      
-      DEBUG("OPERATION Undoing for clr, %ld {%d %d %ld}\n", 
-	    e->LSN, rid.page, rid.slot, rid.size);
-      undoUpdate(e, p, e->LSN);
-    } else {
-      DEBUG("OPERATION Skiping undo for clr, %ld {%d %d %ld}\n", 
-	    e->LSN, rid.page, rid.slot, rid.size);
-    }
-    if(p) { 
-      releasePage(p);
-    }
+  Page * p = loadPage(e->xid, e->update.page);
+  writelock(p->rwlatch,0);
+  if(stasis_page_lsn_read(p) < e->LSN) {
+    DEBUG("OPERATION xid %d Redo, %lld {%lld:%lld}\n", e->xid,
+           e->LSN, e->update.page, stasis_page_lsn_read(p));
+    // Need to check the id field to find out what the REDO_action
+    // is for this log type.
+
+    // contrast with doUpdate(), which doesn't check the .id field.
+    stasis_page_lsn_write(e->xid, p, e->LSN); //XXX do this after run();
+    unlock(p->rwlatch); /// XXX keep lock while calling run();
+
+    operationsTable[operationsTable[e->update.funcID].id]
+      .run(e,p);
   } else {
-    abort();
+    DEBUG("OPERATION xid %d skip redo, %lld {%lld:%lld}\n", e->xid,
+           e->LSN, e->update.page, stasis_page_lsn_read(p));
+    unlock(p->rwlatch);
   }
+  releasePage(p);
 }
 
-
-void undoUpdate(const LogEntry * e, Page * p, lsn_t clr_lsn) {
+void undoUpdate(const LogEntry * e, lsn_t effective_lsn) {
+  // Only handle update entries
+  assert(e->type == UPDATELOG);
 
   int undo = operationsTable[e->update.funcID].undo;
-  DEBUG("OPERATION FuncID %d Undo op %d LSN %ld\n",
-	e->update.funcID, undo, clr_lsn);
 
-#ifdef DEBUGGING
-  recordid rid = e->update.rid;
-#endif
-  lsn_t page_lsn = -1;
-  if(p) {
-    page_lsn = stasis_page_lsn_read(p);
-  }
-  if(e->LSN <= page_lsn || !p) {
-    // Actually execute the undo 
-    if(undo == NO_INVERSE) {
+  if(e->update.page == INVALID_PAGE) {
+    // logical undos are excuted unconditionally.
 
-      DEBUG("OPERATION %d Physical undo, %ld {%d %d %ld}\n", undo, e->LSN, 
-	    e->update.rid.page, e->contents.rid.slot, e->update.rid.size);
+    DEBUG("OPERATION xid %d FuncID %d Undo, %d LSN %lld {logical}\n", e->xid,
+          e->update.funcID, undo, e->LSN);
 
-      assert(p);  
-      stasis_record_write(e->xid, p, clr_lsn, e->update.rid, getUpdatePreImage(e));
-
-    } else if(undo == NO_INVERSE_WHOLE_PAGE) {
-
-      DEBUG("OPERATION %d Whole page physical undo, %ld {%d}\n", undo, e->LSN,
-	    e->update.rid.page);
-
-      assert(p);
-      memcpy(p->memAddr, getUpdatePreImage(e), PAGE_SIZE);
-      stasis_page_lsn_write(e->xid, p, clr_lsn);
-
-    } else {
-
-      DEBUG("OPERATION %d Logical undo, %ld {%d %d %ld}\n", undo, e->LSN, 
-	    e->update.rid.page, e->update.rid.slot, e->update.rid.size);
-
-      operationsTable[undo].run(e->xid, p, clr_lsn, e->update.rid, 
-				getUpdateArgs(e));
-    }
+    operationsTable[undo].run(e,0);
   } else {
-    DEBUG("OPERATION %d Skipping undo, %ld {%d %d %ld}\n", undo, e->LSN, 
-	  e->update.rid.page, e->update.rid.slot, e->update.rid.size);
+    Page * p = loadPage(e->xid, e->update.page);
+    writelock(p->rwlatch,0);
+    if(stasis_page_lsn_read(p) < effective_lsn) {
+      DEBUG("OPERATION xid %d Undo, %lld {%lld:%lld}\n", e->xid,
+             e->LSN, e->update.page, stasis_page_lsn_read(p));
+      stasis_page_lsn_write(e->xid, p, effective_lsn); // XXX call after run()
+      unlock(p->rwlatch);  // release after run()
+      operationsTable[undo].run(e,p);
+    } else {
+      DEBUG("OPERATION xid %d skip undo, %lld {%lld:%lld}\n", e->xid,
+             e->LSN, e->update.page, stasis_page_lsn_read(p));
+      unlock(p->rwlatch);
+    }
+    releasePage(p);
   }
 }

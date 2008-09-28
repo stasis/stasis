@@ -78,19 +78,6 @@ terms specified in this license.
 //#include <lladd/logger/logEntry.h>
 
 extern recordid prepare_bogus_rec;
-/** 
-    Prepare transaction for commit.  Currently, a transaction may be
-    prepared multiple times.  Once Tprepare() returns, the caller is
-    guaranteed that the current transaction will resume exactly where
-    it was the last time Tprepare() was called.
-
-    @todo Tprepare() shouldn't take a record or buffer as arguments... 
-
-    @param xid Transaction id.
-    @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
-
-*/
-//#define Tprepare(xid) Tupdate(xid, NULLRID, 0, OPERATION_PREPARE)
 
 Operation getPrepare();
 

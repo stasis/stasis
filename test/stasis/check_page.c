@@ -83,7 +83,9 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
     pthread_mutex_lock(&lsn_mutex); 
     lsn++;
     this_lsn = lsn;
+    readlock(p->rwlatch,0);
     assert(stasis_page_lsn_read(p) < this_lsn);
+    unlock(p->rwlatch);
     pthread_mutex_unlock(&lsn_mutex);
 
     if(! first ) {

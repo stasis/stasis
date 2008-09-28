@@ -859,9 +859,8 @@ int stasis_page_impl_register(page_impl impl);
 void stasis_slotted_initialize_page(Page * p);
 void stasis_fixed_initialize_page(Page * page, size_t size, int count);
 void stasis_indirect_initialize_page(Page * p, int height);
-
 int stasis_fixed_records_per_page(size_t size);
-
+void stasis_blob_initialize_page(Page * p);
 END_C_DECLS
 
 #endif

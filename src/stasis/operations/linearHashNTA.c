@@ -57,7 +57,7 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
     if(keySize == VARIABLE_LENGTH || valueSize == VARIABLE_LENGTH) {
       lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(recordid));
     } else {
-      lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(lladd_linkedList_entry) + keySize + valueSize);
+      lhh.buckets = TarrayListAlloc(xid, HASH_INIT_ARRAY_LIST_COUNT, HASH_INIT_ARRAY_LIST_MULT, sizeof(stasis_linkedList_entry) + keySize + valueSize);
     }
   } end_ret(NULLRID);
   try_ret(NULLRID) {
@@ -115,8 +115,9 @@ typedef struct {
   int valueSize;
   } linearHash_remove_arg;*/
 
-compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  const linearHash_remove_arg * args = dat;
+//compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
+compensated_function static int op_linear_hash_insert(const LogEntry* e, Page* p) {
+  const linearHash_remove_arg * args = (const linearHash_remove_arg*)getUpdateArgs(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;
   int valueSize = args->valueSize;
@@ -127,19 +128,19 @@ compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, reco
   byte * value = ((byte*)(args+1))+ keySize;
   begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
-    __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);
+    __ThashInsert(e->xid, hashHeader, key, keySize, value, valueSize);
   } compensate_ret(compensation_error());
   return 0;  
 }
-compensated_function static int operateRemove(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  const linearHash_insert_arg * args = dat;
+compensated_function static int op_linear_hash_remove(const LogEntry* e, Page* p) {
+  const linearHash_insert_arg * args = (const linearHash_insert_arg*) getUpdateArgs(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;  
   
   byte * key = (byte*)(args + 1);
   begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     pthread_mutex_lock(&linear_hash_mutex);
-    __ThashRemove(xid, hashHeader, key, keySize);
+    __ThashRemove(e->xid, hashHeader, key, keySize);
   } compensate_ret(compensation_error());
   
   return 0;
@@ -148,9 +149,8 @@ Operation getLinearHashInsert() {
   Operation o = {
     //    OPERATION_LINEAR_HASH_INSERT, 
     OPERATION_NOOP,
-    SIZEIS_PAGEID,
     OPERATION_LINEAR_HASH_REMOVE,
-    &operateInsert
+    &op_linear_hash_insert
     //    &noop
   };
   return o;
@@ -159,9 +159,8 @@ Operation getLinearHashRemove() {
   Operation o = {
     //    OPERATION_LINEAR_HASH_REMOVE, 
     OPERATION_NOOP,
-    SIZEIS_PAGEID,
     OPERATION_LINEAR_HASH_INSERT,
-    &operateRemove
+    &op_linear_hash_remove
     //&noop
   };
   return o;
@@ -378,7 +377,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
 	free(value);
       }
     } else {
-      lladd_linkedList_iterator * it = TlinkedListIterator(xid, old_bucket_rid, lhh->keySize, lhh->valueSize);
+      stasis_linkedList_iterator * it = TlinkedListIterator(xid, old_bucket_rid, lhh->keySize, lhh->valueSize);
       byte * key, *value;
       int keySize, valueSize;
       while(TlinkedListNext(xid, it, &key, &keySize, &value, &valueSize)) {

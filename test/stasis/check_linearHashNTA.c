@@ -55,7 +55,7 @@ terms specified in this license.
 #include <time.h>
 
 #define LOG_NAME   "check_linearHashNTA.log"
-#define NUM_ENTRIES 100000
+static const int NUM_ENTRIES = 100000;
 /** @test
 */
 START_TEST(linearHashNTAtest)
@@ -81,9 +81,9 @@ START_TEST(linearHashNTAtest)
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
     found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(sizeof(recordid) == found);
-    assert(val2->page == i * NUM_ENTRIES);
-    assert(val2->slot == val2->page * NUM_ENTRIES);
-    assert(val2->size == val2->slot * NUM_ENTRIES);
+    assert(val2->page == val.page);
+    assert(val2->slot == val.slot);
+    assert(val2->size == val.size);
     free(val2);
   }
   Tcommit(xid);
@@ -114,7 +114,7 @@ START_TEST(linearHashNTAtest)
     int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(sizeof(recordid) == found);
     assert(val2->page == i * NUM_ENTRIES);
-    assert(val2->slot == val2->page * NUM_ENTRIES);
+    assert(val2->slot == (slotid_t)val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
@@ -150,9 +150,9 @@ START_TEST(linearHashNTAVariableSizetest)
     int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
 
     assert(sizeof(recordid) == ret);
-    assert(val2->page == i * NUM_ENTRIES);
-    assert(val2->slot == val2->page * NUM_ENTRIES);
-    assert(val2->size == val2->slot * NUM_ENTRIES);
+    assert(val2->page == val.page);
+    assert(val2->slot == val.slot);
+    assert(val2->size == val.size);
     free(val2);
   }
 
@@ -185,7 +185,7 @@ START_TEST(linearHashNTAVariableSizetest)
     int ret = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(sizeof(recordid) == ret);
     assert(val2->page == i * NUM_ENTRIES);
-    assert(val2->slot == val2->page * NUM_ENTRIES);
+    assert(val2->slot == (slotid_t)val2->page * NUM_ENTRIES);
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }

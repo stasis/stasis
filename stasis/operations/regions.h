@@ -38,7 +38,9 @@ int TregionReadBoundaryTag(int xid, pageid_t pid, boundary_tag *tag);
 Operation getAllocBoundaryTag();
 
 Operation getAllocRegion();
+Operation getAllocRegionInverse();
 Operation getDeallocRegion();
+Operation getDeallocRegionInverse();
 
 /** This function checks the regions in the page file for consistency.
     It makes sure that the doublly linked list is consistent (eg

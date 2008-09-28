@@ -48,21 +48,23 @@ terms specified in this license.
 #include <stasis/operations.h>
 #include <stasis/page.h>
 
-static int operate(int xid, Page * p, lsn_t lsn, recordid r, const void *d) {
-	int i;
+static int op_decrement(const LogEntry* e, Page* p) {
+  int i;
+  assert(e->update.arg_size == sizeof(slotid_t));
+  recordid r = {p->id, *(slotid_t*)getUpdateArgs(e), sizeof(int)};
 
-	stasis_record_read(xid, p, r, (byte*)&i);
-	i--;
-	stasis_record_write(xid, p, lsn, r, (byte*)&i);
-	return 0;
+  stasis_record_read(e->xid, p, r, (byte*)&i);
+  i--;
+  stasis_record_write(e->xid, p, e->LSN, r, (byte*)&i);
+
+  return 0;
 }
 
-Operation getDecrement() { 
-	Operation o = {
-		OPERATION_DECREMENT, /* id */
-		0, /* sizeofData (this doesn't take any args) */
-		OPERATION_INCREMENT, /* we're not doing undo functions yet */
-		&operate /* Function */
-	};
-	return o;
+Operation getDecrement() {
+  Operation o = {
+    OPERATION_DECREMENT,
+    OPERATION_INCREMENT,
+    op_decrement
+  };
+  return o;
 }

@@ -61,12 +61,16 @@ BEGIN_C_DECLS
 
 typedef struct {
   unsigned int funcID : 8;
-  recordid rid;
-  unsigned int argSize;
+  pageid_t page;
+  int64_t  arg_size;
   /* Implicit members:
      args;     @ ((byte*)ule) + sizeof(UpdateLogEntry)
-     preImage; @ ((byte*)ule) + sizeof(UpdateLogEntry) + ule.argSize */
+  */
 } UpdateLogEntry;
+
+typedef struct {
+  lsn_t compensated_lsn;
+} CLRLogArgs;
 
 struct __raw_log_entry {
   lsn_t LSN;
@@ -83,6 +87,13 @@ typedef struct {
   UpdateLogEntry update;
 } LogEntry;
 
+typedef struct {
+  lsn_t LSN;
+  lsn_t prevLSN;
+  int   xid;
+  unsigned int type;
+  CLRLogArgs clr;
+} CLRLogEntry;
 /**
    Allocate a log entry that does not contain any extra payload
    information.  (Eg: Tbegin, Tcommit, etc.)
@@ -99,10 +110,10 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
    @return a LogEntry that should be freed with free().
 
 */
-LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
-			       unsigned int operation, recordid rid, 
-			       const byte * args, unsigned int argSize, 
-			       const byte * preImage);
+LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
+			       unsigned int op, pageid_t page,
+			       const byte * arg, unsigned int arg_size);
+
 /**
    Allocate a CLR entry.  These are written during recovery as log
    entries are undone.  This moves undo operations into the redo
@@ -111,7 +122,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 
    @return a LogEntry that should be freed with free().
 */
-LogEntry * allocCLRLogEntry(const LogEntry * old_e);
+LogEntry * allocCLRLogEntry(const LogEntry * e);
 /** 
    @return the length, in bytes, of e.
 */
@@ -120,11 +131,6 @@ long sizeofLogEntry(const LogEntry * e);
    @return the operation's arguments.
 */
 const byte * getUpdateArgs(const LogEntry * e);
-/**
-   @return the undo information for operations that use record-based
-   phsysical undo.
-*/
-const byte * getUpdatePreImage(const LogEntry * e);
 
 lsn_t getPrepareRecLSN(const LogEntry *e);
 

@@ -47,18 +47,50 @@ terms specified in this license.
 
 #include <stasis/operations.h>
 #include <stasis/page.h>
+#include <string.h>
 
-static int operate(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  stasis_record_write(xid, p, lsn, rid, dat); 
+// XXX do not use
+
+static int op_instant_set(const LogEntry *e, Page* p) {
+  assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
+  const byte * b = getUpdateArgs(e);
+  recordid rid;
+
+  rid.page = p->id;
+  rid.slot = *(slotid_t*)b;    b+=sizeof(slotid_t);
+  rid.size = *(int64_t*)b;     b+=sizeof(int64_t);
+
+  assert(e->update.arg_size == sizeof(slotid_t) + sizeof(int64_t) + rid.size);
+  assert(stasis_record_type_to_size(rid.size) == rid.size);
+
+  stasis_record_write(e->xid, p, e->LSN, rid, b);
+  return 0;
+}
+int TinstantSet(int xid, recordid rid, const void * dat) {
+  Page * p = loadPage(xid, rid.page);
+  readlock(p->rwlatch,0);
+  rid = stasis_record_dereference(xid,p,rid);
+  unlock(p->rwlatch);
+  releasePage(p);
+  rid.size = stasis_record_type_to_size(rid.size);
+  size_t sz = sizeof(slotid_t) + sizeof(int64_t) + rid.size;
+  byte * const buf = malloc(sz);
+
+  byte * b = buf;
+  *(slotid_t*) b = rid.slot;    b += sizeof(slotid_t);
+  *(int64_t*)  b = rid.size;    b += sizeof(int64_t);
+  memcpy(b, dat, rid.size);
+
+  Tupdate(xid,rid,buf,sz,OPERATION_INSTANT_SET);
+  free(buf);
   return 0;
 }
 
 Operation getInstantSet() { 
 	Operation o = {
 		OPERATION_INSTANT_SET, /* id */
-		SIZEOF_RECORD, /* use the size of the record as size of arg */
-		OPERATION_NOOP, 
-		&operate /* Function */
+		OPERATION_NOOP,
+		op_instant_set
 	};
 	return o;
 }

@@ -78,7 +78,7 @@ START_TEST (recovery_idempotent) {
 
   Tread(xid, rid, &k);
   
-  fail_unless(j == k, "Get/Set broken?");
+  assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
   
@@ -92,7 +92,7 @@ START_TEST (recovery_idempotent) {
 
   Tread(xid, rid, &k);
 
-  fail_unless(j == k, "Recovery messed something up!");
+  assert(j == k); // Recovery messed something up!
 
   Tcommit(xid);
 
@@ -128,7 +128,7 @@ START_TEST (recovery_exactlyOnce) {
 
   Tread(xid, rid, &k);
   
-  fail_unless(j == k, "Get/Set broken?");
+  assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
   
@@ -144,8 +144,7 @@ START_TEST (recovery_exactlyOnce) {
 
   printf("j = %d, k = %d\n", j, k);
 
-  assert(j == k);
-  fail_unless(j == k, "Recovery messed something up!");
+  assert(j == k); // Recovery messed something up!
 
   Tcommit(xid);
 
@@ -182,7 +181,7 @@ START_TEST (recovery_idempotentAbort) {
 
   Tread(xid, rid, &k);
   
-  fail_unless(j == k, "Get/Set broken?");
+  assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
   xid = Tbegin();
@@ -190,7 +189,7 @@ START_TEST (recovery_idempotentAbort) {
   Tset(xid, rid, &k);
   k = 4;
   Tread(xid, rid, &k);
-  fail_unless(k == 2, NULL);
+  assert(k == 2);
   Tabort(xid);
 
   xid = Tbegin();
@@ -199,7 +198,7 @@ START_TEST (recovery_idempotentAbort) {
 
   Tabort(xid);
 
-  fail_unless(j == k, "Didn't abort!");
+  assert(j == k);
 
   Tdeinit();
 
@@ -211,7 +210,7 @@ START_TEST (recovery_idempotentAbort) {
 
   Tread(xid, rid, &k);
 
-  fail_unless(j == k, "Recovery messed something up!");
+  assert(j == k); // Recovery messed something up!
 
   Tcommit(xid);
 
@@ -246,11 +245,11 @@ START_TEST (recovery_exactlyOnceAbort) {
 
   Tincrement(xid, rid);
   Tread(xid, rid, &k);
-  fail_unless(j == k-1, NULL);
+  assert(j == k-1);
   Tabort(xid);
   xid = Tbegin();
   Tread(xid, rid, &k);
-  fail_unless(j == k, "didn't abort?");
+  assert(j == k); //didn't abort?
   Tcommit(xid);
 
   Tdeinit();
@@ -259,7 +258,8 @@ START_TEST (recovery_exactlyOnceAbort) {
   xid = Tbegin();
 
   Tread(xid, rid, &k);
-  fail_unless(j == k, "Recovery didn't abort correctly");
+  assert(j == k);
+
   Tcommit(xid);
   Tdeinit();
 
@@ -279,30 +279,23 @@ START_TEST(recovery_clr) {
   DEBUG("\n\nStart CLR test\n\n");
 
   Tinit();
-  
-  xid = Tbegin();
 
+  xid = Tbegin();
   rid = Talloc(xid, sizeof(int));
-	       
   Tread(xid, rid, &j);
-
   Tcommit(xid);
-  xid = Tbegin();
 
+  xid = Tbegin();
   Tincrement(xid, rid);
+  Tabort(xid);
 
-  Tabort(xid); 
-  
-  xid = Tbegin(); 
-  
+  xid = Tbegin();
   Tread(xid, rid, &k);
-  
   Tcommit(xid);
-  
-  fail_unless(j == k, NULL); 
 
-  Tdeinit(); 
+  assert(j == k);
 
+  Tdeinit();
 
   Tinit();
   Tdeinit();
@@ -310,12 +303,10 @@ START_TEST(recovery_clr) {
   Tinit();
 
   xid = Tbegin();
-
   Tread(xid, rid, &k);
-
   Tcommit(xid);
 
-  fail_unless(j == k, NULL);
+  assert(j == k);
 
   Tdeinit();
   Tinit();
@@ -326,7 +317,7 @@ START_TEST(recovery_clr) {
 
   Tcommit(xid);
 
-  fail_unless(j == k, NULL);
+  assert(j == k);
 
   Tdeinit();
 
@@ -367,7 +358,7 @@ START_TEST(recovery_crash) {
   /* RID = 9. */
 
   Tread(xid, rid, &j);
-  fail_unless(j == 9, "Increment not working?");
+  assert(j == 9); // Increment not working?
 
 
   Tcommit(xid);
@@ -380,7 +371,7 @@ START_TEST(recovery_crash) {
   /* RID = 6. */
 
   Tread(xid, rid, &j);
-  fail_unless(j == 6, "Decrement not working?");
+  assert(j == 6); // Decrement not working?
 
   TuncleanShutdown();
 
@@ -388,14 +379,14 @@ START_TEST(recovery_crash) {
 
   Tread(xid, rid, &j);
 
-  fail_unless(j == 9, "Recovery didn't roll back in-progress xact!");
+  assert(j == 9); // Recovery didn't roll back in-progress xact!
 
   Tdeinit();
   Tinit();
 
   Tread(xid, rid, &j);
 
-  fail_unless(j == 9, "Recovery failed on second re-open.");
+  assert(j == 9); // Recovery failed on second re-open.
 
   Tdeinit();
 
@@ -475,10 +466,9 @@ START_TEST (recovery_multiple_xacts) {
   Tread(xid3, rid3, &j3);
   Tread(xid4, rid4, &j4);
 
-  fail_unless(j1 == 1, NULL);
-  fail_unless(j2 == 2, NULL);
-  fail_unless(j3 == 4, NULL);
-  fail_unless(j4 == 4, NULL);
+  assert(j1 == 1);
+  assert(j2 == 2);
+  assert(j3 == 4);
   assert(j4 == 4);
   stasis_suppress_unclean_shutdown_warnings = 1;
   Tdeinit();

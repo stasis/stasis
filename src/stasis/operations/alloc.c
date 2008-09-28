@@ -77,7 +77,7 @@
 */
 //}end
 
-static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
+static int operate_helper(int xid, Page * p, recordid rid) {
 
   if(stasis_record_type_read(xid, p, rid) == INVALID_SLOT) {
     stasis_record_alloc_done(xid, p, rid);
@@ -90,30 +90,73 @@ static int operate_helper(int xid, Page * p, recordid rid, const void * dat) {
   return 0;
 }
 
-static int operate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+typedef struct {
+  slotid_t slot;
+  int64_t size;
+} alloc_arg;
+
+static int op_alloc(const LogEntry* e, Page* p) { //(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch, 0);
-  int ret = operate_helper(xid,p,rid,dat);
-  stasis_page_lsn_write(xid,p,lsn);
+
+  assert(e->update.arg_size >= sizeof(alloc_arg));
+
+  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+  recordid rid = {
+    p->id,
+    arg->slot,
+    arg->size
+  };
+
+  int ret = operate_helper(e->xid,p,rid);
+
+  if(e->update.arg_size == sizeof(alloc_arg) + arg->size) {
+    // if we're aborting a dealloc, we'd better have a sane preimage to apply
+    stasis_record_write(e->xid,p,e->LSN,rid,(const byte*)(arg+1));
+  } else {
+    // otherwise, no preimage
+    assert(e->update.arg_size == sizeof(alloc_arg));
+  }
   unlock(p->rwlatch);
   return ret;
 }
 
-static int deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_dealloc(const LogEntry* e, Page* p) { //deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch,0);
-  stasis_record_free(xid, p, rid);
-  stasis_page_lsn_write(xid,p,lsn);
-  assert(stasis_record_type_read(xid, p, rid) == INVALID_SLOT);
+  assert(e->update.arg_size >= sizeof(alloc_arg));
+  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+  recordid rid = {
+    p->id,
+    arg->slot,
+    arg->size
+  };
+  // assert that we've got a sane preimage or we're aborting a talloc (no preimage)
+  assert(e->update.arg_size == sizeof(alloc_arg) + arg->size || e->update.arg_size == sizeof(alloc_arg));
+
+  stasis_record_free(e->xid, p, rid);
+  assert(stasis_record_type_read(e->xid, p, rid) == INVALID_SLOT);
   unlock(p->rwlatch);
   return 0;
 }
 
-static int reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_realloc(const LogEntry* e, Page* p) { //reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch,0);
-  assert(stasis_record_type_read(xid, p, rid) == INVALID_SLOT);
-  int ret = operate_helper(xid, p, rid, dat);
-  byte * buf = stasis_record_write_begin(xid,p,rid);
-  memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
-  stasis_page_lsn_write(xid,p,lsn);
+  assert(e->update.arg_size >= sizeof(alloc_arg));
+  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+
+  recordid rid = {
+    p->id,
+    arg->slot,
+    arg->size
+  };
+  assert(stasis_record_type_read(e->xid, p, rid) == INVALID_SLOT);
+  int ret = operate_helper(e->xid, p, rid);
+
+  assert(e->update.arg_size == sizeof(alloc_arg)
+                               + stasis_record_length_read(e->xid,p,rid));
+
+  byte * buf = stasis_record_write_begin(e->xid,p,rid);
+  memcpy(buf, arg+1, stasis_record_length_read(e->xid,p,rid));
+  stasis_record_write_done(e->xid,p,rid,buf);
   unlock(p->rwlatch);
 
   return ret;
@@ -124,9 +167,8 @@ static pthread_mutex_t talloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 Operation getAlloc() {
   Operation o = {
     OPERATION_ALLOC, /* ID */
-    0,
     OPERATION_DEALLOC, /* OPERATION_NOOP, */
-    &operate
+    op_alloc
   };
   return o;
 }
@@ -135,9 +177,8 @@ Operation getAlloc() {
 Operation getDealloc() {
   Operation o = {
     OPERATION_DEALLOC,
-    SIZEOF_RECORD,
     OPERATION_REALLOC, /* OPERATION_NOOP, */
-    &deoperate
+    op_dealloc
   };
   return o;
 }
@@ -146,9 +187,8 @@ Operation getDealloc() {
 Operation getRealloc() {
   Operation o = {
     OPERATION_REALLOC,
-    0,
     OPERATION_NOOP,
-    &reoperate
+    op_realloc
   };
   return o;
 }
@@ -237,10 +277,10 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
   short type;
   if(size >= BLOB_THRESHOLD_SIZE) { 
     type = BLOB_SLOT;
-  } else { 
+  } else {
     type = size;
   }
-  
+
   recordid rid;
 
   begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) { 
@@ -296,9 +336,11 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
     unlock(p->rwlatch);
 
-    Tupdate(xid, rid, NULL, OPERATION_ALLOC);
+    alloc_arg a = { rid.slot, rid.size };
 
-    if(type == BLOB_SLOT) {
+    Tupdate(xid, rid, &a, sizeof(a), OPERATION_ALLOC);
+ 
+   if(type == BLOB_SLOT) {
       rid.size = size;
       allocBlob(xid, rid);
     }
@@ -321,11 +363,12 @@ void allocTransactionCommit(int xid) {
   } compensate;
 }
 
-compensated_function recordid TallocFromPage(int xid, long page, unsigned long type) {
-
-  unsigned long size = type;
-  if(size > BLOB_THRESHOLD_SIZE) { 
+compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
+  short type;
+  if(size >= BLOB_THRESHOLD_SIZE) { 
     type = BLOB_SLOT;
+  } else {
+    type = size;
   }
 
   pthread_mutex_lock(&talloc_mutex);
@@ -338,7 +381,9 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long t
     allocationPolicyAllocedFromPage(allocPolicy, xid, page);
     unlock(p->rwlatch);
 
-    Tupdate(xid,rid,NULL,OPERATION_ALLOC);
+    alloc_arg a = { rid.slot, rid.size };
+
+    Tupdate(xid, rid, &a, sizeof(a), OPERATION_ALLOC);
 
     if(type == BLOB_SLOT) {
       rid.size = size;
@@ -360,7 +405,6 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   
   // @todo this needs to garbage collect empty storage regions.
 
-  void * preimage = malloc(rid.size);
   Page * p;
   pthread_mutex_lock(&talloc_mutex);
   try {
@@ -370,11 +414,20 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   
   recordid newrid = stasis_record_dereference(xid, p, rid);
   allocationPolicyLockPage(allocPolicy, xid, newrid.page);
+
+  readlock(p->rwlatch,0);
+  int64_t size = stasis_record_length_read(xid,p,rid);
+  unlock(p->rwlatch);
+
+  byte * preimage = malloc(sizeof(alloc_arg)+rid.size);
   
+  ((alloc_arg*)preimage)->slot = rid.slot;
+  ((alloc_arg*)preimage)->size = size;
+
   begin_action(releasePage, p) {
-    stasis_record_read(xid, p, rid, preimage);
+    stasis_record_read(xid, p, rid, preimage+sizeof(alloc_arg));
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
-    Tupdate(xid, rid, preimage, OPERATION_DEALLOC);
+    Tupdate(xid, rid, preimage, sizeof(alloc_arg)+rid.size, OPERATION_DEALLOC);
   } compensate;
   pthread_mutex_unlock(&talloc_mutex);
 
@@ -405,27 +458,31 @@ compensated_function int TrecordSize(int xid, recordid rid) {
 }
 
 void TinitializeSlottedPage(int xid, int pageid) {
-  recordid rid = { pageid, SLOTTED_PAGE, 0 };
-  Tupdate(xid, rid, NULL, OPERATION_INITIALIZE_PAGE);
+  alloc_arg a = { SLOTTED_PAGE, 0 };
+  recordid rid = { pageid, 0, 0 };
+  Tupdate(xid, rid, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
 }
 void TinitializeFixedPage(int xid, int pageid, int slotLength) {
-  recordid rid = { pageid, FIXED_PAGE, slotLength };
-  Tupdate(xid, rid, NULL, OPERATION_INITIALIZE_PAGE);
+  alloc_arg a = { FIXED_PAGE, slotLength };
+  recordid rid = { pageid, 0, 0 };
+  Tupdate(xid, rid, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
 }
 
-static int operate_initialize_page(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_initialize_page(const LogEntry* e, Page* p) { //int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
   writelock(p->rwlatch, 0);
-  switch(rid.slot) { 
+  assert(e->update.arg_size == sizeof(alloc_arg));
+  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+
+  switch(arg->slot) {
   case SLOTTED_PAGE:
     stasis_slotted_initialize_page(p);
     break;
-  case FIXED_PAGE: 
-    stasis_fixed_initialize_page(p, rid.size, stasis_fixed_records_per_page(rid.size));
+  case FIXED_PAGE:
+    stasis_fixed_initialize_page(p, arg->size, stasis_fixed_records_per_page(arg->size));
     break;
   default:
     abort();
   }
-  stasis_page_lsn_write(xid, p, lsn);
   unlock(p->rwlatch);
   return 0;
 }
@@ -434,9 +491,8 @@ static int operate_initialize_page(int xid, Page *p, lsn_t lsn, recordid rid, co
 Operation getInitializePage() { 
   Operation o = { 
     OPERATION_INITIALIZE_PAGE,
-    0,
     OPERATION_NOOP,
-    &operate_initialize_page
+    op_initialize_page
   };
   return o;
 }

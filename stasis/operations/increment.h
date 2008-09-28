@@ -61,8 +61,11 @@ terms specified in this license.
 #ifndef __INCREMENT_H__
 #define __INCREMENT_H__
 
-#define Tincrement(xid,rid) Tupdate(xid,rid,0, OPERATION_INCREMENT)
+#include <stasis/constants.h>
 
+static inline void Tincrement(int xid, recordid rid) {
+  Tupdate(xid,rid,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
+}
 Operation getIncrement();
 
 #endif

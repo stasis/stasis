@@ -105,6 +105,9 @@ typedef long long lsn_t;
 #define LSN_T_MAX    INT64_MAX
 typedef long long pageid_t;
 #define PAGEID_T_MAX INT64_MAX
+typedef int32_t slotid_t;
+#define SLOTID_T_MAX INT32_MAX
+
 
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/
@@ -117,6 +120,18 @@ typedef long long pageid_t;
 #else 
 #define DEBUG(...)
 #endif /*DEBUGGING*/
+
+/**
+ * represents how to look up a record on a page
+ * @todo int64_t (for recordid.size) is a stopgap fix.
+ */
+#pragma pack(push,1)
+typedef struct {
+  pageid_t page;
+  slotid_t slot;
+  int64_t size;
+} recordid;
+#pragma pack(pop)
 
 #include "compensations.h"
 

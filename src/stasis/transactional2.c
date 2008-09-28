@@ -17,6 +17,7 @@
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
+#include <stasis/blobManager.h> // XXX remove this, move Tread() to set.c
 #include <stdio.h>
 #include <assert.h>
 #include <limits.h>
@@ -45,6 +46,7 @@ void setupOperationsTable() {
 	memset(XactionTable, INVALID_XTABLE_XID, sizeof(TransactionLog)*MAX_TRANSACTIONS);
 	// @todo clean out unused constants...
 	operationsTable[OPERATION_SET]       = getSet();
+	operationsTable[OPERATION_SET_INVERSE] = getSetInverse();
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
 	operationsTable[OPERATION_ALLOC]     = getAlloc();
@@ -53,9 +55,9 @@ void setupOperationsTable() {
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();
 	operationsTable[OPERATION_REALLOC]     = getRealloc();
-	/*	operationsTable[OPERATION_PAGE_ALLOC] = getPageAlloc();
-		operationsTable[OPERATION_PAGE_DEALLOC] = getPageDealloc(); */
-	operationsTable[OPERATION_PAGE_SET] = getPageSet();
+
+	operationsTable[OPERATION_PAGE_SET_RANGE] = getPageSetRange();
+	operationsTable[OPERATION_PAGE_SET_RANGE_INVERSE] = getPageSetRangeInverse();
 
 	/*	operationsTable[OPERATION_UPDATE_FREESPACE]         = getUpdateFreespace();
 	operationsTable[OPERATION_UPDATE_FREESPACE_INVERSE] = getUpdateFreespaceInverse();
@@ -92,7 +94,10 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_FIXED_PAGE_ALLOC] = getFixedPageAlloc();
 
 	operationsTable[OPERATION_ALLOC_REGION] = getAllocRegion();
+	operationsTable[OPERATION_ALLOC_REGION_INVERSE] = getAllocRegionInverse();
+
 	operationsTable[OPERATION_DEALLOC_REGION] = getDeallocRegion();
+	operationsTable[OPERATION_DEALLOC_REGION_INVERSE] = getDeallocRegionInverse();
 
 }
 
@@ -261,8 +266,8 @@ int Tbegin() {
 	return XactionTable[index].xid;
 }
 
-static compensated_function void TactionHelper(int xid, recordid rid, 
-					       const void * dat, int op, 
+static compensated_function void TactionHelper(int xid, recordid rid,
+					       const void * dat, size_t datlen, int op,
 					       Page * p) {
   LogEntry * e;
   assert(xid >= 0);
@@ -272,7 +277,7 @@ static compensated_function void TactionHelper(int xid, recordid rid,
     }
   } end;
 
-  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, rid, op, dat);
+  e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], p, op, dat, datlen);
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   doUpdate(e, p);
@@ -280,30 +285,28 @@ static compensated_function void TactionHelper(int xid, recordid rid,
 
 }
 
-compensated_function void TupdateRaw(int xid, recordid rid, 
-				     const void * dat, int op) { 
+// XXX remove this function once it's clear that nobody is failing the assert in Tupdate()
+compensated_function void TupdateRaw(int xid, recordid rid, const void * dat, size_t datlen,
+                                     int op) {
   assert(xid >= 0);
   Page * p = loadPage(xid, rid.page);
-  TactionHelper(xid, rid, dat, op, p);
+  TactionHelper(xid, rid, dat, datlen, op, p);
   releasePage(p);
 }
 
-compensated_function void TupdateStr(int xid, recordid rid, 
-                                     const char *dat, int op) {
-  Tupdate(xid, rid, dat, op);
+compensated_function void TupdateStr(int xid, recordid rid,
+                                     const char *dat, size_t datlen, int op) {
+  Tupdate(xid, rid, dat, datlen, op);
 }
 
 compensated_function void Tupdate(int xid, recordid rid, 
-				  const void *dat, int op) { 
+				  const void *dat, size_t datlen, int op) { 
   Page * p = loadPage(xid, rid.page);
-  rid = stasis_record_dereference(xid, p, rid);
-  
-  if(p->id != rid.page) { 
-    releasePage(p);
-    p = loadPage(xid, rid.page);
-  }
-  
-  TactionHelper(xid, rid, dat, op, p);
+  recordid rid2 = stasis_record_dereference(xid, p, rid);
+
+  assert(rid2.page == rid.page);
+
+  TactionHelper(xid, rid, dat, datlen, op, p);
   releasePage(p);
 }
 
@@ -322,6 +325,22 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     releasePage(p);
     p = loadPage(xid, rid.page);
   }
+  if(rid.size > BLOB_THRESHOLD_SIZE) {
+    DEBUG("call readBlob %lld %lld %lld\n", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
+    readBlob(xid,p,rid,dat);
+    assert(rid.page == p->id);
+  } else {
+    stasis_record_read(xid, p, rid, dat);
+  }
+  releasePage(p);
+}
+
+compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
+  Page * p;
+  try { 
+    p = loadPage(xid, rid.page);
+  } end;
+
   stasis_record_read(xid, p, rid, dat);
   releasePage(p);
 }
@@ -504,6 +523,12 @@ int TisActiveTransaction(int xid) {
   int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
   pthread_mutex_unlock(&transactional_2_mutex);
   return ret;
+}
+
+int stasis_transaction_table_set_prev_lsn(int xid, lsn_t prevLSN) {
+  assert(XactionTable[xid%xidCount%MAX_TRANSACTIONS].xid == xid);
+  XactionTable[xid%MAX_TRANSACTIONS].prevLSN = prevLSN;
+  return 0;
 }
 
 int TdurabilityLevel() {

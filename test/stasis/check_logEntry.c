@@ -62,27 +62,6 @@ START_TEST(rawLogEntryAlloc)
 }
 END_TEST
 
-/*START_TEST(clrLogEntryAlloc)
-{
-  recordid rid = { 3, 4, 5 };
-  LogEntry * log = allocCLRLogEntry(200, 1, 7, rid, 8);
-  assert(log->LSN == -1);
-  assert(log->prevLSN == 200);
-  assert(log->xid == 1);
-  assert(log->type == CLRLOG);
-  assert(sizeofLogEntry(log) == sizeof(struct __raw_log_entry) + sizeof(CLRLogEntry));
-  
-  assert(log->contents.clr.thisUpdateLSN == 7);
-  assert(log->contents.clr.rid.page == 3);
-  assert(log->contents.clr.rid.slot == 4);
-  assert(log->contents.clr.rid.size == 5);
-  assert(log->contents.clr.undoNextLSN == 8);
-
-  free(log);
-
-}
-END_TEST */
-
 /** @test
     
     Quick test of allocUpdateLogEntry
@@ -92,41 +71,33 @@ END_TEST */
 START_TEST(updateLogEntryAlloc)
 {
   
-  int * preImageCpy;
-  int preImage[] = {10000, 20000, 30000};
   char args[] = {'a', 'b', 'c'};
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
   LogEntry * log;
 
   Tinit();  /* Needed because it sets up the operations table. */
+
   log = allocUpdateLogEntry(200, 1, OPERATION_SET,
-				       rid, 
-				       (const byte*)args, 3*sizeof(char), (const byte*)preImage);
+                            rid.page, 
+                            (const byte*)args, 3*sizeof(char));
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == UPDATELOG);
-  
+
   assert(log->update.funcID    == OPERATION_SET);
-  /* assert(log->contents.update.invertible == 0); */ 
-  assert(log->update.rid.page   == 3);
-  assert(log->update.rid.slot   == 4);
-  assert(log->update.rid.size   == 3*sizeof(int));
-  assert(log->update.argSize    == 3*sizeof(char));
-  
+  assert(log->update.page   == 3);
+  assert(log->update.arg_size   == 3*sizeof(char));
+
   assert(getUpdateArgs(log) != NULL);
   assert(args[0] == ((char*)getUpdateArgs(log))[0]);
   assert(args[1] == ((char*)getUpdateArgs(log))[1]);
   assert(args[2] == ((char*)getUpdateArgs(log))[2]);
-  preImageCpy = (int*)getUpdatePreImage(log);
-  assert(preImageCpy != NULL);
 
-  assert(preImage[0] == preImageCpy[0]);
-  assert(preImage[1] == preImageCpy[1]);
-  assert(preImage[2] == preImageCpy[2]);
+  //  printf("sizes %d %d\n",sizeofLogEntry(log),(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + (sizeof(char))));
 
-  assert(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 3 * (sizeof(int)+sizeof(char))));
+  assert(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 3 * (sizeof(char))));
   free(log);
   Tdeinit();
 }
@@ -135,29 +106,22 @@ END_TEST
 
 START_TEST(updateLogEntryAllocNoExtras)
 {
-  int * preImageCpy;
-  int preImage[] = {10000, 20000, 30000};
   char args[] = {'a', 'b', 'c'};
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
-  LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_LHINSERT,
-				       rid, 
-				       (byte*)args, 0, (byte*)preImage);
+  LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_SET,
+				       rid.page, 
+				       (byte*)args, 0);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == UPDATELOG);
-  
-  assert(log->update.funcID    == OPERATION_LHINSERT);
-  /*  assert(log->contents.update.invertible == 1); */
-  assert(log->update.rid.page   == 3);
-  assert(log->update.rid.slot   == 4);
-  assert(log->update.rid.size   == 3*sizeof(int));
-  assert(log->update.argSize    == 0);
-  
+
+  assert(log->update.funcID    == OPERATION_SET);
+  assert(log->update.page   == 3);
+  assert(log->update.arg_size    == 0);
+
   assert(getUpdateArgs(log) == NULL);
-  preImageCpy = (int*)getUpdatePreImage(log);
-  assert(preImageCpy == NULL);
 
   assert(sizeofLogEntry(log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))));
   free(log);
@@ -175,10 +139,8 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, rawLogEntryAlloc);
-  //  tcase_add_test(tc, clrLogEntryAlloc);
   tcase_add_test(tc, updateLogEntryAlloc);
   tcase_add_test(tc, updateLogEntryAllocNoExtras);
-
 
   /* --------------------------------------------- */
 

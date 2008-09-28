@@ -64,13 +64,13 @@ compensated_function int TpageAlloc(int xid/*, int type*/);
 compensated_function recordid TfixedPageAlloc(int xid, int size);
 compensated_function int TpageAllocMany(int xid, int count/*, int type*/);
 compensated_function int TpageDealloc(int xid, int pageid);
-compensated_function int TpageSet(int xid, int pageid, byte* dat);
-compensated_function int TpageGet(int xid, int pageid, byte* buf);
+compensated_function int TpageSet(int xid, int pageid, const void* dat);
+compensated_function int TpageSetRange(int xid, int pageid, int offset, const void* dat, int len);
+compensated_function int TpageGet(int xid, int pageid, void* buf);
 int TpageGetType(int xid, int pageid);
 
-/*Operation getPageAlloc();
-  Operation getPageDealloc(); */
-Operation getPageSet();
+Operation getPageSetRange();
+Operation getPageSetRangeInverse();
 
 Operation getFixedPageAlloc();
 

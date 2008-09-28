@@ -55,8 +55,11 @@ terms specified in this license.
 #ifndef __DECREMENT_H__
 #define __DECREMENT_H__
 
-#define Tdecrement(xid,rid) Tupdate(xid,rid,0, OPERATION_DECREMENT)
+#include <stasis/constants.h>
 
+static inline void Tdecrement(int xid, recordid rid) {
+  Tupdate(xid,rid,&rid.slot,sizeof(rid.slot),OPERATION_DECREMENT);
+}
 Operation getDecrement();
 
 #endif

@@ -55,7 +55,7 @@ terms specified in this license.
 
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
-#include <stasis/transactional.h>
+
 /*#define DEBUG 1*/
 
 #define LOG_FILE "logfile.txt"
@@ -115,32 +115,31 @@ terms specified in this license.
 
 /** Operation types */
 
-#define NO_INVERSE_WHOLE_PAGE -2
-#define NO_INVERSE            -1
 #define OPERATION_SET          0
-#define OPERATION_INCREMENT    1
-#define OPERATION_DECREMENT    2
-#define OPERATION_ALLOC        3
-#define OPERATION_PREPARE      4
-#define OPERATION_LHINSERT     5
-#define OPERATION_LHREMOVE     6
-#define OPERATION_DEALLOC      7
-#define OPERATION_REALLOC      8
-/*#define OPERATION_PAGE_ALLOC   ?
-  #define OPERATION_PAGE_DEALLOC 9 */
-#define OPERATION_PAGE_SET     10
-#define OPERATION_UPDATE_FREESPACE 11
-#define OPERATION_UPDATE_FREESPACE_INVERSE 12
-#define OPERATION_UPDATE_FREELIST 13
-#define OPERATION_UPDATE_FREELIST_INVERSE 14
-#define OPERATION_FREE_PAGE   15
-#define OPERATION_ALLOC_FREED 16
-#define OPERATION_UNALLOC_FREED 17
-#define OPERATION_NOOP        18
-#define OPERATION_INSTANT_SET 19
-#define OPERATION_ARRAY_LIST_ALLOC 20
-#define OPERATION_INITIALIZE_PAGE 21
-// #define OPERATION_UNINITIALIZE_PAGE 22
+#define OPERATION_SET_INVERSE  1
+#define OPERATION_INCREMENT    2
+#define OPERATION_DECREMENT    3
+#define OPERATION_ALLOC        4
+#define OPERATION_PREPARE      5
+//#define OPERATION_LHINSERT     6
+//#define OPERATION_LHREMOVE     7
+#define OPERATION_DEALLOC      8
+#define OPERATION_REALLOC      9
+
+#define OPERATION_PAGE_SET_RANGE     10
+#define OPERATION_PAGE_SET_RANGE_INVERSE 11
+/*#define OPERATION_UPDATE_FREESPACE 12
+#define OPERATION_UPDATE_FREESPACE_INVERSE 13
+#define OPERATION_UPDATE_FREELIST 14
+#define OPERATION_UPDATE_FREELIST_INVERSE 15
+#define OPERATION_FREE_PAGE   16
+#define OPERATION_ALLOC_FREED 17
+#define OPERATION_UNALLOC_FREED 18 */
+#define OPERATION_NOOP        19
+#define OPERATION_INSTANT_SET 20
+#define OPERATION_ARRAY_LIST_ALLOC 21
+#define OPERATION_INITIALIZE_PAGE 22
+
 #define OPERATION_LINEAR_INSERT 23
 #define OPERATION_UNDO_LINEAR_INSERT 24
 #define OPERATION_LINEAR_DELETE 25
@@ -160,7 +159,10 @@ terms specified in this license.
 #define OPERATION_FIXED_PAGE_ALLOC 36
 
 #define OPERATION_ALLOC_REGION 37
-#define OPERATION_DEALLOC_REGION 38
+#define OPERATION_ALLOC_REGION_INVERSE 38
+
+#define OPERATION_DEALLOC_REGION 39
+#define OPERATION_DEALLOC_REGION_INVERSE 40
 
 // these operations are specific to OASYS
 #define OPERATION_OASYS_DIFF_DO           75  
@@ -189,6 +191,8 @@ terms specified in this license.
 #define BLOB_SLOT     (-2)
 #define NORMAL_SLOT  (-3)
 #define SLOT_TYPE_END (-4)
+
+#define INVALID_PAGE (-1)
 
 /** Initialized statically in transactional2.c */
 extern const short SLOT_TYPE_LENGTHS[];

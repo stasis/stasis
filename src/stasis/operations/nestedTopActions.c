@@ -48,7 +48,6 @@ terms specified in this license.
 #include <stasis/common.h>
 #include <stasis/operations/nestedTopActions.h>
 #include <stasis/logger/logger2.h>
-#include <pbl/pbl.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stasis/latches.h>
@@ -58,65 +57,52 @@ extern pthread_mutex_t transactional_2_mutex;
 
 extern TransactionLog XactionTable[];
 
-pblHashTable_t * nestedTopActions = NULL;
-
 void initNestedTopActions() {
-  nestedTopActions = pblHtCreate();
 }
-void deinitNestedTopActions() { 
-  pblHtDelete(nestedTopActions);
+void deinitNestedTopActions() {
 }
-/** @todo TbeginNestedTopAction's API might not be quite right.  
+
+typedef struct {
+  lsn_t prev_lsn;
+  lsn_t compensated_lsn;
+} stasis_nta_handle;
+
+/** @todo TbeginNestedTopAction's API might not be quite right.
     Are there cases where we need to pass a recordid in?
 
     @return a handle that must be passed into TendNestedTopAction
 */
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
-  recordid rid = NULLRID;
   assert(xid >= 0);
-  rid.page = datSize;
-  LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, rid, op, dat);
+  LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
-  lsn_t * prevLSN = malloc(sizeof(lsn_t));
-  *prevLSN = e->LSN;
-  pthread_mutex_lock(&transactional_2_mutex);
-  void * ret = pblHtLookup(nestedTopActions, &xid, sizeof(int));
-  if(ret) { 
-    pblHtRemove(nestedTopActions, &xid, sizeof(int));
-  }
-  pblHtInsert(nestedTopActions, &xid, sizeof(int), prevLSN);
-  pthread_mutex_unlock(&transactional_2_mutex);
+  stasis_nta_handle * h = malloc(sizeof(stasis_nta_handle));
+
+  h->prev_lsn = e->prevLSN;
+  h->compensated_lsn = e->LSN;
+
   FreeLogEntry(e);
-  return ret;
+  return h;
 }
 
-/** 
+/**
     Call this function at the end of a nested top action.
     @return the lsn of the CLR.  Most users (everyone?) will ignore this.
 */
 lsn_t TendNestedTopAction(int xid, void * handle) {
-  
-  pthread_mutex_lock(&transactional_2_mutex);
-  
-  lsn_t * prevLSN = pblHtLookup(nestedTopActions, &xid, sizeof(int));
-  pblHtRemove(nestedTopActions, &xid, sizeof(int));
-  if(handle) {
-    pblHtInsert(nestedTopActions, &xid, sizeof(int), handle);
-  }
-
+  stasis_nta_handle * h = handle;
   assert(xid >= 0);
 
   // Write a CLR.
-  lsn_t clrLSN = LogDummyCLR(xid, *prevLSN);
-  
-  // Ensure that the next action in this transaction points to the CLR. 
+  lsn_t clrLSN = LogDummyCLR(xid, h->prev_lsn, h->compensated_lsn);
+
+  // Ensure that the next action in this transaction points to the CLR.
   XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
-  
+
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
 	 clrLSN, undoneLSN, *prevLSN);
 
-  free(prevLSN);
-  pthread_mutex_unlock(&transactional_2_mutex);
-  
+  free(h);
+
   return clrLSN;
 }

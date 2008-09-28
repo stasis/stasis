@@ -43,6 +43,8 @@ BEGIN_C_DECLS
 
        @todo Update blobManager to (partially) provide a page api
 
+       @todo Move blobManager to page and/or operations directory
+
        @ingroup LLADD_CORE
 */
 
@@ -56,7 +58,7 @@ void readBlob(int xid, Page * p,  recordid rid, void * buf);
 /** 
     Write the contents of buf to the blob in recordid rid.
 */
-void writeBlob(int xid, Page * p, lsn_t lsn, recordid rid, const void * buf);
+void writeBlob(int xid, Page * p, recordid rid, const void * buf);
 
 compensated_function recordid preAllocBlob(int xid, long blobsize);
 compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobsize);

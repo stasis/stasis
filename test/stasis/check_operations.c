@@ -65,7 +65,7 @@ START_TEST(operation_physical_do_undo) {
   recordid rid;
   lsn_t lsn = 2;
   int buf;
-  int arg;
+
   LogEntry * setToTwo;
 
   Tinit();
@@ -80,17 +80,30 @@ START_TEST(operation_physical_do_undo) {
   unlock(p->rwlatch);
   releasePage(p);
 
-  buf = 1;
-  arg = 2;
-
   DEBUG("A\n");
-  setToTwo = allocUpdateLogEntry(-1, xid, OPERATION_SET, rid, (void*)&arg, sizeof(int), (void*)&buf);
+
+  byte arg[sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int)];
+  byte * cur = arg;
+  *(slotid_t*)cur = rid.slot; cur += sizeof(slotid_t);
+  *(int64_t*) cur = sizeof(int); cur += sizeof(int64_t);
+  *(int*)     cur = 2; cur += sizeof(int);
+  *(int*)     cur = 1;
+
+
+  // XXX fails; set log format has changed
+  setToTwo = allocUpdateLogEntry(-1, xid, OPERATION_SET, rid.page,
+                                 (void*)arg, sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
+
+
 
   /* Do, undo and redo operation without updating the LSN field of the page. */
 
   DEBUG("B\n");
   
   p = loadPage(xid, rid.page);
+  // manually fill in UNDO field 
+  //stasis_record_read(xid, p, rid, ((byte*)(setToTwo) + sizeofLogEntry(setToTwo) - rid.size));
+
   stasis_record_write(xid, p, lsn, rid, (byte*)&buf);
   releasePage(p);
   setToTwo->LSN = 10;
@@ -104,26 +117,26 @@ START_TEST(operation_physical_do_undo) {
   stasis_record_read(xid, p, rid, (byte*)&buf);
   releasePage(p);
 
-  fail_unless(buf == 2, NULL);
+  assert(buf == 2);
 
 
   DEBUG("D\n");
 
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
-  fail_unless(10 == stasis_page_lsn_read(p), "page lsn not set correctly.");
+  assert(10 == stasis_page_lsn_read(p)); // "page lsn not set correctly."
   unlock(p->rwlatch);
 
   setToTwo->LSN = 5;
 
-  undoUpdate(setToTwo, p, 8);  /* Should succeed, CLR LSN is too low, but undoUpdate only checks the log entry. */
+  undoUpdate(setToTwo, 12); //, p, 8);  /* Should succeed: log LSN is lower than page LSN, but effective LSN is higher than page LSN */
   releasePage(p);
 
   p = loadPage(xid, rid.page);
   stasis_record_read(xid, p, rid, (byte*)&buf);
   releasePage(p);
 
-  fail_unless(buf == 1, NULL);
+  assert(buf == 1);
   
   DEBUG("E\n");
   redoUpdate(setToTwo);
@@ -133,7 +146,7 @@ START_TEST(operation_physical_do_undo) {
   stasis_record_read(xid, p, rid, (byte*)&buf);
   releasePage(p);
 
-  fail_unless(buf == 1, NULL);
+  assert(buf == 1);
   
   /* Now, simulate scenarios from normal operation:
          do the operation, and update the LSN, (update happens)
@@ -179,14 +192,13 @@ START_TEST(operation_physical_do_undo) {
   p = loadPage(xid, rid.page);
   stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 2);
-  fail_unless(buf == 2, NULL);
 
   DEBUG("G undo set to 2\n");
-  undoUpdate(setToTwo, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
+  undoUpdate(setToTwo, 20); //, p, 20);        /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
-  fail_unless(buf == 1, NULL);
+  assert(buf == 1);
   releasePage(p);
   
   DEBUG("H don't redo set to 2\n");
@@ -196,7 +208,7 @@ START_TEST(operation_physical_do_undo) {
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
-  fail_unless(buf == 1, NULL);
+  assert(buf == 1);
   
   stasis_record_write(xid, p, 0, rid, (byte*)&buf); /* reset the page's LSN. */
 
@@ -207,7 +219,7 @@ START_TEST(operation_physical_do_undo) {
   p = loadPage(xid, rid.page);
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
-  fail_unless(buf == 2, NULL);
+  assert(buf == 2);
   releasePage(p);
   Tdeinit();
 }

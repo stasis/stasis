@@ -12,9 +12,9 @@ static char * logEntryToString(const LogEntry * le) {
   switch(le->type) {
   case UPDATELOG:
     {
-      recordid rid = le->update.rid;
-      asprintf(&ret, "UPDATE\tlsn=%9lld\tprevlsn=%9lld\txid=%4d\trid={%8d %5d %5lld}\tfuncId=%3d\targSize=%9d\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, (long long int)rid.size, le->update.funcID, le->update.argSize );
+
+      asprintf(&ret, "UPDATE\tlsn=%9lld\tprevlsn=%9lld\txid=%4d\tpage={%8lld}\tfuncId=%3d\targSize=%9lld\n", le->LSN, le->prevLSN, le->xid, 
+	       le->update.page, le->update.funcID, (long long)le->update.arg_size );
       
     }
     break;
@@ -48,9 +48,8 @@ static char * logEntryToString(const LogEntry * le) {
     break;
   case CLRLOG:
     {
-      recordid rid = le->update.rid;
-      asprintf(&ret, "CLR   \tlsn=%9lld\tprevlsn=%9lld\txid=%4d\trid={%8d %5d %5lld}\n", le->LSN, le->prevLSN, le->xid, 
-	       rid.page, rid.slot, (long long int) rid.size );
+      asprintf(&ret, "CLR   \tlsn=%9lld\tprevlsn=%9lld\txid=%4d\tcompensates={%8lld}\n", le->LSN, le->prevLSN, le->xid, 
+	       ((CLRLogEntry*)le)->clr.compensated_lsn);
     }
     break;
   }

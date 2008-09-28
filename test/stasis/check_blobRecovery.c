@@ -417,7 +417,7 @@ START_TEST(recoverBlob__crash) {
   Tread(xid, rid, &j);
 
   arraySet(k, 9);
-  fail_unless(!memcmp(j,k,ARRAY_SIZE), "set not working?");
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), "set not working?");
 
 
   Tcommit(xid);
@@ -430,25 +430,29 @@ START_TEST(recoverBlob__crash) {
   /* RID = 6. */
 
   Tread(xid, rid, &j);
-  fail_unless(!memcmp(j,k,ARRAY_SIZE), NULL);
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), NULL);
   TuncleanShutdown();
 
+  printf("\nreopen 1\n");
   Tinit();
+  printf("\nreopen 1 done\n");
 
   Tread(xid, rid, &j);
 
   arraySet(k, 9);
 
-  fail_unless(!memcmp(j,k,ARRAY_SIZE), "Recovery didn't roll back in-progress xact!");
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), "Recovery didn't roll back in-progress xact!");
 
   Tdeinit();
+
+  printf("\nreopen 2\n");
   Tinit();
 
   Tread(xid, rid, &j);
 
   assert(!memcmp(j,k,ARRAY_SIZE * sizeof(int)));
 
-  fail_unless(!memcmp(j,k,ARRAY_SIZE), "Recovery failed on second re-open.");
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), "Recovery failed on second re-open.");
 
   Tdeinit();
 

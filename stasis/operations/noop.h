@@ -55,5 +55,5 @@ terms specified in this license.
 #define __NOOP_H__
 
 Operation getNoop();
-int noop(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat);
+int noop(const LogEntry* e, Page* p);
 #endif

@@ -157,8 +157,8 @@ lsn_t LogTransAbort(TransactionLog * l);
   its operation argument to the extent necessary for allocating and laying out 
   the log entry.  Finally, it updates the state of the parameter l.
 */
-LogEntry * LogUpdate(TransactionLog * l, Page * p, recordid rid, int operation,
-		     const byte * args);
+LogEntry * LogUpdate(TransactionLog * l, Page * p, unsigned int operation,
+		     const byte * arg, size_t arg_size);
 
 /**
    Any LogEntry that is returned by a function in logger2.h or
@@ -180,7 +180,7 @@ void FreeLogEntry(const LogEntry * e);
 */
 lsn_t LogCLR(const LogEntry * e);
 
-lsn_t LogDummyCLR(int xid, lsn_t prevLSN);
+lsn_t LogDummyCLR(int xid, lsn_t prev_lsn, lsn_t compensated_lsn);
 
 /**
    Write a end transaction record @see XEND

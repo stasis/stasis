@@ -83,7 +83,6 @@ static void setup_log() {
     recordid rid;
     byte * args = (byte*)"Test 123.";
     long args_size = 10;  /* Including null */
-    unsigned long preImage = 42;
 
     rid.page = 0;
     rid.slot = 0;
@@ -105,7 +104,7 @@ static void setup_log() {
     FreeLogEntry (e);
     FreeLogEntry (f);
 
-    e = allocUpdateLogEntry(prevLSN, xid, 1, rid, args, args_size, (byte*) &preImage);
+    e = allocUpdateLogEntry(prevLSN, xid, 1, rid.page, args, args_size);
 
     LogWrite(e);
     prevLSN = e->prevLSN;
@@ -403,7 +402,7 @@ void reopenLogWorkload(int truncating) {
 
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
-    entries[i] = LogUpdate(&l, NULL, NULLRID, OPERATION_NOOP, NULL); 
+    entries[i] = LogUpdate(&l, NULL, OPERATION_NOOP, NULL, 0); 
 
     if(i == SYNC_POINT) {
       if(truncating) { 
@@ -441,7 +440,7 @@ void reopenLogWorkload(int truncating) {
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    entries2[i] = LogUpdate(&l, NULL, NULLRID, OPERATION_NOOP, NULL); 
+    entries2[i] = LogUpdate(&l, NULL, OPERATION_NOOP, NULL, 0); 
     if(i == SYNC_POINT) { 
       syncLog_LogWriter();
     }

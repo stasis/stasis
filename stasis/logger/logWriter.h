@@ -70,8 +70,8 @@ terms specified in this license.
 #ifndef __LOGWRITER_H__
 #define __LOGWRITER_H__
 
-#include <stasis/constants.h>
 #include <stasis/common.h>
+#include <stasis/logger/logEntry.h>
 
 BEGIN_C_DECLS
 /**

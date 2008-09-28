@@ -48,18 +48,13 @@ terms specified in this license.
 #include <stasis/operations.h>
 #include <stasis/page.h>
 
-int noop(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
-  /* If p is null, then this is a logical no-op that spans pages, so do nothing.
-     Otherwise, write the LSN to the appropriate page (to keep recovery happy) 
-     and return  */
-  if(p) stasis_page_lsn_write(xid, p, lsn);
+int noop(const LogEntry* e, Page* p) {
   return 0;
 }
 
 Operation getNoop() {
-  Operation o = { 
-    OPERATION_NOOP, 
-    0,
+  Operation o = {
+    OPERATION_NOOP,
     OPERATION_NOOP,
     &noop
   };

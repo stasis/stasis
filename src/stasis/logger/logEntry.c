@@ -64,97 +64,64 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
   ret->xid = xid;
   ret->type = XPREPARE;
   *(lsn_t*)(((struct __raw_log_entry*)ret)+1)=recLSN;
-  //  assert(sizeofLogEntry(ret) == sizeof(struct __raw_log_entry)+sizeof(lsn_t));
   return ret;
 }
 const byte * getUpdateArgs(const LogEntry * ret) {
   assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
-  if(ret->update.argSize == 0) {
+  if(ret->update.arg_size == 0) {
     return NULL;
   } else {
-    return ((byte*)ret) + 
+    return ((const byte*)ret) + 
       sizeof(struct __raw_log_entry) + 
       sizeof(UpdateLogEntry);
   }
 }
 
-const byte * getUpdatePreImage(const LogEntry * ret) {
-  assert(ret->type == UPDATELOG ||
-	 ret->type == CLRLOG);
-  if(operationsTable[ret->update.funcID].undo != NO_INVERSE && 
-     operationsTable[ret->update.funcID].undo != NO_INVERSE_WHOLE_PAGE) {
-    return NULL;
-  } else {
-    return ((byte*)ret) + 
-      sizeof(struct __raw_log_entry) + 
-      sizeof(UpdateLogEntry) + 
-      ret->update.argSize;
-  }
-}
 
 lsn_t getPrepareRecLSN(const LogEntry *e) {
   lsn_t ret = *(lsn_t*)(((struct __raw_log_entry*)e)+1);
   if(ret == -1) { ret = e->LSN; }
   return ret;
 }
-LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid, 
-			       unsigned int funcID, recordid rid, 
-			       const byte * args, unsigned int argSize, 
-			       const byte * preImage) {
-  int invertible = operationsTable[funcID].undo != NO_INVERSE;
-  int whole_page_phys = operationsTable[funcID].undo == NO_INVERSE_WHOLE_PAGE;
-  
+
+LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
+			       unsigned int op, pageid_t page,
+			       const byte * args, unsigned int arg_size) {
   /** Use calloc since the struct might not be packed in memory;
       otherwise, we'd leak uninitialized bytes to the log. */
 
-  size_t logentrysize =  
-    sizeof(struct __raw_log_entry) + 
-    sizeof(UpdateLogEntry) + argSize +
-    ((!invertible) ? stasis_record_type_to_size(rid.size) 
-     : 0) + 
-    (whole_page_phys ? PAGE_SIZE 
-     : 0);
+  size_t logentrysize =
+    sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + arg_size;
+
   LogEntry * ret = calloc(1,logentrysize);
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
   ret->type = UPDATELOG;
-  ret->update.funcID = funcID;
-  ret->update.rid    = rid;
-  ret->update.argSize = argSize;
-  
-  if(argSize) {
-    memcpy((void*)getUpdateArgs(ret), args, argSize);
-  } 
-  if(!invertible) {
-    memcpy((void*)getUpdatePreImage(ret), preImage, 
-	   stasis_record_type_to_size(rid.size));
+  ret->update.funcID = op;
+  ret->update.page    = page;
+  ret->update.arg_size = arg_size;
+
+  if(arg_size) {
+    memcpy((void*)getUpdateArgs(ret), args, arg_size);
   }
-  if(whole_page_phys) {
-    memcpy((void*)getUpdatePreImage(ret), preImage, 
-	   PAGE_SIZE);
-  }
-  //assert(logentrysize == sizeofLogEntry(ret));
-  // XXX checks for uninitialized values in valgrind
-  //  stasis_crc32(ret, sizeofLogEntry(ret), 0);
+
   return ret;
 }
 
 LogEntry * allocCLRLogEntry(const LogEntry * old_e) { 
+  CLRLogEntry * ret = calloc(1,sizeof(CLRLogEntry));
 
-  // Could handle other types, but we should never encounter them here.
-  assert(old_e->type == UPDATELOG); 
-
-  LogEntry * ret = calloc(1, sizeofLogEntry(old_e));
-  memcpy(ret, old_e, sizeofLogEntry(old_e));
   ret->LSN = -1;
-  // prevLSN is OK already
-  // xid is OK already
+  ret->prevLSN = old_e->prevLSN;
+  ret->xid = old_e->xid;
   ret->type = CLRLOG;
-  // update is also OK
-  
-  return ret;
+  DEBUG("compensates: %lld\n", old_e->LSN);
+  assert(old_e->LSN!=-1);
+  ret->clr.compensated_lsn = old_e->LSN;
+
+  return (LogEntry*)ret;
 }
 
 
@@ -162,15 +129,14 @@ LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
 long sizeofLogEntry(const LogEntry * log) {
   switch (log->type) {
   case CLRLOG:
+    {
+      return sizeof(CLRLogEntry);
+    }
   case UPDATELOG:
-  {
-    int undoType = operationsTable[log->update.funcID].undo;
-    return sizeof(struct __raw_log_entry) + 
-      sizeof(UpdateLogEntry) + log->update.argSize + 
-      ((undoType == NO_INVERSE) ? stasis_record_type_to_size(log->update.rid.size) 
-                                : 0) +
-      ((undoType == NO_INVERSE_WHOLE_PAGE) ? PAGE_SIZE : 0);
-  }
+    {
+      return sizeof(struct __raw_log_entry) +
+        sizeof(UpdateLogEntry) + log->update.arg_size;
+    }
   case INTERNALLOG:
     return LoggerSizeOfInternalLogEntry(log);
   case XPREPARE:

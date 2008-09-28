@@ -60,13 +60,16 @@ terms specified in this license.
     @param rid the recordid of the record to be changed.
     @param dat the new value of the record.
 */ 
-#define Tset(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_SET)
+int Tset(int xid, recordid rid, const void * dat);
+
+int TsetRaw(int xid, recordid rid, const void * dat);
 
 Operation getSet();
-Operation getSetRaw();
+Operation getSetInverse();
 
-Operation getSetRangeInverse();
 Operation getSetRange();
+Operation getSetRangeInverse();
+
 /**
 
   Change an interval of bytes within a record.

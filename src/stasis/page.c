@@ -98,11 +98,7 @@ static page_impl page_impls[MAX_PAGE_TYPE];
    XXX latching for pageWriteLSN...
 */
 void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
-  // These asserts belong here, but would cause some hacked up unit tests to fail...
-  // if(!page->dirty) {
-  //  assert(page->LSN < lsn);
-  // }
-  //  assertlocked(page->rwlatch);
+  assertlocked(page->rwlatch);
 
   if(page->LSN < lsn) {
     page->LSN = lsn;
@@ -114,6 +110,7 @@ void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
    XXX latching for pageReadLSN...
 */
 lsn_t stasis_page_lsn_read(const Page * page) {
+  assertlocked(page->rwlatch);
   return page->LSN;
 }
 
@@ -157,33 +154,25 @@ void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte 
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 
   readlock(p->rwlatch, 225);
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
-    // XXX Kludge This is done so that recovery sees the LSN update.  Otherwise, it gets upset... Of course, doing it will break blob recovery unless we set blob writes to do "logical" redo...
-    stasis_page_lsn_write(xid, p, lsn);
-    unlock(p->rwlatch);
-    writeBlob(xid, p, lsn, rid, dat);
-  } else {
-    byte * buf = stasis_record_write_begin(xid, p, rid);
-    stasis_page_lsn_write(xid, p, lsn);
-    memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
-    unlock(p->rwlatch);
-  }
+  assert(rid.size <= BLOB_THRESHOLD_SIZE);
+
+  byte * buf = stasis_record_write_begin(xid, p, rid);
+  memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
+  unlock(p->rwlatch);
+
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
 int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
   assert(rid.page == p->id);
 
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
-    readBlob(xid, p, rid, buf);
-    assert(rid.page == p->id);
-    return 0;
-  } else {
-    readlock(p->rwlatch, 0);
-    const byte * dat = stasis_record_read_begin(xid,p,rid);
-    memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
-    unlock(p->rwlatch);
-    return 0;
-  }
+  assert(rid.size <= BLOB_THRESHOLD_SIZE);
+
+  readlock(p->rwlatch, 0);
+  const byte * dat = stasis_record_read_begin(xid,p,rid);
+  memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
+  unlock(p->rwlatch);
+  return 0;
+
 }
 /**
    @todo stasis_record_dereference should dispatch via page_impl...

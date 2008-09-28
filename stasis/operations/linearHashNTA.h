@@ -37,7 +37,7 @@ typedef struct {
   int numBuckets;
   int keySize;
   int valueSize;
-  lladd_linkedList_iterator * it;
+  stasis_linkedList_iterator * it;
   lladd_pagedList_iterator * pit;
 } lladd_hash_iterator;
 

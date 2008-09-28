@@ -102,13 +102,6 @@ compensated_function recordid TarrayListAlloc(int xid, int numPages, int multipl
  */
 compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
 /**
-    Do not call this function.
-
-    @deprecated This function is known to be broken, and is only
-                called by a deprecated hash implementation.
- */
-compensated_function int TarrayListInstantExtend(int xid, recordid rid, int slots);
-/**
    Get the length of an ArrayList.
 
    @param xid the transaction performing the expansion

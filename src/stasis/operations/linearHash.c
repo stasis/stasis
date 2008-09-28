@@ -38,12 +38,12 @@ extern pthread_mutex_t linearHashMutex;// = PTHREAD_MUTEX_INITIALIZER;
 
 extern pblHashTable_t * openHashes ;
 
-static int operateUndoInsert(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
-  
+static int op_linear_hash_undo_insert(const LogEntry* e, Page *p) {
+  abort();
+#if 0
   int keySize = rid.size;
   int valSize = rid.slot;
   rid.slot = 0;
-//  rid.size = sizeof(recordid);
   rid.slot = sizeof(hashEntry) + keySize + valSize;
 
   if(!pblHtLookup(openHashes, &rid.page, sizeof(int))) {
@@ -53,6 +53,7 @@ static int operateUndoInsert(int xid, Page * p, lsn_t lsn, recordid rid, const v
 
   ThashInstantDelete(xid, rid, dat, keySize, valSize);
   return 0;
+#endif
 }
 
 typedef struct {
@@ -60,7 +61,9 @@ typedef struct {
   int valSize;
 } undoDeleteArg;
 
-static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_linear_hash_delete(const LogEntry *e, Page *p) {
+  abort();
+#if 0
   const undoDeleteArg * arg = dat;
   int keySize = arg->keySize;
   int valSize = arg->valSize;
@@ -78,13 +81,12 @@ static int operateUndoDelete(int xid, Page * p, lsn_t lsn, recordid rid, const v
   ThashInstantInsert(xid, rid, argBytes, keySize, 
 		     argBytes + keySize, valSize);
   return 0;
+#endif
 }
-//statiint noop (int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) { pageWriteLSN(xid, p, lsn); return 0; }
 
 Operation getLinearInsert() {
   Operation o = { 
     OPERATION_LINEAR_INSERT,
-    SIZEOF_RECORD,
     OPERATION_UNDO_LINEAR_INSERT,
     &noop
   };
@@ -93,7 +95,6 @@ Operation getLinearInsert() {
 Operation getLinearDelete() {
   Operation o = { 
     OPERATION_LINEAR_DELETE,
-    SIZEOF_RECORD,
     OPERATION_UNDO_LINEAR_DELETE,
     &noop
   };
@@ -104,9 +105,8 @@ Operation getLinearDelete() {
 Operation getUndoLinearInsert() {
   Operation o = { 
     OPERATION_UNDO_LINEAR_INSERT,
-    SIZEOF_RECORD,
     OPERATION_NOOP,
-    &operateUndoInsert
+    op_linear_hash_undo_insert
   };
   return o;
 }
@@ -114,9 +114,8 @@ Operation getUndoLinearInsert() {
 Operation getUndoLinearDelete() {
   Operation o = { 
     OPERATION_UNDO_LINEAR_DELETE,
-    SIZEOF_RECORD,
     OPERATION_NOOP,
-    &operateUndoDelete
+    op_linear_hash_delete
   };
   return o;
 }
@@ -128,7 +127,7 @@ void TlogicalHashInsert(int xid, recordid hashRid, void * key, int keySize, void
 
   hashRid.slot = valSize;
   hashRid.size = keySize;
-  TupdateRaw(xid, hashRid, key, OPERATION_LINEAR_INSERT);
+  TupdateRaw(xid, hashRid, key, keySize, OPERATION_LINEAR_INSERT);
   
   /* Perform redo-only insert. */
   hashRid.size = sizeof(hashEntry) + keySize + valSize;
@@ -155,7 +154,7 @@ int TlogicalHashDelete(int xid, recordid hashRid, void * key, int keySize, void 
 
     hashRid.size = sizeof(undoDeleteArg) + keySize + valSize;
 
-    TupdateRaw(xid, hashRid, arg, OPERATION_LINEAR_DELETE);
+    TupdateRaw(xid, hashRid, arg, sizeof(undoDeleteArg) + keySize + valSize, OPERATION_LINEAR_DELETE);
     hashRid.size = sizeof(hashEntry) + keySize + valSize;
     free(arg);
     /*    hashRid.size = sizeof(recordid); */
@@ -202,7 +201,8 @@ if(mycount <= 0 && !(mycount * -1) % FF_AM) { */
     pthread_mutex_lock(&exp_slow_mutex);
 
 //    int j;
-    TarrayListInstantExtend(xid, hash, 1 /*AMORTIZE*/);
+    abort();
+    //    TarrayListInstantExtend(xid, hash, 1 /*AMORTIZE*/);
 
   //  pthread_mutex_lock(&linearHashMutex);  //Already hold this!
     

@@ -54,8 +54,10 @@ terms specified in this license.
 
 #ifndef __INSTANT_SET_H__
 #define __INSTANT_SET_H__
-
-#define TinstantSet(xid,rid,dat) Tupdate(xid,rid,dat, OPERATION_INSTANT_SET)
+/**
+   XXX never use TinstantSet
+*/
+int TinstantSet(int xid, recordid rid, const void * dat);
 
 Operation getInstantSet();
 Operation getInstantSetRaw();
