@@ -56,7 +56,7 @@ char ** split(char * in, char ** freeme, int* count, char * delim) {
 
 char * tplRid(recordid rid) {
   char * ret;
-  asprintf(&ret, "%d,%d,%lld", rid.page, rid.slot, (long long)rid.size);
+  asprintf(&ret, "%lld,%lld,%lld", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
   return ret;
 }
 recordid ridTpl(char * tpl) {
