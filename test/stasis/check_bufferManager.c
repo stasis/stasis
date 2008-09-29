@@ -258,7 +258,11 @@ START_TEST(pageThreadedWritersTest) {
  //#define PINNED_PAGE_COUNT (MAX_BUFFER_SIZE - 1)
 #define PINNED_PAGE_COUNT ((MAX_BUFFER_SIZE - 1) / THREAD_COUNT)
 #define MAX_PAGE_ID  (MAX_BUFFER_SIZE * 2)
+#ifdef LONG_TEST
+#define BLIND_ITERS 100000
+#else
 #define BLIND_ITERS 1000000
+#endif
 void * blindRandomWorker(void * v) { 
   //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
