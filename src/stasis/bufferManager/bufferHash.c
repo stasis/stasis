@@ -93,7 +93,8 @@ inline static void checkPageState(Page * p) { }
 inline static Page * writeBackOnePage() { 
   Page * victim = lru->getStale(lru);
   // Make sure we have an exclusive lock on victim.
-  assert(victim);
+  if(!victim) return 0;
+
   assert(! *pagePendingPtr(victim));
   assert(! *pagePinCountPtr(victim));
 #ifdef LATCH_SANITY_CHECKING
@@ -136,6 +137,10 @@ inline static Page * getFreePage() {
  } else { 
     if(!freeCount) { 
       ret = writeBackOnePage();
+      if(!ret) {
+        printf("bufferHash.c: Cannot find free page for application request.\nbufferHash.c: This should not happen unless all pages have been pinned.\nbufferHash.c: Crashing.");
+        abort();
+      }
     } else { 
       ret = freeList[freeCount-1];
       freeList[freeCount-1] = 0;
@@ -159,10 +164,20 @@ static void * writeBackWorker(void * ignored) {
     }
     if(!running) { break; } 
     Page * victim = writeBackOnePage();
-    assert(freeCount < freeListLength);
-    freeList[freeCount] = victim;
-    freeCount++;
-    checkPageState(victim);
+
+    if(victim) {
+      assert(freeCount < freeListLength);
+      freeList[freeCount] = victim;
+      freeCount++;
+      checkPageState(victim);
+    } else {
+      static int warned = 0;
+      if(!warned) {
+        printf("bufferHash.c: writeBackWorker() could not find a page to write back.\nbufferHash.c:\tThis means a significant fraction of the buffer pool is pinned.\n");
+        warned = 1;
+      }
+      pthread_cond_wait(&needFree, &mut);
+    }
   }
   pthread_mutex_unlock(&mut);
   return 0;
