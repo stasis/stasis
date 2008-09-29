@@ -15,8 +15,8 @@
 #define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
-#define READS_PER_THREAD (NUM_PAGES * 10)
-#define RECORDS_PER_THREAD (NUM_PAGES * 10)
+#define READS_PER_THREAD (NUM_PAGES * 5)
+#define RECORDS_PER_THREAD (NUM_PAGES * 5)
 
 
 #else 
