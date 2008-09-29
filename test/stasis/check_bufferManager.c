@@ -86,9 +86,9 @@ void * workerThread(void * p) {
     rid.size = sizeof(int);
 
     p = loadPage(-1, rid.page);
-    
+    readlock(p->rwlatch,0);
     stasis_record_read(1, p, rid, (byte*)&j);
-
+    unlock(p->rwlatch);
     releasePage(p);
 
     assert(k == j);
@@ -137,9 +137,10 @@ void * workerThreadWriting(void * q) {
     for(k = 0; k < 100; k++) {
       assert(p->id == rids[i].page);
     }
-    
+    writelock(p->rwlatch,0);
     /*    sched_yield(); */
     stasis_record_write(1, p, 0, rids[i], (byte*)&val); 
+    unlock(p->rwlatch);
 
     assert(p->id == rids[i].page);
     releasePage(p);
@@ -157,7 +158,9 @@ void * workerThreadWriting(void * q) {
 
     p = loadPage(xid, rids[i].page);
 
+    writelock(p->rwlatch,0);
     stasis_record_read(1, p, rids[i], (byte*)&val); 
+    unlock(p->rwlatch);
 
     releasePage(p);
 
@@ -259,7 +262,7 @@ START_TEST(pageThreadedWritersTest) {
 void * blindRandomWorker(void * v) { 
   //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
-  int * pageids = malloc(PINNED_PAGE_COUNT * sizeof(int));
+  pageid_t * pageids = malloc(PINNED_PAGE_COUNT * sizeof(pageid_t));
   Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
 
   for(int i = 0; i < PINNED_PAGE_COUNT; i++) { 
@@ -274,6 +277,7 @@ void * blindRandomWorker(void * v) {
       assert(pages[j]->id == pageids[j]);
     } else { 
       //      dirtyPages_add(pages[j]); // Shouldn't affect buffermanager too much...
+      assert(pages[j]->id == pageids[j]);
       releasePage(pages[j]);
       pageids[j] = -1;
       pages[j] = 0;
@@ -295,6 +299,8 @@ START_TEST(pageBlindThreadTest) {
   Tinit();
 
   printf("Spawning threads now.\n"); fflush(stdout);
+
+  printf("each thread pins %d pages (total: %d)\n", PINNED_PAGE_COUNT, PINNED_PAGE_COUNT*THREAD_COUNT);
 
   pthread_t workers[THREAD_COUNT];
 
