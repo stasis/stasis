@@ -21,11 +21,11 @@
 
 #else 
 #define THREAD_COUNT 25
-#define NUM_PAGES (MAX_BUFFER_SIZE * 3)
+#define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)
 #define PAGE_MULT 1000
 
-#define READS_PER_THREAD (NUM_PAGES * 5)
-#define RECORDS_PER_THREAD (NUM_PAGES * 5)
+#define READS_PER_THREAD (NUM_PAGES * 2)
+#define RECORDS_PER_THREAD (NUM_PAGES * 2)
 
 #endif
 
@@ -59,6 +59,7 @@ void initializePages() {
     stasis_record_alloc_done(-1, p, rid);
     int * buf = (int*)stasis_record_write_begin(-1, p, rid);
     *buf = i;
+    stasis_record_write_done(-1,p,rid,(void*)buf);
     stasis_page_lsn_write(-1, p, 0);
     unlock(p->rwlatch);
     releasePage(p);
@@ -122,7 +123,7 @@ void * workerThreadWriting(void * q) {
       num_ops = 0;
       Tcommit(xid);
       xid = Tbegin();
-    } else { 
+    } else {
       num_ops++;
     }
     /*    sched_yield(); */
@@ -139,7 +140,9 @@ void * workerThreadWriting(void * q) {
     }
     writelock(p->rwlatch,0);
     /*    sched_yield(); */
-    stasis_record_write(1, p, 0, rids[i], (byte*)&val); 
+    assert(stasis_record_length_read(xid,p,rids[i]) == sizeof(int));
+    stasis_record_write(1, p, p->LSN+1, rids[i], (byte*)&val); 
+    stasis_page_lsn_write(1,p,p->LSN+1);
     unlock(p->rwlatch);
 
     assert(p->id == rids[i].page);
@@ -157,8 +160,9 @@ void * workerThreadWriting(void * q) {
 
 
     p = loadPage(xid, rids[i].page);
-
+    assert(p->id == rids[i].page);
     writelock(p->rwlatch,0);
+    assert(stasis_record_length_read(xid,p,rids[i]) == sizeof(int));
     stasis_record_read(1, p, rids[i], (byte*)&val); 
     unlock(p->rwlatch);
 
@@ -324,11 +328,11 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 3600); // one hour timeout
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, pageSingleThreadTest); 
+  tcase_add_test(tc, pageSingleThreadTest);
   tcase_add_test(tc, pageSingleThreadWriterTest);
-  tcase_add_test(tc, pageLoadTest);  
-  tcase_add_test(tc, pageThreadedWritersTest);  
-  tcase_add_test(tc, pageBlindRandomTest); 
+  tcase_add_test(tc, pageLoadTest);
+  tcase_add_test(tc, pageThreadedWritersTest);
+  tcase_add_test(tc, pageBlindRandomTest);
   tcase_add_test(tc, pageBlindThreadTest);
 
   /* --------------------------------------------- */
