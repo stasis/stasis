@@ -1,0 +1,57 @@
+#!/usr/bin/perl -w 
+
+use strict;
+
+sub getConfig {
+    my $basename = shift;
+    my $key = shift;
+    my $value = `grep ^$key: $basename.def`;
+    $value =~ s/^$key\:\s+//;
+    chomp $value;
+    return $value
+}
+
+my $dataSeries = shift @ARGV;
+
+my @tok = split /\-/, $dataSeries;
+
+my $usage = "Usage $0 GRAPH_NAME-SERIES_NAME\n";
+
+@tok == 2 || die $usage;
+#(-r $tok[0]) || (-r $tok[0]) || die ("Couldn't open ."$tok[0]."\n");
+my $seriesLine = `grep Data-Series\: $tok[0].def | grep '$tok[1] '` 
+    || die "No Data-Series entry\n";
+
+$seriesLine =~ /^\S+\:\s+(\S+)\s+(.+)$/ || die "Bad data series line\n ($seriesLine)\n";
+my $seriesName = $1;
+my $command = $2;
+
+## Change command so that the first token ends in .exe, and starts
+## with ./ (ie:  "foo bar" -> "./foo.exe bar")
+
+$command =~ s/^(\S+)(.+)$/.\/$1.exe$2/; 
+
+
+my $range = getConfig($tok[0], "X-Range");
+defined($range) || die "No X-Range entry";
+
+warn "-------- GENERATE GRAPH DATA ----------\n";
+
+#warn "Series line:\t$seriesLine\rRange:$range";
+
+my @a = eval "(".$range.")";
+
+if(-e "$dataSeries.ci-raw") {
+    my $i = 0;
+    while(-e "$dataSeries.$i.ci-raw") { 
+	$i++;
+    }
+    `mv $dataSeries.ci-raw $dataSeries.$i.ci-raw`;
+}
+foreach my $x (@a) { 
+    # The eval lets the $x in command be expanded.
+    eval "print \"echo $command | ../timer >> $dataSeries.ci-raw\n\";"; 
+    eval "`echo $command | ../timer >> $dataSeries.ci-raw`"; 
+}
+
+warn "----- END GENERATE GRAPH DATA ---------\n";

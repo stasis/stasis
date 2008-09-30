@@ -1,0 +1,12 @@
+Title:   Concurrent Transactions Per Second
+X-Label: Number of concurrent requests
+Y-Label: TPS
+
+X-Range: 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100
+
+Data-Series: Linear_Hash_NTA linearHashNTAThreaded ??
+Data-Series: Berkeley_DB bdbHashThreaded ??
+
+X-Calc: ??
+Y-Calc: $time
+Force-Calc: 1

@@ -1,0 +1,5 @@
+if HAVE_LIBCONFUSE
+noinst_LTLIBRARIES=lib2pc.la
+lib2pc_la_SOURCES=2pc.c
+AM_CFLAGS=${GLOBAL_CFLAGS}
+endif

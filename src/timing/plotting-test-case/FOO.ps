@@ -1,0 +1,380 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%DocumentNeededResources: font CMR10
+%%+ font CMBX10
+%%+ font CMSL10
+%%+ font CMBXSL10
+%%+ font CMSY10 CMBSY10 CMMI10
+%%Title: R Graphics Output
+%%Creator: R Software
+%%Pages: (atend)
+%%BoundingBox: 0 0 702 459
+%%EndComments
+%%BeginProlog
+/bp  { gs gs } def
+% begin .ps.prolog
+/gs  { gsave } def
+/gr  { grestore } def
+/ep  { showpage gr gr } def
+/m   { moveto } def
+/l  { rlineto } def
+/np  { newpath } def
+/cp  { closepath } def
+/f   { fill } def
+/o   { stroke } def
+/c   { newpath 0 360 arc } def
+/r   { 4 2 roll moveto 1 copy 3 -1 roll exch 0 exch rlineto 0 rlineto -1 mul 0 exch rlineto closepath } def
+/p1  { stroke } def
+/p2  { gsave bg setrgbcolor fill grestore newpath } def
+/p3  { gsave bg setrgbcolor fill grestore stroke } def
+/t   { 6 -2 roll moveto gsave rotate
+       ps mul neg 0 2 1 roll rmoveto
+       1 index stringwidth pop
+       mul neg 0 rmoveto show grestore } def
+/cl  { grestore gsave newpath 3 index 3 index moveto 1 index
+       4 -1 roll lineto  exch 1 index lineto lineto
+       closepath clip newpath } def
+/rgb { setrgbcolor } def
+/s   { scalefont setfont } def
+/R   { /Font1 findfont } def
+/B   { /Font2 findfont } def
+/I   { /Font3 findfont } def
+/BI  { /Font4 findfont } def
+/S   { /Font5 findfont } def
+1 setlinecap 1 setlinejoin
+% end   .ps.prolog
+% begin encoding
+/SymbolEncoding [
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /space /exclam /universal /numbersign /existential /percent /ampersand /suchthat
+ /parenleft /parenright /asteriskmath /plus /comma /minus /period /slash
+ /zero /one /two /three /four /five /six /seven
+ /eight /nine /colon /semicolon /less /equal /greater /question
+ /congruent /Alpha /Beta /Chi /Delta /Epsilon /Phi /Gamma
+ /Eta /Iota /theta1 /Kappa /Lambda /Mu /Nu /Omicron
+ /Pi /Theta /Rho /Sigma /Tau /Upsilon /sigma1 /Omega
+ /Xi /Psi /Zeta /bracketleft /therefore /bracketright /perpendicular /underscore
+ /radicalex /alpha /beta /chi /delta /epsilon /phi /gamma
+ /eta /iota /phi1 /kappa /lambda /mu /nu /omicron
+ /pi /theta /rho /sigma /tau /upsilon /omega1 /omega
+ /xi /psi /zeta /braceleft /bar /braceright /similar /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
+ /Euro /Upsilon1 /minute /lessequal /fraction /infinity /florin /club
+ /diamond /heart /spade /arrowboth /arrowleft /arrowup /arrowright /arrowdown
+ /degree /plusminus /second /greaterequal /multiply /proportional /partialdiff /bullet
+ /divide /notequal /equivalence /approxequal /ellipsis /arrowvertex /arrowhorizex /carriagereturn
+ /aleph /Ifraktur /Rfraktur /weierstrass /circlemultiply /circleplus /emptyset /intersection
+ /union /propersuperset /reflexsuperset /notsubset /propersubset /reflexsubset /element /notelement
+ /angle /gradient /registerserif /copyrightserif /trademarkserif /product /radical /dotmath
+ /logicalnot /logicaland /logicalor /arrowdblboth /arrowdblleft /arrowdblup /arrowdblright /arrowdbldown
+ /lozenge /angleleft /registersans /copyrightsans /trademarksans /summation /parenlefttp /parenleftex
+ /parenleftbt /bracketlefttp /bracketleftex /bracketleftbt /bracelefttp /braceleftmid /braceleftbt /braceex
+ /.notdef /angleright /integral /integraltp /integralex /integralbt /parenrighttp /parenrightex
+ /parenrightbt /bracketrighttp /bracketrightex /bracketrightbt /bracerighttp /bracerightmid /bracerightbt /.notdef
+] def
+% end encoding
+/mergefonts
+{ /targetencoding exch def
+  /fontarray exch def
+  fontarray 0 get dup maxlength dict begin
+  { 1 index /FID ne { def } { pop pop } ifelse } forall
+  % Create a new dictionary
+  /CharStrings 256 dict def
+  % Add a definition of .notdef
+  fontarray
+  { /CharStrings get dup /.notdef known
+    { /.notdef get /result exch def exit }
+    { pop } ifelse
+  } forall
+  CharStrings /.notdef result put
+  % Add in the other definitions
+  targetencoding
+  { /code exch def
+    % Check that it is not a .notdef
+    code /.notdef eq
+    { /.notdef }
+    { fontarray
+      { /CharStrings get dup code known
+        { code get /result exch def /found true def exit }
+        { pop /found false def } ifelse
+      } forall
+      % define character if it was found and accumulate encoding
+      found { CharStrings code result put code } { /.notdef } ifelse
+    } ifelse
+  } forall
+  % grab new encoding off of stack
+  256 array astore /Encoding exch def
+  % Undefine some local variables
+  currentdict /fontarray undef
+  currentdict /targetencoding undef
+  currentdict /code undef
+  currentdict /result undef
+  currentdict /found undef
+  % Leave new font on the stack
+  currentdict
+  end
+} def
+%%IncludeResource: font CMR10
+%%IncludeResource: font CMSY10
+[ /CMR10 findfont /CMSY10 findfont ] ISOLatin1Encoding mergefonts
+/Font1 exch definefont pop
+%%IncludeResource: font CMBX10
+%%IncludeResource: font CMBSY10
+[ /CMBX10 findfont /CMBSY10 findfont ] ISOLatin1Encoding mergefonts
+/Font2 exch definefont pop
+%%IncludeResource: font CMSL10
+[ /CMSL10 findfont /CMSY10 findfont ] ISOLatin1Encoding mergefonts
+/Font3 exch definefont pop
+%%IncludeResource: font CMBXSL10
+[ /CMBXSL10 findfont /CMBSY10 findfont ] ISOLatin1Encoding mergefonts
+/Font4 exch definefont pop
+%%IncludeResource: font CMMI10
+[ /CMR10 findfont /CMSY10 findfont /CMMI10 findfont ] SymbolEncoding mergefonts
+/Font5 exch definefont pop
+%%EndProlog
+%%Page: 1 1
+bp
+59.04 73.44 671.76 399.96 cl
+0 0 0 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+120.31 89.04 m
+17.40 3.48 l
+o
+np
+151.60 96.21 m
+17.86 5.94 l
+o
+np
+182.81 107.47 m
+18.47 8.61 l
+o
+np
+213.98 122.83 m
+19.17 11.49 l
+o
+np
+245.13 142.28 m
+19.91 14.58 l
+o
+np
+276.29 165.83 m
+20.63 17.87 l
+o
+np
+307.29 193.66 m
+53.18 56.69 l
+o
+np
+369.59 261.45 m
+86.18 120.56 l
+o
+113.25 87.63 2.70 c p1
+144.77 93.93 2.70 c p1
+176.29 104.43 2.70 c p1
+207.81 119.13 2.70 c p1
+239.33 138.02 2.70 c p1
+270.84 161.12 2.70 c p1
+302.36 188.41 2.70 c p1
+365.40 255.60 2.70 c p1
+459.96 387.87 2.70 c p1
+0.00 0.00 702.00 459.00 cl
+0 0 0 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+81.73 73.44 m
+472.78 0 l
+o
+np
+81.73 73.44 m
+0 -7.20 l
+o
+np
+239.33 73.44 m
+0 -7.20 l
+o
+np
+396.92 73.44 m
+0 -7.20 l
+o
+np
+554.51 73.44 m
+0 -7.20 l
+o
+/ps 12 def R 12 s
+81.73 47.52 (0) .5 0 0 t
+239.33 47.52 (5) .5 0 0 t
+396.92 47.52 (10) .5 0 0 t
+554.51 47.52 (15) .5 0 0 t
+np
+59.04 85.53 m
+0 293.94 l
+o
+np
+59.04 85.53 m
+-7.20 0 l
+o
+np
+59.04 127.52 m
+-7.20 0 l
+o
+np
+59.04 169.51 m
+-7.20 0 l
+o
+np
+59.04 211.51 m
+-7.20 0 l
+o
+np
+59.04 253.50 m
+-7.20 0 l
+o
+np
+59.04 295.49 m
+-7.20 0 l
+o
+np
+59.04 337.48 m
+-7.20 0 l
+o
+np
+59.04 379.47 m
+-7.20 0 l
+o
+41.76 85.53 (0) .5 0 90 t
+41.76 127.52 (20) .5 0 90 t
+41.76 169.51 (40) .5 0 90 t
+41.76 211.51 (60) .5 0 90 t
+41.76 253.50 (80) .5 0 90 t
+41.76 295.49 (100) .5 0 90 t
+41.76 337.48 (120) .5 0 90 t
+41.76 379.47 (140) .5 0 90 t
+np
+59.04 73.44 m
+612.72 0 l
+0 326.52 l
+-612.72 0 l
+0 -326.52 l
+o
+0.00 0.00 702.00 459.00 cl
+/ps 14 def B 14 s
+0 0 0 rgb
+365.40 424.68 (Sample Graph) .5 0 0 t
+/ps 12 def R 12 s
+365.40 18.72 (Iterations) .5 0 0 t
+12.96 236.70 (Seconds) .5 0 90 t
+59.04 73.44 671.76 399.96 cl
+1 0 0 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+120.44 88.11 m
+17.15 1.14 l
+o
+np
+151.95 90.21 m
+17.15 1.14 l
+o
+np
+183.47 92.31 m
+17.15 1.14 l
+o
+np
+214.99 94.41 m
+17.15 1.14 l
+o
+np
+246.51 96.51 m
+17.15 1.14 l
+o
+np
+278.03 98.61 m
+17.15 1.14 l
+o
+np
+309.55 100.71 m
+143.22 9.54 l
+o
+np
+467.14 111.21 m
+174.74 11.64 l
+o
+np
+113.25 91.83 m
+3.64 -6.30 l
+-7.27 0 l
+3.63 6.30 l
+o
+np
+144.77 93.93 m
+3.64 -6.30 l
+-7.28 0 l
+3.64 6.30 l
+o
+np
+176.29 96.03 m
+3.64 -6.30 l
+-7.28 0 l
+3.64 6.30 l
+o
+np
+207.81 98.13 m
+3.63 -6.30 l
+-7.27 0 l
+3.64 6.30 l
+o
+np
+239.33 100.23 m
+3.63 -6.30 l
+-7.27 0 l
+3.64 6.30 l
+o
+np
+270.84 102.33 m
+3.64 -6.30 l
+-7.27 0 l
+3.63 6.30 l
+o
+np
+302.36 104.43 m
+3.64 -6.30 l
+-7.27 0 l
+3.63 6.30 l
+o
+np
+459.96 114.93 m
+3.63 -6.30 l
+-7.27 0 l
+3.64 6.30 l
+o
+np
+649.07 127.52 m
+3.63 -6.29 l
+-7.27 0 l
+3.64 6.29 l
+o
+0 0 0 rgb
+92.53 373.47 2.70 c p1
+1 0 0 rgb
+np
+92.53 363.27 m
+3.64 -6.30 l
+-7.27 0 l
+3.63 6.30 l
+o
+/ps 12 def R 12 s
+0 0 0 rgb
+108.73 369.37 (Berkeley DB) 0 0 0 t
+108.73 354.97 (LLADD) 0 0 0 t
+ep
+%%Trailer
+%%Pages: 1
+%%EOF

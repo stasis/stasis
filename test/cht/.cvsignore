@@ -1,0 +1,9 @@
+.deps
+Makefile
+Makefile.in
+.libs
+cht_server
+client
+coordinator
+simple
+subordinate

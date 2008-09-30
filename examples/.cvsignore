@@ -1,0 +1,9 @@
+.deps
+.libs
+Makefile
+Makefile.in
+ex1
+ex2
+logfile.txt
+storefile.txt
+

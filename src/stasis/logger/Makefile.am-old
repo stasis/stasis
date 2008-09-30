@@ -1,0 +1,3 @@
+lib_LIBRARIES=liblogger.a
+liblogger_a_SOURCES=logger.c logparser.c logstreamer.c
+AM_CFLAGS= -g -Wall -pedantic

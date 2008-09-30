@@ -1,0 +1,90 @@
+#! /usr/bin/perl -w
+
+use strict;
+my @header = `find . -name '*.h'`;
+my @source = `find . -name '*.c'`;
+
+my %h;
+my $nest = 0;
+
+foreach my $i (@header) {
+    my @lines = `grep compensated_function $i`;
+    
+    foreach my $j (@lines) {
+	if($j =~ /compensated_function[^\(]+ ([^\s\(]+)\s*\(/) {
+	    $h{$1}++;
+	}
+    }
+}
+
+open EXTRAS, "additional_checked_functions";
+
+while (defined(my $line = <EXTRAS>)) {
+    chomp $line;
+    $line =~ s/\#.*$//g;
+    $line =~ s/\s//g;
+    if($line =~ /\S/) {
+	$h{$line}++;
+    }
+}
+
+print "Found the following checked functions:\n";
+print "------------------------------------- \n";
+foreach my $i (sort keys %h) {
+    print("$i\n");
+}
+print "\n";
+
+
+my $pwd = `pwd`;
+chomp $pwd;
+foreach my $i (@source) {
+    chomp $i;
+    open IN, $i;
+    print "$i\n";
+#  More accurate, but messes up line numbers. :(
+#    open IN, "utilities/cpp_no_inc <$i |";
+    $nest = 0;
+    my $num = 0;
+    my $checked_fcns = 0;
+    while(my $line = <IN>) {
+	$num++;
+	my $in = 0;
+	if ($line =~ /\bbegin_action(_ret)?\s*\(\b/ ||  $line =~ /\btry(_ret)?\s*[\(\{]/) {
+	    if(!$nest) {
+		$checked_fcns = 0;
+	    }
+	    $nest++;
+	    $in = 1;
+	} 
+	if ($line =~ /}\s*end(_action)?(_ret)?\b/ || $line =~ /}\s*compensate(_ret)?\b/) {
+	    $nest--;
+	    if($in) {
+		warn "$pwd/$i:$num Cannot handle single line compensation checks\n";
+	    }
+	    if ($nest < 0) { 
+		warn "$pwd/$i:$num Closed compensation check without open.\n";
+		$nest = 0;
+	    }
+	    if(!$checked_fcns && !$nest) {
+		warn "$pwd/$i:$num Unnecessary compensation check.\n";
+	    }
+	}
+	if($line !~ /\bcompensated_function\b/) {
+	    foreach my $j (keys %h) {
+		if(($line =~ /$j\s*\(/)) {
+		    if(!$nest) {
+			warn "$pwd/$i:$num Unchecked invocation of $j\n";
+		    }
+		    $checked_fcns++;	
+		}
+	    }
+	}
+    }
+
+    if ($nest > 0) { 
+	warn "$pwd/$i:$num Unclosed compensation check.\n";
+    }
+    close IN;
+
+}

@@ -1,0 +1,112 @@
+<html>
+<head>
+<title>LLADD Home Page</title>
+  <link href="site/lladd.css" title="normal-page" type="text/css" rel="Stylesheet" media="screen"></head>
+</head>
+<body>
+<div class="titlebar">
+  <div class="pagename">
+    LLADD - <small><i>(/yaahd/)</i></small> - Lightweight Library for Atomicity and Data Durability
+  </div>
+</div>
+<p></p>
+<div class="sidebar">
+  <div class="menu">
+  <ul class="menusection">
+    <li><a href="index.html">About</a></li>
+    <li>Documentation</li>
+    <ul class="menuitem">
+       <li><a href="api/html/index.html">User Guide (API)</a></li>
+		 <li><a href="developers/html/index.html">Internals</a></li>
+  	 <!--   <li><a href="coverage/index.html">Unit Tests</a></li> -->
+	 </ul>
+	 <li>Download</li>
+	 <ul class="menuitem">
+	    <li><a href="http://sourceforge.net/cvs/?group_id=121526">CVS</a></li>
+	 </ul>
+	 <li>Development</li>
+	 <ul class="menuitem">
+		 <li><a href="http://sourceforge.net/projects/lladd/">Sourceforge Site</a></li>
+	 </ul>    
+  </ul>
+  </div>
+</div>
+<div class="mainbar">
+  <div class="bodytext">
+  <h1>Introduction</h1>
+  <p>LLADD is an extensible implementation of the ARIES algorithm, a
+  write-ahead-logging system that provides reliable transactional 
+  storage.</p>
+  
+  <p>Traditionally, write-ahead-logging schemes have been closely 
+  coupled to a relational database or other high-level system, making 
+  if difficult to make full use of their functionality without making 
+  significant changes to complex and tightly coupled code.</p>
+  
+  <p>LLADD allows application developers to make such changes easily,
+  by providing clean interfaces between its subsystems and by 
+  exporting enough of its functionality to application developers to 
+  allow custom, application-specific transactional storage 
+  mechanisms to be developed easily.</p>
+
+  <h1>Features</h1>
+	
+  <p>LLADD is still under heavy development, and we anticipate changes to
+  a number of the API's that it exports.  Here is a list of some of
+  the features that we would like to include in the future.</p>
+
+  <p>Implemented and in-progress features are marked with a 
+  "<sup>*</sup>":</p>
+  
+  <ul>
+    <li>Extensibility</li>
+    <ul>
+ 		<li>Custom log entries<sup>*</sup></li>
+		<li>Buffer manager API<sup>*</sup></li>
+		<li>Page layout customization<sup>*</sup></li>
+      <li>Collections of records<sup>*</sup></li>
+      <li>Application specific locking policies</li>
+    </ul>
+    <li>Crash Recovery</li>
+    <ul>
+      <li>ARIES style Analysis/Full Redo/Partial Undo<sup>*</sup></li>
+	   <li>Fuzzy Checkpointing (for online backups)</li>
+      <li>Log Truncation</li>
+	 </ul>
+ 	 <li>Storage features</li>
+	 <ul>
+	   <li>Storage of variable length records<sup>*</sup></li>
+      <li>Expandable, on-disk arrays of records<sup>*</sup></li>
+  		<li>Linear Hash Table <sup>*</sup></li>
+      <li>B-Tree indices</li>
+	   <li>Simple interface for definition of new storage mechanisms<sup>*</sup></sup></sub></li>
+	 </ul>
+    <li>Concurrency</li>
+    <ul>
+      <li>Multi-Threaded<sup>*</sup></li>
+      <li>Lock manager to allow transactions to run at varying degrees of consistency</li>
+      <li>Networking support (for clusters of computers)</li>
+    </ul>
+    <li>Transactions</li>
+	 <ul>
+	 	<li>Abort / Commit<sup>*</sup></li>
+		<li>Prepare (for two phase commit implementations)<sup>*</sup></li>
+		<li>Savepoints (To allow applications to partially rollback transactions)</li>
+	 </ul>	 
+  </ul>
+
+  <p>A design goal of our library is to avoid imposing any unnecessary
+  structure upon the applications that make use of it.  Therefore, the 
+  storage structures listed above can be used as starting points 
+  for application specific storage mechanisms, although they are also 
+  designed to be useful "out of the box".</p>
+  </div>
+</div>
+<div class="version">
+  <hr size="0">
+  <small><i>$Id$</i></small>
+</div>
+
+</body>
+</html>
+

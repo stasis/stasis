@@ -1,0 +1,63 @@
+dnl
+dnl Autoconf support for finding LLADD
+dnl
+
+AC_DEFUN([AC_LLADD_HELP], [
+cat <<EOF
+
+Configure error with LLADD...
+
+If your installation is in a non-standard path, you can specify
+it with --with-lladd=DIR.
+
+EOF
+
+])
+
+dnl
+dnl Main macro for finding a usable LLADD installation 
+dnl
+AC_DEFUN([AC_CONFIG_LLADD], [
+    ac_lladddir='system'
+
+    AC_ARG_WITH(lladd,
+        AC_HELP_STRING([--with-lladd=DIR],
+    		   [location of a LLADD CVS version (default system)]),
+        ac_lladddir=$withval)
+
+    dnl
+    dnl First make sure we even want it
+    dnl
+    if test x$ac_lladddir = xnone ; then
+    LLADD_ENABLED=0
+    else
+      LLADD_ENABLED=1
+    
+      if test "$ac_lladddir" = "system"; then 
+        ac_lladdinc=
+	ac_lladdldflags=
+dnl        ac_lladdlibdir=
+      else 
+        ac_lladdinc="-I$ac_lladddir -I$ac_lladddir/src"
+	ac_lladdldflags="-L$ac_lladddir/src/lladd -L$ac_lladddir/src/libdfa -L$ac_lladddir/src/pbl"
+      fi
+      ac_lladdlibs="-llladd -lrw -lpbl"
+      CFLAGS="$CFLAGS $ac_lladdinc"
+      CPPFLAGS="$CPPFLAGS $ac_lladdinc"
+      LDFLAGS="$LDFLAGS $ac_lladdldflags"
+      LIBS="$LIBS $ac_lladdlibs"
+
+      if test ! -f $ac_lladddir/lladd/transactional.h; then
+        AC_MSG_ERROR([cannot find transactional.h])
+      fi
+
+    echo $ac_lladddir/lladd/transactional.h
+	
+#    OASYS_CPPFLAGS="$OASYS_CPPFLAGS $CPPFLAGS"
+#    OASYS_LDFLAGS="$OASYS_LDFLAGS $LDFLAGS"
+#    OASYS_LIBS="$OASYS_LIBS $LIBS"
+
+    fi # LLADD_ENABLED
+
+    AC_SUBST(LLADD_ENABLED)
+])

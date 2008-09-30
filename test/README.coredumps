@@ -1,0 +1,5 @@
+To obtain a coredump from a test that crashes, run this command:
+
+export CK_FORK=no
+
+This will prevent check from forking on each test, so that you can obtain a normal core dump.

@@ -1,0 +1,263 @@
+--- LLADD.html	2006-09-06 13:28:58.000000000 -0700
++++ LLADD.html.orig	2006-09-06 12:13:00.000000000 -0700
+@@ -8,7 +8,7 @@
+ <!-- html --> 
+ <meta name="src" content="LLADD.tex"> 
+ <meta name="date" content="2006-09-06 12:10:00"> 
+-<link rel="stylesheet" type="text/css" href="Stasis.css"> 
++<link rel="stylesheet" type="text/css" href="LLADD.css"> 
+ </head><body 
+ >
+   <div class="maketitle">
+@@ -590,7 +590,7 @@
+     and a single undo function. There is no &#x0093;do&#x0094; function, which
+     reduces the amount of recovery-speci&#xFB01;c code in the
+     system.
+-    <!--l. 589--><p class="indent">    <!--<hr class=figure">--><div class="figure" 
++    <!--l. 589--><p class="indent">    <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                                                                          
+@@ -601,8 +601,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 593--><p class="indent">  <img 
+-src="Stasis0x.png" alt="PIC" class="graphics"  ><!--tex4ht:graphics  
+-name="Stasis0x.png" src="figs/structure.ps"  
++src="LLADD0x.png" alt="PIC" class="graphics" width="225.84375pt" height="110.95042pt" ><!--tex4ht:graphics  
++name="LLADD0x.png" src="figs/structure.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -614,7 +614,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 596--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 596--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+ <!--l. 600--><p class="indent">  The &#xFB01;rst step in implementing a new operation is to decide
+ upon an external interface, which is typically cleaner than
+ directly calling <span 
+@@ -822,7 +822,7 @@
+     dirty page table to log whether or not LSN-free pages
+     are in use, so we expect the runtime overhead to be
+     negligible.
+-    <!--l. 797--><p class="indent">    <!--<hr class=figure">--><div class="figure" 
++    <!--l. 797--><p class="indent">    <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                                                                          
+@@ -833,8 +833,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 801--><p class="indent">  <img 
+-src="Stasis1x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis1x.png" src="figs/lsn-estimation.ps"  
++src="LLADD1x.png" alt="PIC" class="graphics" width="225.84375pt" height="110.22675pt" ><!--tex4ht:graphics  
++name="LLADD1x.png" src="figs/lsn-estimation.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -848,7 +848,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 804--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 804--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+ <!--l. 807--><p class="indent">  Although the mechanism used for recovery is similar, the
+ invariants maintained during recovery have changed. With
+ conventional transactions, if a page in the page &#xFB01;le is
+@@ -977,7 +977,7 @@
+ performed by redo are blind updates, they can be applied
+ regardless of whether the initial page was the correct version
+ or even logically consistent.
+-<!--l. 933--><p class="indent">  <!--<hr class=figure">--><div class="figure" 
++<!--l. 933--><p class="indent">  <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                              
+@@ -989,8 +989,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 937--><p class="indent">  <img 
+-src="Stasis2x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis2x.png" src="figs/torn-page.ps"  
++src="LLADD2x.png" alt="PIC" class="graphics" width="225.84375pt" height="156.3178pt" ><!--tex4ht:graphics  
++name="LLADD2x.png" src="figs/torn-page.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1002,7 +1002,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 942--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 942--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+ <!--l. 944--><p class="indent">  Figure&#x00A0;<a 
+ href="#x1-150073">3<!--tex4ht:ref: fig:torn --></a> describes a page that is torn during crash, and the
+ actions performed by redo that repair it. Assume that the
+@@ -1105,7 +1105,7 @@
+   <!--l. 1045--><p class="noindent">
+     <h4 class="subsectionHead"><span class="titlemark">5.2    </span> <a 
+  id="x1-190005.2"></a>Linear hash table</h4>
+-  <!--l. 1048--><p class="noindent"><!--<hr class=figure">--><div class="figure" 
++  <!--l. 1048--><p class="noindent"><hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                                                                          
+@@ -1116,8 +1116,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 1052--><p class="indent">  <img 
+-src="Stasis3x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis3x.png" src="figs/bulk-load.ps"  
++src="LLADD3x.png" alt="PIC" class="graphics" width="225.84375pt" height="115.17303pt" ><!--tex4ht:graphics  
++name="LLADD3x.png" src="figs/bulk-load.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1129,8 +1129,8 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 1055--><p class="noindent"></td></tr></table></div><!--<hr class=endfigure">-->
+-<!--l. 1057--><p class="indent">  <!--<hr class=figure">--><div class="figure" 
++<!--l. 1055--><p class="noindent"></td></tr></table></div><hr class="endfigure">
++<!--l. 1057--><p class="indent">  <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                              
+@@ -1142,8 +1142,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 1061--><p class="indent">  <img 
+-src="Stasis4x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis4x.png" src="figs/tps-extended.ps"  
++src="LLADD4x.png" alt="PIC" class="graphics" width="225.84375pt" height="137.71278pt" ><!--tex4ht:graphics  
++name="LLADD4x.png" src="figs/tps-extended.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1155,7 +1155,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 1065--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 1065--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+ <!--l. 1067--><p class="indent">  This section presents two hash table implementations built
+ on top of Stasis, and compares them with the hash table
+ provided by Berkeley DB. One of the Stasis implementations
+@@ -1187,18 +1187,18 @@
+                                                                                          
+                                                                                          
+ <!--l. 1104--><p class="indent">  <a 
+- id="x1-190036"></a><!--<hr class="float">--><div class="float" 
++ id="x1-190036"></a><hr class="float"><div class="float" 
+ ><table class="float"><tr class="float"><td class="float" 
+ >
+                                              
+                                                                                          
+                                                                                          
+   <img 
+-src="Stasis5x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis5x.png" src="figs/object-diff.ps"  
+---> &#x00A0;  <img 
+-src="Stasis6x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis6x.png" src="figs/mem-pressure.ps"  
++src="LLADD5x.png" alt="PIC" class="graphics" width="225.84375pt" height="132.38155pt" ><!--tex4ht:graphics  
++name="LLADD5x.png" src="figs/object-diff.ps"  
++--> &#x00A0;       <img 
++src="LLADD6x.png" alt="PIC" class="graphics" width="225.84375pt" height="132.27931pt" ><!--tex4ht:graphics  
++name="LLADD6x.png" src="figs/mem-pressure.ps"  
+ -->
+ <br><table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1208,7 +1208,7 @@
+                                              
+                                                                                          
+                                                                                          
+-  </td></tr></table></div><!--<hr class="endfloat" />-->
++  </td></tr></table></div><hr class="endfloat" />
+ <!--l. 1122--><p class="indent">  Both of our hash tables outperform Berkeley DB on a
+ workload that populates the tables by repeatedly inserting
+ <span 
+@@ -1334,7 +1334,7 @@
+ Although the reasoning required to ensure the correctness
+ of this optimization is complex, the simplicity of the
+ implementation is encouraging.
+-<!--l. 1277--><p class="indent">  <!--<hr class=figure">--><div class="figure" 
++<!--l. 1277--><p class="indent">  <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                              
+@@ -1346,8 +1346,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 1278--><p class="indent">  <img 
+-src="Stasis7x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis7x.png" src="figs/graph-traversal.ps"  
++src="LLADD7x.png" alt="PIC" class="graphics" width="225.84375pt" height="292.26694pt" ><!--tex4ht:graphics  
++name="LLADD7x.png" src="figs/graph-traversal.ps"  
+ -->
+ <br>  <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1360,7 +1360,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 1284--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 1284--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+ <!--l. 1286--><p class="indent">  In this experiment, Berkeley DB was con&#xFB01;gured as
+ described above. We ran MySQL using InnoDB for the
+ table engine. For this benchmark, it is the fastest engine
+@@ -1443,7 +1443,7 @@
+     search traversal and the prioritized traversal both perform
+     well. As locality decreases, the partitioned traversal
+     algorithm outperforms the naive traversal.
+-    <!--l. 1362--><p class="indent">    <!--<hr class=figure">--><div class="figure" 
++    <!--l. 1362--><p class="indent">    <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                                                                          
+@@ -1454,8 +1454,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 1365--><p class="indent">  <img 
+-src="Stasis8x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis8x.png" src="figs/oo7.ps"  
++src="LLADD8x.png" alt="PIC" class="graphics" width="225.84375pt" height="96.1551pt" ><!--tex4ht:graphics  
++name="LLADD8x.png" src="figs/oo7.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1467,8 +1467,8 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 1369--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
+-<!--l. 1371--><p class="indent">  <!--<hr class=figure">--><div class="figure" 
++<!--l. 1369--><p class="indent">  </td></tr></table></div><hr class="endfigure">
++<!--l. 1371--><p class="indent">  <hr class="figure"><div class="figure" 
+ ><table class="figure"><tr class="figure"><td class="figure" 
+ >
+                                              
+@@ -1480,8 +1480,8 @@
+                                                                                          
+                                                                                          
+ <!--l. 1375--><p class="indent">  <img 
+-src="Stasis9x.png" alt="PIC" class="graphics" ><!--tex4ht:graphics  
+-name="Stasis9x.png" src="figs/trans-closure-hotset.ps"  
++src="LLADD9x.png" alt="PIC" class="graphics" width="225.84375pt" height="141.83864pt" ><!--tex4ht:graphics  
++name="LLADD9x.png" src="figs/trans-closure-hotset.ps"  
+ -->
+ <br> <table class="caption" 
+ ><tr valign="baseline" class="caption"><td class="id"><span 
+@@ -1494,7 +1494,7 @@
+                                              
+                                                                                          
+                                                                                          
+-<!--l. 1382--><p class="indent">  </td></tr></table></div><!--<hr class=endfigure">-->
++<!--l. 1382--><p class="indent">  </td></tr></table></div><hr class="endfigure">
+   <h3 class="sectionHead"><span class="titlemark">6    </span> <a 
+  id="x1-220006"></a>Related Work</h3>
+ <!--l. 1390--><p class="noindent">

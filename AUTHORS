@@ -1,0 +1,32 @@
+Author:
+  Russell Sears	sears@cs.berkeley.edu
+
+The following people contributed to this software in the past:
+------------------------------------------------------------
+
+Initial version of library:
+  Jason Bayer	bayer@xcf.berkeley.edu
+  Jim Blomo	jim@xcf.berkeley.edu
+  Jimmy Kittiyachavalit	jkit@xcf.berkeley.edu 
+
+
+The following libraries are bundled with this software:
+------------------------------------------------------
+
+  libredblack  http://libredblack.sourceforge.net
+
+  (lladd/redblack.h, src/lladd/redblack.c)
+
+  crc32	       http://www.axlradius.com/freestuff/crc2.c  
+
+  (lladd/src/lladd/crc32.c)
+
+Earlier versions of this software made use of:
+
+  PBL - The Program Base Library
+    http://www.mission-base.com/peter/source/
+
+  PBL has been replaced with our own reentrant linear hash
+  implementation that includes (deprecated) compatibility with the
+  pblHt* interface.
+

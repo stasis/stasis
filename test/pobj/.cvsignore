@@ -1,0 +1,7 @@
+.deps
+Makefile
+Makefile.in
+.libs
+test-list
+test-list2
+test-multilist

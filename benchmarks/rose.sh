@@ -1,0 +1,5 @@
+#!/bin/sh
+
+ROSE=./rose
+
+ $ROSE -i 10000000 -t && $ROSE -i 10000000 && $ROSE -i 100000 -t && $ROSE -i 100000 && $ROSE -i 1000 -t && $ROSE -i 1000 &&  $ROSE -i 10 -t && $ROSE -i 10 && $ROSE -i 1 -t && $ROSE -i 1 && $ROSE -i 0 -t && $ROSE -i 0 && $ROSE -l -i 10000000 -t && $ROSE -l -i 10000000 && $ROSE -l -i 100000 -t && $ROSE -l -i 100000 && $ROSE -l -i 1000 -t && $ROSE -l -i 1000 &&  $ROSE -l -i 10 -t && $ROSE -l -i 10 && $ROSE -l -i 1 -t && $ROSE -l -i 1 && $ROSE -l -i 0 -t && $ROSE -l -i 0 && $ROSE -n 5 -i 10000000 -t && $ROSE -n 5 -i 10000000 && $ROSE -n 5 -i 100000 -t && $ROSE -n 5 -i 100000 && $ROSE -n 5 -i 1000 -t && $ROSE -n 5 -i 1000 &&  $ROSE -n 5 -i 10 -t && $ROSE -n 5 -i 10 && $ROSE -n 5 -i 1 -t && $ROSE -n 5 -i 1 && $ROSE -n 5 -i 0 -t && $ROSE -n 5 -i 0 && $ROSE -l -n 5 -i 10000000 -t && $ROSE -l -n 5 -i 10000000 && $ROSE -l -n 5 -i 100000 -t && $ROSE -l -n 5 -i 100000 && $ROSE -l -n 5 -i 1000 -t && $ROSE -l -n 5 -i 1000 &&  $ROSE -l -n 5 -i 10 -t && $ROSE -l -n 5 -i 10 && $ROSE -l -n 5 -i 1 -t && $ROSE -l -n 5 -i 1 && $ROSE -l -n 5 -i 0 -t && $ROSE -l -n 5 -i 0

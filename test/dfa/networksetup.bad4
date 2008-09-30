@@ -1,0 +1,10 @@
+coordinator  =	  127.0.0.1:20000
+
+## The library currently doesn't handle hostnames, so this should fail to validate.
+
+subordinates =  { 
+		  hedora.ath.cx:20001,
+		  127.0.0.1:20002,
+		  127.0.0.1:20003,
+		  127.0.0.1:20004 
+		}

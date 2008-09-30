@@ -1,0 +1,9 @@
+.deps
+Makefile
+Makefile.in
+.libs
+bdbHash
+bdbHashThreaded
+bdbHashWriteRequests
+bdbRaw
+transapp

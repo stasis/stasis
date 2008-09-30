@@ -1,0 +1,11 @@
+#! /bin/sh
+
+set -x
+
+## aclocal warns way too much!
+aclocal-1.8 2>&1 | grep -v '.usr.share.aclocal.' 
+# -I config
+autoheader
+automake-1.8 --add-missing --copy
+#automake
+autoconf

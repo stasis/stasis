@@ -1,0 +1,45 @@
+#!/usr/bin/perl -w
+use strict;
+
+print("\n\nRunning Cluster Hash Table self test.\n");
+print("-------------------------------------\n");
+
+mkdir 'coord';
+mkdir 'sub0';
+mkdir 'sub1';
+mkdir 'sub2';
+mkdir 'sub3';
+
+chdir 'coord';
+system ("rm *.txt");
+#system ("../coordinator ../cluster.conf > /dev/null &");
+system ("../coordinator ../cluster.conf 2>&1 | ../prepend coordinator &");
+chdir '..';
+chdir 'sub0';
+system ("rm *.txt");
+#system ("../subordinate 0 ../cluster.conf > /dev/null &");
+system ("../subordinate 0 ../cluster.conf 2>&1 | ../prepend 'subordinate 0' &");
+chdir '..';
+chdir 'sub1';
+system ("rm *.txt");
+#system ("../subordinate 1 ../cluster.conf > /dev/null &");
+system ("../subordinate 1 ../cluster.conf 2>&1 | ../prepend 'subordinate 1' &");
+chdir '..';
+chdir 'sub2';
+system ("rm *.txt");
+#system ("../subordinate 2 ../cluster.conf > /dev/null &");
+system ("../subordinate 2 ../cluster.conf 2>&1 | ../prepend 'subordinate 2' &");
+chdir '..';
+chdir 'sub3';
+system ("rm *.txt");
+#system ("../subordinate 3 ../cluster.conf > /dev/null &");
+system ("../subordinate 3 ../cluster.conf 2>&1 | ../prepend 'subordinate 3' &");
+chdir '..';
+
+system ("rm *.txt");
+my $ret = system ("./client 2>&1 | ./prepend client");
+
+`killall coordinator`;
+`killall subordinate`;
+
+exit $ret;

@@ -1,0 +1,54 @@
+Title: Bulk Load Time - Single Transaction
+Plot-Type: 2D Line
+X-Label: Insertions
+Y-Label: Seconds
+
+### Example X-Range definitions.  
+###
+### Explicitly list each value that should be run:
+### 10, 50, 100, 500, 1000
+### X-Range: 10, 50, 100, 500, 1000
+###
+### List a range of values, incremented by 1:
+### 1, 2, ... 10
+### X-Range: 1..10
+###
+### List a range of values, then pass each value 
+### into a perl expression:
+### 100, 200 ... 1000
+
+X-Range: 10, 100, 1000, 10000, 50000, 100000, 150000, 200000, 250000
+
+### For each command, the first argument is the number of 
+### transactions (fixed), while the second is the number 
+### of operations per transaction.  $x will be replaced 
+### accordingly.
+
+Data-Series: Linear_Hash_NTA linearHashNTA 1 $x
+Data-Series: Linear_Hash     logicalHash   1 $x
+Data-Series: Berkeley_DB     bdbHash       1 $x
+
+###
+### These are passed into ci-parser.  They are both perl expressions, 
+### and have access some predefied values. $time contains the $time 
+### (raw Y value) returned by an invocation of a command.  @arg 
+### contains the arguments passed into the command.
+###
+### The example below graphs time against the number of hashtable 
+### operations (transactions * ops/transaction) in this running 
+### example.
+###
+
+X-Calc: $arg[0] * $arg[1]
+Y-Calc: $time
+
+### Another way of presenting the data:
+### time / operation:
+#X-Calc: \$time / (\$arg[0] * \$arg[1])
+### number of operations:
+#Y-Calc: (\$arg[0](\$arg[1]))
+
+### If true, then a graph will be produced even if some confidence
+### intervals failed.
+
+Force-Calc: 1

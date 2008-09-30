@@ -1,0 +1,2 @@
+noinst_PROGRAMS=getTimeOfDay
+AM_CFLAGS=${GLOBAL_CFLAGS}
