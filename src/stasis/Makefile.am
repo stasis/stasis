@@ -9,8 +9,8 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c doubleLinkedList.c common.c fl
 		   page/raw.c page/slotted.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \
-		   operations/alloc.c operations/noop.c operations/instantSet.c \
-		   operations/arrayList.c hash.c operations/linearHash.c \
+		   operations/alloc.c operations/noop.c \
+		   operations/arrayList.c hash.c \
 		   operations/naiveLinearHash.c operations/nestedTopActions.c \
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c operations/bTree.c \

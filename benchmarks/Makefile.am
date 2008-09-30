@@ -5,10 +5,12 @@ LDADD=$(top_builddir)/src/stasis/libstasis.la  \
 rose_SOURCES=rose.cpp
 roseTable_SOURCES=roseTable.cpp
 
+# logicalHash readLogicalHash logicalMultThreaded   logicalMultiReaders
+
 if BUILD_BENCHMARKS
-noinst_PROGRAMS=lhtableThreaded naiveHash logicalHash readLogicalHash \
-  naiveMultiThreaded logicalMultThreaded rawSet arrayListSet \
-  logicalMultiReaders linearHashNTA linkedListNTA pageOrientedListNTA  \
+noinst_PROGRAMS=lhtableThreaded naiveHash \
+  naiveMultiThreaded rawSet arrayListSet \
+  linearHashNTA linkedListNTA pageOrientedListNTA  \
   linearHashNTAThreaded linearHashNTAMultiReader linearHashNTAWriteRequests \
   transitiveClosure zeroCopy sequentialThroughput rose roseTable
 endif

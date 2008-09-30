@@ -420,49 +420,6 @@ START_TEST(operation_nestedTopAction) {
   
 } END_TEST
 
-/** 
-    @test make sure the TinstantSet() operation works as expected during normal operation. 
-    @todo need to write test for TinstantSet() for the recovery case...
-*/
-
-START_TEST(operation_instant_set) {
-
-  Tinit();
-
-  int xid = Tbegin();
-  recordid rid = Talloc(xid, sizeof(int));  // @todo probably need an immediate version of TpageAlloc... 
-  int one = 1;
-  int two = 2;
-  int three = 3;
-  Tset(xid, rid, &one);
-  Tcommit(xid);
-
-  xid = Tbegin();
-  TinstantSet(xid, rid, &two);
-  Tset(xid, rid, &three);
-  Tabort(xid);
-  
-  xid = Tbegin();
-  Tread(xid, rid, &three);
-  assert(two == three);
-  Tcommit(xid);
-  Tdeinit();
- 
-  if(TdurabilityLevel() == VOLATILE) { return; } 
-
-  Tinit();
-
-  xid = Tbegin();
-  Tread(xid, rid, &three);
-  assert(two == three);
-  Tcommit(xid);
- 
-  Tdeinit();
- 
-
-
-} END_TEST 
-
 START_TEST(operation_set_range) {
   Tinit();
   
@@ -612,7 +569,6 @@ Suite * check_suite(void) {
 
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_nestedTopAction);
-  tcase_add_test(tc, operation_instant_set);
   tcase_add_test(tc, operation_set_range);
   if(loggerType != LOG_TO_MEMORY) {
     tcase_add_test(tc, operation_prepare);
