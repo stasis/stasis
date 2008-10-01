@@ -141,8 +141,11 @@ void * workerThreadWriting(void * q) {
     writelock(p->rwlatch,0);
     /*    sched_yield(); */
     assert(stasis_record_length_read(xid,p,rids[i]) == sizeof(int));
-    stasis_record_write(1, p, p->LSN+1, rids[i], (byte*)&val); 
-    stasis_page_lsn_write(1,p,p->LSN+1);
+    lsn_t lsn = stasis_page_lsn_read(p);
+    assert(lsn);
+    p->LSN --; // XXX HACK -- Sooner or later this will break...
+    stasis_record_write(1, p, lsn, rids[i], (byte*)&val); 
+    stasis_page_lsn_write(1,p,lsn);
     unlock(p->rwlatch);
 
     assert(p->id == rids[i].page);
