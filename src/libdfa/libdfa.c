@@ -193,7 +193,7 @@ void* main_loop(DfaSet *dfaSet) {
       
       new_machine = 1;
 
-      stateMachine->worker_thread  = (pid_t)NULL;
+      stateMachine->worker_thread  = (pid_t)0;
       
       stateMachine->page      = NULL; 
       /* @todo libdfa doesn't use the 'conventional' null recordid, {0,0,-1} */
@@ -261,7 +261,7 @@ void* main_loop(DfaSet *dfaSet) {
       
       /* Time to de-allocate machine */ 
       
-      if(stateMachine->worker_thread == (pid_t)NULL) {
+      if(stateMachine->worker_thread == (pid_t)0) {
 	
 	/* No worker thread, so just deallocate, and move on */
 
