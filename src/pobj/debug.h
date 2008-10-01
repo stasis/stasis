@@ -9,8 +9,8 @@
 
 #ifdef HAVE_DEBUG
 # ifdef HAVE_DEBUG_CONTEXTS
-#  define debug(format,...)  debug_f_printf(__FUNCTION__, __LINE__,  \
-					    format, ##__VA_ARGS__)
+#  define debug(...)  debug_f_printf(__FUNCTION__, __LINE__,  \
+				     ##__VA_ARGS__)
 #  define debug_start()      debug_f_start(__FUNCTION__)
 #  define debug_end()        debug_f_end()
 int debug_f_printf (const char *, const int, const char *, ...);

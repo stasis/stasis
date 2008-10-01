@@ -185,20 +185,20 @@ pobj_start (void)
 int
 pobj_end (void)
 {
-    void * active_xid;
-    void * active_nested;
+    long active_xid;
+    long active_nested;
 
     if (! g_is_init)
 	return -1;
 
-    active_nested = pthread_getspecific (g_active_nested_key);
+    active_nested = (long) pthread_getspecific (g_active_nested_key);
     if (active_nested) {
 	active_nested--;
 	if (pthread_setspecific (g_active_nested_key, (void *) active_nested))
 	    return -1;
     }
     else {
-	active_xid = pthread_getspecific (g_active_xid_key) - 1;
+      active_xid = ((long) pthread_getspecific (g_active_xid_key)) - 1;
 	if (active_xid >= 0) {
 	    if (pthread_setspecific (g_active_xid_key, NULL))
 		return -1;

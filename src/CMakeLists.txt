@@ -1,1 +1,1 @@
-SUBDIRS(stasis libdfa 2pc timing apps)
+SUBDIRS(stasis libdfa 2pc timing apps pobj)
