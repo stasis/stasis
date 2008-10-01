@@ -91,6 +91,7 @@ compensated_function int TpagedListFind(int xid, recordid list, const byte * key
     recordid rid;
     rid.page = list.page;
     rid.slot = header.thisPage;
+    rid.size = 0;
 
     while(rid.slot || header.nextPage.size != -1) {
       if(compensation_error()) { break; }
