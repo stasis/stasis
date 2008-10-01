@@ -196,36 +196,63 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
   // Is the page in cache?
   Page * ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(int));
 
-  // Is the page already being read from disk?  (If ret == 0, then no...)
-  while(ret) { 
-    checkPageState(ret);           
-    if(*pagePendingPtr(ret)) { 
-      pthread_cond_wait(&readComplete, &mut);
-      if(ret->id != pageid) { 
-	ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(int));
-      }
-    } else { 
-#ifdef LATCH_SANITY_CHECKING
-      int locked = tryreadlock(ret->loadlatch,0);
-      assert(locked);
-#endif
-      if(! *pagePinCountPtr(ret) ) { 
-	// Then ret is in lru (otherwise it would be pending, or not cached); remove it.
-	lru->remove(lru, ret);
-      }
-      (*pagePinCountPtr(ret))++;
+  do {
+
+    // Is the page already in memory or being read from disk?
+    // (If ret == 0, then no...)
+    while(ret) {
       checkPageState(ret);
-      pthread_mutex_unlock(&mut);
-      assert(ret->id == pageid);
-      return ret;
+      if(*pagePendingPtr(ret)) {
+        pthread_cond_wait(&readComplete, &mut);
+        if(ret->id != pageid) {
+          ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(int));
+        }
+      } else {
+#ifdef LATCH_SANITY_CHECKING
+        int locked = tryreadlock(ret->loadlatch,0);
+        assert(locked);
+#endif
+        if(! *pagePinCountPtr(ret) ) {
+          // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
+          lru->remove(lru, ret);
+        }
+        (*pagePinCountPtr(ret))++;
+        checkPageState(ret);
+        pthread_mutex_unlock(&mut);
+        assert(ret->id == pageid);
+        return ret;
+      }
     }
-  }
 
-  // The page is not in cache, and is not (no longer is) pending.
-  assert(!ret);
+    // The page is not in cache, and is not (no longer is) pending.
+    assert(!ret);
 
-  // Remove a page from the freelist.
-  ret = getFreePage();
+    // Remove a page from the freelist.  This may cause writeback, and release our latch.
+    Page * ret2 = getFreePage();
+
+    // Did some other thread put the page in cache for us?
+    ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(int));
+
+    if(!ret) {
+      // No, so we're ready to add it.
+      ret = ret2;
+      // Esacpe from this loop.
+      break;
+    } else {
+      // Put the page back on the free list
+
+      // It's possible that we wrote this page back even though the
+      // freeList didn't have any free space; extend free list if necessary.
+      if(freeListLength == freeCount) {
+        freeList = realloc(freeList, freeListLength+1);
+        freeListLength++;
+      }
+
+      freeList[freeCount] = ret2;
+      freeCount++;
+    }
+    // try again.
+  } while(1);
 
   // Add a pending entry to cachedPages to block like-minded threads and writeback
   (*pagePendingPtr(ret)) = (void*)1;
@@ -371,7 +398,7 @@ void bhBufInit() {
 
   cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
 
-  freeListLength = 9 * MAX_BUFFER_SIZE / 10;
+  freeListLength = 6 + MAX_BUFFER_SIZE / 100;
   freeLowWater  = freeListLength - 5;
   freeCount = 0;
   pageCount = 0;
