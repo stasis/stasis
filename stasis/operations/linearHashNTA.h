@@ -67,10 +67,9 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int val
   Obtain the next value in the hash table.  
   
   @return 1 if another value exists; 0 if the iterator is done, and has been deallocated.
-  @param keySize Currently, keySize and valueSize must
-  be set to the correct sizes when ThashNext is called.  Once hashtables with 
-  variable sized entries are supported, this restriction will be relaxed or removed
-  entirely.
+
+  @param xid Transaction id
+  @param it The iterator that will be traversed.  @see ThashIterator().
   @param key a pointer to an uninitialized pointer value.  If another entry is 
          encountered, then the uninitialized pointer value will be set to point 
          to a malloc()'ed region of memory that contains the value's key.  This 
@@ -80,10 +79,12 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int val
          difficult for the application to malloc an appropriate buffer for the 
 	 iterator, so this function call does not obey normal LLADD calling 
 	 semantics.
+  @param keySize The address of a valid integer.  It's initial value is ignored, 
+         and will be overwritten by the length of the key.
   @param value analagous to value.
   @param valueSize analagous to keySize
 
-  @deprecated  @see interator.h.  Use the linearHash implementation of that interface instead.
+  @deprecated  Use iterator.h's linearHash implementation instead.
 */
 int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byte** value, int * valueSize);
 

@@ -605,14 +605,26 @@ int Tbegin();
  * @param xid          The current transaction.
  * @param rid          The record the operation pertains to.  For some logical operations, this will be a dummy record.
  * @param dat          Application specific data to be recorded in the log (for undo/redo), and to be passed to the implementation of op.
+ * @param datlen       The length of dat, in bytes.
  * @param op           The operation's offset in operationsTable
  *
  * @see operations.h set.h
  */
 compensated_function void Tupdate(int xid, recordid rid, 
 				  const void *dat, size_t datlen, int op);
+/**
+   @deprecated Only exists to work around swig/python limitations.
+ */
 compensated_function void TupdateStr(int xid, recordid rid, 
                                      const char *dat, size_t datlen, int op);
+/**
+   Like Tupdate(), but does not call stasis_record_dereference().
+   Tupdate() no longe calls stasis_record_dereference(), but has some
+   sanity checks that will make TupdateRaw() necessary until I'm sure
+   that no remaining code relies on the old behavior.
+
+   @deprecated If you need to call this function, be prepared to change your code.
+ */
 compensated_function void TupdateRaw(int xid, recordid rid, 
 				     const void *dat, size_t datlen, int op);
 /**
@@ -688,8 +700,6 @@ void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
     @todo move prepare to prepare.[ch]
 
     @param xid Transaction id.
-    @param rec must be a valid record id.  any valid recordid will do.  This parameter will be removed eventually.
-
 */
 int Tprepare(int xid);
 /**

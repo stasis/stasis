@@ -3,9 +3,15 @@
 #ifndef __COMPENSATIONS_H
 #define __COMPENSATIONS_H
 
-BEGIN_C_DECLS
+/**
+  @file
 
-/** Rants about cpp:
+  An incomplete implementation of compensations for C (deprecated)
+
+  @deprecated Don't use compensations in new code.  For now, abort()
+  the process on error.
+
+  Rants about cpp:
 
   There seems to be no way to add this syntax:
   
@@ -49,7 +55,7 @@ void lock_c_line_1231(lock * l) {
   enclosing function's scope, since nested functions cannot be called
   after the function they are declared in returns.
 
-  You could try #defining a temporary variable, and reading from it in
+  You could try \#defining a temporary variable, and reading from it in
   the 'with' macro, but you seem to need a stack in order to support
   that.
 
@@ -93,13 +99,16 @@ void lock_c_line_1231(lock * l) {
   function will not work.  This could probably be partially fixed by
   replacing return statements with 'break' statements, or a GOTO to
   the proper enclosing end_action/compensate.  There may be a way to
-  #define/#undefine a variable in a way that would handle this
+  \#define/\#undefine a variable in a way that would handle this
   properly.
 
   Also, begin_action(NULL, NULL) is supported, and is useful for
   checking the return value of a called function, but, for
   efficiency, try{ } end; is recommended
+
 */
+
+BEGIN_C_DECLS
 
 void compensations_init();
 void compensations_deinit();
