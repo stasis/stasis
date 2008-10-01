@@ -1,3 +1,12 @@
+cmake_minimum_required(VERSION 2.4) # For all I know, 2.0 works too...
+
+# Make cmake warning go away.  They changed the default library search behavior.
+# The new behavior seems preferable, though it shouldn't affect us either way.
+
+if(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
 Project(Stasis)
 
 SET(PACKAGE_VERSION 1)
