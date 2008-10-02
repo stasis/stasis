@@ -2,7 +2,7 @@
 #define __POBJ_H
 
 #define member_sizeof(s,x)  (sizeof(((s *)NULL)->x))
-#define member_offset(s,x)  ((int)&(((s *)NULL)->x))
+#define member_offset(s,x)  ((long)&(((s *)NULL)->x))
 
 
 struct pobj_memfunc {

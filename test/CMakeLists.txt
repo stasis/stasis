@@ -1,1 +1,1 @@
-SUBDIRS(stasis)
+SUBDIRS(stasis pobj)
