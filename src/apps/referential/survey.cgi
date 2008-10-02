@@ -46,7 +46,12 @@ if(param('name')) {
 
     print header;
     print "\n\n<html><head><title>Survey repsonse completed</title></head></html>\n";
-    print "<body><h1>Thanks!</h1>\n";
+    if($vote) {
+        print "<body bgcolor='#ffffee'><h1>Thanks for registering!</h1>\n";
+	print "<p>Hope to see you there!</p>";
+    } else {
+        print "<body bgcolor='#ffffee'><h1>Thanks for your suggestions!</h1>\n";
+    }
     my $tups = $ref->query("{s ($name,*,*,*) peeps}");
 
     if(defined $$tups[0][0]) {
