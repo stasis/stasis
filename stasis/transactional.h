@@ -603,14 +603,14 @@ int Tbegin();
  * Operation implementers should wrap around this function to provide more mnemonic names.
  *
  * @param xid          The current transaction.
- * @param rid          The record the operation pertains to.  For some logical operations, this will be a dummy record.
+ * @param page         The id of the page that the operation should be run against.
  * @param dat          Application specific data to be recorded in the log (for undo/redo), and to be passed to the implementation of op.
  * @param datlen       The length of dat, in bytes.
  * @param op           The operation's offset in operationsTable
  *
- * @see operations.h set.h
+ * @see operations.h For an overview of the operations API
  */
-compensated_function void Tupdate(int xid, pageid_t p, 
+compensated_function void Tupdate(int xid, pageid_t page, 
 				  const void *dat, size_t datlen, int op);
 /**
    @deprecated Only exists to work around swig/python limitations.
