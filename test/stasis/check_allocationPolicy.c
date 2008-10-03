@@ -108,15 +108,20 @@ START_TEST(allocationPolicy_smokeTest)
   allocationPolicyAddPages(ap, pages);
 
   availablePage * p1 = allocationPolicyFindPage(ap, 1, 51);
+  allocationPolicyAllocedFromPage(ap, 1, p1->pageid);
+
   assert(p1);
   assert(p1->pageid == 0 || p1->pageid == 1);
   allocationPolicyUpdateFreespaceLockedPage(ap, 1, p1, 0);
 
   availablePage * p2 = allocationPolicyFindPage(ap, 1, 21);
+  allocationPolicyAllocedFromPage(ap, 1, p2->pageid);
+
   assert(p2->pageid == 3);
   allocationPolicyUpdateFreespaceLockedPage(ap, 1, p2, 0);
   
   availablePage * p3 = allocationPolicyFindPage(ap, 2, 51);
+  allocationPolicyAllocedFromPage(ap, 2, p3->pageid);
   assert(p1->pageid != p3->pageid);
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p3, 0);
 
@@ -124,6 +129,7 @@ START_TEST(allocationPolicy_smokeTest)
   assert(!p4);
 
   availablePage * p5 = allocationPolicyFindPage(ap, 2, 50);
+  allocationPolicyAllocedFromPage(ap, 2, p5->pageid);
   assert(p5 && p5->pageid == 2);
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p5, 0);
 
@@ -132,6 +138,7 @@ START_TEST(allocationPolicy_smokeTest)
   allocationPolicyUpdateFreespaceUnlockedPage(ap, p2, 25);
 
   availablePage * p6 = allocationPolicyFindPage(ap, 2, 50);
+  allocationPolicyAllocedFromPage(ap, 2, p6->pageid);
   assert(p6->pageid == 1 || p6->pageid == 0);
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p6, 0);
  
@@ -142,6 +149,8 @@ START_TEST(allocationPolicy_smokeTest)
 
   availablePage * p8 =allocationPolicyFindPage(ap, 2, 51);
   assert(p8->pageid == 3);
+  allocationPolicyAllocedFromPage(ap, 2, p8->pageid);
+
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p8, 0);
   
   allocationPolicyTransactionCompleted(ap, 2);
@@ -218,11 +227,14 @@ static void takeRandomAction(allocationPolicy * ap, int * xids,
   case 4 : {   // lock page
   } break;
   case 5 : {   // alloced from page
-        int thexid;
+
+    // xxx this case is nonsense.  we pick a random page, alloc from it, and allocation policy correctly sees that we're violating protocol, and cores...
+    // xxx write better one..
+    /*        int thexid;
     if(!activexidcount) { break; }
     while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
     pageid_t thepage=myrandom(AVAILABLE_PAGE_COUNT_A + pages2?AVAILABLE_PAGE_COUNT_B:0);
-    allocationPolicyAllocedFromPage(ap,thexid,thepage);
+    allocationPolicyAllocedFromPage(ap,thexid,thepage); */
 
   } break;
 
