@@ -34,10 +34,10 @@ static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
   return 0;
 }
 
-compensated_function int TpageGet(int xid, int pageid, void *memAddr) {
+compensated_function int TpageGet(int xid, pageid_t page, void *memAddr) {
   Page * q = 0;
   try_ret(compensation_error()) {
-    q = loadPage(xid, pageid);
+    q = loadPage(xid, page);
     memcpy(memAddr, q->memAddr, PAGE_SIZE);
   } end_ret(compensation_error());
   try_ret(compensation_error()) {
@@ -46,18 +46,14 @@ compensated_function int TpageGet(int xid, int pageid, void *memAddr) {
   return 0;
 }
 
-compensated_function int TpageSet(int xid, int pageid, const void * memAddr) {
-  return TpageSetRange(xid, pageid, 0, memAddr, PAGE_SIZE);
+compensated_function int TpageSet(int xid, pageid_t page, const void * memAddr) {
+  return TpageSetRange(xid, page, 0, memAddr, PAGE_SIZE);
 }
 
-int TpageSetRange(int xid, int pageid, int offset, const void * memAddr, int len) {
+int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int len) {
   // XXX need to pack offset into front of log entry
 
-  recordid rid;
-  rid.page = pageid;
-  rid.slot = 0;
-  rid.size = 0;
-  Page * p = loadPage(xid, rid.page);
+  Page * p = loadPage(xid, page);
   byte * logArg = malloc(sizeof(int) + 2 * len);
 
   *(int*)logArg = offset;
@@ -65,7 +61,7 @@ int TpageSetRange(int xid, int pageid, int offset, const void * memAddr, int len
   memcpy(logArg+sizeof(int)+len, p->memAddr+offset,         len);
 
   try_ret(compensation_error()) {
-    Tupdate(xid,rid,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
+    Tupdate(xid,page,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
   } end_ret(compensation_error());
 
   free(logArg);
@@ -93,12 +89,12 @@ compensated_function void pageOperationsInit() {
 }
 
 
-compensated_function int TpageDealloc(int xid, int pageid) {
-  TregionDealloc(xid, pageid); // @todo inefficient hack!
+compensated_function int TpageDealloc(int xid, pageid_t page) {
+  TregionDealloc(xid, page); // @todo inefficient hack!
   return 0;
 }
 
-compensated_function int TpageAlloc(int xid /*, int type */) {
+compensated_function pageid_t TpageAlloc(int xid) {
   return TregionAlloc(xid, 1, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 
@@ -111,18 +107,16 @@ int op_fixed_page_alloc(const LogEntry* e, Page* p) {
 
 
 /**
-    @return a recordid.  The page field contains the page that was
+    @return a pageid_t.  The page field contains the page that was
     allocated, the slot field contains the number of slots on the
     apge, and the size field contains the size of each slot.
 */
-recordid TfixedPageAlloc(int xid, int size) {
-  int page = TpageAlloc(xid);
+pageid_t TfixedPageAlloc(int xid, int size) {
+  pageid_t page = TpageAlloc(xid);
 
-  recordid rid = {page, stasis_fixed_records_per_page(size), size};
+  Tupdate(xid, page, &size, sizeof(int), OPERATION_FIXED_PAGE_ALLOC);
 
-  Tupdate(xid, rid, &size, sizeof(int), OPERATION_FIXED_PAGE_ALLOC);
-
-  return rid;
+  return page;
 }
 
 Operation getFixedPageAlloc() {
@@ -134,12 +128,12 @@ Operation getFixedPageAlloc() {
   return o;
 }
 
-compensated_function int TpageAllocMany(int xid, int count /*, int type*/) {
+compensated_function pageid_t TpageAllocMany(int xid, int count) {
   return TregionAlloc(xid, count, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 
-int TpageGetType(int xid, int pageid) { 
-  Page * p = loadPage(xid, pageid);
+int TpageGetType(int xid, pageid_t page) { 
+  Page * p = loadPage(xid, page);
   int ret = *stasis_page_type_ptr(p);
   releasePage(p);
   return ret;

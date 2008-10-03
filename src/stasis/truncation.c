@@ -29,11 +29,11 @@ void dirtyPages_add(Page * p) {
   if(!p->dirty) { 
     p->dirty = 1;
     //assert(p->LSN);
-    void* ret = pblHtLookup(dirtyPages, &(p->id), sizeof(int));
+    void* ret = pblHtLookup(dirtyPages, &(p->id), sizeof(p->id));
     assert(!ret);
     lsn_t * insert = malloc(sizeof(lsn_t));
     *insert = p->LSN;
-    pblHtInsert(dirtyPages, &(p->id), sizeof(int), insert); //(void*)p->LSN);
+    pblHtInsert(dirtyPages, &(p->id), sizeof(p->id), insert); //(void*)p->LSN);
   }
   pthread_mutex_unlock(&dirtyPages_mutex);
 }
@@ -44,8 +44,8 @@ void dirtyPages_remove(Page * p) {
   //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
   //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
   p->dirty = 0;
-  lsn_t * old = pblHtLookup(dirtyPages, &(p->id),sizeof(int));
-  pblHtRemove(dirtyPages, &(p->id), sizeof(int));
+  lsn_t * old = pblHtLookup(dirtyPages, &(p->id),sizeof(p->id));
+  pblHtRemove(dirtyPages, &(p->id), sizeof(p->id));
   if(old) {
     free(old);
   }
@@ -65,10 +65,10 @@ int dirtyPages_isDirty(Page * p) {
 
 static lsn_t dirtyPages_minRecLSN() { 
   lsn_t lsn = LSN_T_MAX; // LogFlushedLSN ();
-  int* pageid;
+  pageid_t* pageid;
   pthread_mutex_lock(&dirtyPages_mutex);
 
-  for( pageid = (int*)pblHtFirst (dirtyPages); pageid; pageid = (int*)pblHtNext(dirtyPages)) { 
+  for( pageid = (pageid_t*)pblHtFirst (dirtyPages); pageid; pageid = (pageid_t*)pblHtNext(dirtyPages)) { 
     lsn_t * thisLSN = (lsn_t*) pblHtCurrent(dirtyPages);
     //    printf("lsn = %d\n", thisLSN);
     if(*thisLSN < lsn) { 
@@ -81,8 +81,7 @@ static lsn_t dirtyPages_minRecLSN() {
 }
 
 static void dirtyPages_flush() { 
-  // XXX Why was this MAX_BUFFER_SIZE+1?!?
-  int * staleDirtyPages = malloc(sizeof(int) * (MAX_BUFFER_SIZE));
+  pageid_t * staleDirtyPages = malloc(sizeof(pageid_t) * (MAX_BUFFER_SIZE));
   int i;
   for(i = 0; i < MAX_BUFFER_SIZE; i++) { 
     staleDirtyPages[i] = -1;
@@ -93,7 +92,7 @@ static void dirtyPages_flush() {
   i = 0;
   
   for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) { 
-    staleDirtyPages[i] = *((int*) pblHtCurrentKey(dirtyPages));
+    staleDirtyPages[i] = *((pageid_t*) pblHtCurrentKey(dirtyPages));
     i++;
   }
   assert(i < MAX_BUFFER_SIZE);
@@ -107,7 +106,7 @@ static void dirtyPages_flush() {
   free(staleDirtyPages);
 }
 void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
-  int * staleDirtyPages = malloc(sizeof(int) * (MAX_BUFFER_SIZE));
+  pageid_t * staleDirtyPages = malloc(sizeof(pageid_t) * (MAX_BUFFER_SIZE));
   int i;
   Page * p = 0;
 
@@ -116,7 +115,7 @@ void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
   void *tmp;
   i = 0;
   for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
-    int num = *((int*) pblHtCurrentKey(dirtyPages));
+    pageid_t num = *((pageid_t*) pblHtCurrentKey(dirtyPages));
     if(num <= start && num < stop) {
       staleDirtyPages[i] = num;
       i++;

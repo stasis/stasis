@@ -61,6 +61,7 @@ terms specified in this license.
 #endif
 
 #include <stasis/common.h>
+
 #include <stasis/latches.h>
 #include <assert.h>
 
@@ -111,8 +112,8 @@ static Page * dummy_page;
 static pthread_key_t lastPage;
 
 static void bufManBufDeinit();
-static compensated_function Page *bufManLoadPage(int xid, int pageid);
-static compensated_function Page *bufManLoadUninitPage(int xid, int pageid);
+static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid);
+static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid);
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
 
@@ -138,7 +139,7 @@ static int bufManBufInit() {
 	Page *first;
 	first = pageMalloc();
 	pageFree(first, 0);
-	LH_ENTRY(insert)(activePages, &first->id, sizeof(int), first);
+	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
         pageRead(first);
 	pageCacheInit(first);
 
@@ -206,12 +207,12 @@ static void bufManReleasePage (Page * p) {
 
 }
 
-static Page * getPage(int pageid, int locktype, int uninitialized) {
+static Page * getPage(pageid_t pageid, int locktype, int uninitialized) {
   Page * ret;
   int spin  = 0;
 
   pthread_mutex_lock(&loadPagePtr_mutex);
-  ret = LH_ENTRY(find)(activePages, &pageid, sizeof(int));
+  ret = LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
 
   if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -245,7 +246,7 @@ static Page * getPage(int pageid, int locktype, int uninitialized) {
     pthread_mutex_unlock(&loadPagePtr_mutex);
     sched_yield();
     pthread_mutex_lock(&loadPagePtr_mutex);
-    ret = LH_ENTRY(find)(activePages, &pageid, sizeof(int));
+    ret = LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
 
     if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -293,7 +294,7 @@ static Page * getPage(int pageid, int locktype, int uninitialized) {
           and that will try to add an entry for pageid
        c) the most recent version of this page has been 
           written to the OS's file cache.                  */
-    int oldid = -1;
+    pageid_t oldid = -1;
 
     if( cache_state == FULL ) {
 
@@ -341,7 +342,7 @@ static Page * getPage(int pageid, int locktype, int uninitialized) {
 
     /* Inserting this into the cache before releasing the mutex
        ensures that constraint (b) above holds. */
-    LH_ENTRY(insert)(activePages, &pageid, sizeof(int), ret);
+    LH_ENTRY(insert)(activePages, &pageid, sizeof(pageid), ret);
     pthread_mutex_unlock(&loadPagePtr_mutex); 
 
     /* Could writelock(ret) go here? */
@@ -367,7 +368,7 @@ static Page * getPage(int pageid, int locktype, int uninitialized) {
  
     pthread_mutex_lock(&loadPagePtr_mutex);
 
-    LH_ENTRY(remove)(activePages, &(oldid), sizeof(int));
+    LH_ENTRY(remove)(activePages, &(oldid), sizeof(oldid));
 
     /* @todo Put off putting this back into cache until we're done with
        it. -- This could cause the cache to empty out if the ratio of
@@ -412,7 +413,7 @@ static Page * getPage(int pageid, int locktype, int uninitialized) {
 
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 
-compensated_function Page * __profile_loadPage(int xid, int pageid, char * file, int line) { 
+compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * file, int line) { 
 
   Page * ret = loadPage(xid, pageid);
 
@@ -474,7 +475,7 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
-static compensated_function Page *bufManLoadPage(int xid, int pageid) {
+static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -505,7 +506,7 @@ static compensated_function Page *bufManLoadPage(int xid, int pageid) {
   return ret;
 }
 
-static compensated_function Page *bufManLoadUninitPage(int xid, int pageid) {
+static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -536,8 +537,8 @@ static compensated_function Page *bufManLoadUninitPage(int xid, int pageid) {
   return ret;
 }
 
-Page * (*loadPageImpl)(int xid, int pageid) = 0;
-Page * (*loadUninitPageImpl)(int xid, int pageid) = 0;
+Page * (*loadPageImpl)(int xid, pageid_t pageid) = 0;
+Page * (*loadUninitPageImpl)(int xid, pageid_t pageid) = 0;
 void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
@@ -545,7 +546,7 @@ void (*forcePageRange)(pageid_t start, pageid_t stop) = 0;
 void   (*bufDeinit)()  = 0;
 void   (*simulateBufferManagerCrash)()  = 0;
 
-Page * loadPage(int xid, int pageid) { 
+Page * loadPage(int xid, pageid_t pageid) { 
   try_ret(NULL) {
     // This lock is released at Tcommit()
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
@@ -554,7 +555,7 @@ Page * loadPage(int xid, int pageid) {
   return loadPageImpl(xid, pageid);
 
 }
-Page * loadUninitializedPage(int xid, int pageid) { 
+Page * loadUninitializedPage(int xid, pageid_t pageid) { 
   try_ret(NULL) {
     // This lock is released at Tcommit()
     if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }

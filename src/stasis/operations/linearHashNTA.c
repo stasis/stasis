@@ -24,7 +24,7 @@ typedef struct {
   recordid buckets;
   int keySize;
   int valueSize;
-  long nextSplit;
+  pageid_t nextSplit;
   int bits;
   long numEntries;
 } lladd_hash_header;

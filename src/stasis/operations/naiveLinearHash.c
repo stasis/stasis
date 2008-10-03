@@ -37,32 +37,32 @@ pblHashTable_t * lockedBuckets = NULL;
 pthread_mutex_t linearHashMutex;
 pthread_cond_t bucketUnlocked;
 
-void lockBucket(int bucket) {
-  while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
+void lockBucket(pageid_t bucket) {
+  while(pblHtLookup(lockedBuckets, &bucket, sizeof(bucket))) {
     pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
   }
-  pblHtInsert(lockedBuckets, &bucket, sizeof(int), (void*)1);
+  pblHtInsert(lockedBuckets, &bucket, sizeof(bucket), (void*)1);
 }
 
 int lockBucketForKey(const byte * key, int keySize, recordid * headerRidB) {
-  int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  pageid_t bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
 
-  while(pblHtLookup(lockedBuckets, &bucket, sizeof(int))) {
+  while(pblHtLookup(lockedBuckets, &bucket, sizeof(bucket))) {
     pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
     bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   }
   
-  pblHtInsert(lockedBuckets, &bucket, sizeof(int), (void *) 1 );
+  pblHtInsert(lockedBuckets, &bucket, sizeof(bucket), (void *) 1 );
   return bucket;
 }
 
-void unlockBucket(int bucket) {
-  pblHtRemove(lockedBuckets, &bucket, sizeof(int));
+void unlockBucket(pageid_t bucket) {
+  pblHtRemove(lockedBuckets, &bucket, sizeof(bucket));
   pthread_cond_broadcast(&bucketUnlocked);
 }
 
-void rehash(int xid, recordid hash, unsigned int next_split, unsigned int i, unsigned int keySize, unsigned int valSize);
-void update_hash_header(int xid, recordid hash, int i, int next_split);
+void rehash(int xid, recordid hash, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize);
+void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split);
 int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
 		     void * key, int keySize, int valSize, recordid * deletedEntry);
 void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
@@ -109,7 +109,7 @@ void expand(int xid, recordid hash, int next_split, int i, int keySize, int valS
 #define FF_AM    750
   if(count <= 0 && !(count * -1) % FF_AM) {
     try {
-      recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+      recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
       int j;
       TarrayListExtend(xid, hash, AMORTIZE);
       for(j = 0; j < AMORTIZE; j++) {
@@ -128,9 +128,9 @@ void expand(int xid, recordid hash, int next_split, int i, int keySize, int valS
   }
 }
 
-void update_hash_header(int xid, recordid hash, int i, int next_split) {
+void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split) {
   try { 
-    hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(int));
+    hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
     assert(he);
     recordid  * headerRidB = &he->next;
     
@@ -144,7 +144,7 @@ void update_hash_header(int xid, recordid hash, int i, int next_split) {
   } end;
 }
 
-void rehash(int xid, recordid hashRid, unsigned int next_split, unsigned int i, unsigned int keySize, unsigned int valSize) {
+void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize) {
   try { 
     int firstA = 1;  // Is 'A' the recordid of a bucket? 
     int firstD = 1;  // What about 'D'? 
@@ -408,7 +408,7 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
 
   assert(headerRidB);
   
-  pblHtInsert(openHashes, &(rid.page), sizeof(int), headerRidB);
+  pblHtInsert(openHashes, &(rid.page), sizeof(rid.page), headerRidB);
 
   assert(headerRidB);
   Page * p = loadPage(xid, rid.page);
@@ -456,7 +456,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
 	    void * key, int keySize, 
 	    void * val, int valSize) {
 
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
+  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
 
@@ -479,7 +479,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
     so that expand can be selectively called. */
 int TnaiveHashDelete(int xid, recordid hashRid, 
 	    void * key, int keySize, int valSize) {
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
+  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid  deleteMe;
@@ -505,7 +505,7 @@ int ThashOpen(int xid, recordid hashRid, int keySize, int valSize) {
   hashRid.slot = 1;
   Tread(xid, hashRid, headerRidB);
   
-  pblHtInsert(openHashes, &(hashRid.page), sizeof(int), headerRidB);
+  pblHtInsert(openHashes, &(hashRid.page), sizeof(hashRid.page), headerRidB);
 
   return 0;
 }
@@ -518,15 +518,15 @@ void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void *
 
 
 int ThashClose(int xid, recordid hashRid) {
-  recordid * freeMe = pblHtLookup(openHashes,  &(hashRid.page), sizeof(int));
-  pblHtRemove(openHashes, &(hashRid.page), sizeof(int));
+  recordid * freeMe = pblHtLookup(openHashes,  &(hashRid.page), sizeof(hashRid.page));
+  pblHtRemove(openHashes, &(hashRid.page), sizeof(hashRid.page));
   free(freeMe);
   return 0;
 }
 
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
 
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(int));
+  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
   int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
   return ret;

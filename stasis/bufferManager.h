@@ -106,16 +106,16 @@ typedef struct Page_s Page;
  *
  * @return fully formed Page type
  */
-Page * loadPage(int xid, int pageid);
+Page * loadPage(int xid, pageid_t pageid);
 
-Page * loadUninitializedPage(int xid, int pageid);
+Page * loadUninitializedPage(int xid, pageid_t pageid);
 
 /** 
     This is the function pointer that bufInit sets in order to
     override loadPage.
 */
-extern Page * (*loadPageImpl)(int xid, int pageid);
-extern Page * (*loadUninitPageImpl)(int xid, int pageid);
+extern Page * (*loadPageImpl)(int xid, pageid_t pageid);
+extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
@@ -171,7 +171,7 @@ extern void   (*bufDeinit)();
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)
 #define releasePage(x) __profile_releasePage((x))
 compensated_function void  __profile_releasePage(Page * p);
-compensated_function Page * __profile_loadPage(int xid, int pageid, char * file, int line);
+compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * file, int line);
 #endif
 
 

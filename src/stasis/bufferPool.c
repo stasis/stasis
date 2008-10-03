@@ -58,7 +58,7 @@ terms specified in this license.
 #include <stasis/truncation.h>
 #include <stasis/page.h>
 /* TODO:  Combine with buffer size... */
-static int nextPage = 0;
+static pageid_t nextPage = 0;
 static pthread_mutex_t pageMallocMutex;
 
 static void * addressFromMalloc = 0;
@@ -75,20 +75,14 @@ void bufferPoolInit() {
 
   byte * bufferSpace ;
 
-  /*#ifdef HAVE_POSIX_MEMALIGN
-  int ret = posix_memalign((void*)&bufferSpace, PAGE_SIZE, PAGE_SIZE * (MAX_BUFFER_SIZE + 1));
-  assert(!ret);
-  addressFromMalloc = bufferSpace;
-  #else*/
   bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
   assert(bufferSpace);
   addressFromMalloc = bufferSpace;
   bufferSpace = (byte*)(((long)bufferSpace) + 
 			PAGE_SIZE - 
 			(((long)bufferSpace) % PAGE_SIZE));
-  //#endif
 
-  for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+  for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     pool[i].rwlatch = initlock();
     pool[i].loadlatch = initlock();
     pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
@@ -97,7 +91,7 @@ void bufferPoolInit() {
 }
 
 void bufferPoolDeInit() { 
-  for(int i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+  for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     deletelock(pool[i].rwlatch);
     deletelock(pool[i].loadlatch);
   }
@@ -123,13 +117,13 @@ Page* pageMalloc() {
 }
 
 
-static void pageFreeNoLock(Page *p, int id) {
+static void pageFreeNoLock(Page *p, pageid_t id) {
   p->id = id;
   p->LSN = 0;
   p->dirty = 0;
 }
 
-void pageFree(Page *p, int id) {
+void pageFree(Page *p, pageid_t id) {
   writelock(p->rwlatch, 10);
   pageFreeNoLock(p,id);
   writeunlock(p->rwlatch);

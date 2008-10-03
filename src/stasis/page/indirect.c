@@ -35,7 +35,7 @@ compensated_function recordid dereferenceIndirectRID(int xid, recordid rid) {
       offset += *maxslot_ptr(page, i - 1);
     } /** else, the adjustment to the offset is zero */
     
-    int nextPage = *page_ptr(page, i);
+    pageid_t nextPage = *page_ptr(page, i);
 
     unlock(page->rwlatch);
     releasePage(page);
@@ -69,7 +69,7 @@ unsigned int calculate_level (unsigned int number_of_pages) {
   return level;
 }
 
-compensated_function recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount);
+compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int recordSize, int recordCount);
 /**
    @todo is there a way to implement rallocMany so that it doesn't
    have to physically log pre- and post-images of the allocated space?
@@ -87,7 +87,7 @@ compensated_function recordid rallocMany(int xid, int recordSize, int recordCoun
   return  ret;
 }
 
-compensated_function recordid __rallocMany(int xid, int parentPage, int recordSize, int recordCount) {
+compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int recordSize, int recordCount) {
 
   /* How many levels of pages do we need? */
 
@@ -121,21 +121,21 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 
     /* OK, now allocate the pages. */
     
-    int next_level_records_per_page = records_per_page;
+    pageid_t next_level_records_per_page = records_per_page;
     
     for(int i = 0; i < (level - 1); i++) {
       next_level_records_per_page *= INDIRECT_POINTERS_PER_PAGE;
     }
     
-    int newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
-    int firstChildPage;
+    pageid_t newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
+    pageid_t firstChildPage;
 
     try_ret(NULLRID) {
-      firstChildPage = TpageAllocMany(xid, newPageCount/*, SLOTTED_PAGE*/);/*pageAllocMultiple(newPageCount); */
+      firstChildPage = TpageAllocMany(xid, newPageCount);
     } end_ret(NULLRID);
 
-    int tmpRecordCount = recordCount;
-    int thisChildPage = firstChildPage;    
+    pageid_t tmpRecordCount = recordCount;
+    pageid_t thisChildPage = firstChildPage;    
 
     while(tmpRecordCount > 0) {
       try_ret(NULLRID) {
@@ -152,7 +152,7 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
 
     indirectInitialize(&p, level);
     
-    int i = 0;
+    pageid_t i = 0;
 
     for(tmpRecordCount = recordCount; tmpRecordCount > 0; tmpRecordCount -= next_level_records_per_page) {
       
@@ -175,7 +175,7 @@ compensated_function recordid __rallocMany(int xid, int parentPage, int recordSi
     writelock(p.rwlatch,0);
     stasis_slotted_initialize_page(&p);
     p.id = parentPage;
-    for(int i = 0; i < recordCount; i++) {
+    for(pageid_t i = 0; i < recordCount; i++) {
       /* Normally, we would worry that the page id isn't set, but
 	 we're discarding the recordid returned by page ralloc
 	 anyway. */

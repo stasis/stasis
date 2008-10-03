@@ -10,8 +10,8 @@
 */
 
 typedef struct boundary_tag { 
-  unsigned int size;
-  unsigned int prev_size;
+  pageid_t size;
+  pageid_t prev_size;
   int status;
   int region_xid;
   int allocation_manager;
@@ -25,12 +25,12 @@ typedef struct boundary_tag {
 
 void regionsInit();
 
-unsigned int TregionAlloc(int xid, unsigned int pageCount, int allocaionManager);
-void TregionDealloc(int xid, unsigned int firstPage);
-unsigned int TregionSize(int xid, unsigned int firstPage);
+pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocaionManager);
+void TregionDealloc(int xid, pageid_t firstPage);
+unsigned int TregionSize(int xid, pageid_t firstPage);
 
 /** Currently, this function is O(n) in the number of regions, so be careful! */
-void TregionFindNthActive(int xid, unsigned int n, unsigned int * firstPage, unsigned int * size);
+void TregionFindNthActive(int xid, pageid_t n, pageid_t * firstPage, pageid_t * size);
 
 int TregionNextBoundaryTag(int xid, pageid_t*pid, boundary_tag *tag, int allocationManager);
 int TregionReadBoundaryTag(int xid, pageid_t pid, boundary_tag *tag);

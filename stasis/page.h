@@ -375,6 +375,15 @@ static inline int32_t*
 stasis_page_int32_ptr_from_end(Page *p, int count) {
   return ((int32_t*)stasis_page_type_ptr(p))-count;
 }
+static inline pageid_t*
+stasis_page_pageid_t_ptr_from_start(Page *p, int count) {
+  return ((pageid_t*)(p->memAddr))+count;
+}
+
+static inline pageid_t*
+stasis_page_pageid_t_ptr_from_end(Page *p, int count) {
+  return ((pageid_t*)stasis_page_type_ptr(p))-count;
+}
 // Const methods
 static inline const byte*
 stasis_page_byte_cptr_from_start(const Page *p, int count) {
@@ -402,6 +411,15 @@ stasis_page_int32_cptr_from_start(const Page *p, int count) {
 static inline const int32_t*
 stasis_page_int32_cptr_from_end(const Page *p, int count) {
   return (const int32_t*)stasis_page_int32_ptr_from_end((Page*)p,count);
+}
+static inline const pageid_t*
+stasis_page_pageid_t_cptr_from_start(const Page *p, int count) {
+  return ((const pageid_t*)(p->memAddr))+count;
+}
+
+static inline const pageid_t*
+stasis_page_pageid_t_cptr_from_end(const Page *p, int count) {
+  return (const pageid_t*)stasis_page_pageid_t_cptr_from_end(p,count);
 }
 
 

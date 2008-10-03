@@ -64,7 +64,7 @@ terms specified in this license.
 #include <stasis/constants.h>
 
 static inline void Tincrement(int xid, recordid rid) {
-  Tupdate(xid,rid,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
+  Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
 }
 Operation getIncrement();
 

@@ -261,14 +261,14 @@ int Tbegin() {
 	return XactionTable[index].xid;
 }
 
-static compensated_function void TactionHelper(int xid, recordid rid,
+static compensated_function void TactionHelper(int xid,
 					       const void * dat, size_t datlen, int op,
 					       Page * p) {
   LogEntry * e;
   assert(xid >= 0);
   try { 
     if(globalLockManager.writeLockPage) {
-      globalLockManager.writeLockPage(xid, rid.page);
+      globalLockManager.writeLockPage(xid, p->id);
     }
   } end;
 
@@ -284,28 +284,23 @@ static compensated_function void TactionHelper(int xid, recordid rid,
 }
 
 // XXX remove this function once it's clear that nobody is failing the assert in Tupdate()
-compensated_function void TupdateRaw(int xid, recordid rid, const void * dat, size_t datlen,
+/*compensated_function void TupdateRaw(int xid, pageid_t page, const void * dat, size_t datlen,
                                      int op) {
   assert(xid >= 0);
-  Page * p = loadPage(xid, rid.page);
+  Page * p = loadPage(xid, page);
   TactionHelper(xid, rid, dat, datlen, op, p);
   releasePage(p);
-}
+  }*/
 
-compensated_function void TupdateStr(int xid, recordid rid,
+compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {
-  Tupdate(xid, rid, dat, datlen, op);
+  Tupdate(xid, page, dat, datlen, op);
 }
 
-compensated_function void Tupdate(int xid, recordid rid, 
+compensated_function void Tupdate(int xid, pageid_t page, 
 				  const void *dat, size_t datlen, int op) { 
-  Page * p = loadPage(xid, rid.page);
-  readlock(p->rwlatch,0);
-  recordid rid2 = stasis_record_dereference(xid, p, rid);
-  assert(rid2.page == rid.page);
-  unlock(p->rwlatch);
-
-  TactionHelper(xid, rid, dat, datlen, op, p);
+  Page * p = loadPage(xid, page);
+  TactionHelper(xid, dat, datlen, op, p);
   releasePage(p);
 }
 

@@ -610,23 +610,13 @@ int Tbegin();
  *
  * @see operations.h set.h
  */
-compensated_function void Tupdate(int xid, recordid rid, 
+compensated_function void Tupdate(int xid, pageid_t p, 
 				  const void *dat, size_t datlen, int op);
 /**
    @deprecated Only exists to work around swig/python limitations.
  */
-compensated_function void TupdateStr(int xid, recordid rid, 
+compensated_function void TupdateStr(int xid, pageid_t page, 
                                      const char *dat, size_t datlen, int op);
-/**
-   Like Tupdate(), but does not call stasis_record_dereference().
-   Tupdate() no longe calls stasis_record_dereference(), but has some
-   sanity checks that will make TupdateRaw() necessary until I'm sure
-   that no remaining code relies on the old behavior.
-
-   @deprecated If you need to call this function, be prepared to change your code.
- */
-compensated_function void TupdateRaw(int xid, recordid rid, 
-				     const void *dat, size_t datlen, int op);
 /**
  * Read the value of a record.
  * 

@@ -6,7 +6,7 @@
 
 void allocBlob(int xid, recordid rid) {
   assert(rid.size>0);
-  int pageCount = (rid.size / USABLE_SIZE_OF_PAGE) + ((rid.size % USABLE_SIZE_OF_PAGE) ? 1 : 0);
+  pageid_t pageCount = (rid.size / USABLE_SIZE_OF_PAGE) + ((rid.size % USABLE_SIZE_OF_PAGE) ? 1 : 0);
   long startPage = TpageAllocMany(xid, pageCount);
   blob_record_t rec;
   rec.offset = startPage;
@@ -19,7 +19,7 @@ void allocBlob(int xid, recordid rid) {
 }
 
 void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
-  int chunk;
+  pageid_t chunk;
   recordid rawRid = rid;
   rawRid.size = BLOB_SLOT;
   byte * pbuf = alloca(PAGE_SIZE);
@@ -45,7 +45,7 @@ void writeBlob(int xid, Page * p, recordid rid, const void* dat) {
     stasis_record_read(xid, p, r, (byte*)&rec);
 
     assert(rec.offset);
-    int64_t chunk = 0;
+    pageid_t chunk = 0;
     for(; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) {
       Page * cnk = loadPage(xid, rec.offset+chunk);
       writelock(cnk->rwlatch,0);

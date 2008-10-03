@@ -48,12 +48,12 @@ terms specified in this license.
 #include "../check_includes.h"
 #define LOG_NAME   "check_regions.log"
 
-long myrandom(long x) {
+pageid_t myrandom(pageid_t x) {
   double xx = x;
   double r = random();
   double max = ((uint64_t)RAND_MAX)+1;
   max /= xx;
-  return (long)((r/max));
+  return (pageid_t)((r/max));
 }
 
 
@@ -64,9 +64,9 @@ START_TEST(regions_smokeTest) {
   Tinit();
   int xid = Tbegin();
 
-  int max_page = 0;
-  int page = TregionAlloc(xid, 100, 0);
-  int new_page = page;
+  pageid_t max_page = 0;
+  pageid_t page = TregionAlloc(xid, 100, 0);
+  pageid_t new_page = page;
   if(new_page + 1 + 100 > max_page) { 
     max_page = new_page + 1 + 100;
   }
@@ -77,7 +77,7 @@ START_TEST(regions_smokeTest) {
   }
   TregionDealloc(xid, page);
 
-  unsigned int pages[50];
+  pageid_t pages[50];
 
   for(int i = 0; i < 50; i++) { 
     new_page = TregionAlloc(xid, 1, 0);
@@ -113,7 +113,7 @@ START_TEST(regions_smokeTest) {
 
   Tcommit(xid);
 
-  printf("\nMaximum space usage = %d, best possible = %d\n", max_page, 104); // peak storage usage = 100 pages + 1 page + 3 boundary pages.
+  printf("\nMaximum space usage = %lld, best possible = %d\n", max_page, 104); // peak storage usage = 100 pages + 1 page + 3 boundary pages.
 
   Tdeinit();
 }
@@ -125,13 +125,13 @@ START_TEST(regions_randomizedTest) {
   printf("Seed = %ld: ", seed);
   srandom(seed);
   int xid = Tbegin();
-  unsigned int pagesAlloced = 0;
-  unsigned int regionsAlloced = 0;
+  pageid_t pagesAlloced = 0;
+  pageid_t regionsAlloced = 0;
   double max_blowup = 0;
-  unsigned int max_region_count = 0;
-  unsigned int max_waste = 0;
-  unsigned int max_size = 0;
-  unsigned int max_ideal_size = 0;
+  pageid_t max_region_count = 0;
+  pageid_t max_waste = 0;
+  pageid_t max_size = 0;
+  pageid_t max_ideal_size = 0;
   for(int i = 0; i < 10000; i++) { 
     if(!(i % 100)) { 
       Tcommit(xid);
@@ -148,9 +148,9 @@ START_TEST(regions_randomizedTest) {
       regionsAlloced ++;
     } else {
       if(regionsAlloced) { 
-	unsigned int victim = myrandom(regionsAlloced);
-	unsigned int victimSize;
-	unsigned int victimPage;
+	pageid_t victim = myrandom(regionsAlloced);
+	pageid_t victimSize;
+	pageid_t victimPage;
 	TregionFindNthActive(xid, victim, &victimPage, &victimSize);
 	TregionDealloc(xid, victimPage);
 	pagesAlloced -= victimSize;
@@ -161,14 +161,14 @@ START_TEST(regions_randomizedTest) {
     }
 
     if(regionsAlloced) { 
-      unsigned int lastRegionStart;
-      unsigned int lastRegionSize;
+      pageid_t lastRegionStart;
+      pageid_t lastRegionSize;
       
       TregionFindNthActive(xid, regionsAlloced-1, &lastRegionStart, &lastRegionSize);
-      unsigned int length = lastRegionStart + lastRegionSize+1;
-      unsigned int ideal  = pagesAlloced + regionsAlloced + 1;
+      pageid_t length = lastRegionStart + lastRegionSize+1;
+      pageid_t ideal  = pagesAlloced + regionsAlloced + 1;
       double blowup = (double)length/(double)ideal;
-      unsigned int bytes_wasted = length - ideal;
+      unsigned long long bytes_wasted = length - ideal;
       // printf("Region count = %d, blowup = %d / %d = %5.2f\n", regionsAlloced, length, ideal, blowup);
       if(max_blowup < blowup) { 
 	max_blowup = blowup;
@@ -197,7 +197,7 @@ START_TEST(regions_randomizedTest) {
     // measure the actual and ideal page file sizes for this run.
     printf("WARNING: Excessive blowup ");
   } 
-  printf("Max # of regions = %d, page file size = %5.2fM, ideal page file size = %5.2fM, (blowup = %5.2f)\n",
+  printf("Max # of regions = %lld, page file size = %5.2fM, ideal page file size = %5.2fM, (blowup = %5.2f)\n",
 	 //peak bytes wasted = %5.2fM, blowup = %3.2f\n", 
 	 max_region_count, 
 	 ((double)max_size * PAGE_SIZE)/(1024.0*1024.0), 
@@ -211,7 +211,7 @@ START_TEST(regions_randomizedTest) {
 START_TEST(regions_lockSmokeTest) {
   Tinit();
   int xid = Tbegin();
-  int pageid = TregionAlloc(xid, 100,0);
+  pageid_t pageid = TregionAlloc(xid, 100,0);
   fsckRegions(xid);
   Tcommit(xid);
   
@@ -240,7 +240,7 @@ START_TEST(regions_lockRandomizedTest) {
   const int FUDGE = 10;
   int xids[NUM_XACTS];
 
-  int * xidRegions[NUM_XACTS + FUDGE];
+  pageid_t * xidRegions[NUM_XACTS + FUDGE];
   int xidRegionCounts[NUM_XACTS + FUDGE];
   
   int longXid = Tbegin();
@@ -252,13 +252,13 @@ START_TEST(regions_lockRandomizedTest) {
   for(int i = 0; i < NUM_XACTS; i++) { 
     xids[i] = Tbegin();
     assert(xids[i] < NUM_XACTS + FUDGE);
-    xidRegions[xids[i]] = malloc(sizeof(int) * NUM_OPS);
+    xidRegions[xids[i]] = malloc(sizeof(pageid_t) * NUM_OPS);
     xidRegionCounts[xids[i]] = 0;
   }
   int activeXacts = NUM_XACTS;
 
   for(int i = 0; i < NUM_OPS; i++) { 
-    int j;
+    pageid_t j;
     if(!(i % (NUM_OPS/NUM_XACTS))) { 
       // abort or commit one transaction randomly.
       activeXacts --;
@@ -288,7 +288,7 @@ START_TEST(regions_lockRandomizedTest) {
     } else {
       // free
       if(xidRegionCounts[xids[j]]) {
-	int k = myrandom(xidRegionCounts[xids[j]]); 
+	pageid_t k = myrandom(xidRegionCounts[xids[j]]); 
 	
 	TregionDealloc(xids[j], xidRegions[xids[j]][k]);
 	
@@ -315,7 +315,7 @@ START_TEST(regions_recoveryTest) {
 
   Tinit();
 
-  unsigned int pages[50];
+  pageid_t pages[50];
   int xid1 = Tbegin();
   int xid2 = Tbegin();
   for(int i = 0; i < 50; i+=2) { 

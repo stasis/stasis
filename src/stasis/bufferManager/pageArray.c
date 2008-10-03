@@ -9,15 +9,15 @@
 #include <stasis/page.h>
 
 static Page ** pageMap;
-static int pageCount;
+static pageid_t pageCount;
 static pthread_mutex_t pageArray_mut = PTHREAD_MUTEX_INITIALIZER;
 
-static Page * paLoadPage(int xid, int pageid) {
+static Page * paLoadPage(int xid, pageid_t pageid) {
 
   pthread_mutex_lock(&pageArray_mut);
   if(pageid >= pageCount) { 
     pageMap = realloc(pageMap, (1+pageid) * sizeof(Page*));
-    for(int i = pageCount; i <= pageid; i++) { 
+    for(pageid_t i = pageCount; i <= pageid; i++) { 
       pageMap[i] = 0;
     }
     pageCount = pageid + 1;
@@ -48,7 +48,7 @@ static void paWriteBackPage(Page * p) {  /* no-op */ }
 static void paForcePages() { /* no-op */ }
 
 static void paBufDeinit() { 
-  for(int i =0; i < pageCount; i++) { 
+  for(pageid_t i =0; i < pageCount; i++) { 
     if(pageMap[i]) { 
       deletelock(pageMap[i]->rwlatch);
       deletelock(pageMap[i]->loadlatch);

@@ -81,7 +81,7 @@ static int cmpFreespace(const void * ap, const void * bp, const void * param) {
   }
 }
 
-inline static availablePage* getAvailablePage(allocationPolicy * ap, int pageid) {
+inline static availablePage* getAvailablePage(allocationPolicy * ap, pageid_t pageid) {
   return  (availablePage*) LH_ENTRY(find)(ap->allPages, &pageid, sizeof(pageid));
 }
 
@@ -145,7 +145,7 @@ inline static void     lockAlloced(allocationPolicy * ap, int xid, availablePage
 
   int * xidp = malloc(sizeof(int));
   *xidp = xid;
-  LH_ENTRY(insert)(ap->pageOwners, &(p->pageid), sizeof(int), xidp);
+  LH_ENTRY(insert)(ap->pageOwners, &(p->pageid), sizeof(p->pageid), xidp);
   insert_xidAlloced(ap, xid, p);
 }
 
@@ -170,7 +170,7 @@ inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage *
     // xid should own it
     lockAlloced(ap, xid, p);
   } else if(p->lockCount == 1) {
-    int * xidp = LH_ENTRY(find)(ap->pageOwners, &(p->pageid), sizeof(int));
+    int * xidp = LH_ENTRY(find)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
     if(!xidp) { 
       
       // The only active transaction that touched this page deallocated from it, 
@@ -302,10 +302,10 @@ availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int fre
   return (availablePage*) ret; 
 }
 
-void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, int pageid) { 
-  availablePage * p = getAvailablePage(ap, pageid);
+void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, pageid_t page) { 
+  availablePage * p = getAvailablePage(ap, page);
   const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
-  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(pageid), sizeof(pageid));
+  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
   if(!(xidp || check1)) {
     // the page is not available, and is not owned.
     // this can happen if more than one transaction deallocs from the same page
@@ -324,9 +324,9 @@ void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, int pageid) 
   }
 }
 
-void allocationPolicyLockPage(allocationPolicy *ap, int xid, int pageid) { 
+void allocationPolicyLockPage(allocationPolicy *ap, int xid, pageid_t page) { 
 
-  availablePage * p = getAvailablePage(ap, pageid);
+  availablePage * p = getAvailablePage(ap, page);
   lockDealloced(ap, xid, p);
 
 }
@@ -334,7 +334,7 @@ void allocationPolicyLockPage(allocationPolicy *ap, int xid, int pageid) {
 
 void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
 
-  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(int));
+  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
 
   if(locks) {
 
@@ -344,12 +344,12 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
       unlockAlloced(ap, xid, (next));           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 
-    LH_ENTRY(remove)(ap->xidAlloced, &xid, sizeof(int));
+    LH_ENTRY(remove)(ap->xidAlloced, &xid, sizeof(xid));
     RB_ENTRY(destroy)(locks);
 
   }
 
-  locks = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(int));
+  locks = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
 
   if(locks) {
     availablePage * next;
@@ -358,7 +358,7 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
       unlockDealloced(ap, xid, (availablePage*)next);         // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
     }
 
-    LH_ENTRY(remove)(ap->xidDealloced, &xid, sizeof(int));
+    LH_ENTRY(remove)(ap->xidDealloced, &xid, sizeof(xid));
     RB_ENTRY(destroy)(locks);
 
   }
@@ -374,7 +374,7 @@ void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availabl
 }
 
 void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, availablePage * key, int newFree) {
-  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(int));
+  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   assert(key);
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, locks);
   assert(p); // sometimes fails

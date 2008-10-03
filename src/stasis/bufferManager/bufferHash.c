@@ -23,10 +23,10 @@ static pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t readComplete = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t needFree     = PTHREAD_COND_INITIALIZER;
 
-static int freeLowWater;
-static int freeListLength;
-static int freeCount;
-static int pageCount;
+static pageid_t freeLowWater;
+static pageid_t freeListLength;
+static pageid_t freeCount;
+static pageid_t pageCount;
 
 static Page ** freeList;
 
@@ -53,7 +53,7 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
 #ifdef LONG_RUN
 
 inline static void checkPageState(Page * p) { 
-  Page * check = LH_ENTRY(find)(cachedPages, &(p->id), sizeof(int));
+  Page * check = LH_ENTRY(find)(cachedPages, &(p->id), sizeof(p->id));
   if(check) { 
     int pending = *pagePendingPtr(p);
     int pinned  = *pagePinCountPtr(p);
@@ -63,7 +63,7 @@ inline static void checkPageState(Page * p) {
       assert(!pageGetNode(p,0));
     }
     int notfound = 1;
-    for(int i = 0; i < freeCount; i++) { 
+    for(pageid_t i = 0; i < freeCount; i++) { 
       if(freeList[i] == p) { notfound = 0; }
     }
     assert(notfound);
@@ -72,7 +72,7 @@ inline static void checkPageState(Page * p) {
     assert(!*pagePendingPtr(p));
     assert(!*pagePinCountPtr(p));
     int found = 0;
-    for(int i = 0; i < freeCount; i++) { 
+    for(pageid_t i = 0; i < freeCount; i++) { 
       if(freeList[i] == p) { found = 1; }
     }
     assert(found);
@@ -105,7 +105,7 @@ inline static Page * writeBackOnePage() {
   checkPageState(victim);
 
   lru->remove(lru, victim);
-  Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(int));
+  Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(victim->id));
   assert(old == victim);
 
   //      printf("Write(%ld)\n", (long)victim->id);
@@ -183,7 +183,7 @@ static void * writeBackWorker(void * ignored) {
   return 0;
 }
 
-static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized) {
+static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitialized) {
   
   // Note:  Calls to loadlatch in this function violate lock order, but
   // should be safe, since we make sure no one can have a writelock
@@ -194,7 +194,7 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
   pthread_mutex_lock(&mut);
 
   // Is the page in cache?
-  Page * ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(int));
+  Page * ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(pageid));
 
   do {
 
@@ -205,7 +205,7 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
       if(*pagePendingPtr(ret)) {
         pthread_cond_wait(&readComplete, &mut);
         if(ret->id != pageid) {
-          ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(int));
+          ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(pageid));
         }
       } else {
 #ifdef LATCH_SANITY_CHECKING
@@ -231,7 +231,7 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
     Page * ret2 = getFreePage();
 
     // Did some other thread put the page in cache for us?
-    ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(int));
+    ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(pageid));
 
     if(!ret) {
       // No, so we're ready to add it.
@@ -257,7 +257,7 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
   // Add a pending entry to cachedPages to block like-minded threads and writeback
   (*pagePendingPtr(ret)) = (void*)1;
 
-  check = LH_ENTRY(insert)(cachedPages,&pageid,sizeof(int), ret);
+  check = LH_ENTRY(insert)(cachedPages,&pageid,sizeof(pageid), ret);
   assert(!check);
 
   ret->id = pageid;
@@ -299,10 +299,10 @@ static Page * bhLoadPageImpl_helper(int xid, const int pageid, int uninitialized
   return ret;
 }
 
-static Page * bhLoadPageImpl(int xid, const int pageid) {
+static Page * bhLoadPageImpl(int xid, const pageid_t pageid) {
   return bhLoadPageImpl_helper(xid,pageid,0);
 }
-static Page * bhLoadUninitPageImpl(int xid, const int pageid) {
+static Page * bhLoadUninitPageImpl(int xid, const pageid_t pageid) {
   return bhLoadPageImpl_helper(xid,pageid,1); // 1 means dont care about preimage of page.
 }
 

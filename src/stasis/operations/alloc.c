@@ -40,7 +40,7 @@
    can be optimized by exploiting physical locality.  A call such as
    this allows page-level locality to be established / maintained:
 
-   int page = Treserve(int xid, int size)
+   pageid_t page = Treserve(int xid, int size)
 
    This would tell Talloc to treat the page as though 'size' bytes had
    already been reserved.  The 'free space' that Talloc () reasons
@@ -95,7 +95,7 @@ typedef struct {
   int64_t size;
 } alloc_arg;
 
-static int op_alloc(const LogEntry* e, Page* p) { //(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_alloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
 
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
@@ -118,7 +118,7 @@ static int op_alloc(const LogEntry* e, Page* p) { //(int xid, Page * p, lsn_t ls
   return ret;
 }
 
-static int op_dealloc(const LogEntry* e, Page* p) { //deoperate(int xid, Page * p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_dealloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
   recordid rid = {
@@ -134,7 +134,7 @@ static int op_dealloc(const LogEntry* e, Page* p) { //deoperate(int xid, Page * 
   return 0;
 }
 
-static int op_realloc(const LogEntry* e, Page* p) { //reoperate(int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_realloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
 
@@ -186,11 +186,11 @@ Operation getRealloc() {
   return o;
 }
 
-static uint64_t lastFreepage;
+static pageid_t lastFreepage;
 static allocationPolicy * allocPolicy;
 static void registerOldRegions();
 void TallocInit() { 
-  lastFreepage = UINT64_MAX;
+  lastFreepage = PAGEID_T_MAX;
   allocPolicy = allocationPolicyInit();
 }
 void TallocPostInit() {
@@ -237,12 +237,12 @@ static void registerOldRegions() {
 static void reserveNewRegion(int xid) {
      void* nta = TbeginNestedTopAction(xid, OPERATION_NOOP, 0,0);
 
-     int firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);
+     pageid_t firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);
      int initialFreespace = -1;
 
      availablePage ** newPages = malloc(sizeof(availablePage*)*(TALLOC_REGION_SIZE+1));
 
-     for(int i = 0; i < TALLOC_REGION_SIZE; i++) {
+     for(pageid_t i = 0; i < TALLOC_REGION_SIZE; i++) {
        availablePage * next = malloc(sizeof(availablePage)); // * TALLOC_REGION_SIZE);
 
        TinitializeSlottedPage(xid, firstPage + i);
@@ -331,7 +331,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
     alloc_arg a = { rid.slot, rid.size };
 
-    Tupdate(xid, rid, &a, sizeof(a), OPERATION_ALLOC);
+    Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
  
    if(type == BLOB_SLOT) {
       rid.size = size;
@@ -356,7 +356,7 @@ void allocTransactionCommit(int xid) {
   } compensate;
 }
 
-compensated_function recordid TallocFromPage(int xid, long page, unsigned long size) {
+compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
   short type;
   if(size >= BLOB_THRESHOLD_SIZE) { 
     type = BLOB_SLOT;
@@ -376,7 +376,7 @@ compensated_function recordid TallocFromPage(int xid, long page, unsigned long s
 
     alloc_arg a = { rid.slot, rid.size };
 
-    Tupdate(xid, rid, &a, sizeof(a), OPERATION_ALLOC);
+    Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
 
     if(type == BLOB_SLOT) {
       rid.size = size;
@@ -421,7 +421,7 @@ compensated_function void Tdealloc(int xid, recordid rid) {
     unlock(p->rwlatch);
 
     /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
-    Tupdate(xid, rid, preimage, sizeof(alloc_arg)+rid.size, OPERATION_DEALLOC);
+    Tupdate(xid, rid.page, preimage, sizeof(alloc_arg)+rid.size, OPERATION_DEALLOC);
   } compensate;
   pthread_mutex_unlock(&talloc_mutex);
 
@@ -451,18 +451,16 @@ compensated_function int TrecordSize(int xid, recordid rid) {
   return ret;
 }
 
-void TinitializeSlottedPage(int xid, int pageid) {
+void TinitializeSlottedPage(int xid, pageid_t page) {
   alloc_arg a = { SLOTTED_PAGE, 0 };
-  recordid rid = { pageid, 0, 0 };
-  Tupdate(xid, rid, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
+  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
 }
-void TinitializeFixedPage(int xid, int pageid, int slotLength) {
+void TinitializeFixedPage(int xid, pageid_t page, int slotLength) {
   alloc_arg a = { FIXED_PAGE, slotLength };
-  recordid rid = { pageid, 0, 0 };
-  Tupdate(xid, rid, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
+  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
 }
 
-static int op_initialize_page(const LogEntry* e, Page* p) { //int xid, Page *p, lsn_t lsn, recordid rid, const void * dat) {
+static int op_initialize_page(const LogEntry* e, Page* p) {
   assert(e->update.arg_size == sizeof(alloc_arg));
   const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
 

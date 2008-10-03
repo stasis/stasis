@@ -39,8 +39,8 @@ struct LH_ENTRY(table) {
   struct LH_ENTRY(pair_t) * bucketList;
   unsigned int bucketListLength;
   unsigned char bucketListBits;
-  unsigned int bucketListNextExtension;
-  unsigned int occupancy;
+  uint64_t bucketListNextExtension;
+  uint64_t occupancy;
 #ifdef NAIVE_LOCKING
   pthread_mutex_t lock;
 #endif

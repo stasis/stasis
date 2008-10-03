@@ -309,17 +309,17 @@ int lockManagerCommitRecords(int xid) {
   return lockManagerCommitHashed(xid, sizeof(recordid));
 }
 
-compensated_function int lockManagerReadLockPage(int xid, int p) {
-  return lockManagerReadLockHashed(xid, (byte*)&p, sizeof(int));
+compensated_function int lockManagerReadLockPage(int xid, pageid_t p) {
+  return lockManagerReadLockHashed(xid, (byte*)&p, sizeof(p));
 }
-compensated_function int lockManagerWriteLockPage(int xid, int p) {
-  return lockManagerWriteLockHashed(xid, (byte*)&p, sizeof(int));
+compensated_function int lockManagerWriteLockPage(int xid, pageid_t p) {
+  return lockManagerWriteLockHashed(xid, (byte*)&p, sizeof(p));
 }
-int lockManagerUnlockPage(int xid, int p) {
-  return lockManagerUnlockHashed(xid, (byte*)&p, sizeof(int));
+int lockManagerUnlockPage(int xid, pageid_t p) {
+  return lockManagerUnlockHashed(xid, (byte*)&p, sizeof(p));
 }
 int lockManagerCommitPages(int xid) {
-  return lockManagerCommitHashed(xid, sizeof(int));
+  return lockManagerCommitHashed(xid, sizeof(pageid_t));
 }
 
 LockManagerSetup globalLockManager;

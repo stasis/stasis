@@ -92,7 +92,7 @@ terms specified in this license.
 
 */
 
-compensated_function recordid TarrayListAlloc(int xid, int numPages, int multiplier, int recordSize);
+compensated_function recordid TarrayListAlloc(int xid, pageid_t numPages, int multiplier, int recordSize);
 /**
    Extend the ArrayList in place.
 

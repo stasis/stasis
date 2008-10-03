@@ -75,10 +75,8 @@ START_TEST(bTreeTest)
    index to tell how many entries are currently valid. 
    For now it will just return false if you try to add something to it 
    when it is already full. 
-   This method doesn't use the Slot value of rid! 
-   We make a copy of rid_caller so that the caller's copy doesn't change. 
 */
-int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
+int insert(int xid, Page* p, int valueIn){
   printf ("\nbegin insert\n");
   int DEBUG = 0;
   int DEBUGERROR = 1;
@@ -89,7 +87,7 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
   //printf("\npage->id  = %d\n", p->id);
 
   // make a copy of the rid - so we don't effect the caller's copy
-  recordid rid = rid_caller;
+  recordid rid = { p->id, 0, sizeof(int)};
 
 
   // if DEBUGERROR ==1 this causes a seg fault below! 
@@ -179,10 +177,10 @@ int insert(int xid, Page* p, recordid rid_caller,  int valueIn){
    it to be a BTreeNode. Just puts the value 0 in the  
    first index of the page. 
 */
-void initializeNewBTreeNode(int xid, Page* p, recordid rid){
+void initializeNewBTreeNode(int xid, Page* p){
   
   // need access to the first slot 
-  rid.slot = 0;  
+  recordid rid = { p->id, 0, sizeof(int)};
 
   // prepare the value to go into the first slot
   int countInt = 0; 
@@ -197,14 +195,13 @@ void testFunctions(){
   
   // getting things ready
   int xid = Tbegin();
-  recordid rid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
-  int pageid1 = rid1.page;
+  pageid_t pageid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
   Page *  p1 = loadPage(xid, pageid1);
 
   // calling functions
   writelock(p1->rwlatch,0);
-  initializeNewBTreeNode(xid, p1, rid1);
-  insert(xid, p1, rid1, 3);
+  initializeNewBTreeNode(xid, p1);
+  insert(xid, p1, 3);
   unlock(p1->rwlatch);
 
   // cleaning up
@@ -230,10 +227,7 @@ int SimpleExample(){
 
 
 
-  recordid rid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
-
-  
-  int pageid1 = rid1.page;
+  pageid_t pageid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
   
   Page *  p1 = loadPage(xid, pageid1);
   writelock(p1->rwlatch, 0);
@@ -241,21 +235,19 @@ int SimpleExample(){
 
   /* check consistency between rid & page's values 
    * for number of slots and record size */
-  //  assert (rid1.slot == fixedPageCount(p1));
-  // assert (rid1.size == fixedPageRecordSize(p1));
-  assert (p1->id == rid1.page);
+  assert (p1->id == pageid1);
 
 
   /* check to make sure page is recorded as a FIXED_PAGE */
   assert( *stasis_page_type_ptr(p1) == FIXED_PAGE);
   
-  if (DEBUGP) { printf("\n%lld\n", (long long)rid1.page); }
+  if (DEBUGP) { printf("\n%lld\n", (long long)pageid1); }
   byte * b1 = (byte *) malloc (sizeof (int));
   byte * b2 = (byte *) malloc (sizeof (int));
   byte * b3 = (byte *) malloc (sizeof (int));
   //  int x = *recordcount_ptr(p1); 
   int x = 42; //  rcs - recordcount_ptr is no longer exposed here...
-  int y = rid1.slot;
+  int y = 0; //rid1.slot;
   int z = 256;
 
   b1 = (byte *) & x;
@@ -273,13 +265,12 @@ int SimpleExample(){
   if (DEBUGP) { printf("\nz = %d\n", z);}
   if (DEBUGP) { printf("\nb3 = %d\n", *b3);}
   
-  recordid rid2 = rid1;
-  rid2.slot = 0; 
+  recordid rid1 = { pageid1, 0,sizeof(int)};
 
   // @todo This is a messy way to do this...
 
-  stasis_record_write(xid, p1, 1, rid2, b1);
-  stasis_record_read(xid, p1, rid2, b2);
+  stasis_record_write(xid, p1, 1, rid1, b1);
+  stasis_record_read(xid, p1, rid1, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
   //  initializeNewBTreeNode(p1, rid1); 

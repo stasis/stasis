@@ -34,7 +34,7 @@ void TallocDeinit();
 */
 compensated_function recordid Talloc(int xid, unsigned long size);
 
-compensated_function recordid TallocFromPage(int xid, long page, unsigned long size);
+compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned long size);
 
 /** 
    Free a record.  
@@ -69,9 +69,9 @@ compensated_function int TrecordType(int xid, recordid rid);
 compensated_function int TrecordSize(int xid, recordid rid);
 
 /** Return the number of records stored in page pageid */
-compensated_function int TrecordsInPage(int xid, int pageid);
+compensated_function int TrecordsInPage(int xid, pageid_t page);
 
-compensated_function void TinitializeSlottedPage(int xid, int pageid);
-compensated_function void TinitializeFixedPage(int xid, int pageid, int slotLength);
+compensated_function void TinitializeSlottedPage(int xid, pageid_t page);
+compensated_function void TinitializeFixedPage(int xid, pageid_t page, int slotLength);
 
 #endif

@@ -35,20 +35,20 @@ static unsigned long thomasWangs64BitMixFunction(unsigned long key)
 #endif
 #endif
 
-unsigned int max_bucket(unsigned char tableBits, unsigned int nextExtension) {
-  unsigned int oldTableLength = twoToThe(tableBits - 1);
+uint64_t max_bucket(unsigned char tableBits, uint64_t nextExtension) {
+  uint64_t oldTableLength = twoToThe(tableBits - 1);
   return oldTableLength + nextExtension - 1;
 }
 
-void hashGetParamsForSize(unsigned int desiredSize, 
-		      unsigned char * tableBits, unsigned int* nextExtension) {
+void hashGetParamsForSize(uint64_t desiredSize, 
+		      unsigned char * tableBits, uint64_t* nextExtension) {
   *tableBits = logBase2(desiredSize)+1;
   *nextExtension = ((desiredSize) - twoToThe(*tableBits-1));
 }
 
 
-unsigned int hash(const void * val, long val_length, 
-		  unsigned char tableBits, unsigned int nextExtension) {
+uint64_t hash(const void * val, uint64_t val_length, 
+		  unsigned char tableBits, uint64_t nextExtension) {
   // Calculate the hash value as it was before this round of splitting.
   unsigned int oldTableLength = twoToThe(tableBits - 1);
   unsigned int unmixed = stasis_crc32(val, val_length, (unsigned int)-1);
@@ -95,9 +95,9 @@ static const char LogTable256[] =
   harness to compare logBase2Slow's output with logBase2's output,
   etc...)
 */
-unsigned int logBase2(unsigned int v) { 
-  unsigned int r = 0; // r will be lg(v)
-  register unsigned int t, tt; // temporaries
+uint32_t logBase2(uint64_t v) { 
+  uint32_t r = 0; // r will be lg(v)
+  uint32_t t, tt; // temporaries
   
   if ((tt = v >> 16))
     {
@@ -110,8 +110,8 @@ unsigned int logBase2(unsigned int v) {
   return r;
 }
 
-unsigned long logBase2Slow(unsigned long v) { 
-  unsigned long r = 0; // r will be lg(v)
+uint32_t logBase2Slow(uint64_t v) { 
+  uint32_t r = 0; // r will be lg(v)
 
   while (v >>= 1) // unroll for more speed...
     {

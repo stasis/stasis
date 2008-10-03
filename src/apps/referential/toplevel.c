@@ -104,7 +104,7 @@ int openInterpreter(FILE * in, FILE * out, recordid hash) {
 	TregionReadBoundaryTag(-1,pid,&tag);
 	int done = 0;
 	while(!done) {
-	  fprintf(out, "\tpageid=%lld\ttype=%d\tsize=%d\n", pid, tag.allocation_manager, tag.size);
+	  fprintf(out, "\tpageid=%lld\ttype=%d\tsize=%lld\n", pid, tag.allocation_manager, tag.size);
 	  if(tag.size == UINT32_MAX) { fprintf(out, "\t[EOF]\n"); }
 	  int err = TregionNextBoundaryTag(-1,&pid,&tag,0);
 	  if(!err) { done = 1; }

@@ -60,14 +60,14 @@ terms specified in this license.
 #ifndef __PAGE_OPERATIONS_H__
 #define __PAGE_OPERATIONS_H__
 
-compensated_function int TpageAlloc(int xid/*, int type*/);
-compensated_function recordid TfixedPageAlloc(int xid, int size);
-compensated_function int TpageAllocMany(int xid, int count/*, int type*/);
-compensated_function int TpageDealloc(int xid, int pageid);
-compensated_function int TpageSet(int xid, int pageid, const void* dat);
-compensated_function int TpageSetRange(int xid, int pageid, int offset, const void* dat, int len);
-compensated_function int TpageGet(int xid, int pageid, void* buf);
-int TpageGetType(int xid, int pageid);
+compensated_function pageid_t TpageAlloc(int xid);
+compensated_function pageid_t TfixedPageAlloc(int xid, int size);
+compensated_function pageid_t TpageAllocMany(int xid, int count);
+compensated_function int TpageDealloc(int xid, pageid_t page);
+compensated_function int TpageSet(int xid, pageid_t page, const void* dat);
+compensated_function int TpageSetRange(int xid, pageid_t page, int offset, const void* dat, int len);
+compensated_function int TpageGet(int xid, pageid_t page, void* buf);
+int TpageGetType(int xid, pageid_t page);
 
 Operation getPageSetRange();
 Operation getPageSetRangeInverse();

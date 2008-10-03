@@ -112,7 +112,7 @@ int Tset(int xid, recordid rid, const void * dat) {
     b += rid.size;
     Tread(xid, rid, b);
 
-    Tupdate(xid,rid,buf,sz,OPERATION_SET);
+    Tupdate(xid,rid.page,buf,sz,OPERATION_SET);
     free(buf);
   }
   return 0;
@@ -129,9 +129,7 @@ int TsetRaw(int xid, recordid rid, const void * dat) {
   memcpy(b, dat, rid.size);
   b += rid.size;
   TreadRaw(xid, rid, b);
-  // XXX get rid of recordid dereference assert in Tupdate, then change this
-  // to call Tupdate
-  TupdateRaw(xid,rid,buf,sz,OPERATION_SET);
+  Tupdate(xid,rid.page,buf,sz,OPERATION_SET);
   free(buf);
   return 0;
 }
@@ -206,7 +204,7 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
 
   unlock(p->rwlatch);
 
-  Tupdate(xid, rid, range, sizeof(set_range_t) + 2 * length, OPERATION_SET_RANGE);
+  Tupdate(xid, rid.page, range, sizeof(set_range_t) + 2 * length, OPERATION_SET_RANGE);
   free(range);
 
   releasePage(p);

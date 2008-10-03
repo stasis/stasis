@@ -59,11 +59,4 @@ Page* pageMalloc();
 
     @see pageMalloc()
 */
-void  pageFree(Page * p, int id);
-
-/**
-   obtains the type of the record pointed to by rid.  
-
-   @return UNINITIALIZED_RECORD, BLOB_RECORD, SLOTTED_RECORD, FIXED_RECORD or an error code.
-*/
-
+void  pageFree(Page * p, pageid_t id);
