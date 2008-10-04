@@ -32,42 +32,15 @@ typedef struct {
   recordid next;
 } hashEntry;
 
-pblHashTable_t * openHashes = NULL;
-pblHashTable_t * lockedBuckets = NULL;
-pthread_mutex_t linearHashMutex;
-pthread_cond_t bucketUnlocked;
+static pblHashTable_t * openHashes = NULL;
 
-void lockBucket(pageid_t bucket) {
-  while(pblHtLookup(lockedBuckets, &bucket, sizeof(bucket))) {
-    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
-  }
-  pblHtInsert(lockedBuckets, &bucket, sizeof(bucket), (void*)1);
-}
-
-int lockBucketForKey(const byte * key, int keySize, recordid * headerRidB) {
-  pageid_t bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
-
-  while(pblHtLookup(lockedBuckets, &bucket, sizeof(bucket))) {
-    pthread_cond_wait(&bucketUnlocked, &linearHashMutex);
-    bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
-  }
-  
-  pblHtInsert(lockedBuckets, &bucket, sizeof(bucket), (void *) 1 );
-  return bucket;
-}
-
-void unlockBucket(pageid_t bucket) {
-  pblHtRemove(lockedBuckets, &bucket, sizeof(bucket));
-  pthread_cond_broadcast(&bucketUnlocked);
-}
-
-void rehash(int xid, recordid hash, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize);
-void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split);
-int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
+static void rehash(int xid, recordid hash, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize);
+static void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split);
+static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
 		     void * key, int keySize, int valSize, recordid * deletedEntry);
-void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
+static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents, 
 		      hashEntry * e, int keySize, int valSize, int skipDelete);
-int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize);
+static int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize);
 
 
 int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
@@ -432,24 +405,12 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   return rid;
 }
 
-pthread_mutex_t exp_mutex;
-pthread_mutex_t exp_slow_mutex;
-
-
 void ThashInit() {
   openHashes = pblHtCreate();
-  lockedBuckets = pblHtCreate();
-
-  pthread_mutex_init(&linearHashMutex , NULL);
-  pthread_cond_init(&bucketUnlocked , NULL);
-  pthread_mutex_init(&exp_mutex, NULL);
-  pthread_mutex_init(&exp_slow_mutex, NULL);
-  
 }
 
 void ThashDeinit() {
   pblHtDelete(openHashes);
-  pblHtDelete(lockedBuckets);
 }
 
 void TnaiveHashInsert(int xid, recordid hashRid, 

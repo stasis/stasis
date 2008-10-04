@@ -28,7 +28,4 @@ void ThashInit();
 void ThashDeinit();
 int ThashOpen(int xid, recordid hashRid, int keySize, int valSize);
 int ThashClose(int xid, recordid hashRid) ;
-void lockBucket(pageid_t bucket);
-void unlockBucket(pageid_t bucket);
-int lockBucketForKey(const byte * key, int keySize, recordid * headerRidB);
 #endif
