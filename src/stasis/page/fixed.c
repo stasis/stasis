@@ -21,8 +21,7 @@ void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
 
 static void checkRid(Page * page, recordid rid) {
   assertlocked(page->rwlatch);
-  assert(*stasis_page_type_ptr(page) == FIXED_PAGE ||
-         *stasis_page_type_ptr(page) == ARRAY_LIST_PAGE);
+  assert(*stasis_page_type_ptr(page)); // any more specific breaks pages based on this one
   assert(page->id == rid.page);
   assert(*recordsize_ptr(page) == rid.size);
   assert(stasis_fixed_records_per_page(rid.size) > rid.slot);
