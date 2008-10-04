@@ -93,15 +93,23 @@ START_TEST(pagedListCheck) {
     b.page = i+1;
     b.slot = i+2;
     b.size = i+3;
-    
-    int ret = TpagedListInsert(xid, list, (byte*)&a, sizeof(int), (byte*)&b, sizeof(recordid));
-    
+
+    int ret;
+
+    {
+      byte * t;
+
+      ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), &t);
+      assert(-1 == ret);
+    }
+    ret = TpagedListInsert(xid, list, (byte*)&a, sizeof(int), (byte*)&b, sizeof(recordid));
+
     assert(!ret);
-    
+
     recordid * bb;
     recordid ** bbb = &bb;
     ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
-  
+
     assert(ret == sizeof(recordid));
     assert(!memcmp(bb, &b, sizeof(recordid)));
   }

@@ -110,15 +110,12 @@ compensated_function int TpagedListFind(int xid, recordid list, const byte * key
 	  free(dat);
 	  return valueSize;
 	}
-	//      if(dat->nextEntry) {          // another entry on this page
-	rid.slot = dat->nextEntry;
-	free(dat);	//      }
+	rid.slot = dat->nextEntry;  // rid.slot will be zero if this is the last entry
+	free(dat);
       } else if (header.nextPage.size != -1) {  // another page
 	rid.page = header.nextPage.page;
 	Tread(xid, header.nextPage, &header);
 	rid.slot = header.thisPage;
-      } else {                     // we've reached the end of the last page
-	rid.slot = 0;
       }
     }
   } end_ret(compensation_error());
