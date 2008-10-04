@@ -20,7 +20,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c doubleLinkedList.c
                    operations/nestedTopActions.c
                    operations/linearHashNTA.c
                    operations/linkedListNTA.c
-                   operations/pageOrientedListNTA.c operations/bTree.c
+                   operations/pageOrientedListNTA.c
                    operations/regions.c operations/lsmTree.c
                    io/rangeTracker.c io/memory.c io/file.c io/pfile.c
                    io/non_blocking.c io/debug.c
