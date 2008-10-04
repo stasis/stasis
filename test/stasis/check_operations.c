@@ -495,7 +495,9 @@ START_TEST(operation_array_list) {
   
   int xid = Tbegin();
   recordid rid = TarrayListAlloc(xid, 4, 2, sizeof(int));
+  assert(0 == TarrayListLength(xid, rid));
   TarrayListExtend(xid, rid, ARRAY_LIST_CHECK_ITER);
+  assert(ARRAY_LIST_CHECK_ITER == TarrayListLength(xid, rid));
   Tcommit(xid);
 
   xid = Tbegin();
@@ -560,13 +562,6 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 0); // disable timeouts
 
   /* Sub tests are added, one per line, here */
-  /*(void)operation_physical_do_undo;
-  (void)operation_nestedTopAction;
-  (void)operation_set_range;
-  (void)operation_prepare;
-  (void)operation_alloc_test;
-  (void)operation_array_list;*/
-
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_set_range);
