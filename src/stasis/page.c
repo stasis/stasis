@@ -187,33 +187,18 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
 
 /// --------------  Dispatch functions
 
-static int recordWarnedAboutPageTypeKludge = 0;
 const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
   assertlocked(p->rwlatch);
 
   int page_type = *stasis_page_type_ptr(p);
-  if(!page_type) {
-    page_type = FIXED_PAGE;
-    if(!recordWarnedAboutPageTypeKludge) {
-      recordWarnedAboutPageTypeKludge = 1;
-      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
-      abort();
-    }
-  }
- return page_impls[page_type].recordRead(xid, p, rid);
+  assert(page_type);
+  return page_impls[page_type].recordRead(xid, p, rid);
 }
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
   assertlocked(p->rwlatch);
 
   int page_type = *stasis_page_type_ptr(p);
-  if(!page_type) {
-    page_type = FIXED_PAGE;
-    if(!recordWarnedAboutPageTypeKludge) {
-      recordWarnedAboutPageTypeKludge = 1;
-      printf("page.c: MAKING USE OF TERRIBLE KLUDGE AND IGNORING ASSERT FAILURE! FIX ARRAY LIST ASAP!!!\n");
-      abort();
-    }
-  }
+  assert(page_type);
   assert(stasis_record_length_read(xid, p, rid) ==  stasis_record_type_to_size(rid.size));
   return page_impls[page_type].recordWrite(xid, p, rid);
 }
@@ -303,7 +288,7 @@ void stasis_page_loaded(Page * p){
     assert(page_impls[type].page_type == type);
     page_impls[type].pageLoaded(p);
   } else {
-    p->LSN = *stasis_page_lsn_ptr(p);  // XXX kluge - shouldn't special-case UNINITIALIZED_PAGE
+    p->LSN = *stasis_page_lsn_ptr(p);  // XXX kludge - shouldn't special-case UNINITIALIZED_PAGE
   }
 }
 void stasis_page_flushed(Page * p){
