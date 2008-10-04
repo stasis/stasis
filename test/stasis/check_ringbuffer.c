@@ -89,6 +89,9 @@ static int rb_test(double readBlock, double writeBlock) {
       for(i = 0; i < numToWrite; i++) {
 	if(!ringBufferAppend(log, array[writePos], length[writePos])) {
 	  //	  printf("W"); fflush(stdout);
+          if(writePos == 0) {
+            assert((-2 == ringBufferAppend(log, array[writePos], 1+NUM_ENTRIES - length[writePos])));
+          }
 	  writePos++;
 	  if(writePos ==  NUM_ENTRIES) { break; }
 	} else {
@@ -96,6 +99,17 @@ static int rb_test(double readBlock, double writeBlock) {
 	} 
       } 
     }
+    // try to truncate a chunk longer than the whole ringbuffer.
+    // should be a no-op
+
+    // note: passing 0 for buffer argument is illegal
+    assert(-1 == ringBufferTruncateRead(0, log, NUM_ENTRIES * 10));
+
+    // try to append more than the ring buffer can hold
+    // should also be a no-op.
+    assert(-1 == ringBufferAppend(log, 0, NUM_ENTRIES * 10));
+
+
     int numToRead = 1.0 + readBlock * ((double)rand() / (double)RAND_MAX);
     //    printf("%d\n", numToRead);
     for(i = 0; i < numToRead; i++) {
@@ -121,6 +135,7 @@ static int rb_test(double readBlock, double writeBlock) {
       doneWriting = 1;
     }
   }
+  closeLogRingBuffer(log);
   return 0;
 }
 
