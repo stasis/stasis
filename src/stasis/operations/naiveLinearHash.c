@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stasis/latches.h>
 #include <stasis/page.h>
+
 /**
 
    A from-scratch implementation of linear hashing.  Uses the
@@ -22,7 +23,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stasis/operations/linearHash.h>
 #include <pbl/pbl.h>
 /**
   next.size == 0 implies empty bucket
