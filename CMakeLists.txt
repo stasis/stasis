@@ -25,14 +25,20 @@ FIND_PACKAGE(FLEX)
 FIND_PACKAGE(BISON)
 
 
-# Look for include files
-INCLUDE (CheckIncludeFiles)
 FIND_LIBRARY(CHECK_LIBRARY NAMES check)
-if(!CHECK_LIBRARY)
-  message("warning: libcheck not found; unit tests will not be built.")
-endif(!CHECK_LIBRARY)
-#CHECK_INCLUDE_FILES(check.h HAVE_LIBCHECK)
-CHECK_INCLUDE_FILES(confuse.h HAVE_LIBCONFUSE)
+if(NOT CHECK_LIBRARY)
+  message(STATUS "libcheck not found; unit tests will not be built.")
+endif(NOT CHECK_LIBRARY)
+
+FIND_LIBRARY(HAVE_CONFUSE NAMES confuse)
+if(NOT HAVE_CONFUSE)
+  message(STATUS "libconfuse not found; libdfa will not be built. (you can safely ignore this)") 
+endif(NOT HAVE_CONFUSE)
+
+# Look for include files
+#INCLUDE (CheckIncludeFiles)
+##CHECK_INCLUDE_FILES(check.h HAVE_LIBCHECK)
+#CHECK_INCLUDE_FILES(confuse.h HAVE_LIBCONFUSE)
 
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)
