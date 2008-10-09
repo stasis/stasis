@@ -60,6 +60,8 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
   memcpy(logArg+sizeof(int),     ((const byte*)memAddr), len);
   memcpy(logArg+sizeof(int)+len, p->memAddr+offset,         len);
 
+  releasePage(p);
+
   try_ret(compensation_error()) {
     Tupdate(xid,page,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
   } end_ret(compensation_error());
