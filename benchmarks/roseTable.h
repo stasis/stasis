@@ -129,7 +129,7 @@ namespace rose {
     last_start = start;
 
 
-    printf("tuple 'size'%d ; %ld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
+    printf("tuple 'size'%d ; %lld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), (long long)sizeof(typename PAGELAYOUT::FMT::TUP));
 
     COUNT = 100000; // XXX kludgey
     count = 100000;

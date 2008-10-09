@@ -96,7 +96,7 @@ namespace rose {
     epoch_t this_xid = 0;
     epoch_t last_ts_col = 0;
 
-    printf("tuple 'size'%d ; %ld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), sizeof(typename PAGELAYOUT::FMT::TUP));
+    printf("tuple 'size'%d ; %lld\n", PAGELAYOUT::FMT::TUP::sizeofBytes(), (long long)sizeof(typename PAGELAYOUT::FMT::TUP));
 
     if(file_mode) {
       typename PAGELAYOUT::FMT::TUP scratch;

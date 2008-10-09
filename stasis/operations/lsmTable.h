@@ -691,8 +691,9 @@ namespace rose {
        handleBytes > inputSizeThresh ||
 #endif
        handleBytes > memSizeThresh) { // XXX ok?
-      printf("Handle mbytes %ld (%ld) Input size: %lld input size thresh: %ld mbytes mem size thresh: %ld\n",
-	     handleBytes / (1024*1024), h->scratch_handle->size(), *h->input_size, inputSizeThresh / (1024*1024), memSizeThresh / (1024*1024));
+      printf("Handle mbytes %lld (%lld) Input size: %lld input size thresh: %lld mbytes mem size thresh: %lld\n",
+	     (long long) handleBytes / (1024*1024), (long long) h->scratch_handle->size(), (long long) *h->input_size,
+	     (long long) inputSizeThresh / (1024*1024), (long long) memSizeThresh / (1024*1024));
       TlsmTableFlush<PAGELAYOUT>(h);
     }
   }
