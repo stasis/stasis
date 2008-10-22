@@ -26,6 +26,8 @@ TransactionLog XactionTable[MAX_TRANSACTIONS];
 int numActiveXactions = 0;
 int xidCount = 0;
 
+static int initted = 0;
+
 const recordid ROOT_RECORD = {1, 0, -1};
 const recordid NULLRID = {0,0,-1};
 const short SLOT_TYPE_LENGTHS[] = { 0, 0, sizeof(blob_record_t), -1};
@@ -222,6 +224,7 @@ int Tinit() {
 	if(stasis_truncation_automatic) {
 	  autoTruncate(); // should this be before InitiateRecovery?
 	}
+        initted = 1;
 	return 0;
 }
 
@@ -230,6 +233,8 @@ int Tbegin() {
 
 	int i, index = 0;
 	int xidCount_tmp;
+
+        assert(initted);
 
 	pthread_mutex_lock(&transactional_2_mutex);
 
@@ -300,6 +305,7 @@ compensated_function void TupdateStr(int xid, pageid_t page,
 compensated_function void Tupdate(int xid, pageid_t page, 
 				  const void *dat, size_t datlen, int op) { 
   Page * p = loadPage(xid, page);
+  assert(initted);
   TactionHelper(xid, dat, datlen, op, p);
   releasePage(p);
 }
@@ -428,6 +434,9 @@ int Tdeinit() {
   stasis_page_deinit();
   LogDeinit();
   dirtyPagesDeinit();
+
+  initted = 0;
+
   return 0;
 }
 
