@@ -320,7 +320,9 @@ void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, pageid_t pag
     assert(p->lockCount == 0);
     lockAlloced(ap, xid, (availablePage*)p);
   } else {
-    assert(*xidp == xid); // new
+    // new: this xact is allocing on a page that an active xact alloced on.
+    // perhaps this is safe, but it's spooky.
+    assert(*xidp == xid);
   }
 }
 
