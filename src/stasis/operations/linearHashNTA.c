@@ -167,6 +167,7 @@ Operation getLinearHashRemove() {
 }
 
 compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize) {
+  hashHeader.size = sizeof(lladd_hash_header);
   pthread_mutex_lock(&linear_hash_mutex);
   int argSize = sizeof(linearHash_insert_arg)+keySize;
   linearHash_insert_arg * arg = calloc(1,argSize);
@@ -243,7 +244,7 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
   return ret;
 }
 compensated_function int ThashRemove(int xid, recordid hashHeader, const byte * key, int keySize) {
-
+  hashHeader.size = sizeof(lladd_hash_header);
   byte * value;
   int valueSize;
   int ret; 
@@ -308,6 +309,7 @@ compensated_function static int __ThashRemove(int xid, recordid hashHeader, cons
 
 compensated_function int ThashLookup(int xid, recordid hashHeader, const byte * key, int keySize, byte ** value) {
   lladd_hash_header lhh;
+  hashHeader.size = sizeof(lladd_hash_header);
   int ret;
 
   // This whole thing is safe since the callee's do not modify global state... 
@@ -398,6 +400,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
   return;
 }
 lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, int valueSize) {
+  hashHeader.size = sizeof(lladd_hash_header);
   lladd_hash_iterator * it = calloc(1,sizeof(lladd_hash_iterator));
   begin_action_ret(free, it, NULL) {
     it->hashHeader = hashHeader;
