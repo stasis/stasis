@@ -127,6 +127,7 @@ static int nop_close(stasis_handle_t*h) { return 0; }
 
 int Tinit() {
         pthread_mutex_init(&transactional_2_mutex, NULL);
+        initted = 1;
 	numActiveXactions = 0;
 
 	compensations_init();
@@ -224,7 +225,6 @@ int Tinit() {
 	if(stasis_truncation_automatic) {
 	  autoTruncate(); // should this be before InitiateRecovery?
 	}
-        initted = 1;
 	return 0;
 }
 
