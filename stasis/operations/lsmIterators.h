@@ -240,6 +240,7 @@ class treeIterator {
       pageid_ = *pid_tmp;
       p_ = loadPage(-1,pageid_);
       currentPage_ = (PAGELAYOUT*)p_->impl;
+      assert(currentPage_);
     }
   }
  public:
