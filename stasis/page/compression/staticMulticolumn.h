@@ -62,6 +62,13 @@
 */
 
 namespace rose {
+  //#define PACK_STATS
+#ifdef PACK_STATS
+  static unsigned long long pack_exceptionBytes = 0;
+  static unsigned long long pack_colBytes[20];
+  static unsigned long long pack_pageCount = 0;
+  static int pack_first = 1;
+#endif
 
 /**
  * A "pageLoaded()" callback function for Stasis' buffer manager.
@@ -430,16 +437,42 @@ class StaticMulticolumn {
      return 0;
    }
  }
+
   inline void pack() {
+#ifdef PACK_STATS
+    if(pack_first) {
+      pack_exceptionBytes = 0;
+      pack_pageCount = 0;
+      for(int i = 0; i < N; i++) {
+        pack_colBytes[i] = 0;
+      }
+      pack_first = 0;
+    }
+#define updateColStats(i, comp)                 \
+    pack_colBytes[i] += comp->bytes_used()
+#else
+#define updateColStats(i, comp)
+#endif
     byte_off_t first_free = 0;
     byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
     if(unpacked_) {
       *exceptions_len_ptr() = last_free - first_exception_byte_;
       last_free -= *exceptions_len_ptr();
       *exceptions_offset_ptr() = last_free;
-
+#ifdef PACK_STATS
+      pack_pageCount++;
+      pack_exceptionBytes += *exceptions_len_ptr();
+      if(0 == ((pack_pageCount+1) % 1000)) {
+        printf("%lld pages; %lld exception bytes cols: {", pack_pageCount, pack_exceptionBytes);
+        for(int i = 0; i < N; i++) {
+          printf("%lld, ", pack_colBytes[i]);
+        }
+        printf("}\n");
+      }
+#endif
 #define STATIC_MC_PACK(i,comp)				              \
       if(i < N) {						      \
+        updateColStats(i,comp);                                       \
 	*column_offset_ptr(i) = first_free;			      \
 	byte_off_t bytes_used = comp->bytes_used();		      \
 	memcpy(column_base_ptr(i), columns_[i], bytes_used);	      \
@@ -670,6 +703,5 @@ page_impl StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,CO
 }
 
 }  // namespace rose
-
 
 #endif // _ROSE_COMPRESSION_STATIC_MULTICOLUMN_H__
