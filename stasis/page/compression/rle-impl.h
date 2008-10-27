@@ -18,9 +18,9 @@ namespace rose {
    complexity comes from dealing with integer overflow, and running
    out of space.
 */
-template <class TYPE>
+template <class TYPE, class COUNT_TYPE>
 inline slot_index_t
-Rle<TYPE>::append(int xid, const TYPE dat,
+Rle<TYPE,COUNT_TYPE>::append(int xid, const TYPE dat,
 		  byte_off_t* except, byte * exceptions, //char *exceptional,
 		  int *free_bytes) {
   int64_t ret;
@@ -55,9 +55,9 @@ Rle<TYPE>::append(int xid, const TYPE dat,
 
   return (slot_index_t)ret;
 }
-template <class TYPE>
+template <class TYPE,class COUNT_TYPE>
 inline TYPE *
-Rle<TYPE>::recordRead(int xid, slot_index_t slot, byte* exceptions,
+Rle<TYPE,COUNT_TYPE>::recordRead(int xid, slot_index_t slot, byte* exceptions,
                       TYPE * scratch) {
   block_index_t n =  nth_block_ptr(last_)->index <= slot ? last_ : 0;
   do {
@@ -103,9 +103,9 @@ Rle<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
   return ret;
 }
 #else // COMPRESSION_BINARY_FIND
-template <class TYPE>
+template <class TYPE,class COUNT_TYPE>
 inline std::pair<slot_index_t,slot_index_t>*
-Rle<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
+Rle<TYPE, COUNT_TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
 		      byte *exceptions, TYPE value,
 		      std::pair<slot_index_t,slot_index_t>& scratch) {
 

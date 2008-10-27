@@ -47,7 +47,7 @@
 #include "pstar.h"
 namespace rose {
 
-template <class TYPE>
+template <class TYPE, class DELTA_TYPE=int8_t>
 class For {
  public:
   typedef TYPE TYP;
@@ -150,15 +150,9 @@ class For {
 
  private:
 
-  typedef int8_t delta_t;
-  static const delta_t DELTA_MAX = CHAR_MAX;
-  static const delta_t DELTA_MIN = CHAR_MIN;
-  /*  typedef int16_t delta_t;
-  static const delta_t DELTA_MAX = SHRT_MAX;
-  static const delta_t DELTA_MIN = SHRT_MIN;  */
-  /*typedef int32_t delta_t;
-  static const delta_t DELTA_MAX = INT_MAX;
-  static const delta_t DELTA_MIN = INT_MIN;*/
+  typedef DELTA_TYPE delta_t;
+  static const delta_t DELTA_MAX = (sizeof(delta_t) == 1) ? CHAR_MAX : (sizeof(delta_t) == 2) ? SHRT_MAX : INT_MAX;
+  static const delta_t DELTA_MIN = (sizeof(delta_t) == 1) ? CHAR_MIN : (sizeof(delta_t) == 2) ? SHRT_MIN : INT_MIN;
 
   inline TYPE offset() { return *base_ptr(); }
 

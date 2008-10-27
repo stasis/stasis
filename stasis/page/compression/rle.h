@@ -10,14 +10,14 @@
 
 namespace rose {
 
-template <class TYPE>
+template <class TYPE, class COUNT_TYPE=uint16_t>
 class Rle {
 
  public:
   /** XXX this stuff is performance critical; should be template param.*/
   typedef byte_off_t block_index_t;
-  typedef uint8_t copy_count_t;
-  static const copy_count_t MAX_COPY_COUNT = UCHAR_MAX;
+  typedef COUNT_TYPE copy_count_t;
+  static const copy_count_t MAX_COPY_COUNT = (copy_count_t)-1;
 
   typedef TYPE TYP;
 

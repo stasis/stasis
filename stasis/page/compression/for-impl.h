@@ -11,9 +11,9 @@
 #include "for.h"
 
 namespace rose {
-template <class TYPE>
+template <class TYPE,class DELTA_TYPE>
 inline void
-For<TYPE>::offset(TYPE o) {
+For<TYPE,DELTA_TYPE>::offset(TYPE o) {
   assert(*numdeltas_ptr() == 0);
   *base_ptr() = o;
 }
@@ -21,9 +21,9 @@ For<TYPE>::offset(TYPE o) {
    Store a new value as a delta from the page's base offset, then update
    numdeltas_ptr so that we remember that we stored the value.
 */
-template <class TYPE>
+template <class TYPE,class DELTA_TYPE>
 inline slot_index_t
-For<TYPE>::append(int xid, const TYPE dat,
+For<TYPE,DELTA_TYPE>::append(int xid, const TYPE dat,
 		  byte_off_t* except, byte* exceptions, //char *exceptional,
 		  int *free_bytes) {
   // Can dat be represented as a delta from the page's base value?
@@ -68,9 +68,9 @@ For<TYPE>::append(int xid, const TYPE dat,
 
 }
 
-template <class TYPE>
+template <class TYPE,class DELTA_TYPE>
 inline TYPE *
-For<TYPE>::recordRead(int xid, slot_index_t slot, byte *exceptions,
+For<TYPE,DELTA_TYPE>::recordRead(int xid, slot_index_t slot, byte *exceptions,
                       TYPE * scratch) {
   if (slot >= *numdeltas_ptr()) {
     return 0;
@@ -86,9 +86,9 @@ For<TYPE>::recordRead(int xid, slot_index_t slot, byte *exceptions,
 }
 
 #ifndef COMPRESSION_BINARY_FIND
-template <class TYPE>
+template <class TYPE,class DELTA_TYPE>
 inline std::pair<slot_index_t,slot_index_t>*
-For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
+For<TYPE,DELTA_TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
 		      byte *exceptions, TYPE value,
 		      std::pair<slot_index_t,slot_index_t>& scratch) {
   std::pair<slot_index_t,slot_index_t>* ret = 0;
@@ -131,9 +131,9 @@ For<TYPE>::recordFind(int xid, slot_index_t start, slot_index_t stop,
   return ret;
  }
 #else // COMPRESSION_BINARY_FIND
-template <class TYPE>
+template <class TYPE,class DELTA_TYPE>
 inline std::pair<slot_index_t,slot_index_t>*
-For<TYPE>::recordFind(int xid, slot_index_t low, slot_index_t high,
+For<TYPE,DELTA_TYPE>::recordFind(int xid, slot_index_t low, slot_index_t high,
 		      byte *exceptions, TYPE value,
 		      std::pair<slot_index_t,slot_index_t>& scratch) {
   delta_t delta = value - *base_ptr();
