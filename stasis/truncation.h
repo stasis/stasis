@@ -83,7 +83,7 @@ void autoTruncate();
 /**
    Initiate a round of log truncation.
 */
-int truncateNow();
+int truncateNow(int force);
 
 END_C_DECLS
 #endif

@@ -175,7 +175,7 @@ static void* periodicTruncation(void * ignored) {
   pthread_mutex_lock(&shutdown_mutex);
   while(initialized) { 
     if(LogFlushedLSN() - LogTruncationPoint() > TARGET_LOG_SIZE) {
-      truncateNow();
+      truncateNow(0);
     }
     struct timeval now;
     struct timespec timeout;
@@ -199,7 +199,7 @@ void autoTruncate() {
 }
 
 
-int truncateNow() { 
+int truncateNow(int force) { 
   
 
   // *_minRecLSN() used to return the same value as flushed if
@@ -216,7 +216,7 @@ int truncateNow() {
   rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 
   lsn_t log_trunc = LogTruncationPoint();
-  if((xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
+  if(force || (xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
     //fprintf(stderr, "xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
@@ -226,7 +226,7 @@ int truncateNow() {
       return 1;
     } else { 
       lsn_t flushed = LogFlushedLSN();
-      if(flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
+      if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
 	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
 	dirtyPages_flush();
 	
