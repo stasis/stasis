@@ -684,13 +684,13 @@ namespace rose {
     }
     count --;
 #endif
-    if(
+    if( (handleBytes > memSizeThresh / 2) && (
 #ifdef INFINITE_RESOURCES
        go ||
 #else 
        handleBytes > inputSizeThresh ||
 #endif
-       handleBytes > memSizeThresh) { // XXX ok?
+       handleBytes > memSizeThresh ) ) { // XXX ok?
       printf("Handle mbytes %lld (%lld) Input size: %lld input size thresh: %lld mbytes mem size thresh: %lld\n",
 	     (long long) handleBytes / (1024*1024), (long long) h->scratch_handle->size(), (long long) *h->input_size,
 	     (long long) inputSizeThresh / (1024*1024), (long long) memSizeThresh / (1024*1024));
