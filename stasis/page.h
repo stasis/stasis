@@ -463,7 +463,7 @@ void stasis_page_deinit();
    @par Registering new page type implementations
 
    Page implementations are registered with Stasis by passing a
-   page_impl struct into registerPageType().  page_impl.page_type
+   page_impl struct into stasis_page_impl_register().  page_impl.page_type
    should contain an integer that is unique across all page types,
    while the rest of the fields contain function pointers to the page
    type's implementation.
