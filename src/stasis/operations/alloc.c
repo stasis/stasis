@@ -365,6 +365,10 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
   }
 
   pthread_mutex_lock(&talloc_mutex);
+  if(!allocationPolicyCanXidAllocFromPage(allocPolicy, xid, page)) {
+    pthread_mutex_unlock(&talloc_mutex);
+    return NULLRID;
+  }
   Page * p = loadPage(xid, page);
   writelock(p->rwlatch,0);
   recordid rid = stasis_record_alloc_begin(xid, p, type);

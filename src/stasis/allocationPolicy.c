@@ -302,6 +302,23 @@ availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int fre
   return (availablePage*) ret; 
 }
 
+int allocationPolicyCanXidAllocFromPage(allocationPolicy *ap, int xid, pageid_t page) {
+  availablePage * p = getAvailablePage(ap, page);
+  const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
+  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
+  if(!(xidp || check1)) {
+    // the page is not available, and not owned.
+    return 0; // can't safely alloc from page
+  }
+  if(check1) {
+    // the page is available and unlocked
+    return 1; // can safely alloc from page
+  } else {
+    // someone owns the page.  Is it this xid?
+    return (*xidp == xid);
+  }
+}
+
 void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, pageid_t page) { 
   availablePage * p = getAvailablePage(ap, page);
   const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
