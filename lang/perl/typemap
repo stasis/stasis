@@ -1,0 +1,11 @@
+TYPEMAP
+recordid        T_RECORDID
+byte*           T_BYTEARRAY
+
+INPUT
+T_RECORDID
+   $var = recordid_SV($arg);
+
+OUTPUT
+T_RECORDID
+   $arg = SV_recordid($var);
