@@ -534,16 +534,16 @@ static LogEntry * readLogEntry() {
       fprintf(stdout, "Trying to piece together short log entry.\n"); fflush(stderr);
 
       fprintf(stderr, "short read from log w/ lsn %lld.  Expected %lld bytes, got %lld.\nFIXME: This is 'normal', but currently not handled", debug_lsn, size, bytesRead);
-      fflush(stderr);
       fprintf(stderr, "\nattempt to read again produced newBytesRead = %lld, newSize was %lld\n", newBytesRead, newSize);
       fflush(stderr);
 
       abort();
       return (LogEntry*)LLADD_IO_ERROR;
-    } 
+    }
   }
 
-  assert(sizeofLogEntry(ret) == size);
+  // Would like to do this, but we could reading a partial log entry.
+  //assert(sizeofLogEntry(ret) == size);
 
   return ret;
 }
