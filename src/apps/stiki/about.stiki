@@ -1,0 +1,50 @@
+= About Stiki
+Stiki is a proof-of-concept wiki based on [[http://cs.berkeley.edu/~sears/stasis|Stasis]].  It is designed for server side simplicity, and is the first application built using Stasis' Perl bindings.
+
+Stiki makes use of a client-side JavaScript [[http://www.ivan.fomichev.name/2008/04/javascript-creole-10-wiki-markup-parser.html|implementation]] implementation of the [[WikiCreole:Main|Creole 1.0]] wiki markup language.
+
+Here is the Stiki server's source code:
+
+{{{
+#!/usr/bin/perl -w                                                              
+use strict;
+use Stasis;
+use Carp;
+use CGI::Fast;
+
+sub bootstrap {
+    my $xid = Stasis::Tbegin();
+    my $rid;
+    if(Stasis::TrecordType($xid, Stasis::ROOT_RID()) == Stasis::INVALID_SLOT()) {
+        $rid = Stasis::ThashCreate($xid);
+    } else {
+        $rid = Stasis::ROOT_RID();
+    }
+    Stasis::Tcommit($xid);
+    return $rid;
+}
+
+Stasis::Tinit();
+my $hash = bootstrap();
+
+while(my $q = new CGI::Fast()) {
+    my $pagename = $q->param('set') || $q->param('get') || 'Main';
+
+    if($q->param('set')) {
+        my $xid = Stasis::Tbegin();
+        Stasis::ThashInsert(($xid, $hash, $pagename, $q->param('content')));
+        print $q->redirect("/stiki/$pagename");
+    } else {
+        my $template = `cat creole-test.html`;
+        my $content = Stasis::ThashLookup(-1, $hash, $pagename) ||
+            "= $pagename\nClick edit (on the right) to create this new page);";
+        $template =~ s/__TITLE__/$pagename/g;
+        $template =~ s/__CONTENT__/$content/g;
+        print $q->header . $template;
+    }
+}
+
+Stasis::Tdeinit();
+
+}}}
+

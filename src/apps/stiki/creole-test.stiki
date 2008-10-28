@@ -1,0 +1,118 @@
+= Introduction to Creole
+What you see is a **live** demonstration of [[WikiCreole:Creole1.0|Creole 1.0]] parser, written entirely in [[Wikipedia:JavaScript|JavaScript]]. Creole is a wiki markup language, intended to be a cross standard for various wiki markup dialects.
+
+* Modifying the text in the textarea below results in instant rendering XHTML without page reload.
+* Try it //right now//!
+
+See [[WikiCreole:CheatSheet|Creole 1.0 Cheat Sheet]] for editing tips.
+
+= Creole CSS formatting tests
+== H2
+=== H3
+==== H4
+===== H5
+====== H6
+
+# //italic//
+# **bold**
+## //**bold italic**//
+
+* [[wikipage]]
+* [[http://www.google.com|google]]
+** [[Wikipedia:wikipedia]]
+** [[Stiki:Goo|Goo]]
+
+||Table||Table|
+|-||-|
+|Foo bar baz||This is a table, and is poorly formatted.|
+
+new\\line
+
+|=Header 1|=Header 2|=Header 3|
+|A|B|C|
+|1|2|3|
+| |THIS IS SOME\\LONG THING| woot!
+
+{{{
+==[[I see non-wiki code!!]]==
+<a href="http://i.like.spam/"><BLINK><BlInK>CLICK ME<BlInK></BLINK></a>
+}}}
+
+== List abuse:
+
+# X
+# X
+# X
+## Y
+## Y
+## Y
+### Z
+### Z
+### Z
+### Z
+### Z
+### Z
+### Z
+### Z
+### Z
+#### a
+#### a
+#### a
+#### a
+#### a
+#### a
+#### a
+#### a
+#### a
+##### cjk
+##### b
+##### b
+##### b
+##### b
+##### b
+##### b
+##### b
+##### b
+##### b
+##### b
+###### georgian
+###### b
+###### b
+###### b
+###### b
+###### b
+###### b
+###### b
+###### b
+###### b
+###### b
+####### Hebrew
+####### b
+####### b
+####### b
+####### b
+####### b
+####### b
+####### b
+####### b
+####### b
+####### b
+######## armenian
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+######## b
+
+
+----
+
+{{http://tardis.cs.berkeley.edu/tardis.png|External image}}
+

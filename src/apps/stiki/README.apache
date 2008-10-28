@@ -1,0 +1,43 @@
+There are a few apache configuration changes that you'll need to make:
+
+# Set up FastCGI
+
+Only one copy of stiki may be running at once.  Stiki uses FastCGI for 
+*correctness*, not performance.
+
+Here's my /etc/apache2/mods-enabled/fastcgi.conf:
+
+<IfModule mod_fastcgi.c>
+  AddHandler fastcgi-script .fcgi
+  #FastCgiWrapper /usr/lib/apache2/suexec
+  FastCgiIpcDir /var/lib/apache2/fastcgi
+  FastCgiServer /var/www/cgi-bin/stiki/index.fcgi -processes 1
+</IfModule>
+
+and fastcgi.load:
+
+LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
+
+# Set up mod_rewrite:
+
+<Directory /var/www/stiki>
+  Options FollowSymLinks 
+  RewriteEngine On
+  RewriteBase /stiki
+  RewriteRule (.*) /cgi-bin/stiki/index.fcgi?get=$1
+</Directory>
+
+# Compile Stasis.pm
+
+## Make sure you have no extra copies of libstasis.so laying around in
+your global path, and then set the environment varibale in index.fcgi 
+accordingly.
+
+## chown -R www-data.www-data /var/www/cgi-bin/stiki 
+ 
+  www-data must be able to write to this directory, or compilation will 
+  fail.
+
+## 'su - www-data', then './index.fcgi' in its installation directory.
+
+With any luck, you now have a working Stiki installation.

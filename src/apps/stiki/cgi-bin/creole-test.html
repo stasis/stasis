@@ -1,0 +1,107 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang="en" lang="en">
+<!-- xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'-->
+<head>
+<meta content='text/html; charset=UTF-8' http-equiv='Content-Type'/>
+<title>__TITLE__</title>
+<link href="/stiki-site/stiki.css" title="normal-page" type="text/css" rel="Stylesheet" media="screen"/>
+</head>
+<body>
+<table class="tbl" border ='0' width='100%'>
+<tr class="tbl">
+<th colspan='2' class="titlebar">
+<div class="titlebar"><div id='pagename' class="pagename">__TITLE__</div>
+</div>
+</th>
+</tr>
+
+<tr valign="top">
+<td class="sidebar">
+   <div id='sidebar' class ="menu">
+      <img src='http://tardis.cs.berkeley.edu/tardis.png' alt='Tardis'/>
+      <ul class="menusection">
+         <li><a class="menuitem" href="/stiki/Main">Main</a></li>
+         <li><a class="menuitem" href="/stiki/About">About</a></li>
+      </ul>
+ 
+   </div>
+</td><td class='tbl'>
+
+<script type="text/javascript"><!--
+    var toggleDisplay = function(id) {
+	var it = $(id);
+	if(it.style.display=='none') {
+	   it.style.display = 'inline';
+        } else{
+	   it.style.display = 'none';
+	}
+    }
+--></script>
+
+<div class="editbutton" id="editbutton" onclick="toggleDisplay('editform');">Edit</div>
+<form id='editform' action="/cgi-bin/stiki/index.fcgi">
+<p>
+<input type="hidden" name="set" value="__TITLE__"/>
+<textarea class="editbox" id="wikitext" name="content" rows="10" cols="72">
+__CONTENT__
+</textarea>
+
+<input class="editsubmit" type="submit" value="Save"/>
+</p>
+
+</form>
+<div class='bodytext' id="demo"></div>
+
+<script type="text/javascript" src="/stiki-site/codeholic-creole-1.0.js"/>
+
+<script id="go" type="text/javascript"><!--//--></script>
+
+<script type="text/javascript"><!--
+
+function $(id) {
+    return document.getElementById(id);
+}
+
+    var input = $('wikitext');
+    var demo = $('demo');
+//    eval(decodeEntities($('parser').innerHTML));
+    var creole = new Parse.Simple.Creole( {
+        interwiki: {
+            WikiCreole: 'http://www.wikicreole.org/wiki/',
+            Wikipedia: 'http://en.wikipedia.org/wiki/'
+        },
+        linkFormat: ''
+    } );
+
+    var render = function() {
+        demo.innerHTML = '';
+        creole.parse(demo, input.value);
+    };
+
+    var renderIt = function(id) {
+	var it = $(id);
+	var ittxt = it.innerHTML;
+	it.innerHTML = '';
+	creole.parse(it,ittxt);
+    }
+
+    var renderOnce = function() {
+//	renderIt('sidebar');
+//	renderIt('pagename');
+    }
+
+    input.onkeyup = function() {
+        render();
+    };
+
+    toggleDisplay('editform');
+    renderOnce();
+    render();
+
+--></script>
+
+
+</td></tr></table>
+</body>
+</html>
+
