@@ -254,7 +254,7 @@ START_TEST(transactionalLinearHashTest)
       assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
     }
   }
-  TnaiveHashClose(xid, hsahRoot);
+  TnaiveHashClose(xid, hashRoot);
   Tabort(xid);
   Tdeinit();
 	
