@@ -355,7 +355,7 @@ int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * buck
   return found;
 }  
 
-recordid ThashAlloc(int xid, int keySize, int valSize) {
+recordid TnaiveHashCreate(int xid, int keySize, int valSize) {
   /* Want 16 buckets, doubling on overflow. */
   recordid rid = TarrayListAlloc(xid, 4096, 2, sizeof(hashEntry) + keySize + valSize);
   assert(rid.size == sizeof(hashEntry) + keySize + valSize);
@@ -405,11 +405,11 @@ recordid ThashAlloc(int xid, int keySize, int valSize) {
   return rid;
 }
 
-void ThashInit() {
+void TnaiveHashInit() {
   openHashes = pblHtCreate();
 }
 
-void ThashDeinit() {
+void TnaiveHashDeinit() {
   pblHtDelete(openHashes);
 }
 
@@ -461,7 +461,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
   return ret;
 }
 
-int ThashOpen(int xid, recordid hashRid, int keySize, int valSize) {
+int TnaiveHashOpen(int xid, recordid hashRid, int keySize, int valSize) {
   recordid * headerRidB = malloc(sizeof(recordid) + keySize + valSize);
   hashRid.slot = 1;
   Tread(xid, hashRid, headerRidB);
@@ -478,7 +478,7 @@ void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void *
 }
 
 
-int ThashClose(int xid, recordid hashRid) {
+int TnaiveHashClose(int xid, recordid hashRid) {
   recordid * freeMe = pblHtLookup(openHashes,  &(hashRid.page), sizeof(hashRid.page));
   pblHtRemove(openHashes, &(hashRid.page), sizeof(hashRid.page));
   free(freeMe);

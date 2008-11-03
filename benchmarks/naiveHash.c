@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
   
   int xid = Tbegin();
 
-  recordid hash = ThashAlloc(xid, sizeof(int), sizeof(int));
+  recordid hash = TnaiveHashCreate(xid, sizeof(int), sizeof(int));
 
   Tcommit(xid);
 

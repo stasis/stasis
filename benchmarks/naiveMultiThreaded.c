@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
 
   Tinit();
   int xid = Tbegin();
-  hash = ThashAlloc(xid, sizeof(int), sizeof(int));
+  hash = TnaiveHashCreate(xid, sizeof(int), sizeof(int));
   
   Tcommit(xid);
 

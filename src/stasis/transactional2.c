@@ -211,7 +211,7 @@ int Tinit() {
 	pageOperationsInit();
 	initNestedTopActions();
 	TallocInit();
-	ThashInit();
+	TnaiveHashInit();
 	LinearHashNTAInit();
 	LinkedListNTAInit();
 	iterator_init();
@@ -420,7 +420,7 @@ int Tdeinit() {
   }
   assert( numActiveXactions == 0 );
   truncationDeinit();
-  ThashDeinit();
+  TnaiveHashDeinit();
   TallocDeinit();
   deinitNestedTopActions();
   bufDeinit();
@@ -445,7 +445,7 @@ int TuncleanShutdown() {
   // and active transactions get rolled back.
   stasis_suppress_unclean_shutdown_warnings = 1;
   truncationDeinit();
-  ThashDeinit();
+  TnaiveHashDeinit();
   simulateBufferManagerCrash();
   if(slow_pfile) {
     slow_close(slow_pfile);

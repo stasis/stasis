@@ -15,7 +15,7 @@
 
 
 
-recordid ThashAlloc(int xid, int keySize, int valSize) ;
+recordid TnaiveHashCreate(int xid, int keySize, int valSize) ;
 
 void TnaiveHashInsert(int xid, recordid hashRid, 
 		 void * key, int keySize, 
@@ -24,8 +24,8 @@ int TnaiveHashDelete(int xid, recordid hashRid,
 		 void * key, int keySize, int valSize);
 void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize);
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize);
-void ThashInit();
-void ThashDeinit();
-int ThashOpen(int xid, recordid hashRid, int keySize, int valSize);
-int ThashClose(int xid, recordid hashRid) ;
+void TnaiveHashInit();
+void TnaiveHashDeinit();
+int TnaiveHashOpen(int xid, recordid hashRid, int keySize, int valSize);
+int TnaiveHashClose(int xid, recordid hashRid) ;
 #endif

@@ -57,9 +57,9 @@ compensated_function int ThashLookup(int xid, recordid hash, const byte* key, in
   overloaded, and is subject to change.  If the iterator is run to completion, 
   it is automatically freed.  Otherwise, it should be manually freed with free(). 
   @param xid transaction id
-  @param hash the recordid returned by ThashAlloc
-  @param keySize the same as the value passed into ThashAlloc.  
-  @param valueSize the same as the value passed into ThashAlloc
+  @param hash the recordid returned by ThashCreate()
+  @param keySize the same as the value passed into ThashCreate()
+  @param valueSize the same as the value passed into ThashCreate()
   @deprecated  @see interator.h.  Use the linearHash implementation of that interface instead.
 */
 lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int valueSize);

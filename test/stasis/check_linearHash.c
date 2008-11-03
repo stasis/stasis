@@ -71,7 +71,7 @@ START_TEST(simpleLinearHashTest)
 
   int xid = Tbegin();
 
-  recordid hashRoot =  ThashAlloc(xid, sizeof(int), sizeof(recordid));
+  recordid hashRoot =  TnaiveHashCreate(xid, sizeof(int), sizeof(recordid));
 
   for(int i = 0; i < NUM_ENTRIES; i++) {
     recordid rid;
@@ -192,7 +192,7 @@ START_TEST(transactionalLinearHashTest)
 
 //	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
 	
-  recordid hashRoot =  ThashAlloc(xid, sizeof(int), sizeof(recordid));
+  recordid hashRoot =  TnaiveHashCreate(xid, sizeof(int), sizeof(recordid));
 
 //	printf("%d %d %ld", hashRoot.page, hashRoot.slot, hashRoot.size);
 	
@@ -241,7 +241,7 @@ START_TEST(transactionalLinearHashTest)
   if(TdurabilityLevel() == VOLATILE) return;  
   Tinit();
   xid = Tbegin();
-  ThashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
+  TnaiveHashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
   for(i = 0; i < NUM_ENTRIES_XACT; i++) {
     if(!(i%10)) {
       recordid theVal;
@@ -254,6 +254,7 @@ START_TEST(transactionalLinearHashTest)
       assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
     }
   }
+  TnaiveHashClose(xid, hsahRoot);
   Tabort(xid);
   Tdeinit();
 	

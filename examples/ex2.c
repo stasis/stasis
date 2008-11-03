@@ -12,7 +12,7 @@ int main (int argc, char ** argv) {
 
   if(TrecordType(xid, ROOT_RECORD) == INVALID_SLOT) {
 
-    // ThashAlloc() will work here as well.
+    // ThashCreate() will work here as well.
     rootEntry = Talloc(xid, sizeof(int));
 
     assert(ROOT_RECORD.page == rootEntry.page);
