@@ -1,1 +1,1 @@
-SUBDIRS(referential)
+SUBDIRS(referential fuse)
