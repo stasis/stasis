@@ -32,13 +32,13 @@ endif(NOT CHECK_LIBRARY)
 
 FIND_LIBRARY(HAVE_CONFUSE NAMES confuse)
 if(NOT HAVE_CONFUSE)
-  message(STATUS "libconfuse not found; libdfa will not be built. (you can safely ignore this)") 
+  message(STATUS "libconfuse not found; sample application 'libdfa' will not be built") 
 endif(NOT HAVE_CONFUSE)
 
-# Look for include files
-#INCLUDE (CheckIncludeFiles)
-##CHECK_INCLUDE_FILES(check.h HAVE_LIBCHECK)
-#CHECK_INCLUDE_FILES(confuse.h HAVE_LIBCONFUSE)
+FIND_LIBRARY(HAVE_FUSE NAMES fuse)
+if(NOT HAVE_FUSE)
+  message(STATUS "fuse not found; sample application 'stasis_fuse' will not be built")
+endif(NOT HAVE_FUSE)
 
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)

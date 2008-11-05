@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   }
   Tcommit(xid);
-  truncateNow();
+  truncateNow(1);
   Tdeinit();
   return 0;
 }

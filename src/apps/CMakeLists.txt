@@ -1,1 +1,1 @@
-SUBDIRS(referential fuse)
+SUBDIRS(referential fuse readOnlyHash)
