@@ -65,8 +65,6 @@ compensated_function int ThashInsert(int xid, recordid hash,
    @param hash      recordid returned by ThashDelete
    @param key       array of bytes that define key
    @param keySize   length of key in bytes
-   @param value     array of bytes
-   @param valueSize length of key in bytes
    @return          1 if the key was defined, 0 otherwise
 */
 compensated_function int ThashRemove(int xid, recordid hash,
