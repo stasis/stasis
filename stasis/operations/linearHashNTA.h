@@ -43,14 +43,38 @@ typedef struct {
 
 compensated_function recordid ThashCreate(int xid, int keySize, int valSize);
 compensated_function void ThashDelete(int xid, recordid hash);
-/* @return 1 if the key was defined, 0 otherwise. */
-compensated_function int ThashInsert(int xid, recordid hash, const byte* key, int keySize, const byte* value, int valueSize);
-/* @return 1 if the key was defined, 0 otherwise. */
-compensated_function int ThashRemove(int xid, recordid hash, const byte* key, int keySize);
+/**
+   Insert key, value pair into hash, overwriting the existing value,
+   if any.
 
-/** @return size of the value associated with key, or -1 if key not found. 
-                   (a return value of zero means the key is associated with an
-		   empty value.) */
+   @param xid       transaction id
+   @param hash      recordid returned by ThashDelete
+   @param key       array of bytes that define key
+   @param keySize   length of key in bytes
+   @param value     array of bytes
+   @param valueSize length of key in bytes
+   @return          1 if the key was defined, 0 otherwise
+*/
+compensated_function int ThashInsert(int xid, recordid hash,
+                                     const byte* key, int keySize,
+                                     const byte* value, int valueSize);
+/**
+   Remove existing key, value pair from hash.
+
+   @param xid       transaction id
+   @param hash      recordid returned by ThashDelete
+   @param key       array of bytes that define key
+   @param keySize   length of key in bytes
+   @param value     array of bytes
+   @param valueSize length of key in bytes
+   @return          1 if the key was defined, 0 otherwise
+*/
+compensated_function int ThashRemove(int xid, recordid hash,
+                                     const byte* key, int keySize);
+
+/** @return size of the value associated with key, or -1 if key not found.
+            (a return value of zero means the key is associated with an
+            empty value.) */
 compensated_function int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
 /** 
   Allocate a new hash iterator.  This API is designed to eventually be 
