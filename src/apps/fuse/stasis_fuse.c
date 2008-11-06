@@ -1,10 +1,3 @@
-/*
-    FUSE: Filesystem in Userspace
-    Copyright (C) 2001-2005  Miklos Szeredi <miklos@szeredi.hu>
-
-    This program can be distributed under the terms of the GNU GPL.
-    See the file COPYING.
-*/
 #include <stasis/transactional.h>
 
 #define FUSE_USE_VERSION 26
@@ -21,29 +14,137 @@ typedef struct {
 } stasis_dir_entry;
 
 static int stasis_lookup_helper(const char *path, stasis_dir_entry** subentry) {
-  return ThashLookup(-1, ROOT_RECORD, (byte*)path, strlen(path)+1, (byte**)subentry);
+  return ThashLookup(-1, ROOT_RECORD, (byte*)path, strlen(path)+1,
+                     (byte**)subentry);
 }
+
+static int stasis_link_dirent(int xid, const char * path) {
+  char * parentbuf = strdup(path);
+  char * parent = dirname(parentbuf);
+  printf("attaching to parent %s\n", parent); fflush(stdout);
+  char * filebuf = strdup(path);
+  char * file = basename(filebuf);
+  stasis_dir_entry * entry;
+  printf("lu ->%s<- %d\n", parent, (int)strlen(parent)+1);fflush(stdout);
+  int entrylen = ThashLookup(xid, ROOT_RECORD,
+                             (const byte*)parent, strlen(parent)+1,
+                             (byte**)&entry);
+  printf("entrylen %d\n",entrylen); fflush(stdout);
+  if(entrylen == -1) {
+    return -ENOENT;
+  } else {
+    const char * next;
+    for(next = (const char*)(entry+1);
+        next != ((char*)entry) + entrylen;
+        next += (strlen(next)+1)) {
+      assert(next < ((char*)entry)+entrylen);
+      printf("next: %s\n", next); fflush(stdout);fflush(stdout);
+      if(0 == strcmp(next, path)) {
+        break;
+      }
+    }
+    printf("forloop done\n"); fflush(stdout);
+    if(next == ((char*)entry)+entrylen) {
+      printf("inserting %s\n", path); fflush(stdout);
+      int newentrylen = entrylen+strlen(file)+1;
+
+      entry = realloc(entry, newentrylen);
+      strcpy(((char*)entry)+entrylen,file);
+
+      printf("parent ->%s<- %d; newlen=%d\n", parent, (int)strlen(parent)+1,
+             newentrylen);fflush(stdout);
+
+      ThashInsert(xid, ROOT_RECORD, (const byte*)parent, strlen(parent)+1,
+                  (const byte*)entry, newentrylen);
+    }
+  }
+  printf("returning 0\n"); fflush(stdout);
+  return 0;
+}
+
+static int stasis_unlink_dirent(int xid, const char * path) {
+
+  printf("in unlink\n"); fflush(stdout);
+
+  int res = 0;
+
+  char * pathcpy1 = strdup(path);
+  char * pathcpy2 = strdup(path);
+
+  char * base = basename(pathcpy1);
+  char * dir  = dirname(pathcpy2);
+
+  // remove from parent
+  stasis_dir_entry * parent;
+  ssize_t parentsz = ThashLookup(xid, ROOT_RECORD,
+                                 (const byte*)dir,strlen(dir)+1,
+                                 (byte**)&parent);
+  assert(parentsz != -1);
+
+  size_t newentsz = parentsz - (strlen(base)+1);
+
+  byte * newent = malloc(newentsz);
+  memcpy(newent, parent, sizeof(*parent));
+  byte * newnext = newent + sizeof(*parent);
+  int found = 0;
+  for(char* next = (char*)(parent+1);
+      next != ((char*)parent)+parentsz;
+      next += (1+strlen(next))) {
+    assert(next < ((char*)parent)+parentsz);
+    printf("%s %s\n", base, next);
+    if(strcmp(base,next)) {
+      assert(((char*)newnext + strlen(next)+1) <= ((char*)newent)+newentsz);
+      strcat((char*)newnext,next);
+      newnext+=(1+strlen(next));
+    } else {
+      found++;
+    }
+  }
+  assert(found == 1);
+  ThashInsert(xid, ROOT_RECORD, (const byte*)dir, strlen(dir)+1,
+              newent, newentsz);
+  free(pathcpy1);
+  free(pathcpy2);
+  free(parent);
+  free(newent);
+  return res;
+}
+static int stasis_mknod_helper(int xid, const char * path,
+                               stasis_dir_entry * dir, int sz, int parent) {
+  int res = 0;
+  printf("mk ->%s<- %d\n", path, (int)strlen(path)+1);fflush(stdout);
+  if(ThashInsert(xid, ROOT_RECORD, (const byte*)path, strlen(path)+1, (byte*)dir, sz)) {
+    // value existed.  set error so xactn will abort.
+    res = -EEXIST;
+  } else {
+    if(parent) {
+      res = stasis_link_dirent(xid, path);
+    }
+  }
+  return res;
+}
+
+/** removes directory entry, without checking for data, subdirs etc... */
+static int stasis_rmnod_helper(int xid, const char *path, int parent) {
+  printf("in rmnod\n"); fflush(stdout);
+  int res = 0;
+  if(!ThashRemove(xid, ROOT_RECORD, (const byte*)path, strlen(path)+1)) {
+    res = -ENOENT;
+  } else {
+    if(parent) {
+      res = stasis_unlink_dirent(xid, path);
+    }
+  }
+  return res;
+}
+
+// ------ Fuse operations ---------------------------------------------
 
 static int stasis_getattr(const char *path, struct stat *stbuf)
 {
     int res = 0;
 
     memset(stbuf, 0, sizeof(struct stat));
-    /*    if(strcmp(path, "/") == 0) {
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
-        } else { */
-    /*    memset(stbuf, 0, sizeof(struct stat));
-
-
-    else if(strcmp(path, hello_path) == 0) {
-        stbuf->st_mode = S_IFREG | 0444;
-        stbuf->st_nlink = 1;
-        stbuf->st_size = strlen(hello_str);
-    }
-    else {
-        res = -ENOENT;
-        } */
 
     stasis_dir_entry * e;
     int sz = stasis_lookup_helper(path, &e);
@@ -65,9 +166,6 @@ static stasis_dir_entry* malloc_nod(int*sz) {
 static int stasis_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                          off_t offset, struct fuse_file_info *fi)
 {
-    (void) offset;
-    (void) fi;
-
     stasis_dir_entry * entry;
     printf("lu ->%s<- %d\n", path, (int)strlen(path)+1);fflush(stdout);
     int entrylen = ThashLookup(-1, ROOT_RECORD, (byte*)path, strlen(path)+1,(byte**)&entry);
@@ -118,12 +216,6 @@ static int stasis_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int stasis_open(const char *path, struct fuse_file_info *fi)
 {
-  /*    if(strcmp(path, hello_path) != 0)
-        return -ENOENT;
-
-    if((fi->flags & 3) != O_RDONLY)
-    return -EACCES; */
-
   int res = 0;
 
   stasis_dir_entry * entry;
@@ -132,7 +224,6 @@ static int stasis_open(const char *path, struct fuse_file_info *fi)
                              (byte**)&entry);
 
   if(entrylen != -1) {
-
     // XXX check permissions?
     if(entry->s.st_mode & S_IFDIR) {
       printf("found a directory entry %s\n",path); fflush(stdout);
@@ -223,7 +314,7 @@ static int stasis_write(const char *path, const char *buf, const size_t sz, cons
   return res;
 }
 
-static int hello_read(const char *path, char *buf, size_t size, off_t offset,
+static int stasis_read(const char *path, char *buf, size_t size, off_t offset,
                       struct fuse_file_info *fi)
 {
   int res = 0;
@@ -256,72 +347,66 @@ static int hello_read(const char *path, char *buf, size_t size, off_t offset,
     }
   }
   return res;
-
-    /*if(strcmp(path, hello_path) != 0)
-
-
-    len = strlen(hello_str);
-    if (offset < len) {
-        if (offset + size > len)
-            size = len - offset;
-        memcpy(buf, hello_str + offset, size);
-    } else
-        size = 0;
-
-        return size; */
 }
+static int stasis_unlink(const char * path) {
+  int res = 0;
+  stasis_dir_entry *ent;
 
-static int stasis_mknod_helper(int xid, const char * path,
-                               stasis_dir_entry * dir, int sz, int parent) {
+  int entsz = ThashLookup(-1, ROOT_RECORD, (const byte*)path, strlen(path)+1, (byte**)&ent);
 
-    printf("mk ->%s<- %d\n", path, (int)strlen(path)+1);fflush(stdout);
-    ThashInsert(xid, ROOT_RECORD, (const byte*)path, strlen(path)+1, (byte*)dir, sz);
-
-    if(parent) {
-      char * parentbuf = strdup(path);
-      char * parent = dirname(parentbuf);
-      printf("attaching to parent %s\n", parent); fflush(stdout);
-      char * filebuf = strdup(path);
-      char * file = basename(filebuf);
-      stasis_dir_entry * entry;
-      printf("lu ->%s<- %d\n", parent, (int)strlen(parent)+1);fflush(stdout);
-      int entrylen = ThashLookup(xid, ROOT_RECORD,
-                                 (const byte*)parent, strlen(parent)+1,
-                                 (byte**)&entry);
-      printf("entrylen %d\n",entrylen); fflush(stdout);
-      if(entrylen == -1) {
-        return -ENOENT;
+  if(entsz == -1) {
+    res = -ENOENT;
+  } else {
+    assert(entsz >= sizeof(stasis_dir_entry));
+    if(S_ISREG(ent->s.st_mode)) {
+      assert(entsz == (sizeof(stasis_dir_entry)+sizeof(recordid)));
+      recordid * blob_rid = (recordid*)(ent+1);
+      int xid = Tbegin();
+      if(blob_rid->page != NULLRID.page || blob_rid->slot != NULLRID.slot) {
+        Tdealloc(xid, *blob_rid);
+      }
+      res = stasis_rmnod_helper(xid,path,1);
+      if(res) {
+        Tabort(xid);
       } else {
-        const char * next;
-        for(next = (const char*)(entry+1);
-            next != ((char*)entry) + entrylen;
-            next += (strlen(next)+1)) {
-          assert(next < ((char*)entry)+entrylen);
-            printf("next: %s\n", next); fflush(stdout);fflush(stdout);
-          if(0 == strcmp(next, path)) {
-            break;
-          }
-        }
-        printf("forloop done\n"); fflush(stdout);
-        if(next == ((char*)entry)+entrylen) {
-          printf("inserting %s\n", path); fflush(stdout);
-          int newentrylen = entrylen+strlen(file)+1;
+        Tcommit(xid);
+      }
+    } else {
+      // XXX check for block devices, etc...
+      res = -EISDIR;
+    }
+    free(ent);
+  }
+  return res;
+}
+static int stasis_rmdir(const char *path) {
+  int res = 0;
+  stasis_dir_entry *ent;
 
-          entry = realloc(entry, newentrylen);
-          strcpy(((char*)entry)+entrylen,file);
+  int entsz = ThashLookup(-1, ROOT_RECORD, (const byte*)path, strlen(path)+1, (byte**)&ent);
 
-          printf("parent ->%s<- %d; newlen=%d\n", parent, (int)strlen(parent)+1,
-                 newentrylen);fflush(stdout);
-
-          ThashInsert(xid, ROOT_RECORD, (const byte*)parent, strlen(parent)+1,
-                      (const byte*)entry, newentrylen);
+  if(entsz == -1) {
+    res = -ENOENT;
+  } else {
+    assert(entsz >= sizeof(stasis_dir_entry));
+    if(S_ISDIR(ent->s.st_mode)) {
+      if(entsz > sizeof(stasis_dir_entry)) {
+        res = -ENOTEMPTY;
+      } else {
+        int xid = Tbegin();
+        res = stasis_rmnod_helper(xid,path,1);
+        if(res) {
+          Tabort(xid);
+        } else {
+          Tcommit(xid);
         }
       }
+    } else {
+      res = -ENOTDIR;
     }
-    printf("returning 0\n"); fflush(stdout);
-    return 0;
+  }
+  return res;
 }
-
 static int stasis_mknod(const char *path, mode_t mode, dev_t dev) {
   int res = 0;
   int xid = Tbegin();
@@ -393,20 +478,8 @@ static int stasis_mkdir(const char *path, mode_t mode) {
   }
   return ret;
 }
-static struct fuse_operations hello_oper = {
-    .getattr	= stasis_getattr,
-    .readdir	= stasis_readdir,
-    .mkdir      = stasis_mkdir,
-    .mknod      = stasis_mknod,
-    .open	= stasis_open,
-    .read	= hello_read,
-    .write      = stasis_write,
-};
 
-
-int main(int argc, char *argv[])
-{
-  int ret;
+static void* stasis_init(struct fuse_conn_info *conn) {
   Tinit();
 
   int xid = Tbegin();
@@ -428,7 +501,55 @@ int main(int argc, char *argv[])
     stasis_mknod_helper(xid, "/", dir, sz, 0);
   }
   Tcommit(xid);
-  ret =  fuse_main(argc, argv, &hello_oper, 0);
-  //  Tdeinit();
+
+  // XXX xid caching
+  return 0;
+}
+static void stasis_destroy(void * parm) {
+  Tdeinit();
+}
+
+static struct fuse_operations stasis_oper = {
+    .getattr	= stasis_getattr,
+  //.readlink   = stasis_readlink,
+    .mknod      = stasis_mknod,
+    .mkdir      = stasis_mkdir,
+    .unlink     = stasis_unlink,
+    .rmdir      = stasis_rmdir,
+  //.symlink    = stasis_symlink,
+  //.rename     = stasis_rename,
+  //.link       = stasis_link,
+  //.chmod      = stasis_chmod,
+  //.chown      = stasis_chown,
+  //.truncate   = stasis_truncate,
+  //.utime      = stasis_utime,
+    .open	= stasis_open,
+    .read	= stasis_read,
+    .write      = stasis_write,
+  //.statfs     = stasis_statfs,
+  //.flush      = stasis_flush,
+  //.release    = stasis_release,
+  //.fsync      = stasis_fsync,
+  //.setxattr   = stasis_setxattr,
+  //.getxattr   = stasis_getxattr,
+  //.listxattr  = stasis_listxattr,
+  //.removexattr= stasis_removexattr,
+  //.opendir    = stasis_opendir,
+    .readdir	= stasis_readdir,
+  //.releasedir = stasis_releasedir,
+  //.fsyncdir   = stasis_fsyncdir,
+    .init       = stasis_init,
+    .destroy    = stasis_destroy,
+  //.access     = stasis_access,
+  //.ftruncate  = stasis_ftruncate,
+  //.lock       = stasis_lock,
+  //.utimens    = stasis_utimens,
+  //.bmap       = stasis_bmap,
+};
+
+
+int main(int argc, char *argv[])
+{
+  int ret = fuse_main(argc, argv, &stasis_oper, 0);
   return ret;
 }
