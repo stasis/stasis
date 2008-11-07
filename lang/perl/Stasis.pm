@@ -9,8 +9,7 @@ BEGIN {
 }
 use Inline C => Config => LIBS =>
     "-L$STASIS_DIR/build/src/stasis/ " .
-    "-L$STASIS_DIR/build/src/libdfa/ " .
-    "-lstasis -lrw",
+    "-lstasis ",
   ENABLE => AUTOWRAP,
   TYPEMAPS => "$STASIS_DIR/lang/perl/typemap",
   PREFIX => 'stasis_perl_';
