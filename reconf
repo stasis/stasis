@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-
 #
 #  @todo Rewrite this in sh
 #
@@ -45,8 +44,8 @@ exit
 );
 #
 
-my $aclocal_base = `which aclocal` || die `aclocal not found!`;
-my $automake_base = `which automake` || die `aclocal not found!`;
+my $aclocal_base = `which aclocal` || die "aclocal not found!";
+my $automake_base = `which automake` || die "automake not found!";
 
 chomp $aclocal_base;
 chomp $automake_base;
