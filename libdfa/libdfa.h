@@ -47,7 +47,7 @@ terms specified in this license.
 /*#include "monotree.h"*/
 #include <libdfa/smash.h>
 #include <libdfa/messages.h>
-#include <libdfa/rw.h>
+#include <stasis/rw.h>
 
 /** 
     Maximum number of concurrent state machines.

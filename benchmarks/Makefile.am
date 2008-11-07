@@ -1,6 +1,4 @@
-LDADD=$(top_builddir)/src/stasis/libstasis.la  \
-      $(top_builddir)/src/libdfa/librw.la
-
+LDADD=$(top_builddir)/src/stasis/libstasis.la
 
 rose_SOURCES=rose.cpp
 roseTable_SOURCES=roseTable.cpp

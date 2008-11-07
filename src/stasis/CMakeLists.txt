@@ -1,4 +1,4 @@
-ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c doubleLinkedList.c
+ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    common.c flags.c stats.c io.c bufferManager.c
                    linkedlist.c operations.c pageHandle.c pageFile.c
                    pageCache.c page.c bufferPool.c blobManager.c

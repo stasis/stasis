@@ -2,7 +2,7 @@ EXTRA_DIST = reconf
 SUBDIRS = stasis src test utilities benchmarks examples
 export GLOBAL_CFLAGS = -g -Wall -pedantic -std=gnu99 -DPBL_COMPAT
 
-nobase_include_HEADERS=libdfa/rw.h   # XXX move rw.h into stasis/ !!!
+nobase_include_HEADERS=stasis/rw.h   # XXX move rw.h into stasis/ !!!
 
 ACLOCAL_AMFLAGS = -I m4
 

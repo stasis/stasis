@@ -1,5 +1,4 @@
-LDADD=$(top_builddir)/src/stasis/libstasis.la \
-      $(top_builddir)/src/libdfa/librw.la
+LDADD=$(top_builddir)/src/stasis/libstasis.la
 noinst_PROGRAMS=logfile_dump run_recovery truncate_log
 AM_CFLAGS=${GLOBAL_CFLAGS}
 

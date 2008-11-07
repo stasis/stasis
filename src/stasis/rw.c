@@ -1,4 +1,4 @@
-#include <libdfa/rw.h>
+#include <stasis/rw.h>
 #include <assert.h>
 
 #undef pthread_cond_wait
