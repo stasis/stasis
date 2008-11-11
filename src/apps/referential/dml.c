@@ -69,7 +69,8 @@ int executeDelete(int xid, recordid tables, char * delete) {
 static recordid ReferentialDML_lookupTableRid(int xid, ReferentialAlgebra_context_t*context, char * tablename) {
   expr_list * results = 0;
   char * line;
-  asprintf(&line, "query {p ($1,$2,$3) {s ($0=\"%s\") TABLES} }", tablename);
+  int err = asprintf(&line, "query {p ($1,$2,$3) {s ($0=\"%s\") TABLES} }", tablename);
+  assert(err != -1);
 
   //XXX memory leak!
   parse(line,&results);

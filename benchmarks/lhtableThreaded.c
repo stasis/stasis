@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stasis/lhtable.h>
+#include <assert.h>
 
 int entries;
 int thread_count;
@@ -17,7 +18,8 @@ struct LH_ENTRY(table) * t;
 
 char * itoa(int i) {
   char * ret;
-  asprintf(&ret, "%d", i);
+  int err = asprintf(&ret, "%d", i);
+  assert(err != -1);
   return ret;
 }
 

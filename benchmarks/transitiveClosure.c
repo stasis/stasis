@@ -222,7 +222,8 @@ int main(int argc, char ** argv) {
   if(!silent) {
     printf("Nodes loaded.\n");
     fflush(stdout);
-    system("date");
+    int err = system("date");
+    (void)err;
   }
   rid.slot = 0;
 
@@ -239,8 +240,9 @@ int main(int argc, char ** argv) {
   
     }
     if(!silent) { 
-      system("date");
-      
+      int err = system("date");
+      (void)err;
+
       printf("TransClos returned Tset called %d times\n", numTset);
       fflush(stdout);
     }
@@ -284,7 +286,8 @@ int main(int argc, char ** argv) {
       
     }
     if(!silent) {
-      system("date");
+      int err = system("date");
+      (void)err;
       printf("FastTransClos returned Tset called %d times, shortcutted %d, skipped %d pushed %d\n", numTset, numShortcutted, numSkipped, numPushed);
     }
   }

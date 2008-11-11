@@ -129,19 +129,27 @@ char * pp_create(const create * c){
 }
 char * pp_q_scan(const q_scan* s) {
   char * ret = 0;
-  asprintf(&ret, "%s", s->table);
-  return ret;
+  if(-1 == asprintf(&ret, "%s", s->table))
+    return 0;
+  else
+    return ret;
 }
 char * pp_insert(const insert * i) {
   char * ret = 0;
-  asprintf(&ret, "%s ", i->tbl);
-  ret = afstrncat(ret, pp_val_tuple(i->t));
-  return ret;
+  if(-1 == asprintf(&ret, "%s ", i->tbl)) {
+    return 0;
+  } else {
+    ret = afstrncat(ret, pp_val_tuple(i->t));
+    return ret;
+  }
 }
 char * pp_delete(const delete * d) {
   char * ret = 0;
-  asprintf(&ret, "%s ", d->tbl);
-  ret = afstrncat(ret, pp_val_tuple(d->t));
+  if(-1 == asprintf(&ret, "%s ", d->tbl)) {
+    return 0;
+  } else {
+    ret = afstrncat(ret, pp_val_tuple(d->t));
+  }
   return ret;
 }
 /*char * pp_pat_tuple(const pat_tuple * p) {
@@ -285,35 +293,43 @@ char * pp_union_cmp(const union_cmp * p) {
   } */
 char * pp_val_entry(const val_entry * p) {
   char * ret = 0;
+  int err;
   switch(p->typ) {
   case ident_typ: {
-    asprintf(&ret,"%s",p->u.ident);
+    err = asprintf(&ret,"%s",p->u.ident);
   } break;
   case int64_typ: {
-    asprintf(&ret,"%lld",(long long int)p->u.integ);
+    err = asprintf(&ret,"%lld",(long long int)p->u.integ);
   } break;
   case string_typ: {
-    asprintf(&ret,"\"%s\"",p->u.str);
+    err = asprintf(&ret,"\"%s\"",p->u.str);
   } break;
   default: abort();
   }
-  return ret;
+  if(err == -1)
+    return 0;
+  else
+    return ret;
 }
 char * pp_col_entry(const col_entry * p) {
   char * ret = 0;
+  int err;
   switch(p->typ) {
   case colint_typ: {
-    asprintf(&ret,"$%d",p->u.colnum);
+    err = asprintf(&ret,"$%d",p->u.colnum);
   } break;
   case colstr_typ: {
-    asprintf(&ret,"$%s",p->u.colstr);
+    err = asprintf(&ret,"$%s",p->u.colstr);
   } break;
   case string_typ: {
-    asprintf(&ret,"%s",p->u.colstr);
+    err = asprintf(&ret,"%s",p->u.colstr);
   } break;
   default: abort();
   }
-  return ret;
+  if(err == -1)
+    return 0;
+  else
+    return ret;
 }
 char * pp_cmp_entry(const cmp_entry * p) {
   char * ret = 0;

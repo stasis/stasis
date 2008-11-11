@@ -553,7 +553,10 @@ void * request(DfaSet * dfaSet, state_name start_state, char * recipient_addr, s
   initial_sm->message.type = start_state;
 
   char * initiator;
-  asprintf(&initiator, "%s:%d", dfaSet->networkSetup.localhost, dfaSet->networkSetup.localport);
+  {
+    int err = asprintf(&initiator, "%s:%d", dfaSet->networkSetup.localhost, dfaSet->networkSetup.localport);
+    assert(err != -1);
+  }
   strcpy(initial_sm->message.initiator, initiator);
   free(initiator);
   //  printf("Set message initiator to %s\n", initial_sm->message.initiator); fflush(stdout);

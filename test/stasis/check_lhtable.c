@@ -85,8 +85,9 @@ START_TEST(lhtableTest)
   
   for(long i = 0; i < NUM_ENTRIES; i+=2) { 
     char * key;
-    asprintf(&key, "--> %ld <--\n", i);
-    
+    if(-1 == asprintf(&key, "--> %ld <--\n", i))
+      key = 0;
+
     assert(i == (long)LH_ENTRY(find)(t, key, strlen(key)));
     LH_ENTRY(remove)(t, keys[i], strlen(keys[i]));
     assert(!LH_ENTRY(find)(t, keys[i], strlen(keys[i])));
@@ -120,7 +121,7 @@ int64_t myrandom(int64_t x) {
 #endif
 char * itoa(int i) {
   char * ret;
-  asprintf(&ret, "%d", i);
+  if(-1 == asprintf(&ret, "%d", i)) ret = 0;
   return ret;
 }
 

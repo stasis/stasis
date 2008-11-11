@@ -184,7 +184,8 @@ char * stringTuple(tuple_t t) {
     if(i) { ret = astrncat(ret, ","); }
     if(t.type[i] == int64_typ) {
       char * tok;
-      asprintf(&tok,"%lld",(long long)t.col[i].int64);
+      int err = asprintf(&tok,"%lld",(long long)t.col[i].int64);
+      assert(err != -1);
       ret = afstrncat(ret,tok);
     } else if(t.type[i] == string_typ) {
       ret = astrncat(ret,t.col[i].string);

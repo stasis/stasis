@@ -184,7 +184,10 @@ int __send_message(const NetworkSetup *ns, Message *message, const char *to) {
   //    fprintf(stderr, "Broadcasting to all groups (except group 0).\n");
       for(int i = 1; i < ns->broadcast_lists_count+1; i++) {
 	char * new_to;
-	asprintf(&new_to, "bc:%d", i);
+        {
+          int err = asprintf(&new_to, "bc:%d", i);
+          assert(err != -1);
+        }
 	int ret = __send_message(ns, message, new_to);
         free(new_to);	
 	if(ret < 0) {
