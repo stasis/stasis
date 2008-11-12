@@ -270,7 +270,7 @@ static compensated_function void TactionHelper(int xid,
 					       const void * dat, size_t datlen, int op,
 					       Page * p) {
   LogEntry * e;
-  assert(xid >= 0);
+  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
   try { 
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, p->id);
