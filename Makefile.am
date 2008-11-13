@@ -47,7 +47,7 @@ coverage: precoverage
 	cd coverage ; perl -ne 's/TimeOut\: 1500/TimeOut\: 3600/;print' < DartConfiguration.tcl~ > DartConfiguration.tcl
 	cd coverage ; make -j 4
 	cd coverage ; ctest || true
-	cd coverage ; lcov -c --directory src/libdfa/ --directory src/stasis/ --directory test/ --directory src/apps/referential/ > tmp.info || true
+	cd coverage ; lcov -c --directory src/stasis/ --directory test/ --directory src/apps/referential/ > tmp.info || true
 	cd coverage ; genhtml -o ../doc/coverage tmp.info || true
 	cd coverage ; rm tmp.info
 #	cd ../..
