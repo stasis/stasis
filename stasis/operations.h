@@ -138,7 +138,6 @@ typedef struct {
 #include "operations/noop.h"
 #include "operations/arrayList.h"
 #include "operations/naiveLinearHash.h"
-#include "operations/nestedTopActions.h"
 #include "operations/linkedListNTA.h"
 #include "operations/pageOrientedListNTA.h"
 #include "operations/linearHashNTA.h"
