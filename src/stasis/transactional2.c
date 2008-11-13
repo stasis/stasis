@@ -320,7 +320,8 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
     p = loadPage(xid, rid.page);
     readlock(p->rwlatch,0);
   }
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
+  short type = stasis_record_type_read(xid,p,rid);
+  if(type == BLOB_SLOT) {
     DEBUG("call readBlob %lld %lld %lld\n", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
     readBlob(xid,p,rid,dat);
     assert(rid.page == p->id);

@@ -56,7 +56,22 @@ terms specified in this license.
 
 #define LOG_NAME   "check_linearHashNTA.log"
 static const int NUM_ENTRIES = 100000;
-/** @test
+
+#define ARRAY_SIZE (2 * 3 * (int)(PAGE_SIZE * 1.5))
+static void arraySet(int * a, int mul) {
+  int i; 
+
+  for ( i = 0 ; i < ARRAY_SIZE; i++) {
+    a[i]= mul*i;
+  }
+}
+
+static int arryCmp(int * a, int * b, int len) {
+  return memcmp(a,b,len);
+}
+
+/**
+   @test
 */
 START_TEST(linearHashNTAtest)
 {
@@ -307,6 +322,71 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
   Tdeinit();
 } END_TEST
 #endif // LONG_TEST
+/**
+   @test Test linear hash nta when the values it stores are larger
+   than a single page.
+ */
+START_TEST(linearHashNTABlobTest) {
+  Tinit();
+
+  int arry1[ARRAY_SIZE];
+  int arry2[ARRAY_SIZE];
+  int arry3[ARRAY_SIZE];
+  int arry4[ARRAY_SIZE];
+  int *scratch;
+  int alen=ARRAY_SIZE*sizeof(int);
+  int one, two, three, four;
+  int len1,len2,len3; // len4;
+
+  arraySet(arry1,1); one = 1;
+  arraySet(arry2,1); two = 2;
+  arraySet(arry3,1); three = 3;
+  arraySet(arry4,1); four = 4;
+
+  int xid = Tbegin();
+  recordid rid = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+  ThashInsert(xid,rid,(byte*)&one,sizeof(one),(byte*)arry1,alen);
+  len1 = ThashLookup(xid,rid,(byte*)&one,sizeof(one),(byte**)&scratch);
+  assert(len1==alen);
+  assert(!arryCmp(arry1,scratch,alen));
+  free(scratch);
+  Tcommit(xid);
+  xid = Tbegin();
+  ThashInsert(xid,rid,(byte*)&two,  sizeof(two),  (byte*)arry2,alen/2);
+  ThashInsert(xid,rid,(byte*)&three,sizeof(three),(byte*)arry3,alen/3);
+
+  len2 = ThashLookup(xid,rid,(byte*)&two, sizeof(two),  (byte**)&scratch);
+  assert(len2 == alen/2);
+  assert(!arryCmp(scratch,arry2,alen/2));
+  free(scratch);
+
+  len3 = ThashLookup(xid,rid,(byte*)&three, sizeof(three),  (byte**)&scratch);
+  assert(len3 == alen/3);
+  assert(!arryCmp(scratch,arry3,alen/3));
+  free(scratch);
+
+  Tabort(xid);
+
+  Tdeinit();
+  Tinit();
+
+  xid = Tbegin();
+  len1 = ThashLookup(xid,rid,(byte*)&one, sizeof(one),  (byte**)&scratch);
+  assert(len1 == alen);
+  assert(!arryCmp(scratch,arry1,alen));
+  free(scratch);
+
+  len3 = ThashLookup(xid,rid,(byte*)&two, sizeof(two),  (byte**)&scratch);
+  assert(len3 == -1);
+  Tcommit(xid);
+
+  Tdeinit();
+
+  Tinit();
+
+  Tdeinit();
+} END_TEST
+
 START_TEST(linearHashNTAIteratortest) {
   Tinit();
   int xid = Tbegin();
@@ -417,6 +497,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linearHashNTAIteratortest);
   tcase_add_test(tc, linearHashNTAtest);
   tcase_add_test(tc, linearHashNTAThreadedTest);
+  tcase_add_test(tc, linearHashNTABlobTest);
 #ifdef LONG_TEST
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);

@@ -93,13 +93,14 @@ int Tset(int xid, recordid rid, const void * dat) {
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   rid = stasis_record_dereference(xid,p,rid);
-  rid.size = stasis_record_type_to_size(rid.size);
+  short type = stasis_record_type_read(xid,p,rid);
 
-  if(rid.size > BLOB_THRESHOLD_SIZE) {
+  if(type == BLOB_SLOT) {
     writeBlob(xid,p,rid,dat);
     unlock(p->rwlatch);
     releasePage(p);
   } else {
+    rid.size = stasis_record_type_to_size(rid.size);
     if(rid.page == p->id) {
       // failing early avoids unrecoverable logs...
       assert(rid.size == stasis_record_length_read(xid, p, rid));

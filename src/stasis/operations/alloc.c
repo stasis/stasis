@@ -378,6 +378,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
   if(size >= BLOB_THRESHOLD_SIZE) { 
     type = BLOB_SLOT;
   } else {
+    assert(size > 0);
     type = size;
   }
 
@@ -389,6 +390,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
   Page * p = loadPage(xid, page);
   writelock(p->rwlatch,0);
   recordid rid = stasis_record_alloc_begin(xid, p, type);
+
 
   if(rid.size != INVALID_SLOT) {
     stasis_record_alloc_done(xid,p,rid);
@@ -464,11 +466,11 @@ compensated_function void Tdealloc(int xid, recordid rid) {
 
   releasePage(p);
 
-  if(type==BLOB_SLOT) {
-    deallocBlob(xid,rid);
-  }
-
   pthread_mutex_unlock(&talloc_mutex);
+
+  if(type==BLOB_SLOT) {
+    deallocBlob(xid,(blob_record_t*)(preimage+sizeof(alloc_arg)));
+  }
 
   free(preimage);
 
@@ -490,7 +492,14 @@ compensated_function int TrecordSize(int xid, recordid rid) {
   Page * p;
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
-  ret = stasis_record_length_read(xid, p, rid);
+  rid.size = stasis_record_length_read(xid, p, rid);
+  if(stasis_record_type_read(xid,p,rid) == BLOB_SLOT) {
+    blob_record_t r;
+    stasis_record_read(xid,p,rid,(byte*)&r);
+    ret = r.size;
+  } else {
+    ret = rid.size;
+  }
   unlock(p->rwlatch);
   releasePage(p);
   return ret;

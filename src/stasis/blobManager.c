@@ -11,15 +11,21 @@ void allocBlob(int xid, recordid rid) {
   blob_record_t rec;
   rec.offset = startPage;
   rec.size = rid.size;
-  recordid rid2 = rid;
-  rid2.size = BLOB_SLOT;
-  Tset(xid, rid2, (byte*)&rec);
-  //  printf("Page start = %d, count = %d, rid.size=%d\n", rec.offset, pageCount, rid.size);
-  //  printf("rid = {%d %d %d}\n", rid.page, rid.slot, rid.size);
+  rid.size = sizeof(rec);
+  TsetRaw(xid, rid, (byte*)&rec);
+  DEBUG("Page start = %d, count = %d, rid.size=%d\n", rec.offset, pageCount, rid.size);
+  DEBUG("rid = {%d %d %d}\n", rid.page, rid.slot, rid.size);
 }
 
-void deallocBlob(int xid, recordid rid) {
-  TregionDealloc(xid, rid.page);
+void deallocBlob(int xid, blob_record_t *r) {
+  /*  Page *p = loadPage(xid, rid.page);
+  writelock(p->rwlatch,0);
+  blob_record_t r;
+  rid.size = sizeof(blob_record_t);
+  stasis_record_read(xid, p, rid, (byte*)&r);
+  unlock(p->rwlatch);
+  releasePage(p); */
+  TregionDealloc(xid, r->offset);
 }
 
 void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
