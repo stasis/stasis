@@ -552,7 +552,14 @@ typedef struct {
 } blob_record_t;
 #pragma pack(pop)
 
+/*
+   @todo ROOT_RECORD doesn't belong in transactional.h
+   @todo unify naming convention for ROOT_RECORD, NULLRID
+*/
 extern const recordid ROOT_RECORD;
+/*
+   @todo NULLRID doesn't belong in transactional.h
+*/
 extern const recordid NULLRID;
 
 /**
@@ -562,26 +569,16 @@ extern const recordid NULLRID;
 
    @todo Support read-only arrays of variable length records, and then
    someday read / write / insert / delete arrays...
+
+   @todo RECORD_ARRAY doesn't belong in transactional.h
 */
 #define RECORD_ARRAY (-1)
-
 
 /**
  * Currently, Stasis has a fixed number of transactions that may be
  * active at one time.
  */
 #define EXCEED_MAX_TRANSACTIONS 1
-
-/**
- * @param xid transaction ID
- * @param LSN last log that this transaction used
- */
-typedef struct {
-	int xid;
-	lsn_t LSN;
-} Transaction;
-
-
 
 /**
  * Initialize Stasis.  This opens the pagefile and log, initializes
@@ -692,15 +689,37 @@ void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
     @param xid Transaction id.
 */
 int Tprepare(int xid);
+
 /**
- *  Used by the recovery process. 
+ * Begin a nested top action
  *
- *  Sets the number of active transactions. 
+ * Nested top actions provide atomic updates to multiple pages within
+ * a single transaction.  LLADD's nested top actions may be nested
+ * within each other.
+ */
+void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments,
+                             int log_arguments_length);
+/**
+ * Complete a nested top action, atomically switching from physical to
+ * logical undo.
+ */
+lsn_t TendNestedTopAction(int xid, void * handle);
+
+
+/**
+ *  Used by recovery to prevent reuse of old transaction ids.
+ *
  *  Should not be used elsewhere.
+ *
+ * @param xid  The highest transaction id issued so far.
+ */
+void stasis_transaction_table_max_transaction_id_set(int xid);
+/**
+ *  Used by test cases to mess with internal transaction table state.
  *
  * @param xid  The new active transaction count. 
  */
-void TsetXIDCount(int xid);
+void stasis_transaction_table_active_transaction_count_set(int xid);
 
 /**
    List all active transactions.
@@ -717,9 +736,18 @@ int* TlistActiveTransactions();
  */
 int TisActiveTransaction(int xid);
 
-int stasis_transaction_table_set_prev_lsn(int xid, lsn_t lsn);
+int TactiveTransactionCount();
 
-/** 
+int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN);
+/**
+   @todo update Tprepare() to not write reclsn to log, then remove
+         this function.
+ */
+int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
+                                                      lsn_t prevLSN,
+                                                      lsn_t recLSN);
+int stasis_transaction_table_forget(int xid);
+/**
     This is used by log truncation.
 */
 lsn_t transactions_minRecLSN();

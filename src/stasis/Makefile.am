@@ -12,7 +12,7 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common
 		   operations/increment.c  operations/prepare.c  operations/set.c \
 		   operations/alloc.c operations/noop.c \
 		   operations/arrayList.c hash.c \
-		   operations/naiveLinearHash.c operations/nestedTopActions.c \
+		   operations/naiveLinearHash.c \
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c \
 		   operations/regions.c operations/lsmTree.c \

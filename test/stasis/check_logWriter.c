@@ -61,8 +61,6 @@ terms specified in this license.
 #include "../check_includes.h"
 #include <stasis/truncation.h>
 
-extern int numActiveXactions;
-
 #define LOG_NAME   "check_logWriter.log"
 
 //static int logType = LOG_TO_MEMORY;
@@ -391,7 +389,7 @@ void reopenLogWorkload(int truncating) {
   const int ENTRY_COUNT = 1000;
   const int SYNC_POINT = 900;
 
-  numActiveXactions = 0;
+  stasis_transaction_table_active_transaction_count_set(0);
 
   LogInit(loggerType);
   int xid = 1;

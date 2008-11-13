@@ -17,7 +17,6 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    operations/arrayList.c
                    hash.c
                    operations/naiveLinearHash.c
-                   operations/nestedTopActions.c
                    operations/linearHashNTA.c
                    operations/linkedListNTA.c
                    operations/pageOrientedListNTA.c

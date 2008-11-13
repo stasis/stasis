@@ -67,7 +67,6 @@ int loggerType = USE_LOGGER;
 int loggerType = LOG_TO_FILE;
 #endif
 
-extern int numActiveXactions;
 static int pendingCommits;
 static int syncLogCount;
 
@@ -272,8 +271,9 @@ static void groupForce(lsn_t l) {
   }
 
   pendingCommits++;
-  if((numActiveXactions > 1 && pendingCommits < numActiveXactions) ||
-     (numActiveXactions > 20 && pendingCommits < (int)((double)numActiveXactions * 0.95))) {
+  int xactcount = TactiveTransactionCount();
+  if((xactcount > 1 && pendingCommits < xactcount) ||
+     (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
     int retcode;
     while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
       if(retcode != 0) { 

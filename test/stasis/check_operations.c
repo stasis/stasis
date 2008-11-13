@@ -52,8 +52,6 @@ terms specified in this license.
 
 #include <stdio.h>
 
-
-extern int numActiveXactions;
 /**
    @test
 

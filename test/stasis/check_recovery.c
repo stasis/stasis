@@ -324,7 +324,6 @@ START_TEST(recovery_clr) {
 
 } END_TEST
 
-extern int numActiveXactions;
 /** 
     @test
 

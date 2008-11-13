@@ -52,8 +52,6 @@ terms specified in this license.
 
 #include <stasis/page.h>
 
-#include <stasis/transactional.h> /// XXX for xactiontable
-
 Operation operationsTable[MAX_OPERATIONS];
 
 void doUpdate(const LogEntry * e, Page * p) {

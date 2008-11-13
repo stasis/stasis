@@ -56,12 +56,15 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #define LOG_NAME   "check_pageOperations.log"
-extern int numActiveXactions;
 
 START_TEST(pageOpCheckRecovery) {
   Tinit();
 
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   int xid = Tbegin();
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
 
   int pageid1 = TpageAlloc(xid);
 
@@ -85,10 +88,16 @@ START_TEST(pageOpCheckRecovery) {
   *stasis_page_type_ptr(&p) = 0;
 
   TpageSetRange(xid, pageid2, 0, p.memAddr, USABLE_SIZE_OF_PAGE);
-  
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   Tcommit(xid);
 
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   xid = Tbegin();
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
 
   int pageid_dead = TpageAlloc(xid);  /* This test doesn't check for leaks, so we don't need to remember this pageid. */
 
@@ -99,9 +108,15 @@ START_TEST(pageOpCheckRecovery) {
   TpageDealloc(xid, pageid2);
   TuncleanShutdown();
 
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   Tinit();
 
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   xid = Tbegin();
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
   
   int pageid3 = TpageAlloc(xid);
 
@@ -129,7 +144,12 @@ START_TEST(pageOpCheckRecovery) {
   TpageGet(xid, pageid3, newAddr);
   assert(!memcmp(p.memAddr, newAddr, USABLE_SIZE_OF_PAGE));
   Tcommit(xid);
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
+
   Tdeinit();
+
+  DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
 
 } END_TEST
 

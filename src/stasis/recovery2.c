@@ -33,7 +33,7 @@ static LinkedList * rollbackLSNs = NULL;
     from concurrent modifications. */
 static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/** 
+/**
     Determines which transactions committed, and which need to be redone.
 
     In the original version, this function also:
@@ -136,7 +136,7 @@ static void Analysis() {
       // the transaction didn't commit, and must be rolled back. 
       DEBUG("Adding %lld\n", e->LSN);
       addSortedVal(&rollbackLSNs, e->LSN);
-      break;  
+      break;
     case XPREPARE:
       addSortedVal(&rollbackLSNs, e->LSN);
       break; // XXX check to see if the xact exists?
@@ -150,7 +150,7 @@ static void Analysis() {
     }
     FreeLogEntry(e);
   }
-  TsetXIDCount(highestXid);
+  stasis_transaction_table_max_transaction_id_set(highestXid);
 }
 
 /**
@@ -179,8 +179,11 @@ static void Redo() {
   while((e = nextInLog(&lh))) {
     // Is this log entry part of a transaction that needs to be redone?
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
+      if(e->type != INTERNALLOG) {
+        stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
+      }
       // Check to see if this entry's action needs to be redone
-      switch(e->type) { 
+      switch(e->type) {
       case UPDATELOG:
         {
           if(e->update.page == INVALID_PAGE) {
@@ -189,13 +192,15 @@ static void Redo() {
             redoUpdate(e);
           }
         } break;
-      case CLRLOG: 
+      case CLRLOG:
 	{
           const LogEntry *ce = LogReadLSN(((CLRLogEntry*)e)->clr.compensated_lsn);
           if(ce->update.page == INVALID_PAGE) {
             // logical redo of end of NTA; no-op
           } else {
-            // ughh; need to grab page here so that abort() can be atomic below...
+            // need to grab latch page here so that Tabort() can be atomic
+            // below...
+
             Page * p = loadPage(e->xid, ce->update.page);
             writelock(p->rwlatch,0);
             undoUpdate(ce, e->LSN, p);
@@ -206,11 +211,16 @@ static void Redo() {
 	} break;
       case XCOMMIT:
 	{
+          stasis_transaction_table_forget(e->xid);
+
 	  if(globalLockManager.commit)
 	    globalLockManager.commit(e->xid);
 	} break;
-      case XABORT: 
-	{ 
+      case XABORT:
+	{
+          // logical undo needs to see the XactionTable state; so don't call
+          // stasis_transaction_table_roll_forward yet
+
 	  // wait until undo is complete before informing the lock manager
 	} break;
       case INTERNALLOG:
@@ -229,7 +239,7 @@ static void Redo() {
 static void Undo(int recovery) {
   LogHandle lh;
 
-  DEBUG("Recovery: Undo (in recovery = %d)\n", recovery);
+  DEBUG("Recovery: Undo\n");
 
   while(rollbackLSNs != NULL) {
     const LogEntry * e;
@@ -271,6 +281,8 @@ static void Undo(int recovery) {
             lsn_t clr_lsn = LogCLR(e);
             DEBUG("logged clr\n");
 
+            stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
+
             undoUpdate(e, clr_lsn, p);
 
             if(p) {
@@ -310,7 +322,9 @@ static void Undo(int recovery) {
 	if(!reallyAborted) {
 	  DEBUG("xact wasn't aborted\n");
 	  prepared = 1;
-	  Trevive(e->xid, e->LSN, getPrepareRecLSN(e));
+
+          stasis_transaction_table_roll_forward_with_reclsn
+            (e->xid, e->LSN, e->prevLSN, getPrepareRecLSN(e));
 	} else {
 	  DEBUG("xact was aborted\n");
 	}
@@ -323,11 +337,16 @@ static void Undo(int recovery) {
       }
       FreeLogEntry(e);
     }
-    if((!prepared) && globalLockManager.abort) {
-      globalLockManager.abort(thisXid);
+    if(!prepared) {
+      if(recovery) {
+        stasis_transaction_table_forget(thisXid);
+      }
+      if(globalLockManager.abort) {
+        globalLockManager.abort(thisXid);
+      }
     }
   }
-  }
+}
 void InitiateRecovery() {
 
   transactionLSN = pblHtCreate();

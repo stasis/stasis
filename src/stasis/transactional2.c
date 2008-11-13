@@ -22,9 +22,9 @@
 #include <assert.h>
 #include <limits.h>
 
-TransactionLog XactionTable[MAX_TRANSACTIONS];
-int numActiveXactions = 0;
-int xidCount = 0;
+static TransactionLog XactionTable[MAX_TRANSACTIONS];
+static int numActiveXactions = 0;
+static int xidCount = 0;
 
 static int initted = 0;
 
@@ -209,7 +209,6 @@ int Tinit() {
 	bufInit(bufferManagerType);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
-	initNestedTopActions();
 	TallocInit();
 	TnaiveHashInit();
 	LinearHashNTAInit();
@@ -242,9 +241,10 @@ int Tbegin() {
 	  pthread_mutex_unlock(&transactional_2_mutex);
 	  return EXCEED_MAX_TRANSACTIONS;
 	}
-	else
-		numActiveXactions++;
-
+	else {
+          DEBUG("%s:%d activate in begin\n",__FILE__,__LINE__);
+          numActiveXactions++;
+        }
 	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
 		xidCount++;
 		if( XactionTable[xidCount%MAX_TRANSACTIONS].xid == INVALID_XTABLE_XID ) {
@@ -257,7 +257,7 @@ int Tbegin() {
 
 	XactionTable[index].xid = PENDING_XTABLE_XID;
 
-	pthread_mutex_unlock(&transactional_2_mutex);	
+	pthread_mutex_unlock(&transactional_2_mutex);
 
 	XactionTable[index] = LogTransBegin(xidCount_tmp);
 
@@ -287,15 +287,6 @@ static compensated_function void TactionHelper(int xid,
 
   unlock(p->rwlatch);
 }
-
-// XXX remove this function once it's clear that nobody is failing the assert in Tupdate()
-/*compensated_function void TupdateRaw(int xid, pageid_t page, const void * dat, size_t datlen,
-                                     int op) {
-  assert(xid >= 0);
-  Page * p = loadPage(xid, page);
-  TactionHelper(xid, rid, dat, datlen, op, p);
-  releasePage(p);
-  }*/
 
 compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {
@@ -368,6 +359,7 @@ int Tcommit(int xid) {
   pthread_mutex_lock(&transactional_2_mutex);
 
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
+  DEBUG("%s:%d deactivate %d\n",__FILE__,__LINE__,xid);
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
   pthread_mutex_unlock(&transactional_2_mutex);
@@ -388,6 +380,7 @@ int Tabort(int xid) {
   assert(xid >= 0);
 
   TransactionLog * t =&XactionTable[xid%MAX_TRANSACTIONS];
+  assert(t->xid == xid);
 
   lsn = LogTransAbort(t);
 
@@ -398,7 +391,7 @@ int Tabort(int xid) {
   allocTransactionAbort(xid);
 
   pthread_mutex_lock(&transactional_2_mutex);
-  
+
   XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   numActiveXactions--;
   assert( numActiveXactions >= 0 );
@@ -422,7 +415,6 @@ int Tdeinit() {
   truncationDeinit();
   TnaiveHashDeinit();
   TallocDeinit();
-  deinitNestedTopActions();
   bufDeinit();
   DEBUG("Closing page file tdeinit\n");
   closePageFile();
@@ -463,35 +455,14 @@ int TuncleanShutdown() {
   return 0;
 }
 
-void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn) {
-  assert(xid >= 0);
-  assert(reclsn != -1);
-  int index = xid % MAX_TRANSACTIONS;
-  pthread_mutex_lock(&transactional_2_mutex);
-
-  DEBUG("Reviving xid %d at lsn %ld\n", xid, lsn);
-  
-  if(XactionTable[index].xid != INVALID_XTABLE_XID) {
-    abort();
-    /*    if(xid != XactionTable[index].xid) {
-      fprintf(stderr, "Clashing Tprepare()'ed XID's encountered on recovery!!\n");
-      abort();
-    }
-    assert(XactionTable[index].xid == xid);
-    assert(XactionTable[index].prevLSN == lsn); */
-  } else {
-    XactionTable[index].xid = xid;
-    XactionTable[index].prevLSN = prevlsn;
-    XactionTable[index].recLSN = reclsn;
-    numActiveXactions++;
-
-  }
-  pthread_mutex_unlock(&transactional_2_mutex);
-}
-
-void TsetXIDCount(int xid) {
+void stasis_transaction_table_max_transaction_id_set(int xid) {
   pthread_mutex_lock(&transactional_2_mutex);
   xidCount = xid;
+  pthread_mutex_unlock(&transactional_2_mutex);
+}
+void stasis_transaction_table_active_transaction_count_set(int xid) {
+  pthread_mutex_lock(&transactional_2_mutex);
+  numActiveXactions = xid;
   pthread_mutex_unlock(&transactional_2_mutex);
 }
 
@@ -508,6 +479,10 @@ lsn_t transactions_minRecLSN() {
   }
   pthread_mutex_unlock(&transactional_2_mutex);
   return minRecLSN;
+}
+
+int TactiveTransactionCount() {
+  return numActiveXactions;
 }
 
 int* TlistActiveTransactions() {
@@ -534,9 +509,42 @@ int TisActiveTransaction(int xid) {
   return ret;
 }
 
-int stasis_transaction_table_set_prev_lsn(int xid, lsn_t prevLSN) {
-  assert(XactionTable[xid%xidCount%MAX_TRANSACTIONS].xid == xid);
-  XactionTable[xid%MAX_TRANSACTIONS].prevLSN = prevLSN;
+int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN) {
+  TransactionLog * l = &XactionTable[xid%MAX_TRANSACTIONS];
+  if(l->xid == xid) {
+    // rolling forward CLRs / NTAs makes prevLSN decrease.
+    assert(l->prevLSN >= prevLSN);
+  } else {
+    pthread_mutex_lock(&transactional_2_mutex);
+    assert(l->xid == INVALID_XTABLE_XID);
+    l->xid = xid;
+    l->recLSN = lsn;
+    numActiveXactions++;
+    pthread_mutex_unlock(&transactional_2_mutex);
+  }
+  l->prevLSN = lsn;
+  return 0;
+}
+int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
+                                                      lsn_t prevLSN,
+                                                      lsn_t recLSN) {
+  assert(XactionTable[xid%MAX_TRANSACTIONS].recLSN == recLSN);
+  return stasis_transaction_table_roll_forward(xid, lsn, prevLSN);
+}
+int stasis_transaction_table_forget(int xid) {
+  assert(xid != INVALID_XTABLE_XID);
+  TransactionLog * l = &XactionTable[xid%MAX_TRANSACTIONS];
+  if(l->xid == xid) {
+    pthread_mutex_lock(&transactional_2_mutex);
+    l->xid = INVALID_XTABLE_XID;
+    l->prevLSN = -1;
+    l->recLSN = -1;
+    numActiveXactions--;
+    assert(numActiveXactions >= 0);
+    pthread_mutex_unlock(&transactional_2_mutex);
+  } else {
+    assert(l->xid == INVALID_XTABLE_XID);
+  }
   return 0;
 }
 
@@ -548,4 +556,49 @@ int TdurabilityLevel() {
   } else { 
     return DURABLE;
   }
+}
+
+typedef struct {
+  lsn_t prev_lsn;
+  lsn_t compensated_lsn;
+} stasis_nta_handle;
+
+/** @todo TbeginNestedTopAction's API might not be quite right.
+    Are there cases where we need to pass a recordid in?
+
+    @return a handle that must be passed into TendNestedTopAction
+*/
+void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
+  assert(xid >= 0);
+  LogEntry * e = LogUpdate(&XactionTable[xid % MAX_TRANSACTIONS], NULL, op, dat, datSize);
+  DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
+  stasis_nta_handle * h = malloc(sizeof(stasis_nta_handle));
+
+  h->prev_lsn = e->prevLSN;
+  h->compensated_lsn = e->LSN;
+
+  FreeLogEntry(e);
+  return h;
+}
+
+/**
+    Call this function at the end of a nested top action.
+    @return the lsn of the CLR.  Most users (everyone?) will ignore this.
+*/
+lsn_t TendNestedTopAction(int xid, void * handle) {
+  stasis_nta_handle * h = handle;
+  assert(xid >= 0);
+
+  // Write a CLR.
+  lsn_t clrLSN = LogDummyCLR(xid, h->prev_lsn, h->compensated_lsn);
+
+  // Ensure that the next action in this transaction points to the CLR.
+  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+
+  DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
+	 clrLSN, undoneLSN, *prevLSN);
+
+  free(h);
+
+  return clrLSN;
 }
