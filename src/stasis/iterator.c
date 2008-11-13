@@ -15,16 +15,6 @@ void lladdIterator_register(int type, lladdIterator_def_t info) {
 static void noopTupDone(int xid, void * foo) { }
 
 void iterator_init() {
-  lladdIterator_def_t linearHashNTA_def = {
-   linearHashNTAIterator_close, 
-   linearHashNTAIterator_next, 
-   linearHashNTAIterator_next, 
-   linearHashNTAIterator_key, 
-   linearHashNTAIterator_value,
-   noopTupDone,
-   noopTupDone
-  };
-  lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
   lladdIterator_def_t array_def = {
     arrayIterator_close,        
     arrayIterator_next,         

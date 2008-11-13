@@ -17,8 +17,13 @@
    @todo Improve concurrency of linearHashNTA and linkedListNTA by leveraging Page.impl on the data structure header page?
 */
 
-static pthread_mutex_t linear_hash_mutex;// = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
+static void linearHashNTAIterator_close(int xid, void * it);
+static int  linearHashNTAIterator_next (int xid, void * it);
+static int  linearHashNTAIterator_key  (int xid, void * it, byte **key);
+static int  linearHashNTAIterator_value(int xid, void * it, byte **value);
+
+static pthread_mutex_t linear_hash_mutex;// = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 typedef struct {
   recordid buckets;
@@ -29,6 +34,7 @@ typedef struct {
   long numEntries;
 } lladd_hash_header;
 
+static void noopTupDone(int xid, void * foo) { }
 
 void LinearHashNTAInit() {
   // only need this function since PTHREAD_RECURSIVE_MUTEX_INITIALIZER is really broken...
@@ -36,6 +42,17 @@ void LinearHashNTAInit() {
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&linear_hash_mutex, &attr);
+
+  lladdIterator_def_t linearHashNTA_def = {
+   linearHashNTAIterator_close,
+   linearHashNTAIterator_next,
+   linearHashNTAIterator_next,
+   linearHashNTAIterator_key,
+   linearHashNTAIterator_value,
+   noopTupDone,
+   noopTupDone
+  };
+  lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
 }
 
 
@@ -499,7 +516,7 @@ lladdIterator_t * ThashGenericIterator(int xid, recordid hash) {
 
 }
 
-void linearHashNTAIterator_close(int xid, void * impl) {
+static void linearHashNTAIterator_close(int xid, void * impl) {
   lladd_linearHashNTA_generic_it * it = impl;
 
   ThashDone(xid, it->hit);
@@ -513,7 +530,7 @@ void linearHashNTAIterator_close(int xid, void * impl) {
   free(it);
 }
 
-int linearHashNTAIterator_next (int xid, void * impl) {
+static int linearHashNTAIterator_next (int xid, void * impl) {
   lladd_linearHashNTA_generic_it * it = impl;
   
   if(it->lastKey) {
@@ -527,7 +544,7 @@ int linearHashNTAIterator_next (int xid, void * impl) {
   return ThashNext(xid, it->hit, &(it->lastKey), &it->lastKeySize, &it->lastValue, &it->lastValueSize);
 }
 
-int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
+static int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
   lladd_linearHashNTA_generic_it * it = impl;
 
   *key = it->lastKey;
@@ -535,7 +552,7 @@ int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
   return (it->lastKey   == NULL) ? 0 : it->lastKeySize;
 }
 
-int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
+static int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
   lladd_linearHashNTA_generic_it * it = impl;
 
   *value = it->lastValue;

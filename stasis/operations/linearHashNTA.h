@@ -1,8 +1,12 @@
 /**
     @file
 
-    A reliable hashtable implementation.  The implementation makes
-    use of nested top actions, and is reentrant.
+    @ingroup LINEAR_HASH_NTA
+    @defgroup LINEAR_HASH_NTA LinearHash
+
+    Reentrant, dynamically-resized transactional hashtable implementation
+
+    This hashtable makes use of nested top actions, and is reentrant.
 
     The implementation uses a linear hash function, allowing the
     bucket list to be resized dynamically.  Because the bucket list is
@@ -12,7 +16,7 @@
 
     @see nestedTopAction.h, linkedListNTA.h, arrayList.h
 
-    @ingroup OPERATIONS
+    @ingroup COLLECTIONS
 
     $id$
 
@@ -22,24 +26,21 @@
 
 #ifndef __LINEAR_HASH_NTA_H
 #define __LINEAR_HASH_NTA_H
-/** Currently, only used in the type field of the iterators. */
-#define FIXED_LENGTH_HASH 0
-#define VARIABLE_LENGTH_HASH 1
+
+/** @ingroup ARRAY_LIST */
+/** @{ */
+
 
 /** Pass this into the keySize and/or valueSize parameter of the
     constructor below if the hashtable should support variable length
     keys and/or values, respectively. */
 #define VARIABLE_LENGTH -1
 
-typedef struct {
-  recordid hashHeader;
-  recordid bucket;
-  int numBuckets;
-  int keySize;
-  int valueSize;
-  stasis_linkedList_iterator * it;
-  lladd_pagedList_iterator * pit;
-} lladd_hash_iterator;
+/** Support 16 entries by default. */
+#define HASH_INIT_BITS 4
+/** Aim to keep 0.7 items in each bucket */
+#define HASH_FILL_FACTOR 0.7
+
 
 compensated_function recordid ThashCreate(int xid, int keySize, int valSize);
 compensated_function void ThashDelete(int xid, recordid hash);
@@ -74,6 +75,39 @@ compensated_function int ThashRemove(int xid, recordid hash,
             (a return value of zero means the key is associated with an
             empty value.) */
 compensated_function int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
+
+/**
+   Iterator that complies with the standard Stasis iterator interface.
+
+   @todo current generic linearHashIterator implemnetation is just slapped on top of old, slow interface.
+   @todo rename ThashGenericIterator to ThashIterator, and remove deprecated iterator interface...
+*/
+
+lladdIterator_t *     ThashGenericIterator       (int xid, recordid hash);
+
+Operation getLinearHashInsert();
+Operation getLinearHashRemove();
+
+void LinearHashNTAInit();
+/** @} */
+
+/**
+    @deprecated
+ */
+typedef struct {
+  recordid hashHeader;
+  recordid bucket;
+  int numBuckets;
+  int keySize;
+  int valueSize;
+  stasis_linkedList_iterator * it;
+  lladd_pagedList_iterator * pit;
+} lladd_hash_iterator;
+
+/** Currently, only used in the type field of the iterators. */
+#define FIXED_LENGTH_HASH 0
+#define VARIABLE_LENGTH_HASH 1
+
 /** 
   Allocate a new hash iterator.  This API is designed to eventually be 
   overloaded, and is subject to change.  If the iterator is run to completion, 
@@ -117,24 +151,7 @@ int ThashNext(int xid, lladd_hash_iterator * it, byte ** key, int * keySize, byt
 */
 void ThashDone(int xid, lladd_hash_iterator * it);
 
-Operation getLinearHashInsert();
-Operation getLinearHashRemove();
-
-void LinearHashNTAInit();
-
-/** Iterator that complies with the standard LLADD iterator interface. 
-    @todo current generic linearHashIterator implemnetation is just slapped on top of old, slow interface.
-    @todo rename ThashGenericIterator to ThashIterator, and remove deprecated iterator interface...
-*/
-
-//void * linearHashNTAIterator_new  (void * arg);
-lladdIterator_t *     ThashGenericIterator       (int xid, recordid hash);
-void                  linearHashNTAIterator_close(int xid, void * it);
-int                   linearHashNTAIterator_next (int xid, void * it);
-int                   linearHashNTAIterator_key  (int xid, void * it, byte **key);
-int                   linearHashNTAIterator_value(int xid, void * it, byte **value);
-
-/** @todo these should be in linearHashNTA.c, but they've been moved
+/** @todo these should be in linearHashNTA.c but they've been moved
     here so that multiplexer.c can (temoprarily) implement a
     multiplexer for logical hash operations. */
 
@@ -148,11 +165,5 @@ typedef struct {
   int keySize;
   int valueSize;
 } linearHash_remove_arg;
-
-
-
-//Support 16 entries by default.
-#define HASH_INIT_BITS 4
-#define HASH_FILL_FACTOR 0.7
 
 #endif // __LINEAR_HASH_NTA_H
