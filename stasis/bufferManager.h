@@ -77,7 +77,6 @@ terms specified in this license.
  * $Id$
  */
 
-#include <stasis/constants.h>
 #include <stasis/transactional.h>
 
 #ifndef __BUFFERMANAGER_H__
@@ -85,15 +84,11 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
+typedef struct Page_s Page_s;
 /**
    Page is defined in bufferManager.h as an incomplete type to enforce
    an abstraction barrier between page.h and the rest of the system.
-
-   If you need to muck with page internals, first consider the
-   implications that doing so has on latching.  In particular, rwlatch
-   is currently entirely handled in page.c.
 */
-typedef struct Page_s Page_s;
 typedef struct Page_s Page;
 
 /**

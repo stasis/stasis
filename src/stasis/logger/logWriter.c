@@ -60,7 +60,7 @@ terms specified in this license.
 #include <stasis/logger/logWriter.h>
 #include <stasis/logger/logHandle.h>
 #include <stasis/latches.h>
-#include <stasis/io.h>
+#include <stasis/logger/logWriterUtils.h>
 #include <assert.h>
 
 

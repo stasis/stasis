@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include <stasis/pageCache.h>
+
+#include <stasis/common.h>
 #include <stasis/lhtable.h>
 #include <stasis/redblack.h>
 #include <stasis/replacementPolicy.h>

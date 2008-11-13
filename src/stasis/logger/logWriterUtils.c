@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <stasis/io.h>
+#include <stasis/logger/logWriterUtils.h>
 #include <stdlib.h>
 /** @file 
 

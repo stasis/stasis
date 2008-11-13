@@ -11,9 +11,12 @@
 #include <stasis/consumer.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
-#include <stasis/pageFile.h>
 #include <stasis/pageHandle.h>
 #include <stasis/page.h>
+
+#include <stasis/bufferManager/legacy/pageFile.h>
+
+
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
@@ -154,6 +157,9 @@ int Tinit() {
 	} else {
 	  openMode = O_CREAT | O_RDWR;
 	}
+
+	/// @todo remove hardcoding of buffer manager implementations in transactional2.c
+
         switch(bufferManagerFileHandleType) {
           case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
             struct sf_args * slow_arg = malloc(sizeof(sf_args));

@@ -5,10 +5,12 @@
 */
 #include "config.h"
 #include <stasis/page.h>
-#include <stasis/bufferManager.h>
 
-#include <stasis/pageFile.h>
+#include <stasis/bufferManager.h>
 #include <stasis/pageHandle.h>
+
+#include <stasis/bufferManager/legacy/pageFile.h>
+
 #include <assert.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>

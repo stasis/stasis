@@ -9,8 +9,10 @@
 #include <stasis/common.h>
 
 #include <stasis/page.h>
-#include <stasis/pageCache.h>
+
 #include <stasis/bufferManager.h>
+
+#include <stasis/bufferManager/legacy/pageCache.h>
 
 #include <assert.h>
 #include <stdio.h>
