@@ -87,6 +87,7 @@ START_TEST (recoverBlob__idempotent) {
   xid = Tbegin();
   
   rid = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  assert(TrecordSize(xid, rid) == (ARRAY_SIZE * sizeof(int)));
   arraySet(j, 1);
 
   Tset(xid, rid, j);
