@@ -63,8 +63,11 @@ static void arraySet(int * a, int mul) {
   }
 }
 
+static int arryCmp(int * a, int * b) {
+  return memcmp(a,b,ARRAY_SIZE*sizeof(int));
+}
 
-/** 
+/**
     @test
     Simple test: Insert some stuff.  Commit.  Call Tdeinit().  Call
     Tinit() (Which initiates recovery), and see if the stuff we
@@ -122,67 +125,20 @@ START_TEST (recoverBlob__idempotent) {
 }
 END_TEST
 
-/** 
+/*
     @test
-    Simple test: Alloc a record, commit.  Call Tincrement on it, and
+    Simple test: Alloc a blob, commit.  Call Tincrement on it, and
     remember its value and commit.  Then, call Tdeinit() and Tinit()
     (Which initiates recovery), and see if the value changes.  
 
     @todo:  Until we have a non-idempotent operation on blobs, this test can't be written.
 */
 /* START_TEST (recoverBlob__exactlyOnce) {
-  
-  int xid; 
-  int j;
-  int k;
-  recordid rid;
-  / *  if(1) {
-    return;
-    } * /
-  fail_unless(0, "Need to write this test...");
-
-  Tinit();
-  xid = Tbegin();
-  
-  rid = Talloc(xid, sizeof(int));
-
-  Tincrement(xid, rid);
-
-  Tread(xid, rid, &j);
- 
-  Tcommit(xid);
-
-  xid = Tbegin();
-
-  Tread(xid, rid, &k);
-  
-  fail_unless(j == k, "Get/Set broken?");
-
-  Tcommit(xid);
-  
-  Tdeinit();
-
-  Tinit();  / * Runs recovery.. * /
-
-  k = 12312;
-
-  xid = Tbegin(); 
-
-  Tread(xid, rid, &k);
-
-  fail_unless(j == k, "Recovery messed something up!");
-
-  Tcommit(xid);
-
-  Tdeinit();
-
-
-
 }
 END_TEST
 
 */
-/** 
+/**
     @test
     Makes sure that aborted idempotent operations are correctly undone.
 */
@@ -260,136 +216,31 @@ START_TEST (recoverBlob__idempotentAbort) {
 END_TEST
 
 
-/** 
+/**
     @test Makes sure that aborted non-idempotent operations are
     correctly undone.  Curently, we don't support such operations on
     blobs, so this test is not implemented.
 
-    @todo  logical operations on blobs.
+    @todo  need non-idempotent blob operation to implement this test.
 */
 /* START_TEST (recoverBlob__exactlyOnceAbort) {
-  
-  int xid; 
-  int j;
-  int k;
-  recordid rid;
-  / *  if(1) 
-    return ;
-  * /
-  fail_unless(0, "Need to write this test...");
-
-  Tinit();
-  xid = Tbegin();
-  
-  rid = Talloc(xid, sizeof(int));
-  j = 1;
-  Tincrement(xid, rid);
-
-  Tread(xid, rid, &j);
- 
-  Tcommit(xid);
-
-  xid = Tbegin();
-
-  Tincrement(xid, rid);
-  Tread(xid, rid, &k);
-  fail_unless(j == k-1, NULL);
-  Tabort(xid);
-  xid = Tbegin();
-  Tread(xid, rid, &k);
-  fail_unless(j == k, "didn't abort?");
-  Tcommit(xid);
-
-  Tdeinit();
-  Tinit();
-
-  xid = Tbegin();
-
-  Tread(xid, rid, &k);
-  fail_unless(j == k, "Recovery didn't abort correctly");
-  Tcommit(xid);
-  Tdeinit();
-
 }
 END_TEST
 */
 /**
-   @test 
-   Check the CLR mechanism with an aborted logical operation, and multipl Tinit()/Tdeinit() cycles.
+   @test Check the CLR mechanism with an aborted logical operation, and multiple Tinit()/Tdeinit() cycles.
 
-   @todo Devise a way of implementing this for blobs. 
+   @todo  need blob operation w/ logical undo to implement this.
 */
 /*START_TEST(recoverBlob__clr) {
-  recordid rid;
-  int xid;
-  int j;
-  int k;
-
-  / *  if(1) return; * /
-
-  fail_unless(0, "Need to write this test...");
-
-  DEBUG("\n\nStart CLR test\n\n");
-
-  Tinit();
-  
-  xid = Tbegin();
-
-  rid = Talloc(xid, sizeof(int));
-	       
-  Tread(xid, rid, &j);
-
-  Tincrement(xid, rid);
-
-  Tabort(xid); 
-  
-  xid = Tbegin(); 
-  
-  Tread(xid, rid, &k);
-  
-  Tcommit(xid);
-  
-  fail_unless(j == k, NULL); 
-
-  Tdeinit(); 
-
-
-  Tinit();
-  Tdeinit();
-
-  Tinit();
-
-  xid = Tbegin();
-
-  Tread(xid, rid, &k);
-
-  Tcommit(xid);
-
-  fail_unless(j == k, NULL);
-
-  Tdeinit();
-  Tinit();
-
-  xid = Tbegin();
-
-  Tread(xid, rid, &k);
-
-  Tcommit(xid);
-
-  fail_unless(j == k, NULL);
-
-  Tdeinit();
-
-
 } END_TEST
 */
-extern int numActiveXactions;
-/** 
+/**
     @test
 
-    Tests the undo phase of recovery by simulating a crash, and calling Tinit(). 
+    Tests the undo phase of recovery by simulating a crash, and calling Tinit().
 
-    @todo Really should check logical operations, if they are ever supported for blobs. 
+    @todo logical operations, if they are ever supported for blobs.
 
 */
 START_TEST(recoverBlob__crash) {
@@ -441,7 +292,8 @@ START_TEST(recoverBlob__crash) {
 
   arraySet(k, 9);
 
-  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), "Recovery didn't roll back in-progress xact!");
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), 
+              "Recovery didn't roll back in-progress xact!");
 
   Tdeinit();
 
@@ -452,94 +304,105 @@ START_TEST(recoverBlob__crash) {
 
   assert(!memcmp(j,k,ARRAY_SIZE * sizeof(int)));
 
-  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), "Recovery failed on second re-open.");
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)),
+              "Recovery failed on second re-open.");
 
   Tdeinit();
 
 } END_TEST
+
+/**
+   @test Tests blob allocation and deallocation, and recovery
+ */
+
+START_TEST(recoverBlob__allocation) {
+  Tinit();
+  int xid = Tbegin();
+  int arry1[ARRAY_SIZE];
+  int arry2[ARRAY_SIZE];
+  int arry3[ARRAY_SIZE];
+  int arry4[ARRAY_SIZE];
+  int scratch[ARRAY_SIZE];
+
+  arraySet(arry1, 1);
+  arraySet(arry2, 2);
+  arraySet(arry3, 3);
+  arraySet(arry4, 4);
+
+  recordid rid1, rid2, rid3, rid4;
+
+  // Abort w/ allocation (no set)
+  rid1 = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  assert(TrecordType(xid,rid1)==BLOB_SLOT);
+  Tabort(xid);
+  xid = Tbegin();
+  assert(TrecordType(xid,rid1)==INVALID_SLOT);
+
+  // Abort w/ allocation (set)
+  rid2 = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  assert((!memcmp(&rid1,&rid2,sizeof(rid1)))||
+         TrecordType(xid,rid1)==INVALID_SLOT);
+  assert(TrecordType(xid,rid2)==BLOB_SLOT);
+  Tset(xid,rid1,arry1);
+  Tabort(xid);
+
+  xid = Tbegin();
+  assert(TrecordType(xid,rid1)==INVALID_SLOT);
+  assert(TrecordType(xid,rid2)==INVALID_SLOT);
+
+  // Abort w/ committed alloc (no set)
+  rid2 = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  Tset(xid, rid2, arry2);
+  Tcommit(xid);
+
+  // Abort alloc of rid A + dealloc, alloc + overwrite rid B
+  xid = Tbegin();
+  rid3 = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  Tread(xid, rid2, scratch); assert(!arryCmp(arry2,scratch));
+  Tset(xid, rid3, arry3);
+  Tread(xid, rid2, scratch); assert(!arryCmp(arry2,scratch));
+  Tread(xid, rid3, scratch); assert(!arryCmp(arry3,scratch));
+  Tdealloc(xid,rid2);
+  rid4 = Talloc(xid, ARRAY_SIZE * sizeof(int));
+  Tset(xid, rid4, arry4);
+  Tabort(xid);
+
+  xid = Tbegin();
+  Tread(xid, rid2, scratch); assert(!arryCmp(arry2,scratch));
+  assert((!memcmp(&rid2,&rid4,sizeof(rid2))) ||
+         TrecordType(xid,rid4) == INVALID_SLOT);
+  Tcommit(xid);
+  Tdeinit();
+
+  // make sure downing + upping stasis doesn't change state.
+
+  Tinit();
+  xid = Tbegin();
+  Tread(xid, rid2, scratch); assert(!arryCmp(arry2,scratch));
+  assert((!memcmp(&rid2,&rid4,sizeof(rid2))) ||
+         TrecordType(xid,rid4) == INVALID_SLOT);
+  Tabort(xid);
+  Tdeinit();
+
+  Tinit();
+  xid = Tbegin();
+  Tread(xid, rid2, scratch); assert(!arryCmp(arry2,scratch));
+  assert((!memcmp(&rid2,&rid4,sizeof(rid2))) ||
+         TrecordType(xid,rid4) == INVALID_SLOT);
+  Tcommit(xid);
+  Tdeinit();
+
+} END_TEST
+
 /**
    @test Tests recovery when more than one transaction is in progress
    at the time of the crash.  This test is interesting because blob
    operations from multiple transactions could hit the same page.
 
-   @todo implement this sometime... 
+   @todo implement this one transactions may write subset of blob pages
 */
-START_TEST (recoverBlob__multiple_xacts) {
-  int xid1, xid2, xid3, xid4;
-  recordid rid1, rid2, rid3, rid4;
-  int j1, j2, j3, j4, k;
-
-  Tinit();
-  j1 = 1;
-  j2 = 2; 
-  j3 = 4;
-  j4 = 3;
-  xid1 = Tbegin();
-  rid1 = Talloc(xid1, sizeof(int));
-
-  xid2 = Tbegin();
-
-  xid3 = Tbegin();
-
-  Tset(xid1, rid1, &j1);
-  
-  rid2 = Talloc(xid2, sizeof(int));
-  rid3 = Talloc(xid3, sizeof(int));
-  Tread(xid3, rid3, &k);
-  
-  Tset(xid3, rid3, &j3);
-
-  Tcommit(xid3);
-  xid3 = Tbegin();
-  
-  Tincrement(xid3, rid3);
-  Tset(xid2, rid2, &j2);
-  Tcommit(xid1);
-  
-
-  xid4 = Tbegin();
-  Tcommit(xid2);
-  
-  rid4 = Talloc(xid4, sizeof(int));
-  Tset(xid4, rid4, &j4);
-  Tincrement(xid4, rid4);
-  Tcommit(xid4);
-
-  xid1 = Tbegin();
-  k = 100000;
-  Tset(xid1, rid1,&k);
-  xid2 = Tbegin();
-  Tdecrement(xid2, rid2);
-
-  Tdecrement(xid2, rid2);
-  Tdecrement(xid2, rid2);
-  Tdecrement(xid2, rid2);
-  Tdecrement(xid2, rid2);
-  Tincrement(xid1, rid1);
-  Tset(xid1, rid1,&k);
-  TuncleanShutdown();
-
-  Tinit();
-  Tdeinit();
-
-  Tinit();
-  xid1 = Tbegin();
-  xid2 = Tbegin();
-  xid3 = Tbegin();
-  xid4 = Tbegin();
-
-  Tread(xid1, rid1, &j1);
-  Tread(xid2, rid2, &j2);
-  Tread(xid3, rid3, &j3);
-  Tread(xid4, rid4, &j4);
-
-  fail_unless(j1 == 1, NULL);
-  fail_unless(j2 == 2, NULL);
-  fail_unless(j3 == 4, NULL);
-  fail_unless(j4 == 4, NULL);
-  Tdeinit();
-} END_TEST
-
+/*START_TEST (recoverBlob__multiple_xacts) {
+} END_TEST*/
 
 /** 
   Add suite declarations here
@@ -549,25 +412,26 @@ Suite * check_suite(void) {
   /* Begin a new test */
   TCase *tc = tcase_create("recovery");
 
- tcase_set_timeout(tc, 0); // disable timeouts
- if(LOG_TO_MEMORY != loggerType) { 
-  /* void * foobar; */  /* used to supress warnings. */
-  /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, recoverBlob__idempotent);
-  /*  tcase_add_test(tc, recoverBlob__exactlyOnce); 
-      foobar = (void*)&recoverBlob__exactlyOnce; */
+  tcase_set_timeout(tc, 0); // disable timeouts
+  if(LOG_TO_MEMORY != loggerType) { 
+    /* void * foobar; */  /* used to supress warnings. */
+    /* Sub tests are added, one per line, here */
+    tcase_add_test(tc, recoverBlob__idempotent);
+    tcase_add_test(tc, recoverBlob__idempotentAbort);
 
-  tcase_add_test(tc, recoverBlob__idempotentAbort);
-  /*  tcase_add_test(tc, recoverBlob__exactlyOnceAbort);
-      foobar = (void*)&recoverBlob__exactlyOnceAbort; 
+    tcase_add_test(tc, recoverBlob__allocation);
 
-  tcase_add_test(tc, recoverBlob__clr);
-  foobar = (void*)&recoverBlob__clr; */
+    tcase_add_test(tc, recoverBlob__crash);
 
-  tcase_add_test(tc, recoverBlob__crash);
-  tcase_add_test(tc, recoverBlob__multiple_xacts); 
-    /*foobar = (void*)&recoverBlob__multiple_xacts;   */
- }
+    // The following tests are analagous to those in check_recovery,
+    // but would test functionality that hasn't been implemented for blobs.
+
+    //tcase_add_test(tc, recoverBlob__exactlyOnce);
+    //tcase_add_test(tc, recoverBlob__exactlyOnceAbort);
+    //tcase_add_test(tc, recoverBlob__clr);
+
+    //tcase_add_test(tc, recoverBlob__multiple_xacts);
+  }
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

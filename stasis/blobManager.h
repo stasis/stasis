@@ -68,6 +68,7 @@ compensated_function recordid preAllocBlobFromPage(int xid, long page, long blob
 */
 
 void allocBlob(int xid, recordid rid);
+void deallocBlob(int xid, recordid rid);
 
 page_impl blobImpl();
 

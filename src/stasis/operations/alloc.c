@@ -92,7 +92,7 @@ static int operate_helper(int xid, Page * p, recordid rid) {
 
 typedef struct {
   slotid_t slot;
-  int64_t size;
+  int64_t type;
 } alloc_arg;
 
 static int op_alloc(const LogEntry* e, Page* p) {
@@ -102,14 +102,18 @@ static int op_alloc(const LogEntry* e, Page* p) {
   recordid rid = {
     p->id,
     arg->slot,
-    arg->size
+    arg->type
   };
 
   int ret = operate_helper(e->xid,p,rid);
 
-  if(e->update.arg_size == sizeof(alloc_arg) + arg->size) {
-    // if we're aborting a dealloc, we'd better have a sane preimage to apply
+  int64_t size = stasis_record_length_read(e->xid,p,rid);
+
+  if(e->update.arg_size == sizeof(alloc_arg) + size) {
+    // if we're aborting a dealloc we better have a sane preimage to apply
+    rid.size = size;
     stasis_record_write(e->xid,p,e->LSN,rid,(const byte*)(arg+1));
+    rid.size = arg->type;
   } else {
     // otherwise, no preimage
     assert(e->update.arg_size == sizeof(alloc_arg));
@@ -124,10 +128,12 @@ static int op_dealloc(const LogEntry* e, Page* p) {
   recordid rid = {
     p->id,
     arg->slot,
-    arg->size
+    arg->type
   };
   // assert that we've got a sane preimage or we're aborting a talloc (no preimage)
-  assert(e->update.arg_size == sizeof(alloc_arg) + arg->size || e->update.arg_size == sizeof(alloc_arg));
+  int64_t size = stasis_record_length_read(e->xid,p,rid);
+  assert(e->update.arg_size == sizeof(alloc_arg) + size ||
+         e->update.arg_size == sizeof(alloc_arg));
 
   stasis_record_free(e->xid, p, rid);
   assert(stasis_record_type_read(e->xid, p, rid) == INVALID_SLOT);
@@ -141,17 +147,20 @@ static int op_realloc(const LogEntry* e, Page* p) {
   recordid rid = {
     p->id,
     arg->slot,
-    arg->size
+    arg->type
   };
   assert(stasis_record_type_read(e->xid, p, rid) == INVALID_SLOT);
   int ret = operate_helper(e->xid, p, rid);
 
-  assert(e->update.arg_size == sizeof(alloc_arg)
-                               + stasis_record_length_read(e->xid,p,rid));
+  int64_t size = stasis_record_length_read(e->xid,p,rid);
 
+  assert(e->update.arg_size == sizeof(alloc_arg)
+         + size);
+  rid.size = size;
   byte * buf = stasis_record_write_begin(e->xid,p,rid);
-  memcpy(buf, arg+1, stasis_record_length_read(e->xid,p,rid));
+  memcpy(buf, arg+1, size);
   stasis_record_write_done(e->xid,p,rid,buf);
+  rid.size = arg->type;
   return ret;
 }
 
@@ -271,6 +280,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
   if(size >= BLOB_THRESHOLD_SIZE) { 
     type = BLOB_SLOT;
   } else {
+    assert(size >= 0);
     type = size;
   }
 
@@ -280,11 +290,14 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     pthread_mutex_lock(&talloc_mutex);
     Page * p;
 
-    availablePage * ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
+    availablePage * ap =
+      allocationPolicyFindPage(allocPolicy, xid,
+                               stasis_record_type_to_size(type));
 
     if(!ap) {
       reserveNewRegion(xid);
-      ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
+      ap = allocationPolicyFindPage(allocPolicy, xid,
+                                    stasis_record_type_to_size(type));
     }
     lastFreepage = ap->pageid;
 
@@ -300,17 +313,21 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
       unlock(p->rwlatch);
       if(!ap->lockCount) {
-	allocationPolicyUpdateFreespaceUnlockedPage(allocPolicy, ap, newFreespace);
+	allocationPolicyUpdateFreespaceUnlockedPage(allocPolicy, ap,
+                                                    newFreespace);
       } else {
-      allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
+        allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap,
+                                                  newFreespace);
       }
       releasePage(p);
 
-      ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
+      ap = allocationPolicyFindPage(allocPolicy, xid,
+                                    stasis_record_type_to_size(type));
 
       if(!ap) {
 	reserveNewRegion(xid);
-	ap = allocationPolicyFindPage(allocPolicy, xid, stasis_record_type_to_size(type));
+	ap = allocationPolicyFindPage(allocPolicy, xid,
+                                      stasis_record_type_to_size(type));
       }
 
       lastFreepage = ap->pageid;
@@ -329,7 +346,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
     unlock(p->rwlatch);
 
-    alloc_arg a = { rid.slot, rid.size };
+    alloc_arg a = { rid.slot, type };
 
     Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
  
@@ -378,7 +395,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
     allocationPolicyAllocedFromPage(allocPolicy, xid, page);
     unlock(p->rwlatch);
 
-    alloc_arg a = { rid.slot, rid.size };
+    alloc_arg a = { rid.slot, type };
 
     Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
 
@@ -399,14 +416,11 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
 }
 
 compensated_function void Tdealloc(int xid, recordid rid) {
-  
+
   // @todo this needs to garbage collect empty storage regions.
 
-  Page * p;
   pthread_mutex_lock(&talloc_mutex);
-  try {
-    p = loadPage(xid, rid.page);
-  } end;
+  Page * p = loadPage(xid, rid.page);
 
   readlock(p->rwlatch,0);
 
@@ -414,19 +428,46 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   allocationPolicyLockPage(allocPolicy, xid, newrid.page);
 
   int64_t size = stasis_record_length_read(xid,p,rid);
+  int64_t type = stasis_record_type_read(xid,p,rid);
 
-  byte * preimage = malloc(sizeof(alloc_arg)+rid.size);
+  if(type == NORMAL_SLOT) { type = size; }
+
+  byte * preimage = malloc(sizeof(alloc_arg)+size);
 
   ((alloc_arg*)preimage)->slot = rid.slot;
-  ((alloc_arg*)preimage)->size = size;
+  ((alloc_arg*)preimage)->type = type;
 
-  begin_action(releasePage, p) {
-    stasis_record_read(xid, p, rid, preimage+sizeof(alloc_arg));
-    unlock(p->rwlatch);
+  // stasis_record_read() wants rid to have its raw size to prevent
+  // code that doesn't know about record types from introducing memory
+  // bugs.
+  rid.size = size;
+  stasis_record_read(xid, p, rid, preimage+sizeof(alloc_arg));
+  // restore rid to valid state.
+  rid.size = type;
 
-    /** @todo race in Tdealloc; do we care, or is this something that the log manager should cope with? */
-    Tupdate(xid, rid.page, preimage, sizeof(alloc_arg)+rid.size, OPERATION_DEALLOC);
-  } compensate;
+  // Ok to release latch; page is still pinned (so no WAL problems).
+  // allocationPolicy protects us from running out of space due to concurrent
+  // xacts.
+
+  // Also, there can be no reordering of allocations / deallocations ,
+  // since we're holding talloc_mutex.  However, we might reorder a Tset()
+  // to and a Tdealloc() or Talloc() on the same page.  If this happens,
+  // it's an unsafe race in the application, and not technically our problem.
+
+  // @todo  Tupdate forces allocation to release a latch, leading to potentially nasty application bugs.  Perhaps this is the wrong API!
+
+  // @todo application-level allocation races can lead to unrecoverable logs.
+  unlock(p->rwlatch);
+
+  Tupdate(xid, rid.page, preimage,
+          sizeof(alloc_arg)+size, OPERATION_DEALLOC);
+
+  releasePage(p);
+
+  if(type==BLOB_SLOT) {
+    deallocBlob(xid,rid);
+  }
+
   pthread_mutex_unlock(&talloc_mutex);
 
   free(preimage);
@@ -473,7 +514,10 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
     stasis_slotted_initialize_page(p);
     break;
   case FIXED_PAGE:
-    stasis_fixed_initialize_page(p, arg->size, stasis_fixed_records_per_page(arg->size));
+    stasis_fixed_initialize_page(p, arg->type,
+                                 stasis_fixed_records_per_page
+                                 (
+                                  stasis_record_type_to_size(arg->type)));
     break;
   default:
     abort();

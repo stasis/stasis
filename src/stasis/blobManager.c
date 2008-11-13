@@ -18,6 +18,10 @@ void allocBlob(int xid, recordid rid) {
   //  printf("rid = {%d %d %d}\n", rid.page, rid.slot, rid.size);
 }
 
+void deallocBlob(int xid, recordid rid) {
+  TregionDealloc(xid, rid.page);
+}
+
 void readBlob(int xid, Page * p2, recordid rid, byte * buf) {
   pageid_t chunk;
   recordid rawRid = rid;
