@@ -269,9 +269,14 @@ class treeIterator {
     slot_(0)
   {
     init_helper();
-    treeIterator * end = this->end();
-    for(;*this != *end && **this < key; ++(*this)) { }
-    delete end;
+    if(lsmIterator_) {
+      treeIterator * end = this->end();
+      for(;*this != *end && **this < key; ++(*this)) { }
+      delete end;
+    } else {
+      this->slot_ = 0;
+      this->pageid_ = 0;
+    }
   }
   explicit treeIterator(recordid tree, ROW &scratch, int keylen) :
     tree_(tree),
@@ -320,6 +325,7 @@ class treeIterator {
     }
   }
   ROW & operator*() {
+    assert(this->lsmIterator_);
     ROW* readTuple = currentPage_->recordRead(-1,slot_, &scratch_);
 
     if(!readTuple) {
@@ -366,6 +372,11 @@ class treeIterator {
   }
   inline treeIterator* end() {
     treeIterator* t = new treeIterator(tree_,scratch_,keylen_);
+    if(!lsmIterator_) {
+      t->slot_ = 0;
+      t->pageid_ = 0;
+      return t;
+    }
     if(t->p_) {
       releasePage(t->p_);
       t->p_=0;

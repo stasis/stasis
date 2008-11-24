@@ -107,14 +107,15 @@ namespace rose {
   // this is just a guessed value... it seems about right based on
   // experiments, but 450 bytes overhead per tuple is insane!
   static const int RB_TREE_OVERHEAD = 400; // = 450;
-  static const pageid_t MEM_SIZE = 1000 * 1000 * 1000;
-  //  static const pageid_t MEM_SIZE = 100 * 1000;
+  static pageid_t C0_MEM_SIZE = 1000 * 1000 * 1000;
+  //  static const pageid_t C0_MEM_SIZE = 100 * 1000;
   // How many pages should we try to fill with the first C1 merge?
   static int R = 10; // XXX set this as low as possible (for dynamic setting.  = sqrt(C2 size / C0 size))
 #ifdef THROTTLED
   static const pageid_t START_SIZE = 100; //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
 #else
-  static const pageid_t START_SIZE = MEM_SIZE * R /( PAGE_SIZE * 4); //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
+  Do not run this code
+  static const pageid_t START_SIZE = C0_MEM_SIZE * R /( PAGE_SIZE * 4); //10 * 1000; /*10 **/ //1000; // XXX 4 is fudge related to RB overhead.
 #endif
   // Lower total work by perfomrming one merge at higher level
   // for every FUDGE^2 merges at the immediately lower level.
@@ -147,8 +148,9 @@ namespace rose {
     // loop around here to produce multiple batches for merge.
     gettimeofday(&start_push_tv,0);
     gettimeofday(&start_tv,0);
+    pthread_mutex_lock(a->block_ready_mut);
+
     while(1) {
-      pthread_mutex_lock(a->block_ready_mut);
 
       int done = 0;
 
@@ -164,7 +166,6 @@ namespace rose {
       *a->in_block_needed = false;
       if(done) {
 	pthread_cond_signal(a->out_block_ready_cond);
-	pthread_mutex_unlock(a->block_ready_mut);
 	break;
       }
 
@@ -181,7 +182,7 @@ namespace rose {
       ITERB *tbEnd = tbBegin->end();
       { // this { protects us from recalcitrant iterators below (tree iterators hold stasis page latches...)
 
-      pthread_mutex_unlock(a->block_ready_mut);
+        ///XXX      pthread_mutex_unlock(a->block_ready_mut);
 
       Tcommit(xid);
       xid = Tbegin();
@@ -263,7 +264,7 @@ namespace rose {
 
       gettimeofday(&start_push_tv,0);
 
-      pthread_mutex_lock(a->block_ready_mut);
+      //XXX      pthread_mutex_lock(a->block_ready_mut);
 
       // keep actual handle around so that it can be freed below.
       typename ITERB::handle old_in_tree = **a->in_tree;
@@ -298,10 +299,10 @@ namespace rose {
       if(a->out_tree) {
 	double frac_wasted = ((double)RB_TREE_OVERHEAD)/(double)(RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
 
-	target_R = sqrt(((double)(*a->out_tree_size+*a->my_tree_size)) / ((MEM_SIZE*(1-frac_wasted))/(4096*ratio)));
+	target_R = sqrt(((double)(*a->out_tree_size+*a->my_tree_size)) / ((C0_MEM_SIZE*(1-frac_wasted))/(4096*ratio)));
 	printf("R_C2-C1 = %6.1f R_C1-C0 = %6.1f target = %6.1f\n", 
 	       ((double)(*a->out_tree_size/*+*a->my_tree_size*/)) / ((double)*a->my_tree_size), 
-	       ((double)*a->my_tree_size) / ((double)(MEM_SIZE*(1-frac_wasted))/(4096*ratio)),target_R);
+	       ((double)*a->my_tree_size) / ((double)(C0_MEM_SIZE*(1-frac_wasted))/(4096*ratio)),target_R);
       }
 #else
       if(a->out_tree_size) {
@@ -369,11 +370,11 @@ namespace rose {
       assert(a->my_tree->r_.page != tree->r_.page);
       *a->my_tree = *tree;
 
-      pthread_mutex_unlock(a->block_ready_mut);
-
       gettimeofday(&start_tv,0);
 
     }
+    pthread_mutex_unlock(a->block_ready_mut);
+
     Tcommit(xid);
 
     return 0;
@@ -581,7 +582,7 @@ namespace rose {
 	ret->still_open,
 	block0_size,
 	block1_size,
-	(R * MEM_SIZE) / (PAGE_SIZE * 4),  // XXX 4 = estimated compression ratio
+	(R * C0_MEM_SIZE) / (PAGE_SIZE * 4),  // XXX 4 = estimated compression ratio
 	R,
 	//new typename LSM_ITER::treeIteratorHandle(NULLRID),
 	block0_scratch,
@@ -665,25 +666,30 @@ namespace rose {
       assert(*((char*)t.get(i)) || *((char*)t.get(i))+1);
       } */
 
+    pthread_mutex_lock(h->mut); //XXX
+
     h->scratch_tree->insert(t);
 
     uint64_t handleBytes = h->scratch_tree->size() * (RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
     //XXX  4 = estimated compression ratio.
     uint64_t inputSizeThresh = (4 * PAGE_SIZE * *h->input_size); // / (PAGELAYOUT::FMT::TUP::sizeofBytes());
-    uint64_t memSizeThresh = MEM_SIZE;
+    uint64_t memSizeThresh = C0_MEM_SIZE;
 
 #ifdef INFINITE_RESOURCES
     static const int LATCH_INTERVAL = 10000;
     static int count = LATCH_INTERVAL; /// XXX HACK
     bool go = false;
     if(!count) {
-      pthread_mutex_lock(h->mut);
+      ///XXX      pthread_mutex_lock(h->mut);
       go = *h->input_needed;
-      pthread_mutex_unlock(h->mut);
+      ///XXX pthread_mutex_unlock(h->mut);
       count = LATCH_INTERVAL;
     }
     count --;
 #endif
+
+    pthread_mutex_unlock(h->mut);
+
     if( (handleBytes > memSizeThresh / 2) && (
 #ifdef INFINITE_RESOURCES
        go ||
@@ -841,6 +847,7 @@ namespace rose {
     void**
     TlsmTableFindGTE(int xid, lsmTableHandle<PAGELAYOUT> *h,
                      typename PAGELAYOUT::FMT::TUP &val) {
+    pthread_mutex_lock(h->mut);
 
     //    typedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
     typedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
@@ -879,6 +886,11 @@ namespace rose {
     ret[9] = c2->end();
 
     return ret;
+  }
+  template<class PAGELAYOUT>
+    void
+    TlsmTableFindGTEDone(lsmTableHandle<PAGELAYOUT> *h) {
+    pthread_mutex_unlock(h->mut);
   }
   template<class PAGELAYOUT>
     const typename PAGELAYOUT::FMT::TUP *

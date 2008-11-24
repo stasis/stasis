@@ -636,67 +636,35 @@ void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
   Tdealloc(xid, *(recordid*)allocator_state);
 }
 
-static const recordid lsmLookup(int xid, Page *node, int depth,
-                      const byte *key, size_t keySize, lsm_comparator_t cmp) {
-
+static const recordid lsmLookup(int xid, Page *node, int depth, const byte *key,
+                                size_t keySize, lsm_comparator_t cmp) {
   if(*recordcount_ptr(node) == FIRST_SLOT) {
     return NULLRID;
   }
   assert(*recordcount_ptr(node) > FIRST_SLOT);
-
-  const lsmTreeNodeRecord *prev = readNodeRecord(xid,node,FIRST_SLOT,keySize);
-  slotid_t prev_slot = FIRST_SLOT;
-  int prev_cmp_key = cmp(prev+1,key);
-
-  // @todo binary search within each page
+  int match = FIRST_SLOT;
+  // don't need to compare w/ first item in tree.
+  const lsmTreeNodeRecord *rec = readNodeRecord(xid,node,FIRST_SLOT,keySize);
   for(int i = FIRST_SLOT+1; i < *recordcount_ptr(node); i++) {
-    const lsmTreeNodeRecord *rec = readNodeRecord(xid,node,i,keySize);
-
-    int rec_cmp_key  = cmp(rec+1,key);
-
-    if(depth) {
-
-      if(prev_cmp_key <= 0 && rec_cmp_key > 0) {
-        pageid_t child_id = prev->ptr;
-        Page *child_page = loadPage(xid, child_id);
-        readlock(child_page->rwlatch,0);
-        recordid ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
-        unlock(child_page->rwlatch);
-        releasePage(child_page);
-        return ret;
-      }
-
-    } else {
-      // XXX Doesn't handle runs of duplicates.
-      if(prev_cmp_key <= 0 && rec_cmp_key > 0) {
-        recordid ret = {node->id, prev_slot, keySize};
-        return ret;
-      }
+    rec = readNodeRecord(xid,node,i,keySize);
+    int cmpval = cmp(rec+1,key);
+    if(cmpval > 0) {
+      break;
     }
-    prev = rec;
-    prev_slot = i;
-    prev_cmp_key = rec_cmp_key;
-    if(rec_cmp_key > 0) { break; }
+    match = i;
   }
-
   if(depth) {
-    // this handles the rhs of the tree.
-    if(prev_cmp_key <= 0) {
-      pageid_t child_id = prev->ptr;
-      Page *child_page = loadPage(xid, child_id);
-      readlock(child_page->rwlatch,0);
-      recordid ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
-      unlock(child_page->rwlatch);
-      releasePage(child_page);
-      return ret;
-    }
+    pageid_t child_id = readNodeRecord(xid,node,match,keySize)->ptr;
+    Page* child_page = loadPage(xid, child_id);
+    readlock(child_page->rwlatch,0);
+    recordid ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
+    unlock(child_page->rwlatch);
+    releasePage(child_page);
+    return ret;
   } else {
-    if(prev_cmp_key <= 0) {
-      recordid ret = {node->id, prev_slot, keySize};
-      return ret;
-    }
+    recordid ret = {node->id, match, keySize};
+    return ret;
   }
-  return NULLRID;
 }
 
 static pageid_t lsmLookupLeafPageFromRid(int xid, recordid rid, size_t keySize) {
@@ -851,6 +819,11 @@ lladdIterator_t* lsmTreeIterator_openAt(int xid, recordid root, const byte* key)
   int depth = nr->ptr;
 
   recordid lsm_entry_rid = lsmLookup(xid,p,depth,key,getKeySize(xid,p),comparators[cmp_nr->ptr]);
+
+  if(lsm_entry_rid.page == NULLRID.page && lsm_entry_rid.slot == NULLRID.slot) {
+    return 0;
+  }
+  assert(lsm_entry_rid.size != INVALID_SLOT);
 
   if(root.page != lsm_entry_rid.page) {
     unlock(p->rwlatch);
