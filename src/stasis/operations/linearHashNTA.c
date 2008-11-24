@@ -395,6 +395,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
 	free(key);
 	free(value);
       }
+      TpagedListClose(xid,pit);
     } else {
       stasis_linkedList_iterator * it = TlinkedListIterator(xid, old_bucket_rid, lhh->keySize, lhh->valueSize);
       byte * key, *value;
