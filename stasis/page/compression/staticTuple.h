@@ -296,27 +296,53 @@ namespace rose {
   static void printSt(void const * const sp) {
     st const * const s = (st const * const)sp;
     printf("(");
-    if(0<N) printf("%lld",(int64_t)s->cols0_);
-    if(1<N) printf(", %lld",(int64_t)s->cols1_);
-    if(2<N) printf(", %lld",(int64_t)s->cols2_);
-    if(3<N) printf(", %lld",(int64_t)s->cols3_);
-    if(4<N) printf(", %lld",(int64_t)s->cols4_);
-    if(5<N) printf(", %lld",(int64_t)s->cols5_);
-    if(6<N) printf(", %lld",(int64_t)s->cols6_);
-    if(7<N) printf(", %lld",(int64_t)s->cols7_);
-    if(8<N) printf(", %lld",(int64_t)s->cols8_);
-    if(9<N) printf(", %lld",(int64_t)s->cols9_);
-    if(10<N) printf(", %lld",(int64_t)s->cols10_);
-    if(11<N) printf(", %lld",(int64_t)s->cols11_);
-    if(12<N) printf(", %lld",(int64_t)s->cols12_);
-    if(13<N) printf(", %lld",(int64_t)s->cols13_);
-    if(14<N) printf(", %lld",(int64_t)s->cols14_);
-    if(15<N) printf(", %lld",(int64_t)s->cols15_);
-    if(16<N) printf(", %lld",(int64_t)s->cols16_);
-    if(17<N) printf(", %lld",(int64_t)s->cols17_);
-    if(18<N) printf(", %lld",(int64_t)s->cols18_);
-    if(19<N) printf(", %lld",(int64_t)s->cols19_);
+    if(0<N) printf("%lld",   (long long)s->cols0_);
+    if(1<N) printf(", %lld", (long long)s->cols1_);
+    if(2<N) printf(", %lld", (long long)s->cols2_);
+    if(3<N) printf(", %lld", (long long)s->cols3_);
+    if(4<N) printf(", %lld", (long long)s->cols4_);
+    if(5<N) printf(", %lld", (long long)s->cols5_);
+    if(6<N) printf(", %lld", (long long)s->cols6_);
+    if(7<N) printf(", %lld", (long long)s->cols7_);
+    if(8<N) printf(", %lld", (long long)s->cols8_);
+    if(9<N) printf(", %lld", (long long)s->cols9_);
+    if(10<N) printf(", %lld",(long long)s->cols10_);
+    if(11<N) printf(", %lld",(long long)s->cols11_);
+    if(12<N) printf(", %lld",(long long)s->cols12_);
+    if(13<N) printf(", %lld",(long long)s->cols13_);
+    if(14<N) printf(", %lld",(long long)s->cols14_);
+    if(15<N) printf(", %lld",(long long)s->cols15_);
+    if(16<N) printf(", %lld",(long long)s->cols16_);
+    if(17<N) printf(", %lld",(long long)s->cols17_);
+    if(18<N) printf(", %lld",(long long)s->cols18_);
+    if(19<N) printf(", %lld",(long long)s->cols19_);
     printf(")");
+  }
+
+  static void printErrSt(void const * const sp) {
+    st const * const s = (st const * const)sp;
+    fprintf(stderr, "(");
+    if(0<N) fprintf(stderr, "%lld",   (long long)s->cols0_);
+    if(1<N) fprintf(stderr, ", %lld", (long long)s->cols1_);
+    if(2<N) fprintf(stderr, ", %lld", (long long)s->cols2_);
+    if(3<N) fprintf(stderr, ", %lld", (long long)s->cols3_);
+    if(4<N) fprintf(stderr, ", %lld", (long long)s->cols4_);
+    if(5<N) fprintf(stderr, ", %lld", (long long)s->cols5_);
+    if(6<N) fprintf(stderr, ", %lld", (long long)s->cols6_);
+    if(7<N) fprintf(stderr, ", %lld", (long long)s->cols7_);
+    if(8<N) fprintf(stderr, ", %lld", (long long)s->cols8_);
+    if(9<N) fprintf(stderr, ", %lld", (long long)s->cols9_);
+    if(10<N) fprintf(stderr, ", %lld",(long long)s->cols10_);
+    if(11<N) fprintf(stderr, ", %lld",(long long)s->cols11_);
+    if(12<N) fprintf(stderr, ", %lld",(long long)s->cols12_);
+    if(13<N) fprintf(stderr, ", %lld",(long long)s->cols13_);
+    if(14<N) fprintf(stderr, ", %lld",(long long)s->cols14_);
+    if(15<N) fprintf(stderr, ", %lld",(long long)s->cols15_);
+    if(16<N) fprintf(stderr, ", %lld",(long long)s->cols16_);
+    if(17<N) fprintf(stderr, ", %lld",(long long)s->cols17_);
+    if(18<N) fprintf(stderr, ", %lld",(long long)s->cols18_);
+    if(19<N) fprintf(stderr, ", %lld",(long long)s->cols19_);
+    fprintf(stderr, ")\n");
   }
   static inline int noisycmp(const void *ap, const void *bp) {
     st const * const a = (st const * const)ap;

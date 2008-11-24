@@ -244,15 +244,6 @@ class treeIterator {
     }
   }
  public:
-  explicit treeIterator(recordid tree, ROW &scratch, int keylen) :
-    tree_(tree),
-    scratch_(scratch),
-    keylen_(keylen),
-    lsmIterator_(lsmTreeIterator_open(-1,tree)),
-    slot_(0)
-  {
-    init_helper();
-  }
     //  typedef recordid handle;
     class treeIteratorHandle {
     public:
@@ -260,7 +251,7 @@ class treeIterator {
       treeIteratorHandle(const recordid r) : r_(r) {}
       /*      const treeIteratorHandle & operator=(const recordid *r) {
 	r_ = *r;
-	return this;
+	return thisopenat;
 	} */
       treeIteratorHandle * operator=(const recordid &r) {
 	r_ = r;
@@ -270,6 +261,27 @@ class treeIterator {
      recordid r_;
     };
     typedef treeIteratorHandle* handle;
+  explicit treeIterator(treeIteratorHandle* tree, ROW& key) :
+    tree_(tree?tree->r_:NULLRID),
+    scratch_(),
+    keylen_(ROW::sizeofBytes()),
+    lsmIterator_(lsmTreeIterator_openAt(-1,tree?tree->r_:NULLRID,key.toByteArray())),
+    slot_(0)
+  {
+    init_helper();
+    treeIterator * end = this->end();
+    for(;*this != *end && **this < key; ++(*this)) { }
+    delete end;
+  }
+  explicit treeIterator(recordid tree, ROW &scratch, int keylen) :
+    tree_(tree),
+    scratch_(scratch),
+    keylen_(keylen),
+    lsmIterator_(lsmTreeIterator_open(-1,tree)),
+    slot_(0)
+  {
+    init_helper();
+  }
   explicit treeIterator(recordid tree) :
     tree_(tree),
       scratch_(),
@@ -609,13 +621,12 @@ class versioningIterator {
  */
  template<class SET,class ROW> class stlSetIterator {
  private:
-   typedef typename SET::iterator STLITER;
+   typedef typename SET::const_iterator STLITER;
  public:
    typedef SET * handle;
 
    stlSetIterator( SET * s ) : it_(s->begin()), itend_(s->end()) {}
    stlSetIterator( STLITER& it, STLITER& itend ) : it_(it), itend_(itend) {}
-
    explicit stlSetIterator(stlSetIterator &i) : it_(i.it_), itend_(i.itend_){}
    const ROW& operator* () { return *it_; }
 

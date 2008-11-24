@@ -426,7 +426,7 @@ namespace rose {
     bool * input_needed;
     typename std::set
       <typename PAGELAYOUT::FMT::TUP,
-      typename PAGELAYOUT::FMT::TUP::stl_cmp> * scratch_handle;
+      typename PAGELAYOUT::FMT::TUP::stl_cmp> * scratch_tree;
     pthread_mutex_t * mut;
     pthread_cond_t * input_ready_cond;
     pthread_cond_t * input_needed_cond;
@@ -512,7 +512,7 @@ namespace rose {
 
     ret->input_handle = block0_scratch;
     ret->input_needed = block0_needed;
-    ret->scratch_handle = new typeof(*ret->scratch_handle);
+    ret->scratch_tree = new typeof(*ret->scratch_tree);
 
     ret->mut = block_ready_mut;
 
@@ -622,13 +622,13 @@ namespace rose {
       gettimeofday(&stop_tv,0);
       stop = tv_to_double(stop_tv);
 
-      typeof(h->scratch_handle)* tmp_ptr
-	= (typeof(h->scratch_handle)*) malloc(sizeof(void*));
-      *tmp_ptr = h->scratch_handle;
+      typeof(h->scratch_tree)* tmp_ptr
+	= (typeof(h->scratch_tree)*) malloc(sizeof(void*));
+      *tmp_ptr = h->scratch_tree;
       *(h->input_handle) = tmp_ptr;
 
       pthread_cond_signal(h->input_ready_cond);
-      h->scratch_handle = new typeof(*h->scratch_handle);
+      h->scratch_tree = new typeof(*h->scratch_tree);
 
       pthread_mutex_unlock(h->mut);
 
@@ -645,7 +645,7 @@ namespace rose {
   template<class PAGELAYOUT>
     void TlsmTableStop( lsmTableHandle<PAGELAYOUT> * h) {
     TlsmTableFlush(h);
-    delete(h->scratch_handle);
+    delete(h->scratch_tree);
     *(h->still_open) = 0;
     pthread_join(h->merge1_thread,0);
     pthread_join(h->merge2_thread,0);
@@ -665,9 +665,9 @@ namespace rose {
       assert(*((char*)t.get(i)) || *((char*)t.get(i))+1);
       } */
 
-    h->scratch_handle->insert(t);
+    h->scratch_tree->insert(t);
 
-    uint64_t handleBytes = h->scratch_handle->size() * (RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
+    uint64_t handleBytes = h->scratch_tree->size() * (RB_TREE_OVERHEAD + PAGELAYOUT::FMT::TUP::sizeofBytes());
     //XXX  4 = estimated compression ratio.
     uint64_t inputSizeThresh = (4 * PAGE_SIZE * *h->input_size); // / (PAGELAYOUT::FMT::TUP::sizeofBytes());
     uint64_t memSizeThresh = MEM_SIZE;
@@ -692,7 +692,7 @@ namespace rose {
 #endif
        handleBytes > memSizeThresh ) ) { // XXX ok?
       printf("Handle mbytes %lld (%lld) Input size: %lld input size thresh: %lld mbytes mem size thresh: %lld\n",
-	     (long long) handleBytes / (1024*1024), (long long) h->scratch_handle->size(), (long long) *h->input_size,
+	     (long long) handleBytes / (1024*1024), (long long) h->scratch_tree->size(), (long long) *h->input_size,
 	     (long long) inputSizeThresh / (1024*1024), (long long) memSizeThresh / (1024*1024));
       TlsmTableFlush<PAGELAYOUT>(h);
     }
@@ -759,8 +759,8 @@ namespace rose {
     //    while(it2 != *it2end) { *it2; ++it2; ret++;}
 
 
-      RB_ITER it4(*h->args2->in_tree ? (**h->args2->in_tree)->begin() : h->scratch_handle->end());
-      RB_ITER it4end(*h->args2->in_tree ? (**h->args2->in_tree)->end() : h->scratch_handle->end());
+      RB_ITER it4(*h->args2->in_tree ? (**h->args2->in_tree)->begin() : h->scratch_tree->end());
+      RB_ITER it4end(*h->args2->in_tree ? (**h->args2->in_tree)->end() : h->scratch_tree->end());
 
     //    while(it4 != it4end) { *it4; ++it4; ret++; }
 
@@ -774,8 +774,8 @@ namespace rose {
 
     //    while(it3 != *it3end) { *it3; ++it3; ret++; }
 
-      RB_ITER  it5 = h->scratch_handle->begin();
-      RB_ITER  it5end = h->scratch_handle->end();
+      RB_ITER  it5 = h->scratch_tree->begin();
+      RB_ITER  it5end = h->scratch_tree->end();
 
     //    while(it5 != it5end) { *it5; ++it5; ret++; }
 
@@ -828,14 +828,57 @@ namespace rose {
     typename std::set
       <typename PAGELAYOUT::FMT::TUP,
        typename PAGELAYOUT::FMT::TUP::stl_cmp>::iterator i =
-      h->scratch_handle->find(val);
-    if(i != h->scratch_handle->end()) {
+      h->scratch_tree->find(val);
+    if(i != h->scratch_tree->end()) {
       scratch = *i;
       pthread_mutex_unlock(h->mut);
       return &scratch;
     }
     pthread_mutex_unlock(h->mut);
     return 0;
+  }
+  template<class PAGELAYOUT>
+    void**
+    TlsmTableFindGTE(int xid, lsmTableHandle<PAGELAYOUT> *h,
+                     typename PAGELAYOUT::FMT::TUP &val) {
+
+    //    typedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
+    typedef stlSetIterator<typename std::set<typename PAGELAYOUT::FMT::TUP,
+                                             typename PAGELAYOUT::FMT::TUP::stl_cmp>,
+                           typename PAGELAYOUT::FMT::TUP> RB_ITER;
+
+    typedef std::set<typename PAGELAYOUT::FMT::TUP,
+                     typename PAGELAYOUT::FMT::TUP::stl_cmp> RB_SET;
+
+    typedef treeIterator<typename PAGELAYOUT::FMT::TUP,
+      typename PAGELAYOUT::FMT> LSM_ITER;
+
+    typename RB_SET::const_iterator * c0 = h->scratch_tree ?
+      new typename RB_SET::const_iterator(h->scratch_tree->lower_bound(val))
+    : 0;
+    typename RB_SET::const_iterator * c0p = *h->args2->in_tree ?
+      new typename RB_SET::const_iterator((**h->args2->in_tree)->lower_bound(val))
+    : 0;
+
+    LSM_ITER* c1 = new LSM_ITER( h->args2->my_tree                            , val);
+    LSM_ITER* c1p = new LSM_ITER(*h->args1->in_tree ? **h->args1->in_tree : 0 , val);
+    LSM_ITER* c2 = new LSM_ITER( h->args1->my_tree                            , val);
+
+    void ** ret = (void**)malloc(10 * sizeof(void*));
+
+    ret[0] = c0;
+    ret[1] = c0p;
+    ret[2] = c1;
+    ret[3] = c1p;
+    ret[4] = c2;
+
+    ret[5] = c0  ? new typename RB_SET::const_iterator(h->scratch_tree->end())       : 0;
+    ret[6] = c0p ? new typename RB_SET::const_iterator((**h->args2->in_tree)->end()) : 0;
+    ret[7] = c1->end();
+    ret[8] = c1p->end();
+    ret[9] = c2->end();
+
+    return ret;
   }
   template<class PAGELAYOUT>
     const typename PAGELAYOUT::FMT::TUP *
@@ -847,13 +890,13 @@ namespace rose {
     typename std::set
       <typename PAGELAYOUT::FMT::TUP,
        typename PAGELAYOUT::FMT::TUP::stl_cmp>::iterator i =
-      h->scratch_handle->find(val);
-    if(i != h->scratch_handle->end()) {
+      h->scratch_tree->find(val);
+    if(i != h->scratch_tree->end()) {
       scratch = *i;
       pthread_mutex_unlock(h->mut);
       return &scratch;
     }
-    DEBUG("Not in scratch_handle\n");
+    DEBUG("Not in scratch_tree\n");
     if(*h->args2->in_tree) {
       i = (**h->args2->in_tree)->find(val);
       if(i != (**h->args2->in_tree)->end()) {

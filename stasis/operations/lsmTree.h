@@ -121,8 +121,13 @@ typedef struct lsmIteratorImpl {
 
    @see iterator.h for documentation of lsmTree's iterator interface.
 */
-lladdIterator_t * lsmTreeIterator_open(int xid, recordid tree);
+lladdIterator_t* lsmTreeIterator_open(int xid, recordid tree);
+/**
+   Return a forward iterator over the tree's leaf pages, starting
+   on the given page.
 
+ */
+lladdIterator_t* lsmTreeIterator_openAt(int xid, recordid tree, const byte* key);
 /*
    These are the functions that implement lsmTree's iterator.
 

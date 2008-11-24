@@ -636,13 +636,16 @@ void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
   Tdealloc(xid, *(recordid*)allocator_state);
 }
 
-static pageid_t lsmLookup(int xid, Page *node, int depth,
+static const recordid lsmLookup(int xid, Page *node, int depth,
                       const byte *key, size_t keySize, lsm_comparator_t cmp) {
 
-  if(*recordcount_ptr(node) == FIRST_SLOT) { return -1; }
+  if(*recordcount_ptr(node) == FIRST_SLOT) {
+    return NULLRID;
+  }
   assert(*recordcount_ptr(node) > FIRST_SLOT);
 
   const lsmTreeNodeRecord *prev = readNodeRecord(xid,node,FIRST_SLOT,keySize);
+  slotid_t prev_slot = FIRST_SLOT;
   int prev_cmp_key = cmp(prev+1,key);
 
   // @todo binary search within each page
@@ -657,7 +660,7 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
         pageid_t child_id = prev->ptr;
         Page *child_page = loadPage(xid, child_id);
         readlock(child_page->rwlatch,0);
-        long ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
+        recordid ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
         unlock(child_page->rwlatch);
         releasePage(child_page);
         return ret;
@@ -666,10 +669,12 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
     } else {
       // XXX Doesn't handle runs of duplicates.
       if(prev_cmp_key <= 0 && rec_cmp_key > 0) {
-        return prev->ptr;
+        recordid ret = {node->id, prev_slot, keySize};
+        return ret;
       }
     }
     prev = rec;
+    prev_slot = i;
     prev_cmp_key = rec_cmp_key;
     if(rec_cmp_key > 0) { break; }
   }
@@ -680,17 +685,30 @@ static pageid_t lsmLookup(int xid, Page *node, int depth,
       pageid_t child_id = prev->ptr;
       Page *child_page = loadPage(xid, child_id);
       readlock(child_page->rwlatch,0);
-      long ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
+      recordid ret = lsmLookup(xid,child_page,depth-1,key,keySize,cmp);
       unlock(child_page->rwlatch);
       releasePage(child_page);
       return ret;
     }
   } else {
     if(prev_cmp_key <= 0) {
-      return prev->ptr;
+      recordid ret = {node->id, prev_slot, keySize};
+      return ret;
     }
   }
-  return -1;
+  return NULLRID;
+}
+
+static pageid_t lsmLookupLeafPageFromRid(int xid, recordid rid, size_t keySize) {
+  pageid_t pid = -1;
+  if(rid.page != NULLRID.page || rid.slot != NULLRID.slot) {
+    Page * p2 = loadPage(xid, rid.page);
+    readlock(p2->rwlatch,0);
+    pid = readNodeRecord(xid,p2,rid.slot,keySize)->ptr;
+    unlock(p2->rwlatch);
+    releasePage(p2);
+  }
+  return pid;
 }
 
 /**
@@ -714,8 +732,8 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
 
   lsm_comparator_t cmp = comparators[cmp_nr->ptr];
 
-  pageid_t ret = lsmLookup(xid, p, depth, key, keySize, cmp);
-
+  recordid rid = lsmLookup(xid, p, depth, key, keySize, cmp);
+  pageid_t ret = lsmLookupLeafPageFromRid(xid,rid,keySize);
   unlock(p->rwlatch);
   releasePage(p);
 
@@ -790,7 +808,7 @@ page_impl lsmRootImpl() {
 }
 ///---------------------  Iterator implementation
 
-lladdIterator_t *lsmTreeIterator_open(int xid, recordid root) {
+lladdIterator_t* lsmTreeIterator_open(int xid, recordid root) {
   if(root.page == 0 && root.slot == 0 && root.size == -1) { return 0; }
   Page *p = loadPage(xid,root.page);
   readlock(p->rwlatch,0);
@@ -820,17 +838,42 @@ lladdIterator_t *lsmTreeIterator_open(int xid, recordid root) {
   lladdIterator_t *it = malloc(sizeof(lladdIterator_t));
   it->type = -1; // XXX  LSM_TREE_ITERATOR;
   it->impl = impl;
-  /*  itdef = {   <-- @todo register lsmTree iterators with stasis someday...
-    lsmTreeIterator_close;
-    lsmTreeIterator_next;
-    lsmTreeIterator_next;
-    lsmTreeIterator_key;
-    lsmTreeIterator_value;
-    lsmTreeIterator_tupleDone;
-    lsmTreeIterator_releaseLock;
-    } */
   return it;
 }
+lladdIterator_t* lsmTreeIterator_openAt(int xid, recordid root, const byte* key) {
+  if(root.page == NULLRID.page && root.slot == NULLRID.slot) return 0;
+  Page *p = loadPage(xid,root.page);
+  readlock(p->rwlatch,0);
+  size_t keySize = getKeySize(xid,p);
+  const lsmTreeNodeRecord *nr = readNodeRecord(xid,p,DEPTH,keySize);
+  const lsmTreeNodeRecord *cmp_nr = readNodeRecord(xid, p , COMPARATOR, keySize);
+
+  int depth = nr->ptr;
+
+  recordid lsm_entry_rid = lsmLookup(xid,p,depth,key,getKeySize(xid,p),comparators[cmp_nr->ptr]);
+
+  if(root.page != lsm_entry_rid.page) {
+    unlock(p->rwlatch);
+    releasePage(p);
+    p = loadPage(xid,lsm_entry_rid.page);
+    readlock(p->rwlatch,0);
+  }
+  lsmIteratorImpl *impl = malloc(sizeof(lsmIteratorImpl));
+  impl->p = p;
+
+  impl->current.page = lsm_entry_rid.page;
+  impl->current.slot = lsm_entry_rid.slot - 1;  // slot before thing of interest
+  impl->current.size = lsm_entry_rid.size;
+
+  impl->t = 0; // value doesn't matter; will be overwritten by next()
+  impl->justOnePage = (depth==0);
+
+  lladdIterator_t *it = malloc(sizeof(lladdIterator_t));
+  it->type = -1; // XXX LSM_TREE_ITERATOR
+  it->impl = impl;
+  return it;
+}
+
 lladdIterator_t *lsmTreeIterator_copy(int xid, lladdIterator_t* i) {
   lsmIteratorImpl *it = i->impl;
   lsmIteratorImpl *mine = malloc(sizeof(lsmIteratorImpl));
