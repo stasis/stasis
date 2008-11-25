@@ -165,7 +165,7 @@ int main(int argc, char ** argv) {
     gettimeofday(&tv, NULL);
     srandom(tv.tv_usec);
     if(!silent) {
-      printf("Seed: %ld\n", tv.tv_usec);
+      printf("Seed: %lld\n", (long long)tv.tv_usec);
     }
   } else {
     srandom(seed);

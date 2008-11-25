@@ -636,7 +636,7 @@ void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
   Tdealloc(xid, *(recordid*)allocator_state);
 }
 
-static const recordid lsmLookup(int xid, Page *node, int depth,
+static recordid lsmLookup(int xid, Page *node, int depth,
                       const byte *key, size_t keySize, lsm_comparator_t cmp) {
 
   if(*recordcount_ptr(node) == FIRST_SLOT) {

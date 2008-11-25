@@ -1,5 +1,6 @@
 SUBDIRS(lang)
 ADD_LIBRARY(referential algebra.c dml.c ddl.c tuple.c lang/ast.c)
+TARGET_LINK_LIBRARIES(referential ${COMMON_LIBRARIES})
 SET(COMMON_LIBRARIES referential refparse ${COMMON_LIBRARIES})
 IF(CHECK_LIBRARY)
   CREATE_CHECK_OPT(toplevel ${CMAKE_CURRENT_SOURCE_DIR}/test-script.ref)
