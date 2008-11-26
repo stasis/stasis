@@ -365,6 +365,7 @@ class StaticMulticolumn {
    abort();
    } */
  inline TUPLE * recordFind(int xid, TUPLE& val, TUPLE& scratch) {
+   assertlocked(p_->rwlatch);
    std::pair<slot_index_t,slot_index_t> pair_scratch;
    std::pair<slot_index_t,slot_index_t> * ret;
    //   printf("static multiclumn record find\n"); fflush(stdout);
@@ -439,6 +440,7 @@ class StaticMulticolumn {
  }
 
   inline void pack() {
+    assertlocked(p_->rwlatch);
 #ifdef PACK_STATS
     if(pack_first) {
       pack_exceptionBytes = 0;
