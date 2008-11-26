@@ -111,7 +111,7 @@ typedef struct lsmTreeNodeRecord {
 typedef struct lsmIteratorImpl {
   Page * p;
   recordid current;
-  const lsmTreeNodeRecord *t;
+  lsmTreeNodeRecord *t;
   int justOnePage;
 } lsmIteratorImpl;
 
