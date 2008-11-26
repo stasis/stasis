@@ -906,8 +906,9 @@ int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
     impl->current.size = keySize;
   }
   if(impl->current.size != INVALID_SLOT) {
-    impl->t = malloc(sizeof(*impl->t));
-    *impl->t = *readNodeRecord(xid,impl->p,impl->current.slot,impl->current.size);
+    size_t sz = sizeof(*impl->t) + impl->current.size;
+    impl->t = malloc(sz);
+    memcpy(impl->t, readNodeRecord(xid,impl->p,impl->current.slot,impl->current.size), sz);
     return 1;
   } else {
     free(impl->t);
