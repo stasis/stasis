@@ -239,6 +239,7 @@ class treeIterator {
       lsmTreeIterator_value(-1,lsmIterator_,(byte**)hack);
       pageid_ = *pid_tmp;
       p_ = loadPage(-1,pageid_);
+      readlock(p_->rwlatch,0);
       currentPage_ = (PAGELAYOUT*)p_->impl;
       assert(currentPage_);
     }
@@ -314,12 +315,14 @@ class treeIterator {
     pageid_(t.pageid_),
     p_((Page*)((t.p_)?loadPage(-1,t.p_->id):0)),
     currentPage_((PAGELAYOUT*)((p_)?p_->impl:0)) {
+      if(p_) { readlock(p_->rwlatch,0); }
   }
   ~treeIterator() {
     if(lsmIterator_) {
       lsmTreeIterator_close(-1, lsmIterator_);
     }
     if(p_) {
+      unlock(p_->rwlatch);
       releasePage(p_);
       p_ = 0;
     }
@@ -329,6 +332,7 @@ class treeIterator {
     ROW* readTuple = currentPage_->recordRead(-1,slot_, &scratch_);
 
     if(!readTuple) {
+      unlock(p_->rwlatch);
       releasePage(p_);
       p_=0;
       if(lsmTreeIterator_next(-1,lsmIterator_)) {
@@ -339,7 +343,7 @@ class treeIterator {
         lsmTreeIterator_value(-1,lsmIterator_,(byte**)hack);
         pageid_ = *pid_tmp;
         p_ = loadPage(-1,pageid_);
-
+        readlock(p_->rwlatch,0);
         currentPage_ = (PAGELAYOUT*)p_->impl;
 
         readTuple = currentPage_->recordRead(-1,slot_, &scratch_);
@@ -378,6 +382,7 @@ class treeIterator {
       return t;
     }
     if(t->p_) {
+      unlock(t->p_->rwlatch);
       releasePage(t->p_);
       t->p_=0;
     }
@@ -387,9 +392,11 @@ class treeIterator {
     if(pid != -1) {
       t->pageid_= pid;
       Page * p = loadPage(-1, t->pageid_);
+      readlock(p->rwlatch,0);
       PAGELAYOUT * lastPage = (PAGELAYOUT*)p->impl;
       t->slot_ = 0;
       while(lastPage->recordRead(-1,t->slot_,&scratch_)) { t->slot_++; }
+      unlock(p->rwlatch);
       releasePage(p);
     } else {
       // begin == end already; we're done.
