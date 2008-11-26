@@ -53,12 +53,13 @@ class Rle {
            in a XID implies that the page has just been allocated.
     @param mem A pointer to the buffer manager's copy of the Rle page.
   */
-  Rle(int xid, void * mem): mem_(mem), last_(0) {
+ Rle(int xid, void * mem): mem_(mem), last_(0) {
     *block_count_ptr() = 1;
     triple_t * n = last_block_ptr();
     n->index = 0;
     n->copies = 0;
     n->data = 0;
+    pthread_mutex_init(&last_mut_,0);
   }
   inline slot_index_t recordCount() {
     triple_t *n = last_block_ptr();
@@ -68,10 +69,17 @@ class Rle {
      This constructor is called when existing RLE data is read from
      disk.
   */
-  Rle(void * mem): mem_(mem), last_(0) { }
+  Rle(void * mem): mem_(mem), last_(0) {
+    pthread_mutex_init(&last_mut_,0);
+ }
 
-  Rle() : mem_(0), last_(0) {}
+  Rle() : mem_(0), last_(0) {
+    pthread_mutex_init(&last_mut_,0);
+  }
 
+  ~Rle() {
+    pthread_mutex_destroy(&last_mut_);
+  }
   /**
       @see For::bytes_used();
   */
@@ -126,6 +134,7 @@ class Rle {
   }
   void * mem_;
   block_index_t last_;
+  pthread_mutex_t last_mut_;
 };
 
 } // namespace rose

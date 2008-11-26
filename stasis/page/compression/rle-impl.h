@@ -59,16 +59,19 @@ template <class TYPE,class COUNT_TYPE>
 inline TYPE *
 Rle<TYPE,COUNT_TYPE>::recordRead(int xid, slot_index_t slot, byte* exceptions,
                       TYPE * scratch) {
+  pthread_mutex_lock(&last_mut_);
   block_index_t n =  nth_block_ptr(last_)->index <= slot ? last_ : 0;
   do {
     triple_t * t = nth_block_ptr(n);
     if (t->index <= slot && t->index + t->copies > slot) {
       *scratch = t->data;
       last_ = n;
+      pthread_mutex_unlock(&last_mut_);
       return scratch;
     }
     n++;
   } while (n < *block_count_ptr());
+  pthread_mutex_unlock(&last_mut_);
   return 0;
 }
 #ifndef COMPRESSION_BINARY_FIND
