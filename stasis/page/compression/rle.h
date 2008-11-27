@@ -46,20 +46,26 @@ class Rle {
     recordFind(int xid, slot_index_t start, slot_index_t stop,
 	       byte *exceptions, TYPE value,
 	       std::pair<slot_index_t,slot_index_t>& scratch);
-  /**
+ void init_getspecific() {
+   //   int ret =pthread_key_create(&last_key_, 0);
+   //   assert(!ret);
+ }
+
+ /**
     This constructor initializes a new Rle region.
 
     @param xid the transaction that created the new region.  Passing
            in a XID implies that the page has just been allocated.
     @param mem A pointer to the buffer manager's copy of the Rle page.
   */
- Rle(int xid, void * mem): mem_(mem), last_(0) {
+ Rle(int xid, void * mem): mem_(mem) {
     *block_count_ptr() = 1;
     triple_t * n = last_block_ptr();
     n->index = 0;
     n->copies = 0;
     n->data = 0;
-    pthread_mutex_init(&last_mut_,0);
+    init_getspecific();
+    //    pthread_mutex_init(&last_mut_,0);
   }
   inline slot_index_t recordCount() {
     triple_t *n = last_block_ptr();
@@ -69,16 +75,16 @@ class Rle {
      This constructor is called when existing RLE data is read from
      disk.
   */
-  Rle(void * mem): mem_(mem), last_(0) {
-    pthread_mutex_init(&last_mut_,0);
+  Rle(void * mem): mem_(mem) {
+    init_getspecific();
  }
 
-  Rle() : mem_(0), last_(0) {
-    pthread_mutex_init(&last_mut_,0);
+  Rle() : mem_(0) {
+    init_getspecific();
   }
 
   ~Rle() {
-    pthread_mutex_destroy(&last_mut_);
+    //    pthread_key_delete(last_key_);
   }
   /**
       @see For::bytes_used();
@@ -89,7 +95,9 @@ class Rle {
 
   inline void init_mem(void * mem) {
     mem_=mem;
-    last_=0;
+    //    pthread_key_delete(last_key_); // need to set to zero in all threads....
+    //    int ret = pthread_key_create(&last_key_,0);
+    //    assert(!ret);
     *block_count_ptr() = 1;
     triple_t * n = nth_block_ptr(0);
     n->index = 0;
@@ -99,7 +107,9 @@ class Rle {
 
   inline void mem(void * mem) {
     mem_=mem;
-    last_=0;
+    //    pthread_key_delete(last_key_); // need to set to zero in all threads....
+    //    int ret = pthread_key_create(&last_key_,0);
+    //    assert(!ret);
   }
  private:
   inline TYPE offset() { return nth_block_ptr(0)->dat; }
@@ -133,8 +143,9 @@ class Rle {
     return nth_block_ptr(*block_count_ptr());
   }
   void * mem_;
-  block_index_t last_;
-  pthread_mutex_t last_mut_;
+ //  block_index_t last_;
+ //  pthread_mutex_t last_mut_;
+ // pthread_key_t last_key_;
 };
 
 } // namespace rose
