@@ -2,6 +2,10 @@
 #include <stasis/flags.h>
 #include <stasis/constants.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #ifdef BUFFER_MANAGER_TYPE
 int bufferManagerType = BUFFER_MANAGER_TYPE;
 #else
@@ -36,4 +40,29 @@ int stasis_suppress_unclean_shutdown_warnings = 0;
 int stasis_truncation_automatic = STASIS_TRUNCATION_AUTOMATIC;
 #else
 int stasis_truncation_automatic = 1;
+#endif
+
+#ifdef STASIS_LOG_FILE_NAME
+char * stasis_log_file_name = STASIS_LOG_FILE_NAME;
+#else
+char * stasis_log_file_name = "logfile.txt";
+#endif
+
+#ifdef STASIS_STORE_FILE_NAME
+char * stasis_store_file_name = STASIS_STORE_FILE_NAME;
+#else
+char * stasis_store_file_name = "storefile.txt";
+#endif
+
+#ifdef STASIS_LOG_FILE_MODE
+int stasis_log_file_mode = STASIS_LOG_FILE_MODE;
+#else
+int stasis_log_file_mode = (O_CREAT | O_RDWR | O_SYNC);
+#endif
+
+#ifdef STASIS_LOG_FILE_PERMISSIONS
+int stasis_log_file_permissions = STASIS_LOG_FILE_PERMISSIONS;
+#else
+int stasis_log_file_permissions = (S_IRUSR | S_IWUSR | S_IRGRP|
+                                   S_IWGRP | S_IROTH | S_IWOTH);
 #endif

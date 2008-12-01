@@ -165,11 +165,11 @@ lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
   return ret;
 }
 
-static void groupForce(stasis_log_t* log, lsn_t lsn);
+static void groupCommit(stasis_log_t* log, lsn_t lsn);
 
 lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l) {
   lsn_t lsn = LogTransCommon(log, l, XCOMMIT);
-  groupForce(log, lsn);
+  groupCommit(log, lsn);
   return lsn;
 }
 
@@ -178,15 +178,22 @@ lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l) {
 }
 lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l) {
   lsn_t lsn = LogTransCommonPrepare(log, l);
-  groupForce(log, lsn);
+  groupCommit(log, lsn);
   return lsn;
 }
 
-void LogForce(stasis_log_t* log, lsn_t lsn) {
-  groupForce(log, lsn);
+void LogForce(stasis_log_t* log, lsn_t lsn,
+              stasis_log_force_mode_t mode) {
+  if(mode == LOG_FORCE_COMMIT) {
+    groupCommit(log, lsn);
+  } else {
+    if(log->first_unstable_lsn(log,mode) >= lsn) {
+      log->force_tail(log,mode);
+    }
+  }
 }
 
-static void groupForce(stasis_log_t* log, lsn_t lsn) {
+static void groupCommit(stasis_log_t* log, lsn_t lsn) {
   static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
   static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
 
@@ -194,7 +201,7 @@ static void groupForce(stasis_log_t* log, lsn_t lsn) {
   struct timespec timeout;
 
   pthread_mutex_lock(&check_commit);
-  if(log->first_unstable_lsn(log) >= lsn) {
+  if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
     pthread_mutex_unlock(&check_commit);
     return;
   }
@@ -220,19 +227,19 @@ static void groupForce(stasis_log_t* log, lsn_t lsn) {
                __FILE__, __LINE__);
 	break;
       }
-      if(log->first_unstable_lsn(log) >= lsn) {
+      if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
 	pendingCommits--;
 	pthread_mutex_unlock(&check_commit);
 	return;
       }
     }
   }
-  if(log->first_unstable_lsn(log) < lsn) {
-    log->force_tail(log);
-    assert(log->first_unstable_lsn(log) >= lsn);
+  if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) <= lsn) {
+    log->force_tail(log, LOG_FORCE_COMMIT);
+    assert(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn);
     pthread_cond_broadcast(&tooFewXacts);
   }
-  assert(log->first_unstable_lsn(log) >= lsn);
+  assert(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn);
   pendingCommits--;
   pthread_mutex_unlock(&check_commit);
   return;

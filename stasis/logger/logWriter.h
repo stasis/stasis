@@ -82,7 +82,9 @@ BEGIN_C_DECLS
 
    @return NULL on error
 */
-stasis_log_t* openLogWriter();
+stasis_log_t* openLogWriter(const char * filename,
+                            int filemode,
+                            int fileperm);
 
 /**
   Actually deletes the log file that may have been written to disk! Danger!!

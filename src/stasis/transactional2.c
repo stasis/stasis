@@ -141,7 +141,9 @@ int Tinit() {
         setupOperationsTable();
 	dirtyPagesInit();
         if(LOG_TO_FILE == loggerType) {
-          stasis_log_file = openLogWriter();
+          stasis_log_file = openLogWriter(stasis_log_file_name,
+                                          stasis_log_file_mode,
+                                          stasis_log_file_permissions);
         } else if(LOG_TO_MEMORY == loggerType) {
           stasis_log_file = open_InMemoryLog();
         } else {
@@ -172,7 +174,7 @@ int Tinit() {
         switch(bufferManagerFileHandleType) {
           case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
             struct sf_args * slow_arg = malloc(sizeof(sf_args));
-            slow_arg->filename = STORE_FILE;
+            slow_arg->filename = stasis_store_file_name;
 
 	    slow_arg->openMode = openMode;
 
@@ -203,12 +205,14 @@ int Tinit() {
           } break;
 	  case BUFFER_MANAGER_FILE_HANDLE_FILE: {
 	    stasis_handle_t * pageFile =
-	      stasis_handle_open_file(0, STORE_FILE, openMode, FILE_PERM);
+	      stasis_handle_open_file(0, stasis_store_file_name,
+                                      openMode, FILE_PERM);
 	    pageHandleOpen(pageFile);
 	  } break;
 	  case BUFFER_MANAGER_FILE_HANDLE_PFILE: {
 	    stasis_handle_t * pageFile =
-	      stasis_handle_open_pfile(0, STORE_FILE, openMode, FILE_PERM);
+	      stasis_handle_open_pfile(0, stasis_store_file_name,
+                                       openMode, FILE_PERM);
 	    pageHandleOpen(pageFile);
 	  } break;
 	  case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: { 

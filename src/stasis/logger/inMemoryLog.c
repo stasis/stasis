@@ -42,11 +42,12 @@ static int writeLogEntry_InMemoryLog(stasis_log_t * log, LogEntry *e) {
   unlock(flushedLSN_lock);
 }
 
-static lsn_t flushedLSN_InMemoryLog(stasis_log_t* log) {
+static lsn_t flushedLSN_InMemoryLog(stasis_log_t* log,
+                                    stasis_log_force_mode_t mode) {
   return nextAvailableLSN;
 }
 
-static void syncLog_InMemoryLog(stasis_log_t* log) {
+static void syncLog_InMemoryLog(stasis_log_t* log, stasis_log_force_mode_t m){
   // no-op
 }
 

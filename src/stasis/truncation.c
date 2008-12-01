@@ -175,7 +175,7 @@ static void* stasis_truncation_thread_worker(void* logp) {
   stasis_log_t * log = logp;
   pthread_mutex_lock(&shutdown_mutex);
   while(initialized) {
-    if(log->first_unstable_lsn(log) - log->truncation_point(log)
+    if(log->first_unstable_lsn(log, LOG_FORCE_WAL) - log->truncation_point(log)
        > TARGET_LOG_SIZE) {
       stasis_truncation_truncate(log, 0);
     }
@@ -211,7 +211,7 @@ int stasis_truncation_truncate(stasis_log_t* log, int force) {
 
   lsn_t page_rec_lsn = dirtyPages_minRecLSN();
   lsn_t xact_rec_lsn = transactions_minRecLSN();
-  lsn_t flushed_lsn  = log->first_unstable_lsn(log);
+  lsn_t flushed_lsn  = log->first_unstable_lsn(log, LOG_FORCE_WAL);
 
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
@@ -226,7 +226,7 @@ int stasis_truncation_truncate(stasis_log_t* log, int force) {
       log->truncate(log, rec_lsn);
       return 1;
     } else {
-      lsn_t flushed = log->first_unstable_lsn(log);
+      lsn_t flushed = log->first_unstable_lsn(log, LOG_FORCE_WAL);
       if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
 	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
 	dirtyPages_flush();

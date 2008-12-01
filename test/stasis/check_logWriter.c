@@ -64,8 +64,6 @@ terms specified in this license.
 
 #define LOG_NAME   "check_logWriter.log"
 
-//static int logType = LOG_TO_MEMORY;
-
 static void setup_log() {
   int i;
   lsn_t prevLSN = -1;
@@ -396,7 +394,9 @@ void reopenLogWorkload(int truncating) {
   stasis_transaction_table_active_transaction_count_set(0);
 
   if(LOG_TO_FILE == loggerType) {
-    stasis_log_file = openLogWriter();
+    stasis_log_file = openLogWriter(stasis_log_file_name,
+                                    stasis_log_file_mode,
+                                    stasis_log_file_permissions);
   } else if(LOG_TO_MEMORY == loggerType) {
     stasis_log_file = open_InMemoryLog();
   } else {
@@ -425,7 +425,9 @@ void reopenLogWorkload(int truncating) {
   stasis_log_file->deinit(stasis_log_file);
 
   if(LOG_TO_FILE == loggerType) {
-    stasis_log_file = openLogWriter();
+    stasis_log_file = openLogWriter(stasis_log_file_name,
+                                    stasis_log_file_mode,
+                                    stasis_log_file_permissions);
   } else if(LOG_TO_MEMORY == loggerType) {
     stasis_log_file = open_InMemoryLog();
   } else {
@@ -460,7 +462,7 @@ void reopenLogWorkload(int truncating) {
     entries2[i] = LogUpdate(stasis_log_file, &l, NULL, OPERATION_NOOP,
                             NULL, 0);
     if(i == SYNC_POINT) { 
-      stasis_log_file->force_tail(stasis_log_file);
+      stasis_log_file->force_tail(stasis_log_file, LOG_FORCE_COMMIT);
     }
   }
 

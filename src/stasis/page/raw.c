@@ -9,7 +9,7 @@
    recovery.
 */
 void rawPageInferMetadata(Page * p) {
-  p->LSN = stasis_log_file->first_unstable_lsn(stasis_log_file);
+  p->LSN = stasis_log_file->first_unstable_lsn(stasis_log_file, LOG_FORCE_WAL);
 }
 
 byte* rawPageGetData(int xid, Page * p) {

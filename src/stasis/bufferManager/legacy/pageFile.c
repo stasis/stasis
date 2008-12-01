@@ -94,7 +94,7 @@ static void pfPageWrite(Page * ret) {
   // If necessary, force the log to disk so that ret's LSN will be stable.
 
   assert(ret->LSN == stasis_page_lsn_read(ret));
-  LogForce(stasis_log_file, ret->LSN);
+  LogForce(stasis_log_file, ret->LSN, LOG_FORCE_WAL);
 
   pthread_mutex_lock(&stable_mutex);
 
@@ -143,9 +143,11 @@ void openPageFile() {
   DEBUG("Opening storefile.\n");
 
 #ifdef PAGE_FILE_O_DIRECT
-  stable = open (STORE_FILE, O_CREAT | O_RDWR | O_DIRECT, FILE_PERM); //S_IRWXU | S_IRWXG | S_IRWXO);
+  stable = open (stasis_store_file_name,
+                 O_CREAT | O_RDWR | O_DIRECT, FILE_PERM);
 #else
-  stable = open (STORE_FILE, O_CREAT | O_RDWR, FILE_PERM);//S_IRWXU | S_IRWXG | S_IRWXO);
+  stable = open (stasis_store_file_name,
+                 O_CREAT | O_RDWR, FILE_PERM);
 #endif
   if(!pageFile_isDurable) { 
     fprintf(stderr, "\n**********\n");

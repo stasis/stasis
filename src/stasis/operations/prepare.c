@@ -55,14 +55,14 @@ terms specified in this license.
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int op_prepare(const LogEntry * e, Page * p) {
-  LogForce(stasis_log_file, e->LSN);
+  LogForce(stasis_log_file, e->LSN, LOG_FORCE_COMMIT);
   return 0;
 }
 
-Operation getPrepare() { 
+Operation getPrepare() {
 	Operation o = {
 		OPERATION_PREPARE, /* id */
-		OPERATION_NOOP, 
+		OPERATION_NOOP,
 		&op_prepare /* Function */
 	};
 	return o;

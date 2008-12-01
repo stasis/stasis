@@ -5,7 +5,6 @@
 #include <stasis/logger/logHandle.h>
 #include <stasis/logger/logWriter.h>
 
-
 static char * logEntryToString(const LogEntry * le) {
   char * ret = NULL;
   int err;
@@ -64,7 +63,9 @@ int main() {
 
   setupOperationsTable();
   stasis_log_t* log;
-  if(NULL == (log = openLogWriter())) {
+  if(NULL == (log = openLogWriter(stasis_log_file_name,
+                                  stasis_log_file_mode,
+                                  stasis_log_file_permissions))) {
     printf("Couldn't open log.\n");
   }
 

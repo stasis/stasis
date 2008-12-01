@@ -30,7 +30,7 @@ static void phWrite(Page * ret) {
   // or we'll deadlock.
   writelock(ret->rwlatch,0);
   stasis_page_flushed(ret);
-  LogForce(stasis_log_file, ret->LSN);
+  LogForce(stasis_log_file, ret->LSN, LOG_FORCE_WAL);
   int err = h->write(h, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
     printf("Couldn't write to page file: %s\n", strerror(err));

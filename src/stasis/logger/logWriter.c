@@ -72,13 +72,29 @@ terms specified in this license.
 static FILE * logFILE = 0;
 static int roLogFD = 0;
 
-static int logWriter_isDurable = 1;
 static lsn_t debug_lsn = -1;
 
+static char * log_filename = 0;
+static char * log_scratch_filename = 0;
+static int    log_filemode = 0;
+static int    log_fileperm = 0;
+static char   log_softcommit = 0;
 /**
    @see flushedLSN_LogWriter()
 */
-static lsn_t flushedLSN_stable;
+/**
+   The first unstable LSN for write ahead logging purposes.
+*/
+static lsn_t flushedLSN_wal;
+/**
+   The first unstable LSN for commit purposes.  This can be greater than
+   flushedLSN_wal.
+*/
+static lsn_t flushedLSN_commit;
+/**
+   The first LSN that hasn't made it into roLogFD.  This can be greater than
+   flushedLSN_commit
+*/
 static lsn_t flushedLSN_internal;
 /**
    Invariant: No thread is writing to flushedLSN.  Since
@@ -88,10 +104,7 @@ static lsn_t flushedLSN_internal;
 static rwl * flushedLSN_lock;
 
 /**
-   Before writeLogEntry is called, this value is 0. Once writeLogEntry
-   is called, it is the next available LSN.
-
-   @see writeLogEntry
+   The LSN that will be assigned to the next log entry.
 */
 static lsn_t nextAvailableLSN;
 
@@ -163,7 +176,7 @@ static int close_LogWriter(stasis_log_t * log);
 static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e);
 
 static inline int isDurable_LogWriter(stasis_log_t* log) {
-  return logWriter_isDurable;
+  return !log_softcommit;
 }
 static inline lsn_t firstLogEntry_LogWriter(stasis_log_t* log);
 
@@ -172,7 +185,16 @@ static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
   return nextEntry(e);
 }
 
-stasis_log_t* openLogWriter() {
+stasis_log_t* openLogWriter(const char * filename,
+                            int filemode, int fileperm) {
+
+  log_filename = strdup(filename);
+  log_scratch_filename = malloc(strlen(log_filename) + 2);
+  strcpy(log_scratch_filename, log_filename);
+  strcat(log_scratch_filename, "~");
+  log_filemode = filemode;
+  log_fileperm = fileperm;
+  log_softcommit = !(filemode & O_SYNC);
 
   stasis_log_t proto = {
     sizeofInternalLogEntry_LogWriter, // sizeof_internal_entry
@@ -203,14 +225,7 @@ stasis_log_t* openLogWriter() {
      therefore all seeks) run through the second descriptor.  */
 
   int logFD;
-  if(logWriter_isDurable) { 
-    logFD = open(LOG_FILE, LOG_MODE, FILE_PERM); //, S_IRWXU | S_IRWXG | S_IRWXO);
-  } else { 
-    fprintf(stderr, "\n**********\n");
-    fprintf  (stderr, "logWriter.c: logWriter_isDurable==0; the logger will not force writes to disk.\n");
-    fprintf  (stderr, "             Transactions will not be durable if the system crashes.\n**********\n");
-    logFD = open(LOG_FILE, O_CREAT | O_RDWR, FILE_PERM);// S_IRWXU | S_IRWXG | S_IRWXO);
-  }
+  logFD = open(log_filename, log_filemode, log_fileperm);
   if(logFD == -1) {
     perror("Couldn't open log file for append.\n");
     abort();
@@ -230,7 +245,7 @@ stasis_log_t* openLogWriter() {
      even if fflush() is used to push the changes out to disk.
      Therefore, we use a file descriptor, and read() instead of a FILE
      and fread(). */
-  roLogFD = open(LOG_FILE, O_RDONLY, 0);
+  roLogFD = open(log_filename, O_RDONLY, 0);
 
   if(roLogFD == -1) {
     perror("Couldn't open log file for reads.\n");
@@ -243,8 +258,9 @@ stasis_log_t* openLogWriter() {
   pthread_mutex_init(&log_write_mutex, NULL);
   pthread_mutex_init(&nextAvailableLSN_mutex, NULL);
   pthread_mutex_init(&truncateLog_mutex, NULL);
-  
-  flushedLSN_stable = 0;
+
+  flushedLSN_wal = 0;
+  flushedLSN_commit = 0;
   flushedLSN_internal = 0;
   /*
     Seek append only log to the end of the file.  This is unnecessary,
@@ -327,7 +343,8 @@ stasis_log_t* openLogWriter() {
   // Reset log_crc to zero (nextAvailableLSN immediately follows a crc
   // entry).
 
-  flushedLSN_stable = nextAvailableLSN;
+  flushedLSN_wal      = nextAvailableLSN;
+  flushedLSN_commit   = nextAvailableLSN;
   flushedLSN_internal = nextAvailableLSN;
   log_crc = 0;
 
@@ -444,7 +461,8 @@ static void syncLogInternal() {
 
 }
 
-static void syncLog_LogWriter(stasis_log_t * log) {
+static void syncLog_LogWriter(stasis_log_t * log,
+                              stasis_log_force_mode_t mode) {
   lsn_t newFlushedLSN;
 
   pthread_mutex_lock(&log_write_mutex);
@@ -460,13 +478,24 @@ static void syncLog_LogWriter(stasis_log_t * log) {
   log_crc = 0;
 
   pthread_mutex_unlock(&log_write_mutex);
-  // Since we opened the logfile with O_SYNC, fflush() is sufficient.
-  fflush(logFILE);
 
-  // update flushedLSN after fflush returns. 
+  fflush(logFILE);
+  // If we opened the logfile with O_SYNC, fflush() is sufficient.
+  // Otherwise, we're running in soft commit mode and need to manually force
+  // the log before allowing page writeback.
+  if(log_softcommit && mode == LOG_FORCE_WAL) {
+    fsync(fileno(logFILE));
+  }
+
+  // update flushedLSN after fflush returns.
   writelock(flushedLSN_lock, 0);
-  if(newFlushedLSN > flushedLSN_stable) {
-    flushedLSN_stable = newFlushedLSN;
+  if((!log_softcommit) || mode == LOG_FORCE_WAL) {
+    if(newFlushedLSN > flushedLSN_wal) {
+      flushedLSN_wal = newFlushedLSN;
+    }
+  }
+  if(newFlushedLSN > flushedLSN_commit) {
+    flushedLSN_commit = newFlushedLSN;
   }
   if(newFlushedLSN > flushedLSN_internal) {
     flushedLSN_internal = newFlushedLSN;
@@ -475,11 +504,19 @@ static void syncLog_LogWriter(stasis_log_t * log) {
   writeunlock(flushedLSN_lock);
 }
 
-static lsn_t flushedLSN_LogWriter(stasis_log_t* log) {
+static lsn_t flushedLSN_LogWriter(stasis_log_t* log,
+                                  stasis_log_force_mode_t mode) {
   readlock(flushedLSN_lock, 0);
-  lsn_t ret = flushedLSN_stable;
+  lsn_t ret;
+  if(mode == LOG_FORCE_COMMIT) {
+    ret = flushedLSN_commit;
+  } else if(mode == LOG_FORCE_WAL) {
+    ret = flushedLSN_wal;
+  } else {
+    abort();
+  }
   readunlock(flushedLSN_lock);
-  return ret; 
+  return ret;
 }
 static lsn_t flushedLSNInternal() {
   readlock(flushedLSN_lock, 0);
@@ -490,14 +527,15 @@ static lsn_t flushedLSNInternal() {
 
 static int close_LogWriter(stasis_log_t* log) {
   /* Get the whole thing to the disk before closing it. */
-  syncLog_LogWriter(log);
+  syncLog_LogWriter(log, LOG_FORCE_WAL);
 
   fclose(logFILE);
   close(roLogFD);
   logFILE = NULL;
   roLogFD = 0;
 
-  flushedLSN_stable = 0;
+  flushedLSN_wal = 0;
+  flushedLSN_commit = 0;
   flushedLSN_internal = 0;
   nextAvailableLSN = 0;
   global_offset = 0;
@@ -512,12 +550,14 @@ static int close_LogWriter(stasis_log_t* log) {
   free(buffer);
   buffer = 0;
   log_crc = 0;
+  free(log_filename);
+  free(log_scratch_filename);
   free(log);
   return 0;
 }
 
 void deleteLogWriter() {
-  remove(LOG_FILE);
+  remove(log_filename);
 }
 
 static LogEntry * readLogEntry() {
@@ -680,7 +720,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   }
 
   /* w+ = truncate, and open for writing. */
-  tmpLog = fopen(LOG_FILE_SCRATCH, "w+");  
+  tmpLog = fopen(log_scratch_filename, "w+");  
 
   if (tmpLog==NULL) {
     pthread_mutex_unlock(&truncateLog_mutex);
@@ -780,7 +820,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   close(roLogFD);
   fclose(tmpLog);
 
-  if(rename(LOG_FILE_SCRATCH, LOG_FILE)) {
+  if(rename(log_scratch_filename, log_filename)) {
     pthread_mutex_unlock(&log_read_mutex);
     pthread_mutex_unlock(&log_write_mutex);
     pthread_mutex_unlock(&truncateLog_mutex);
@@ -791,8 +831,9 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     //    printf("Truncation complete.\n");
     fflush(stdout);
   }
-  
-  int logFD = open(LOG_FILE, O_CREAT | O_RDWR | O_SYNC, FILE_PERM); //S_IRWXU | S_IRWXG | S_IRWXO);
+
+  int logFD = open(log_filename, log_filemode, log_fileperm);
+
   if(logFD == -1) {
     perror("Couldn't open log file for append.\n");
     abort();
@@ -824,7 +865,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     }
   }
 
-  roLogFD = open(LOG_FILE, O_RDONLY, 0);
+  roLogFD = open(log_filename, O_RDONLY, 0);
 
   if(roLogFD == -1) {
     perror("Couldn't open log file for reads.\n");

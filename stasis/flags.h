@@ -57,4 +57,10 @@ extern int stasis_suppress_unclean_shutdown_warnings;
  */
 extern int stasis_truncation_automatic;
 
+extern char * stasis_log_file_name;
+extern int    stasis_log_file_mode;
+extern int    stasis_log_file_permissions;
+
+extern char * stasis_store_file_name;
+
 #endif

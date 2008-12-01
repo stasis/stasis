@@ -58,13 +58,7 @@ terms specified in this license.
 
 /*#define DEBUG 1*/
 
-#define LOG_FILE "logfile.txt"
-#define LOG_FILE_SCRATCH "logfile.txt~"
-#define STORE_FILE "storefile.txt"
-#define BLOB0_FILE "blob0_file.txt"
-#define BLOB1_FILE "blob1_file.txt"
-
-/* 
+/*
    define error codes
  */
 #define LLADD_DEADLOCK       -1
@@ -243,7 +237,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define TALLOC_REGION_SIZE 100  // Pages
 
 #define FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
-#define LOG_MODE  (O_CREAT | O_RDWR | O_SYNC)
+//#define LOG_MODE  (O_CREAT | O_RDWR | O_SYNC)
 
 #define MAX_LSM_COMPARATORS 16
 #define MAX_LSM_PAGE_INITIALIZERS 256

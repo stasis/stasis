@@ -66,6 +66,10 @@ typedef int (guard_fcn_t)(const LogEntry *, void *);
 
 typedef struct stasis_log_t stasis_log_t;
 
+typedef enum {
+  LOG_FORCE_COMMIT, LOG_FORCE_WAL
+} stasis_log_force_mode_t;
+
 /**
    Contains the state needed by the logging layer to perform
    operations on a transaction.
@@ -122,13 +126,17 @@ struct stasis_log_t {
      log entry that has not been flushed to disk.  If the entire log
      is flushed, this function returns the LSN of the entry that will
      be allocated the next time the log is appended to.
+
+     @param log The log file, which may or may not support durability.
+     @param mode The mode in which the log entries must have been forced.
   */
-  lsn_t (*first_unstable_lsn)(struct stasis_log_t* log);
+  lsn_t (*first_unstable_lsn)(struct stasis_log_t* log,
+                              stasis_log_force_mode_t mode);
 
   /**
      Force any enqueued, unwritten entries to disk
   */
-  void (*force_tail)(struct stasis_log_t* log);
+  void (*force_tail)(struct stasis_log_t* log, stasis_log_force_mode_t mode);
 
   /**
       @param lsn The first lsn that will be available after truncation.
@@ -147,7 +155,7 @@ struct stasis_log_t {
   */
   int (*deinit)(struct stasis_log_t* log);
 
-  int (*is_durable)();
+  int (*is_durable)(struct stasis_log_t* log);
 };
 
 /**
@@ -155,8 +163,23 @@ struct stasis_log_t {
  */
 extern stasis_log_t* stasis_log_file;
 
+/**
+   Synchronously make a prefix of the log durable.
 
-void LogForce(stasis_log_t* log, lsn_t lsn);
+   This method uses group commit to reduce the number of calls to
+   force_tail().
+
+   Durability is guaranteed in an implementation-specific way.
+
+   @param log A log that already contains the entries to be forced to disk.
+   @param lsn Log entries up to and including the one that overlaps lsn will
+              be durable after this call returns.
+   @param mode The durability mode associated with this call.
+
+   @see stasis_log_force_mode_t
+   @see logger2.h for information about force_tail().
+ */
+void LogForce(stasis_log_t* log, lsn_t lsn, stasis_log_force_mode_t mode);
 
 /**
    Inform the logging layer that a new transaction has begun, and
