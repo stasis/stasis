@@ -217,7 +217,7 @@ static void groupCommit(stasis_log_t* log, lsn_t lsn) {
 
   pendingCommits++;
   int xactcount = TactiveTransactionCount();
-  if((xactcount > 1 && pendingCommits < xactcount) ||
+  if((log->is_durable(log) && xactcount > 1 && pendingCommits < xactcount) ||
      (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
     int retcode;
     while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
