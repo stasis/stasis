@@ -169,18 +169,6 @@ compensated_function void  __profile_releasePage(Page * p);
 compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * file, int line);
 #endif
 
-
-/*compensated_function Page * bufManLoadPage(int xid, int pageid);
-
-void bufManReleasePage(Page * p);
-
-int bufManBufInit();
-
-void bufManBufDeinit();
-
-void setBufferManager(int i); */
-
-
 END_C_DECLS
 
 #endif
