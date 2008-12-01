@@ -123,11 +123,13 @@ LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
 
   return (LogEntry*)ret;
 }
+void freeLogEntry(const LogEntry* e) {
+  free((void*)e);
+}
 
 
-
-long sizeofLogEntry(const LogEntry * log) {
-  switch (log->type) {
+lsn_t sizeofLogEntry(const LogEntry * e) {
+  switch (e->type) {
   case CLRLOG:
     {
       return sizeof(CLRLogEntry);
@@ -135,10 +137,10 @@ long sizeofLogEntry(const LogEntry * log) {
   case UPDATELOG:
     {
       return sizeof(struct __raw_log_entry) +
-        sizeof(UpdateLogEntry) + log->update.arg_size;
+        sizeof(UpdateLogEntry) + e->update.arg_size;
     }
   case INTERNALLOG:
-    return LoggerSizeOfInternalLogEntry(log);
+    return stasis_log_file->sizeof_internal_entry(stasis_log_file, e);
   case XPREPARE:
     return sizeof(struct __raw_log_entry)+sizeof(lsn_t);
   default:

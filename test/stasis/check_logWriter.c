@@ -54,6 +54,7 @@ terms specified in this license.
 #include <stasis/logger/logHandle.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/logWriter.h>
+#include <stasis/logger/inMemoryLog.h>
 
 #include <stasis/latches.h>
 #include <sched.h>
@@ -86,7 +87,7 @@ static void setup_log() {
     rid.slot = 0;
     rid.size = sizeof(unsigned long);
 
-    LogWrite(e);
+    stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->LSN;
 
     if(first) { 
@@ -94,28 +95,28 @@ static void setup_log() {
       firstLSN = prevLSN;
     }
 
-    f = LogReadLSN(prevLSN);
+    f = stasis_log_file->read_entry(stasis_log_file, prevLSN);
 
     fail_unless(sizeofLogEntry(e) == sizeofLogEntry(f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(e)), "Log entries did not agree!!");
 
-    FreeLogEntry (e);
-    FreeLogEntry (f);
+    freeLogEntry(e);
+    freeLogEntry(f);
 
     e = allocUpdateLogEntry(prevLSN, xid, 1, rid.page, args, args_size);
 
-    LogWrite(e);
+    stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->prevLSN;
 
     //    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
     LogEntry * g = allocCLRLogEntry(e); // XXX will probably break
     g->prevLSN = firstLSN;
-    LogWrite(g);
+    stasis_log_file->write_entry(stasis_log_file,g);
     assert (g->type == CLRLOG);
-    prevLSN = g->LSN; 
-    
-    FreeLogEntry (e);
-    FreeLogEntry (g);
+    prevLSN = g->LSN;
+
+    freeLogEntry (e);
+    freeLogEntry (g);
   }
 }
 /**
@@ -130,7 +131,7 @@ static void setup_log() {
    In particular, logWriter checks to make sure that each log entry's
    size matches the size that it recorded before the logEntry.  Also,
    when checking the 1000 of 3000 entries, this test uses
-   LogReadLSN, which tests the logWriter's ability to succesfully
+   log->read_entry, which tests the logWriter's ability to succesfully
    manipulate LSN's.
 
    @todo Test logHandle more thoroughly. (Still need to test the guard mechanism.)
@@ -139,17 +140,19 @@ static void setup_log() {
 START_TEST(loggerTest)
 {
   const LogEntry * e;
-  LogHandle h;
+  LogHandle* h;
   int i = 0;
 
   setup_log();
-  h = getLogHandle();
+  h = getLogHandle(stasis_log_file);
 
-  while((e = nextInLog(&h))) {
-    FreeLogEntry(e);
+  while((e = nextInLog(h))) {
+    freeLogEntry(e);
     i++;
     assert(i < 4000);
   }
+
+  freeLogHandle(h);
 
   assert(i == 3000);
 
@@ -167,21 +170,22 @@ END_TEST
 START_TEST(logHandleColdReverseIterator) {
   const LogEntry * e;
   setup_log();
-  LogHandle lh = getLogHandle();
+  LogHandle* lh = getLogHandle(stasis_log_file);
   int i = 0;
 
 
-  while(((e = nextInLog(&lh)) && (i < 100)) ) {
-    FreeLogEntry(e);
+  while(((e = nextInLog(lh)) && (i < 100)) ) {
+    freeLogEntry(e);
     i++;
   }
   
   i = 0;
-  lh = getLSNHandle(e->LSN);
-  while((e = previousInTransaction(&lh))) {
+  lh = getLSNHandle(stasis_log_file, e->LSN);
+  while((e = previousInTransaction(lh))) {
     i++;
-    FreeLogEntry(e);
+    freeLogEntry(e);
   }
+  freeLogHandle(lh);
   assert(i <= 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
   Tdeinit();
 }
@@ -199,58 +203,58 @@ START_TEST(loggerTruncate) {
   const LogEntry * tmp;
   setup_log();
 
-  LogHandle lh = getLogHandle();
+  LogHandle* lh = getLogHandle(stasis_log_file);
   int i = 0;
 
   while(i < 234) {
     i++;
-    le = nextInLog(&lh);
+    le = nextInLog(lh);
   }
  
-  le2 = nextInLog(&lh);
+  le2 = nextInLog(lh);
   i = 0;
   while(i < 23) {
     i++;
-    le3 = nextInLog(&lh);
+    le3 = nextInLog(lh);
   }
   
-  LogTruncate(le->LSN);
+  stasis_log_file->truncate(stasis_log_file, le->LSN);
   
-  tmp = LogReadLSN(le->LSN);
+  tmp = stasis_log_file->read_entry(stasis_log_file, le->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
   
-  FreeLogEntry(tmp);
-  tmp = LogReadLSN(le2->LSN);
+  freeLogEntry(tmp);
+  tmp = stasis_log_file->read_entry(stasis_log_file, le2->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le2->LSN, NULL);
 
-  FreeLogEntry(tmp);
-  tmp = LogReadLSN(le3->LSN);
+  freeLogEntry(tmp);
+  tmp = stasis_log_file->read_entry(stasis_log_file, le3->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
   
-  FreeLogEntry(tmp);
-
-  lh = getLogHandle();
+  freeLogEntry(tmp);
+  freeLogHandle(lh);
+  lh = getLogHandle(stasis_log_file);
   
   i = 0;
   
-  FreeLogEntry(le);
-  FreeLogEntry(le2);
-  FreeLogEntry(le3);
+  freeLogEntry(le);
+  freeLogEntry(le2);
+  freeLogEntry(le3);
 
-  while((le = nextInLog(&lh))) {
+  while((le = nextInLog(lh))) {
     if(le->type != INTERNALLOG) { 
       i++;
     }
-    FreeLogEntry(le);
+    freeLogEntry(le);
   }
   assert(i == (3000 - 234 + 1));
-
+  freeLogHandle(lh);
   Tdeinit();
 
 } END_TEST
@@ -303,11 +307,11 @@ static void* worker_thread(void * arg) {
 #ifdef NO_CONCURRENCY      
       pthread_mutex_lock(&big);
 #endif
-      LogTruncate(myTruncVal);
+      stasis_log_file->truncate(stasis_log_file, myTruncVal);
 #ifdef NO_CONCURRENCY      
       pthread_mutex_unlock(&big);
 #endif      
-      assert(LogTruncationPoint() >= myTruncVal);
+      assert(stasis_log_file->truncation_point(stasis_log_file) >= myTruncVal);
     }
 
     if(threshold < 3) {
@@ -316,7 +320,7 @@ static void* worker_thread(void * arg) {
 #ifdef NO_CONCURRENCY      
       pthread_mutex_lock(&big);
 #endif
-      LogWrite(le);
+      stasis_log_file->write_entry(stasis_log_file,le);
 #ifdef NO_CONCURRENCY      
       pthread_mutex_unlock(&big);
 #endif
@@ -331,10 +335,10 @@ static void* worker_thread(void * arg) {
       lsn_t lsn = lsns[entry];
       pthread_mutex_unlock(&random_mutex);
 
-      const LogEntry * e = LogReadLSN(lsn);
+      const LogEntry * e = stasis_log_file->read_entry(stasis_log_file, lsn);
 
       assert(e->xid == entry+key);
-      FreeLogEntry(e);
+      freeLogEntry(e);
     } else { 
       pthread_mutex_unlock(&random_mutex);
     }
@@ -344,7 +348,7 @@ static void* worker_thread(void * arg) {
 	
     /* Try to interleave requests as much as possible */
     sched_yield();
-    FreeLogEntry(le);
+    freeLogEntry(le);
   }
 
 
@@ -391,41 +395,56 @@ void reopenLogWorkload(int truncating) {
 
   stasis_transaction_table_active_transaction_count_set(0);
 
-  LogInit(loggerType);
+  if(LOG_TO_FILE == loggerType) {
+    stasis_log_file = openLogWriter();
+  } else if(LOG_TO_MEMORY == loggerType) {
+    stasis_log_file = open_InMemoryLog();
+  } else {
+    assert(stasis_log_file != NULL);
+  }
+
   int xid = 1;
-  TransactionLog l = LogTransBegin(xid);
+  TransactionLog l = LogTransBegin(stasis_log_file, xid);
   lsn_t startLSN = 0;
 
   LogEntry * entries[ENTRY_COUNT];
 
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
-    entries[i] = LogUpdate(&l, NULL, OPERATION_NOOP, NULL, 0); 
+    entries[i] = LogUpdate(stasis_log_file,
+                           &l, NULL, OPERATION_NOOP, NULL, 0); 
 
     if(i == SYNC_POINT) {
       if(truncating) { 
-	LogTruncate(entries[i]->LSN);
+	stasis_log_file->truncate(stasis_log_file,entries[i]->LSN);
 	startLSN = entries[i]->LSN;
       }
     }
   }
 
-  LogDeinit();
-  LogInit(loggerType);
+  stasis_log_file->deinit(stasis_log_file);
 
-  LogHandle h;
+  if(LOG_TO_FILE == loggerType) {
+    stasis_log_file = openLogWriter();
+  } else if(LOG_TO_MEMORY == loggerType) {
+    stasis_log_file = open_InMemoryLog();
+  } else {
+    assert(stasis_log_file != NULL);
+  }
+
+  LogHandle * h;
   int i;
 
   if(truncating) { 
-    h = getLogHandle();
+    h = getLogHandle(stasis_log_file);
     i = SYNC_POINT;
   } else { 
-    h = getLogHandle();
+    h = getLogHandle(stasis_log_file);
     i = 0;
   } 
 
   const LogEntry * e;
-  while((e = nextInLog(&h))) { 
+  while((e = nextInLog(h))) { 
     if(e->type != INTERNALLOG) { 
       assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
       assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
@@ -438,22 +457,24 @@ void reopenLogWorkload(int truncating) {
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    entries2[i] = LogUpdate(&l, NULL, OPERATION_NOOP, NULL, 0); 
+    entries2[i] = LogUpdate(stasis_log_file, &l, NULL, OPERATION_NOOP,
+                            NULL, 0);
     if(i == SYNC_POINT) { 
-      syncLog_LogWriter();
+      stasis_log_file->force_tail(stasis_log_file);
     }
   }
 
+  freeLogHandle(h);
 
   if(truncating) { 
-    h = getLSNHandle(startLSN);
+    h = getLSNHandle(stasis_log_file, startLSN);
     i = SYNC_POINT;
   } else { 
-    h = getLogHandle();
+    h = getLogHandle(stasis_log_file);
     i = 0;
   } 
 
-  while((e = nextInLog(&h))) { 
+  while((e = nextInLog(h))) { 
     if(e->type != INTERNALLOG) { 
       if( i < ENTRY_COUNT) { 
 	assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
@@ -467,10 +488,11 @@ void reopenLogWorkload(int truncating) {
     }
   }
 
+  freeLogHandle(h);
   assert(i == (ENTRY_COUNT * 2));  
 
   stasis_truncation_automatic = 1;
-  LogDeinit();
+  stasis_log_file->deinit(stasis_log_file);
 }
 
 START_TEST(loggerReopenTest) {

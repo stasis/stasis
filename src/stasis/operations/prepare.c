@@ -55,7 +55,7 @@ terms specified in this license.
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int op_prepare(const LogEntry * e, Page * p) {
-  LogForce(e->LSN);
+  LogForce(stasis_log_file, e->LSN);
   return 0;
 }
 

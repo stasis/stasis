@@ -94,7 +94,7 @@ static void pfPageWrite(Page * ret) {
   // If necessary, force the log to disk so that ret's LSN will be stable.
 
   assert(ret->LSN == stasis_page_lsn_read(ret));
-  LogForce(ret->LSN);
+  LogForce(stasis_log_file, ret->LSN);
 
   pthread_mutex_lock(&stable_mutex);
 

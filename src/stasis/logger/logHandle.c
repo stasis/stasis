@@ -46,6 +46,16 @@ terms specified in this license.
 
 #include <stasis/logger/logHandle.h>
 
+struct LogHandle {
+  /** The LSN of the log entry that we would return if next is called. */
+  lsn_t         next_offset;
+  /** The LSN of the log entry that we would return if previous is called. */
+  lsn_t         prev_offset;
+  guard_fcn_t*  guard;
+  void*         guard_state;
+  stasis_log_t* log;
+};
+
 /**
    Sets the next and prev field of h, but does not set h.file_offset.
    That should probably be set before calling this function.
@@ -55,35 +65,39 @@ static void set_offsets(LogHandle * h, const LogEntry * e);
 
 /*-------------------------------------------------------*/
 
-LogHandle getLogHandle() {
+LogHandle* getLogHandle(stasis_log_t* log) {
 
-  lsn_t lsn = LogTruncationPoint();
+  lsn_t lsn = log->truncation_point(log);
 
-  return getGuardedHandle(lsn, NULL, NULL);
+  return getGuardedHandle(log, lsn, NULL, NULL);
 }
 
-LogHandle getLSNHandle(lsn_t lsn) {
-  return getGuardedHandle(lsn, NULL, NULL);
+LogHandle* getLSNHandle(stasis_log_t * log, lsn_t lsn) {
+  return getGuardedHandle(log, lsn, NULL, NULL);
 }
 
-LogHandle getGuardedHandle(lsn_t lsn, guard_fcn_t * guard, void * guard_state) {
-  LogHandle ret;
-  ret.next_offset = lsn;
-  ret.prev_offset = lsn;
-  ret.guard = guard;
-  ret.guard_state = guard_state;
+LogHandle* getGuardedHandle(stasis_log_t* log, lsn_t lsn,
+                           guard_fcn_t * guard, void * guard_state) {
+  LogHandle* ret = malloc(sizeof(*ret));
+  ret->next_offset = lsn;
+  ret->prev_offset = lsn;
+  ret->guard = guard;
+  ret->guard_state = guard_state;
+  ret->log = log;
   return ret;
 }
-
+void freeLogHandle(LogHandle* lh) {
+  free(lh);
+}
 const LogEntry * nextInLog(LogHandle * h) {
-  const LogEntry * ret = LogReadLSN(h->next_offset);
+  const LogEntry * ret = h->log->read_entry(h->log,h->next_offset);
   if(ret != NULL) {
     set_offsets(h, ret);
   }
 
   if(h->guard) {
     if(!(h->guard(ret, h->guard_state))) {
-      FreeLogEntry(ret);
+      freeLogEntry(ret);
       ret = NULL;
     }
   }
@@ -95,12 +109,12 @@ const LogEntry * nextInLog(LogHandle * h) {
 const LogEntry * previousInTransaction(LogHandle * h) {
   const LogEntry * ret = NULL;
   if(h->prev_offset > 0) {
-    ret = LogReadLSN(h->prev_offset);
+    ret = h->log->read_entry(h->log, h->prev_offset);
     set_offsets(h, ret);
 
     if(h->guard) {
       if(!h->guard(ret, h->guard_state)) {
-	FreeLogEntry(ret);
+	freeLogEntry(ret);
 	ret = NULL;
       }
     }
@@ -111,6 +125,6 @@ const LogEntry * previousInTransaction(LogHandle * h) {
 }
 
 static void set_offsets(LogHandle * h, const LogEntry * e) {
-  h->next_offset = LogNextEntry(e);
+  h->next_offset = h->log->next_entry(h->log, e);
   h->prev_offset = e->prevLSN;
 }

@@ -184,7 +184,8 @@ START_TEST(operation_physical_do_undo) {
 
   // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
   for(int i = 0; i < 10; i++) 
-    LogWrite(allocCommonLogEntry(-1, -1, -1));
+    stasis_log_file->write_entry(stasis_log_file,
+                                 allocCommonLogEntry(-1, -1, -1));
 
   /** @todo need to re-think check_operations.  The test is pretty broken. */
   Tcommit(xid);

@@ -123,10 +123,14 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
    @return a LogEntry that should be freed with free().
 */
 LogEntry * allocCLRLogEntry(const LogEntry * e);
-/** 
+/**
+   @param e a log entry returned from one of the alloc???LogEntry functions.
+ */
+void freeLogEntry(const LogEntry * e);
+/**
    @return the length, in bytes, of e.
 */
-long sizeofLogEntry(const LogEntry * e);
+lsn_t sizeofLogEntry(const LogEntry * e);
 /**
    @return the operation's arguments.
 */

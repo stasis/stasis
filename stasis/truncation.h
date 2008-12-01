@@ -60,6 +60,8 @@ BEGIN_C_DECLS
 #ifndef __LLADD_TRUNCATION_H
 #define __LLADD_TRUNCATION_H 1
 
+#include <stasis/logger/logger2.h>
+
 void dirtyPagesInit();
 void dirtyPagesDeinit();
 
@@ -73,17 +75,17 @@ int  dirtyPages_isDirty(Page * p);
  */
 void dirtyPages_flushRange(pageid_t start, pageid_t stop);
 
-void truncationInit();
-void truncationDeinit();
+void stasis_truncation_init();
+void stasis_truncation_deinit();
 
 /**
    Spawn a periodic, demand-based log truncation thread.
 */
-void autoTruncate();
+void stasis_truncation_thread_start();
 /**
    Initiate a round of log truncation.
 */
-int truncateNow(int force);
+int stasis_truncation_truncate(stasis_log_t* log, int force);
 
 END_C_DECLS
 #endif

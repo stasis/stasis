@@ -46,9 +46,9 @@ terms specified in this license.
  * Interface to Stasis' log file.
  *
  * @ingroup LOGGING_DISCIPLINE
- * 
+ *
  * $Id$
- * 
+ *
  */
 
 
@@ -64,110 +64,144 @@ terms specified in this license.
 */
 typedef int (guard_fcn_t)(const LogEntry *, void *);
 
-typedef struct { 
-  /** The LSN of the log entry that we would return if next is called. */
-  lsn_t       next_offset; 
-  /** The LSN of the log entry that we would return if previous is called. */
-  lsn_t       prev_offset;
-  guard_fcn_t * guard;
-  void * guard_state;
-} LogHandle;
+typedef struct stasis_log_t stasis_log_t;
 
 /**
    Contains the state needed by the logging layer to perform
    operations on a transaction.
  */
 typedef struct {
-  int xid; 
+  int xid;
   lsn_t prevLSN;
   lsn_t recLSN;
 } TransactionLog;
 
-/** 
-    This is the log implementation that is being used.  
-    
-    Before Stasis is intialized it will be set to a default value.    
+/**
+    This is the log implementation that is being used.
+
+    Before Stasis is intialized it will be set to a default value.
     It may be changed before Tinit() is called by assigning to it.
     The default can be overridden at compile time by defining
     USE_LOGGER.
 
     (eg: gcc ... -DUSE_LOGGER=LOG_TO_FOO)
 
-    @see constants.h for a list of recognized log implementations. 
+    @see constants.h for a list of recognized log implementations.
          (The constants are named LOG_TO_*)
 
- */
+*/
 extern int loggerType;
 
-int  LogInit(int logType);
-int  LogDeinit();
-void LogForce(lsn_t lsn);
-/** 
-    @param lsn The first lsn that will be available after truncation.
-*/ 
-void LogTruncate(lsn_t lsn);
+struct stasis_log_t {
+  /**
+     Needed by sizeofLogEntry
+  */
+  lsn_t (*sizeof_internal_entry)(struct stasis_log_t* log, const LogEntry * e);
 
-/** This function is guaranteed to return the LSN of the most recent
-    log entry that has not been flushed to disk.  (If the entire log
-    is flushed, this function returns the LSN of the entry that will
-    be allocated the next time the log is appended to. */
-lsn_t LogFlushedLSN();
-/** Returns the LSN of the first entry of the log, or the LSN of the
-    next to be allocated if the log is empty) */
-lsn_t LogTruncationPoint();
-/** Read a log entry, given its LSN.
-    @param lsn  The lsn of the log entry to be read.
-*/
-const LogEntry * LogReadLSN(lsn_t lsn);
+  /**
+     Append a log entry to the end of the log.
+
+     @param e This call sets e->LSN to entry's offset.
+     @return 0 on success
+  */
+  int (*write_entry)(struct stasis_log_t* log, LogEntry * e);
+
+  /**
+     Read a log entry, given its LSN.
+     @param lsn  The lsn of the log entry to be read.
+  */
+  const LogEntry* (*read_entry)(struct stasis_log_t* log, lsn_t lsn);
+
+  /**
+     Given a log entry, return the LSN of the next entry.
+  */
+  lsn_t (*next_entry)(struct stasis_log_t* log, const LogEntry * e);
+
+  /**
+     This function returns the LSN of the most recent
+     log entry that has not been flushed to disk.  If the entire log
+     is flushed, this function returns the LSN of the entry that will
+     be allocated the next time the log is appended to.
+  */
+  lsn_t (*first_unstable_lsn)(struct stasis_log_t* log);
+
+  /**
+     Force any enqueued, unwritten entries to disk
+  */
+  void (*force_tail)(struct stasis_log_t* log);
+
+  /**
+      @param lsn The first lsn that will be available after truncation.
+      @return 0 on success
+  */
+  int (*truncate)(struct stasis_log_t* log, lsn_t lsn);
+
+  /**
+     Returns the LSN of the first entry of the log.  If the log is
+     empty, return the LSN that will be assigned to the next log
+     entry that is appended to the log.
+  */
+  lsn_t (*truncation_point)(struct stasis_log_t* log);
+  /**
+     @return 0 on success
+  */
+  int (*deinit)(struct stasis_log_t* log);
+
+  int (*is_durable)();
+};
+
 /**
-   Given a log entry, return the LSN of the next entry.
-*/
-lsn_t LogNextEntry(const LogEntry * e);
+   @todo get rid of this!
+ */
+extern stasis_log_t* stasis_log_file;
+
+
+void LogForce(stasis_log_t* log, lsn_t lsn);
 
 /**
    Inform the logging layer that a new transaction has begun, and
    obtain a handle.
 */
-TransactionLog LogTransBegin(int xid);
+TransactionLog LogTransBegin(stasis_log_t* log, int xid);
 
 /**
-  Write a transaction PREPARE to the log tail.  Blocks until the
-  prepare record is stable.
+   Write a transaction PREPARE to the log tail.  Blocks until the
+   prepare record is stable.
 
-  @return the lsn of the prepare log entry
- */
-lsn_t LogTransPrepare(TransactionLog * l);
-/**
-  Write a transaction COMMIT to the log tail.  Blocks until the commit
-  record is stable.
-
-  @return the lsn of the commit log entry.
+   @return the lsn of the prepare log entry
 */
-lsn_t LogTransCommit(TransactionLog * l);
+lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l);
+/**
+   Write a transaction COMMIT to the log tail.  Blocks until the commit
+   record is stable.
+
+   @return the lsn of the commit log entry.
+*/
+lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l);
 
 /**
-  Write a transaction ABORT to the log tail.  Does not force the log.
+   Write a transaction ABORT to the log tail.  Does not force the log.
 
-  @return the lsn of the abort log entry.
+   @return the lsn of the abort log entry.
 */
-lsn_t LogTransAbort(TransactionLog * l);
+lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l);
 
 /**
-  LogUpdate writes an UPDATELOG log record to the log tail.  It also interprets
-  its operation argument to the extent necessary for allocating and laying out 
-  the log entry.  Finally, it updates the state of the parameter l.
+   Write a end transaction record @see XEND
+
+   @todo Implement LogEnd
 */
-LogEntry * LogUpdate(TransactionLog * l, Page * p, unsigned int operation,
-		     const byte * arg, size_t arg_size);
+void LogEnd (stasis_log_t* log, TransactionLog * l);
 
 /**
-   Any LogEntry that is returned by a function in logger2.h or
-   logHandle.h should be freed using this function.
-
-   @param e The log entry to be freed.  (The "const" here is a hack
-            that allows LogReadLSN to return a const *.
+   LogUpdate writes an UPDATELOG log record to the log tail.  It
+   also interprets its operation argument to the extent necessary for
+   allocating and laying out the log entry.  Finally, it updates the
+   state of the parameter l.
 */
-void FreeLogEntry(const LogEntry * e);
+LogEntry * LogUpdate(stasis_log_t* log,
+                     TransactionLog * l, Page * p, unsigned int operation,
+                     const byte * arg, size_t arg_size);
 
 /**
    Write a compensation log record.  These records are used to allow
@@ -175,29 +209,14 @@ void FreeLogEntry(const LogEntry * e);
    record the completion of undo operations, amongst other things.
 
    @return the lsn of the CLR entry that was written to the log.
-           (Needed so that the lsn slot of the page in question can be
-           updated.)
+   (Needed so that the lsn slot of the page in question can be
+   updated.)
 */
-lsn_t LogCLR(const LogEntry * e);
+lsn_t LogCLR(stasis_log_t* log, const LogEntry * e);
 
-lsn_t LogDummyCLR(int xid, lsn_t prev_lsn, lsn_t compensated_lsn);
+lsn_t LogDummyCLR(stasis_log_t* log, int xid,
+                  lsn_t prev_lsn, lsn_t compensated_lsn);
 
-/**
-   Write a end transaction record @see XEND
 
-   @todo Implement LogEnd
-*/
-void LogEnd (TransactionLog * l);
-
-/**
-   Needed by sizeofLogEntry
-*/
-long LoggerSizeOfInternalLogEntry(const LogEntry * e);
-
-/** 
-   For internal use only...  This would be static, but it is called by
-   the test cases.
-*/
-void LogWrite(LogEntry * e);
 
 #endif

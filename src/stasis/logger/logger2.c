@@ -61,147 +61,37 @@ terms specified in this license.
 #include <stasis/logger/inMemoryLog.h>
 #include <stasis/page.h>
 
+/**
+   @todo loggerType should go away.
+ */
 #ifdef USE_LOGGER
 int loggerType = USE_LOGGER;
 #else
 int loggerType = LOG_TO_FILE;
 #endif
 
+/**
+   @todo stasis_log_file should be in transactional2.c, and not global
+ */
+stasis_log_t* stasis_log_file = 0;
+
 static int pendingCommits;
-static int syncLogCount;
 
-long LoggerSizeOfInternalLogEntry(const LogEntry * e) {
-  if(loggerType == LOG_TO_FILE) { 
-    return sizeofInternalLogEntry_LogWriter(e);
-  } else if (loggerType == LOG_TO_MEMORY) {
-    return sizeofInternalLogEntry_InMemoryLog(e);   
-  } else {
-    // we dont have an appropriate implementation, or weren't initialized...
-    abort();
-  }
-}
-
-void LogWrite(LogEntry * e) { 
-  if(loggerType == LOG_TO_FILE) { 
-    writeLogEntry(e);
-  } else if (loggerType == LOG_TO_MEMORY) {
-    writeLogEntry_InMemoryLog(e);
-  } else { 
-    abort();
-  }
-  return;
-}
-
-int LogInit(int logType) { 
-
-  loggerType = logType;
-
-  pendingCommits = 0;
-  syncLogCount = 0;
-  if(LOG_TO_FILE == logType) { 
-    openLogWriter();
-  } else if(LOG_TO_MEMORY == logType) { 
-    open_InMemoryLog();
-  } else { 
-    return -1;
-  }
-  return 0;
-}
-
-int LogDeinit() { 
-  if(LOG_TO_FILE == loggerType) { 
-    closeLogWriter();
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    close_InMemoryLog();
-  } else { 
-    abort();
-  }
-  return 0;
-}
-
-void LogTruncate(lsn_t lsn) { 
-  if(LOG_TO_FILE == loggerType) { 
-    truncateLog_LogWriter(lsn);
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    truncateLog_InMemoryLog(lsn);
-  } else { 
-    abort();
-  }
-}
-
-lsn_t LogFlushedLSN() { 
-  lsn_t ret;
-  if(LOG_TO_FILE == loggerType) { 
-    ret = flushedLSN_LogWriter();
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    ret = flushedLSN_InMemoryLog();
-  } else {
-    abort();
-  }
-  return ret;
-}
-
-lsn_t LogTruncationPoint() { 
-  lsn_t ret;
-  if(LOG_TO_FILE == loggerType) { 
-    ret =  firstLogEntry();
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    ret = firstLogEntry_InMemoryLog();
-  } else { 
-    abort();
-  }
-  return ret;
-}
-const LogEntry * LogReadLSN(lsn_t lsn) { 
-  LogEntry * ret;
-  if(LOG_TO_FILE == loggerType) { 
-    ret = readLSNEntry_LogWriter(lsn);
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    ret = readLSNEntry_InMemoryLog(lsn);
-  } else {
-    abort();
-  }
-  return ret;
-}
-
-lsn_t LogNextEntry(const LogEntry * e) { 
-  lsn_t ret;
-  if(LOG_TO_FILE == loggerType) { 
-    ret = nextEntry_LogWriter(e);
-  } else if(LOG_TO_MEMORY == loggerType) { 
-    ret = nextEntry_InMemoryLog(e);
-  } else {
-    abort();
-  }
-  return ret;
-}
-
-void FreeLogEntry(const LogEntry * e) { 
-  if(LOG_TO_FILE == loggerType) { 
-    free((void*)e);
-  } else if(LOG_TO_MEMORY == loggerType) {
-    free((void*)e);
-  } else { 
-    abort();
-  }
-
-}
-
-TransactionLog LogTransBegin(int xid) {
+TransactionLog LogTransBegin(stasis_log_t* log, int xid) {
   TransactionLog tl;
   tl.xid = xid;
-  
+
   DEBUG("Log Begin %d\n", xid);
   tl.prevLSN = -1;
   tl.recLSN = -1;
   return tl;
 }
 
-static lsn_t LogTransCommon(TransactionLog * l, int type) {
+static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
   LogEntry * e = allocCommonLogEntry(l->prevLSN, l->xid, type);
   lsn_t ret;
 
-  LogWrite(e);
+  log->write_entry(log, e);
 
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
@@ -210,40 +100,101 @@ static lsn_t LogTransCommon(TransactionLog * l, int type) {
 
   ret = e->LSN;
 
-  FreeLogEntry(e);
+  freeLogEntry(e);
 
   return ret;
 
 }
-static lsn_t LogTransCommonPrepare(TransactionLog * l) {
+static lsn_t LogTransCommonPrepare(stasis_log_t* log, TransactionLog * l) {
   LogEntry * e = allocPrepareLogEntry(l->prevLSN, l->xid, l->recLSN);
   lsn_t ret;
 
-  DEBUG("Log prepare xid = %d prevlsn = %lld reclsn = %lld, %lld\n",e->xid,e->prevLSN,l->recLSN, getPrepareRecLSN(e));
-  LogWrite(e);
+  DEBUG("Log prepare xid = %d prevlsn = %lld reclsn = %lld, %lld\n",
+        e->xid, e->prevLSN, l->recLSN, getPrepareRecLSN(e));
+  log->write_entry(log, e);
 
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
-  DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
+  DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n",
+        e->xid, (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
 
   ret = e->LSN;
 
-  FreeLogEntry(e);
+  freeLogEntry(e);
 
   return ret;
 
 }
 
-static void groupForce(lsn_t l) {
+LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
+                     Page * p, unsigned int op,
+		     const byte * arg, size_t arg_size) {
+
+  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
+                                     p ? p->id : INVALID_PAGE,
+                                     arg, arg_size);
+
+  log->write_entry(log, e);
+  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid, 
+	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
+
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  l->prevLSN = e->LSN;
+  return e;
+}
+
+lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) { 
+  LogEntry * e = allocCLRLogEntry(old_e);
+  log->write_entry(log, e);
+
+  DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
+  	 e->LSN, LSN, prevLSN);
+  lsn_t ret = e->LSN;
+  freeLogEntry(e);
+
+  return ret;
+}
+
+lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
+                  lsn_t compensatedLSN) {
+  LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
+                                     INVALID_PAGE, NULL, 0);
+  e->LSN = compensatedLSN;
+  lsn_t ret = LogCLR(log, e);
+  freeLogEntry(e);
+  return ret;
+}
+
+static void groupForce(stasis_log_t* log, lsn_t lsn);
+
+lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l) {
+  lsn_t lsn = LogTransCommon(log, l, XCOMMIT);
+  groupForce(log, lsn);
+  return lsn;
+}
+
+lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l) {
+  return LogTransCommon(log, l, XABORT);
+}
+lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l) {
+  lsn_t lsn = LogTransCommonPrepare(log, l);
+  groupForce(log, lsn);
+  return lsn;
+}
+
+void LogForce(stasis_log_t* log, lsn_t lsn) {
+  groupForce(log, lsn);
+}
+
+static void groupForce(stasis_log_t* log, lsn_t lsn) {
   static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
   static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
 
   struct timeval now;
   struct timespec timeout;
-  
+
   pthread_mutex_lock(&check_commit);
-  if(LogFlushedLSN() >= l) {
+  if(log->first_unstable_lsn(log) >= lsn) {
     pthread_mutex_unlock(&check_commit);
     return;
   }
@@ -264,92 +215,25 @@ static void groupForce(lsn_t l) {
     int retcode;
     while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
       if(retcode != 0) { 
-	printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by a signal in groupCommit().  Acting as though it timed out.\n", __FILE__, __LINE__);
+	printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by "
+               "a signal in groupCommit().  Acting as though it timed out.\n",
+               __FILE__, __LINE__);
 	break;
       }
-      if(LogFlushedLSN() >= l) {
+      if(log->first_unstable_lsn(log) >= lsn) {
 	pendingCommits--;
 	pthread_mutex_unlock(&check_commit);
 	return;
       }
     }
-  } 
-  if(LogFlushedLSN() < l) {
-    if(LOG_TO_FILE == loggerType) { 
-      syncLog_LogWriter();
-    } else if (LOG_TO_MEMORY == loggerType) { 
-      syncLog_InMemoryLog();
-    } else { 
-      abort();
-    }
-    assert(LogFlushedLSN() >= lsn);
-    syncLogCount++;
+  }
+  if(log->first_unstable_lsn(log) < lsn) {
+    log->force_tail(log);
+    assert(log->first_unstable_lsn(log) >= lsn);
     pthread_cond_broadcast(&tooFewXacts);
   }
-  assert(LogFlushedLSN() >= l);
+  assert(log->first_unstable_lsn(log) >= lsn);
   pendingCommits--;
   pthread_mutex_unlock(&check_commit);
   return;
-}
-
-static lsn_t groupCommit(TransactionLog * l) {
-  lsn_t ret = LogTransCommon(l, XCOMMIT);
-  groupForce(ret);
-  return ret;
-}
-static lsn_t groupPrepare(TransactionLog * l) {
-  lsn_t ret = LogTransCommonPrepare(l);
-  groupForce(ret);
-  return ret;
-}
-
-void LogForce(lsn_t lsn) { 
-  groupForce(lsn);
-}
-lsn_t LogTransCommit(TransactionLog * l) { 
-  return groupCommit(l);
-}
-
-lsn_t LogTransAbort(TransactionLog * l) {
-  return LogTransCommon(l, XABORT);
-}
-lsn_t LogTransPrepare(TransactionLog * l) {
-  return groupPrepare(l);
-}
-
-LogEntry * LogUpdate(TransactionLog * l, Page * p, unsigned int op,
-		     const byte * arg, size_t arg_size) {
-
-  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
-                                     p ? p->id : INVALID_PAGE,
-                                     arg, arg_size);
-
-  LogWrite(e);
-  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid, 
-	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
-
-  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
-  l->prevLSN = e->LSN;
-  return e;
-}
-
-lsn_t LogCLR(const LogEntry * old_e) { 
-  LogEntry * e = allocCLRLogEntry(old_e);
-  LogWrite(e);
-
-  DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
-  	 e->LSN, LSN, prevLSN);
-  lsn_t ret = e->LSN;
-  FreeLogEntry(e);
-
-  return ret;
-}
-
-lsn_t LogDummyCLR(int xid, lsn_t prevLSN, lsn_t compensatedLSN) {
-  LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
-                                     INVALID_PAGE, NULL, 0);
-  e->LSN = compensatedLSN;
-  lsn_t ret = LogCLR(e);
-  FreeLogEntry(e);
-  return ret;
 }

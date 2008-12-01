@@ -66,13 +66,14 @@ terms specified in this license.
 
 #include <stasis/bufferManager.h>
 
-/** 
-    @todo Should the log file be global? 
+/**
+   @todo remove all static vairables from logWriter.c
 */
-static FILE * log = 0;
+static FILE * logFILE = 0;
 static int roLogFD = 0;
 
-int logWriter_isDurable = 1;
+static int logWriter_isDurable = 1;
+static lsn_t debug_lsn = -1;
 
 /**
    @see flushedLSN_LogWriter()
@@ -106,27 +107,26 @@ static lsn_t global_offset;
    It is also used by truncateLog to block read requests while
    rename() is called.
 */
-pthread_mutex_t log_read_mutex;
+static pthread_mutex_t log_read_mutex;
 
 /**
    Invariant: Any thread writing to the file must hold this lock.  The
    log truncation thread hold this lock from the point where it copies
    the tail of the old log to the new log, until after the rename call
-   returns.  
-*/    
-pthread_mutex_t log_write_mutex; 
-
+   returns.
+*/
+static pthread_mutex_t log_write_mutex;
 /**
    This mutex protects nextAvailableLSN, which has its own mutex
    because the routines for reading and writing log entries both need
    to acquire it, but only for a relatively short time.
 */
-pthread_mutex_t nextAvailableLSN_mutex;
+static pthread_mutex_t nextAvailableLSN_mutex;
 
 /**
    Invariant:  We only want one thread in truncateLog at a time.
 */
-pthread_mutex_t truncateLog_mutex;
+static pthread_mutex_t truncateLog_mutex;
 
 static char * buffer;
 
@@ -145,14 +145,56 @@ static unsigned int log_crc;
 static inline void update_log_crc(const LogEntry * le, unsigned int * crc) { 
   *crc = stasis_crc32(le, sizeofLogEntry(le), *crc);
 }
-
-static LogEntry * readLogEntry();
+// internal methods
 static void syncLogInternal();
-int openLogWriter() {
+static LogEntry* readLogEntry();
+static inline lsn_t nextEntry(const LogEntry* e) {
+  return e->LSN + sizeofLogEntry(e) + sizeof(lsn_t);
+}
+
+// implementations of log api methods
+static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,
+                                              const LogEntry * e);
+static void syncLog_LogWriter();
+static lsn_t flushedLSN_LogWriter();
+static const LogEntry* readLSNEntry_LogWriter(stasis_log_t * log, lsn_t lsn);
+static int truncateLog_LogWriter(stasis_log_t* log, lsn_t lsn);
+static int close_LogWriter(stasis_log_t * log);
+static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e);
+
+static inline int isDurable_LogWriter(stasis_log_t* log) {
+  return logWriter_isDurable;
+}
+static inline lsn_t firstLogEntry_LogWriter(stasis_log_t* log);
+
+static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
+                                        const LogEntry* e) {
+  return nextEntry(e);
+}
+
+stasis_log_t* openLogWriter() {
+
+  stasis_log_t proto = {
+    sizeofInternalLogEntry_LogWriter, // sizeof_internal_entry
+    writeLogEntry_LogWriter,// write_entry
+    readLSNEntry_LogWriter, // read_entry
+    nextEntry_LogWriter,// next_entry
+    flushedLSN_LogWriter, // first_unstable_lsn
+    syncLog_LogWriter, // force_tail
+    truncateLog_LogWriter, // truncate
+    firstLogEntry_LogWriter,// truncation_point
+    close_LogWriter, // deinit
+    isDurable_LogWriter // is_durable
+  };
+  stasis_log_t* log = malloc(sizeof(*log));
+  memcpy(log,&proto, sizeof(proto));
+
+  // XXX hack; we call things that call into this object during init!
+  stasis_log_file = log;
 
   buffer = malloc(BUFSIZE);
   
-  if(!buffer) { return LLADD_NO_MEM; }
+  if(!buffer) { return 0; /*LLADD_NO_MEM;*/ }
 
   /* The file is opened twice for a reason.  fseek() seems to call
      fflush() under Linux, which normally would be a minor problem.
@@ -173,16 +215,16 @@ int openLogWriter() {
     perror("Couldn't open log file for append.\n");
     abort();
   }
-  log = fdopen(logFD, "w+");
+  logFILE = fdopen(logFD, "w+");
 
-  if (log==NULL) {
+  if (logFILE==NULL) {
     perror("Couldn't open log file");
     abort();
-    return LLADD_IO_ERROR; 
+    return 0; //LLADD_IO_ERROR; 
   }
 
   /* Increase the length of log's buffer, since it's in O_SYNC mode. */
-  setbuffer(log, buffer, BUFSIZE);
+  setbuffer(logFILE, buffer, BUFSIZE);
 
   /* fread() doesn't notice when another handle writes to its file,
      even if fflush() is used to push the changes out to disk.
@@ -210,31 +252,31 @@ int openLogWriter() {
     length of the file.
   */
 
-  if (myFseek(log, 0, SEEK_END)==0) {
+  if (myFseek(logFILE, 0, SEEK_END)==0) {
     /*if file is empty, write an LSN at the 0th position.  LSN 0 is
       invalid, and this prevents us from using it.  Also, the LSN at
       this position is used after log truncation to store the 
       global offset for the truncated log.
     */
     global_offset = 0;
-    size_t nmemb = fwrite(&global_offset, sizeof(lsn_t), 1, log);
+    size_t nmemb = fwrite(&global_offset, sizeof(lsn_t), 1, logFILE);
     if(nmemb != 1) {
       perror("Couldn't start new log file!");
-      return LLADD_IO_ERROR;
+      return 0; //LLADD_IO_ERROR;
     }
   } else {
 
     off_t newPosition = lseek(roLogFD, 0, SEEK_SET);
     if(newPosition == -1) {
       perror("Could not seek to head of log");
-      return LLADD_IO_ERROR;
+      return 0; //LLADD_IO_ERROR;
     }
     
     ssize_t bytesRead = read(roLogFD, &global_offset, sizeof(lsn_t));
     
     if(bytesRead != sizeof(lsn_t)) {
       printf("Could not read log header.");
-      return LLADD_IO_ERROR;
+      return 0;//LLADD_IO_ERROR;
     }
 
   }
@@ -256,28 +298,28 @@ int openLogWriter() {
   while((le = readLogEntry())) {   
     if(le->type == INTERNALLOG) { 
       if (!(le->prevLSN) || (crc == (unsigned int) le->prevLSN)) { 
-	nextAvailableLSN = nextEntry_LogWriter(le); //le->LSN + sizeofLogEntry(le) + sizeof(lsn_t);
+	nextAvailableLSN = nextEntry(le);
 	crc = 0;
       } else { 
 	printf("Log corruption: %x != %x (lsn = %lld)\n", (unsigned int) le->prevLSN, crc, le->LSN);
 	// The log wasn't successfully forced to this point; discard
 	// everything after the last CRC.
-	FreeLogEntry(le);
+	freeLogEntry(le);
 	break;
       }
     } else { 
       update_log_crc(le, &crc);
     }
-    FreeLogEntry(le);
+    freeLogEntry(le);
   }
   
-  if(ftruncate(fileno(log), nextAvailableLSN-global_offset) == -1) { 
+  if(ftruncate(fileno(logFILE), nextAvailableLSN-global_offset) == -1) { 
     perror("Couldn't discard junk at end of log");
   }
 
   // If there was trailing garbage at the end of the log, overwrite
   // it.
-  if(myFseek(log, nextAvailableLSN-global_offset, SEEK_SET) != nextAvailableLSN-global_offset) { 
+  if(myFseek(logFILE, nextAvailableLSN-global_offset, SEEK_SET) != nextAvailableLSN-global_offset) { 
     perror("Error repositioning log");
     abort();
   }
@@ -289,7 +331,7 @@ int openLogWriter() {
   flushedLSN_internal = nextAvailableLSN;
   log_crc = 0;
 
-  return 0;
+  return log;
 }
 
 
@@ -312,7 +354,7 @@ int openLogWriter() {
 
 */
 
-static int writeLogEntryUnlocked(LogEntry * e) {
+static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
 
   const lsn_t size = sizeofLogEntry(e);
   
@@ -329,12 +371,13 @@ static int writeLogEntryUnlocked(LogEntry * e) {
   //  assert(e->LSN == (current_offset + global_offset));
   //  off_t oldOffset = ftell(log);
 
-  size_t nmemb = fwrite(&size, sizeof(lsn_t), 1, log);
+  size_t nmemb = fwrite(&size, sizeof(lsn_t), 1, logFILE);
 
   if(nmemb != 1) {
-    if(feof(log))   { abort();  /* feof makes no sense here */  }
-    if(ferror(log)) {
-      fprintf(stderr, "writeLog couldn't write next log entry: %d\n", ferror(log));
+    if(feof(logFILE))   { abort();  /* feof makes no sense here */  }
+    if(ferror(logFILE)) {
+      fprintf(stderr, "writeLog couldn't write next log entry: %d\n",
+              ferror(logFILE));
       abort();
     }
     abort();
@@ -348,15 +391,15 @@ static int writeLogEntryUnlocked(LogEntry * e) {
   //  current_offset = ftell(log);
   //  assert(e->LSN == (current_offset + global_offset - sizeof(lsn_t)));
   
-  nmemb = fwrite(e, size, 1, log);
+  nmemb = fwrite(e, size, 1, logFILE);
 
   //  current_offset = ftell(log);
   //  assert(e->LSN == current_offset + global_offset - sizeof(lsn_t) - size);
   
   if(nmemb != 1) {
-    if(feof(log)) { abort();  /* feof makes no sense here */ }
-    if(ferror(log)) {
-      fprintf(stderr, "writeLog couldn't write next log entry: %d\n", ferror(log));
+    if(feof(logFILE)) { abort();  /* feof makes no sense here */ }
+    if(ferror(logFILE)) {
+      fprintf(stderr, "writeLog couldn't write next log entry: %d\n", ferror(logFILE));
       abort();
     }
     abort();
@@ -366,20 +409,21 @@ static int writeLogEntryUnlocked(LogEntry * e) {
 
   pthread_mutex_lock(&nextAvailableLSN_mutex);
   assert(nextAvailableLSN == e->LSN);
-  nextAvailableLSN = nextEntry_LogWriter(e);
+  nextAvailableLSN = nextEntry(e);
   pthread_mutex_unlock(&nextAvailableLSN_mutex);
 
   return 0;
 }
 
-int writeLogEntry(LogEntry * e) { 
+static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) { 
   pthread_mutex_lock(&log_write_mutex);
-  int ret = writeLogEntryUnlocked(e);
+  int ret = writeLogEntryUnlocked(log, e);
   pthread_mutex_unlock(&log_write_mutex);
   return ret;
 }
 
-long sizeofInternalLogEntry_LogWriter(const LogEntry * e) { 
+static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,
+                                              const LogEntry * e) {
   return sizeof(struct __raw_log_entry);
 }
 
@@ -390,7 +434,7 @@ static void syncLogInternal() {
   newFlushedLSN = nextAvailableLSN;
   if(newFlushedLSN > flushedLSN_internal) {
     pthread_mutex_unlock(&nextAvailableLSN_mutex);
-    fflush(log);
+    fflush(logFILE);
     writelock(flushedLSN_lock, 0);
   }
   if(newFlushedLSN > flushedLSN_internal) {
@@ -400,7 +444,7 @@ static void syncLogInternal() {
 
 }
 
-void syncLog_LogWriter() {
+static void syncLog_LogWriter(stasis_log_t * log) {
   lsn_t newFlushedLSN;
 
   pthread_mutex_lock(&log_write_mutex);
@@ -410,14 +454,14 @@ void syncLog_LogWriter() {
   pthread_mutex_unlock(&nextAvailableLSN_mutex);
 
   LogEntry * crc_entry = allocCommonLogEntry(log_crc, -1, INTERNALLOG);
-  writeLogEntryUnlocked(crc_entry);
+  writeLogEntryUnlocked(log, crc_entry);
   free(crc_entry);
   // Reset log_crc to zero each time a crc entry is written.
   log_crc = 0;
 
   pthread_mutex_unlock(&log_write_mutex);
   // Since we opened the logfile with O_SYNC, fflush() is sufficient.
-  fflush(log);
+  fflush(logFILE);
 
   // update flushedLSN after fflush returns. 
   writelock(flushedLSN_lock, 0);
@@ -431,7 +475,7 @@ void syncLog_LogWriter() {
   writeunlock(flushedLSN_lock);
 }
 
-lsn_t flushedLSN_LogWriter() {
+static lsn_t flushedLSN_LogWriter(stasis_log_t* log) {
   readlock(flushedLSN_lock, 0);
   lsn_t ret = flushedLSN_stable;
   readunlock(flushedLSN_lock);
@@ -444,20 +488,20 @@ static lsn_t flushedLSNInternal() {
   return ret; 
 }
 
-void closeLogWriter() {
+static int close_LogWriter(stasis_log_t* log) {
   /* Get the whole thing to the disk before closing it. */
-  syncLog_LogWriter();  
+  syncLog_LogWriter(log);
 
-  fclose(log);
+  fclose(logFILE);
   close(roLogFD);
-  log = NULL;
+  logFILE = NULL;
   roLogFD = 0;
 
   flushedLSN_stable = 0;
   flushedLSN_internal = 0;
   nextAvailableLSN = 0;
   global_offset = 0;
-  
+
   /* Free locks. */
 
   deletelock(flushedLSN_lock);
@@ -465,15 +509,17 @@ void closeLogWriter() {
   pthread_mutex_destroy(&log_write_mutex);
   pthread_mutex_destroy(&nextAvailableLSN_mutex);
   pthread_mutex_destroy(&truncateLog_mutex);
-  free(buffer);  
+  free(buffer);
   buffer = 0;
   log_crc = 0;
+  free(log);
+  return 0;
 }
 
 void deleteLogWriter() {
   remove(LOG_FILE);
 }
-lsn_t debug_lsn = -1;
+
 static LogEntry * readLogEntry() {
   LogEntry * ret = 0;
   lsn_t size;
@@ -549,7 +595,7 @@ static LogEntry * readLogEntry() {
 }
 
 //static lsn_t lastPosition_readLSNEntry = -1;
-LogEntry * readLSNEntry_LogWriter(const lsn_t LSN) {
+const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t LSN) {
   LogEntry * ret;
 
   pthread_mutex_lock(&nextAvailableLSN_mutex);
@@ -591,12 +637,36 @@ LogEntry * readLSNEntry_LogWriter(const lsn_t LSN) {
   return ret;
   
 }
+/**
+   Truncates the log file.  In the single-threaded case, this works as
+   follows:
 
-int truncateLog_LogWriter(lsn_t LSN) {
+   First, the LSN passed to this function, minus sizeof(lsn_t) is
+   written to a new file, called logfile.txt~.  (If logfile.txt~
+   already exists, then it is truncated.)
+
+   Next, the contents of the log, starting with the LSN passed into
+   this function are copied to logfile.txt~
+
+   Finally, logfile.txt~ is moved on top of logfile.txt
+
+   As long as the move system call is atomic, this function should
+   maintain the system's durability.
+
+   The multithreaded case is a bit more complicated, as we need
+   to deal with latching:
+
+   With no lock, copy the log.  Upon completion, if the log has grown,
+   then copy the part that remains.  Next, obtain a read/write latch
+   on the logfile, and copy any remaining portions of the log.
+   Perform the move, and release the latch.
+
+*/
+int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   FILE *tmpLog;
 
   const LogEntry * le;
-  LogHandle lh;
+  LogHandle* lh;
 
   lsn_t size;
 
@@ -634,23 +704,23 @@ int truncateLog_LogWriter(lsn_t LSN) {
   */
   pthread_mutex_lock(&log_write_mutex);
 
-  fflush(log);
+  fflush(logFILE);
 
-  lh = getLSNHandle(LSN);
+  lh = getLSNHandle(log, LSN);
   lsn_t lengthOfCopiedLog = 0;
   int firstInternalEntry = 1;
   lsn_t nextLSN = 0;
-  while((le = nextInLog(&lh))) {
+  while((le = nextInLog(lh))) {
     size = sizeofLogEntry(le);
     if(nextLSN) { 
       assert(nextLSN == le->LSN);
     } 
-    nextLSN = nextEntry_LogWriter(le);
+    nextLSN = nextEntry_LogWriter(log, le);
 
     if(firstInternalEntry && le->type == INTERNALLOG) { 
       LogEntry * firstCRC = malloc(size);
       memcpy(firstCRC, le, size);
-      FreeLogEntry(le);
+      freeLogEntry(le);
       firstCRC->prevLSN = 0;
       le = firstCRC;
     }
@@ -663,9 +733,10 @@ int truncateLog_LogWriter(lsn_t LSN) {
       free((void*)le); // remove const qualifier + free
       firstInternalEntry = 0;
     } else { 
-      FreeLogEntry(le);
+      freeLogEntry(le);
     }
-  } 
+  }
+  freeLogHandle(lh);
   LogEntry * crc_entry = allocCommonLogEntry(0, -1, INTERNALLOG);
   assert(crc_entry->prevLSN == 0);
 
@@ -677,7 +748,7 @@ int truncateLog_LogWriter(lsn_t LSN) {
 
   size = sizeofLogEntry(crc_entry);
 
-  nextAvailableLSN = nextEntry_LogWriter(crc_entry);
+  nextAvailableLSN = nextEntry_LogWriter(log, crc_entry);
 
   log_crc = 0;
 
@@ -705,15 +776,15 @@ int truncateLog_LogWriter(lsn_t LSN) {
   /* closeLogWriter calls sync, and does some extra stuff that we don't want, so we
      basicly re-implement closeLogWriter and openLogWriter here...
   */
-  fclose(log);  
+  fclose(logFILE);
   close(roLogFD);
-  fclose(tmpLog); 
- 
+  fclose(tmpLog);
+
   if(rename(LOG_FILE_SCRATCH, LOG_FILE)) {
     pthread_mutex_unlock(&log_read_mutex);
     pthread_mutex_unlock(&log_write_mutex);
     pthread_mutex_unlock(&truncateLog_mutex);
-  
+
     perror("Error replacing old log file with new log file");
     return LLADD_IO_ERROR;
   } else {
@@ -726,9 +797,9 @@ int truncateLog_LogWriter(lsn_t LSN) {
     perror("Couldn't open log file for append.\n");
     abort();
   }
-  log = fdopen(logFD, "w+");
+  logFILE = fdopen(logFD, "w+");
 
-  if (log==NULL) { 
+  if (logFILE==NULL) {
     pthread_mutex_unlock(&log_read_mutex);
     pthread_mutex_unlock(&log_write_mutex);
     pthread_mutex_unlock(&truncateLog_mutex);
@@ -738,12 +809,12 @@ int truncateLog_LogWriter(lsn_t LSN) {
     return LLADD_IO_ERROR;
   }
   
-  setbuffer(log, buffer, BUFSIZE);
+  setbuffer(logFILE, buffer, BUFSIZE);
   
   global_offset = LSN - sizeof(lsn_t);
 
   lsn_t logPos;
-  if((logPos = myFseek(log, 0, SEEK_END)) != nextAvailableLSN - global_offset) { 
+  if((logPos = myFseek(logFILE, 0, SEEK_END)) != nextAvailableLSN - global_offset) { 
     if(logPos == -1) { 
       perror("Truncation couldn't seek");
     } else { 
@@ -761,8 +832,6 @@ int truncateLog_LogWriter(lsn_t LSN) {
     return LLADD_IO_ERROR;
   }
 
-
-
   pthread_mutex_unlock(&log_read_mutex);
   pthread_mutex_unlock(&log_write_mutex);
   pthread_mutex_unlock(&truncateLog_mutex);
@@ -771,8 +840,8 @@ int truncateLog_LogWriter(lsn_t LSN) {
 
 }
 
-lsn_t firstLogEntry() {
-  assert(log);
+lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
+  assert(logFILE);
   pthread_mutex_lock(&log_read_mutex); // for global offset...
   lsn_t ret = global_offset + sizeof(lsn_t);
   pthread_mutex_unlock(&log_read_mutex);

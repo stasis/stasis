@@ -49,20 +49,20 @@ static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
        no longer reads the pages in, there's no longer any reason to build 
        the list of dirty pages.
 */
-static void Analysis() {
+static void Analysis(stasis_log_t* log) {
 
   DEBUG("Recovery: Analysis\n");
 
   const LogEntry * e;
 
-  LogHandle lh = getLogHandle();
+  LogHandle* lh = getLogHandle(log);
 
   /** After recovery, we need to know what the highest XID in the
       log was so that we don't accidentally reuse XID's.  This keeps
       track of that value. */
   int highestXid = 0;
 
-  while((e = nextInLog(&lh))) {
+  while((e = nextInLog(lh))) {
 
     lsn_t * xactLSN = (lsn_t*)pblHtLookup(transactionLSN,    &(e->xid), sizeof(int));
 
@@ -148,8 +148,9 @@ static void Analysis() {
     default:
       abort();
     }
-    FreeLogEntry(e);
+    freeLogEntry(e);
   }
+  freeLogHandle(lh);
   stasis_transaction_table_max_transaction_id_set(highestXid);
 }
 
@@ -170,13 +171,13 @@ static void Analysis() {
                                     Y  (NTA replaces physical undo)
  */
 
-static void Redo() {
-  LogHandle lh = getLogHandle();
+static void Redo(stasis_log_t* log) {
+  LogHandle* lh = getLogHandle(log);
   const LogEntry  * e;
 
   DEBUG("Recovery: Redo\n");
 
-  while((e = nextInLog(&lh))) {
+  while((e = nextInLog(lh))) {
     // Is this log entry part of a transaction that needs to be redone?
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
       if(e->type != INTERNALLOG) {
@@ -194,7 +195,9 @@ static void Redo() {
         } break;
       case CLRLOG:
 	{
-          const LogEntry *ce = LogReadLSN(((CLRLogEntry*)e)->clr.compensated_lsn);
+          const LogEntry *ce =
+            log->read_entry(log,((CLRLogEntry*)e)->clr.compensated_lsn);
+
           if(ce->update.page == INVALID_PAGE) {
             // logical redo of end of NTA; no-op
           } else {
@@ -207,7 +210,7 @@ static void Redo() {
             unlock(p->rwlatch);
             releasePage(p);
           }
-          FreeLogEntry(ce);
+          freeLogEntry(ce);
 	} break;
       case XCOMMIT:
 	{
@@ -233,11 +236,13 @@ static void Redo() {
 	abort();
       }
     }
-    FreeLogEntry(e);
+    freeLogEntry(e);
   }
+  freeLogHandle(lh);
+
 }
-static void Undo(int recovery) {
-  LogHandle lh;
+static void Undo(stasis_log_t* log, int recovery) {
+  LogHandle* lh;
 
   DEBUG("Recovery: Undo\n");
 
@@ -247,7 +252,7 @@ static void Undo(int recovery) {
 
     DEBUG("Undoing LSN %ld\n", (long int)rollback);
 
-    lh = getLSNHandle(rollback);
+    lh = getLSNHandle(log, rollback);
 
     int thisXid = -1;
 
@@ -255,7 +260,7 @@ static void Undo(int recovery) {
     int reallyAborted = 0;
     // Have we reached a XPREPARE that we should pay attention to?
     int prepared = 0;
-    while((!prepared) && (e = previousInTransaction(&lh))) {
+    while((!prepared) && (e = previousInTransaction(lh))) {
       thisXid = e->xid;
       switch(e->type) {
       case UPDATELOG:
@@ -278,7 +283,7 @@ static void Undo(int recovery) {
             }
 
             // Log a CLR for this entry
-            lsn_t clr_lsn = LogCLR(e);
+            lsn_t clr_lsn = LogCLR(log, e);
             DEBUG("logged clr\n");
 
             stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
@@ -296,7 +301,8 @@ static void Undo(int recovery) {
 	}
       case CLRLOG:
         {
-          const LogEntry * ce = LogReadLSN(((CLRLogEntry*)e)->clr.compensated_lsn);
+          const LogEntry * ce
+            = log->read_entry(log, ((CLRLogEntry*)e)->clr.compensated_lsn);
           if(ce->update.page == INVALID_PAGE) {
             DEBUG("logical clr\n");
             undoUpdate(ce, 0, 0); // logical undo; effective LSN doesn't matter
@@ -304,7 +310,7 @@ static void Undo(int recovery) {
             DEBUG("physical clr: op %d lsn %lld\n", ce->update.funcID, ce->LSN);
             // no-op.  Already undone during redo.  This would redo the original op.
           }
-          FreeLogEntry(ce);
+          freeLogEntry(ce);
         }
 	break;
       case XABORT:
@@ -335,7 +341,7 @@ static void Undo(int recovery) {
 	   e->type, e->xid, e->LSN); 
 	abort();
       }
-      FreeLogEntry(e);
+      freeLogEntry(e);
     }
     if(!prepared) {
       if(recovery) {
@@ -345,18 +351,19 @@ static void Undo(int recovery) {
         globalLockManager.abort(thisXid);
       }
     }
+    freeLogHandle(lh);
   }
 }
-void InitiateRecovery() {
+void stasis_recovery_initiate(stasis_log_t* log) {
 
   transactionLSN = pblHtCreate();
   DEBUG("Analysis started\n");
-  Analysis();
+  Analysis(log);
   DEBUG("Redo started\n");
-  Redo();
+  Redo(log);
   DEBUG("Undo started\n");
   TallocPostInit();
-  Undo(1);
+  Undo(log,1);
   DEBUG("Recovery complete.\n");
 
   for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {
@@ -369,7 +376,7 @@ void InitiateRecovery() {
 }
 
 
-void undoTrans(TransactionLog transaction) { 
+void undoTrans(stasis_log_t* log, TransactionLog transaction) { 
 
   pthread_mutex_lock(&rollback_mutex);
   assert(!rollbackLSNs);
@@ -381,7 +388,7 @@ void undoTrans(TransactionLog transaction) {
     /* Nothing to undo.  (Happens for read-only xacts.) */
   }
 
-  Undo(0);
+  Undo(log, 0);
   if(rollbackLSNs) {
     destroyList(&rollbackLSNs);
   }

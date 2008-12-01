@@ -752,7 +752,6 @@ int stasis_transaction_table_forget(int xid);
 */
 lsn_t transactions_minRecLSN();
 
-
 /**
    Report Stasis' current durability guarantees.
 

@@ -71,106 +71,28 @@ terms specified in this license.
 #define __LOGWRITER_H__
 
 #include <stasis/common.h>
+#include <stasis/logger/logger2.h>
 #include <stasis/logger/logEntry.h>
 
 BEGIN_C_DECLS
 /**
-  start a new log stream by opening the log file for reading
+   Start a new log stream by opening the log file for reading.  This
+   is stasis's default log implementation, and uses safe writes to
+   perform truncation.
 
-  returns 0 on success, or an error code define above
-
+   @return NULL on error
 */
-int openLogWriter();
-
-/**
-   
-  @param e Pointer to a log entry.  After the call, e->LSN will be set appropriately.  If e's xid is set to -1, then this call has no effect (and e's LSN will be set to -1.)
-
-  returns 0 on success, or an error code defined above
-*/
-int writeLogEntry(LogEntry * e);
-
-/**
-  flush the entire log (tail) that is currently in memory to disk
-*/
-void syncLog_LogWriter();
-
-/** 
-   Return the highest LSN that is known to be on disk.  (Currently, we
-   only know if an LSN is on disk if we've written that LSN before a
-   call to syncLog().
-
-   Note: This function might not return an LSN corresponding to a real
-   log entry, but it will definitely return one that is greater than
-   or equal to the LSN of a log entry that has been forced to disk,
-   and is less than the LSN of all log entries that might not have
-   been forced to disk.
-*/
-lsn_t flushedLSN_LogWriter();
-
-/**
-   Truncates the log file.  In the single-threaded case, this works as
-   follows:
-
-   First, the LSN passed to this function, minus sizeof(lsn_t) is
-   written to a new file, called logfile.txt~.  (If logfile.txt~
-   already exists, then it is truncated.)
-
-   Next, the contents of the log, starting with the LSN passed into
-   this function are copied to logfile.txt~
-
-   Finally, logfile.txt~ is moved on top of logfile.txt
-
-   As long as the move system call is atomic, this function should
-   maintain the system's durability.
-
-   The multithreaded case is a bit more complicated, as we need
-   to deal with latching:
-
-   With no lock, copy the log.  Upon completion, if the log has grown,
-   then copy the part that remains.  Next, obtain a read/write latch
-   on the logfile, and copy any remaining portions of the log.
-   Perform the move, and release the latch.
-
-*/
-
-int truncateLog_LogWriter(lsn_t);
-
-
-/** 
-    @return The LSN of the first entry in the log file.  (If the file
-    is empty, this returns the LSN of the log entry that would be
-    created if writeLogEntry were called.)
-*/
-lsn_t firstLogEntry();
-/**
-  Close the log stream
-*/
-void closeLogWriter();
+stasis_log_t* openLogWriter();
 
 /**
   Actually deletes the log file that may have been written to disk! Danger!!
-  Only use after calling closeLogStream AND you are sure there are no active (or
-  future active) transactions!
+  Only use after calling closeLogStream AND you are sure there are no active
+  (or future active) transactions!
 
   @todo This only exists because the tests use it...once the logfile
         name isn't hardcoded, remove this function.
 */
 void deleteLogWriter();
-
-/**
-   Read a log entry at a particular LSN.
-
-   @param LSN the LSN of the entry that will be read.
-*/
-LogEntry * readLSNEntry_LogWriter(lsn_t LSN);
-static inline lsn_t nextEntry_LogWriter(const LogEntry * e) { 
-  return e->LSN + sizeofLogEntry(e) + sizeof(lsn_t);
-}
-
-extern int logWriter_isDurable;
-
-long sizeofInternalLogEntry_LogWriter(const LogEntry * e);
 
 END_C_DECLS
 

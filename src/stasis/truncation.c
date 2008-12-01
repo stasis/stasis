@@ -153,11 +153,11 @@ void dirtyPagesDeinit() {
   pblHtDelete(dirtyPages);
   dirtyPages = 0;
 }
-void truncationInit() { 
+void stasis_truncation_init() { 
   initialized = 1;
 }
 
-void truncationDeinit() { 
+void stasis_truncation_deinit() { 
   pthread_mutex_lock(&shutdown_mutex);
   initialized = 0;
   if(automaticallyTuncating) {
@@ -171,76 +171,76 @@ void truncationDeinit() {
   automaticallyTuncating = 0;
 }
 
-static void* periodicTruncation(void * ignored) { 
+static void* stasis_truncation_thread_worker(void* logp) {
+  stasis_log_t * log = logp;
   pthread_mutex_lock(&shutdown_mutex);
-  while(initialized) { 
-    if(LogFlushedLSN() - LogTruncationPoint() > TARGET_LOG_SIZE) {
-      truncateNow(0);
+  while(initialized) {
+    if(log->first_unstable_lsn(log) - log->truncation_point(log)
+       > TARGET_LOG_SIZE) {
+      stasis_truncation_truncate(log, 0);
     }
     struct timeval now;
     struct timespec timeout;
     int timeret = gettimeofday(&now, 0);
     assert(0 == timeret);
-    
+
     timeout.tv_sec = now.tv_sec;
     timeout.tv_nsec = now.tv_usec;
     timeout.tv_sec += TRUNCATE_INTERVAL;
-    
+
     pthread_cond_timedwait(&shutdown_cond, &shutdown_mutex, &timeout);
   }
   pthread_mutex_unlock(&shutdown_mutex);
   return (void*)0;
 }
 
-void autoTruncate() { 
+void stasis_truncation_thread_start(stasis_log_t* log) {
   assert(!automaticallyTuncating);
   automaticallyTuncating = 1;
-  pthread_create(&truncationThread, 0, &periodicTruncation, 0);
+  pthread_create(&truncationThread, 0, &stasis_truncation_thread_worker, log);
 }
 
 
-int truncateNow(int force) { 
-  
+int stasis_truncation_truncate(stasis_log_t* log, int force) {
 
   // *_minRecLSN() used to return the same value as flushed if
   //there were no outstanding transactions, but flushed might
   //not point to the front of a log entry...  now, both return
   //LSN_T_MAX if there are no outstanding transactions / no
   //dirty pages.
-  
+
   lsn_t page_rec_lsn = dirtyPages_minRecLSN();
   lsn_t xact_rec_lsn = transactions_minRecLSN();
-  lsn_t flushed_lsn  = LogFlushedLSN();
+  lsn_t flushed_lsn  = log->first_unstable_lsn(log);
 
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 
-  lsn_t log_trunc = LogTruncationPoint();
-  if(force || (xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
+  lsn_t log_trunc = log->truncation_point(log);
+  if(force || (xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
     //fprintf(stderr, "xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
-    if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) { 
+    if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       //      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
       forcePages();
-      LogTruncate(rec_lsn);
+      log->truncate(log, rec_lsn);
       return 1;
-    } else { 
-      lsn_t flushed = LogFlushedLSN();
-      if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) { 
+    } else {
+      lsn_t flushed = log->first_unstable_lsn(log);
+      if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
 	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
 	dirtyPages_flush();
-	
+
 	page_rec_lsn = dirtyPages_minRecLSN();
 	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
 	rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
-	
+
 	//fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
 	forcePages();
-	LogTruncate(rec_lsn);
+	log->truncate(log, rec_lsn);
 	return 1;
-
-      } else { 
+      } else {
 	return 0;
       }
     }

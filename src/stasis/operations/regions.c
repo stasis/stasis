@@ -160,7 +160,7 @@ void regionsInit() {
     writelock(p->rwlatch,0);
     op_alloc_boundary_tag(e,p);
     unlock(p->rwlatch);
-    FreeLogEntry(e);
+    freeLogEntry(e);
   }
   holding_mutex = 0;
   releasePage(p);

@@ -59,18 +59,18 @@ static char * logEntryToString(const LogEntry * le) {
 void setupOperationsTable();
 
 int main() {
-  LogHandle lh;
+  LogHandle* lh;
   const LogEntry * le;
 
   setupOperationsTable();
-
-  if(openLogWriter()) {
+  stasis_log_t* log;
+  if(NULL == (log = openLogWriter())) {
     printf("Couldn't open log.\n");
   }
 
-  lh = getLogHandle(); /*LSNHandle(0); */
+  lh = getLogHandle(log);
 
-  while((le = nextInLog(&lh))) {
+  while((le = nextInLog(lh))) {
 
     char * s = logEntryToString(le);
     if(s) {
@@ -78,8 +78,8 @@ int main() {
 
       free(s);
     }
-    FreeLogEntry(le);
+    freeLogEntry(le);
   }
-  
+  freeLogHandle(lh);
 
 }

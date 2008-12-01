@@ -8,8 +8,8 @@
    XXX rawPageInferMetadata is wrong; setting lsn to LogFlushedLSN() breaks
    recovery.
 */
-void rawPageInferMetadata(Page * p) { 
-  p->LSN = LogFlushedLSN();
+void rawPageInferMetadata(Page * p) {
+  p->LSN = stasis_log_file->first_unstable_lsn(stasis_log_file);
 }
 
 byte* rawPageGetData(int xid, Page * p) {

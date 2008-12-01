@@ -8,17 +8,8 @@ static lsn_t globalOffset;
 static rwl * globalOffset_lock;
 static LogEntry ** buffer;
 static lsn_t bufferLen;
-int open_InMemoryLog() { 
-  flushedLSN_lock   = initlock();
-  globalOffset_lock = initlock();
-  globalOffset = 0;
-  nextAvailableLSN = 0;
-  buffer = malloc(4096 * 1024 * sizeof (LogEntry *));
-  bufferLen =4096 * 1024;
-  return 0;
-}
 
-int writeLogEntry_InMemoryLog(LogEntry *e) {
+static int writeLogEntry_InMemoryLog(stasis_log_t * log, LogEntry *e) {
   writelock(flushedLSN_lock, 0);
   lsn_t bufferOffset;
 
@@ -33,6 +24,7 @@ int writeLogEntry_InMemoryLog(LogEntry *e) {
       done = 1;
     }
   } while (!done);
+  return 0;
 
 
   e->LSN = nextAvailableLSN;
@@ -48,22 +40,21 @@ int writeLogEntry_InMemoryLog(LogEntry *e) {
 
   unlock(globalOffset_lock);
   unlock(flushedLSN_lock);
-  return 0;
 }
 
-lsn_t flushedLSN_InMemoryLog() { 
+static lsn_t flushedLSN_InMemoryLog(stasis_log_t* log) {
   return nextAvailableLSN;
 }
 
-void syncLog_InMemoryLog() {
+static void syncLog_InMemoryLog(stasis_log_t* log) {
   // no-op
 }
 
-lsn_t nextEntry_InMemoryLog(const LogEntry * e) { 
+static lsn_t nextEntry_InMemoryLog(stasis_log_t * log, const LogEntry * e) {
   return e->LSN + 1;
 }
 
-int truncateLog_InMemoryLog(lsn_t lsn) {
+static int truncateLog_InMemoryLog(stasis_log_t * log, lsn_t lsn) {
   writelock(flushedLSN_lock,1);
   writelock(globalOffset_lock,1);
  
@@ -85,11 +76,11 @@ int truncateLog_InMemoryLog(lsn_t lsn) {
   return 0;
 }
 
-lsn_t firstLogEntry_InMemoryLog() {
+static lsn_t firstLogEntry_InMemoryLog() {
   return globalOffset;
 }
 
-void close_InMemoryLog() {
+static int close_InMemoryLog(stasis_log_t * log) {
   if(buffer) { 
     lsn_t firstEmptyOffset = nextAvailableLSN-globalOffset;
     for(lsn_t i = 0; i < firstEmptyOffset; i++) { 
@@ -103,10 +94,12 @@ void close_InMemoryLog() {
     buffer = 0;
 
   }
-
+  free (log);
+  return 0;
 }
 
-LogEntry * readLSNEntry_InMemoryLog(lsn_t lsn) { 
+static const LogEntry * readLSNEntry_InMemoryLog(stasis_log_t* log,
+                                                 lsn_t lsn) {
   // printf("lsn: %ld\n", lsn);
   if(lsn >= nextAvailableLSN) { return 0; } 
   assert(lsn-globalOffset >= 0 && lsn-globalOffset< bufferLen);
@@ -123,6 +116,32 @@ LogEntry * readLSNEntry_InMemoryLog(lsn_t lsn) {
   //printf("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
   return ret;
 }
-long sizeofInternalLogEntry_InMemoryLog(const LogEntry * e) {
+static lsn_t sizeofInternalLogEntry_InMemoryLog(stasis_log_t* log,
+                                                const LogEntry * e) {
   abort();
+}
+static int isDurable_InMemoryLog(stasis_log_t*log) { return 0; }
+
+stasis_log_t* open_InMemoryLog() {
+  flushedLSN_lock   = initlock();
+  globalOffset_lock = initlock();
+  globalOffset = 0;
+  nextAvailableLSN = 0;
+  buffer = malloc(4096 * 1024 * sizeof (LogEntry *));
+  bufferLen =4096 * 1024;
+  static stasis_log_t proto = {
+    sizeofInternalLogEntry_InMemoryLog, // sizeof_internal_entry
+    writeLogEntry_InMemoryLog,// write_entry
+    readLSNEntry_InMemoryLog, // read_entry
+    nextEntry_InMemoryLog,// next_entry
+    flushedLSN_InMemoryLog, // first_unstable_lsn
+    syncLog_InMemoryLog, // force_tail
+    truncateLog_InMemoryLog, // truncate
+    firstLogEntry_InMemoryLog,// truncation_point
+    close_InMemoryLog, // deinit
+    isDurable_InMemoryLog// is_durable
+  };
+  stasis_log_t* log = malloc(sizeof(*log));
+  memcpy(log,&proto, sizeof(proto));
+  return log;
 }

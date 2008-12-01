@@ -115,7 +115,7 @@ static void bufManReleasePage (Page * p) {
 
 }
 
-static Page * bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
+static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
   Page * ret;
   int spin  = 0;
 

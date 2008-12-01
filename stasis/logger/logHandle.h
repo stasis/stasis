@@ -47,6 +47,8 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
+typedef struct LogHandle LogHandle;
+
 /**
    @file 
    A simple data structure that allows forward iterations over
@@ -65,13 +67,16 @@ BEGIN_C_DECLS
 */
 
 /** Returns a logHandle pointing at the first log entry in the log.  */
-LogHandle getLogHandle();
+LogHandle* getLogHandle(stasis_log_t* log);
 /** Returns a logHandle pointing at lsn. */
-LogHandle getLSNHandle(lsn_t lsn);
+LogHandle* getLSNHandle(stasis_log_t* log, lsn_t lsn);
 /** Returns a 'guarded log handle'.  This handle executes a callback
     function on each entry it encounters.  If the guard returns 0,
     then it's iterator terminates.  Otherwise, it behaves normally. */
-LogHandle getGuardedHandle(lsn_t lsn, guard_fcn_t * f, void * guard_state);
+LogHandle* getGuardedHandle(stasis_log_t* log, lsn_t lsn,
+                            guard_fcn_t * f, void * guard_state);
+
+void freeLogHandle(LogHandle* lh);
 
 /** 
     @return a pointer to the next log entry in the log, or NULL if at
