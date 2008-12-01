@@ -119,19 +119,6 @@ int LogDeinit() {
   return 0;
 }
 
-void LogForce(lsn_t lsn) { 
-  lsn_t flushedLSN = LogFlushedLSN();
-  if(flushedLSN < lsn) {
-    if(LOG_TO_FILE == loggerType) { 
-      syncLog_LogWriter();
-    } else if (LOG_TO_MEMORY == loggerType) { 
-      syncLog_InMemoryLog();
-    } else { 
-      abort();
-    }
-  }
-  assert(LogFlushedLSN() >= lsn);
-}
 void LogTruncate(lsn_t lsn) { 
   if(LOG_TO_FILE == loggerType) { 
     truncateLog_LogWriter(lsn);
@@ -288,7 +275,14 @@ static void groupForce(lsn_t l) {
     }
   } 
   if(LogFlushedLSN() < l) {
-    syncLog_LogWriter();
+    if(LOG_TO_FILE == loggerType) { 
+      syncLog_LogWriter();
+    } else if (LOG_TO_MEMORY == loggerType) { 
+      syncLog_InMemoryLog();
+    } else { 
+      abort();
+    }
+    assert(LogFlushedLSN() >= lsn);
     syncLogCount++;
     pthread_cond_broadcast(&tooFewXacts);
   }
@@ -309,6 +303,9 @@ static lsn_t groupPrepare(TransactionLog * l) {
   return ret;
 }
 
+void LogForce(lsn_t lsn) { 
+  groupForce(lsn);
+}
 lsn_t LogTransCommit(TransactionLog * l) { 
   return groupCommit(l);
 }
