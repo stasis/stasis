@@ -1,11 +1,17 @@
-/** $Id$ */
-
 #include "config.h"
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
 #include <assert.h>
 /** @todo should page implementations provide readLSN / writeLSN??? */
 #include <stasis/truncation.h>
+
+/**
+   Run sanity checks to make sure page is in a consistent state.
+
+   If SLOTTED_PAGE_SANITY_CHECKS and SLOTTED_PAGE_CHECK_FOR_OVERLAP
+   are defined at compile time then this method will be more thorough
+   and more expensive.
+ */
 static inline void slottedFsck(const Page const * page) {
 
   assertlocked(page->rwlatch);
@@ -117,8 +123,8 @@ static inline void slottedFsck(const Page const * page) {
 }
 
 /**
-   
-Move all of the records to the beginning of the page in order to 
+
+Move all of the records to the beginning of the page in order to
 increase the available free space.
 
 The caller of this function must have a writelock on the page.
@@ -202,9 +208,10 @@ void stasis_slotted_initialize_page(Page * page) {
   *freelist_ptr(page)  = INVALID_SLOT;
 }
 
-/** 
-    This is needed to correctly implement really_do_ralloc(), since
-    it takes the position of the new slot's header into account.
+/**
+   Check to see how many bytes can fit in a given slot.  This
+   makes it possible for callers to guarantee the safety
+   of a subsequent call to really_do_ralloc().
 */
 static size_t slottedFreespaceForSlot(Page * page, int slot) { 
   assertlocked(page->rwlatch);
@@ -236,7 +243,10 @@ static size_t slottedFreespaceForSlot(Page * page, int slot) {
   }
 }
 
-/** 
+/**
+  Allocate data on a page after deciding which recordid to allocate,
+  and making sure there is enough freespace.
+
   Allocation is complicated without locking.  Consider this situation:
 
    (1) *numslot_ptr(page) is 10
@@ -363,9 +373,9 @@ static void really_do_ralloc(Page * page, recordid rid) {
 
 }
 
-/// ------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------
 // PUBLIC API IS BELOW THIS LINE
-/// ------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------
 
 static inline void sanityCheck(Page * p, recordid rid) {
   assert(p->id == rid.page);
@@ -501,15 +511,16 @@ static void slottedFree(int xid, Page * p, recordid rid) {
 
 // XXX dereferenceRID
 
-void slottedLoaded(Page *p) {
+static void slottedLoaded(Page *p) {
   p->LSN = *stasis_page_lsn_ptr(p);
-  slottedFsck(p);  // @todo In normal case, arrange for fsck to run on load/flush, but nowhere else.
+  // @todo arrange for pagefsck to run on load/flush, but nowhere else.
+  slottedFsck(p);
 }
-void slottedFlushed(Page *p) {
+static void slottedFlushed(Page *p) {
   *stasis_page_lsn_ptr(p) = p->LSN;
   slottedFsck(p);
 }
-void slottedCleanup(Page *p) { }
+static void slottedCleanup(Page *p) { }
 
 page_impl slottedImpl() {
 static page_impl pi =  {
@@ -540,7 +551,7 @@ static page_impl pi =  {
   return pi;
 }
 
-page_impl boundaryTagImpl() { 
+page_impl boundaryTagImpl() {
   page_impl p =  slottedImpl();
   p.page_type = BOUNDARY_TAG_PAGE;
   return p;
