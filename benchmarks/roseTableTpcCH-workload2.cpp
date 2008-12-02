@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   typedef int64_t  typ19;
 
   #define COLS 11
-  typedef rose::StaticTuple<COLS,typ0,typ1,typ2,typ3,typ4,typ5,typ6,typ7,typ8,typ9,typ10,typ11,typ12,typ13,typ14,typ15,typ16,typ17,typ18,typ19> tup;
+  typedef rose::StaticTuple<COLS,1,typ0,typ1,typ2,typ3,typ4,typ5,typ6,typ7,typ8,typ9,typ10,typ11,typ12,typ13,typ14,typ15,typ16,typ17,typ18,typ19> tup;
   using rose::For;
   using rose::Rle;
   using rose::Nop;

@@ -2,7 +2,7 @@
 #define _ROSE_COMPRESSION_STATICTUPLE_H__
 
 namespace rose {
-  template<int N, class TYPE0,
+  template<int N, int ID, class TYPE0,
     class TYPE1=bool, class TYPE2=bool, class TYPE3=bool, class TYPE4=bool,
     class TYPE5=bool, class TYPE6=bool, class TYPE7=bool, class TYPE8=bool,
     class TYPE9=bool, class TYPE10=bool,
@@ -13,7 +13,7 @@ namespace rose {
   public:
   static const char NORMAL = 0;
   static const char TOMBSTONE = 1;
-  static const int TUPLE_ID = 1;
+  static const int TUPLE_ID = ID;
   static const int NN = N;
   /** Compatibility for dynamic dispatch stuff */
   inline int column_count() const { return NN; }
@@ -623,34 +623,34 @@ namespace rose {
 
   };
 
-  template<int N, class TYPE0,
+  template<int N, int ID, class TYPE0,
     class TYPE1, class TYPE2, class TYPE3, class TYPE4,
     class TYPE5, class TYPE6, class TYPE7, class TYPE8,
     class TYPE9, class TYPE10,
     class TYPE11, class TYPE12, class TYPE13, class TYPE14,
     class TYPE15, class TYPE16, class TYPE17, class TYPE18,
     class TYPE19>
-  short StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+  short StaticTuple<N,ID,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
     TYPE5,TYPE6,TYPE7,TYPE8,TYPE9,TYPE10,TYPE11,TYPE12,TYPE13,TYPE14,
     TYPE15,TYPE16,TYPE17,TYPE18,TYPE19>::cols_[N];
-  template<int N, class TYPE0,
+  template<int N, int ID, class TYPE0,
     class TYPE1, class TYPE2, class TYPE3, class TYPE4,
     class TYPE5, class TYPE6, class TYPE7, class TYPE8,
     class TYPE9, class TYPE10,
     class TYPE11, class TYPE12, class TYPE13, class TYPE14,
     class TYPE15, class TYPE16, class TYPE17, class TYPE18,
     class TYPE19>
-  byte_off_t StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+  byte_off_t StaticTuple<N,ID,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
     TYPE5,TYPE6,TYPE7,TYPE8,TYPE9,TYPE10,TYPE11,TYPE12,TYPE13,TYPE14,
     TYPE15,TYPE16,TYPE17,TYPE18,TYPE19>::size_[N];
-  template<int N, class TYPE0,
+  template<int N, int ID, class TYPE0,
     class TYPE1, class TYPE2, class TYPE3, class TYPE4,
     class TYPE5, class TYPE6, class TYPE7, class TYPE8,
     class TYPE9, class TYPE10,
     class TYPE11, class TYPE12, class TYPE13, class TYPE14,
     class TYPE15, class TYPE16, class TYPE17, class TYPE18,
     class TYPE19>
-  bool StaticTuple<N,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
+  bool StaticTuple<N,ID,TYPE0,TYPE1,TYPE2,TYPE3,TYPE4,
     TYPE5,TYPE6,TYPE7,TYPE8,TYPE9,TYPE10,TYPE11,TYPE12,TYPE13,TYPE14,
     TYPE15,TYPE16,TYPE17,TYPE18,TYPE19>::first_ = true;
 
