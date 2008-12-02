@@ -1,0 +1,4 @@
+ADD_EXECUTABLE(buildTable buildTable.c)
+TARGET_LINK_LIBRARIES(buildTable ${COMMON_LIBRARIES})
+ADD_EXECUTABLE(queryTable queryTable.c)
+TARGET_LINK_LIBRARIES(queryTable ${COMMON_LIBRARIES})

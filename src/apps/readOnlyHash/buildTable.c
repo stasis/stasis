@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   }
   Tcommit(xid);
-  truncateNow(1);
+  stasis_truncation_truncate(stasis_log_file, 1);
   Tdeinit();
   return 0;
 }
