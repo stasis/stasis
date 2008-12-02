@@ -277,8 +277,9 @@ terms specified in this license.
    Stasis components can be classified as follows:
 
    - I/O utilities (file handles, OS compatibility wrappers)
-   - Write ahead logging component interfaces (logger.h, logger/inMemoryLog.h  logger/logEntry.h  logger/logger2.h  logger/logHandle.h  logger/logMemory.h  logger/logWriter.h)
-   - Write ahead logging component implementations (hash based buffer manager, in memory log, etc...)
+   - Log interfaces (logger/logger2.c  logger/logEntry.c logger/logHandle.c) and implementations (logger/logWriter.c logger/inMemoryLog.c)
+   - Buffer management
+   - Recovery
    - Page formats and associated operations (page/slotted.c page/fixed.c)
    - Application visible methods (Talloc, Tset, ThashInsert, etc)
 

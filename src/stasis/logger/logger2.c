@@ -165,11 +165,9 @@ lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
   return ret;
 }
 
-static void groupCommit(stasis_log_t* log, lsn_t lsn);
-
 lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l) {
   lsn_t lsn = LogTransCommon(log, l, XCOMMIT);
-  groupCommit(log, lsn);
+  LogForce(log, lsn, LOG_FORCE_COMMIT);
   return lsn;
 }
 
@@ -178,9 +176,11 @@ lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l) {
 }
 lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l) {
   lsn_t lsn = LogTransCommonPrepare(log, l);
-  groupCommit(log, lsn);
+  LogForce(log, lsn, LOG_FORCE_COMMIT);
   return lsn;
 }
+
+static void groupCommit(stasis_log_t* log, lsn_t lsn);
 
 void LogForce(stasis_log_t* log, lsn_t lsn,
               stasis_log_force_mode_t mode) {

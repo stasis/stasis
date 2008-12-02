@@ -50,60 +50,48 @@ BEGIN_C_DECLS
 typedef struct LogHandle LogHandle;
 
 /**
-   @file 
-   A simple data structure that allows forward iterations over
-   the log, and also allows reverse iterations.  Forward iterations
-   are used for redo, and return every log entry, in its original
-   order.  Reverse iterations are used for undo, and are transaction
-   specific.  They follow the prevLSN. (or the next entry to be
-   undone stored in any CLR's that are encountered.)
+   @file
 
-   logHandle is useful for read only access to the log.
+   Iterator for forward and reverse iterations over the log.  Forward
+   iterations are used for redo and return each log entry in log
+   order.  Reverse iterations are used for undo, and return each entry
+   in a particular transaction.  They follow the prevLSN field,
+   skipping any undo entries that have been marked complete.
 
    @see logWriter.h For write access to the log.
-   @see logger2.h for the typedef of the logHandle struct
-
-   $Id$
+   @see logger.h For the api provided by log implementations.
 */
 
-/** Returns a logHandle pointing at the first log entry in the log.  */
+/**
+   Allocate a logHandle pointing at the first log entry in the log.
+*/
 LogHandle* getLogHandle(stasis_log_t* log);
-/** Returns a logHandle pointing at lsn. */
+/**
+   Allocate a logHandle pointing at a particular lsn.
+*/
 LogHandle* getLSNHandle(stasis_log_t* log, lsn_t lsn);
-/** Returns a 'guarded log handle'.  This handle executes a callback
-    function on each entry it encounters.  If the guard returns 0,
-    then it's iterator terminates.  Otherwise, it behaves normally. */
-LogHandle* getGuardedHandle(stasis_log_t* log, lsn_t lsn,
-                            guard_fcn_t * f, void * guard_state);
-
+/**
+   Free any resources associated with a LogHandle object.
+*/
 void freeLogHandle(LogHandle* lh);
 
-/** 
+/**
     @return a pointer to the next log entry in the log, or NULL if at
     EOF.
-
  */
 const LogEntry * nextInLog(LogHandle * h);
-/** 
-    Returns a pointer to the previous log entry in this
-    transaction. This is used to undo transactions.  If the logHandle
-    is a guarded handle, the handle returns null.  
-
-    The guard is useful for Tprepare, partial rollback, and probably
-    any reasonable lock manager implementations.
+/**
+    Returns a pointer to the previous log entry in this transaction.
 
     If we encounter a CLR, that means that everything after the clr's
-    undoNextLSN has already been undone.  In that case, we can skip
-    all intervening log entries (including CLR's), since they contain
-    'stale' data.  
+    prevLSN has already been undone.  Therefore, we skip all
+    intervening log entries (including CLR's), since they contain
+    obsolete data.
 
-    @return NULL if there is no previous LogEntry for this
-    transaction, or if the guard indicates that we're done by returning 0.
+    @return NULL if there is no previous LogEntry for this transaction
  */
 const LogEntry * previousInTransaction(LogHandle * h);
-/*
-void closeHandle(LogHandle h);
-*/
+
 END_C_DECLS
 
 #endif
