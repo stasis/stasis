@@ -24,6 +24,17 @@ namespace rose {
      dispatched), interface to the underlying primititves
   */
 
+  typedef struct {
+    recordid bigTree;
+    recordid bigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
+    //    recordid oldBigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
+    recordid mediumTree;
+    recordid mediumTreeAllocState;
+    //    recordid oldMediumTreeAllocState;
+    epoch_t beginning;
+    epoch_t end;
+  } lsmTableHeader_t;
+
   template<class PAGELAYOUT, class ITERA, class ITERB>
     struct merge_args {
       int worker_id;
@@ -49,6 +60,7 @@ namespace rose {
       typename ITERA::handle my_tree;
       epoch_t * last_complete_xact;
       column_number_t ts_col;
+      recordid tree;
     };
 
   template <class PAGELAYOUT, class ITER>
@@ -257,8 +269,24 @@ namespace rose {
 
       // always free in tree and old my tree
 
+      lsmTableHeader_t h;
+      Tread(xid, a->tree, &h);
+      if(!a->out_tree) {
+        h.bigTree = scratch_tree->r_;
+        h.bigTreeAllocState = *scratchAllocState;
+        printf("updated C2's position on disk to %lld\n", scratch_tree->r_.page);
+      } else {
+        h.mediumTree = scratch_tree->r_;
+        h.mediumTreeAllocState = *scratchAllocState;
+        printf("updated C1's position on disk to %lld\n", scratch_tree->r_.page);
+      }
+      Tset(xid, a->tree, &h);
+
       // free old my_tree here
       TlsmFree(xid,a->my_tree->r_,TlsmRegionDeallocRid,a->pageAllocState);
+
+      Tcommit(xid);
+      xid = Tbegin(); // XXX right thing to do here?
 
       if(a->out_tree) {
 	double frac_wasted =
@@ -347,30 +375,19 @@ namespace rose {
 
     return 0;
   }
-  typedef struct {
-    recordid bigTree;
-    recordid bigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
-    recordid oldBigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
-    recordid mediumTree;
-    recordid mediumTreeAllocState;
-    recordid oldMediumTreeAllocState;
-    epoch_t beginning;
-    epoch_t end;
-  } lsmTableHeader_t;
-
 
   template<class PAGELAYOUT>
     inline recordid TlsmTableAlloc(int xid) {
 
     recordid ret = Talloc(xid, sizeof(lsmTableHeader_t));
     lsmTableHeader_t h;
-    h.oldBigTreeAllocState = NULLRID;
+    //h.oldBigTreeAllocState = NULLRID;
     h.bigTreeAllocState = Talloc(xid,sizeof(TlsmRegionAllocConf_t));
     Tset(xid,h.bigTreeAllocState,&LSM_REGION_ALLOC_STATIC_INITIALIZER);
     h.bigTree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),
 			   TlsmRegionAllocRid,&h.bigTreeAllocState,
 			   PAGELAYOUT::FMT::TUP::sizeofBytes());
-    h.oldMediumTreeAllocState = NULLRID;
+    //h.oldMediumTreeAllocState = NULLRID;
     h.mediumTreeAllocState = Talloc(xid,sizeof(TlsmRegionAllocConf_t));
     Tset(xid,h.mediumTreeAllocState,&LSM_REGION_ALLOC_STATIC_INITIALIZER);
     h.mediumTree = TlsmCreate(xid, PAGELAYOUT::cmp_id(),
@@ -521,7 +538,8 @@ namespace rose {
 	0,
         new typename LSM_ITER::treeIteratorHandle(h.bigTree),        // my_tree
 	&(ret->last_xact),
-	ts_col
+	ts_col,
+        tree
       };
     *ret->args1 = tmpargs1;
     void * (*merger1)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, LSM_ITER>;
@@ -530,6 +548,9 @@ namespace rose {
     *ridp = h.mediumTreeAllocState;
     oldridp = (recordid*)malloc(sizeof(recordid));
     *oldridp = NULLRID;
+
+    printf("big tree is %lld\n", (long long)h.bigTree.page);
+    printf("medium tree is %lld\n", (long long)h.mediumTree.page);
 
     ret->args2 = (merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>));
     merge_args<PAGELAYOUT, LSM_ITER, RB_ITER> tmpargs2 =
@@ -556,7 +577,8 @@ namespace rose {
 	allocer_scratch,
         new typename LSM_ITER::treeIteratorHandle(h.mediumTree),
 	0,
-	ts_col
+	ts_col,
+        tree
       };
     *ret->args2 = tmpargs2;
     void * (*merger2)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, RB_ITER>;

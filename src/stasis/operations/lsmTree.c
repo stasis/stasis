@@ -717,6 +717,7 @@ pageid_t TlsmLastPage(int xid, recordid tree) {
   }
   Page * root = loadPage(xid, tree.page);
   readlock(root->rwlatch,0);
+  assert(*stasis_page_type_ptr(root) == LSM_ROOT_PAGE);
   lsmTreeState *state = root->impl;
   int keySize = getKeySize(xid,root);
   if(state->lastLeaf == -1) {
