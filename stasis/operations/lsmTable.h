@@ -28,6 +28,7 @@ namespace rose {
     recordid bigTree;
     recordid bigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
     //    recordid oldBigTreeAllocState; // this is probably the head of an arraylist of regions used by the tree...
+    // XXX need in between tree for when we crash w/o clean shutdown.
     recordid mediumTree;
     recordid mediumTreeAllocState;
     //    recordid oldMediumTreeAllocState;
@@ -270,23 +271,31 @@ namespace rose {
       // always free in tree and old my tree
 
       lsmTableHeader_t h;
+
+      void * oldAllocState = a->pageAllocState;
       Tread(xid, a->tree, &h);
       if(!a->out_tree) {
         h.bigTree = scratch_tree->r_;
         h.bigTreeAllocState = *scratchAllocState;
-        printf("updated C2's position on disk to %lld\n", scratch_tree->r_.page);
+        DEBUG("%d updated C2's position on disk to %lld\n",
+              PAGELAYOUT::FMT::TUP::NN, scratch_tree->r_.page);
       } else {
         h.mediumTree = scratch_tree->r_;
         h.mediumTreeAllocState = *scratchAllocState;
-        printf("updated C1's position on disk to %lld\n", scratch_tree->r_.page);
+        DEBUG("%d updated C1's position on disk to %lld\n",
+              PAGELAYOUT::FMT::TUP::NN, scratch_tree->r_.page);
       }
       Tset(xid, a->tree, &h);
 
-      // free old my_tree here
-      TlsmFree(xid,a->my_tree->r_,TlsmRegionDeallocRid,a->pageAllocState);
-
+      // need to commit before calling free, since a concurrent tree
+      // might reuse our region before the commit happens.
       Tcommit(xid);
       xid = Tbegin(); // XXX right thing to do here?
+
+      // free old my_tree here
+      TlsmFree(xid,a->my_tree->r_,TlsmRegionDeallocRid,oldAllocState);
+      DEBUG("%d freed C?: (my_tree) %lld\n",
+             PAGELAYOUT::FMT::TUP::NN, a->my_tree->r_.page);
 
       if(a->out_tree) {
 	double frac_wasted =
@@ -334,6 +343,13 @@ namespace rose {
           a->my_tree->r_ = TlsmCreate(xid, PAGELAYOUT::cmp_id(),a->pageAlloc,
                                   a->pageAllocState,TUP::sizeofBytes());
 
+          Tread(xid, a->tree, &h);
+          h.mediumTree = a->my_tree->r_;
+          h.mediumTreeAllocState = *(recordid*)(a->pageAllocState);
+          Tset(xid, a->tree, &h);
+          Tcommit(xid);
+          xid = Tbegin();
+
         } else {
           // there is an out tree, but we don't want to push updates to it yet
           // replace my_tree with output of merge
@@ -354,6 +370,9 @@ namespace rose {
 	TlsmFree(xid,
                  (**(typename ITERA::handle**)a->in_tree)->r_,
                  TlsmRegionDeallocRid,a->in_tree_allocer);
+        DEBUG("%d freed C?: (in_tree) %lld\n", PAGELAYOUT::FMT::TUP::NN, 
+               (**(typename ITERA::handle**)a->in_tree)->r_.page);
+
       } else {
         (**(typename STL_ITER::handle**)a->in_tree)->clear();
       }
@@ -549,8 +568,8 @@ namespace rose {
     oldridp = (recordid*)malloc(sizeof(recordid));
     *oldridp = NULLRID;
 
-    printf("big tree is %lld\n", (long long)h.bigTree.page);
-    printf("medium tree is %lld\n", (long long)h.mediumTree.page);
+    DEBUG("big tree is %lld\n", (long long)h.bigTree.page);
+    DEBUG("medium tree is %lld\n", (long long)h.mediumTree.page);
 
     ret->args2 = (merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>*)malloc(sizeof(merge_args<PAGELAYOUT,LSM_ITER,RB_ITER>));
     merge_args<PAGELAYOUT, LSM_ITER, RB_ITER> tmpargs2 =

@@ -21,6 +21,7 @@ pageid_t TlsmRegionAlloc(int xid, void *conf) {
       a->regionList = TarrayListAlloc(xid, 1, 4, sizeof(pageid_t));
       a->regionCount = 0;
     }
+    DEBUG("{%lld <- alloc region arraylist}\n", a->regionList.page);
     TarrayListExtend(xid,a->regionList,1);
     a->regionList.slot = a->regionCount;
     DEBUG("region lst slot %lld\n",a->regionList.slot);
@@ -63,6 +64,7 @@ void TlsmRegionDeallocRid(int xid, void *conf) {
   recordid rid = *(recordid*)conf;
   TlsmRegionAllocConf_t a;
   Tread(xid,rid,&a);
+  DEBUG("{%lld <- dealloc region arraylist}\n", a.regionList.page);
   //  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
   for(int i = 0; i < a.regionCount; i++) {
     a.regionList.slot = i;
@@ -77,6 +79,7 @@ pageid_t TlsmRegionAllocRid(int xid, void * ridp) {
   TlsmRegionAllocConf_t conf;
   Tread(xid,rid,&conf);
   pageid_t ret = TlsmRegionAlloc(xid,&conf);
+  DEBUG("{%lld <- alloc region extend}\n", conf.regionList.page);
   // XXX get rid of Tset by storing next page in memory, and losing it
   //     on crash.
   Tset(xid,rid,&conf);
