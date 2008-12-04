@@ -52,6 +52,7 @@ static void deinit(struct replacementPolicy * r) {
   // responsibility to free the void *'s passed into us.
   //LH_ENTRY(destroy)(l->hash);
   LL_ENTRY(destroy)(l->lru);
+  free(l);
   free(r);
 }
 replacementPolicy * lruFastInit(
