@@ -59,12 +59,16 @@ class gcIterator {
     freeIt(0),
     beginning_of_time_(beginning_of_time),
     ts_col_(ts_col) {
-      get_next();
-      if(have_newest_) {
-	have_current_ = true; // needed by ++.
-	++(*this);
-	// 	assert(have_current_); // Should pass; commented out for perf.
-      }
+      if(*i_ != *iend_) {
+        get_next();
+        if(have_newest_) {
+          have_current_ = true; // needed by ++.
+          ++(*this);
+          // 	assert(have_current_); // Should pass; commented out for perf.
+        }
+      } else {
+        at_end_=true;
+      } 
     }
   explicit gcIterator()
     : i_(0),
