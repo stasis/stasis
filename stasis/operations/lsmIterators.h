@@ -339,7 +339,7 @@ class treeIterator {
         pageid_t *pid_tmp;
 
         slot_ = 0;
-	pageid_t **hack = &pid_tmp;
+        pageid_t **hack = &pid_tmp;
         lsmTreeIterator_value(-1,lsmIterator_,(byte**)hack);
         pageid_ = *pid_tmp;
         p_ = loadPage(-1,pageid_);

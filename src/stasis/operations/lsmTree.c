@@ -846,7 +846,7 @@ lladdIterator_t* lsmTreeIterator_openAt(int xid, recordid root, const byte* key)
   impl->current.slot = lsm_entry_rid.slot - 1;  // slot before thing of interest
   impl->current.size = lsm_entry_rid.size;
 
-  impl->t = 0; // value doesn't matter; will be overwritten by next()
+  impl->t = 0; // must be zero so free() doesn't croak.
   impl->justOnePage = (depth==0);
 
   lladdIterator_t *it = malloc(sizeof(lladdIterator_t));
@@ -866,7 +866,12 @@ lladdIterator_t *lsmTreeIterator_copy(int xid, lladdIterator_t* i) {
     mine->p = 0;
   }
   memcpy(&mine->current, &it->current,sizeof(recordid));
-  mine->t = it->t;
+  if(it->t) {
+    mine->t = malloc(sizeof(*it->t) + it->current.size);
+    memcpy(mine->t, it->t, sizeof(*it->t) + it->current.size);
+  } else {
+    mine->t = 0;
+  }
   mine->justOnePage = it->justOnePage;
   lladdIterator_t * ret = malloc(sizeof(lladdIterator_t));
   ret->type = -1; // XXX LSM_TREE_ITERATOR
@@ -879,6 +884,7 @@ void lsmTreeIterator_close(int xid, lladdIterator_t *it) {
     unlock(impl->p->rwlatch);
     releasePage(impl->p);
   }
+  if(impl->t) { free(impl->t); }
   free(impl);
   free(it);
 }
@@ -911,11 +917,12 @@ int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
   }
   if(impl->current.size != INVALID_SLOT) {
     size_t sz = sizeof(*impl->t) + impl->current.size;
+    if(impl->t) { free(impl->t); }
     impl->t = malloc(sz);
     memcpy(impl->t, readNodeRecord(xid,impl->p,impl->current.slot,impl->current.size), sz);
     return 1;
   } else {
-    free(impl->t);
+    if(impl->t) free(impl->t);
     impl->t = 0;
     return 0;
   }
