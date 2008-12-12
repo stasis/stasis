@@ -187,7 +187,7 @@ void LogForce(stasis_log_t* log, lsn_t lsn,
   if(mode == LOG_FORCE_COMMIT) {
     groupCommit(log, lsn);
   } else {
-    if(log->first_unstable_lsn(log,mode) >= lsn) {
+    if(log->first_unstable_lsn(log,mode) <= lsn) {
       log->force_tail(log,mode);
     }
   }
