@@ -3,7 +3,8 @@
 #include <stdlib.h>
 
 #include <stasis/logger/logHandle.h>
-#include <stasis/logger/logWriter.h>
+#include <stasis/logger/logger2.h>
+#include <stasis/logger/safeWrites.h>
 
 static char * logEntryToString(const LogEntry * le) {
   char * ret = NULL;

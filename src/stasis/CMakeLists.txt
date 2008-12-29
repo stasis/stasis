@@ -9,7 +9,8 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    allocationPolicy.c lockManager.c iterator.c
                    consumer.c arrayCollection.c ringbuffer.c fifo.c
                    multiplexer.c graph.c logger/logEntry.c
-                   logger/logWriter.c logger/logWriterUtils.c
+                   logger/safeWrites.c logger/logWriterUtils.c
+		   logger/filePool.c
 		   logger/inMemoryLog.c
                    logger/logHandle.c logger/logger2.c
                    logger/logMemory.c page/raw.c page/slotted.c

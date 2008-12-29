@@ -1,5 +1,5 @@
-#ifndef __LOGWRITER_H__
-#define __LOGWRITER_H__
+#ifndef __STASIS_LOG_SAFE_WRITES_H
+#define __STASIS_LOG_SAFE_WRITES_H
 
 /*---
 This software is copyrighted by the Regents of the University of
@@ -97,4 +97,4 @@ void stasis_log_safe_writes_delete(const char * filename);
 
 END_C_DECLS
 
-#endif /* __LLADD_LOGGER_LOGWRITER_H */
+#endif

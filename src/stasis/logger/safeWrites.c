@@ -57,7 +57,7 @@ terms specified in this license.
 #include <stasis/common.h>
 
 #include <stasis/crc32.h>
-#include <stasis/logger/logWriter.h>
+#include <stasis/logger/safeWrites.h>
 #include <stasis/logger/logHandle.h>
 #include <stasis/latches.h>
 #include <stasis/logger/logWriterUtils.h>

@@ -18,7 +18,7 @@
 
 
 #include <stasis/logger/logger2.h>
-#include <stasis/logger/logWriter.h>
+#include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
 
 #include <stasis/truncation.h>
