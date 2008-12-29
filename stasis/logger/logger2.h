@@ -156,6 +156,8 @@ struct stasis_log_t {
   int (*deinit)(struct stasis_log_t* log);
 
   int (*is_durable)(struct stasis_log_t* log);
+
+  void* impl;
 };
 
 /**
