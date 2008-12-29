@@ -63,9 +63,9 @@ int main() {
 
   setupOperationsTable();
   stasis_log_t* log;
-  if(NULL == (log = openLogWriter(stasis_log_file_name,
-                                  stasis_log_file_mode,
-                                  stasis_log_file_permissions))) {
+  if(NULL == (log = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                stasis_log_file_mode,
+                                                stasis_log_file_permissions))){
     printf("Couldn't open log.\n");
   }
 

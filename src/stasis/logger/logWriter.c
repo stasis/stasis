@@ -185,8 +185,8 @@ static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
   return nextEntry(e);
 }
 
-stasis_log_t* openLogWriter(const char * filename,
-                            int filemode, int fileperm) {
+stasis_log_t* stasis_log_safe_writes_open(const char * filename,
+                                          int filemode, int fileperm) {
 
   log_filename = strdup(filename);
   log_scratch_filename = malloc(strlen(log_filename) + 2);
@@ -556,7 +556,7 @@ static int close_LogWriter(stasis_log_t* log) {
   return 0;
 }
 
-void deleteLogWriter() {
+void stasis_log_safe_writes_delete(const char* log_filename) {
   remove(log_filename);
 }
 

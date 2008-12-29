@@ -141,9 +141,9 @@ int Tinit() {
         setupOperationsTable();
 	dirtyPagesInit();
         if(LOG_TO_FILE == loggerType) {
-          stasis_log_file = openLogWriter(stasis_log_file_name,
-                                          stasis_log_file_mode,
-                                          stasis_log_file_permissions);
+          stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                        stasis_log_file_mode,
+                                                        stasis_log_file_permissions);
         } else if(LOG_TO_MEMORY == loggerType) {
           stasis_log_file = open_InMemoryLog();
         } else {

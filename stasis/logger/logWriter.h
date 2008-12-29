@@ -1,3 +1,6 @@
+#ifndef __LOGWRITER_H__
+#define __LOGWRITER_H__
+
 /*---
 This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
@@ -67,12 +70,8 @@ terms specified in this license.
  * 
  */
 
-#ifndef __LOGWRITER_H__
-#define __LOGWRITER_H__
-
 #include <stasis/common.h>
 #include <stasis/logger/logger2.h>
-#include <stasis/logger/logEntry.h>
 
 BEGIN_C_DECLS
 /**
@@ -82,7 +81,7 @@ BEGIN_C_DECLS
 
    @return NULL on error
 */
-stasis_log_t* openLogWriter(const char * filename,
+stasis_log_t* stasis_log_safe_writes_open(const char * filename,
                             int filemode,
                             int fileperm);
 
@@ -94,7 +93,7 @@ stasis_log_t* openLogWriter(const char * filename,
   @todo This only exists because the tests use it...once the logfile
         name isn't hardcoded, remove this function.
 */
-void deleteLogWriter();
+void stasis_log_safe_writes_delete(const char * filename);
 
 END_C_DECLS
 

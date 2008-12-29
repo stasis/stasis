@@ -68,7 +68,7 @@ static void setup_log() {
   int i;
   lsn_t prevLSN = -1;
   int xid = 42;
-  deleteLogWriter();
+  stasis_log_safe_writes_delete(stasis_log_file_name);
   stasis_truncation_automatic = 0;
   Tinit();
   lsn_t firstLSN = -1;
@@ -154,7 +154,7 @@ START_TEST(loggerTest)
 
   assert(i == 3000);
 
-  deleteLogWriter();
+  stasis_log_safe_writes_delete(stasis_log_file_name);
   Tdeinit();
 }
 END_TEST
@@ -394,9 +394,9 @@ void reopenLogWorkload(int truncating) {
   stasis_transaction_table_active_transaction_count_set(0);
 
   if(LOG_TO_FILE == loggerType) {
-    stasis_log_file = openLogWriter(stasis_log_file_name,
-                                    stasis_log_file_mode,
-                                    stasis_log_file_permissions);
+    stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                  stasis_log_file_mode,
+                                                  stasis_log_file_permissions);
   } else if(LOG_TO_MEMORY == loggerType) {
     stasis_log_file = open_InMemoryLog();
   } else {
@@ -425,9 +425,9 @@ void reopenLogWorkload(int truncating) {
   stasis_log_file->deinit(stasis_log_file);
 
   if(LOG_TO_FILE == loggerType) {
-    stasis_log_file = openLogWriter(stasis_log_file_name,
-                                    stasis_log_file_mode,
-                                    stasis_log_file_permissions);
+    stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                  stasis_log_file_mode,
+                                                  stasis_log_file_permissions);
   } else if(LOG_TO_MEMORY == loggerType) {
     stasis_log_file = open_InMemoryLog();
   } else {
@@ -498,13 +498,13 @@ void reopenLogWorkload(int truncating) {
 }
 
 START_TEST(loggerReopenTest) {
-  deleteLogWriter();  
+  stasis_log_safe_writes_delete(stasis_log_file_name);  
   reopenLogWorkload(0);
 
 } END_TEST
 
 START_TEST(loggerTruncateReopenTest) { 
-  deleteLogWriter();
+  stasis_log_safe_writes_delete(stasis_log_file_name);
   reopenLogWorkload(1);
 } END_TEST
 
