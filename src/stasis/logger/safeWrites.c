@@ -218,14 +218,6 @@ static LogEntry * readLogEntry(stasis_log_safe_writes_state * sw) {
   return ret;
 }
 
-/** The size of the in-memory log buffer.  When the buffer is full,
-    the log is synchronously flushed to disk.
-
-    XXX should be in flags.c
-
-*/
-#define BUFSIZE (1024 * 1024)
-
 static inline int isDurable_LogWriter(stasis_log_t* log) {
   stasis_log_safe_writes_state* sw = log->impl;
   return !sw->softcommit;
@@ -255,6 +247,11 @@ static LogEntry* log_crc_entry(unsigned int crc) {
 }
 
 /**
+   Scan over the log, looking for the end of log or the first
+   corrupted entry.
+
+   @param log a partially recovered log.  This function calls readLogEntry()
+          (and copes with corrupt entries), and nextEntry_LogWriter().
    @param ret a known-valid LSN (which will be returned if the log is empty)
  */
 static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
@@ -696,7 +693,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     return LLADD_IO_ERROR;
   }
 
-  setbuffer(sw->fp, sw->buffer, BUFSIZE);
+  setbuffer(sw->fp, sw->buffer, stasis_log_write_buffer_size);
 
   sw->global_offset = LSN - sizeof(lsn_t);
 
@@ -774,7 +771,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   // XXX hack; we call things that call into this object during init!
   stasis_log_file = log;
 
-  sw->buffer = malloc(BUFSIZE);
+  sw->buffer = calloc(stasis_log_write_buffer_size, sizeof(char));
 
   if(!sw->buffer) { return 0; /*LLADD_NO_MEM;*/ }
 
@@ -799,7 +796,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   }
 
   /* Increase the length of log's buffer, since it's in O_SYNC mode. */
-  setbuffer(sw->fp, sw->buffer, BUFSIZE);
+  setbuffer(sw->fp, sw->buffer, stasis_log_write_buffer_size);
 
   /* fread() doesn't notice when another handle writes to its file,
      even if fflush() is used to push the changes out to disk.

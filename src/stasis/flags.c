@@ -66,3 +66,20 @@ int stasis_log_file_permissions = STASIS_LOG_FILE_PERMISSIONS;
 int stasis_log_file_permissions = (S_IRUSR | S_IWUSR | S_IRGRP|
                                    S_IWGRP | S_IROTH | S_IWOTH);
 #endif
+
+#ifdef STASIS_LOG_DIR
+const char* stasis_log_dir_name = STASIS_LOG_DIR;
+#else
+const char* stasis_log_dir_name = "stasis_log";
+#endif
+
+#ifdef STASIS_LOG_DIR_LSN_CHARS
+#error 2 ^ 64 is 20 chars in base ten, so there is no reason to redefine STASIS_LOG_DIR_LSN_CHARS
+#endif //STASIS_LOG_DIR_LSN_CHARS
+const int stasis_log_dir_name_lsn_chars = 20;
+
+#ifdef STASIS_LOG_WRITE_BUFFER_SIZE
+lsn_t stasis_log_write_buffer_size = STASIS_LOG_WRITE_BUFFER_SIZE;
+#else
+lsn_t stasis_log_write_buffer_size = 1024 * 1024;
+#endif
