@@ -197,42 +197,47 @@ static void groupCommit(stasis_log_t* log, lsn_t lsn) {
   static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
   static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
 
-  struct timeval now;
-  struct timespec timeout;
 
   pthread_mutex_lock(&check_commit);
   if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
     pthread_mutex_unlock(&check_commit);
     return;
   }
-  gettimeofday(&now, NULL);
-  timeout.tv_sec = now.tv_sec;
-  timeout.tv_nsec = now.tv_usec * 1000;
-  //                   0123456789  <- number of zeros on the next three lines...
-  timeout.tv_nsec +=   100000000; // wait ten msec.
-  if(timeout.tv_nsec > 1000000000) {
-    timeout.tv_nsec -= 1000000000;
-    timeout.tv_sec++;
-  }
+  if(log->is_durable(log)) {
+    struct timeval now;
+    struct timespec timeout;
 
-  pendingCommits++;
-  int xactcount = TactiveTransactionCount();
-  if((log->is_durable(log) && xactcount > 1 && pendingCommits < xactcount) ||
-     (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
-    int retcode;
-    while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
-      if(retcode != 0) { 
-	printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by "
-               "a signal in groupCommit().  Acting as though it timed out.\n",
-               __FILE__, __LINE__);
-	break;
-      }
-      if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
-	pendingCommits--;
-	pthread_mutex_unlock(&check_commit);
-	return;
+    gettimeofday(&now, NULL);
+    timeout.tv_sec = now.tv_sec;
+    timeout.tv_nsec = now.tv_usec * 1000;
+    //                   0123456789  <- number of zeros on the next three lines...
+    timeout.tv_nsec +=   10000000; // wait ten msec.
+    if(timeout.tv_nsec > 1000000000) {
+      timeout.tv_nsec -= 1000000000;
+      timeout.tv_sec++;
+    }
+
+    pendingCommits++;
+    int xactcount = TactiveTransactionCount();
+    if((xactcount > 1 && pendingCommits < xactcount) ||
+       (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
+      int retcode;
+      while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
+        if(retcode != 0) { 
+          printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by "
+                 "a signal in groupCommit().  Acting as though it timed out.\n",
+                 __FILE__, __LINE__);
+          break;
+        }
+        if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
+          pendingCommits--;
+          pthread_mutex_unlock(&check_commit);
+          return;
+        }
       }
     }
+  } else {
+    pendingCommits++;
   }
   if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) <= lsn) {
     log->force_tail(log, LOG_FORCE_COMMIT);
