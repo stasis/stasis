@@ -82,7 +82,7 @@ findInLinkedList(const void * key, int len,
 }
 
 static LH_ENTRY(value_t) * removeFromLinkedList(struct LH_ENTRY(table) * table,
-						int bucket, 
+						intptr_t bucket, 
 						const LH_ENTRY(key_t)* key, int len){
     struct LH_ENTRY(pair_t) * predecessor;
   struct LH_ENTRY(pair_t) * thePair;
@@ -148,7 +148,7 @@ static struct  LH_ENTRY(pair_t)* insertIntoLinkedList(struct LH_ENTRY(table) * t
   return thePair;
 }
 static void extendHashTable(struct LH_ENTRY(table) * table) { 
-  unsigned int maxExtension = twoToThe(table->bucketListBits-1);
+  unsigned int maxExtension = stasis_util_two_to_the(table->bucketListBits-1);
   // If table->bucketListNextExtension == maxExtension, then newBucket =
   // twoToThe(table->bucketListBits), which is one higher than the hash can
   // return.
@@ -158,7 +158,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
   } else {
     table->bucketListNextExtension = 1;
     table->bucketListBits ++;
-    maxExtension = twoToThe(table->bucketListBits-1);
+    maxExtension = stasis_util_two_to_the(table->bucketListBits-1);
   }
   
   unsigned int splitBucket   = table->bucketListNextExtension - 1;
@@ -180,7 +180,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
   struct LH_ENTRY(pair_t) * splitBucketRoot = 
     &(table->bucketList[splitBucket]);
   while(splitBucketRoot->key &&
-	(hash(splitBucketRoot->key, splitBucketRoot->keyLength, 
+	(stasis_linear_hash(splitBucketRoot->key, splitBucketRoot->keyLength, 
 	     table->bucketListBits, table->bucketListNextExtension) ==
 	 newBucket)) {
     insertIntoLinkedList(table, newBucket, 
@@ -190,7 +190,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 			 splitBucketRoot->key, splitBucketRoot->keyLength);
   }
   if(splitBucketRoot->key) {
-    assert(hash(splitBucketRoot->key, splitBucketRoot->keyLength,
+    assert(stasis_linear_hash(splitBucketRoot->key, splitBucketRoot->keyLength,
 		table->bucketListBits, table->bucketListNextExtension) 
 	   == splitBucket);
   } else { 
@@ -202,18 +202,17 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
     // the list doesn't change its successor.
     struct LH_ENTRY(pair_t) * newNext = next->next;
 
-    if(hash(next->key, next->keyLength, 
-	    table->bucketListBits, table->bucketListNextExtension) ==
-       newBucket) {
+    uint64_t hashCode = stasis_linear_hash(next->key, next->keyLength,
+                                           table->bucketListBits,
+                                           table->bucketListNextExtension);
+
+    if(hashCode == newBucket) {
       insertIntoLinkedList(table, newBucket,
 			   next->key, next->keyLength, next->value);
       removeFromLinkedList(table, splitBucket,
 			   next->key, next->keyLength);
-    } else { 
-      assert(hash(next->key, next->keyLength, 
-		  table->bucketListBits, table->bucketListNextExtension) == 
-	     splitBucket);
-
+    } else {
+      assert(hashCode == splitBucket);
     }
     next = newNext;
   }
@@ -225,7 +224,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
   struct LH_ENTRY(table) * ret = malloc(sizeof(struct LH_ENTRY(table)));
   ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
-  hashGetParamsForSize(initialSize, 
+  stasis_linear_hash_get_size_params(initialSize, 
 		       &(ret->bucketListBits),
 		       &(ret->bucketListNextExtension));
   ret->bucketListLength = initialSize;
@@ -242,8 +241,7 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  // @todo 32 vs. 64 bit..
-  long bucket = hash(key, len, 
+  intptr_t bucket = stasis_linear_hash(key, len, 
 		     table->bucketListBits, table->bucketListNextExtension);
   struct LH_ENTRY(pair_t) * thePair = 0;
   struct LH_ENTRY(pair_t) * junk;
@@ -295,9 +293,9 @@ LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  // @todo 32 vs. 64 bit..
-  long bucket = hash(key, len, 
-		     table->bucketListBits, table->bucketListNextExtension);
+  intptr_t bucket = stasis_linear_hash(key, len,
+                                       table->bucketListBits,
+                                       table->bucketListNextExtension);
 
   LH_ENTRY(value_t) * ret = removeFromLinkedList(table, bucket, key, len);
   if(ret) { table->occupancy--; }
@@ -312,9 +310,9 @@ LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  // @todo 32 vs. 64 bit..
-  int bucket = hash(key, len, 
-		    table->bucketListBits, table->bucketListNextExtension);
+  intptr_t bucket = stasis_linear_hash(key, len,
+                                      table->bucketListBits,
+                                      table->bucketListNextExtension);
   struct LH_ENTRY(pair_t) * predecessor;
   struct LH_ENTRY(pair_t) * thePair;
   //  int iters;

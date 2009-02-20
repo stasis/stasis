@@ -58,9 +58,8 @@ void LinearHashNTAInit() {
 
 /* private methods... */
 compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * lhh);
-
-
-#define HASH_INIT_ARRAY_LIST_COUNT twoToThe(HASH_INIT_BITS)
+/** @todo Remove #defined HASH_INIT_ARRAY_LIST_COUNT */
+#define HASH_INIT_ARRAY_LIST_COUNT (stasis_util_two_to_the(HASH_INIT_BITS))
 #define HASH_INIT_ARRAY_LIST_MULT    2
 
 compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
@@ -216,18 +215,20 @@ compensated_function static int __ThashInsert(int xid, recordid hashHeader, cons
   lhh.numEntries ++;
   try_ret(compensation_error()) {
     if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
-      if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * (HASH_FILL_FACTOR))) {
+      if(lhh.numEntries > (int)((double)(lhh.nextSplit
+                          + stasis_util_two_to_the(lhh.bits-1)) * (HASH_FILL_FACTOR))) {
 	ThashSplitBucket(xid, hashHeader, &lhh);
       } 
     } else {
-      if(lhh.numEntries > (int)((double)(lhh.nextSplit + twoToThe(lhh.bits-1)) * HASH_FILL_FACTOR)) {
+      if(lhh.numEntries > (int)((double)(lhh.nextSplit
+                          + stasis_util_two_to_the(lhh.bits-1)) * HASH_FILL_FACTOR)) {
 	ThashSplitBucket(xid, hashHeader, &lhh);
       }
     }
   } end_ret(compensation_error());
 
   recordid bucket = lhh.buckets;
-  bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
+  bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
 
   int ret;
   try_ret(compensation_error()) {  
@@ -308,7 +309,7 @@ compensated_function static int __ThashRemove(int xid, recordid hashHeader, cons
     Tset(xid, hashHeader, &lhh);
     
     recordid bucket = lhh.buckets;
-    bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
+    bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
     
     if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
       recordid bucketList;
@@ -336,7 +337,7 @@ compensated_function int ThashLookup(int xid, recordid hashHeader, const byte * 
     Tread(xid, hashHeader, &lhh);
   
     recordid bucket = lhh.buckets;
-    bucket.slot = hash(key, keySize, lhh.bits, lhh.nextSplit);
+    bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
     
     if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
       recordid bucketList;
@@ -351,16 +352,15 @@ compensated_function int ThashLookup(int xid, recordid hashHeader, const byte * 
   return ret;
 }
 compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * lhh) {
-  // if(1) { return; }
 
   try {
     long old_bucket = lhh->nextSplit;
-    long new_bucket = old_bucket + twoToThe(lhh->bits-1);
+    long new_bucket = old_bucket + stasis_util_two_to_the(lhh->bits-1);
     recordid old_bucket_rid = lhh->buckets;
     recordid new_bucket_rid = lhh->buckets;
     old_bucket_rid.slot = old_bucket;
     new_bucket_rid.slot = new_bucket;
-    // void * handle = TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
+
     TarrayListExtend(xid, lhh->buckets, 1);
     recordid new_bucket_list; // will be uninitialized if we have fixed length entries.
     if(lhh->keySize == VARIABLE_LENGTH || lhh->valueSize == VARIABLE_LENGTH) {
@@ -371,7 +371,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
       Tset(xid, new_bucket_rid, entry);
       free(entry);  
     }
-    if(lhh->nextSplit < twoToThe(lhh->bits-1)-1) {
+    if(lhh->nextSplit < stasis_util_two_to_the(lhh->bits-1)-1) {
       lhh->nextSplit++;
     } else {
       lhh->nextSplit = 0;
@@ -388,7 +388,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
       byte *key, *value;
       int keySize, valueSize;
       while(TpagedListNext(xid, pit, &key, &keySize, &value, &valueSize)) {
-	if(hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+	if(stasis_linear_hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
 	  TpagedListRemove(xid, old_bucket_list, key, keySize);
 	  TpagedListInsert(xid, new_bucket_list, key, keySize, value, valueSize);
 	}
@@ -403,7 +403,7 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
       while(TlinkedListNext(xid, it, &key, &keySize, &value, &valueSize)) {
 	assert(valueSize == lhh->valueSize);
 	assert(keySize == lhh->keySize);
-	if(hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+	if(stasis_linear_hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
 	  TlinkedListRemove(xid, old_bucket_rid, key, keySize);
 	  TlinkedListInsert(xid, new_bucket_rid, key, keySize, value, valueSize);
 	}
@@ -414,7 +414,6 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
     }
   } end;
 
-  //  TendNestedTopAction(xid, handle);
   return;
 }
 lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, int valueSize) {
@@ -425,7 +424,7 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, i
     lladd_hash_header lhh;
     Tread(xid, hashHeader, &lhh);
     it->bucket = lhh.buckets;
-    it->numBuckets = lhh.nextSplit +twoToThe(lhh.bits-1);
+    it->numBuckets = lhh.nextSplit + stasis_util_two_to_the(lhh.bits-1);
     it->bucket.slot = 0;
     /*    it->keySize = keySize;
     it->valueSize = valueSize;
@@ -565,7 +564,6 @@ static int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
 //---------------------------------  async hash operations happen below here
 
 typedef struct { 
-  //  recordid hash;
   int value_len;
   int key_len;
 } asyncHashInsert_t;
@@ -601,9 +599,6 @@ typedef struct {
 void * ThashAsyncWorker(void * argp) {
   hashAsyncWorker_arg * arg = (hashAsyncWorker_arg*)argp;
 
-
-  //  lladdIterator_t * it = (lladdIterator_t *) arg;
-  //  recordid hash;
   while(Titerator_next(arg->xid, arg->it)) {
     byte * fifo;
     int fifo_size = Titerator_value(arg->xid, arg->it, &fifo);

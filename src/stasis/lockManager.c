@@ -21,7 +21,7 @@ static pthread_mutex_t mutexes[MUTEX_COUNT];
 
 static pthread_mutex_t xid_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t * getMutex(byte * dat, int datLen) {
-  return &mutexes[hash(dat, datLen, MUTEX_BITS, MUTEX_EXT)];
+  return &mutexes[stasis_linear_hash(dat, datLen, MUTEX_BITS, MUTEX_EXT)];
 }
 
 static pblHashTable_t * xidLockTable;

@@ -87,7 +87,7 @@ void expand(int xid, recordid hash, int next_split, int i, int keySize, int valS
       TarrayListExtend(xid, hash, AMORTIZE);
       for(j = 0; j < AMORTIZE; j++) {
 	if(compensation_error()) { break; }
-	if(next_split >= twoToThe(i-1)+2) {
+	if(next_split >= stasis_util_two_to_the(i-1)+2) {
 	  i++;
 	  next_split = 2;
 	} 
@@ -124,7 +124,7 @@ void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned
     
     assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
     recordid ba = hashRid; ba.slot = next_split;
-    recordid bb = hashRid; bb.slot = next_split + twoToThe(i-1);
+    recordid bb = hashRid; bb.slot = next_split + stasis_util_two_to_the(i-1);
     
     hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
     hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
@@ -145,8 +145,9 @@ void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned
       return; 
     }
     
-    unsigned int old_hash;
-    unsigned int new_hash = hash(A_contents+1, keySize, i,   UINT_MAX) + 2;
+    uint64_t old_hash;
+    uint64_t new_hash =
+      2 + stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX);
 
     while(new_hash != next_split) {
       // Need a record in A that belongs in the first bucket... 
@@ -197,7 +198,7 @@ void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned
       Tset(xid, A, A_contents);
       Tdealloc(xid, oldANext);
       
-      new_hash = hash(A_contents+1, keySize, i,   UINT_MAX) + 2;
+      new_hash = stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX) + 2;
     }
 
     B = A_contents->next;
@@ -207,11 +208,11 @@ void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned
       Tread(xid, B, B_contents);
       C = B_contents->next;
       
-      old_hash = hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
-      new_hash = hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
+      old_hash = stasis_linear_hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
+      new_hash = stasis_linear_hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
       
       assert(next_split == old_hash); 
-      assert(new_hash   == old_hash || new_hash == old_hash + twoToThe(i-1));
+      assert(new_hash   == old_hash || new_hash == old_hash + stasis_util_two_to_the(i-1));
       
       if(new_hash == old_hash) {
 	A = B;
@@ -419,7 +420,8 @@ void TnaiveHashInsert(int xid, recordid hashRid,
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
-  int bucket = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  int bucket =
+    2 + stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2);
 
   hashEntry * e = calloc(1,sizeof(hashEntry) + keySize + valSize);
   memcpy(e+1, key, keySize);
@@ -442,7 +444,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
 	    void * key, int keySize, int valSize) {
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
-  int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid  deleteMe;
   hashRid.slot = bucket_number;
 
@@ -488,7 +490,7 @@ int TnaiveHashClose(int xid, recordid hashRid) {
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
-  int bucket_number = hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
   return ret;
 }
