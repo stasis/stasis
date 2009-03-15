@@ -544,12 +544,12 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 1200); // 20 minute timeout
   /* Sub tests are added, one per line, here */
-  /*  tcase_add_test(tc, emptyHashIterator);
+  tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);
-  tcase_add_test(tc, linearHashNTAVariableSizetest); */
+  tcase_add_test(tc, linearHashNTAVariableSizetest);
   tcase_add_test(tc, linearHashNTAFixedLengthIteratortest);
   tcase_add_test(tc, linearHashNTAVariableLengthIteratortest);
-  /*  tcase_add_test(tc, linearHashNTAtest);
+  tcase_add_test(tc, linearHashNTAtest);
   tcase_add_test(tc, linearHashNTAThreadedTest);
   tcase_add_test(tc, linearHashNTABlobTest);
 #ifdef LONG_TEST
@@ -558,8 +558,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
-  tcase_add_test(tc, linearHashNTAThreadedTestRandomized); 
-  #endif*/
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
+  #endif
 
   /* --------------------------------------------- */
   
