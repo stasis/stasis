@@ -2,12 +2,24 @@
 #include <stasis/latches.h>
 #include <string.h>
 #include <assert.h>
+/**
+   @todo remove static fields from inMemoryLog
+*/
 static rwl * flushedLSN_lock;
 static lsn_t nextAvailableLSN;
 static lsn_t globalOffset;
 static rwl * globalOffset_lock;
 static LogEntry ** buffer;
 static lsn_t bufferLen;
+
+static lsn_t nextAvailableLSN_InMemoryLog(stasis_log_t * log) {
+  writelock(flushedLSN_lock,0);
+  writelock(globalOffset_lock,0);
+  lsn_t ret = nextAvailableLSN;
+  unlock(globalOffset_lock);
+  unlock(flushedLSN_lock);
+  return ret;
+}
 
 static int writeLogEntry_InMemoryLog(stasis_log_t * log, LogEntry *e) {
   writelock(flushedLSN_lock, 0);
@@ -136,6 +148,7 @@ stasis_log_t* open_InMemoryLog() {
     readLSNEntry_InMemoryLog, // read_entry
     nextEntry_InMemoryLog,// next_entry
     flushedLSN_InMemoryLog, // first_unstable_lsn
+    nextAvailableLSN_InMemoryLog, // next_available_lsn
     syncLog_InMemoryLog, // force_tail
     truncateLog_InMemoryLog, // truncate
     firstLogEntry_InMemoryLog,// truncation_point

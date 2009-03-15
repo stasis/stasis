@@ -85,8 +85,12 @@ static void setup_log() {
     rid.slot = 0;
     rid.size = sizeof(unsigned long);
 
+    lsn_t test = stasis_log_file->next_available_lsn(stasis_log_file);
+
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->LSN;
+
+    assert(test <= e->LSN);
 
     if(first) { 
       first = 0;

@@ -299,7 +299,6 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
     LSN encountered so far to the end of the log.
 
 */
-
 static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
 
   stasis_log_safe_writes_state* sw = log->impl;
@@ -424,6 +423,14 @@ static void syncLog_LogWriter(stasis_log_t * log,
   }
 
   writeunlock(sw->flushedLSN_latch);
+}
+
+static lsn_t nextAvailableLSN_LogWriter(stasis_log_t * log) {
+  stasis_log_safe_writes_state* sw = log->impl;
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  lsn_t ret = sw->nextAvailableLSN;
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
+  return ret;
 }
 
 static lsn_t flushedLSN_LogWriter(stasis_log_t* log,
@@ -746,6 +753,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     readLSNEntry_LogWriter, // read_entry
     nextEntry_LogWriter,// next_entry
     flushedLSN_LogWriter, // first_unstable_lsn
+    nextAvailableLSN_LogWriter, // newt_available_lsn
     syncLog_LogWriter, // force_tail
     truncateLog_LogWriter, // truncate
     firstLogEntry_LogWriter,// truncation_point

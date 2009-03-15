@@ -132,7 +132,13 @@ struct stasis_log_t {
   */
   lsn_t (*first_unstable_lsn)(struct stasis_log_t* log,
                               stasis_log_force_mode_t mode);
-
+  /**
+     This function returns the LSN of the next log entry passed to
+     write_entry.  This shouldn't be used to determine which entry a
+     particular call will assign; rather it is used to provide a lower
+     bound on the LSN of newly-loaded LSN-free pages.
+  */
+  lsn_t (*next_available_lsn)(struct stasis_log_t* log);
   /**
      Force any enqueued, unwritten entries to disk
   */
