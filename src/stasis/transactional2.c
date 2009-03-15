@@ -58,7 +58,10 @@ void setupOperationsTable() {
 	operationsTable[OPERATION_INCREMENT] = getIncrement();
 	operationsTable[OPERATION_DECREMENT] = getDecrement();
 	operationsTable[OPERATION_ALLOC]     = getAlloc();
-	//	operationsTable[OPERATION_PREPARE]   = getPrepare();
+        operationsTable[OPERATION_PREPARE] = getPrepare();
+        operationsTable[OPERATION_SET_LSN_FREE] = getSetLsnFree();
+        operationsTable[OPERATION_SET_LSN_FREE_INVERSE]
+                                                = getSetLsnFreeInverse();
 	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
 		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
 	operationsTable[OPERATION_DEALLOC]     = getDealloc();

@@ -78,7 +78,9 @@ void redoUpdate(const LogEntry * e) {
 
   Page * p = loadPage(e->xid, e->update.page);
   writelock(p->rwlatch,0);
-  if(stasis_page_lsn_read(p) < e->LSN) {
+  if(stasis_page_lsn_read(p) < e->LSN ||
+     e->update.funcID == OPERATION_SET_LSN_FREE ||
+     e->update.funcID == OPERATION_SET_LSN_FREE_INVERSE) {
     DEBUG("OPERATION xid %d Redo, %lld {%lld:%lld}\n", e->xid,
            e->LSN, e->update.page, stasis_page_lsn_read(p));
     // Need to check the id field to find out what the REDO_action

@@ -60,12 +60,12 @@ static int op_prepare(const LogEntry * e, Page * p) {
 }
 
 Operation getPrepare() {
-	Operation o = {
-		OPERATION_PREPARE, /* id */
-		OPERATION_NOOP,
-		&op_prepare /* Function */
-	};
-	return o;
+  Operation o = {
+    OPERATION_PREPARE, /* id */
+    OPERATION_NOOP,
+    &op_prepare /* Function */
+  };
+  return o;
 }
 
 /** PrepareGuardState is 1 if the iterator should continue on the next

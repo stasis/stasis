@@ -143,7 +143,7 @@ typedef struct {
 #include "operations/linearHashNTA.h"
 #include "operations/regions.h"
 #include "operations/lsmTree.h"
-
+#include "operations/lsnFreeSet.h"
 extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
 
 /**

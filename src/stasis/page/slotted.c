@@ -29,7 +29,8 @@ static inline void slottedFsck(const Page const * page) {
   const long slotListStart = (long)slot_length_ptr(&dummy, numslots-1);
   assert(slotListStart < PAGE_SIZE && slotListStart >= 0);
   assert(page_type == SLOTTED_PAGE ||
-	 page_type == BOUNDARY_TAG_PAGE);
+	 page_type == BOUNDARY_TAG_PAGE ||
+         page_type == SLOTTED_LSN_FREE_PAGE);
   assert(numslots >= 0);
   assert(numslots * SLOTTED_PAGE_OVERHEAD_PER_RECORD < PAGE_SIZE);
   assert(freespace >= 0);

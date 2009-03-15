@@ -107,7 +107,8 @@ typedef long long pageid_t;
 #define PAGEID_T_MAX INT64_MAX
 typedef int32_t slotid_t;
 #define SLOTID_T_MAX INT32_MAX
-
+typedef uint16_t pageoff_t;
+#define PAGEOFF_T_MAX UINT16_MAX;
 
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/

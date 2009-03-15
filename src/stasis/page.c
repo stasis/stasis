@@ -94,9 +94,6 @@ terms specified in this license.
 
 static page_impl page_impls[MAX_PAGE_TYPE];
 
-/**
-   XXX latching for pageWriteLSN...
-*/
 void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
   assertlocked(page->rwlatch);
 
@@ -106,9 +103,7 @@ void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
   dirtyPages_add(page);
   return;
 }
-/**
-   XXX latching for pageReadLSN...
-*/
+
 lsn_t stasis_page_lsn_read(const Page * page) {
   assertlocked(page->rwlatch);
   return page->LSN;
@@ -131,6 +126,7 @@ void stasis_page_init() {
   stasis_page_impl_register(blobImpl());
   stasis_page_impl_register(indirectImpl());
   stasis_page_impl_register(lsmRootImpl());
+  stasis_page_impl_register(slottedLsnFreeImpl());
 }
 
 void stasis_page_deinit() {

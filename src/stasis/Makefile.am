@@ -10,7 +10,7 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common
 		   logger/filePool.c \
 		   logger/inMemoryLog.c logger/logHandle.c logger/logger2.c \
 		   logger/logMemory.c \
-		   page/raw.c page/slotted.c page/fixed.c  compensations.c \
+		   page/raw.c page/slotted.c page/lsnFree.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \
 		   operations/alloc.c operations/noop.c \
@@ -19,6 +19,7 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common
 		   operations/linearHashNTA.c operations/linkedListNTA.c \
 		   operations/pageOrientedListNTA.c \
 		   operations/regions.c operations/lsmTree.c \
+		   operations/lsnFreeSet.c \
 		   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/non_blocking.c \
 		   io/debug.c \
 		   bufferManager.c \
