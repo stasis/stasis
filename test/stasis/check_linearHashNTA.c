@@ -387,53 +387,106 @@ START_TEST(linearHashNTABlobTest) {
   Tdeinit();
 } END_TEST
 
-START_TEST(linearHashNTAIteratortest) {
-  Tinit();
-  int xid = Tbegin();
-  
-  recordid hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
-  
-  int i = 0;
-  
-  for(i = 0; i < NUM_ENTRIES; i++) {
-    recordid value = makekey(0, i);
-    int found = ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid));
-    assert(!found);
-  }
-  
+void iteratorTest(int variableLength) {
   int seen[NUM_ENTRIES];
+  recordid hash;
+  {
+    Tinit();
+    int xid = Tbegin();
+
+    if(variableLength) {
+      hash = ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+    } else {
+      hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
+    }
   
-  for(i = 0; i < NUM_ENTRIES; i++) {
-    seen[i] = 0;
+    int i = 0;
+  
+    for(i = 0; i < NUM_ENTRIES; i++) {
+      recordid value = makekey(0, i);
+      int found = ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid));
+      assert(!found);
+    }
+
+    for(i = 0; i < NUM_ENTRIES; i++) {
+      seen[i] = 0;
+    }
+
+    lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
+
+    int * key;
+    int ** bkey = &key;
+    recordid * value;
+    recordid ** bvalue = &value;
+    int keySize; 
+    int valueSize;
+
+    while(ThashNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
+
+      recordid check = makekey(0, *key);
+      assert(!memcmp(value, &check, sizeof(recordid)));
+
+      assert(!seen[*key]);
+      seen[*key]++;
+
+      free(key);
+      free(value);
+    }
+
+    for(i = 0 ; i < NUM_ENTRIES; i++) {
+      assert(seen[i] == 1);
+      seen[i] = 0;
+    }
+
+    Tcommit(xid);
+    Tdeinit();
   }
-  
-  lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
-  
-  int * key;
-  int ** bkey = &key;
-  recordid * value;
-  recordid ** bvalue = &value;
-  int keySize; 
-  int valueSize;
-  
-  while(ThashNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
-    
-    recordid check = makekey(0, *key);
-    assert(!memcmp(value, &check, sizeof(recordid)));
-    
-    assert(!seen[*key]);
-    seen[*key]++;
-    
-    free(key);
-    free(value);
+  {
+    Tinit();
+    int xid = Tbegin();
+
+    for(int i = 0; i < NUM_ENTRIES; i++) {
+      recordid value = makekey(0, i);
+      int found = ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid));
+      assert(found);
+    }
+
+    lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
+
+    int * key;
+    int ** bkey = &key;
+    recordid * value;
+    recordid ** bvalue = &value;
+    int keySize; 
+    int valueSize;
+
+    while(ThashNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
+
+      recordid check = makekey(0, *key);
+      assert(!memcmp(value, &check, sizeof(recordid)));
+
+      assert(!seen[*key]);
+      seen[*key]++;
+
+      free(key);
+      free(value);
+    }
+
+    for(int i = 0 ; i < NUM_ENTRIES; i++) { 
+      assert(seen[i] == 1);
+      seen[i] = 0;
+    }
+    Tabort(xid);
+    Tdeinit();
   }
-  
-  for(i = 0 ; i < NUM_ENTRIES; i++) { 
-    assert(seen[i] == 1);
-  }
-  
-  Tcommit(xid);
-  Tdeinit();
+}
+
+START_TEST(linearHashNTAFixedLengthIteratortest) {
+  iteratorTest(0);
+} END_TEST
+
+START_TEST(linearHashNTAVariableLengthIteratortest) {
+  iteratorTest(1);
 } END_TEST
 
 START_TEST(emptyHashIterator) {
@@ -491,11 +544,12 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 1200); // 20 minute timeout
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, emptyHashIterator);
+  /*  tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);
-  tcase_add_test(tc, linearHashNTAVariableSizetest);
-  tcase_add_test(tc, linearHashNTAIteratortest);
-  tcase_add_test(tc, linearHashNTAtest);
+  tcase_add_test(tc, linearHashNTAVariableSizetest); */
+  tcase_add_test(tc, linearHashNTAFixedLengthIteratortest);
+  tcase_add_test(tc, linearHashNTAVariableLengthIteratortest);
+  /*  tcase_add_test(tc, linearHashNTAtest);
   tcase_add_test(tc, linearHashNTAThreadedTest);
   tcase_add_test(tc, linearHashNTABlobTest);
 #ifdef LONG_TEST
@@ -504,8 +558,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
   tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
-  tcase_add_test(tc, linearHashNTAThreadedTestRandomized);
-#endif
+  tcase_add_test(tc, linearHashNTAThreadedTestRandomized); 
+  #endif*/
 
   /* --------------------------------------------- */
   
