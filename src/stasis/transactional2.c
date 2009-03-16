@@ -28,7 +28,7 @@
 #include <assert.h>
 #include <limits.h>
 
-static TransactionLog XactionTable[MAX_TRANSACTIONS];
+TransactionLog XactionTable[MAX_TRANSACTIONS];
 static int numActiveXactions = 0;
 static int xidCount = 0;
 
@@ -310,6 +310,35 @@ static compensated_function void TactionHelper(int xid,
   freeLogEntry(e);
 
   unlock(p->rwlatch);
+}
+
+void TreorderableUpdate(int xid, void * hp, pageid_t page,
+                        const void *dat, size_t datlen, int op) {
+  stasis_log_reordering_handle_t * h = (typeof(h))hp;
+  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  Page * p = loadPage(xid, page);
+  try { 
+    if(globalLockManager.writeLockPage) {
+      globalLockManager.writeLockPage(xid, p->id);
+    }
+  } end;
+
+  pthread_mutex_lock(&h->mut);
+
+  //  e = LogUpdate(stasis_log_file, &XactionTable[xid % MAX_TRANSACTIONS],
+  //                p, op, dat, datlen);
+  stasis_log_reordering_handle_append(h, p, op, dat, datlen);
+
+  LogEntry * e = allocUpdateLogEntry(-1, h->l->xid, op,
+                                     p ? p->id : INVALID_PAGE,
+                                     dat, datlen);
+  e->LSN = 0;
+  writelock(p->rwlatch,0);
+  doUpdate(e, p);
+  unlock(p->rwlatch);
+  pthread_mutex_unlock(&h->mut);
+  releasePage(p);
+  freeLogEntry(e);
 }
 
 compensated_function void TupdateStr(int xid, pageid_t page,

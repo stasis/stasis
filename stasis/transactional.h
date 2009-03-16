@@ -541,7 +541,6 @@ terms specified in this license.
 
 #include "common.h"
 #include "flags.h"
-
 BEGIN_C_DECLS
 
 //XXX doesn't belong here.
@@ -615,6 +614,9 @@ compensated_function void Tupdate(int xid, pageid_t page,
  */
 compensated_function void TupdateStr(int xid, pageid_t page, 
                                      const char *dat, size_t datlen, int op);
+
+void TreorderableUpdate(int xid, void * h, pageid_t page,
+                        const void * dat, size_t datlen, int op);
 /**
  * Read the value of a record.
  * 

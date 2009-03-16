@@ -1,6 +1,6 @@
 #include <stasis/operations.h>
 #include <stasis/page.h>
-
+#include <stasis/logger/reorderingHandle.h>
 #include <string.h>
 static int op_lsn_free_set(const LogEntry *e, Page *p) {
   if(*stasis_page_type_ptr(p) != SLOTTED_LSN_FREE_PAGE) {  abort() ; }
@@ -24,7 +24,8 @@ static int op_lsn_free_unset(const LogEntry *e, Page *p) {
   memcpy(p->memAddr + a[0], b+a[1], a[1]);
   return 0;
 }
-int TsetLSNFree(int xid, recordid rid, const void * dat) {
+int TsetLsnFreeReorderable(int xid, stasis_log_reordering_handle_t * h,
+                                  recordid rid, const void * dat) {
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   rid = stasis_record_dereference(xid,p,rid);
@@ -34,6 +35,7 @@ int TsetLSNFree(int xid, recordid rid, const void * dat) {
     fflush(stderr);
     abort();
     unlock(p->rwlatch);
+    return 1;
   } else {
     rid.size = stasis_record_type_to_size(rid.size);
     intptr_t sz = 2 * (sizeof(pageoff_t) + rid.size);
@@ -51,11 +53,17 @@ int TsetLSNFree(int xid, recordid rid, const void * dat) {
     stasis_record_read(xid, p, rid, b+rid.size);
 
     unlock(p->rwlatch);
-
-    Tupdate(xid,rid.page,buf,sz,OPERATION_SET_LSN_FREE);
+    if(!h) {
+      Tupdate(xid,rid.page,buf,sz,OPERATION_SET_LSN_FREE);
+    } else {
+      TreorderableUpdate(xid,h,rid.page,buf,sz,OPERATION_SET_LSN_FREE);
+    }
     free(buf);
   }
   return 0;
+}
+int TsetLsnFree(int xid, recordid rid, const void * dat) {
+  return TsetLsnFreeReorderable(xid, 0, rid, dat);
 }
 
 Operation getSetLsnFree() {

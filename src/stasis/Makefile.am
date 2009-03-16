@@ -10,6 +10,7 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common
 		   logger/filePool.c \
 		   logger/inMemoryLog.c logger/logHandle.c logger/logger2.c \
 		   logger/logMemory.c \
+		   logger/reorderingHandle.c \
 		   page/raw.c page/slotted.c page/lsnFree.c page/fixed.c  compensations.c \
 	           operations/pageOperations.c page/indirect.c operations/decrement.c  \
 		   operations/increment.c  operations/prepare.c  operations/set.c \

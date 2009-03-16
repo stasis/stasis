@@ -50,6 +50,7 @@ terms specified in this license.
 #include <stasis/page.h>
 #define LOG_NAME   "check_operations.log"
 
+
 #include <stdio.h>
 
 /**
@@ -586,10 +587,89 @@ START_TEST(operation_lsn_free) {
       int foo;
       Tread(xid[i%2],rid[i], &foo);
       assert(foo == 42);
-      TsetLSNFree(xid[i%2], rid[i], &i);
+      TsetLsnFree(xid[i%2], rid[i], &i);
       Tread(xid[i%2],rid[i], &foo);
       assert(foo == i);
     }
+    Tcommit(xid[0]);
+    Tabort(xid[1]);
+  }
+  Tdeinit();
+
+  Tinit();
+  {
+    int xid = Tbegin();
+
+    for(int i = 0; i < 100; i++) {
+      int foo;
+      Tread(xid, rid[i], &foo);
+      if(i%2) {
+        assert(foo == 42);
+      } else {
+        assert(foo == i);
+      }
+    }
+    Tcommit(xid);
+  }
+  Tdeinit();
+
+} END_TEST
+
+
+START_TEST(operation_reorderable) {
+  Tinit();
+  recordid rid[100];
+  {
+    int xid = Tbegin();
+    pageid_t pid = TpageAlloc(xid);
+    Page * p = loadPage(xid,pid);
+    writelock(p->rwlatch,0);
+    stasis_slotted_lsn_free_initialize_page(p);
+    // XXX hack!
+    byte * old = malloc(PAGE_SIZE);
+    memcpy(old, p->memAddr, PAGE_SIZE);
+    int fortyTwo = 42;
+    for(int i = 0; i < 100; i++) {
+      rid[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
+      stasis_record_alloc_done(xid, p, rid[i]);
+      stasis_record_write(xid, p, -1, rid[i], (const byte*)&fortyTwo);
+    }
+    byte * new = malloc(PAGE_SIZE);
+    memcpy(new, p->memAddr, PAGE_SIZE);
+    memcpy(p->memAddr, old, PAGE_SIZE);
+    unlock(p->rwlatch);
+    releasePage(p);
+    TpageSet(xid, pid, new);
+    free(old);
+    free(new);
+    Tcommit(xid);
+  }
+  {
+    int xid[2];
+
+    xid[0] = Tbegin();
+    xid[1] = Tbegin();
+
+    stasis_log_reordering_handle_t * rh
+      = stasis_log_reordering_handle_open(
+                         &XactionTable[xid[0]% MAX_TRANSACTIONS],
+                         stasis_log_file,
+                         100, // bytes (far too low!)
+                         5  // log entries
+                                          );
+    for(int i = 0; i < 100; i++) {
+      int foo;
+      Tread(xid[i%2],rid[i], &foo);
+      assert(foo == 42);
+      if(i%2) {
+        TsetLsnFree(xid[i%2], rid[i], &i);
+      } else {
+        TsetLsnFreeReorderable(xid[i%2], rh, rid[i], &i);
+      }
+      Tread(xid[i%2],rid[i], &foo);
+      assert(foo == i);
+    }
+    stasis_log_reordering_handle_close(rh);
     Tcommit(xid[0]);
     Tabort(xid[1]);
   }
@@ -634,7 +714,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_alloc_test);
   tcase_add_test(tc, operation_array_list);
   tcase_add_test(tc, operation_lsn_free);
-  /* --------------------------------------------- */
+  tcase_add_test(tc, operation_reorderable);
+ /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
 

@@ -55,6 +55,20 @@ terms specified in this license.
 #ifndef __LOGGER2_H__
 #define __LOGGER2_H__
 
+#include <stasis/common.h>
+
+/**
+   Contains the state needed by the logging layer to perform
+   operations on a transaction.
+ */
+typedef struct TransactionLog {
+  int xid;
+  lsn_t prevLSN;
+  lsn_t recLSN;
+} TransactionLog;
+
+typedef struct stasis_log_t stasis_log_t;
+
 #include <stasis/operations.h>
 
 /**
@@ -64,21 +78,16 @@ terms specified in this license.
 */
 typedef int (guard_fcn_t)(const LogEntry *, void *);
 
-typedef struct stasis_log_t stasis_log_t;
 
 typedef enum {
   LOG_FORCE_COMMIT, LOG_FORCE_WAL
 } stasis_log_force_mode_t;
 
 /**
-   Contains the state needed by the logging layer to perform
-   operations on a transaction.
- */
-typedef struct {
-  int xid;
-  lsn_t prevLSN;
-  lsn_t recLSN;
-} TransactionLog;
+   XXX TransactionTable should be private to transactional2.c!
+*/
+extern TransactionLog XactionTable[MAX_TRANSACTIONS];
+
 
 /**
     This is the log implementation that is being used.
