@@ -24,7 +24,7 @@ static int op_lsn_free_unset(const LogEntry *e, Page *p) {
   memcpy(p->memAddr + a[0], b+a[1], a[1]);
   return 0;
 }
-int TsetLsnFreeReorderable(int xid, stasis_log_reordering_handle_t * h,
+int TsetReorderable(int xid, stasis_log_reordering_handle_t * h,
                                   recordid rid, const void * dat) {
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
@@ -63,7 +63,29 @@ int TsetLsnFreeReorderable(int xid, stasis_log_reordering_handle_t * h,
   return 0;
 }
 int TsetLsnFree(int xid, recordid rid, const void * dat) {
-  return TsetLsnFreeReorderable(xid, 0, rid, dat);
+  return TsetReorderable(xid, 0, rid, dat);
+}
+int TsetReorderableWriteBack(int xid, stasis_log_reordering_handle_t * h,
+                             pageid_t page, pageoff_t off, pageoff_t len,
+                             const void * dat, const void * olddat) {
+  intptr_t sz = 2 * (sizeof(pageoff_t) + len);
+  byte * buf = calloc(sz,1);
+  pageoff_t * a = (pageoff_t*)buf;
+  a[0] = off;
+  a[1] = len;
+  byte * b = (byte*)&a[2];
+  memcpy(b,dat,len);
+  memcpy(b+len,dat,len);
+  if(!h) {
+    TwritebackUpdate(xid,page,buf,sz,OPERATION_SET_LSN_FREE);
+  } else {
+    TreorderableWritebackUpdate(xid,h,page,buf,sz,OPERATION_SET_LSN_FREE);
+  }
+  free(buf);
+  return 0;
+}
+int TsetWriteBack(int xid, pageid_t page, pageoff_t off, pageoff_t len, const void * dat, const void * olddat) {
+  return TsetReorderableWriteBack(xid,0,page,off,len,dat,olddat);
 }
 
 Operation getSetLsnFree() {

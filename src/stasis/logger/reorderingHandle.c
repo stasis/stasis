@@ -16,15 +16,20 @@ static void* stasis_log_reordering_handle_worker(void * a) {
                                  h->queue[h->cur_off].arg_size);
         assert(e->xid != INVALID_XID);
         chunk_len += sizeofLogEntry(e);
-        Page * p = h->queue[h->cur_off].p;
 
         h->cur_len--;
+        h->phys_size -= sizeofLogEntry(e);
         h->cur_off = (h->cur_off+1)%h->max_len;
 
-        writelock(p->rwlatch,0);
-        stasis_page_lsn_write(e->xid, p, e->LSN);
-        unlock(p->rwlatch);
-        releasePage(p);
+        if(h->queue[h->cur_off].p) {
+          Page * p = h->queue[h->cur_off].p;
+          writelock(p->rwlatch,0);
+          stasis_page_lsn_write(e->xid, p, e->LSN);
+          unlock(p->rwlatch);
+          releasePage(p);
+        } /*
+            else it's the caller's problem; flush(), and checking the
+            xaction table for prevLSN is their friend. */
       }
       if(chunk_len > 0) {
         lsn_t to_force = h->l->prevLSN;
@@ -64,7 +69,8 @@ stasis_log_reordering_handle_t *
 stasis_log_reordering_handle_open(TransactionLog * l,
                                   stasis_log_t* log,
                                   size_t chunk_len,
-                                  size_t max_len) {
+                                  size_t max_len,
+                                  size_t max_size) {
   stasis_log_reordering_handle_t * ret = malloc(sizeof(*ret));
 
   ret->l = l;
@@ -78,18 +84,32 @@ stasis_log_reordering_handle_open(TransactionLog * l,
   ret->max_len = max_len;
   ret->cur_off = 0;
   ret->cur_len = 0;
+  ret->phys_size = 0;
+  ret->max_size = max_size;
   pthread_create(&ret->worker,0,stasis_log_reordering_handle_worker,ret);
   return ret;
 }
-void stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
+static int AskedForBump = 0;
+size_t stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
                                          Page * p,
                                          unsigned int op,
                                          const byte * arg,
-                                         size_t arg_size
+                                         size_t arg_size,
+                                         size_t phys_size
                                          ) {
-  while(h->cur_len == h->max_len) {
+  while(h->phys_size >= h->max_size) {
     pthread_cond_wait(&h->done, &h->mut);
   }
+
+  while(h->cur_len == h->max_len) {
+    if(!AskedForBump) {
+      printf("Warning: bump max_len\n"); fflush(stdout);
+      AskedForBump = 1;
+    }
+    pthread_cond_wait(&h->done, &h->mut);
+  }
+
+
   intptr_t idx = (h->cur_off+h->cur_len)%h->max_len;
   h->queue[idx].p = p;
   h->queue[idx].op = op;
@@ -97,5 +117,7 @@ void stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
   memcpy(h->queue[idx].arg,arg,arg_size);
   h->queue[idx].arg_size = arg_size;
   h->cur_len++;
+  h->phys_size += phys_size;
   pthread_cond_signal(&h->ready);
+  return h->phys_size;
 }

@@ -655,7 +655,8 @@ START_TEST(operation_reorderable) {
                          &XactionTable[xid[0]% MAX_TRANSACTIONS],
                          stasis_log_file,
                          100, // bytes (far too low!)
-                         5  // log entries
+                         10,  // log entries
+                         500 // max byte size
                                           );
     for(int i = 0; i < 100; i++) {
       int foo;
@@ -664,7 +665,7 @@ START_TEST(operation_reorderable) {
       if(i%2) {
         TsetLsnFree(xid[i%2], rid[i], &i);
       } else {
-        TsetLsnFreeReorderable(xid[i%2], rh, rid[i], &i);
+        TsetReorderable(xid[i%2], rh, rid[i], &i);
       }
       Tread(xid[i%2],rid[i], &foo);
       assert(foo == i);

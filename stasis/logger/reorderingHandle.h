@@ -23,6 +23,8 @@ typedef struct stasis_log_reordering_handle_t {
   size_t max_len;
   size_t cur_off;
   size_t cur_len;
+  size_t max_size;
+  size_t phys_size;
 } stasis_log_reordering_handle_t;
 
 #include <stasis/page.h>
@@ -33,11 +35,14 @@ stasis_log_reordering_handle_t *
 stasis_log_reordering_handle_open(TransactionLog * l,
                                   stasis_log_t* log,
                                   size_t chunk_len,
-                                  size_t max_len);
-void stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
+                                  size_t max_len,
+                                  size_t max_size);
+size_t stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
                                          Page * p,
                                          unsigned int op,
                                          const byte * arg,
-                                         size_t arg_size);
+                                         size_t arg_size,
+                                         size_t phys_size
+                                         );
 
 #endif //__STASIS_LOG_REORDERING_HANDLE_H

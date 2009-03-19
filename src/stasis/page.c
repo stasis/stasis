@@ -145,6 +145,10 @@ int stasis_page_impl_register(page_impl p) {
   page_impls[p.page_type] = p;
   return 0;
 }
+page_impl * stasis_page_impl_get(int id) {
+  assert(page_impls[id].page_type == id);
+  return & page_impls[id];
+}
 void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
   assertlocked(p->rwlatch);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );

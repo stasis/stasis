@@ -325,13 +325,12 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 
   pthread_mutex_lock(&h->mut);
 
-  //  e = LogUpdate(stasis_log_file, &XactionTable[xid % MAX_TRANSACTIONS],
-  //                p, op, dat, datlen);
-  stasis_log_reordering_handle_append(h, p, op, dat, datlen);
-
   LogEntry * e = allocUpdateLogEntry(-1, h->l->xid, op,
                                      p ? p->id : INVALID_PAGE,
                                      dat, datlen);
+
+  stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(e));
+
   e->LSN = 0;
   writelock(p->rwlatch,0);
   doUpdate(e, p);
@@ -340,7 +339,32 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   releasePage(p);
   freeLogEntry(e);
 }
+lsn_t TwritebackUpdate(int xid, pageid_t page,
+                      const void *dat, size_t datlen, int op) {
+  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
+  TransactionLog* l = &XactionTable[xid % MAX_TRANSACTIONS];
+  stasis_log_file->write_entry(stasis_log_file, e);
 
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  l->prevLSN = e->LSN;
+
+  freeLogEntry(e);
+  return l->prevLSN;
+}
+/** DANGER: you need to set the LSN's on the pages that you want to write back,
+    this method doesn't let you do that, so the only option is to pin until
+    commit, then set a conservative (too high) lsn */
+void TreorderableWritebackUpdate(int xid, void* hp,
+                                 pageid_t page, const void * dat,
+                                 size_t datlen, int op) {
+  stasis_log_reordering_handle_t* h = hp;
+  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  pthread_mutex_lock(&h->mut);
+  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
+  stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(e));
+
+}
 compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {
   Tupdate(xid, page, dat, datlen, op);

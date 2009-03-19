@@ -865,6 +865,16 @@ typedef struct page_impl {
 */
 int stasis_page_impl_register(page_impl impl);
 
+/**
+   Get the page_impl for a particular page type.  This isn't set
+   const, so you can write to the function pointers.  However, no
+   attempt has been made to make such things thread safe, so stasis'
+   worker threads can cause all sorts of undefined trouble if you poke
+   this.
+  */
+page_impl* stasis_page_impl_get(int id);
+
+
 // --------------------  Page specific, general purpose methods
 
 /**

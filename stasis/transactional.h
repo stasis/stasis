@@ -617,6 +617,19 @@ compensated_function void TupdateStr(int xid, pageid_t page,
 
 void TreorderableUpdate(int xid, void * h, pageid_t page,
                         const void * dat, size_t datlen, int op);
+/** Note; it is *your* responsibility to set the lsn on the page; this
+    function returns a plausible value */
+lsn_t TwritebackUpdate(int xid, pageid_t page,
+                       const void * dat, size_t datlen, int op);
+
+
+/** DANGER: you need to set the LSN's on the pages that you want to write back,
+    this method doesn't help you do that, so the only option is to pin until
+    commit, then set a conservative (too high) lsn */
+void TreorderableWritebackUpdate(int xid, void* h,
+                                 pageid_t page, const void * dat,
+                                 size_t datlen, int op);
+
 /**
  * Read the value of a record.
  * 
