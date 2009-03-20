@@ -3,6 +3,8 @@
 #include <stasis/common.h>
 #include <stasis/logger/logger2.h>
 
+extern long stasis_log_reordering_usleep_after_flush;
+
 typedef struct {
   Page * p;
   unsigned int op;

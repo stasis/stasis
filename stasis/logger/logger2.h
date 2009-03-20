@@ -65,6 +65,7 @@ typedef struct TransactionLog {
   int xid;
   lsn_t prevLSN;
   lsn_t recLSN;
+  pthread_mutex_t mut;
 } TransactionLog;
 
 typedef struct stasis_log_t stasis_log_t;
@@ -202,7 +203,7 @@ void LogForce(stasis_log_t* log, lsn_t lsn, stasis_log_force_mode_t mode);
    Inform the logging layer that a new transaction has begun, and
    obtain a handle.
 */
-TransactionLog LogTransBegin(stasis_log_t* log, int xid);
+void LogTransBegin(stasis_log_t* log, int xid, TransactionLog* l);
 
 /**
    Write a transaction PREPARE to the log tail.  Blocks until the

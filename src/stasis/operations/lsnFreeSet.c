@@ -76,13 +76,14 @@ int TsetReorderableWriteBack(int xid, stasis_log_reordering_handle_t * h,
   byte * b = (byte*)&a[2];
   memcpy(b,dat,len);
   memcpy(b+len,dat,len);
+  lsn_t ret = 0;
   if(!h) {
-    TwritebackUpdate(xid,page,buf,sz,OPERATION_SET_LSN_FREE);
+    ret = TwritebackUpdate(xid,page,buf,sz,OPERATION_SET_LSN_FREE);
   } else {
     TreorderableWritebackUpdate(xid,h,page,buf,sz,OPERATION_SET_LSN_FREE);
   }
   free(buf);
-  return 0;
+  return ret;
 }
 int TsetWriteBack(int xid, pageid_t page, pageoff_t off, pageoff_t len, const void * dat, const void * olddat) {
   return TsetReorderableWriteBack(xid,0,page,off,len,dat,olddat);

@@ -52,6 +52,9 @@ pthread_mutex_t transactional_2_mutex;
 
 void setupOperationsTable() {
 	memset(XactionTable, INVALID_XTABLE_XID, sizeof(TransactionLog)*MAX_TRANSACTIONS);
+        for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+          pthread_mutex_init(&XactionTable[i].mut,0);
+        }
 	// @todo clean out unused constants...
 	operationsTable[OPERATION_SET]       = getSet();
 	operationsTable[OPERATION_SET_INVERSE] = getSetInverse();
@@ -282,7 +285,7 @@ int Tbegin() {
 
 	pthread_mutex_unlock(&transactional_2_mutex);
 
-	XactionTable[index] = LogTransBegin(stasis_log_file, xidCount_tmp);
+	LogTransBegin(stasis_log_file, xidCount_tmp, &XactionTable[index]);
 
 	if(globalLockManager.begin) { globalLockManager.begin(XactionTable[index].xid); }
 
@@ -317,6 +320,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   stasis_log_reordering_handle_t * h = (typeof(h))hp;
   assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
   Page * p = loadPage(xid, page);
+  assert(p);
   try { 
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, p->id);
@@ -363,7 +367,7 @@ void TreorderableWritebackUpdate(int xid, void* hp,
   pthread_mutex_lock(&h->mut);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
   stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(e));
-
+  pthread_mutex_unlock(&h->mut);
 }
 compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {

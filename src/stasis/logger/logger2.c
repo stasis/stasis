@@ -77,14 +77,12 @@ stasis_log_t* stasis_log_file = 0;
 
 static int pendingCommits;
 
-TransactionLog LogTransBegin(stasis_log_t* log, int xid) {
-  TransactionLog tl;
-  tl.xid = xid;
+void LogTransBegin(stasis_log_t* log, int xid, TransactionLog* tl) {
+  tl->xid = xid;
 
   DEBUG("Log Begin %d\n", xid);
-  tl.prevLSN = -1;
-  tl.recLSN = -1;
-  return tl;
+  tl->prevLSN = -1;
+  tl->recLSN = -1;
 }
 
 static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
@@ -93,8 +91,11 @@ static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
 
   log->write_entry(log, e);
 
+  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
+  pthread_mutex_unlock(&l->mut);
+
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
 
@@ -113,8 +114,10 @@ static lsn_t LogTransCommonPrepare(stasis_log_t* log, TransactionLog * l) {
         e->xid, e->prevLSN, l->recLSN, getPrepareRecLSN(e));
   log->write_entry(log, e);
 
+  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
+  pthread_mutex_unlock(&l->mut);
   DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n",
         e->xid, (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
 
@@ -137,9 +140,10 @@ LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
   log->write_entry(log, e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid, 
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
-
+  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
+  pthread_mutex_unlock(&l->mut);
   return e;
 }
 

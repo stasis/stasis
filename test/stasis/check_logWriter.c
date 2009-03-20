@@ -387,9 +387,9 @@ START_TEST(loggerCheckThreaded) {
   Tdeinit();
 
 } END_TEST
-
+void setupOperationsTable();
 void reopenLogWorkload(int truncating) { 
-
+  setupOperationsTable();
   stasis_truncation_automatic = 0;
 
   const int ENTRY_COUNT = 1000;
@@ -408,7 +408,9 @@ void reopenLogWorkload(int truncating) {
   }
 
   int xid = 1;
-  TransactionLog l = LogTransBegin(stasis_log_file, xid);
+  TransactionLog l;
+  pthread_mutex_init(&l.mut,0);
+  LogTransBegin(stasis_log_file, xid, &l);
   lsn_t startLSN = 0;
 
   LogEntry * entries[ENTRY_COUNT];

@@ -1,6 +1,9 @@
 #include <stasis/transactional.h>
 #include <stasis/logger/reorderingHandle.h>
 #include <string.h>
+
+long stasis_log_reordering_usleep_after_flush = 0;
+
 static void* stasis_log_reordering_handle_worker(void * a) {
   stasis_log_reordering_handle_t * h = (typeof(h))a;
   pthread_mutex_lock(&h->mut);
@@ -17,10 +20,6 @@ static void* stasis_log_reordering_handle_worker(void * a) {
         assert(e->xid != INVALID_XID);
         chunk_len += sizeofLogEntry(e);
 
-        h->cur_len--;
-        h->phys_size -= sizeofLogEntry(e);
-        h->cur_off = (h->cur_off+1)%h->max_len;
-
         if(h->queue[h->cur_off].p) {
           Page * p = h->queue[h->cur_off].p;
           writelock(p->rwlatch,0);
@@ -30,11 +29,19 @@ static void* stasis_log_reordering_handle_worker(void * a) {
         } /*
             else it's the caller's problem; flush(), and checking the
             xaction table for prevLSN is their friend. */
+
+        h->cur_len--;
+        h->phys_size -= sizeofLogEntry(e);
+        h->cur_off = (h->cur_off+1)%h->max_len;
+
       }
       if(chunk_len > 0) {
         lsn_t to_force = h->l->prevLSN;
         pthread_mutex_unlock(&h->mut);
         LogForce(h->log, to_force, LOG_FORCE_COMMIT);
+        if(stasis_log_reordering_usleep_after_flush) {
+          usleep(stasis_log_reordering_usleep_after_flush);
+        }
         pthread_mutex_lock(&h->mut);
       }
     }
