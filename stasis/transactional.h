@@ -721,6 +721,11 @@ void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments,
  */
 lsn_t TendNestedTopAction(int xid, void * handle);
 
+/**
+   Initialize Stasis' transaction table.  Called by Tinit() and unit
+   tests that wish to test portions of Stasis in isolation.
+ */
+void stasis_transaction_table_init();
 
 /**
  *  Used by recovery to prevent reuse of old transaction ids.

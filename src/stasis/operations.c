@@ -43,22 +43,85 @@ terms specified in this license.
 #include <stasis/common.h>
 
 #include <assert.h>
-#include <string.h>
-#include <stdio.h>
 
 #include <stasis/operations.h>
-#include <stasis/logger/logger2.h>
-#include <stasis/bufferManager.h>
-
+#include <stasis/logger/logEntry.h>
 #include <stasis/page.h>
 
-Operation operationsTable[MAX_OPERATIONS];
+static stasis_operation_impl stasis_operation_table[MAX_OPERATIONS];
 
-void doUpdate(const LogEntry * e, Page * p) {
+void stasis_operation_impl_register(stasis_operation_impl o) {
+  if(stasis_operation_table[o.id].id != OPERATION_INVALID) {
+    stasis_operation_impl old = stasis_operation_table[o.id];
+    assert(o.id == old.id);
+    assert(o.redo==old.redo && o.undo==old.undo && o.run==old.run);
+  }
+  stasis_operation_table[o.id] = o;
+}
+static int stasis_operations_initted = 0;
+void stasis_operation_table_init() {
+  if(!stasis_operations_initted) {
+    stasis_operations_initted = 1;
+    for(int i = 0; i < MAX_OPERATIONS; i++) {
+      stasis_operation_table[i].id = OPERATION_INVALID;
+      stasis_operation_table[i].redo = OPERATION_INVALID;
+      stasis_operation_table[i].undo = OPERATION_INVALID;
+      stasis_operation_table[i].run = NULL;
+    }
+  }
+
+  stasis_operation_impl_register(stasis_op_impl_set());
+  stasis_operation_impl_register(stasis_op_impl_set_inverse());
+
+  stasis_operation_impl_register(stasis_op_impl_increment());
+  stasis_operation_impl_register(stasis_op_impl_decrement());
+
+  stasis_operation_impl_register(stasis_op_impl_alloc());
+
+  stasis_operation_impl_register(stasis_op_impl_prepare());
+
+  stasis_operation_impl_register(stasis_op_impl_lsn_free_set());
+  stasis_operation_impl_register(stasis_op_impl_lsn_free_set_inverse());
+  // placeholder
+  // placeholder
+  stasis_operation_impl_register(stasis_op_impl_dealloc());
+  stasis_operation_impl_register(stasis_op_impl_realloc());
+  
+  stasis_operation_impl_register(stasis_op_impl_page_set_range());
+  stasis_operation_impl_register(stasis_op_impl_page_set_range_inverse());
+  
+  stasis_operation_impl_register(stasis_op_impl_noop());
+  
+  stasis_operation_impl_register(stasis_op_impl_array_list_header_init());
+  stasis_operation_impl_register(stasis_op_impl_page_initialize());
+	
+  stasis_operation_impl_register(stasis_op_impl_set_range());
+  stasis_operation_impl_register(stasis_op_impl_set_range_inverse());
+	
+  stasis_operation_impl_register(stasis_op_impl_linked_list_insert());
+  stasis_operation_impl_register(stasis_op_impl_linked_list_remove());
+
+  stasis_operation_impl_register(stasis_op_impl_linear_hash_insert());
+  stasis_operation_impl_register(stasis_op_impl_linear_hash_remove());
+
+  stasis_operation_impl_register(stasis_op_impl_boundary_tag_alloc());
+
+  // place holder
+
+  stasis_operation_impl_register(stasis_op_impl_region_alloc());
+  stasis_operation_impl_register(stasis_op_impl_region_alloc_inverse());
+
+  stasis_operation_impl_register(stasis_op_impl_region_dealloc());
+  stasis_operation_impl_register(stasis_op_impl_region_dealloc_inverse());
+}
+
+
+
+void stasis_operation_do(const LogEntry * e, Page * p) {
   assert(p);
   assertlocked(p->rwlatch);
-
-  operationsTable[e->update.funcID].run(e, p);
+  assert(e->update.funcID != OPERATION_INVALID);
+  stasis_operation_table[e->update.funcID].run(e, p);
 
   DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
          e->LSN, e->update.page, stasis_page_lsn_read(p));
@@ -67,17 +130,17 @@ void doUpdate(const LogEntry * e, Page * p) {
 
 }
 
-void redoUpdate(const LogEntry * e) {
+void stasis_operation_redo(const LogEntry * e, Page * p) {
   // Only handle update log entries
   assert(e->type == UPDATELOG);
   // If this is a logical operation, something is broken
   assert(e->update.page != INVALID_PAGE);
+  assert(e->update.funcID != OPERATION_INVALID);
+  assert(stasis_operation_table[e->update.funcID].redo != OPERATION_INVALID);
 
-  if(operationsTable[operationsTable[e->update.funcID].id].run == noop) 
+  if(stasis_operation_table[e->update.funcID].redo == OPERATION_NOOP) {
     return;
-
-  Page * p = loadPage(e->xid, e->update.page);
-  writelock(p->rwlatch,0);
+  }
   if(stasis_page_lsn_read(p) < e->LSN ||
      e->update.funcID == OPERATION_SET_LSN_FREE ||
      e->update.funcID == OPERATION_SET_LSN_FREE_INVERSE) {
@@ -86,23 +149,25 @@ void redoUpdate(const LogEntry * e) {
     // Need to check the id field to find out what the REDO_action
     // is for this log type.
 
-    // contrast with doUpdate(), which doesn't check the .id field.
-    operationsTable[operationsTable[e->update.funcID].id]
+    // contrast with doUpdate(), which doesn't check the .redo field.
+    assert(e->update.funcID != OPERATION_INVALID);
+    assert(stasis_operation_table[e->update.funcID].redo != OPERATION_INVALID);
+    stasis_operation_table[stasis_operation_table[e->update.funcID].redo]
       .run(e,p);
     stasis_page_lsn_write(e->xid, p, e->LSN);
   } else {
     DEBUG("OPERATION xid %d skip redo, %lld {%lld:%lld}\n", e->xid,
            e->LSN, e->update.page, stasis_page_lsn_read(p));
   }
-  unlock(p->rwlatch);
-  releasePage(p);
 }
 
-void undoUpdate(const LogEntry * e, lsn_t effective_lsn, Page * p) {
+void stasis_operation_undo(const LogEntry * e, lsn_t effective_lsn, Page * p) {
   // Only handle update entries
   assert(e->type == UPDATELOG);
 
-  int undo = operationsTable[e->update.funcID].undo;
+  assert(e->update.funcID != OPERATION_INVALID);
+  int undo = stasis_operation_table[e->update.funcID].undo;
+  assert(undo != OPERATION_INVALID);
 
   if(e->update.page == INVALID_PAGE) {
     // logical undos are excuted unconditionally.
@@ -110,14 +175,14 @@ void undoUpdate(const LogEntry * e, lsn_t effective_lsn, Page * p) {
     DEBUG("OPERATION xid %d FuncID %d Undo, %d LSN %lld {logical}\n", e->xid,
           e->update.funcID, undo, e->LSN);
 
-    operationsTable[undo].run(e,0);
+    stasis_operation_table[undo].run(e,0);
   } else {
     assert(p->id == e->update.page);
 
     if(stasis_page_lsn_read(p) < effective_lsn) {
       DEBUG("OPERATION xid %d Undo, %lld {%lld:%lld}\n", e->xid,
              e->LSN, e->update.page, stasis_page_lsn_read(p));
-      operationsTable[undo].run(e,p);
+      stasis_operation_table[undo].run(e,p);
       stasis_page_lsn_write(e->xid, p, effective_lsn);
     } else {
       DEBUG("OPERATION xid %d skip undo, %lld {%lld:%lld}\n", e->xid,

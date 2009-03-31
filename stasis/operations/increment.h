@@ -66,6 +66,6 @@ terms specified in this license.
 static inline void Tincrement(int xid, recordid rid) {
   Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
 }
-Operation getIncrement();
+stasis_operation_impl stasis_op_impl_increment();
 
 #endif

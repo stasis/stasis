@@ -79,7 +79,7 @@ terms specified in this license.
 
 extern recordid prepare_bogus_rec;
 
-Operation getPrepare();
+stasis_operation_impl stasis_op_impl_prepare();
 
 /**
    Recovery's undo phase uses this logHandle iterator guard to implement Tprepare().

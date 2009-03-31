@@ -190,7 +190,11 @@ static void Redo(stasis_log_t* log) {
           if(e->update.page == INVALID_PAGE) {
             // logical redo; ignore
           } else {
-            redoUpdate(e);
+	    Page * p = loadPage(e->xid, e->update.page);
+	    writelock(p->rwlatch,0);
+	    stasis_operation_redo(e,p);
+	    unlock(p->rwlatch);
+	    releasePage(p);
           }
         } break;
       case CLRLOG:
@@ -206,7 +210,7 @@ static void Redo(stasis_log_t* log) {
 
             Page * p = loadPage(e->xid, ce->update.page);
             writelock(p->rwlatch,0);
-            undoUpdate(ce, e->LSN, p);
+            stasis_operation_undo(ce, e->LSN, p);
             unlock(p->rwlatch);
             releasePage(p);
           }
@@ -288,7 +292,7 @@ static void Undo(stasis_log_t* log, int recovery) {
 
             stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
 
-            undoUpdate(e, clr_lsn, p);
+            stasis_operation_undo(e, clr_lsn, p);
 
             if(p) {
               unlock(p->rwlatch);
@@ -305,7 +309,7 @@ static void Undo(stasis_log_t* log, int recovery) {
             = log->read_entry(log, ((CLRLogEntry*)e)->clr.compensated_lsn);
           if(ce->update.page == INVALID_PAGE) {
             DEBUG("logical clr\n");
-            undoUpdate(ce, 0, 0); // logical undo; effective LSN doesn't matter
+            stasis_operation_undo(ce, 0, 0); // logical undo; effective LSN doesn't matter
           } else {
             DEBUG("physical clr: op %d lsn %lld\n", ce->update.funcID, ce->LSN);
             // no-op.  Already undone during redo.  This would redo the original op.

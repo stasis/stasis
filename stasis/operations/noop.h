@@ -54,6 +54,9 @@ terms specified in this license.
 #ifndef __NOOP_H__
 #define __NOOP_H__
 
-Operation getNoop();
+stasis_operation_impl stasis_op_impl_noop();
+/**
+   @todo noop() should be static
+ */
 int noop(const LogEntry* e, Page* p);
 #endif

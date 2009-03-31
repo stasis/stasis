@@ -56,13 +56,11 @@ static char * logEntryToString(const LogEntry * le) {
   return ret;
 }
 
-void setupOperationsTable();
-
 int main() {
   LogHandle* lh;
   const LogEntry * le;
 
-  setupOperationsTable();
+  stasis_operation_table_init();
   stasis_log_t* log;
   if(NULL == (log = stasis_log_safe_writes_open(stasis_log_file_name,
                                                 stasis_log_file_mode,

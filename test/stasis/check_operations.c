@@ -110,7 +110,7 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("C\n");
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
-  doUpdate(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
+  stasis_operation_do(setToTwo, p);  /* PAGE LSN= 10, value = 2. */
   unlock(p->rwlatch);
   releasePage(p);
 
@@ -131,7 +131,7 @@ START_TEST(operation_physical_do_undo) {
 
   setToTwo->LSN = 5;
 
-  undoUpdate(setToTwo, 12, p); /* Should succeed: log LSN is lower than page LSN, but effective LSN is higher than page LSN */
+  stasis_operation_undo(setToTwo, 12, p); /* Should succeed: log LSN is lower than page LSN, but effective LSN is higher than page LSN */
 
   unlock(p->rwlatch);
   releasePage(p);
@@ -139,16 +139,12 @@ START_TEST(operation_physical_do_undo) {
   p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
-  unlock(p->rwlatch);
-  releasePage(p);
 
   assert(buf == 1);
 
   DEBUG("E\n");
-  redoUpdate(setToTwo);
+  stasis_operation_redo(setToTwo,p);
 
-  p = loadPage(xid, rid.page);
-  readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
   unlock(p->rwlatch);
   releasePage(p);
@@ -194,28 +190,25 @@ START_TEST(operation_physical_do_undo) {
   return;
 
   setToTwo->LSN = 10;
-  
-  DEBUG("F\n");
-  redoUpdate(setToTwo);
 
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
+  
+  DEBUG("F\n");
+  stasis_operation_redo(setToTwo,p);
+
   stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 2);
 
   DEBUG("G undo set to 2\n");
-  undoUpdate(setToTwo, 20, p);   /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
+  stasis_operation_undo(setToTwo, 20, p);   /* Succeeds -- 20 is the 'CLR' entry's lsn.*/
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
-  unlock(p->rwlatch);
   assert(buf == 1);
-  releasePage(p);
   
   DEBUG("H don't redo set to 2\n");
-  redoUpdate(setToTwo);        /* Fails */
+  stasis_operation_redo(setToTwo,p);        /* Fails */
 
-  p = loadPage(xid, rid.page);
-  writelock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
   assert(buf == 1);
@@ -224,13 +217,8 @@ START_TEST(operation_physical_do_undo) {
 
   DEBUG("I redo set to 2\n");
 
-  unlock(p->rwlatch);
-  releasePage(p);
+  stasis_operation_redo(setToTwo,p);        /* Succeeds */
 
-  redoUpdate(setToTwo);        /* Succeeds */
-
-  p = loadPage(xid, rid.page);
-  readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 2);
   unlock(p->rwlatch);

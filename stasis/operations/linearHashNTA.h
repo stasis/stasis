@@ -85,8 +85,8 @@ compensated_function int ThashLookup(int xid, recordid hash, const byte* key, in
 
 lladdIterator_t *     ThashGenericIterator       (int xid, recordid hash);
 
-Operation getLinearHashInsert();
-Operation getLinearHashRemove();
+stasis_operation_impl stasis_op_impl_linear_hash_insert();
+stasis_operation_impl stasis_op_impl_linear_hash_remove();
 
 void LinearHashNTAInit();
 /** @} */

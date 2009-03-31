@@ -49,29 +49,36 @@ compensated_function recordid TarrayListAlloc(int xid, pageid_t count, int multi
   rid.size = size;
   rid.slot = 0;
   try_ret(NULLRID) {
-    Tupdate(xid, firstPage, &tlp, sizeof(tlp), OPERATION_ARRAY_LIST_ALLOC);
+    Tupdate(xid, firstPage, &tlp, sizeof(tlp), OPERATION_ARRAY_LIST_HEADER_INIT);
   } end_ret(NULLRID);
 
   return rid;
 }
 
 
-static int op_array_list_alloc(const LogEntry* e, Page* p) {
+static int op_array_list_header_init(const LogEntry* e, Page* p) {
 
   assert(e->update.arg_size == sizeof(TarrayListParameters));
 
-  const TarrayListParameters * tlp = (const TarrayListParameters*)getUpdateArgs(e);
+  const TarrayListParameters * tlp
+    = (const TarrayListParameters*)getUpdateArgs(e);
 
   pageid_t firstPage = tlp->firstPage;
   pageid_t count     = tlp->initialSize;
   pageid_t multiplier = tlp->multiplier;
   int size = tlp->size;
 
-  stasis_fixed_initialize_page(p, sizeof(pageid_t), stasis_fixed_records_per_page(sizeof(pageid_t)));
+  stasis_fixed_initialize_page(p, sizeof(pageid_t),
+			       stasis_fixed_records_per_page(sizeof(pageid_t)));
 
   recordid countRid, multiplierRid, slotSizeRid, maxOffset, firstDataPageRid;
-  countRid.page = multiplierRid.page = slotSizeRid.page =  maxOffset.page = firstDataPageRid.page = p->id;
-  countRid.size = multiplierRid.size = slotSizeRid.size =  maxOffset.size = firstDataPageRid.size = sizeof(pageid_t);
+  countRid.page
+    = multiplierRid.page = slotSizeRid.page 
+    = maxOffset.page = firstDataPageRid.page = p->id;
+
+  countRid.size
+    = multiplierRid.size = slotSizeRid.size
+    = maxOffset.size = firstDataPageRid.size = sizeof(pageid_t);
 
   countRid.slot = 0;
   multiplierRid.slot = 1;
@@ -80,11 +87,16 @@ static int op_array_list_alloc(const LogEntry* e, Page* p) {
   firstDataPageRid.slot = 4;
 
   pageid_t firstDataPage = firstPage + 1;
-  (*(pageid_t*)stasis_record_write_begin(e->xid, p, countRid))= count;
-  (*(pageid_t*)stasis_record_write_begin(e->xid, p, multiplierRid))= multiplier;
-  (*(pageid_t*)stasis_record_write_begin(e->xid, p, firstDataPageRid))= firstDataPage;
-  (*(pageid_t*)stasis_record_write_begin(e->xid, p, slotSizeRid))= size;
-  (*(pageid_t*)stasis_record_write_begin(e->xid, p, maxOffset))= -1;
+  (*(pageid_t*)stasis_record_write_begin(e->xid, p, countRid))
+    = count;
+  (*(pageid_t*)stasis_record_write_begin(e->xid, p, multiplierRid))
+    = multiplier;
+  (*(pageid_t*)stasis_record_write_begin(e->xid, p, firstDataPageRid))
+    = firstDataPage;
+  (*(pageid_t*)stasis_record_write_begin(e->xid, p, slotSizeRid))
+    = size;
+  (*(pageid_t*)stasis_record_write_begin(e->xid, p, maxOffset))
+    = -1;
 
   *stasis_page_type_ptr(p) = ARRAY_LIST_PAGE;
 
@@ -96,11 +108,13 @@ static int op_array_list_alloc(const LogEntry* e, Page* p) {
   return 0;
 }
 
-Operation getArrayListAlloc() {
-  Operation o = {
-    OPERATION_ARRAY_LIST_ALLOC, /* ID */
-    OPERATION_NOOP,  /* Since TpageAllocMany will be undone, the page we touch will be nuked anyway, so set this to NO-OP. */
-    &op_array_list_alloc
+stasis_operation_impl stasis_op_impl_array_list_header_init() {
+  stasis_operation_impl o = {
+    OPERATION_ARRAY_LIST_HEADER_INIT,
+    OPERATION_ARRAY_LIST_HEADER_INIT,
+    /* Do not need to roll back this page, since it will be deallocated. */
+    OPERATION_NOOP,
+    &op_array_list_header_init
   };
   return o;
 }
@@ -154,7 +168,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
 	 It should generate 1 entry.  (Need better LSN handling first.)*/
       {
 	for(pageid_t i = newFirstPage; i < newFirstPage + blockSize; i++) {
-	  Tupdate(xid, i, &tlp.size, sizeof(tlp.size), OPERATION_FIXED_PAGE_ALLOC);
+	  TinitializeFixedPage(xid, i, tlp.size);
 	}
       }
       TsetRaw(xid,tmp,&newFirstPage);

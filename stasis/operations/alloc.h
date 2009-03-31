@@ -12,10 +12,9 @@
 #ifndef __ALLOC_H
 #define __ALLOC_H 1
 
-Operation getAlloc();
-Operation getDealloc();
-Operation getRealloc();
-Operation getInitializePage();
+stasis_operation_impl stasis_op_impl_alloc();
+stasis_operation_impl stasis_op_impl_dealloc();
+stasis_operation_impl stasis_op_impl_realloc();
 
 void allocTransactionAbort(int xid);
 void allocTransactionCommit(int xid);
@@ -70,8 +69,5 @@ compensated_function int TrecordSize(int xid, recordid rid);
 
 /** Return the number of records stored in page pageid */
 compensated_function int TrecordsInPage(int xid, pageid_t page);
-
-compensated_function void TinitializeSlottedPage(int xid, pageid_t page);
-compensated_function void TinitializeFixedPage(int xid, pageid_t page, int slotLength);
 
 #endif

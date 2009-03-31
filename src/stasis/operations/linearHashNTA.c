@@ -161,23 +161,21 @@ compensated_function static int op_linear_hash_remove(const LogEntry* e, Page* p
   
   return 0;
 }
-Operation getLinearHashInsert() {
-  Operation o = {
-    //    OPERATION_LINEAR_HASH_INSERT, 
+stasis_operation_impl stasis_op_impl_linear_hash_insert() {
+  stasis_operation_impl o = {
+    OPERATION_LINEAR_HASH_INSERT, 
     OPERATION_NOOP,
     OPERATION_LINEAR_HASH_REMOVE,
     &op_linear_hash_insert
-    //    &noop
   };
   return o;
 }
-Operation getLinearHashRemove() {
-  Operation o = {
-    //    OPERATION_LINEAR_HASH_REMOVE, 
+stasis_operation_impl stasis_op_impl_linear_hash_remove() {
+  stasis_operation_impl o = {
+    OPERATION_LINEAR_HASH_REMOVE, 
     OPERATION_NOOP,
     OPERATION_LINEAR_HASH_INSERT,
     &op_linear_hash_remove
-    //&noop
   };
   return o;
 }

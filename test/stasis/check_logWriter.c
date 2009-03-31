@@ -387,9 +387,9 @@ START_TEST(loggerCheckThreaded) {
   Tdeinit();
 
 } END_TEST
-void setupOperationsTable();
+
 void reopenLogWorkload(int truncating) { 
-  setupOperationsTable();
+  stasis_operation_table_init();
   stasis_truncation_automatic = 0;
 
   const int ENTRY_COUNT = 1000;

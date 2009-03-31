@@ -35,12 +35,12 @@ void TregionFindNthActive(int xid, pageid_t n, pageid_t * firstPage, pageid_t * 
 int TregionNextBoundaryTag(int xid, pageid_t*pid, boundary_tag *tag, int allocationManager);
 int TregionReadBoundaryTag(int xid, pageid_t pid, boundary_tag *tag);
 
-Operation getAllocBoundaryTag();
+stasis_operation_impl stasis_op_impl_boundary_tag_alloc();
 
-Operation getAllocRegion();
-Operation getAllocRegionInverse();
-Operation getDeallocRegion();
-Operation getDeallocRegionInverse();
+stasis_operation_impl stasis_op_impl_region_alloc();
+stasis_operation_impl stasis_op_impl_region_alloc_inverse();
+stasis_operation_impl stasis_op_impl_region_dealloc();
+stasis_operation_impl stasis_op_impl_region_dealloc_inverse();
 
 /** This function checks the regions in the page file for consistency.
     It makes sure that the doublly linked list is consistent (eg

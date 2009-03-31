@@ -481,8 +481,9 @@ pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocationManager) {
 }
 
 
-Operation getAllocBoundaryTag() {
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
+  stasis_operation_impl o = { 
+    OPERATION_ALLOC_BOUNDARY_TAG, 
     OPERATION_ALLOC_BOUNDARY_TAG, 
     OPERATION_NOOP,
     op_alloc_boundary_tag
@@ -490,36 +491,39 @@ Operation getAllocBoundaryTag() {
   return o;
 }
 
-Operation getAllocRegion() { 
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_region_alloc() { 
+  stasis_operation_impl o = { 
     OPERATION_ALLOC_REGION,
+    OPERATION_NOOP,
     OPERATION_ALLOC_REGION_INVERSE,
     noop
   };
   return o;
 }
-Operation getAllocRegionInverse() { 
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_region_alloc_inverse() { 
+  stasis_operation_impl o = { 
     OPERATION_ALLOC_REGION_INVERSE,
-    OPERATION_NOOP, // XXX need INVALID or something
+    OPERATION_ALLOC_REGION_INVERSE,
+    OPERATION_INVALID,
     op_dealloc_region
   };
   return o;
 }
-
-Operation getDeallocRegion() { 
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_region_dealloc() { 
+  stasis_operation_impl o = { 
     OPERATION_DEALLOC_REGION,
+    OPERATION_NOOP,
     OPERATION_DEALLOC_REGION_INVERSE,
     noop
   };
   return o;
 }
 
-Operation getDeallocRegionInverse() { 
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_region_dealloc_inverse() { 
+  stasis_operation_impl o = { 
     OPERATION_DEALLOC_REGION_INVERSE,
-    OPERATION_NOOP, // XXX should be INVALID
+    OPERATION_DEALLOC_REGION_INVERSE,
+    OPERATION_INVALID,
     op_alloc_region
   };
   return o;

@@ -82,7 +82,12 @@ typedef struct {
   /**
    * ID of operation, also index into operations table
    */
-	int id;
+  int id;
+  /**
+   * ID of redo operation; logical operations typically
+   * set this to OPERATION_NOOP.
+   */
+  int redo;
   /**
      Implementing operations that may span records is subtle.
      Recovery assumes that page writes (and therefore logical
@@ -124,7 +129,7 @@ typedef struct {
   */
   int undo;
   Function run;
-} Operation;
+} stasis_operation_impl;
 
 /* These need to be installed, since they are required by applications that use LLADD. */
 
@@ -144,7 +149,21 @@ typedef struct {
 #include "operations/regions.h"
 #include "operations/lsmTree.h"
 #include "operations/lsnFreeSet.h"
-extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
+
+/**
+   Initialize stasis' operation table.
+ */
+void stasis_operation_table_init();
+
+/**
+   Register a new logical or physical operation (redo/undo functions)
+   with Stasis.  This function must be called before Tinit().
+
+   If you register custom operations, then you must call
+   stasis_operation_table_init() before calling this function.  Otherwise,
+   there is no need to manutally call stasis_operations_table_init().
+ */
+void stasis_operation_impl_register(stasis_operation_impl o);
 
 /**
     Performs an operation during normal execution.
@@ -152,12 +171,12 @@ extern Operation operationsTable[]; /* [MAX_OPERATIONS];  memset somewhere */
     Does not write to the log, and assumes that the operation's
     results are not already in the buffer manager.
 
-    @param e the logentry to play forward.  will be played forward regardless of lsn's
+    @param e the UPDATELOG entry to play forward, regardless of lsn's
 
     @param p the page the update should be applied to (no support for
              logical redo).  p->rwlatch should be writelock()'ed
  */
-void doUpdate(const LogEntry * e, Page * p);
+void stasis_operation_do(const LogEntry * e, Page * p);
 /**
     Undo the update under normal operation, and during recovery.
 
@@ -166,24 +185,27 @@ void doUpdate(const LogEntry * e, Page * p);
     For physical undo, this compares the page LSN to clr_lsn, and runs
         it if the page is out of date.
 
-    @param e The log entry containing the operation to be undone.
+    @param e The UPDATELOG entry containing the operation to be undone.
     @param clr_lsn The lsn of the clr that records this undo operation.
     @param p Like doUpdate(), this function is called during forward operation,
              so p->rwlatch must be writelock()'ed
 */
-void undoUpdate(const LogEntry * e, lsn_t clr_lsn, Page * p);
+void stasis_operation_undo(const LogEntry * e, lsn_t clr_lsn,
+					Page * p);
 /**
     Redoes an operation during recovery.  This is different than
     doUpdate because it checks to see if the operation needs to be redone
     before redoing it. (if(e->lsn > e->rid.lsn) { doUpdate(e); } return)
 
-    Also, this is the only function in operations.h that can take
-    either CLR or UPDATE log entries.  The other functions can     handle update entries.
+    It also invokes the log entry's REDO method instead of the DO method.
 
-    Does not write to the log.  No need for a page parameter, Stasis' recovery is
-    single-threaded, so redoUpdate can latch the page itself.
+    Does not write to the log.  No need for a page parameter; Stasis'
+    recovery is single-threaded, so redoUpdate can latch the page itself.
+
+    @param e The UPDATELOG entry containing the operation to be redone.
+    @param p The page the redo should be applied to.  Must be writelock()'ed.
 */
-void redoUpdate(const LogEntry * e);
+void stasis_operation_redo(const LogEntry * e, Page * p);
 
 END_C_DECLS
 

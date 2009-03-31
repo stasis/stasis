@@ -64,11 +64,11 @@ int Tset(int xid, recordid rid, const void * dat);
 
 int TsetRaw(int xid, recordid rid, const void * dat);
 
-Operation getSet();
-Operation getSetInverse();
+stasis_operation_impl stasis_op_impl_set();
+stasis_operation_impl stasis_op_impl_set_inverse();
 
-Operation getSetRange();
-Operation getSetRangeInverse();
+stasis_operation_impl stasis_op_impl_set_range();
+stasis_operation_impl stasis_op_impl_set_range_inverse();
 
 /**
 

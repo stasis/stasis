@@ -109,6 +109,8 @@ terms specified in this license.
 
 /** Operation types */
 
+#define OPERATION_INVALID     (-1)
+
 #define OPERATION_SET          0
 #define OPERATION_SET_INVERSE  1
 #define OPERATION_INCREMENT    2
@@ -124,15 +126,17 @@ terms specified in this license.
 #define OPERATION_PAGE_SET_RANGE_INVERSE 11
 // 12
 // 13
-//#define OPERATION_UPDATE_FREELIST 14
-//#define OPERATION_UPDATE_FREELIST_INVERSE 15
-//#define OPERATION_FREE_PAGE   16
-//#define OPERATION_ALLOC_FREED 17
-//#define OPERATION_UNALLOC_FREED 18
+// 14
+// 15
+// 16
+// 17
+// 18
 
 #define OPERATION_NOOP        19
 
-#define OPERATION_ARRAY_LIST_ALLOC 21
+// 20
+
+#define OPERATION_ARRAY_LIST_HEADER_INIT 21 
 #define OPERATION_INITIALIZE_PAGE 22
 
 #define OPERATION_SET_RANGE 27
@@ -147,7 +151,7 @@ terms specified in this license.
 
 #define OPERATION_ALLOC_BOUNDARY_TAG 35
 
-#define OPERATION_FIXED_PAGE_ALLOC 36
+//#define OPERATION_FIXED_PAGE_ALLOC 36
 
 #define OPERATION_ALLOC_REGION 37
 #define OPERATION_ALLOC_REGION_INVERSE 38

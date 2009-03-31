@@ -100,14 +100,6 @@ compensated_function pageid_t TpageAlloc(int xid) {
   return TregionAlloc(xid, 1, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 
-int op_fixed_page_alloc(const LogEntry* e, Page* p) {
-  assert(e->update.arg_size == sizeof(int));
-  int slot_size = *(const int*)getUpdateArgs(e);
-  stasis_fixed_initialize_page(p, slot_size, stasis_fixed_records_per_page(slot_size));
-  return 0;
-}
-
-
 /**
     @return a pageid_t.  The page field contains the page that was
     allocated, the slot field contains the number of slots on the
@@ -115,19 +107,8 @@ int op_fixed_page_alloc(const LogEntry* e, Page* p) {
 */
 pageid_t TfixedPageAlloc(int xid, int size) {
   pageid_t page = TpageAlloc(xid);
-
-  Tupdate(xid, page, &size, sizeof(int), OPERATION_FIXED_PAGE_ALLOC);
-
+  TinitializeFixedPage(xid, page, size);
   return page;
-}
-
-Operation getFixedPageAlloc() {
-  Operation o = {
-    OPERATION_FIXED_PAGE_ALLOC,
-    OPERATION_NOOP,
-    &op_fixed_page_alloc
-  };
-  return o;
 }
 
 compensated_function pageid_t TpageAllocMany(int xid, int count) {
@@ -179,8 +160,9 @@ int TpageGetType(int xid, pageid_t page) {
 
 */
 
-Operation getPageSetRange() {
-  Operation o = {
+stasis_operation_impl stasis_op_impl_page_set_range() {
+  stasis_operation_impl o = {
+    OPERATION_PAGE_SET_RANGE,
     OPERATION_PAGE_SET_RANGE,
     OPERATION_PAGE_SET_RANGE_INVERSE,
     op_page_set_range
@@ -188,11 +170,56 @@ Operation getPageSetRange() {
   return o;
 }
 
-Operation getPageSetRangeInverse() {
-  Operation o = {
+stasis_operation_impl stasis_op_impl_page_set_range_inverse() {
+  stasis_operation_impl o = {
+    OPERATION_PAGE_SET_RANGE_INVERSE,
     OPERATION_PAGE_SET_RANGE_INVERSE,
     OPERATION_PAGE_SET_RANGE,
     &op_page_set_range_inverse
+  };
+  return o;
+}
+
+typedef struct {
+  slotid_t slot;
+  int64_t type;
+} page_init_arg;
+
+
+void TinitializeSlottedPage(int xid, pageid_t page) {
+  page_init_arg a = { SLOTTED_PAGE, 0 };
+  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
+}
+void TinitializeFixedPage(int xid, pageid_t page, int slotLength) {
+  page_init_arg a = { FIXED_PAGE, slotLength };
+  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
+}
+
+static int op_initialize_page(const LogEntry* e, Page* p) {
+  assert(e->update.arg_size == sizeof(page_init_arg));
+  const page_init_arg* arg = (const page_init_arg*)getUpdateArgs(e);
+
+  switch(arg->slot) {
+  case SLOTTED_PAGE:
+    stasis_slotted_initialize_page(p);
+    break;
+  case FIXED_PAGE:
+    stasis_fixed_initialize_page(p, arg->type,
+                                 stasis_fixed_records_per_page
+                                 (stasis_record_type_to_size(arg->type)));
+    break;
+  default:
+    abort();
+  }
+  return 0;
+}
+
+stasis_operation_impl stasis_op_impl_page_initialize() { 
+  stasis_operation_impl o = { 
+    OPERATION_INITIALIZE_PAGE,
+    OPERATION_INITIALIZE_PAGE,
+    OPERATION_NOOP,
+    op_initialize_page
   };
   return o;
 }

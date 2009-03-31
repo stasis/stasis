@@ -166,28 +166,31 @@ static int op_realloc(const LogEntry* e, Page* p) {
 
 static pthread_mutex_t talloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-Operation getAlloc() {
-  Operation o = {
-    OPERATION_ALLOC, /* ID */
-    OPERATION_DEALLOC, /* OPERATION_NOOP, */
+stasis_operation_impl stasis_op_impl_alloc() {
+  stasis_operation_impl o = {
+    OPERATION_ALLOC,
+    OPERATION_ALLOC,
+    OPERATION_DEALLOC,
     op_alloc
   };
   return o;
 }
 
 
-Operation getDealloc() {
-  Operation o = {
+stasis_operation_impl stasis_op_impl_dealloc() {
+  stasis_operation_impl o = {
     OPERATION_DEALLOC,
-    OPERATION_REALLOC, /* OPERATION_NOOP, */
+    OPERATION_DEALLOC,
+    OPERATION_REALLOC,
     op_dealloc
   };
   return o;
 }
 
 /*This is only used to undo deallocs... */
-Operation getRealloc() {
-  Operation o = {
+stasis_operation_impl stasis_op_impl_realloc() {
+  stasis_operation_impl o = {
+    OPERATION_REALLOC,
     OPERATION_REALLOC,
     OPERATION_NOOP,
     op_realloc
@@ -503,43 +506,4 @@ compensated_function int TrecordSize(int xid, recordid rid) {
   unlock(p->rwlatch);
   releasePage(p);
   return ret;
-}
-
-void TinitializeSlottedPage(int xid, pageid_t page) {
-  alloc_arg a = { SLOTTED_PAGE, 0 };
-  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
-}
-void TinitializeFixedPage(int xid, pageid_t page, int slotLength) {
-  alloc_arg a = { FIXED_PAGE, slotLength };
-  Tupdate(xid, page, &a, sizeof(a), OPERATION_INITIALIZE_PAGE);
-}
-
-static int op_initialize_page(const LogEntry* e, Page* p) {
-  assert(e->update.arg_size == sizeof(alloc_arg));
-  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
-
-  switch(arg->slot) {
-  case SLOTTED_PAGE:
-    stasis_slotted_initialize_page(p);
-    break;
-  case FIXED_PAGE:
-    stasis_fixed_initialize_page(p, arg->type,
-                                 stasis_fixed_records_per_page
-                                 (
-                                  stasis_record_type_to_size(arg->type)));
-    break;
-  default:
-    abort();
-  }
-  return 0;
-}
-
-
-Operation getInitializePage() { 
-  Operation o = { 
-    OPERATION_INITIALIZE_PAGE,
-    OPERATION_NOOP,
-    op_initialize_page
-  };
-  return o;
 }

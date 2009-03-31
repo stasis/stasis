@@ -108,6 +108,6 @@ compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it, 
 compensated_function recordid TpagedListAlloc(int xid);
 compensated_function void TpagedListDelete(int xid, recordid list);
 compensated_function int TpagedListSpansPages(int xid, recordid list);
-Operation getPagedListInsert();
-Operation getPagedListRemove();
+stasis_operation_impl getPagedListInsert();
+stasis_operation_impl getPagedListRemove();
 #endif

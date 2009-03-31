@@ -130,16 +130,18 @@ compensated_function int TlinkedListInsert(int xid, recordid list, const byte * 
   return ret;  
 }
 
-Operation getLinkedListInsert() {
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_linked_list_insert() {
+  stasis_operation_impl o = { 
+    OPERATION_LINKED_LIST_INSERT,
     OPERATION_NOOP, 
     OPERATION_LINKED_LIST_REMOVE,
     &op_linked_list_nta_insert
   };
   return o;
 }
-Operation getLinkedListRemove() {
-  Operation o = { 
+stasis_operation_impl stasis_op_impl_linked_list_remove() {
+  stasis_operation_impl o = { 
+    OPERATION_LINKED_LIST_REMOVE,
     OPERATION_NOOP, 
     OPERATION_LINKED_LIST_INSERT,
     &op_linked_list_nta_remove

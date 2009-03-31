@@ -59,8 +59,9 @@ static int op_prepare(const LogEntry * e, Page * p) {
   return 0;
 }
 
-Operation getPrepare() {
-  Operation o = {
+stasis_operation_impl stasis_op_impl_prepare() {
+  stasis_operation_impl o = {
+    OPERATION_PREPARE,
     OPERATION_PREPARE, /* id */
     OPERATION_NOOP,
     &op_prepare /* Function */

@@ -216,26 +216,29 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   releasePage(p);
 }
 
-Operation getSet() { 
-	Operation o = {
-		OPERATION_SET,
-		OPERATION_SET_INVERSE,
-		op_set
+stasis_operation_impl stasis_op_impl_set() { 
+	stasis_operation_impl o = {
+	  OPERATION_SET,
+	  OPERATION_SET,
+	  OPERATION_SET_INVERSE,
+	  op_set
 	};
 	return o;
 }
 
-Operation getSetInverse() { 
-	Operation o = {
-		OPERATION_SET_INVERSE,
-		OPERATION_SET,
-		op_set_inverse
+stasis_operation_impl stasis_op_impl_set_inverse() { 
+	stasis_operation_impl o = {
+	  OPERATION_SET_INVERSE,
+	  OPERATION_SET_INVERSE,
+	  OPERATION_SET,
+	  op_set_inverse
 	};
 	return o;
 }
 
-Operation getSetRange() {
-	Operation o = {
+stasis_operation_impl stasis_op_impl_set_range() {
+	stasis_operation_impl o = {
+		OPERATION_SET_RANGE,
 		OPERATION_SET_RANGE,
 		OPERATION_SET_RANGE_INVERSE,
 		op_set_range
@@ -243,8 +246,9 @@ Operation getSetRange() {
 	return o;
 }
 
-Operation getSetRangeInverse() {
-	Operation o = {
+stasis_operation_impl stasis_op_impl_set_range_inverse() {
+	stasis_operation_impl o = {
+		OPERATION_SET_RANGE_INVERSE,
 		OPERATION_SET_RANGE_INVERSE,
 		OPERATION_SET_RANGE,
 		op_set_range_inverse

@@ -49,65 +49,12 @@ pthread_mutex_t transactional_2_mutex;
 #define INVALID_XTABLE_XID INVALID_XID
 #define PENDING_XTABLE_XID (-2)
 /** Needed for debugging -- sometimes we don't want to run all of Tinit() */
-
-void setupOperationsTable() {
-	memset(XactionTable, INVALID_XTABLE_XID, sizeof(TransactionLog)*MAX_TRANSACTIONS);
-        for(int i = 0; i < MAX_TRANSACTIONS; i++) {
-          pthread_mutex_init(&XactionTable[i].mut,0);
-        }
-	// @todo clean out unused constants...
-	operationsTable[OPERATION_SET]       = getSet();
-	operationsTable[OPERATION_SET_INVERSE] = getSetInverse();
-	operationsTable[OPERATION_INCREMENT] = getIncrement();
-	operationsTable[OPERATION_DECREMENT] = getDecrement();
-	operationsTable[OPERATION_ALLOC]     = getAlloc();
-        operationsTable[OPERATION_PREPARE] = getPrepare();
-        operationsTable[OPERATION_SET_LSN_FREE] = getSetLsnFree();
-        operationsTable[OPERATION_SET_LSN_FREE_INVERSE]
-                                                = getSetLsnFreeInverse();
-	/*	operationsTable[OPERATION_LHINSERT]  = getLHInsert(); 
-		operationsTable[OPERATION_LHREMOVE]  = getLHRemove(); */
-	operationsTable[OPERATION_DEALLOC]     = getDealloc();
-	operationsTable[OPERATION_REALLOC]     = getRealloc();
-
-	operationsTable[OPERATION_PAGE_SET_RANGE] = getPageSetRange();
-	operationsTable[OPERATION_PAGE_SET_RANGE_INVERSE] = getPageSetRangeInverse();
-
-	/*	operationsTable[OPERATION_UPDATE_FREESPACE]         = getUpdateFreespace();
-	operationsTable[OPERATION_UPDATE_FREESPACE_INVERSE] = getUpdateFreespaceInverse();
-	operationsTable[OPERATION_UPDATE_FREELIST]          = getUpdateFreelist();
-	operationsTable[OPERATION_UPDATE_FREELIST_INVERSE] = getUpdateFreelistInverse();
-	
-	operationsTable[OPERATION_FREE_PAGE] = getFreePageOperation();
-	operationsTable[OPERATION_ALLOC_FREED] = getAllocFreedPage();
-	operationsTable[OPERATION_UNALLOC_FREED] = getUnallocFreedPage(); */
-	operationsTable[OPERATION_NOOP] = getNoop();
-
-	operationsTable[OPERATION_ARRAY_LIST_ALLOC]  = getArrayListAlloc();
-	operationsTable[OPERATION_INITIALIZE_PAGE] = getInitializePage();
-
-	operationsTable[OPERATION_SET_RANGE] = getSetRange();
-	operationsTable[OPERATION_SET_RANGE_INVERSE] = getSetRangeInverse();
-	
-	operationsTable[OPERATION_LINKED_LIST_INSERT] = getLinkedListInsert();
-	operationsTable[OPERATION_LINKED_LIST_REMOVE] = getLinkedListRemove();
-
-	operationsTable[OPERATION_LINEAR_HASH_INSERT] = getLinearHashInsert();
-	operationsTable[OPERATION_LINEAR_HASH_REMOVE] = getLinearHashRemove();
-	
-	//operationsTable[OPERATION_SET_RAW] = getSetRaw();
-	//operationsTable[OPERATION_INSTANT_SET_RAW] = getInstantSetRaw();
-
-	operationsTable[OPERATION_ALLOC_BOUNDARY_TAG] = getAllocBoundaryTag();
-
-	operationsTable[OPERATION_FIXED_PAGE_ALLOC] = getFixedPageAlloc();
-
-	operationsTable[OPERATION_ALLOC_REGION] = getAllocRegion();
-	operationsTable[OPERATION_ALLOC_REGION_INVERSE] = getAllocRegionInverse();
-
-	operationsTable[OPERATION_DEALLOC_REGION] = getDeallocRegion();
-	operationsTable[OPERATION_DEALLOC_REGION_INVERSE] = getDeallocRegionInverse();
-
+void stasis_transaction_table_init() {
+  memset(XactionTable, INVALID_XTABLE_XID,
+	 sizeof(TransactionLog)*MAX_TRANSACTIONS);
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    pthread_mutex_init(&XactionTable[i].mut,0);
+  }
 }
 
 // @todo this factory stuff doesn't really belong here...
@@ -144,7 +91,8 @@ int Tinit() {
 
 	compensations_init();
 
-        setupOperationsTable();
+        stasis_transaction_table_init();
+	stasis_operation_table_init();
 	dirtyPagesInit();
         if(LOG_TO_FILE == loggerType) {
           stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
@@ -309,7 +257,7 @@ static compensated_function void TactionHelper(int xid,
                 p, op, dat, datlen);
   assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-  doUpdate(e, p);
+  stasis_operation_do(e, p);
   freeLogEntry(e);
 
   unlock(p->rwlatch);
@@ -337,7 +285,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 
   e->LSN = 0;
   writelock(p->rwlatch,0);
-  doUpdate(e, p);
+  stasis_operation_do(e, p);
   unlock(p->rwlatch);
   pthread_mutex_unlock(&h->mut);
   releasePage(p);

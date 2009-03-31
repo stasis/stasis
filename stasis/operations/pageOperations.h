@@ -67,19 +67,19 @@ compensated_function int TpageDealloc(int xid, pageid_t page);
 compensated_function int TpageSet(int xid, pageid_t page, const void* dat);
 compensated_function int TpageSetRange(int xid, pageid_t page, int offset, const void* dat, int len);
 compensated_function int TpageGet(int xid, pageid_t page, void* buf);
+
+compensated_function void TinitializeSlottedPage(int xid, pageid_t page);
+compensated_function void TinitializeFixedPage(int xid, pageid_t page,
+					       int slotLength);
+
 int TpageGetType(int xid, pageid_t page);
 
-Operation getPageSetRange();
-Operation getPageSetRangeInverse();
+stasis_operation_impl stasis_op_impl_page_set_range();
+stasis_operation_impl stasis_op_impl_page_set_range_inverse();
+stasis_operation_impl stasis_op_impl_page_initialize();
 
-Operation getFixedPageAlloc();
+stasis_operation_impl stasis_op_impl_fixed_page_alloc();
 
-Operation getUpdateFreespace();
-Operation getUpdateFreespaceInverse();
-Operation getUpdateFreelist();
-Operation getUpdateFreelistInverse();
-Operation getFreePageOperation();
-Operation getAllocFreedPage();
-Operation getUnallocFreedPage();
 compensated_function void pageOperationsInit();
+
 #endif
