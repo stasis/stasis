@@ -489,7 +489,12 @@ static const size_t USABLE_SIZE_OF_PAGE = (PAGE_SIZE - sizeof(lsn_t) - sizeof(in
  */
 static inline size_t 
 stasis_record_type_to_size(ssize_t type) {
-  return type >= 0 ? type : SLOT_TYPE_LENGTHS[0 - type];
+  if(type >= 0) {
+    return type;
+  } else {
+    assert(SLOT_TYPE_LENGTHS[0 - type] >= 0);
+    return SLOT_TYPE_LENGTHS[0 - type];
+  }
 }
 
 /**

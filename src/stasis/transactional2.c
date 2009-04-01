@@ -36,7 +36,7 @@ static int initted = 0;
 
 const recordid ROOT_RECORD = {1, 0, -1};
 const recordid NULLRID = {0,0,-1};
-const short SLOT_TYPE_LENGTHS[] = { 0, 0, sizeof(blob_record_t), -1};
+const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 /** 
     Locking for transactional2.c works as follows:
     
