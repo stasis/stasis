@@ -709,15 +709,30 @@ int Tprepare(int xid);
 /**
  * Begin a nested top action
  *
+ * Nested Top Actions allow you to register logical undo operations
+ * for data structure manipulation.  This is generally a prerequisite
+ * to concurrent transaction systems.
+ *
+ * @see ex3.c for an example of nested top actions.
+ */
+int TnestedTopAction(int xid, int op, const byte * arg, size_t arg_len);
+
+/**
+ * Begin a nested top action
+ *
  * Nested top actions provide atomic updates to multiple pages within
- * a single transaction.  LLADD's nested top actions may be nested
+ * a single transaction.  Stasis's nested top actions may be nested
  * within each other.
+ *
+ * @see TnestedTopAction() is less expressive, but much more convenient.
  */
 void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments,
                              int log_arguments_length);
 /**
  * Complete a nested top action, atomically switching from physical to
  * logical undo.
+ *
+ * @see TnestedTopAction() is less expressive, but much more convenient.
  */
 lsn_t TendNestedTopAction(int xid, void * handle);
 

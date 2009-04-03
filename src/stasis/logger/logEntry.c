@@ -66,7 +66,7 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
   *(lsn_t*)(((struct __raw_log_entry*)ret)+1)=recLSN;
   return ret;
 }
-const byte * getUpdateArgs(const LogEntry * ret) {
+const void * getUpdateArgs(const LogEntry * ret) {
   assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
   if(ret->update.arg_size == 0) {
@@ -118,7 +118,6 @@ LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
   ret->xid = old_e->xid;
   ret->type = CLRLOG;
   DEBUG("compensates: %lld\n", old_e->LSN);
-  assert(old_e->LSN!=-1);
   ret->clr.compensated_lsn = old_e->LSN;
 
   return (LogEntry*)ret;

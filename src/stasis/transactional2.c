@@ -593,11 +593,25 @@ typedef struct {
   lsn_t compensated_lsn;
 } stasis_nta_handle;
 
-/** @todo TbeginNestedTopAction's API might not be quite right.
-    Are there cases where we need to pass a recordid in?
+int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
+  assert(xid >= 0);
+  LogEntry * e = LogUpdate(stasis_log_file,
+			   &XactionTable[xid % MAX_TRANSACTIONS],
+			   NULL, op, dat, datSize);
+  lsn_t prev_lsn = e->prevLSN;
+  lsn_t compensated_lsn = e->LSN;
 
-    @return a handle that must be passed into TendNestedTopAction
-*/
+  stasis_operation_do(e, NULL);
+
+  freeLogEntry(e);
+
+  lsn_t clrLSN = LogDummyCLR(stasis_log_file, xid, prev_lsn, compensated_lsn);
+
+  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+
+  return 0;
+}
+
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
   LogEntry * e = LogUpdate(stasis_log_file,

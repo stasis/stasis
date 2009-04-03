@@ -118,15 +118,18 @@ void stasis_operation_table_init() {
 
 
 void stasis_operation_do(const LogEntry * e, Page * p) {
-  assert(p);
-  assertlocked(p->rwlatch);
-  assert(e->update.funcID != OPERATION_INVALID);
-  stasis_operation_table[e->update.funcID].run(e, p);
+  if(p) {
+    assertlocked(p->rwlatch);
+    assert(e->update.funcID != OPERATION_INVALID);
+    stasis_operation_table[e->update.funcID].run(e, p);
 
-  DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
-         e->LSN, e->update.page, stasis_page_lsn_read(p));
+    DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
+	  e->LSN, e->update.page, stasis_page_lsn_read(p));
 
-  stasis_page_lsn_write(e->xid, p, e->LSN);
+    stasis_page_lsn_write(e->xid, p, e->LSN);
+  } else {
+    stasis_operation_table[e->update.funcID].run(e,NULL);
+  }
 
 }
 
@@ -149,7 +152,7 @@ void stasis_operation_redo(const LogEntry * e, Page * p) {
     // Need to check the id field to find out what the REDO_action
     // is for this log type.
 
-    // contrast with doUpdate(), which doesn't check the .redo field.
+    // contrast with stasis_operation_do(), which doesn't check the .redo field
     assert(e->update.funcID != OPERATION_INVALID);
     assert(stasis_operation_table[e->update.funcID].redo != OPERATION_INVALID);
     stasis_operation_table[stasis_operation_table[e->update.funcID].redo]

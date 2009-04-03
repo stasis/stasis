@@ -18,7 +18,7 @@ static int op_page_set_range(const LogEntry* e, Page* p) {
 
   assert(off+len <=PAGE_SIZE);
 
-  memcpy(p->memAddr + off, getUpdateArgs(e)+sizeof(int), len);
+  memcpy(p->memAddr + off, ((const byte*)getUpdateArgs(e))+sizeof(int), len);
   return 0;
 }
 static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
@@ -30,7 +30,8 @@ static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
 
   assert(off+len <=PAGE_SIZE);
 
-  memcpy(p->memAddr + off, getUpdateArgs(e)+sizeof(int)+len, len);
+  memcpy(p->memAddr + off, ((const byte*)getUpdateArgs(e))+sizeof(int)+len,
+	 len);
   return 0;
 }
 

@@ -199,22 +199,27 @@ static void Redo(stasis_log_t* log) {
         } break;
       case CLRLOG:
 	{
-          const LogEntry *ce =
-            log->read_entry(log,((CLRLogEntry*)e)->clr.compensated_lsn);
+	  // if compensated_lsn == -1, then this clr is closing a nested top
+	  // action that was performed during undo.  Therefore, we do not
+	  // want to undo it again.
+	  if(-1 != ((CLRLogEntry*)e)->clr.compensated_lsn) {
+	    const LogEntry *ce =
+	      log->read_entry(log,((CLRLogEntry*)e)->clr.compensated_lsn);
 
-          if(ce->update.page == INVALID_PAGE) {
-            // logical redo of end of NTA; no-op
-          } else {
-            // need to grab latch page here so that Tabort() can be atomic
-            // below...
+	    if(ce->update.page == INVALID_PAGE) {
+	      // logical redo of end of NTA; no-op
+	    } else {
+	      // need to grab latch page here so that Tabort() can be atomic
+	      // below...
 
-            Page * p = loadPage(e->xid, ce->update.page);
-            writelock(p->rwlatch,0);
-            stasis_operation_undo(ce, e->LSN, p);
-            unlock(p->rwlatch);
-            releasePage(p);
-          }
-          freeLogEntry(ce);
+	      Page * p = loadPage(e->xid, ce->update.page);
+	      writelock(p->rwlatch,0);
+	      stasis_operation_undo(ce, e->LSN, p);
+	      unlock(p->rwlatch);
+	      releasePage(p);
+	    }
+	    freeLogEntry(ce);
+	  }
 	} break;
       case XCOMMIT:
 	{
@@ -305,16 +310,24 @@ static void Undo(stasis_log_t* log, int recovery) {
 	}
       case CLRLOG:
         {
-          const LogEntry * ce
-            = log->read_entry(log, ((CLRLogEntry*)e)->clr.compensated_lsn);
-          if(ce->update.page == INVALID_PAGE) {
-            DEBUG("logical clr\n");
-            stasis_operation_undo(ce, 0, 0); // logical undo; effective LSN doesn't matter
-          } else {
-            DEBUG("physical clr: op %d lsn %lld\n", ce->update.funcID, ce->LSN);
-            // no-op.  Already undone during redo.  This would redo the original op.
-          }
-          freeLogEntry(ce);
+	  if(-1 != ((CLRLogEntry*)e)->clr.compensated_lsn) {
+	    const LogEntry * ce
+	      = log->read_entry(log, ((CLRLogEntry*)e)->clr.compensated_lsn);
+	    if(ce->update.page == INVALID_PAGE) {
+	      DEBUG("logical clr\n");
+	      // logical undo; effective LSN doesn't matter
+	      stasis_operation_undo(ce, 0, 0);
+	      // compensated_lsn = -1 -> that the logical undo is a NOOP.
+	      // that way, we don't undo this operation twice.
+	      LogDummyCLR(log, ce->xid, ce->prevLSN, -1);
+	    } else {
+	      DEBUG("physical clr: op %d lsn %lld\n",
+		    ce->update.funcID, ce->LSN);
+	      // no-op.  Already undone during redo.
+	      // This would redo the original op.
+	    }
+	    freeLogEntry(ce);
+	  }
         }
 	break;
       case XABORT:

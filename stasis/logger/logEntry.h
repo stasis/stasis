@@ -132,9 +132,10 @@ void freeLogEntry(const LogEntry * e);
 */
 lsn_t sizeofLogEntry(const LogEntry * e);
 /**
+   @todo Remove explicit casts from getUpdateArgs calls (so we don't accidentally strip the const).
    @return the operation's arguments.
 */
-const byte * getUpdateArgs(const LogEntry * e);
+const void * getUpdateArgs(const LogEntry * e);
 
 lsn_t getPrepareRecLSN(const LogEntry *e);
 
