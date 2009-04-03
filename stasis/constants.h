@@ -159,19 +159,14 @@ terms specified in this license.
 #define OPERATION_DEALLOC_REGION 39
 #define OPERATION_DEALLOC_REGION_INVERSE 40
 
-// these operations are specific to OASYS
-#define OPERATION_OASYS_DIFF_DO           75  
-#define OPERATION_OASYS_DIFF_REDO         76  
-#define OPERATION_OASYS_DIFF_UNDO         77  
-#define OPERATION_OASYS_SEMIDIFF_DO       78
-#define OPERATION_OASYS_SEMIDIFF_REDO     79
+#define OPERATION_USER_DEFINED(x) (x+128)
+
+/* number above should be less than number below */
+#define MAX_OPERATIONS 255
 
 /* Storage managers */
 #define STORAGE_MANAGER_TALLOC 1
 #define STORAGE_MANAGER_NAIVE_PAGE_ALLOC  2
-
-/* number above should be less than number below */
-#define MAX_OPERATIONS 80
 
 //#define SLOT_TYPE_BASE PAGE_SIZE
 
