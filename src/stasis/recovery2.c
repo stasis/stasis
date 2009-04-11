@@ -1,4 +1,4 @@
-/** 
+/**
 
    @file
 
@@ -24,7 +24,7 @@
 #include <stasis/logger/logHandle.h>
 /** @todo Get rid of linkedlist */
 #include <stasis/linkedlist.h>
-#include <stasis/page.h> // Needed for pageReadLSN. 
+#include <stasis/page.h> // Needed for pageReadLSN.
 
 static pblHashTable_t * transactionLSN;
 static LinkedList * rollbackLSNs = NULL;
@@ -41,15 +41,15 @@ static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
      - Calculated a list of all dirty pages.
 
     It no longer does either of these things:
-     - A checkpointing algorithm could figure out where the redo pass 
+     - A checkpointing algorithm could figure out where the redo pass
        should begin.  (It would then truncate the log at that point.)  This
        function could be called before analysis if efficiency is a concern.
      - We were using the list of dirty pages as an optimization to prevent
        the pages from being read later during recovery.  Since this function
-       no longer reads the pages in, there's no longer any reason to build 
+       no longer reads the pages in, there's no longer any reason to build
        the list of dirty pages.
 */
-static void Analysis(stasis_log_t* log) {
+static void stasis_recovery_analysis(stasis_log_t* log) {
 
   DEBUG("Recovery: Analysis\n");
 
@@ -74,16 +74,16 @@ static void Analysis(stasis_log_t* log) {
          - map: xid -> max LSN
 	 - sorted list of maxLSN's
     */
-    
+
     if(xactLSN == NULL) {
-      xactLSN = malloc(sizeof(lsn_t)); 
+      xactLSN = malloc(sizeof(lsn_t));
       pblHtInsert(transactionLSN, &(e->xid), sizeof(int), xactLSN);
-      
+
     } else {
       /* We've seen this xact before, and must have put a value in
 	 rollbackLSNs for it.  That value is now stale, so remove
 	 it. */
-      
+
       DEBUG("Removing %lld\n", *xactLSN);
       removeVal(&rollbackLSNs, *xactLSN);
     }
@@ -102,7 +102,7 @@ static void Analysis(stasis_log_t* log) {
 	 be rolled back, so we're done. */
       break;
     case XEND: {
-      /* 
+      /*
 	 XEND means this transaction reached stable storage.
 	 Therefore, we can skip redoing any of its operations.  (The
 	 timestamps on each page guarantee that the redo phase will
@@ -115,14 +115,15 @@ static void Analysis(stasis_log_t* log) {
 	lsn_t* free_lsn = pblHtLookup(transactionLSN, &(e->xid), sizeof(int));
 	pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
 	free(free_lsn);
+	stasis_transaction_table_forget(e->xid);
       }
       break;
     case UPDATELOG:
     case CLRLOG:
-      /* 
-	 If the last record we see for a transaction is an update or clr, 
+      /*
+	 If the last record we see for a transaction is an update or clr,
 	 then the transaction must not have committed, so it must need
-	 to be rolled back. 
+	 to be rolled back.
 
 	 Add it to the list
 
@@ -131,9 +132,9 @@ static void Analysis(stasis_log_t* log) {
 
       addSortedVal(&rollbackLSNs, e->LSN);
       break;
-    case XABORT: 
+    case XABORT:
       // If the last record we see for a transaction is an abort, then
-      // the transaction didn't commit, and must be rolled back. 
+      // the transaction didn't commit, and must be rolled back.
       DEBUG("Adding %lld\n", e->LSN);
       addSortedVal(&rollbackLSNs, e->LSN);
       break;
@@ -143,8 +144,8 @@ static void Analysis(stasis_log_t* log) {
     case INTERNALLOG:
       // Created by the logger, just ignore it
       // Make sure the log entry doesn't interfere with real xacts.
-      assert(e->xid == INVALID_XID); 
-      break; 
+      assert(e->xid == INVALID_XID);
+      break;
     default:
       abort();
     }
@@ -171,7 +172,7 @@ static void Analysis(stasis_log_t* log) {
                                     Y  (NTA replaces physical undo)
  */
 
-static void Redo(stasis_log_t* log) {
+static void stasis_recovery_redo(stasis_log_t* log) {
   LogHandle* lh = getLogHandle(log);
   const LogEntry  * e;
 
@@ -250,7 +251,7 @@ static void Redo(stasis_log_t* log) {
   freeLogHandle(lh);
 
 }
-static void Undo(stasis_log_t* log, int recovery) {
+static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
   LogHandle* lh;
 
   DEBUG("Recovery: Undo\n");
@@ -274,7 +275,7 @@ static void Undo(stasis_log_t* log, int recovery) {
       switch(e->type) {
       case UPDATELOG:
 	{
-          if(e->update.page == INVALID_PAGE) { 
+          if(e->update.page == INVALID_PAGE) {
             DEBUG("logical update\n");
 
             // logical undo: no-op; then the NTA didn't complete, and
@@ -337,7 +338,8 @@ static void Undo(stasis_log_t* log, int recovery) {
 	// records may be passed in by undoTrans.
 	break;
       case XCOMMIT:
-	// Should never abort a transaction that contains a commit record
+      case XEND:
+	// Should never abort a transaction that contains a commit or end record
 	abort();
       case XPREPARE: {
         DEBUG("found prepared xact %d\n", e->xid);
@@ -355,15 +357,14 @@ static void Undo(stasis_log_t* log, int recovery) {
       default:
 	DEBUG
 	  ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
-	   e->type, e->xid, e->LSN); 
+	   e->type, e->xid, e->LSN);
 	abort();
       }
       freeLogEntry(e);
     }
     if(!prepared) {
-      if(recovery) {
-        stasis_transaction_table_forget(thisXid);
-      }
+      // Log an XEND, remove transaction from XactionTable.
+      Tforget(thisXid);
       if(globalLockManager.abort) {
         globalLockManager.abort(thisXid);
       }
@@ -375,12 +376,12 @@ void stasis_recovery_initiate(stasis_log_t* log) {
 
   transactionLSN = pblHtCreate();
   DEBUG("Analysis started\n");
-  Analysis(log);
+  stasis_recovery_analysis(log);
   DEBUG("Redo started\n");
-  Redo(log);
+  stasis_recovery_redo(log);
   DEBUG("Undo started\n");
   TallocPostInit();
-  Undo(log,1);
+  stasis_recovery_undo(log,1);
   DEBUG("Recovery complete.\n");
 
   for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {
@@ -393,7 +394,7 @@ void stasis_recovery_initiate(stasis_log_t* log) {
 }
 
 
-void undoTrans(stasis_log_t* log, TransactionLog transaction) { 
+void undoTrans(stasis_log_t* log, TransactionLog transaction) {
 
   pthread_mutex_lock(&rollback_mutex);
   assert(!rollbackLSNs);
@@ -405,7 +406,7 @@ void undoTrans(stasis_log_t* log, TransactionLog transaction) {
     /* Nothing to undo.  (Happens for read-only xacts.) */
   }
 
-  Undo(log, 0);
+  stasis_recovery_undo(log, 0);
   if(rollbackLSNs) {
     destroyList(&rollbackLSNs);
   }

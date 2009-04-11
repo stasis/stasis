@@ -2,160 +2,169 @@
 #include <stasis/latches.h>
 #include <string.h>
 #include <assert.h>
-/**
-   @todo remove static fields from inMemoryLog
-*/
-static rwl * flushedLSN_lock;
-static lsn_t nextAvailableLSN;
-static lsn_t globalOffset;
-static rwl * globalOffset_lock;
-static LogEntry ** buffer;
-static lsn_t bufferLen;
 
-static lsn_t nextAvailableLSN_InMemoryLog(stasis_log_t * log) {
-  writelock(flushedLSN_lock,0);
-  writelock(globalOffset_lock,0);
-  lsn_t ret = nextAvailableLSN;
-  unlock(globalOffset_lock);
-  unlock(flushedLSN_lock);
+typedef struct {
+	rwl * flushedLSN_lock;
+	lsn_t nextAvailableLSN;
+	lsn_t globalOffset;
+	rwl * globalOffset_lock;
+	LogEntry ** buffer;
+	lsn_t bufferLen;
+} stasis_log_impl_in_memory;
+
+static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  writelock(impl->flushedLSN_lock,0);
+  writelock(impl->globalOffset_lock,0);
+  lsn_t ret = impl->nextAvailableLSN;
+  unlock(impl->globalOffset_lock);
+  unlock(impl->flushedLSN_lock);
   return ret;
 }
 
-static int writeLogEntry_InMemoryLog(stasis_log_t * log, LogEntry *e) {
-  writelock(flushedLSN_lock, 0);
+static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  writelock(impl->flushedLSN_lock, 0);
   lsn_t bufferOffset;
 
   int done = 0;
-  do{ 
-    writelock(globalOffset_lock,0);
-    bufferOffset = nextAvailableLSN - globalOffset;
-    if(bufferOffset > bufferLen) { 
-      bufferLen *= 2;
-      buffer = realloc(buffer, bufferLen);
+  do{
+    writelock(impl->globalOffset_lock,0);
+    bufferOffset = impl->nextAvailableLSN - impl->globalOffset;
+    if(bufferOffset > impl->bufferLen) {
+      impl->bufferLen *= 2;
+      impl->buffer = realloc(impl->buffer, impl->bufferLen);
     } else {
       done = 1;
     }
   } while (!done);
-  return 0;
 
-
-  e->LSN = nextAvailableLSN;
+  e->LSN = impl->nextAvailableLSN;
 
   LogEntry * cpy = malloc(sizeofLogEntry(e));
   memcpy(cpy, e, sizeofLogEntry(e));
 
-  //  printf ("lsn: %ld\n", e->LSN);
-  buffer[bufferOffset] = cpy;
+  DEBUG("lsn: %ld\n", e->LSN);
+  impl->buffer[bufferOffset] = cpy;
 
-  //  printf("lsn: %ld type: %d\n", e->LSN, e->type);
-  nextAvailableLSN++;
+  DEBUG("lsn: %ld type: %d\n", e->LSN, e->type);
+  impl->nextAvailableLSN++;
 
-  unlock(globalOffset_lock);
-  unlock(flushedLSN_lock);
+  unlock(impl->globalOffset_lock);
+  unlock(impl->flushedLSN_lock);
+  return 0;
 }
 
-static lsn_t flushedLSN_InMemoryLog(stasis_log_t* log,
+static lsn_t stasis_log_impl_in_memory_first_unstable_lsn(stasis_log_t* log,
                                     stasis_log_force_mode_t mode) {
-  return nextAvailableLSN;
+  stasis_log_impl_in_memory * impl = log->impl;
+  return impl->nextAvailableLSN;
 }
 
-static void syncLog_InMemoryLog(stasis_log_t* log, stasis_log_force_mode_t m){
+static void stasis_log_impl_in_memory_force_tail(stasis_log_t* log, stasis_log_force_mode_t m){
   // no-op
 }
 
-static lsn_t nextEntry_InMemoryLog(stasis_log_t * log, const LogEntry * e) {
+static lsn_t stasis_log_impl_in_memory_next_entry(stasis_log_t * log, const LogEntry * e) {
   return e->LSN + 1;
 }
 
-static int truncateLog_InMemoryLog(stasis_log_t * log, lsn_t lsn) {
-  writelock(flushedLSN_lock,1);
-  writelock(globalOffset_lock,1);
- 
-  assert(lsn <= nextAvailableLSN);
+static int stasis_log_impl_in_memory_truncate(stasis_log_t * log, lsn_t lsn) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  writelock(impl->flushedLSN_lock,1);
+  writelock(impl->globalOffset_lock,1);
+
+  assert(lsn <= impl->nextAvailableLSN);
 
 
-  if(lsn > globalOffset) { 
-    for(int i = globalOffset; i < lsn; i++) { 
-      free(buffer[i - globalOffset]);
+  if(lsn > impl->globalOffset) {
+    for(int i = impl->globalOffset; i < lsn; i++) {
+      free(impl->buffer[i - impl->globalOffset]);
     }
-    assert((lsn-globalOffset) + (nextAvailableLSN -lsn) < bufferLen);
-    memmove(&(buffer[0]), &(buffer[lsn - globalOffset]), sizeof(LogEntry*) * (nextAvailableLSN - lsn));
-    globalOffset = lsn;
+    assert((lsn-impl->globalOffset) + (impl->nextAvailableLSN -lsn) < impl->bufferLen);
+    memmove(&(impl->buffer[0]), &(impl->buffer[lsn - impl->globalOffset]),
+			sizeof(LogEntry*) * (impl->nextAvailableLSN - lsn));
+    impl->globalOffset = lsn;
   }
 
-  writeunlock(globalOffset_lock);
-  writeunlock(flushedLSN_lock);
+  writeunlock(impl->globalOffset_lock);
+  writeunlock(impl->flushedLSN_lock);
 
   return 0;
 }
 
-static lsn_t firstLogEntry_InMemoryLog() {
-  return globalOffset;
+static lsn_t stasis_log_impl_in_memory_truncation_point(stasis_log_t * log) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  return impl->globalOffset;
 }
 
-static int close_InMemoryLog(stasis_log_t * log) {
-  if(buffer) { 
-    lsn_t firstEmptyOffset = nextAvailableLSN-globalOffset;
-    for(lsn_t i = 0; i < firstEmptyOffset; i++) { 
-      assert(buffer[i]->LSN == i+globalOffset);
-      free(buffer[i]);
+static int stasis_log_impl_in_memory_close(stasis_log_t * log) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  if(impl->buffer) {
+    lsn_t firstEmptyOffset = impl->nextAvailableLSN-impl->globalOffset;
+    for(lsn_t i = 0; i < firstEmptyOffset; i++) {
+      assert(impl->buffer[i]->LSN == i+impl->globalOffset);
+      free(impl->buffer[i]);
     }
-    free(buffer);
-    nextAvailableLSN = 0;
-    globalOffset = 0;
-    bufferLen = 0;
-    buffer = 0;
-
+    free(impl->buffer);
+    impl->nextAvailableLSN = 0;
+    impl->globalOffset = 0;
+    impl->bufferLen = 0;
+    impl->buffer = 0;
+    free(impl);
   }
   free (log);
   return 0;
 }
 
-static const LogEntry * readLSNEntry_InMemoryLog(stasis_log_t* log,
+static const LogEntry * stasis_log_impl_in_memory_read_entry(stasis_log_t* log,
                                                  lsn_t lsn) {
-  // printf("lsn: %ld\n", lsn);
-  if(lsn >= nextAvailableLSN) { return 0; } 
-  assert(lsn-globalOffset >= 0 && lsn-globalOffset< bufferLen);
-  readlock(globalOffset_lock, 0);
-  LogEntry * ptr = buffer[lsn - globalOffset];
-  unlock(globalOffset_lock);
+  stasis_log_impl_in_memory * impl = log->impl;
+  DEBUG("lsn: %ld\n", lsn);
+  if(lsn >= impl->nextAvailableLSN) { return 0; }
+  assert(lsn-impl->globalOffset >= 0 && lsn-impl->globalOffset< impl->bufferLen);
+  readlock(impl->globalOffset_lock, 0);
+  LogEntry * ptr = impl->buffer[lsn - impl->globalOffset];
+  unlock(impl->globalOffset_lock);
   assert(ptr);
   assert(ptr->LSN == lsn);
-  
+
   LogEntry * ret = malloc(sizeofLogEntry(ptr));
 
   memcpy(ret, ptr, sizeofLogEntry(ptr));
-  
-  //printf("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
+
+  DEBUG("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
   return ret;
 }
-static lsn_t sizeofInternalLogEntry_InMemoryLog(stasis_log_t* log,
+static lsn_t stasis_log_impl_in_memory_sizeof_internal_entry(stasis_log_t* log,
                                                 const LogEntry * e) {
   abort();
 }
-static int isDurable_InMemoryLog(stasis_log_t*log) { return 0; }
+static int stasis_log_impl_in_memory_is_durable(stasis_log_t*log) { return 0; }
 
-stasis_log_t* open_InMemoryLog() {
-  flushedLSN_lock   = initlock();
-  globalOffset_lock = initlock();
-  globalOffset = 0;
-  nextAvailableLSN = 0;
-  buffer = malloc(4096 * 1024 * sizeof (LogEntry *));
-  bufferLen =4096 * 1024;
+stasis_log_t* stasis_log_impl_in_memory_open() {
+  stasis_log_impl_in_memory * impl = malloc(sizeof(*impl));
+  impl->flushedLSN_lock   = initlock();
+  impl->globalOffset_lock = initlock();
+  impl->globalOffset = 0;
+  impl->nextAvailableLSN = 0;
+  impl->buffer = malloc(4096 * 1024 * sizeof (LogEntry *));
+  impl->bufferLen =4096 * 1024;
   static stasis_log_t proto = {
-    sizeofInternalLogEntry_InMemoryLog, // sizeof_internal_entry
-    writeLogEntry_InMemoryLog,// write_entry
-    readLSNEntry_InMemoryLog, // read_entry
-    nextEntry_InMemoryLog,// next_entry
-    flushedLSN_InMemoryLog, // first_unstable_lsn
-    nextAvailableLSN_InMemoryLog, // next_available_lsn
-    syncLog_InMemoryLog, // force_tail
-    truncateLog_InMemoryLog, // truncate
-    firstLogEntry_InMemoryLog,// truncation_point
-    close_InMemoryLog, // deinit
-    isDurable_InMemoryLog// is_durable
+    stasis_log_impl_in_memory_sizeof_internal_entry,
+    stasis_log_impl_in_memory_write_entry,
+    stasis_log_impl_in_memory_read_entry,
+    stasis_log_impl_in_memory_next_entry,
+    stasis_log_impl_in_memory_first_unstable_lsn,
+    stasis_log_impl_in_memory_next_available_lsn,
+    stasis_log_impl_in_memory_force_tail,
+    stasis_log_impl_in_memory_truncate,
+    stasis_log_impl_in_memory_truncation_point,
+    stasis_log_impl_in_memory_close,
+    stasis_log_impl_in_memory_is_durable
   };
   stasis_log_t* log = malloc(sizeof(*log));
   memcpy(log,&proto, sizeof(proto));
+  log->impl = impl;
   return log;
 }

@@ -57,6 +57,23 @@ extern int stasis_suppress_unclean_shutdown_warnings;
  */
 extern int stasis_truncation_automatic;
 
+/**
+    This is the log implementation that is being used.
+
+    Before Stasis is initialized it will be set to a default value.
+    It may be changed before Tinit() is called by assigning to it.
+    The default can be overridden at compile time by defining
+    USE_LOGGER.
+
+    (eg: gcc ... -DSTASIS_LOG_TYPE=LOG_TO_FOO)
+
+    @see constants.h for a list of recognized log implementations.
+         (The constants are named LOG_TO_*)
+	@todo rename LOG_TO_* constants to STASIS_LOG_TYPE_*
+
+*/
+extern int stasis_log_type;
+
 extern char * stasis_log_file_name;
 extern int    stasis_log_file_mode;
 extern int    stasis_log_file_permissions;

@@ -42,7 +42,7 @@ struct ringBufferLog_s {
 #define offset_to_lsn(x, lsn) ((lsn) + (x)->offset)
 #endif
 
-static int truncateLog(ringBufferLog_t * log, lsn_t lsn);
+static int stasis_ringbuffer_truncate(ringBufferLog_t * log, lsn_t lsn);
 
 ringBufferLog_t * openLogRingBuffer(size_t size, lsn_t initialOffset) {
   ringBufferLog_t * ret = malloc(sizeof(ringBufferLog_t));
@@ -132,12 +132,12 @@ int ringBufferTruncateRead(byte * buf, ringBufferLog_t * log, size_t size) {
   }
   memcpyFromRingBuffer(buf, log, lsn_to_offset(log, log->start), size);
 
-  return truncateLog(log, log->start + size);
+  return stasis_ringbuffer_truncate(log, log->start + size);
 
 }
 
 /** static because it does no error checking. */
-static int truncateLog(ringBufferLog_t * log, lsn_t lsn) {
+static int stasis_ringbuffer_truncate(ringBufferLog_t * log, lsn_t lsn) {
 
 #ifdef TRACK_OFFSETS
   lsn_t newStart = lsn_to_offset(log, lsn);

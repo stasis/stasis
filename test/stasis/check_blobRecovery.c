@@ -414,7 +414,7 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("recovery");
 
   tcase_set_timeout(tc, 0); // disable timeouts
-  if(LOG_TO_MEMORY != loggerType) { 
+  if(LOG_TO_MEMORY != stasis_log_type) { 
     /* void * foobar; */  /* used to supress warnings. */
     /* Sub tests are added, one per line, here */
     tcase_add_test(tc, recoverBlob__idempotent);

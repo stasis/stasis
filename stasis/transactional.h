@@ -55,7 +55,7 @@ terms specified in this license.
  */
 /**
    @mainpage Introduction to Stasis
-   
+
    Stasis is a <i>flexible</i> transactional storage library.  Unlike
    existing systems, it provides application and server developers
    with much freedom, but little guidance regarding page file layouts,
@@ -116,18 +116,18 @@ terms specified in this license.
    @section compiling Compiling and installation
 
    Prerequisites:
-   
-   - automake 1.8+: needed to build from CVS 
-   - <a href="http://check.sourceforge.net">check</a>: A unit testing 
+
+   - automake 1.8+: needed to build from CVS
+   - <a href="http://check.sourceforge.net">check</a>: A unit testing
      framework (needed to run the self-tests)
 
    Optional:
 
    - libconfuse: Used by older networking code to parse configuration options.
-   - BerkeleyDB: Used by the benchmarking code for purposes of comparison. 
-   
+   - BerkeleyDB: Used by the benchmarking code for purposes of comparison.
+
    Development is currently performed under Debian's Testing branch.
-   
+
    To compile Stasis, first check out a copy with SVN.  If you have commit access:
 
    @verbatim
@@ -141,17 +141,17 @@ terms specified in this license.
    @endverbatim
 
    then:
- 
+
    @code
-   
+
    $ ./reconf
    $ ./configure --quiet
    $ make -j4 > /dev/null
    $ cd test/stasis
    $ make check
-   
+
    @endcode
-   
+
    This will fail if your system defaults to an old (pre-1.7) version
    of autotools.  Fortunately, multiple versions of autotools may
    exist on the same system.  Execute the following commands to
@@ -183,22 +183,22 @@ terms specified in this license.
 
    @include examples/ex1.c
 
-   Hopefully, Tbegin(), Talloc(), Tset(), Tcommit(), Tabort() and Tdealloc() are 
-   self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and 
+   Hopefully, Tbegin(), Talloc(), Tset(), Tcommit(), Tabort() and Tdealloc() are
+   self explanatory.  If not, they are covered in detail elsewhere.  Tinit() and
    Tdeinit() initialize the library, and clean up when the program is finished.
-   
+
    Other particularly useful functions are ThashCreate(), ThashDelete(),
    ThashInsert(), ThashRemove(), and ThashLookup() which provide a
    re-entrant linear hash implementation.  ThashIterator() and
    ThashNext() provide an iterator over the hashtable's values.
-   
+
    @subsection bootstrap Reopening a closed data store
-   
-   Stasis imposes as little structure upon the application's data structures as 
+
+   Stasis imposes as little structure upon the application's data structures as
    possible.  Therefore, it does not maintain any information about the contents
-   or naming of objects within the page file.  This means that the application 
+   or naming of objects within the page file.  This means that the application
    must maintain such information manually.
-   
+
    In order to facilitate this, Stasis provides the function
    TrecordType() and guarantees that the first recordid returned by
    any allocation will point to the same page and slot as the constant
@@ -206,10 +206,10 @@ terms specified in this license.
    record passed to it does not exist.  A second function,
    TrecordSize() returns the size of a record in bytes, or -1 if the
    record does not exist.
-   
+
    Therefore, the following code (found in examples/ex2.c) will safely
    initialize or reopen a data store:
-   
+
    @include examples/ex2.c
 
    @todo Explain how to determine the correct value of rootEntry.size in the case
@@ -476,7 +476,7 @@ terms specified in this license.
  * @defgroup LOGGING_DISCIPLINES Logging Disciplines
  *
  * Stasis' log API provides a number of methods that directly
- * manipulate the log.  
+ * manipulate the log.
  *
  * @section SNF STEAL/NO-FORCE recovery
  * Stasis includes a function, Tupdate(), that
@@ -521,13 +521,13 @@ terms specified in this license.
 
 
 /**
- * @file 
+ * @file
  *
  * Defines Stasis' primary interface.
  *
  *
  *
- * @todo error handling 
+ * @todo error handling
  *
  * @ingroup LLADD_CORE
  * $Id$
@@ -607,12 +607,12 @@ int Tbegin();
  *
  * @see operations.h For an overview of the operations API
  */
-compensated_function void Tupdate(int xid, pageid_t page, 
+compensated_function void Tupdate(int xid, pageid_t page,
 				  const void *dat, size_t datlen, int op);
 /**
    @deprecated Only exists to work around swig/python limitations.
  */
-compensated_function void TupdateStr(int xid, pageid_t page, 
+compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op);
 
 void TreorderableUpdate(int xid, void * h, pageid_t page,
@@ -632,7 +632,7 @@ void TreorderableWritebackUpdate(int xid, void* h,
 
 /**
  * Read the value of a record.
- * 
+ *
  * @param xid transaction ID
  * @param rid reference to page/slot
  * @param dat buffer into which data goes
@@ -650,9 +650,9 @@ compensated_function void TreadRaw(int xid, recordid rid, void *dat);
 compensated_function void TreadStr(int xid, recordid rid, char *dat);
 
 /**
- * Commit an active transaction.  Each transaction should be completed 
+ * Commit an active transaction.  Each transaction should be completed
  * with exactly one call to Tcommit() or Tabort().
- * 
+ *
  * @param xid transaction ID
  * @return 0 on success
  */
@@ -661,8 +661,8 @@ int Tcommit(int xid);
 /**
  * Abort (rollback) an active transaction.  Each transaction should be
  * completed with exactly one call to Tcommit() or Tabort().
- * 
- * @param xid transaction ID 
+ *
+ * @param xid transaction ID
  * @return 0 on success, -1 on error.
  */
 int Tabort(int xid);
@@ -689,7 +689,7 @@ int TuncleanShutdown();
  *  Used by the recovery process.
  *  Revives Tprepare'ed transactions.
  *
- * @param xid  The xid that is to be revived. 
+ * @param xid  The xid that is to be revived.
  * @param prevlsn  The lsn of that xid's most recent PREPARE entry in the log.
  * @param reclsn The lsn of the transaction's BEGIN record.
  */
@@ -753,7 +753,7 @@ void stasis_transaction_table_max_transaction_id_set(int xid);
 /**
  *  Used by test cases to mess with internal transaction table state.
  *
- * @param xid  The new active transaction count. 
+ * @param xid  The new active transaction count.
  */
 void stasis_transaction_table_active_transaction_count_set(int xid);
 
@@ -783,6 +783,8 @@ int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
                                                       lsn_t prevLSN,
                                                       lsn_t recLSN);
 int stasis_transaction_table_forget(int xid);
+
+int Tforget(int xid);
 /**
     This is used by log truncation.
 */

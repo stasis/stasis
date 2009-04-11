@@ -37,9 +37,9 @@ static int initted = 0;
 const recordid ROOT_RECORD = {1, 0, -1};
 const recordid NULLRID = {0,0,-1};
 const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
-/** 
+/**
     Locking for transactional2.c works as follows:
-    
+
     numActiveXactions, xidCount are protected, XactionTable is not.
     This implies that we do not support multi-threaded transactions,
     at least for now.
@@ -58,7 +58,7 @@ void stasis_transaction_table_init() {
 }
 
 // @todo this factory stuff doesn't really belong here...
-static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) { 
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
   stasis_handle_t * h = stasis_handle(open_memory)(off);
   //h = stasis_handle(open_debug)(h);
   stasis_write_buffer_t * w = h->append_buffer(h, len);
@@ -70,7 +70,7 @@ typedef struct sf_args {
   int    openMode;
   int    filePerm;
 } sf_args;
-static stasis_handle_t * slow_file_factory(void * argsP) { 
+static stasis_handle_t * slow_file_factory(void * argsP) {
   sf_args * args = (sf_args*) argsP;
   stasis_handle_t * h =  stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
   //h = stasis_handle(open_debug)(h);
@@ -94,12 +94,12 @@ int Tinit() {
         stasis_transaction_table_init();
 	stasis_operation_table_init();
 	dirtyPagesInit();
-        if(LOG_TO_FILE == loggerType) {
+        if(LOG_TO_FILE == stasis_log_type) {
           stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                         stasis_log_file_mode,
                                                         stasis_log_file_permissions);
-        } else if(LOG_TO_MEMORY == loggerType) {
-          stasis_log_file = open_InMemoryLog();
+        } else if(LOG_TO_MEMORY == stasis_log_type) {
+          stasis_log_file = stasis_log_impl_in_memory_open();
         } else {
           assert(stasis_log_file != NULL);
         }
@@ -169,7 +169,7 @@ int Tinit() {
                                        openMode, FILE_PERM);
 	    pageHandleOpen(pageFile);
 	  } break;
-	  case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: { 
+	  case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: {
             printf("\nWarning: Using old I/O routines (with known bugs).\n");
             openPageFile();
           } break;
@@ -245,7 +245,7 @@ static compensated_function void TactionHelper(int xid,
 					       Page * p) {
   LogEntry * e;
   assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
-  try { 
+  try {
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, p->id);
     }
@@ -269,7 +269,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
   Page * p = loadPage(xid, page);
   assert(p);
-  try { 
+  try {
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, p->id);
     }
@@ -322,8 +322,8 @@ compensated_function void TupdateStr(int xid, pageid_t page,
   Tupdate(xid, page, dat, datlen, op);
 }
 
-compensated_function void Tupdate(int xid, pageid_t page, 
-				  const void *dat, size_t datlen, int op) { 
+compensated_function void Tupdate(int xid, pageid_t page,
+				  const void *dat, size_t datlen, int op) {
   Page * p = loadPage(xid, page);
   assert(initted);
   TactionHelper(xid, dat, datlen, op, p);
@@ -336,14 +336,14 @@ compensated_function void TreadStr(int xid, recordid rid, char * dat) {
 
 compensated_function void Tread(int xid, recordid rid, void * dat) {
   Page * p;
-  try { 
+  try {
     p = loadPage(xid, rid.page);
   } end;
 
   readlock(p->rwlatch,0);
 
   rid = stasis_record_dereference(xid, p, rid);
-  if(rid.page != p->id) { 
+  if(rid.page != p->id) {
     unlock(p->rwlatch);
     releasePage(p);
     p = loadPage(xid, rid.page);
@@ -363,7 +363,7 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
 
 compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
   Page * p;
-  try { 
+  try {
     p = loadPage(xid, rid.page);
   } end;
   readlock(p->rwlatch,0);
@@ -375,7 +375,7 @@ compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
 int Tcommit(int xid) {
   lsn_t lsn;
   assert(xid >= 0);
-#ifdef DEBUGGING 
+#ifdef DEBUGGING
   pthread_mutex_lock(&transactional_2_mutex);
   assert(numActiveXactions <= MAX_TRANSACTIONS);
   pthread_mutex_unlock(&transactional_2_mutex);
@@ -420,15 +420,15 @@ int Tabort(int xid) {
 
   allocTransactionAbort(xid);
 
-  pthread_mutex_lock(&transactional_2_mutex);
-
-  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
-  numActiveXactions--;
-  assert( numActiveXactions >= 0 );
-  pthread_mutex_unlock(&transactional_2_mutex);
   return 0;
 }
-
+int Tforget(int xid) {
+  TransactionLog * t = &XactionTable[xid%MAX_TRANSACTIONS];
+  assert(t->xid == xid);
+  LogTransEnd(stasis_log_file, t);
+  stasis_transaction_table_forget(t->xid);
+  return 0;
+}
 int Tdeinit() {
   int i;
 
@@ -454,7 +454,7 @@ int Tdeinit() {
     slow_close = 0;
   }
   stasis_page_deinit();
-  stasis_log_file->deinit(stasis_log_file);
+  stasis_log_file->close(stasis_log_file);
   dirtyPagesDeinit();
 
   initted = 0;
@@ -475,7 +475,7 @@ int TuncleanShutdown() {
     slow_close = 0;
   }
   stasis_page_deinit();
-  stasis_log_file->deinit(stasis_log_file);
+  stasis_log_file->close(stasis_log_file);
   numActiveXactions = 0;
   dirtyPagesDeinit();
 
@@ -496,13 +496,13 @@ void stasis_transaction_table_active_transaction_count_set(int xid) {
   pthread_mutex_unlock(&transactional_2_mutex);
 }
 
-lsn_t transactions_minRecLSN() { 
+lsn_t transactions_minRecLSN() {
   lsn_t minRecLSN = LSN_T_MAX;
   pthread_mutex_lock(&transactional_2_mutex);
-  for(int i = 0; i < MAX_TRANSACTIONS; i++) { 
-    if(XactionTable[i].xid != INVALID_XTABLE_XID) { 
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    if(XactionTable[i].xid != INVALID_XTABLE_XID) {
       lsn_t recLSN = XactionTable[i].recLSN;
-      if(recLSN != -1 && recLSN < minRecLSN) { 
+      if(recLSN != -1 && recLSN < minRecLSN) {
 	minRecLSN = recLSN;
       }
     }
@@ -531,7 +531,7 @@ int* TlistActiveTransactions() {
   pthread_mutex_unlock(&transactional_2_mutex);
   return ret;
 }
-int TisActiveTransaction(int xid) { 
+int TisActiveTransaction(int xid) {
   if(xid < 0) { return 0; }
   pthread_mutex_lock(&transactional_2_mutex);
   int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
@@ -579,11 +579,11 @@ int stasis_transaction_table_forget(int xid) {
 }
 
 int TdurabilityLevel() {
-  if(bufferManagerType == BUFFER_MANAGER_MEM_ARRAY) { 
+  if(bufferManagerType == BUFFER_MANAGER_MEM_ARRAY) {
     return VOLATILE;
-  } else if(loggerType == LOG_TO_MEMORY) { 
+  } else if(stasis_log_type == LOG_TO_MEMORY) {
     return PERSISTENT;
-  } else { 
+  } else {
     return DURABLE;
   }
 }
@@ -642,7 +642,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   // Ensure that the next action in this transaction points to the CLR.
   XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
 
-  DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid, 
+  DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
 	 clrLSN, undoneLSN, *prevLSN);
 
   free(h);

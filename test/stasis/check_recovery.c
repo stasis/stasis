@@ -484,7 +484,7 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 0); // disable timeouts
 
-  if(LOG_TO_MEMORY != loggerType) { 
+  if(LOG_TO_MEMORY != stasis_log_type) { 
     
     /* Sub tests are added, one per line, here */
     tcase_add_test(tc, recovery_idempotent);

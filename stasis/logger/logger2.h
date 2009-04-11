@@ -90,21 +90,6 @@ typedef enum {
 extern TransactionLog XactionTable[MAX_TRANSACTIONS];
 
 
-/**
-    This is the log implementation that is being used.
-
-    Before Stasis is intialized it will be set to a default value.
-    It may be changed before Tinit() is called by assigning to it.
-    The default can be overridden at compile time by defining
-    USE_LOGGER.
-
-    (eg: gcc ... -DUSE_LOGGER=LOG_TO_FOO)
-
-    @see constants.h for a list of recognized log implementations.
-         (The constants are named LOG_TO_*)
-
-*/
-extern int loggerType;
 
 struct stasis_log_t {
   /**
@@ -169,7 +154,7 @@ struct stasis_log_t {
   /**
      @return 0 on success
   */
-  int (*deinit)(struct stasis_log_t* log);
+  int (*close)(struct stasis_log_t* log);
 
   int (*is_durable)(struct stasis_log_t* log);
 
@@ -228,11 +213,10 @@ lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l);
 lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l);
 
 /**
-   Write a end transaction record @see XEND
-
-   @todo Implement LogEnd
+   Write a end transaction record.  This entry tells recovery's undo
+   phase that it may safely ignore the transaction.
 */
-void LogEnd (stasis_log_t* log, TransactionLog * l);
+lsn_t LogTransEnd (stasis_log_t* log, TransactionLog * l);
 
 /**
    LogUpdate writes an UPDATELOG log record to the log tail.  It

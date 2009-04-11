@@ -40,10 +40,10 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-/** 
+/**
     @file check_logWriter
-    
-    Tests logWriter.  
+
+    Tests logWriter.
 
     @todo Get rid of include for logWriter.h (stop calling deleteLogWriter, syncLog_logWriter...)
 */
@@ -92,7 +92,7 @@ static void setup_log() {
 
     assert(test <= e->LSN);
 
-    if(first) { 
+    if(first) {
       first = 0;
       firstLSN = prevLSN;
     }
@@ -122,7 +122,7 @@ static void setup_log() {
   }
 }
 /**
-   @test 
+   @test
 
    Quick test of log writer and log handler.  Not very extensive.
    Just writes out 3000 log entries, checks that 1000 of them make
@@ -139,8 +139,9 @@ static void setup_log() {
    @todo Test logHandle more thoroughly. (Still need to test the guard mechanism.)
 
 */
-START_TEST(loggerTest)
-{
+static void loggerTest(int logType) {
+
+  stasis_log_type = logType;
   const LogEntry * e;
   LogHandle* h;
   int i = 0;
@@ -161,16 +162,21 @@ START_TEST(loggerTest)
   stasis_log_safe_writes_delete(stasis_log_file_name);
   Tdeinit();
 }
-END_TEST
-
-/** 
+START_TEST(loggerFileTest) {
+	loggerTest(LOG_TO_FILE);
+} END_TEST
+START_TEST(loggerMemTest) {
+	loggerTest(LOG_TO_MEMORY);
+} END_TEST
+/**
     @test
     Checks for a bug ecountered during devlopment.  What happens when
     previousInTransaction is called immediately after the handle is
     allocated? */
 
-START_TEST(logHandleColdReverseIterator) {
+static void logHandleColdReverseIterator(int logType) {
   const LogEntry * e;
+  stasis_log_type = logType;
   setup_log();
   LogHandle* lh = getLogHandle(stasis_log_file);
   int i = 0;
@@ -180,7 +186,7 @@ START_TEST(logHandleColdReverseIterator) {
     freeLogEntry(e);
     i++;
   }
-  
+
   i = 0;
   lh = getLSNHandle(stasis_log_file, e->LSN);
   while((e = previousInTransaction(lh))) {
@@ -191,14 +197,20 @@ START_TEST(logHandleColdReverseIterator) {
   assert(i <= 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
   Tdeinit();
 }
-END_TEST
+START_TEST(logHandleFileColdReverseIterator) {
+	logHandleColdReverseIterator(LOG_TO_FILE);
+} END_TEST
+START_TEST(logHandleMemColdReverseIterator) {
+	logHandleColdReverseIterator(LOG_TO_MEMORY);
+} END_TEST
 
-/** 
+/**
     @test
 
     Build a simple log, truncate it, and then test the logWriter routines against it.
 */
-START_TEST(loggerTruncate) {
+static void loggerTruncate(int logType) {
+  stasis_log_type = logType;
   const LogEntry * le;
   const LogEntry * le2;
   const LogEntry * le3 = NULL;
@@ -212,21 +224,21 @@ START_TEST(loggerTruncate) {
     i++;
     le = nextInLog(lh);
   }
- 
+
   le2 = nextInLog(lh);
   i = 0;
   while(i < 23) {
     i++;
     le3 = nextInLog(lh);
   }
-  
+
   stasis_log_file->truncate(stasis_log_file, le->LSN);
-  
+
   tmp = stasis_log_file->read_entry(stasis_log_file, le->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
-  
+
   freeLogEntry(tmp);
   tmp = stasis_log_file->read_entry(stasis_log_file, le2->LSN);
 
@@ -238,19 +250,19 @@ START_TEST(loggerTruncate) {
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
-  
+
   freeLogEntry(tmp);
   freeLogHandle(lh);
   lh = getLogHandle(stasis_log_file);
-  
+
   i = 0;
-  
+
   freeLogEntry(le);
   freeLogEntry(le2);
   freeLogEntry(le3);
 
   while((le = nextInLog(lh))) {
-    if(le->type != INTERNALLOG) { 
+    if(le->type != INTERNALLOG) {
       i++;
     }
     freeLogEntry(le);
@@ -258,7 +270,12 @@ START_TEST(loggerTruncate) {
   assert(i == (3000 - 234 + 1));
   freeLogHandle(lh);
   Tdeinit();
-
+}
+START_TEST(loggerFileTruncate) {
+	loggerTruncate(LOG_TO_FILE);
+} END_TEST
+START_TEST(loggerMemTruncate) {
+	loggerTruncate(LOG_TO_MEMORY);
 } END_TEST
 
 #define ENTRIES_PER_THREAD 200
@@ -277,7 +294,7 @@ static void* worker_thread(void * arg) {
 
   lsn_t lsns[ENTRIES_PER_THREAD];
 
-  for(i = 0; i < ENTRIES_PER_THREAD; i++) { 
+  for(i = 0; i < ENTRIES_PER_THREAD; i++) {
     lsns[i] = 0;
   }
   i = 0;
@@ -293,7 +310,7 @@ static void* worker_thread(void * arg) {
     threshold = (int) (2000.0*random()/(RAND_MAX+1.0));
     entry = (long) (ENTRIES_PER_THREAD*random()/(RAND_MAX+1.0));
 
-    if(threshold < 3) { 
+    if(threshold < 3) {
       if(i > 10) {
 	needToTruncate = 1;
 	if(lsns[i - 10] > truncated_to) {
@@ -305,32 +322,32 @@ static void* worker_thread(void * arg) {
 
     pthread_mutex_unlock(&random_mutex);
 
-    if(needToTruncate) { 
-#ifdef NO_CONCURRENCY      
+    if(needToTruncate) {
+#ifdef NO_CONCURRENCY
       pthread_mutex_lock(&big);
 #endif
       stasis_log_file->truncate(stasis_log_file, myTruncVal);
-#ifdef NO_CONCURRENCY      
+#ifdef NO_CONCURRENCY
       pthread_mutex_unlock(&big);
-#endif      
+#endif
       assert(stasis_log_file->truncation_point(stasis_log_file) >= myTruncVal);
     }
 
     if(threshold < 3) {
     } else {
       le->xid = i+key;
-#ifdef NO_CONCURRENCY      
+#ifdef NO_CONCURRENCY
       pthread_mutex_lock(&big);
 #endif
       stasis_log_file->write_entry(stasis_log_file,le);
-#ifdef NO_CONCURRENCY      
+#ifdef NO_CONCURRENCY
       pthread_mutex_unlock(&big);
 #endif
       lsns[i] = le->LSN;
       i++;
     }
     pthread_mutex_lock(&random_mutex);
-#ifdef NO_CONCURRENCY      
+#ifdef NO_CONCURRENCY
     pthread_mutex_lock(&big);
 #endif
     if(lsns[entry] > truncated_to && entry < i) {
@@ -341,13 +358,13 @@ static void* worker_thread(void * arg) {
 
       assert(e->xid == entry+key);
       freeLogEntry(e);
-    } else { 
+    } else {
       pthread_mutex_unlock(&random_mutex);
     }
-#ifdef NO_CONCURRENCY      
+#ifdef NO_CONCURRENCY
     pthread_mutex_unlock(&big);
 #endif
-	
+
     /* Try to interleave requests as much as possible */
     sched_yield();
     freeLogEntry(le);
@@ -357,8 +374,8 @@ static void* worker_thread(void * arg) {
 
   return 0;
 }
-
-START_TEST(loggerCheckWorker) {
+static void loggerCheckWorker(int logType) {
+  stasis_log_type = logType;
   int four = 4;
 
   pthread_mutex_init(&random_mutex, NULL);
@@ -367,9 +384,16 @@ START_TEST(loggerCheckWorker) {
   worker_thread(&four);
   Tdeinit();
 
+}
+START_TEST(loggerFileCheckWorker) {
+  loggerCheckWorker(LOG_TO_FILE);
+} END_TEST
+START_TEST(loggerMemCheckWorker) {
+  loggerCheckWorker(LOG_TO_MEMORY);
 } END_TEST
 
-START_TEST(loggerCheckThreaded) {
+static void loggerCheckThreaded(int logType) {
+  stasis_log_type = logType;
 
 #define  THREAD_COUNT 100
   pthread_t workers[THREAD_COUNT];
@@ -386,9 +410,16 @@ START_TEST(loggerCheckThreaded) {
   }
   Tdeinit();
 
+}
+
+START_TEST(loggerFileCheckThreaded) {
+  loggerCheckThreaded(LOG_TO_FILE);
+} END_TEST
+START_TEST(loggerMemCheckThreaded) {
+  loggerCheckThreaded(LOG_TO_MEMORY);
 } END_TEST
 
-void reopenLogWorkload(int truncating) { 
+void reopenLogWorkload(int truncating) {
   stasis_operation_table_init();
   stasis_truncation_automatic = 0;
 
@@ -397,12 +428,12 @@ void reopenLogWorkload(int truncating) {
 
   stasis_transaction_table_active_transaction_count_set(0);
 
-  if(LOG_TO_FILE == loggerType) {
+  if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                   stasis_log_file_mode,
                                                   stasis_log_file_permissions);
-  } else if(LOG_TO_MEMORY == loggerType) {
-    stasis_log_file = open_InMemoryLog();
+  } else if(LOG_TO_MEMORY == stasis_log_type) {
+    stasis_log_file = stasis_log_impl_in_memory_open();
   } else {
     assert(stasis_log_file != NULL);
   }
@@ -418,24 +449,24 @@ void reopenLogWorkload(int truncating) {
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
     entries[i] = LogUpdate(stasis_log_file,
-                           &l, NULL, OPERATION_NOOP, NULL, 0); 
+                           &l, NULL, OPERATION_NOOP, NULL, 0);
 
     if(i == SYNC_POINT) {
-      if(truncating) { 
+      if(truncating) {
 	stasis_log_file->truncate(stasis_log_file,entries[i]->LSN);
 	startLSN = entries[i]->LSN;
       }
     }
   }
 
-  stasis_log_file->deinit(stasis_log_file);
+  stasis_log_file->close(stasis_log_file);
 
-  if(LOG_TO_FILE == loggerType) {
+  if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                   stasis_log_file_mode,
                                                   stasis_log_file_permissions);
-  } else if(LOG_TO_MEMORY == loggerType) {
-    stasis_log_file = open_InMemoryLog();
+  } else if(LOG_TO_MEMORY == stasis_log_type) {
+    stasis_log_file = stasis_log_impl_in_memory_open();
   } else {
     assert(stasis_log_file != NULL);
   }
@@ -443,51 +474,51 @@ void reopenLogWorkload(int truncating) {
   LogHandle * h;
   int i;
 
-  if(truncating) { 
+  if(truncating) {
     h = getLogHandle(stasis_log_file);
     i = SYNC_POINT;
-  } else { 
+  } else {
     h = getLogHandle(stasis_log_file);
     i = 0;
-  } 
+  }
 
   const LogEntry * e;
-  while((e = nextInLog(h))) { 
-    if(e->type != INTERNALLOG) { 
+  while((e = nextInLog(h))) {
+    if(e->type != INTERNALLOG) {
       assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
       assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
       assert(i < ENTRY_COUNT);
       i++;
     }
   }
-  
+
   assert(i == (ENTRY_COUNT));
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
     entries2[i] = LogUpdate(stasis_log_file, &l, NULL, OPERATION_NOOP,
                             NULL, 0);
-    if(i == SYNC_POINT) { 
+    if(i == SYNC_POINT) {
       stasis_log_file->force_tail(stasis_log_file, LOG_FORCE_COMMIT);
     }
   }
 
   freeLogHandle(h);
 
-  if(truncating) { 
+  if(truncating) {
     h = getLSNHandle(stasis_log_file, startLSN);
     i = SYNC_POINT;
-  } else { 
+  } else {
     h = getLogHandle(stasis_log_file);
     i = 0;
-  } 
+  }
 
-  while((e = nextInLog(h))) { 
-    if(e->type != INTERNALLOG) { 
-      if( i < ENTRY_COUNT) { 
+  while((e = nextInLog(h))) {
+    if(e->type != INTERNALLOG) {
+      if( i < ENTRY_COUNT) {
 	assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
 	assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
-      } else { 
+      } else {
 	assert(i < ENTRY_COUNT * 2);
 	assert(sizeofLogEntry(e) == sizeofLogEntry(entries2[i-ENTRY_COUNT]));
 	assert(!memcmp(e, entries2[i-ENTRY_COUNT], sizeofLogEntry(entries2[i-ENTRY_COUNT])));
@@ -497,19 +528,21 @@ void reopenLogWorkload(int truncating) {
   }
 
   freeLogHandle(h);
-  assert(i == (ENTRY_COUNT * 2));  
+  assert(i == (ENTRY_COUNT * 2));
 
   stasis_truncation_automatic = 1;
-  stasis_log_file->deinit(stasis_log_file);
+  stasis_log_file->close(stasis_log_file);
 }
 
 START_TEST(loggerReopenTest) {
-  stasis_log_safe_writes_delete(stasis_log_file_name);  
+  stasis_log_type = LOG_TO_FILE;
+  stasis_log_safe_writes_delete(stasis_log_file_name);
   reopenLogWorkload(0);
 
 } END_TEST
 
-START_TEST(loggerTruncateReopenTest) { 
+START_TEST(loggerTruncateReopenTest) {
+  stasis_log_type = LOG_TO_FILE;
   stasis_log_safe_writes_delete(stasis_log_file_name);
   reopenLogWorkload(1);
 } END_TEST
@@ -520,19 +553,23 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("writeNew");
   tcase_set_timeout(tc, 0);
   /* Sub tests are added, one per line, here */
-  
-  tcase_add_test(tc, loggerTest);
-  tcase_add_test(tc, logHandleColdReverseIterator);
-  tcase_add_test(tc, loggerTruncate);
-  tcase_add_test(tc, loggerCheckWorker);
-  tcase_add_test(tc, loggerCheckThreaded);
-  if(loggerType != LOG_TO_MEMORY) {
+  tcase_add_test(tc, loggerFileTest);
+  tcase_add_test(tc, loggerMemTest);
+  tcase_add_test(tc, logHandleFileColdReverseIterator);
+  tcase_add_test(tc, logHandleMemColdReverseIterator);
+  tcase_add_test(tc, loggerFileTruncate);
+  tcase_add_test(tc, loggerMemTruncate);
+  tcase_add_test(tc, loggerFileCheckWorker);
+  tcase_add_test(tc, loggerMemCheckWorker);
+  tcase_add_test(tc, loggerFileCheckThreaded);
+  tcase_add_test(tc, loggerMemCheckThreaded);
+  if(stasis_log_type != LOG_TO_MEMORY) {
     tcase_add_test(tc, loggerReopenTest);
     tcase_add_test(tc, loggerTruncateReopenTest);
   }
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

@@ -42,6 +42,13 @@ int stasis_truncation_automatic = STASIS_TRUNCATION_AUTOMATIC;
 int stasis_truncation_automatic = 1;
 #endif
 
+#ifdef STASIS_LOG_TYPE
+int stasis_log_type = STASIS_LOG_TYPE;
+#else
+int stasis_log_type = LOG_TO_FILE;
+#endif
+
+
 #ifdef STASIS_LOG_FILE_NAME
 char * stasis_log_file_name = STASIS_LOG_FILE_NAME;
 #else

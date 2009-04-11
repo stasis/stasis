@@ -212,7 +212,7 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, pageOpCheckAllocDealloc);
-  if(LOG_TO_MEMORY != loggerType) { 
+  if(LOG_TO_MEMORY != stasis_log_type) { 
     tcase_add_test(tc, pageOpCheckRecovery);
   }
   /* --------------------------------------------- */

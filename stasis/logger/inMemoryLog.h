@@ -3,6 +3,6 @@
 
 #include <stasis/logger/logger2.h>
 
-stasis_log_t* open_InMemoryLog();
+stasis_log_t* stasis_log_impl_in_memory_open();
 
 #endif

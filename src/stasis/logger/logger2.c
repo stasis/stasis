@@ -62,15 +62,6 @@ terms specified in this license.
 #include <stasis/page.h>
 
 /**
-   @todo loggerType should go away.
- */
-#ifdef USE_LOGGER
-int loggerType = USE_LOGGER;
-#else
-int loggerType = LOG_TO_FILE;
-#endif
-
-/**
    @todo stasis_log_file should be in transactional2.c, and not global
  */
 stasis_log_t* stasis_log_file = 0;
@@ -96,7 +87,7 @@ static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
   l->prevLSN = e->LSN;
   pthread_mutex_unlock(&l->mut);
 
-  DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid, 
+  DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
 
   ret = e->LSN;
@@ -138,7 +129,7 @@ LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
                                      arg, arg_size);
 
   log->write_entry(log, e);
-  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid, 
+  DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
   pthread_mutex_lock(&l->mut);
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
@@ -147,11 +138,11 @@ LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
   return e;
 }
 
-lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) { 
+lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) {
   LogEntry * e = allocCLRLogEntry(old_e);
   log->write_entry(log, e);
 
-  DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid, 
+  DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid,
   	 e->LSN, LSN, prevLSN);
   lsn_t ret = e->LSN;
   freeLogEntry(e);
@@ -177,6 +168,9 @@ lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l) {
 
 lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l) {
   return LogTransCommon(log, l, XABORT);
+}
+lsn_t LogTransEnd(stasis_log_t* log, TransactionLog * l) {
+	return LogTransCommon(log, l, XEND);
 }
 lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l) {
   lsn_t lsn = LogTransCommonPrepare(log, l);
@@ -226,8 +220,8 @@ static void groupCommit(stasis_log_t* log, lsn_t lsn) {
     if((xactcount > 1 && pendingCommits < xactcount) ||
        (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
       int retcode;
-      while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) { 
-        if(retcode != 0) { 
+      while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) {
+        if(retcode != 0) {
           printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by "
                  "a signal in groupCommit().  Acting as though it timed out.\n",
                  __FILE__, __LINE__);

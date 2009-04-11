@@ -697,7 +697,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_physical_do_undo);
   tcase_add_test(tc, operation_nestedTopAction);
   tcase_add_test(tc, operation_set_range);
-  if(loggerType != LOG_TO_MEMORY) {
+  if(stasis_log_type != LOG_TO_MEMORY) {
     tcase_add_test(tc, operation_prepare);
   }
   tcase_add_test(tc, operation_alloc_test);
