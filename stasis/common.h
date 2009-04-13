@@ -40,9 +40,9 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**
- * @file 
+ * @file
  *
- * A standard header file, adopted from Autobook. 
+ * A standard header file, adopted from Autobook.
  *
  * http://sources.redhat.com/autobook/
  *
@@ -114,11 +114,11 @@ typedef uint16_t pageoff_t;
 /*#define PROFILE_LATCHES*/
 /*#define NO_LATCHES */
 
-#ifdef DEBUGGING 
+#ifdef DEBUGGING
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */
 #define DEBUG(...) \
-  printf(__VA_ARGS__); fflush(NULL) 
-#else 
+  printf(__VA_ARGS__); fflush(NULL)
+#else
 #define DEBUG(...)
 #endif /*DEBUGGING*/
 
@@ -133,6 +133,15 @@ typedef struct {
   int64_t size;
 } recordid;
 #pragma pack(pop)
+
+/*
+   Define Page as an incomplete type to hide its implementation from clients.
+
+   Include stasis/page.h for the complete definition.
+*/
+typedef struct Page_s Page;
+
+
 
 #include "compensations.h"
 

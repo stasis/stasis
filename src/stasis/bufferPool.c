@@ -46,85 +46,79 @@ terms specified in this license.
  * Implementation of in memory buffer pool
  *
  * $Id$
- * 
+ *
  */
-
-/* _XOPEN_SOURCE is needed for posix_memalign */
-#define _XOPEN_SOURCE 600
-#include <stdlib.h>
+#include <assert.h>
 
 #include <stasis/bufferPool.h>
-#include <assert.h>
-#include <stasis/truncation.h>
 #include <stasis/page.h>
-/* TODO:  Combine with buffer size... */
-static pageid_t nextPage = 0;
-static pthread_mutex_t pageMallocMutex;
 
-static void * addressFromMalloc = 0;
+struct stasis_buffer_pool_t {
+	pageid_t nextPage;
+	Page* pool;
+	pthread_mutex_t mut;
+	void * addr_to_free;
+};
 
-/** We need one dummy page for locking purposes, so this array has one extra page in it. */
-Page pool[MAX_BUFFER_SIZE+1];
+stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
+  stasis_buffer_pool_t * ret = malloc(sizeof(*ret));
 
-void bufferPoolInit() { 
+  ret->nextPage = 0;
 
-  nextPage = 0;
-	
-  pthread_mutex_init(&pageMallocMutex, NULL);
+  pthread_mutex_init(&(ret->mut), NULL);
 
-  byte * bufferSpace ;
-
-  bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
+  byte * bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
   assert(bufferSpace);
-  addressFromMalloc = bufferSpace;
-  bufferSpace = (byte*)(((long)bufferSpace) + 
-			PAGE_SIZE - 
+  ret->addr_to_free = bufferSpace;
+
+  bufferSpace = (byte*)(((long)bufferSpace) +
+			PAGE_SIZE -
 			(((long)bufferSpace) % PAGE_SIZE));
 
+  // We need one dummy page for locking purposes,
+  //  so this array has one extra page in it.
+  ret->pool = malloc(sizeof(ret->pool[0])*(MAX_BUFFER_SIZE+1));
+
   for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
-    pool[i].rwlatch = initlock();
-    pool[i].loadlatch = initlock();
-    pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
-    pool[i].dirty = 0;
+    ret->pool[i].rwlatch = initlock();
+    ret->pool[i].loadlatch = initlock();
+    ret->pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
+    ret->pool[i].dirty = 0;
   }
+  return ret;
 }
 
-void bufferPoolDeInit() { 
+void stasis_buffer_pool_deinit(stasis_buffer_pool_t * ret) {
   for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
-    deletelock(pool[i].rwlatch);
-    deletelock(pool[i].loadlatch);
+    deletelock(ret->pool[i].rwlatch);
+    deletelock(ret->pool[i].loadlatch);
   }
-  free(addressFromMalloc); // breaks efence
-  pthread_mutex_destroy(&pageMallocMutex);
+  free(ret->addr_to_free); // breaks efence
+  pthread_mutex_destroy(&ret->mut);
 }
 
-Page* pageMalloc() { 
+Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t * ret) {
   Page *page;
 
-  pthread_mutex_lock(&pageMallocMutex);
-  
-  page = &(pool[nextPage]);
-  
-  nextPage++;
-  /* There's a dummy page that we need to keep around, thus the +1 */
-  assert(nextPage <= MAX_BUFFER_SIZE + 1); 
+  pthread_mutex_lock(&ret->mut);
 
-  pthread_mutex_unlock(&pageMallocMutex);
+  page = &(ret->pool[ret->nextPage]);
+
+  (ret->nextPage)++;
+  /* There's a dummy page that we need to keep around, thus the +1 */
+  assert(ret->nextPage <= MAX_BUFFER_SIZE + 1);
+
+  pthread_mutex_unlock(&ret->mut);
 
   return page;
 
 }
 
-
-static void pageFreeNoLock(Page *p, pageid_t id) {
+void stasis_buffer_pool_free_page(stasis_buffer_pool_t * ret, Page *p, pageid_t id) {
+  writelock(p->rwlatch, 10);
   p->id = id;
   p->LSN = 0;
   p->dirty = 0;
-}
-
-void pageFree(Page *p, pageid_t id) {
-  writelock(p->rwlatch, 10);
-  pageFreeNoLock(p,id);
   writeunlock(p->rwlatch);
 }

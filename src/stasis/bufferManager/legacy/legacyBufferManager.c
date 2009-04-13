@@ -25,6 +25,8 @@ static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid)
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
 
+static stasis_buffer_pool_t * stasis_buffer_pool;
+
 int bufManBufInit() {
 
     releasePageImpl = bufManReleasePage;
@@ -33,20 +35,20 @@ int bufManBufInit() {
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
     forcePageRange = forceRangePageFile;
-    bufDeinit = bufManBufDeinit; 
+    bufDeinit = bufManBufDeinit;
     simulateBufferManagerCrash = bufManSimulateBufferManagerCrash;
 
-        bufferPoolInit();
+    stasis_buffer_pool = stasis_buffer_pool_init();
 
 	pthread_mutex_init(&loadPagePtr_mutex, NULL);
 
 	activePages = LH_ENTRY(create)(16);
 
-	dummy_page = pageMalloc();
-	pageFree(dummy_page, -1);
+	dummy_page = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
+	stasis_buffer_pool_free_page(stasis_buffer_pool, dummy_page, -1);
 	Page *first;
-	first = pageMalloc();
-	pageFree(first, 0);
+	first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
+	stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
         pageRead(first);
 	pageCacheInit(first);
@@ -70,7 +72,7 @@ static void bufManBufDeinit() {
 	const struct LH_ENTRY(pair_t) * next;
 	LH_ENTRY(openlist(activePages, &iter));
 
-	while((next = LH_ENTRY(readlist)(&iter))) { 
+	while((next = LH_ENTRY(readlist)(&iter))) {
 	  pageWrite((Page*)next->value);
 	  DEBUG("+");
 	}
@@ -78,15 +80,15 @@ static void bufManBufDeinit() {
 	LH_ENTRY(destroy)(activePages);
 
 	pthread_mutex_destroy(&loadPagePtr_mutex);
-	
+
 	pageCacheDeinit();
 
 	//closePageFile();
 
-	bufferPoolDeInit();
-	
+	stasis_buffer_pool_deinit(stasis_buffer_pool);
+
 #ifdef PIN_COUNT
-	if(pinCount != 0) { 
+	if(pinCount != 0) {
 	  printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
 	}
 #endif
@@ -128,14 +130,14 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     // called loadPage() on the pinned page since the last time it was
     // completely unpinned.  One such site is responsible for the
     // leak.
-    
+
     char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
     int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
     char * holderD =0;
     int pinsD = 0;
     if(holder) {
       holderD = strdup(holder);
-      pinsD = *pins; 
+      pinsD = *pins;
     }
 #endif
     if(locktype == RW) {
@@ -144,7 +146,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       readlock(ret->loadlatch, 217);
     }
 #ifdef PROFILE_LATCHES_WRITE_ONLY
-    if(holderD) 
+    if(holderD)
       free(holderD);
 #endif
   }
@@ -162,13 +164,13 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       // called loadPage() on the pinned page since the last time it was
       // completely unpinned.  One such site is responsible for the
       // leak.
-      
+
       char * holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
       int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
-      
+
       char * holderD = 0;
       int pinsD = 0;
-      if(holder) { 
+      if(holder) {
 	holderD = strdup(holder);
 	pinsD = *pins;
       }
@@ -187,9 +189,9 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     if(spin > 10000 && !(spin % 10000)) {
       printf("GetPage is stuck!");
     }
-  } 
+  }
 
-  if(ret) { 
+  if(ret) {
     cacheHitOnPage(ret);
     assert(ret->id == pageid);
     pthread_mutex_unlock(&loadPagePtr_mutex);
@@ -200,7 +202,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
        a) there is no cache entry for pageid
        b) this is the only thread that has gotten this far,
           and that will try to add an entry for pageid
-       c) the most recent version of this page has been 
+       c) the most recent version of this page has been
           written to the OS's file cache.                  */
     pageid_t oldid = -1;
 
@@ -213,12 +215,12 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       cacheRemovePage(ret);
 
       oldid = ret->id;
-    
+
       assert(oldid != pageid);
 
     } else {
 
-      ret = pageMalloc();
+      ret = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
       ret->id = -1;
       ret->inCache = 0;
     }
@@ -235,14 +237,14 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
 
     char * holderD = 0;
     int pinsD = 0;
-    if(holder) { 
+    if(holder) {
       holderD = strdup(holder);
       pinsD = *pins;
     }
-    
+
 #endif
 
-    writelock(ret->loadlatch, 217); 
+    writelock(ret->loadlatch, 217);
 #ifdef PROFILE_LATCHES_WRITE_ONLY
     if(holderD)
       free(holderD);
@@ -251,16 +253,16 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     /* Inserting this into the cache before releasing the mutex
        ensures that constraint (b) above holds. */
     LH_ENTRY(insert)(activePages, &pageid, sizeof(pageid), ret);
-    pthread_mutex_unlock(&loadPagePtr_mutex); 
+    pthread_mutex_unlock(&loadPagePtr_mutex);
 
     /* Could writelock(ret) go here? */
 
     assert(ret != dummy_page);
-    if(ret->id != -1) { 
+    if(ret->id != -1) {
       pageWrite(ret);
     }
 
-    pageFree(ret, pageid);
+    stasis_buffer_pool_free_page(stasis_buffer_pool, ret, pageid);
     if(!uninitialized) {
       pageRead(ret);
     } else {
@@ -273,7 +275,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     }
 
     writeunlock(ret->loadlatch);
- 
+
     pthread_mutex_lock(&loadPagePtr_mutex);
 
     LH_ENTRY(remove)(activePages, &(oldid), sizeof(oldid));
@@ -290,10 +292,10 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     // called loadPage() on the pinned page since the last time it was
     // completely unpinned.  One such site is responsible for the
     // leak.
-    
+
     holder = LH_ENTRY(find)(profile_load_hash, &ret, sizeof(void*));
     pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
-    
+
     if(holder) {
       holderD = strdup(holder);
       pinsD = *pins;
@@ -310,7 +312,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
 #endif
     if(ret->id != pageid) {
       unlock(ret->loadlatch);
-      printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n"); 
+      printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n");
       fflush(NULL);
       return bufManGetPage(pageid, locktype, uninitialized);
     }
@@ -324,20 +326,20 @@ static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid) {
 
   Page * ret = pthread_getspecific(lastPage);
 
-  if(ret && ret->id == pageid) { 
+  if(ret && ret->id == pageid) {
     pthread_mutex_lock(&loadPagePtr_mutex);
     readlock(ret->loadlatch, 1);
-    if(ret->id != pageid) { 
+    if(ret->id != pageid) {
       unlock(ret->loadlatch);
       ret = 0;
-    } else { 
+    } else {
       cacheHitOnPage(ret);
       pthread_mutex_unlock(&loadPagePtr_mutex);
     }
-  } else { 
+  } else {
     ret = 0;
   }
-  if(!ret) { 
+  if(!ret) {
     ret = bufManGetPage(pageid, RO, 0);
     pthread_setspecific(lastPage, ret);
   }
@@ -355,20 +357,20 @@ static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid)
 
   Page * ret = pthread_getspecific(lastPage);
 
-  if(ret && ret->id == pageid) { 
+  if(ret && ret->id == pageid) {
     pthread_mutex_lock(&loadPagePtr_mutex);
     readlock(ret->loadlatch, 1);
-    if(ret->id != pageid) { 
+    if(ret->id != pageid) {
       unlock(ret->loadlatch);
       ret = 0;
-    } else { 
+    } else {
       cacheHitOnPage(ret);
       pthread_mutex_unlock(&loadPagePtr_mutex);
     }
-  } else { 
+  } else {
     ret = 0;
   }
-  if(!ret) { 
+  if(!ret) {
     ret = bufManGetPage(pageid, RO, 1);
     pthread_setspecific(lastPage, ret);
   }

@@ -40,6 +40,9 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
+#ifndef STASIS_BUFFER_POOL_H
+#define STASIS_BUFFER_POOL_H
+
 /**
  * @file
  *
@@ -47,16 +50,19 @@ terms specified in this license.
  * $Id$
  */
 
-#include "bufferManager.h"
+#include <stasis/common.h>
 
-void bufferPoolInit();
+typedef struct stasis_buffer_pool_t stasis_buffer_pool_t;
 
-void bufferPoolDeInit();
+stasis_buffer_pool_t* stasis_buffer_pool_init();
 
-Page* pageMalloc();
-/** 
+void stasis_buffer_pool_deinit(stasis_buffer_pool_t* pool);
+
+Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t* pool);
+/**
     Return a page to the in memory pool of free pages.
 
-    @see pageMalloc()
+    @see stasis_buffer_pool_malloc_page()
 */
-void  pageFree(Page * p, pageid_t id);
+void  stasis_buffer_pool_free_page(stasis_buffer_pool_t* pool, Page * p, pageid_t id);
+#endif // STASIS_BUFFER_POOL_H

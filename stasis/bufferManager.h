@@ -48,10 +48,10 @@ terms specified in this license.
     That is left to a cacheManager.  (Multiple cacheManagers could be
     used with a single bufferManager.)
 
-  @todo Allow error checking!  
- 
+  @todo Allow error checking!
+
   @todo Refactoring for lock manager
- 
+
   Possible interface for lockManager:
 
        Define three classes of objects that the lock manager is interested in:
@@ -63,7 +63,7 @@ terms specified in this license.
        Stasis already has operations and transactions, and these can be
        relatively unchanged.  Predicates are read only operations that
        return a set of tuples.  Tread() is the simplest predicate.
-       Index scans provide a motivating example.  
+       Index scans provide a motivating example.
 
        See http://research.microsoft.com/%7Eadya/pubs/icde00.pdf
        (Generalized Isolation Level Definitions, Adya, Liskov, O'Neil,
@@ -84,13 +84,6 @@ terms specified in this license.
 
 BEGIN_C_DECLS
 
-typedef struct Page_s Page_s;
-/**
-   Page is defined in bufferManager.h as an incomplete type to enforce
-   an abstraction barrier between page.h and the rest of the system.
-*/
-typedef struct Page_s Page;
-
 /**
  * Obtain a pointer to a page from the buffer manager.  The page will
  * be pinned, and the pointer valid until releasePage is called.
@@ -105,7 +98,7 @@ Page * loadPage(int xid, pageid_t pageid);
 
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
-/** 
+/**
     This is the function pointer that bufInit sets in order to
     override loadPage.
 */
@@ -117,7 +110,7 @@ extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 */
 void releasePage(Page *p);
 
-/** 
+/**
     This is the function pointer that bufInit sets in order to
     override releasePage.
 */
@@ -127,7 +120,7 @@ extern void   (*releasePageImpl)(Page * p);
  * @return 0 on success
  * @return error code on failure
  */
-/** 
+/**
     This is used by truncation to move dirty pages from Stasis cache
     into the operating system cache.  Once writeBackPage(p) returns,
     calling forcePages() will synchronously force page number p to
@@ -140,7 +133,7 @@ extern void   (*releasePageImpl)(Page * p);
 extern void (*writeBackPage)(Page * p);
 /**
     Force any written back pages to disk.
-   
+
     @see writeBackPage for more information.
 
     If the buffer manager doesn't support stable storage, this call is
