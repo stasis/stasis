@@ -34,7 +34,7 @@ compensated_function recordid dereferenceIndirectRID(int xid, recordid rid) {
     if(i) {
       offset += *maxslot_ptr(page, i - 1);
     } /** else, the adjustment to the offset is zero */
-    
+
     pageid_t nextPage = *page_ptr(page, i);
 
     unlock(page->rwlatch);
@@ -45,7 +45,7 @@ compensated_function recordid dereferenceIndirectRID(int xid, recordid rid) {
     } end_ret(NULLRID);
   }
   //  printf("b"); fflush(stdout);
-  
+
   rid.page = page->id;
   rid.slot -= offset;
 
@@ -65,7 +65,7 @@ unsigned int calculate_level (unsigned int number_of_pages) {
     tmp *= INDIRECT_POINTERS_PER_PAGE;
     level++;
   }
-  
+
   return level;
 }
 
@@ -112,21 +112,21 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
   p.rwlatch = initlock();
   p.loadlatch = initlock();
   *stasis_page_type_ptr(&p) = UNINITIALIZED_PAGE;
-    
+
   if(number_of_pages > 1) {
 
     int level = calculate_level(number_of_pages);
-    DEBUG("recordsize = %d, physicalsize = %d, recordCount = %d, level = %d\n", 
+    DEBUG("recordsize = %d, physicalsize = %d, recordCount = %d, level = %d\n",
 	   recordSize, physical_size, recordCount, level);
 
     /* OK, now allocate the pages. */
-    
+
     pageid_t next_level_records_per_page = records_per_page;
-    
+
     for(int i = 0; i < (level - 1); i++) {
       next_level_records_per_page *= INDIRECT_POINTERS_PER_PAGE;
     }
-    
+
     pageid_t newPageCount = (int)ceil((double)recordCount / (double)next_level_records_per_page);
     pageid_t firstChildPage;
 
@@ -135,7 +135,7 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
     } end_ret(NULLRID);
 
     pageid_t tmpRecordCount = recordCount;
-    pageid_t thisChildPage = firstChildPage;    
+    pageid_t thisChildPage = firstChildPage;
 
     while(tmpRecordCount > 0) {
       try_ret(NULLRID) {
@@ -151,11 +151,11 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
     tmpRecordCount = recordCount;
 
     indirectInitialize(&p, level);
-    
+
     pageid_t i = 0;
 
     for(tmpRecordCount = recordCount; tmpRecordCount > 0; tmpRecordCount -= next_level_records_per_page) {
-      
+
       *page_ptr(&p, i) = firstChildPage + i;
       if(i) {
 	*maxslot_ptr(&p, i) = *maxslot_ptr(&p, i-1) + min(tmpRecordCount+1, next_level_records_per_page);
@@ -169,7 +169,7 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
 
   } else {
     DEBUG("recordsize = %d, recordCount = %d, level = 0 (don't need indirect pages)\n", recordSize, recordCount);
-    
+
     /* Initialize leaves.  (As SLOTTED_PAGE's) */
 
     writelock(p.rwlatch,0);
@@ -189,7 +189,7 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
   } end_ret(NULLRID);
 
   rid.page = parentPage;
-  rid.slot = RECORD_ARRAY;
+  rid.slot = INVALID_SLOT;
   rid.size = recordSize;
 
   deletelock(p.rwlatch);
@@ -197,7 +197,7 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
 
   return rid;
 }
- 
+
 compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   Page * p;
   try_ret(-1){
@@ -207,7 +207,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   int i = 0;
   unsigned int ret;
   if(*stasis_page_type_ptr(p) == INDIRECT_PAGE) {
-    
+
     while(*maxslot_ptr(p, i) > 0) {
       i++;
     }
@@ -225,7 +225,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
 	ret++;
       }
     }
-    
+
   } else {
     printf("Unknown page type in indirectPageRecordCount\n");
     abort();

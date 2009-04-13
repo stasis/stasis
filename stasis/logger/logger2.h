@@ -87,7 +87,7 @@ typedef enum {
 /**
    XXX TransactionTable should be private to transactional2.c!
 */
-extern TransactionLog XactionTable[MAX_TRANSACTIONS];
+extern TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
 
 
 

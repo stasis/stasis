@@ -210,7 +210,7 @@ int stasis_truncation_truncate(stasis_log_t* log, int force) {
   //dirty pages.
 
   lsn_t page_rec_lsn = dirtyPages_minRecLSN();
-  lsn_t xact_rec_lsn = transactions_minRecLSN();
+  lsn_t xact_rec_lsn = stasis_transaction_table_minRecLSN();
   lsn_t flushed_lsn  = log->first_unstable_lsn(log, LOG_FORCE_WAL);
 
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;

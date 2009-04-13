@@ -50,16 +50,17 @@ terms specified in this license.
  * much of the \#ifdef portability nonsense in here as possible.
  * Second, we allow users to \#include headers that in turn \#include
  * common.h.  If they do so, then their code should continue to 'do
- * the right thing' and build, even though they do not \#include the
+ * the right thing' and build, even if they do not \#include the
  * config.h file that all of the Stasis stuff uses.
  *
- * @todo Need to make sure every .c file actually includes this thing, and
- * also includes constants.h
+ * @todo Figure out how to let Stasis users avoid config.h.
  *
  * $Id$
  */
 
 //#define NDEBUG 1
+
+#include "config.h"
 
 #ifndef __stasis_common_h
 #define __stasis_common_h
@@ -73,6 +74,7 @@ terms specified in this license.
 #endif /* __cplusplus */
 
 #include <stdint.h> // uint32, et. al.
+
 #include <limits.h>
 
 #if STDC_HEADERS
@@ -132,6 +134,15 @@ typedef struct {
   slotid_t slot;
   int64_t size;
 } recordid;
+#pragma pack(pop)
+
+// TODO move blob_record_t into an operation header.
+#pragma pack(push,1)
+typedef struct {
+  size_t offset;
+  size_t size;
+  // unsigned fd : 1;
+} blob_record_t;
 #pragma pack(pop)
 
 /*

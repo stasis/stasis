@@ -28,32 +28,28 @@
 #include <assert.h>
 #include <limits.h>
 
-TransactionLog XactionTable[MAX_TRANSACTIONS];
-static int numActiveXactions = 0;
-static int xidCount = 0;
+static int stasis_initted = 0;
 
-static int initted = 0;
+TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
+static int stasis_transaction_table_num_active = 0;
+static int stasis_transaction_table_xid_count = 0;
 
-const recordid ROOT_RECORD = {1, 0, -1};
-const recordid NULLRID = {0,0,-1};
-const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 /**
-    Locking for transactional2.c works as follows:
-
-    numActiveXactions, xidCount are protected, XactionTable is not.
-    This implies that we do not support multi-threaded transactions,
-    at least for now.
+	This mutex protects stasis_transaction_table, numActiveXactions and
+	xidCount.
 */
-pthread_mutex_t transactional_2_mutex;
+static pthread_mutex_t stasis_transaction_table_mutex;
 
-#define INVALID_XTABLE_XID INVALID_XID
-#define PENDING_XTABLE_XID (-2)
-/** Needed for debugging -- sometimes we don't want to run all of Tinit() */
+typedef enum {
+  INVALID_XTABLE_XID = INVALID_XID,
+  PENDING_XTABLE_XID = -2
+} stasis_transaction_table_status;
+
 void stasis_transaction_table_init() {
-  memset(XactionTable, INVALID_XTABLE_XID,
+  memset(stasis_transaction_table, INVALID_XTABLE_XID,
 	 sizeof(TransactionLog)*MAX_TRANSACTIONS);
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
-    pthread_mutex_init(&XactionTable[i].mut,0);
+    pthread_mutex_init(&stasis_transaction_table[i].mut,0);
   }
 }
 
@@ -85,9 +81,9 @@ static stasis_handle_t * slow_pfile = 0;
 static int nop_close(stasis_handle_t*h) { return 0; }
 
 int Tinit() {
-        pthread_mutex_init(&transactional_2_mutex, NULL);
-        initted = 1;
-	numActiveXactions = 0;
+        pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
+        stasis_initted = 1;
+	stasis_transaction_table_num_active = 0;
 
 	compensations_init();
 
@@ -207,44 +203,44 @@ int Tbegin() {
 	int i, index = 0;
 	int xidCount_tmp;
 
-        assert(initted);
+        assert(stasis_initted);
 
-	pthread_mutex_lock(&transactional_2_mutex);
+	pthread_mutex_lock(&stasis_transaction_table_mutex);
 
-	if( numActiveXactions == MAX_TRANSACTIONS ) {
-	  pthread_mutex_unlock(&transactional_2_mutex);
-	  return EXCEED_MAX_TRANSACTIONS;
+	if( stasis_transaction_table_num_active == MAX_TRANSACTIONS ) {
+	  pthread_mutex_unlock(&stasis_transaction_table_mutex);
+	  return LLADD_EXCEED_MAX_TRANSACTIONS;
 	}
 	else {
           DEBUG("%s:%d activate in begin\n",__FILE__,__LINE__);
-          numActiveXactions++;
+          stasis_transaction_table_num_active++;
         }
 	for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
-		xidCount++;
-		if( XactionTable[xidCount%MAX_TRANSACTIONS].xid == INVALID_XTABLE_XID ) {
-			index = xidCount%MAX_TRANSACTIONS;
+		stasis_transaction_table_xid_count++;
+		if( stasis_transaction_table[stasis_transaction_table_xid_count%MAX_TRANSACTIONS].xid == INVALID_XTABLE_XID ) {
+			index = stasis_transaction_table_xid_count%MAX_TRANSACTIONS;
 			break;
 		}
 	}
 
-	xidCount_tmp = xidCount;
+	xidCount_tmp = stasis_transaction_table_xid_count;
 
-	XactionTable[index].xid = PENDING_XTABLE_XID;
+	stasis_transaction_table[index].xid = PENDING_XTABLE_XID;
 
-	pthread_mutex_unlock(&transactional_2_mutex);
+	pthread_mutex_unlock(&stasis_transaction_table_mutex);
 
-	LogTransBegin(stasis_log_file, xidCount_tmp, &XactionTable[index]);
+	LogTransBegin(stasis_log_file, xidCount_tmp, &stasis_transaction_table[index]);
 
-	if(globalLockManager.begin) { globalLockManager.begin(XactionTable[index].xid); }
+	if(globalLockManager.begin) { globalLockManager.begin(stasis_transaction_table[index].xid); }
 
-	return XactionTable[index].xid;
+	return stasis_transaction_table[index].xid;
 }
 
 static compensated_function void TactionHelper(int xid,
 					       const void * dat, size_t datlen, int op,
 					       Page * p) {
   LogEntry * e;
-  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   try {
     if(globalLockManager.writeLockPage) {
       globalLockManager.writeLockPage(xid, p->id);
@@ -253,9 +249,9 @@ static compensated_function void TactionHelper(int xid,
 
   writelock(p->rwlatch,0);
 
-  e = LogUpdate(stasis_log_file, &XactionTable[xid % MAX_TRANSACTIONS],
+  e = LogUpdate(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS],
                 p, op, dat, datlen);
-  assert(XactionTable[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+  assert(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   stasis_operation_do(e, p);
   freeLogEntry(e);
@@ -266,7 +262,7 @@ static compensated_function void TactionHelper(int xid,
 void TreorderableUpdate(int xid, void * hp, pageid_t page,
                         const void *dat, size_t datlen, int op) {
   stasis_log_reordering_handle_t * h = (typeof(h))hp;
-  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   Page * p = loadPage(xid, page);
   assert(p);
   try {
@@ -293,9 +289,9 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,
                       const void *dat, size_t datlen, int op) {
-  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
-  TransactionLog* l = &XactionTable[xid % MAX_TRANSACTIONS];
+  TransactionLog* l = &stasis_transaction_table[xid % MAX_TRANSACTIONS];
   stasis_log_file->write_entry(stasis_log_file, e);
 
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
@@ -311,7 +307,7 @@ void TreorderableWritebackUpdate(int xid, void* hp,
                                  pageid_t page, const void * dat,
                                  size_t datlen, int op) {
   stasis_log_reordering_handle_t* h = hp;
-  assert(xid >= 0 && XactionTable[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   pthread_mutex_lock(&h->mut);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
   stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(e));
@@ -325,7 +321,7 @@ compensated_function void TupdateStr(int xid, pageid_t page,
 compensated_function void Tupdate(int xid, pageid_t page,
 				  const void *dat, size_t datlen, int op) {
   Page * p = loadPage(xid, page);
-  assert(initted);
+  assert(stasis_initted);
   TactionHelper(xid, dat, datlen, op, p);
   releasePage(p);
 }
@@ -376,23 +372,23 @@ int Tcommit(int xid) {
   lsn_t lsn;
   assert(xid >= 0);
 #ifdef DEBUGGING
-  pthread_mutex_lock(&transactional_2_mutex);
-  assert(numActiveXactions <= MAX_TRANSACTIONS);
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
+  assert(stasis_transaction_table_num_active <= MAX_TRANSACTIONS);
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
 #endif
 
-  lsn = LogTransCommit(stasis_log_file, &XactionTable[xid % MAX_TRANSACTIONS]);
+  lsn = LogTransCommit(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
   allocTransactionCommit(xid);
 
-  pthread_mutex_lock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
 
-  XactionTable[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
+  stasis_transaction_table[xid%MAX_TRANSACTIONS].xid = INVALID_XTABLE_XID;
   DEBUG("%s:%d deactivate %d\n",__FILE__,__LINE__,xid);
-  numActiveXactions--;
-  assert( numActiveXactions >= 0 );
-  pthread_mutex_unlock(&transactional_2_mutex);
+  stasis_transaction_table_num_active--;
+  assert( stasis_transaction_table_num_active >= 0 );
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
 
   return 0;
 }
@@ -400,8 +396,8 @@ int Tcommit(int xid) {
 int Tprepare(int xid) {
   assert(xid >= 0);
   off_t i = xid % MAX_TRANSACTIONS;
-  assert(XactionTable[i].xid == xid);
-  LogTransPrepare(stasis_log_file, &XactionTable[i]);
+  assert(stasis_transaction_table[i].xid == xid);
+  LogTransPrepare(stasis_log_file, &stasis_transaction_table[i]);
   return 0;
 }
 
@@ -409,7 +405,7 @@ int Tabort(int xid) {
   lsn_t lsn;
   assert(xid >= 0);
 
-  TransactionLog * t =&XactionTable[xid%MAX_TRANSACTIONS];
+  TransactionLog * t =&stasis_transaction_table[xid%MAX_TRANSACTIONS];
   assert(t->xid == xid);
 
   lsn = LogTransAbort(stasis_log_file, t);
@@ -423,7 +419,7 @@ int Tabort(int xid) {
   return 0;
 }
 int Tforget(int xid) {
-  TransactionLog * t = &XactionTable[xid%MAX_TRANSACTIONS];
+  TransactionLog * t = &stasis_transaction_table[xid%MAX_TRANSACTIONS];
   assert(t->xid == xid);
   LogTransEnd(stasis_log_file, t);
   stasis_transaction_table_forget(t->xid);
@@ -433,15 +429,15 @@ int Tdeinit() {
   int i;
 
   for( i = 0; i < MAX_TRANSACTIONS; i++ ) {
-    if( XactionTable[i].xid != INVALID_XTABLE_XID ) {
+    if( stasis_transaction_table[i].xid != INVALID_XTABLE_XID ) {
       if(!stasis_suppress_unclean_shutdown_warnings) {
 	fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n",
-		XactionTable[i].xid);
+		stasis_transaction_table[i].xid);
       }
-      Tabort(XactionTable[i].xid);
+      Tabort(stasis_transaction_table[i].xid);
     }
   }
-  assert( numActiveXactions == 0 );
+  assert( stasis_transaction_table_num_active == 0 );
   stasis_truncation_deinit();
   TnaiveHashDeinit();
   TallocDeinit();
@@ -457,7 +453,7 @@ int Tdeinit() {
   stasis_log_file->close(stasis_log_file);
   dirtyPagesDeinit();
 
-  initted = 0;
+  stasis_initted = 0;
 
   return 0;
 }
@@ -476,7 +472,7 @@ int TuncleanShutdown() {
   }
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
-  numActiveXactions = 0;
+  stasis_transaction_table_num_active = 0;
   dirtyPagesDeinit();
 
   // Reset it here so the warnings will appear if a new stasis
@@ -486,71 +482,71 @@ int TuncleanShutdown() {
 }
 
 void stasis_transaction_table_max_transaction_id_set(int xid) {
-  pthread_mutex_lock(&transactional_2_mutex);
-  xidCount = xid;
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
+  stasis_transaction_table_xid_count = xid;
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
 }
 void stasis_transaction_table_active_transaction_count_set(int xid) {
-  pthread_mutex_lock(&transactional_2_mutex);
-  numActiveXactions = xid;
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
+  stasis_transaction_table_num_active = xid;
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
 }
 
-lsn_t transactions_minRecLSN() {
+lsn_t stasis_transaction_table_minRecLSN() {
   lsn_t minRecLSN = LSN_T_MAX;
-  pthread_mutex_lock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
-    if(XactionTable[i].xid != INVALID_XTABLE_XID) {
-      lsn_t recLSN = XactionTable[i].recLSN;
+    if(stasis_transaction_table[i].xid != INVALID_XTABLE_XID) {
+      lsn_t recLSN = stasis_transaction_table[i].recLSN;
       if(recLSN != -1 && recLSN < minRecLSN) {
-	minRecLSN = recLSN;
+        minRecLSN = recLSN;
       }
     }
   }
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
   return minRecLSN;
 }
 
 int TactiveTransactionCount() {
-  return numActiveXactions;
+  return stasis_transaction_table_num_active;
 }
 
 int* TlistActiveTransactions() {
-  pthread_mutex_lock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
   int * ret = malloc(sizeof(*ret));
   ret[0] = 0;
   int retcount = 0;
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
-    if(XactionTable[i].xid != INVALID_XTABLE_XID) {
-      ret[retcount] = XactionTable[i].xid;
+    if(stasis_transaction_table[i].xid != INVALID_XTABLE_XID) {
+      ret[retcount] = stasis_transaction_table[i].xid;
       retcount++;
       ret = realloc(ret, (retcount+1) * sizeof(*ret));
       ret[retcount] = 0;
     }
   }
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
   return ret;
 }
 int TisActiveTransaction(int xid) {
   if(xid < 0) { return 0; }
-  pthread_mutex_lock(&transactional_2_mutex);
-  int ret = xid != INVALID_XTABLE_XID && XactionTable[xid%MAX_TRANSACTIONS].xid == xid;
-  pthread_mutex_unlock(&transactional_2_mutex);
+  pthread_mutex_lock(&stasis_transaction_table_mutex);
+  int ret = xid != INVALID_XTABLE_XID && stasis_transaction_table[xid%MAX_TRANSACTIONS].xid == xid;
+  pthread_mutex_unlock(&stasis_transaction_table_mutex);
   return ret;
 }
 
 int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN) {
-  TransactionLog * l = &XactionTable[xid%MAX_TRANSACTIONS];
+  TransactionLog * l = &stasis_transaction_table[xid%MAX_TRANSACTIONS];
   if(l->xid == xid) {
     // rolling forward CLRs / NTAs makes prevLSN decrease.
     assert(l->prevLSN >= prevLSN);
   } else {
-    pthread_mutex_lock(&transactional_2_mutex);
+    pthread_mutex_lock(&stasis_transaction_table_mutex);
     assert(l->xid == INVALID_XTABLE_XID);
     l->xid = xid;
     l->recLSN = lsn;
-    numActiveXactions++;
-    pthread_mutex_unlock(&transactional_2_mutex);
+    stasis_transaction_table_num_active++;
+    pthread_mutex_unlock(&stasis_transaction_table_mutex);
   }
   l->prevLSN = lsn;
   return 0;
@@ -558,20 +554,20 @@ int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN) {
 int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
                                                       lsn_t prevLSN,
                                                       lsn_t recLSN) {
-  assert(XactionTable[xid%MAX_TRANSACTIONS].recLSN == recLSN);
+  assert(stasis_transaction_table[xid%MAX_TRANSACTIONS].recLSN == recLSN);
   return stasis_transaction_table_roll_forward(xid, lsn, prevLSN);
 }
 int stasis_transaction_table_forget(int xid) {
   assert(xid != INVALID_XTABLE_XID);
-  TransactionLog * l = &XactionTable[xid%MAX_TRANSACTIONS];
+  TransactionLog * l = &stasis_transaction_table[xid%MAX_TRANSACTIONS];
   if(l->xid == xid) {
-    pthread_mutex_lock(&transactional_2_mutex);
+    pthread_mutex_lock(&stasis_transaction_table_mutex);
     l->xid = INVALID_XTABLE_XID;
     l->prevLSN = -1;
     l->recLSN = -1;
-    numActiveXactions--;
-    assert(numActiveXactions >= 0);
-    pthread_mutex_unlock(&transactional_2_mutex);
+    stasis_transaction_table_num_active--;
+    assert(stasis_transaction_table_num_active >= 0);
+    pthread_mutex_unlock(&stasis_transaction_table_mutex);
   } else {
     assert(l->xid == INVALID_XTABLE_XID);
   }
@@ -596,7 +592,7 @@ typedef struct {
 int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
   assert(xid >= 0);
   LogEntry * e = LogUpdate(stasis_log_file,
-			   &XactionTable[xid % MAX_TRANSACTIONS],
+			   &stasis_transaction_table[xid % MAX_TRANSACTIONS],
 			   NULL, op, dat, datSize);
   lsn_t prev_lsn = e->prevLSN;
   lsn_t compensated_lsn = e->LSN;
@@ -607,7 +603,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 
   lsn_t clrLSN = LogDummyCLR(stasis_log_file, xid, prev_lsn, compensated_lsn);
 
-  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+  stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
 
   return 0;
 }
@@ -615,7 +611,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
   LogEntry * e = LogUpdate(stasis_log_file,
-                           &XactionTable[xid % MAX_TRANSACTIONS],
+                           &stasis_transaction_table[xid % MAX_TRANSACTIONS],
                            NULL, op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
   stasis_nta_handle * h = malloc(sizeof(stasis_nta_handle));
@@ -640,7 +636,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
                              h->prev_lsn, h->compensated_lsn);
 
   // Ensure that the next action in this transaction points to the CLR.
-  XactionTable[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+  stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
 
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
 	 clrLSN, undoneLSN, *prevLSN);

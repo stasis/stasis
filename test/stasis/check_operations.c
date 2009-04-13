@@ -640,7 +640,7 @@ START_TEST(operation_reorderable) {
 
     stasis_log_reordering_handle_t * rh
       = stasis_log_reordering_handle_open(
-                         &XactionTable[xid[0]% MAX_TRANSACTIONS],
+                         &stasis_transaction_table[xid[0]% MAX_TRANSACTIONS],
                          stasis_log_file,
                          100, // bytes (far too low!)
                          10,  // log entries

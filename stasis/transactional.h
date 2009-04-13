@@ -533,52 +533,12 @@ terms specified in this license.
  * $Id$
  */
 
-
-
-
 #ifndef __TRANSACTIONAL_H__
 #define __TRANSACTIONAL_H__
 
 #include "common.h"
 #include "flags.h"
 BEGIN_C_DECLS
-
-//XXX doesn't belong here.
-#pragma pack(push,1)
-typedef struct {
-  size_t offset;
-  size_t size;
-  // unsigned fd : 1;
-} blob_record_t;
-#pragma pack(pop)
-
-/*
-   @todo ROOT_RECORD doesn't belong in transactional.h
-   @todo unify naming convention for ROOT_RECORD, NULLRID
-*/
-extern const recordid ROOT_RECORD;
-/*
-   @todo NULLRID doesn't belong in transactional.h
-*/
-extern const recordid NULLRID;
-
-/**
-   If a recordid's slot field is set to this, then the recordid
-   represents an array of fixed-length records starting at slot zero
-   of the recordid's page.
-
-   @todo Support read-only arrays of variable length records, and then
-   someday read / write / insert / delete arrays...
-
-   @todo RECORD_ARRAY doesn't belong in transactional.h
-*/
-#define RECORD_ARRAY (-1)
-
-/**
- * Currently, Stasis has a fixed number of transactions that may be
- * active at one time.
- */
-#define EXCEED_MAX_TRANSACTIONS 1
 
 /**
  * Initialize Stasis.  This opens the pagefile and log, initializes
@@ -737,6 +697,25 @@ void * TbeginNestedTopAction(int xid, int op, const byte* log_arguments,
 lsn_t TendNestedTopAction(int xid, void * handle);
 
 /**
+   List all active transactions.
+
+   @return an array of transaction ids.
+ */
+int* TlistActiveTransactions();
+
+/**
+ * Checks to see if a transaction is still active.
+ *
+ * @param xid The transaction id to be tested.
+ * @return true if the transaction is still running, false otherwise.
+ */
+int TisActiveTransaction(int xid);
+/*
+ * @return the number of currently active transactions.
+ */
+int TactiveTransactionCount();
+
+/**
    Initialize Stasis' transaction table.  Called by Tinit() and unit
    tests that wish to test portions of Stasis in isolation.
  */
@@ -757,23 +736,6 @@ void stasis_transaction_table_max_transaction_id_set(int xid);
  */
 void stasis_transaction_table_active_transaction_count_set(int xid);
 
-/**
-   List all active transactions.
-
-   @return an array of transaction ids.
- */
-int* TlistActiveTransactions();
-
-/**
- * Checks to see if a transaction is still active.
- *
- * @param xid The transaction id to be tested.
- * @return true if the transaction is still running, false otherwise.
- */
-int TisActiveTransaction(int xid);
-
-int TactiveTransactionCount();
-
 int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN);
 /**
    @todo update Tprepare() to not write reclsn to log, then remove
@@ -784,12 +746,18 @@ int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
                                                       lsn_t recLSN);
 int stasis_transaction_table_forget(int xid);
 
-int Tforget(int xid);
 /**
     This is used by log truncation.
 */
-lsn_t transactions_minRecLSN();
-
+lsn_t stasis_transaction_table_minRecLSN();
+/**
+ * Called at the end of transactions aborted by recovery, after the transaction
+ * has been completely rolled back (ie: all rollback entries are in the log's
+ * in-memory write buffer).
+ *
+ * Writes an XEND log entry.
+ */
+int Tforget(int xid);
 /**
    Report Stasis' current durability guarantees.
 

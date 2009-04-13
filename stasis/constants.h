@@ -46,7 +46,7 @@ terms specified in this license.
  *
  * @todo Sometime, LLADD's \#includes need to be cleaned up.  In
  * particular, we should make sure everything directly or indirectly
- * includes this file, common.h, and constants.h 
+ * includes this file, common.h, and constants.h
  *
  * @ingroup LLADD_CORE
  *
@@ -65,6 +65,12 @@ terms specified in this license.
 #define LLADD_NO_MEM         -2
 #define LLADD_IO_ERROR       -3
 #define LLADD_INTERNAL_ERROR -4
+/**
+ * Currently, Stasis has a fixed number of transactions that may be
+ * active at one time.
+ */
+#define LLADD_EXCEED_MAX_TRANSACTIONS -5
+
 
 //#define FILE_OPRN_ERROR 2
 //#define FILE_READ_ERROR 3
@@ -75,17 +81,17 @@ terms specified in this license.
 #define PAGE_SIZE 4096
 
 #ifndef MAX_BUFFER_SIZE
-//#define MAX_BUFFER_SIZE 100003 
+//#define MAX_BUFFER_SIZE 100003
 #define MAX_BUFFER_SIZE 20029
-//#define MAX_BUFFER_SIZE 10007 
+//#define MAX_BUFFER_SIZE 10007
 //#define MAX_BUFFER_SIZE 5003
-//#define MAX_BUFFER_SIZE 2003 
-//#define MAX_BUFFER_SIZE 4006 
+//#define MAX_BUFFER_SIZE 2003
+//#define MAX_BUFFER_SIZE 4006
 /* #define MAX_BUFFER_SIZE 71  */
 /*#define MAX_BUFFER_SIZE 7 */
 #endif
 
-#define BUFFER_MANAGER_REOPEN 0 
+#define BUFFER_MANAGER_REOPEN 0
 #define BUFFER_MANAGER_HASH   1
 #define BUFFER_MANAGER_MEM_ARRAY 2
 #define BUFFER_MANAGER_DEPRECATED_HASH 3
@@ -136,7 +142,7 @@ terms specified in this license.
 
 // 20
 
-#define OPERATION_ARRAY_LIST_HEADER_INIT 21 
+#define OPERATION_ARRAY_LIST_HEADER_INIT 21
 #define OPERATION_INITIALIZE_PAGE 22
 
 #define OPERATION_SET_RANGE 27
@@ -176,7 +182,7 @@ terms specified in this license.
     @see slotted.c, indirect.c
 */
 #define INVALID_SLOT  (-1)
-/** This constant is used as a placeholder to mark slot locations that contain blobs. 
+/** This constant is used as a placeholder to mark slot locations that contain blobs.
     @see slotted.c, indirect.c,  blobManager.c  */
 #define BLOB_SLOT     (-2)
 #define NORMAL_SLOT  (-3)
@@ -184,9 +190,11 @@ terms specified in this license.
 
 #define INVALID_PAGE (-1)
 
-/** Initialized statically in transactional2.c */
-extern const short SLOT_TYPE_LENGTHS[];
- 
+//   TODO unify naming convention for ROOT_RECORD, NULLRID
+static const recordid ROOT_RECORD = {1, 0, -1};
+static const recordid NULLRID = {0,0,-1};
+static const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
+
 #define BLOB_THRESHOLD_SIZE (PAGE_SIZE-30)
 
 #define BITS_PER_BYTE 8
@@ -206,7 +214,7 @@ extern const short SLOT_TYPE_LENGTHS[];
 #define XCOMMIT 2
 #define XABORT 3
 #define UPDATELOG 4
-/** 
+/**
     XEND is used for after the pages touched by a transaction have
     been flushed to stable storage.
 

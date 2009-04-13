@@ -64,7 +64,7 @@ terms specified in this license.
 #ifndef __OPERATIONS_H__
 #define __OPERATIONS_H__
 
-#include <stasis/constants.h>
+#include <stasis/common.h>
 #include <stasis/transactional.h>
 #include <stasis/logger/logEntry.h>
 #include <stasis/bufferManager.h>

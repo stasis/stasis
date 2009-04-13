@@ -1,7 +1,3 @@
-#include <config.h>
-#include <stasis/constants.h>
-#include <stasis/common.h>
-
 #include <stasis/operations.h>
 #include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
@@ -35,7 +31,7 @@
    amount of space free (actually 'un-reserved'; see below) on the
    page.  Allocation would move pages between linked lists, and search
    in the appropriate linked list before expanding the page file.
-    
+
    @todo Treserve: Hashtables, linked lists, and other graph-like structures
    can be optimized by exploiting physical locality.  A call such as
    this allows page-level locality to be established / maintained:
@@ -48,13 +44,13 @@
    TallocFromPage (xid, page, size) already exists, and should ignore
    the presence of the 'reserved space' field.
 
-   @todo Track level locality is another problem that Talloc should address, 
+   @todo Track level locality is another problem that Talloc should address,
    especially for the blob implementation.
 
    [DONE] Concurrent transaction support.  Consider this sequence of events:
 
    recordid rid1 = Talloc (xid1, 1);
-   recordid rid2 = Talloc (xid2, 1);  // May deadlock if page level  
+   recordid rid2 = Talloc (xid2, 1);  // May deadlock if page level
                                      // locking is used.
 
    [NOT TO BE DONE] (We don't want allocation to grab locks...
@@ -73,7 +69,7 @@
    @ingroup OPERATIONS
 
    $Id$
-   
+
 */
 //}end
 
@@ -201,14 +197,14 @@ stasis_operation_impl stasis_op_impl_realloc() {
 static pageid_t lastFreepage;
 static allocationPolicy * allocPolicy;
 static void registerOldRegions();
-void TallocInit() { 
+void TallocInit() {
   lastFreepage = PAGEID_T_MAX;
   allocPolicy = allocationPolicyInit();
 }
 void TallocPostInit() {
   registerOldRegions();
 }
-void TallocDeinit() { 
+void TallocDeinit() {
   allocationPolicyDeinit(allocPolicy);
 }
 
@@ -218,7 +214,7 @@ static void registerOldRegions() {
   DEBUG("registering old regions\n");
   int succ = TregionReadBoundaryTag(-1, boundary, &t);
   if(succ) {
-    do { 
+    do {
       DEBUG("boundary tag %lld type %d\n", boundary, t.allocation_manager);
       if(t.allocation_manager == STORAGE_MANAGER_TALLOC) {
 	availablePage ** newPages = malloc(sizeof(availablePage*)*(t.size+1));
@@ -278,9 +274,9 @@ static void reserveNewRegion(int xid) {
 
 }
 
-compensated_function recordid Talloc(int xid, unsigned long size) { 
+compensated_function recordid Talloc(int xid, unsigned long size) {
   short type;
-  if(size >= BLOB_THRESHOLD_SIZE) { 
+  if(size >= BLOB_THRESHOLD_SIZE) {
     type = BLOB_SLOT;
   } else {
     assert(size >= 0);
@@ -289,7 +285,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
   recordid rid;
 
-  begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) { 
+  begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
     pthread_mutex_lock(&talloc_mutex);
     Page * p;
 
@@ -352,7 +348,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     alloc_arg a = { rid.slot, type };
 
     Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
- 
+
    if(type == BLOB_SLOT) {
       rid.size = size;
       allocBlob(xid, rid);
@@ -363,14 +359,14 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
   return rid;
 }
 
-void allocTransactionAbort(int xid) { 
-  begin_action(pthread_mutex_unlock, &talloc_mutex) { 
+void allocTransactionAbort(int xid) {
+  begin_action(pthread_mutex_unlock, &talloc_mutex) {
     pthread_mutex_lock(&talloc_mutex);
     allocationPolicyTransactionCompleted(allocPolicy, xid);
   } compensate;
 }
-void allocTransactionCommit(int xid) { 
-  begin_action(pthread_mutex_unlock, &talloc_mutex) { 
+void allocTransactionCommit(int xid) {
+  begin_action(pthread_mutex_unlock, &talloc_mutex) {
     pthread_mutex_lock(&talloc_mutex);
     allocationPolicyTransactionCompleted(allocPolicy, xid);
   } compensate;
@@ -378,7 +374,7 @@ void allocTransactionCommit(int xid) {
 
 compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
   short type;
-  if(size >= BLOB_THRESHOLD_SIZE) { 
+  if(size >= BLOB_THRESHOLD_SIZE) {
     type = BLOB_SLOT;
   } else {
     assert(size > 0);

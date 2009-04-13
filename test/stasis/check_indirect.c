@@ -67,7 +67,7 @@ START_TEST(indirectCalculateLevelTest)
 
   fail_unless(calculate_level(INDIRECT_POINTERS_PER_PAGE
 			      *INDIRECT_POINTERS_PER_PAGE+1) == 3, NULL);
-  
+
   fail_unless(calculate_level(INDIRECT_POINTERS_PER_PAGE
 			      *INDIRECT_POINTERS_PER_PAGE
 			      *INDIRECT_POINTERS_PER_PAGE) == 3, NULL);
@@ -85,7 +85,7 @@ START_TEST(indirectCalculateLevelTest)
 			      *INDIRECT_POINTERS_PER_PAGE
 			      *INDIRECT_POINTERS_PER_PAGE+1) == 5, NULL);
   fail_unless(calculate_level(0xFFFFFFFF) == 5, NULL);
-					    
+
 }
 END_TEST
 
@@ -97,10 +97,10 @@ START_TEST(indirectAlloc) {
   recordid rid = rallocMany(xid, 1, 255);
 
   page = rid.page;
-  
-  fail_unless(rid.page == page, NULL);
-  fail_unless(rid.slot == RECORD_ARRAY, NULL);
-  fail_unless(rid.size == 1, NULL);
+
+  assert(rid.page == page);
+  assert(rid.slot == INVALID_SLOT);
+  assert(rid.size == 1);
 
   Page * p = loadPage(xid, page);
 
@@ -109,9 +109,9 @@ START_TEST(indirectAlloc) {
   assert(page_type == SLOTTED_PAGE);
 
   fail_unless(page_type == SLOTTED_PAGE, NULL);
-  
+
   releasePage(p);
-  
+
   /* ------------------------------- */
 
 
@@ -119,9 +119,9 @@ START_TEST(indirectAlloc) {
 
   page = rid.page;
 
-  fail_unless(rid.page == page, NULL);
-  fail_unless(rid.slot == RECORD_ARRAY, NULL);
-  fail_unless(rid.size == 2000, NULL);
+  assert(rid.page == page);
+  assert(rid.slot == INVALID_SLOT);
+  assert(rid.size == 2000);
 
   p = loadPage(xid, page);
 
@@ -130,7 +130,7 @@ START_TEST(indirectAlloc) {
   assert(page_type == INDIRECT_PAGE);
 
   fail_unless(page_type == INDIRECT_PAGE, NULL);
-  
+
 
 
   printf("{page = %lld, slot = %d, size = %lld}\n", (pageid_t)rid.page, rid.slot, (pageid_t)rid.size);
@@ -143,9 +143,9 @@ START_TEST(indirectAlloc) {
 
   page = rid.page;
 
-  fail_unless(rid.page == page, NULL);
-  fail_unless(rid.slot == RECORD_ARRAY, NULL);
-  fail_unless(rid.size == 2, NULL);
+  assert(rid.page == page);
+  assert(rid.slot == INVALID_SLOT);
+  assert(rid.size == 2);
 
   p = loadPage(xid, page);
 
@@ -153,14 +153,14 @@ START_TEST(indirectAlloc) {
 
   assert(page_type == INDIRECT_PAGE);
 
-  fail_unless(page_type == INDIRECT_PAGE, NULL); 
- 
+  fail_unless(page_type == INDIRECT_PAGE, NULL);
+
 
 
   printf("{page = %lld, slot = %d, size = %lld}\n", (pageid_t)rid.page, rid.slot, (pageid_t)rid.size);
 
   releasePage(p);
-  
+
   Tcommit(xid);
 
   Tdeinit();
@@ -185,28 +185,28 @@ START_TEST(indirectAccessDirect) {
   assert(page_type == SLOTTED_PAGE);
 
   fail_unless(page_type == SLOTTED_PAGE, NULL);
-  
+
   releasePage(p);
 
   Tcommit(xid);
 
   xid = Tbegin();
-  
+
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
     Tset(xid, dereferenceIndirectRID(xid, rid), &i);
   }
-  
+
   Tcommit(xid);
   xid = Tbegin();
-  
+
   for(int i = 0; i < 500; i++) {
     rid.slot = i;
     int j;
     Tread(xid, dereferenceIndirectRID(xid, rid), &j);
     assert(j == i);
   }
-  
+
   Tcommit(xid);
   Tdeinit();
 } END_TEST
@@ -230,7 +230,7 @@ START_TEST(indirectAccessIndirect) {
   assert(page_type == INDIRECT_PAGE);
 
   fail_unless(page_type == INDIRECT_PAGE, NULL);
- 
+
   Tcommit(xid);
   xid = Tbegin();
   releasePage(p);
@@ -244,20 +244,20 @@ START_TEST(indirectAccessIndirect) {
     //    printf("."); fflush(stdout);
     Tset(xid, rid2, &i);
   }
-  
+
   //  printf("AA"); fflush(stdout);
-  
+
   Tcommit(xid);
   xid = Tbegin();
   //  printf("B"); fflush(stdout);
-  
+
   for(int i = 0; i < 500000; i++) {
     rid.slot = i;
     int j;
     Tread(xid, dereferenceIndirectRID(xid, rid), &j);
     assert(j == i);
   }
-  
+
   //  printf("C"); fflush(stdout);
 
   Tcommit(xid);
@@ -265,7 +265,7 @@ START_TEST(indirectAccessIndirect) {
   Tdeinit();
 
   //  printf("D"); fflush(stdout);
-  
+
 } END_TEST
 
 /** @test check that the indirectPageRecordCount() function works
@@ -281,7 +281,7 @@ START_TEST(indirectSizeTest) {
   assert(count == 20);
 
   recordid rid2 = rallocMany(xid, sizeof(int), 5000);
-  
+
   count = indirectPageRecordCount(xid, rid2);
   assert(count == 5000);
 
@@ -307,7 +307,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, indirectSizeTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {
     /*    if(writeback && net) {
       for(int i = 0; i < num_workers; i++) {
         handles[i] = stasis_log_reordering_handle_open(
-                    &XactionTable[xid%MAX_TRANSACTIONS],
+                    &stasis_transaction_table[xid%MAX_TRANSACTIONS],
                     stasis_log_file,
                     (0.9*stasis_log_write_buffer_size)/num_workers,
                     //512*1024/ua->divisor, // 0.5 mb in log tail at once
@@ -113,7 +113,7 @@ int main(int argc, char ** argv) {
             } */
     }
     if(net) {
-      last_lsn = XactionTable[xid%MAX_TRANSACTIONS].prevLSN;
+      last_lsn = stasis_transaction_table[xid%MAX_TRANSACTIONS].prevLSN;
     }
     Tcommit(xid);
   }

@@ -231,7 +231,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	} break;
       case XABORT:
 	{
-          // logical undo needs to see the XactionTable state; so don't call
+          // logical undo needs to see the stasis_transaction_table state; so don't call
           // stasis_transaction_table_roll_forward yet
 
 	  // wait until undo is complete before informing the lock manager
@@ -363,7 +363,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
       freeLogEntry(e);
     }
     if(!prepared) {
-      // Log an XEND, remove transaction from XactionTable.
+      // Log an XEND, remove transaction from stasis_transaction_table.
       Tforget(thisXid);
       if(globalLockManager.abort) {
         globalLockManager.abort(thisXid);
