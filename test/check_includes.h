@@ -1,3 +1,4 @@
+#include <check.h>
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,7 @@
 #define tcase_set_timeout(x, y) 0
 #endif
 
-void setup (void) { 
+void setup (void) {
   remove("logfile.txt");
   remove("storefile.txt");
 }

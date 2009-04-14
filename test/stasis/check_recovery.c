@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -39,18 +39,17 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <config.h>
-#include <check.h>
-#include <assert.h> 
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
-#include "../check_includes.h"
+
+#include <assert.h>
 
 #define LOG_NAME   "check_recovery.log"
 
-/** 
+/**
     @test
     Simple test: Insert some stuff.  Commit.  Call Tdeinit().  Call
     Tinit() (Which initiates recovery), and see if the stuff we
@@ -59,36 +58,36 @@ terms specified in this license.
     Only performs idempotent operations (Tset).
 */
 START_TEST (recovery_idempotent) {
-  int xid; 
+  int xid;
   int j;
   int k;
   recordid rid;
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, sizeof(int));
 
   j = 1;
 
   Tset(xid, rid, &j);
- 
+
   Tcommit(xid);
 
   xid = Tbegin();
 
   Tread(xid, rid, &k);
-  
+
   assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
-  
+
   Tdeinit();
 
   Tinit();  /* Runs recovery.. */
 
   k = 12312;
 
-  xid = Tbegin(); 
+  xid = Tbegin();
 
   Tread(xid, rid, &k);
 
@@ -101,44 +100,44 @@ START_TEST (recovery_idempotent) {
 }
 END_TEST
 
-/** 
+/**
     @test
     Simple test: Alloc a record, commit.  Call Tincrement on it, and
     remember its value and commit.  Then, call Tdeinit() and Tinit()
-    (Which initiates recovery), and see if the value changes. 
+    (Which initiates recovery), and see if the value changes.
 */
 START_TEST (recovery_exactlyOnce) {
-  
-  int xid; 
+
+  int xid;
   int j;
   int k;
   recordid rid;
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, sizeof(int));
 
   Tincrement(xid, rid);
 
   Tread(xid, rid, &j);
- 
+
   Tcommit(xid);
 
   xid = Tbegin();
 
   Tread(xid, rid, &k);
-  
+
   assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
-  
+
   Tdeinit();
 
   Tinit();  /* Runs recovery.. */
 
   k = 12312;
 
-  xid = Tbegin(); 
+  xid = Tbegin();
 
   Tread(xid, rid, &k);
 
@@ -156,31 +155,31 @@ START_TEST (recovery_exactlyOnce) {
 END_TEST
 
 
-/** 
+/**
     @test
     Makes sure that aborted idempotent operations are correctly undone.
 */
 START_TEST (recovery_idempotentAbort) {
-  
-  int xid; 
+
+  int xid;
   int j;
   int k;
   recordid rid;
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, sizeof(int));
   j = 1;
   Tset(xid, rid, &j);
 
   Tread(xid, rid, &j);
- 
+
   Tcommit(xid);
 
   xid = Tbegin();
 
   Tread(xid, rid, &k);
-  
+
   assert(j == k); // Get/Set broken?
 
   Tcommit(xid);
@@ -206,7 +205,7 @@ START_TEST (recovery_idempotentAbort) {
 
   k = 12312;
 
-  xid = Tbegin(); 
+  xid = Tbegin();
 
   Tread(xid, rid, &k);
 
@@ -220,25 +219,25 @@ START_TEST (recovery_idempotentAbort) {
 END_TEST
 
 
-/** 
+/**
     @test
     Makes sure that aborted idempotent operations are correctly undone.
 */
 START_TEST (recovery_exactlyOnceAbort) {
-  
-  int xid; 
+
+  int xid;
   int j;
   int k;
   recordid rid;
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, sizeof(int));
   j = 1;
   Tincrement(xid, rid);
 
   Tread(xid, rid, &j);
- 
+
   Tcommit(xid);
 
   xid = Tbegin();
@@ -267,7 +266,7 @@ START_TEST (recovery_exactlyOnceAbort) {
 END_TEST
 
 /**
-   @test 
+   @test
    Check the CLR mechanism with an aborted logical operation, and multipl Tinit()/Tdeinit() cycles.
 */
 START_TEST(recovery_clr) {
@@ -324,7 +323,7 @@ START_TEST(recovery_clr) {
 
 } END_TEST
 
-/** 
+/**
     @test
 
     Tests the undo phase of recovery by simulating a crash, and calling Tinit(). */
@@ -334,7 +333,7 @@ START_TEST(recovery_crash) {
   int j;
 
   Tinit();
-  
+
   xid = Tbegin();
   rid = Talloc(xid, sizeof(int));
 
@@ -353,7 +352,7 @@ START_TEST(recovery_crash) {
   Tincrement(xid, rid);
   Tincrement(xid, rid);
   Tincrement(xid, rid);
-  
+
   /* RID = 9. */
 
   Tread(xid, rid, &j);
@@ -362,7 +361,7 @@ START_TEST(recovery_crash) {
 
   Tcommit(xid);
   xid = Tbegin();
-  
+
   Tdecrement(xid, rid);
   Tdecrement(xid, rid);
   Tdecrement(xid, rid);
@@ -392,7 +391,7 @@ START_TEST(recovery_crash) {
 } END_TEST
 /**
    @test
-   
+
    Tests recovery when more than one transaction is in progress at the time of the crash.
 */
 START_TEST (recovery_multiple_xacts) {
@@ -401,7 +400,7 @@ START_TEST (recovery_multiple_xacts) {
   int j1, j2, j3, j4, k;
   Tinit();
   j1 = 1;
-  j2 = 2; 
+  j2 = 2;
   j3 = 4;
   j4 = 3;
   xid1 = Tbegin();
@@ -412,24 +411,24 @@ START_TEST (recovery_multiple_xacts) {
   xid3 = Tbegin();
 
   Tset(xid1, rid1, &j1);
-  
+
   rid2 = Talloc(xid2, sizeof(int));
   rid3 = Talloc(xid3, sizeof(int));
   Tread(xid3, rid3, &k);
-  
+
   Tset(xid3, rid3, &j3);
 
   Tcommit(xid3);
   xid3 = Tbegin();
-  
+
   Tincrement(xid3, rid3);
   Tset(xid2, rid2, &j2);
   Tcommit(xid1);
-  
+
 
   xid4 = Tbegin();
   Tcommit(xid2);
-  
+
   rid4 = Talloc(xid4, sizeof(int));
   Tset(xid4, rid4, &j4);
   Tincrement(xid4, rid4);
@@ -447,7 +446,7 @@ START_TEST (recovery_multiple_xacts) {
   Tdecrement(xid2, rid2);
   Tincrement(xid1, rid1);
   Tset(xid1, rid1,&k);
-  
+
   TuncleanShutdown();
 
   Tinit();
@@ -474,7 +473,7 @@ START_TEST (recovery_multiple_xacts) {
 } END_TEST
 
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {
@@ -484,15 +483,15 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 0); // disable timeouts
 
-  if(LOG_TO_MEMORY != stasis_log_type) { 
-    
+  if(LOG_TO_MEMORY != stasis_log_type) {
+
     /* Sub tests are added, one per line, here */
     tcase_add_test(tc, recovery_idempotent);
     tcase_add_test(tc, recovery_exactlyOnce);
-    
+
     tcase_add_test(tc, recovery_idempotentAbort);
     tcase_add_test(tc, recovery_exactlyOnceAbort);
-    
+
     tcase_add_test(tc, recovery_clr);
     tcase_add_test(tc, recovery_crash);
     tcase_add_test(tc, recovery_multiple_xacts);

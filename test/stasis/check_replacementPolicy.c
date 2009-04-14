@@ -1,11 +1,10 @@
-#include <check.h>
+#include "../check_includes.h"
 
-#include <config.h>
 #include <stasis/transactional.h>
 #include <stasis/replacementPolicy.h>
 #include <stasis/doubleLinkedList.h>
+
 #include <assert.h>
-#include "../check_includes.h"
 
 #define LOG_NAME   "check_replacementPolicy.log"
 
@@ -22,53 +21,53 @@ long myrandom(long x) {
 
 typedef struct LL_ENTRY(node_t) node_t;
 
-typedef struct tracker { 
+typedef struct tracker {
   long val;
   intptr_t key;
   int inCache;
 } tracker;
 
-static node_t * getKey(void * page, void * ignore) { 
+static node_t * getKey(void * page, void * ignore) {
   tracker * p = page;
   return (node_t*)p->key;
 }
-static void setKey(void * page, node_t * n, void * ignore) { 
+static void setKey(void * page, node_t * n, void * ignore) {
   tracker * p = page;
   p->key = (intptr_t) n;
 }
 
 
-void randomTest(replacementPolicy * lru) { 
+void randomTest(replacementPolicy * lru) {
   time_t seed = time(0);
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
   int cachedCount = 0;
-  
+
   tracker * t = calloc(OBJECT_COUNT, sizeof(tracker));
-  for(int i = 0; i < OBJECT_COUNT; i++) { 
+  for(int i = 0; i < OBJECT_COUNT; i++) {
     t[i].val = i;
   }
-  for(unsigned long j = 0; j < 100000000UL; j++) { 
+  for(unsigned long j = 0; j < 100000000UL; j++) {
     int op = myrandom(100);
 
     int i = myrandom(OBJECT_COUNT);
-    if(op < 10) { 
+    if(op < 10) {
       // TOGGLE IN CACHE
-      if(!t[i].inCache) { 
+      if(!t[i].inCache) {
 	lru->insert(lru, &t[i]);
 	t[i].inCache = 1;
 	cachedCount ++;
-      } else { 
+      } else {
 	void * v = lru->remove(lru, &t[i]);
 	assert(v == &t[i]);
 	t[i].inCache = 0;
 	cachedCount --;
       }
-    } else if(op < 30) { 
+    } else if(op < 30) {
       // Get stale + remove
       tracker * tr = lru->getStale(lru);
-      if( tr ) { 
+      if( tr ) {
 	assert(tr->inCache);
 	assert(tr == &t[tr->val]);
 	tr = lru->remove(lru, tr);
@@ -76,20 +75,20 @@ void randomTest(replacementPolicy * lru) {
 	tr->inCache = 0;
 	assert(cachedCount != 0);
 	cachedCount --;
-      } else { 
+      } else {
 	assert(cachedCount == 0);
       }
-    } else if(op < 50) { 
+    } else if(op < 50) {
       // Get stale
       tracker * tr = lru->getStale(lru);
-      if(tr) { 
+      if(tr) {
 	assert(tr->inCache);
 	assert(tr == &t[tr->val]);
 	assert(cachedCount != 0);
-      } else { 
+      } else {
 	assert(cachedCount == 0);
       }
-    } else { 
+    } else {
       // Hit
       if(t[i].inCache) lru->hit(lru, &t[i]);
     }
@@ -110,11 +109,11 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 1200); // twenty minute timeout
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, replacementPolicyLRURandomTest); 
-  tcase_add_test(tc, replacementPolicyLRUFastRandomTest); 
+  tcase_add_test(tc, replacementPolicyLRURandomTest);
+  tcase_add_test(tc, replacementPolicyLRUFastRandomTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

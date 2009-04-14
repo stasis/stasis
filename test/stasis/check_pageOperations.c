@@ -40,20 +40,17 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
 
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
 #include <stasis/truncation.h>
 #include <stasis/logger/logger2.h>
-
 #include <stasis/latches.h>
+
 #include <sched.h>
 #include <assert.h>
-#include "../check_includes.h"
 
 #define LOG_NAME   "check_pageOperations.log"
 
@@ -117,7 +114,7 @@ START_TEST(pageOpCheckRecovery) {
   xid = Tbegin();
 
   DEBUG("%s:%d numactive = %d\n",__FILE__,__LINE__, TactiveTransactionCount());
-  
+
   int pageid3 = TpageAlloc(xid);
 
   assert(pageid1 != pageid3);
@@ -171,7 +168,7 @@ START_TEST(pageOpCheckAllocDealloc) {
   fail_unless(pageid == 101, NULL);
 
   TpageDealloc(xid, 52);
-  
+
   pageid = TpageAlloc(xid);
 
   fail_unless(pageid == 52, NULL);
@@ -212,11 +209,11 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
 
   tcase_add_test(tc, pageOpCheckAllocDealloc);
-  if(LOG_TO_MEMORY != stasis_log_type) { 
+  if(LOG_TO_MEMORY != stasis_log_type) {
     tcase_add_test(tc, pageOpCheckRecovery);
   }
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

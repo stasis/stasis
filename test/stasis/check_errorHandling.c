@@ -1,11 +1,10 @@
-#include <check.h>
+#include "../check_includes.h"
+
 #include <stasis/transactional.h>
 #include <stasis/lockManager.h>
-#include <pthread.h>
-#include <config.h>
 
+#include <pthread.h>
 #include <assert.h>
-#include "../check_includes.h"
 #include <stdlib.h>
 
 #define LOG_NAME "check_errorhandling.log"
@@ -14,22 +13,22 @@ START_TEST(simpleDeadlockTest) {
   printf("\n");
   Tinit();
   setupLockManagerCallbacksPage();
-  
+
   int xid = Tbegin();
-  
+
   recordid rid = Talloc(xid, sizeof(int));
   Talloc(xid, sizeof(int));
-  
+
   Tcommit(xid);
   assert(!compensation_error());
-  
+
   xid = Tbegin();
   int xid2 = Tbegin();
 
   int i;
-  
+
   Tread(xid, rid, &i);
-  
+
   Tread(xid2, rid, &i);
 
   assert(!compensation_error());
@@ -51,10 +50,10 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
 
-  tcase_add_test(tc, simpleDeadlockTest); 
-  
+  tcase_add_test(tc, simpleDeadlockTest);
+
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

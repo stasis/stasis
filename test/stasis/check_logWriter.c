@@ -47,20 +47,18 @@ terms specified in this license.
 
     @todo Get rid of include for logWriter.h (stop calling deleteLogWriter, syncLog_logWriter...)
 */
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
 #include <stasis/logger/logHandle.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
-
+#include <stasis/truncation.h>
 #include <stasis/latches.h>
+
 #include <sched.h>
 #include <assert.h>
-#include "../check_includes.h"
-#include <stasis/truncation.h>
 
 #define LOG_NAME   "check_logWriter.log"
 

@@ -39,32 +39,27 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <check.h>
-#include <stasis/transactional.h>
-#include <pbl/pbl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <config.h>
-
-#include <assert.h>
-
 #include "../check_includes.h"
 
+#include <stasis/transactional.h>
+#include <pbl/pbl.h>
 
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 #include <sys/time.h>
 #include <time.h>
 
 #define LOG_NAME   "check_iterator.log"
 
 /**
-   @test 
+   @test
 
 */
 
 
 /** Take two iterators, and make sure they represent the same set. */
-static void iterator_test(int xid, 
+static void iterator_test(int xid,
 			 lladdIterator_t * reference_impl,
 			 lladdIterator_t * tested_impl) {
 
@@ -75,12 +70,12 @@ static void iterator_test(int xid,
   while(Titerator_next(xid, reference_impl)) {
     int    keySize,  valSize;
     byte  *key,     *val,    *valScratch;
-    
+
     keySize = Titerator_key(xid, reference_impl,   &key);
     valSize = Titerator_value(xid, reference_impl, &valScratch);
     val = malloc(valSize);
     memcpy(val, valScratch, valSize);  // pblHtInsert stores values a pointers to application managed memory.
-    
+
     pblHtInsert(hash, key, keySize, val);
     numEntries ++;
   }
@@ -90,10 +85,10 @@ static void iterator_test(int xid,
 
     int    keySize,  valSize;
     byte  *key,     *val,    *valScratch;
-    
+
     keySize = Titerator_key(xid, tested_impl,   &key);
     valSize = Titerator_value(xid, tested_impl, &valScratch);
-    
+
     val = pblHtLookup(hash, key, keySize);
 
     assert(val);
@@ -105,7 +100,7 @@ static void iterator_test(int xid,
     pblHtRemove(hash, key, keySize);
 
   }
-	
+
   assert(!numEntries);
 
 }
@@ -118,7 +113,7 @@ START_TEST(iteratorTest)
   int xid = Tbegin();
   unsigned int keyArray[NUM_ENTRIES];
   byte valueArray[NUM_ENTRIES];
-  
+
   unsigned int i;
 
   recordid hash = ThashCreate(xid, sizeof(unsigned int), sizeof(byte));
@@ -129,7 +124,7 @@ START_TEST(iteratorTest)
     byte j = i % 256;
     ThashInsert(xid, hash, (byte*)&i, sizeof(unsigned int), &j, sizeof(byte));
   }
-  
+
   lladdIterator_t * arrayIt = arrayIterator((byte *)keyArray, sizeof(int), valueArray, sizeof(char), NUM_ENTRIES);
   i = 0;
   while(Titerator_next(-1, arrayIt)) {
@@ -145,7 +140,7 @@ START_TEST(iteratorTest)
     assert(*value == (i % 256));
     i++;
   }
-  
+
   Titerator_close(-1, arrayIt);
 
   arrayIt = arrayIterator((byte*)keyArray, sizeof(int), valueArray, sizeof(char), NUM_ENTRIES);
@@ -170,7 +165,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, iteratorTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

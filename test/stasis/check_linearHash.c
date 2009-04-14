@@ -40,23 +40,21 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/hash.h>
 
 #include <assert.h>
-#include <stasis/hash.h>
 #include <limits.h>
 #include <math.h>
 
 #define LOG_NAME   "check_linearHash.log"
 
-/** @test 
+/** @test
     executes each of the insert / remove / lookup operations a few times.
 */
-//#define NUM_ENTRIES 100000   
+//#define NUM_ENTRIES 100000
 #define NUM_ENTRIES 10000
 /* #define NUM_ENTRIES 1000  */
 /*#define NUM_ENTRIES 100  */
@@ -79,7 +77,7 @@ START_TEST(simpleLinearHashTest)
     rid.slot=i+2;
     rid.size=i+3;
 
-    /*    assert(isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid))); 
+    /*    assert(isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid)));
 	  assert(!isNullRecord(lHtInsert(xid, hash, &i, sizeof(int), rid))); */
 
     TnaiveHashInsert(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid));
@@ -111,7 +109,7 @@ START_TEST(simpleLinearHashTest)
     assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &rid, sizeof(recordid)));
 
   }
-	
+
   printf("Done deleting mod 10.\n");
   fflush(NULL);
 
@@ -176,7 +174,7 @@ START_TEST(simpleLinearHashTest)
   fflush(NULL);
 
   Tcommit(xid);
-  
+
   Tdeinit();
 
 }
@@ -191,13 +189,13 @@ START_TEST(transactionalLinearHashTest)
   Talloc(xid, 1); // discard alloced rid...
 
 //	printf("%d %d %ld\n", foo.page, foo.slot, foo.size);
-	
+
   recordid hashRoot =  TnaiveHashCreate(xid, sizeof(int), sizeof(recordid));
 
 //	printf("%d %d %ld", hashRoot.page, hashRoot.slot, hashRoot.size);
-	
-// Insert some entries, see if they stick around. 
-	
+
+// Insert some entries, see if they stick around.
+
   int i;
 
   for(i = 0; i < NUM_ENTRIES_XACT; i+=10) {
@@ -206,8 +204,8 @@ START_TEST(transactionalLinearHashTest)
 		insMe.slot = i+1;
 		insMe.size = i+2;
 		TnaiveHashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
-  }	  
-	
+  }
+
   for(i = 0; i < NUM_ENTRIES_XACT; i+=10) {
     recordid theVal;
     assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
@@ -215,11 +213,11 @@ START_TEST(transactionalLinearHashTest)
     assert(theVal.slot == i+1);
     assert(theVal.size == i+2);
   }
-	
+
   Tcommit(xid);
-	
+
   xid = Tbegin();
-	
+
   for(i = 0; i < NUM_ENTRIES_XACT; i++) {
     if(!(i%10)) {
       recordid theVal;
@@ -235,10 +233,10 @@ START_TEST(transactionalLinearHashTest)
       TnaiveHashInsert(xid, hashRoot, &i, sizeof(int), &insMe, sizeof(recordid));
     }
   }
-	
+
   Tabort(xid);
   Tdeinit();
-  if(TdurabilityLevel() == VOLATILE) return;  
+  if(TdurabilityLevel() == VOLATILE) return;
   Tinit();
   xid = Tbegin();
   TnaiveHashOpen(xid, hashRoot, sizeof(int), sizeof(recordid));
@@ -248,7 +246,7 @@ START_TEST(transactionalLinearHashTest)
       assert(TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
       assert(theVal.page == i);
       assert(theVal.slot == i+1);
-      assert(theVal.size == i+2);	
+      assert(theVal.size == i+2);
     } else {
       recordid theVal;
       assert(!TnaiveHashLookup(xid, hashRoot, &i, sizeof(int), &theVal, sizeof(recordid)));
@@ -257,7 +255,7 @@ START_TEST(transactionalLinearHashTest)
   TnaiveHashClose(xid, hashRoot);
   Tabort(xid);
   Tdeinit();
-	
+
 } END_TEST
 
 
@@ -275,7 +273,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, transactionalLinearHashTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

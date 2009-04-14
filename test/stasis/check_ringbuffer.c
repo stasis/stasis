@@ -39,23 +39,18 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-#include <check.h>
-
-#include <stasis/ringbuffer.h>
-#include <assert.h>
-
 #include "../check_includes.h"
 
+#include <stasis/ringbuffer.h>
 
+#include <assert.h>
 #include <sys/time.h>
 #include <time.h>
 
 #define LOG_NAME   "check_ringbuffer.log"
 
 /**
-   @test 
+   @test
 
 */
 
@@ -75,14 +70,14 @@ static int rb_test(double readBlock, double writeBlock) {
       array[i][j] = i + j;
     }
   }
-  
+
   ringBufferLog_t * log = openLogRingBuffer(NUM_ENTRIES, 5);
 
   int doneReading = 0;
   int doneWriting = 0;
   int readPos = 0;
   int writePos = 0;
-  while(!doneReading) { 
+  while(!doneReading) {
     if(!doneWriting) {
       int numToWrite = 1.0 + writeBlock * (rand() / RAND_MAX);
       //      printf("%d\n", numToWrite);
@@ -96,8 +91,8 @@ static int rb_test(double readBlock, double writeBlock) {
 	  if(writePos ==  NUM_ENTRIES) { break; }
 	} else {
 	  break;
-	} 
-      } 
+	}
+      }
     }
     // try to truncate a chunk longer than the whole ringbuffer.
     // should be a no-op
@@ -124,13 +119,13 @@ static int rb_test(double readBlock, double writeBlock) {
 
 	readPos++;
 	if(readPos == NUM_ENTRIES) { break; }
-      } else { 
+      } else {
 	break;
       }
     }
-    if(readPos == NUM_ENTRIES) { 
+    if(readPos == NUM_ENTRIES) {
       doneReading = 1;
-    } 
+    }
     if(writePos == NUM_ENTRIES) {
       doneWriting = 1;
     }
@@ -165,7 +160,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, ringBufferTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

@@ -39,7 +39,6 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <config.h>
 #include <check.h>
 #include <assert.h>
 #include <unistd.h>
@@ -79,7 +78,7 @@ START_TEST(slep) {
   sleep(1);
 }END_TEST
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {

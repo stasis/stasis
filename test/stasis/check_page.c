@@ -45,9 +45,7 @@ terms specified in this license.
 
     @todo check_page should judiciously avoid stasis_page_lsn_ptr()
 */
-
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
 
 #include <stasis/page.h>
 #include <stasis/page/indirect.h>
@@ -55,12 +53,10 @@ terms specified in this license.
 #include <stasis/blobManager.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
-
 #include <stasis/latches.h>
+
 #include <sched.h>
 #include <assert.h>
-#include "../check_includes.h"
-
 
 #define LOG_NAME   "check_page.log"
 
@@ -78,9 +74,9 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
   int first = 1;
   int k;
   recordid rid[100];
-  
+
   for(i = 0; i < 10000; i++) {
-    pthread_mutex_lock(&lsn_mutex); 
+    pthread_mutex_lock(&lsn_mutex);
     lsn++;
     this_lsn = lsn;
     readlock(p->rwlatch,0);
@@ -98,10 +94,10 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
         unlock(p->rwlatch);
         sched_yield();
       }
-    } 
-    
+    }
+
     first = 0;
-    
+
     for(k = 0; k < 100; k++) {
       writelock(p->rwlatch,0);
       rid[k] = stasis_record_alloc_begin(-1,p,sizeof(short));
@@ -118,9 +114,9 @@ static void * multiple_simultaneous_pages ( void * arg_ptr) {
       unlock(p->rwlatch);
       sched_yield();
     }
-    
+
   }
-  
+
   return NULL;
 }
 
@@ -207,7 +203,7 @@ static void* worker_thread(void * arg_ptr) {
 }
 
 /**
-   @test 
+   @test
 
    just run one the worker_thread function once to make sure that it passes
    without interference from other threads.
@@ -221,7 +217,7 @@ START_TEST(pageNoThreadTest)
   Page * p;
 
   pthread_mutex_init(&lsn_mutex, NULL);
-  
+
   Tinit();
   p = loadPage(-1, 0);
   writelock(p->rwlatch,0);
@@ -254,7 +250,7 @@ START_TEST(pageCheckMacros) {
   p.memAddr = buffer;
 
   lsn_t lsn = 5;
-  
+
   *stasis_page_lsn_ptr(&p) = lsn;
   *stasis_page_type_ptr(&p) = 10;
   *freespace_ptr(&p) = 15;
@@ -283,7 +279,7 @@ START_TEST(pageCheckMacros) {
   assert(*slot_length_ptr(&p, 0) == 31);
   assert(*slot_length_ptr(&p, 1) == 36);
   assert(*slot_length_ptr(&p, 40) == 41);
-  
+
   assert(*stasis_page_byte_ptr_from_start(&p, 0) == 50);
   assert(*stasis_page_byte_ptr_from_start(&p, 1) == 51);
   assert(*stasis_page_byte_ptr_from_start(&p, 2) == 52);
@@ -370,10 +366,10 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
   Tdeinit();
 } END_TEST
 /**
-   @test 
-   
+   @test
+
    Page test that allocates multiple records
-   
+
 */
 START_TEST(pageNoThreadMultPageTest)
 {
@@ -411,7 +407,7 @@ START_TEST(pageNoThreadMultPageTest)
 }
 END_TEST
 
-/** 
+/**
     Check the page implementation in the multi-threaded case.
 */
 START_TEST(pageThreadTest) {
@@ -460,7 +456,7 @@ START_TEST(pageThreadTest) {
 } END_TEST
 
 
-/** 
+/**
     @test
 */
 START_TEST(fixedPageThreadTest) {
@@ -497,21 +493,21 @@ START_TEST(fixedPageThreadTest) {
 START_TEST(pageCheckSlotTypeTest) {
 	Tinit();
 	int xid = Tbegin();
-	
+
 	recordid slot      = Talloc(xid, sizeof(int));
 	recordid fixedRoot = TarrayListAlloc(xid, 2, 10, 10);
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
-	
+
 	Page * p = loadPage(-1, slot.page);
         readlock(p->rwlatch, 0);
         assert(stasis_record_type_read(xid, p, slot) == NORMAL_SLOT);
         assert(stasis_record_length_read(xid, p, slot) == sizeof(int));
         unlock(p->rwlatch);
 	releasePage(p);
-	
-	/** @todo the use of the fixedRoot recordid to check getRecordType is 
+
+	/** @todo the use of the fixedRoot recordid to check getRecordType is
 		  a bit questionable, but should work. */
-	p = loadPage(-1, fixedRoot.page); 
+	p = loadPage(-1, fixedRoot.page);
 
         readlock(p->rwlatch, 0);
 	assert(stasis_record_type_read(xid, p, fixedRoot) == NORMAL_SLOT);
@@ -521,28 +517,28 @@ START_TEST(pageCheckSlotTypeTest) {
 	recordid  fixedEntry = dereferenceIndirectRID(xid, fixedRoot);
 
 	fixedRoot.slot = 0;
-	
+
         unlock(p->rwlatch);
 	releasePage(p);
-	
+
 	p = loadPage(-1, fixedEntry.page);
         readlock(p->rwlatch, 0);
         assert(stasis_record_type_read(xid, p, fixedEntry) == NORMAL_SLOT);
         unlock(p->rwlatch);
 	releasePage(p);
-	
+
 	p = loadPage(-1, blob.page);
         readlock(p->rwlatch, 0);
  	int type = stasis_record_type_read(xid, p, blob);
         unlock(p->rwlatch);
         assert(type == BLOB_SLOT);
-	releasePage(p); 
+	releasePage(p);
 
 	recordid bad;
 	bad.page = slot.page;
 	bad.slot = slot.slot + 10;
 	bad.size = 4;
-	
+
 	p = loadPage(xid, bad.page);
         readlock(p->rwlatch, 0);
 	assert(stasis_record_type_read(xid, p, bad) == INVALID_SLOT);
@@ -555,9 +551,9 @@ START_TEST(pageCheckSlotTypeTest) {
 	*stasis_page_lsn_ptr(p) = p->LSN;
         unlock(p->rwlatch);
 	releasePage(p);
-	
+
 	Tcommit(xid);
-	
+
 	Tdeinit();
 } END_TEST
 /**
@@ -566,31 +562,31 @@ START_TEST(pageCheckSlotTypeTest) {
 START_TEST(pageTrecordTypeTest) {
 	Tinit();
 	int xid = Tbegin();
-	
+
 	recordid slot      = Talloc(xid, sizeof(int));
 	recordid fixedRoot = TarrayListAlloc(xid, 2, 10, 10);
 	recordid blob      = Talloc(xid, PAGE_SIZE * 2);
-	
+
 	assert(TrecordType(xid, slot) == NORMAL_SLOT);
-	assert(TrecordType(xid, fixedRoot) == NORMAL_SLOT);  
-	
+	assert(TrecordType(xid, fixedRoot) == NORMAL_SLOT);
+
 	fixedRoot.slot = 1;
 	// This is an array list page, but we want to check the state
 	// of the internal node.
 	recordid  fixedEntry = dereferenceIndirectRID(xid, fixedRoot);
 
 	fixedRoot.slot = 0;
-	
+
 	assert(TrecordType(xid, fixedEntry) == NORMAL_SLOT);
-	
+
 	int type = TrecordType(xid, blob);
 	assert(type == BLOB_SLOT);
-		
+
 	recordid bad;
 	bad.page = slot.page;
 	bad.slot = slot.slot + 10;
 	bad.size = 4;
-	
+
 	assert(TrecordType(xid, bad) == INVALID_SLOT);
 	bad.size = 100000;
 	assert(TrecordType(xid, bad) == INVALID_SLOT);
@@ -603,7 +599,7 @@ START_TEST(pageTrecordTypeTest) {
 	assert(TrecordType(xid, rid2) == NORMAL_SLOT);
 
 	Tcommit(xid);
-	
+
 	Tdeinit();
 } END_TEST
 
@@ -625,7 +621,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, fixedPageThreadTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

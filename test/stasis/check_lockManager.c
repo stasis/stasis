@@ -1,13 +1,12 @@
-#include <config.h>
-#include <check.h>
-#include <stasis/transactional.h>
-#include <stasis/lockManager.h>
-#include <pthread.h>
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/lockManager.h>
+
+#include <pthread.h>
 #include <assert.h>
-#include "../check_includes.h"
 #include <stdlib.h>
+
 #define LOG_NAME   "check_lockManager.log"
 
 /** Needs to be formatted as a floating point */
@@ -31,7 +30,7 @@ void * pageWorkerThread(void * j) {
       // readlock
       int locked = 0;
       if(LLADD_DEADLOCK == globalLockManager.readLockPage(xid, m)) {
-	k = 0; 
+	k = 0;
 	assert(compensation_error() == LLADD_DEADLOCK);
 	compensation_clear_error();
 	globalLockManager.abort(xid);
@@ -39,9 +38,9 @@ void * pageWorkerThread(void * j) {
 	locked = 1;
       }
     } else {
-      
+
       if(LLADD_DEADLOCK == globalLockManager.writeLockPage(xid, m)) {
-	k = 0; 
+	k = 0;
 	globalLockManager.abort(xid);
 	deadlocks++;
 	int err = compensation_error();
@@ -50,7 +49,7 @@ void * pageWorkerThread(void * j) {
       }
     }
   }
-  
+
   printf("%2d ", deadlocks); fflush(stdout);
 
   globalLockManager.commit(xid);
@@ -79,7 +78,7 @@ void * ridWorkerThread(void * j) {
 	globalLockManager.abort(xid);
 	deadlocks++;
       }
-      
+
     } else {
       // writelock
 
@@ -90,7 +89,7 @@ void * ridWorkerThread(void * j) {
       }
     }
   }
-  
+
   printf("%2d ", deadlocks); fflush(stdout);
 
   globalLockManager.commit(xid);
@@ -106,7 +105,7 @@ START_TEST(recordidLockManagerTest) {
   setupLockManagerCallbacksRecord();
 
   pthread_t workers[THREAD_COUNT];
-  int i; 
+  int i;
   printf("The following numbers are deadlock counts for each thread.\n");
   for(i = 0; i < THREAD_COUNT; i++) {
     int *j = malloc(sizeof(int));
@@ -125,7 +124,7 @@ START_TEST(pageLockManagerTest) {
   setupLockManagerCallbacksPage();
 
   pthread_t workers[THREAD_COUNT];
-  int i; 
+  int i;
   printf("The following numbers are deadlock counts for each thread.\n");
   for(i = 0; i < THREAD_COUNT; i++) {
     int *j = malloc(sizeof(int));
@@ -143,16 +142,16 @@ Suite * check_suite(void) {
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 0); // disable timeouts
-  // kinda hacky, but here it is: 
+  // kinda hacky, but here it is:
   compensations_init();
 
   /* Sub tests are added, one per line, here */
 
-  tcase_add_test(tc, recordidLockManagerTest); 
-  tcase_add_test(tc, pageLockManagerTest); 
-  
+  tcase_add_test(tc, recordidLockManagerTest);
+  tcase_add_test(tc, pageLockManagerTest);
+
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

@@ -41,10 +41,8 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
-
 #include "../check_includes.h"
+
 #include <stasis/bufferManager.h>
 #include <stasis/page.h>
 #include <stasis/page/indirect.h>

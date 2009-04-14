@@ -38,14 +38,14 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <check.h>
-#include <config.h>
+#include "../check_includes.h"
+
 #include <stasis/common.h>
 #include <stasis/latches.h>
+#include <stasis/transactional.h>
+
 #include <assert.h>
 
-#include <stasis/transactional.h>
-#include "../check_includes.h"
 #define LOG_NAME   "check_transactional2.log"
 #define THREAD_COUNT 25
 #define RECORDS_PER_THREAD 1000
@@ -70,12 +70,12 @@ int arrayCmp(int * array, int * array2) {
 }
 
 /** Allocate a bunch of blobs, set them, read them, commit them, and read it again, chang them, abort, and read again. */
-void * writingAbortingBlobWorkerThread ( void * v ) { 
+void * writingAbortingBlobWorkerThread ( void * v ) {
   int offset = * (int *) v;
   recordid * rids = malloc(BLOBS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < BLOBS_PER_THREAD; i++) {
-    rids[i] = Talloc(xid, 1024 * sizeof(int)); 
+    rids[i] = Talloc(xid, 1024 * sizeof(int));
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -89,17 +89,17 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
       printf("W%d", i/100); fflush(NULL);
     }
   }
-  
+
   Tcommit(xid);
   xid = Tbegin();
 
-  
+
   for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     int j[1024];
     int k[1024];
     arraySet(k, i+offset);
     arraySet(j, -1);
-    Tread(xid, rids[i], j); 
+    Tread(xid, rids[i], j);
     assert(arrayCmp(j,k));/*i + offset == j); */
     if(! (i %100)) {
       printf("R%d", i/100);fflush(NULL);
@@ -107,9 +107,9 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
     arraySet(k, -1);
     Tset(xid, rids[i], k);/*(void*)&minusOne); */
   }
-  
+
   Tabort(xid);
-    
+
   xid = Tbegin();
 
   for(int i = 0; i < BLOBS_PER_THREAD; i++) {
@@ -122,7 +122,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
       printf("S%d", i/100);fflush(NULL);
     }
     }
-  
+
   Tcommit(xid);
   free(rids);
   return NULL;
@@ -132,12 +132,12 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
 
 
 /** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
-void * writingAbortingWorkerThread ( void * v ) { 
+void * writingAbortingWorkerThread ( void * v ) {
   int offset = * (int *) v;
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = Talloc(xid, sizeof(int)); 
+    rids[i] = Talloc(xid, sizeof(int));
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -145,31 +145,31 @@ void * writingAbortingWorkerThread ( void * v ) {
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int tmp = i + offset;
-    
+
     Tset(xid, rids[i], &tmp);
     if(! (i %100)) {
       printf("W%d", i/100); fflush(NULL);
     }
   }
-  
+
   Tcommit(xid);
   xid = Tbegin();
 
-  
+
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int j;
     int minusOne = -1;
-    
-    Tread(xid, rids[i], &j); 
+
+    Tread(xid, rids[i], &j);
     assert(i + offset == j);
     if(! (i %100)) {
       printf("R%d", i/100);fflush(NULL);
     }
     Tset(xid, rids[i], (void*)&minusOne);
   }
-  
+
   Tabort(xid);
-    
+
   xid = Tbegin();
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
@@ -180,7 +180,7 @@ void * writingAbortingWorkerThread ( void * v ) {
       printf("S%d", i/100);fflush(NULL);
     }
     }
-  
+
   Tcommit(xid);
 
   free (rids);
@@ -190,12 +190,12 @@ void * writingAbortingWorkerThread ( void * v ) {
 
 
 /** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
-void * writingWorkerThread ( void * v ) { 
+void * writingWorkerThread ( void * v ) {
   int offset = * (int *) v;
   recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
-    rids[i] = Talloc(xid, sizeof(int)); 
+    rids[i] = Talloc(xid, sizeof(int));
     if(! (i %100)) {
       printf("A%d", i/100);fflush(NULL);
     }
@@ -203,25 +203,25 @@ void * writingWorkerThread ( void * v ) {
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int tmp = i + offset;
-    
+
     Tset(xid, rids[i], &tmp);
     if(! (i %100)) {
       printf("W%d", i/100); fflush(NULL);
     }
   }
-  
+
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     int j;
-    
-    Tread(xid, rids[i], &j); 
+
+    Tread(xid, rids[i], &j);
     assert(i + offset == j);
     if(! (i %100)) {
       printf("R%d", i/100);fflush(NULL);
     }
   }
-  
+
   Tcommit(xid);
-    
+
   xid = Tbegin();
 
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
@@ -229,7 +229,7 @@ void * writingWorkerThread ( void * v ) {
     Tread(xid, rids[i], &j);
     assert(i + offset == j);
     }
-  
+
   Tcommit(xid);
   free(rids);
 
@@ -334,7 +334,7 @@ START_TEST(transactional_blobSmokeTest) {
 END_TEST
 
 /**
-   @test 
+   @test
    Make sure that the single threaded version of transactional_threads_commit passes.
 */
 START_TEST(transactional_nothreads_commit) {
@@ -346,12 +346,12 @@ START_TEST(transactional_nothreads_commit) {
 
 /**
    @test
-   Test LLADD in a multi-threaded envrionment, where every transaction commits. 
+   Test LLADD in a multi-threaded envrionment, where every transaction commits.
 */
 START_TEST(transactional_threads_commit) {
   pthread_t workers[THREAD_COUNT];
   int i;
-  
+
   Tinit();
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -369,7 +369,7 @@ START_TEST(transactional_threads_commit) {
 } END_TEST
 
 /**
-   @test 
+   @test
    Make sure that the single threaded version of transactional_threads_abort passes.
 */
 START_TEST(transactional_nothreads_abort) {
@@ -386,7 +386,7 @@ START_TEST(transactional_nothreads_abort) {
 START_TEST(transactional_threads_abort) {
   pthread_t workers[THREAD_COUNT];
   int i;
-  
+
   Tinit();
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -404,7 +404,7 @@ START_TEST(transactional_threads_abort) {
 } END_TEST
 
 /**
-   @test 
+   @test
    Make sure that the single threaded version of transactional_threads_abort passes.
 */
 START_TEST(transactional_blobs_nothreads_abort) {
@@ -421,7 +421,7 @@ START_TEST(transactional_blobs_nothreads_abort) {
 START_TEST(transactional_blobs_threads_abort) {
   pthread_t workers[THREAD_COUNT];
   int i;
-  
+
   Tinit();
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -438,7 +438,7 @@ START_TEST(transactional_blobs_threads_abort) {
   Tdeinit();
 } END_TEST
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {
@@ -454,8 +454,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, transactional_threads_commit);
   tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_abort);
-  tcase_add_test(tc, transactional_blobs_nothreads_abort);  
-  tcase_add_test(tc, transactional_blobs_threads_abort);  
+  tcase_add_test(tc, transactional_blobs_nothreads_abort);
+  tcase_add_test(tc, transactional_blobs_threads_abort);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

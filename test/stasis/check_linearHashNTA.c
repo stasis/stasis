@@ -40,8 +40,6 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
@@ -50,7 +48,6 @@ terms specified in this license.
 #include <limits.h>
 #include <math.h>
 #include <pthread.h>
-
 #include <sys/time.h>
 #include <time.h>
 
@@ -59,7 +56,7 @@ static const int NUM_ENTRIES = 100000;
 
 #define ARRAY_SIZE (2 * 3 * (int)(PAGE_SIZE * 1.5))
 static void arraySet(int * a, int mul) {
-  int i; 
+  int i;
 
   for ( i = 0 ; i < ARRAY_SIZE; i++) {
     a[i]= mul*i;
@@ -76,7 +73,7 @@ static int arryCmp(int * a, int * b, int len) {
 START_TEST(linearHashNTAtest)
 {
   Tinit();
-  
+
   int xid = Tbegin();
   recordid val;
   recordid hashHeader = ThashCreate(xid, sizeof(int), sizeof(recordid));
@@ -112,7 +109,7 @@ START_TEST(linearHashNTAtest)
     int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(sizeof(recordid) == found);
     free(val2);
-    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)); 
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
     assert(found);
     found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(-1==found);
@@ -142,7 +139,7 @@ START_TEST(linearHashNTAtest)
 START_TEST(linearHashNTAVariableSizetest)
 {
   Tinit();
-  
+
   int xid = Tbegin();
   recordid val;
   memset(&val,0,sizeof(val));
@@ -157,7 +154,7 @@ START_TEST(linearHashNTAVariableSizetest)
     val.page = i * NUM_ENTRIES;
     val.slot = val.page * NUM_ENTRIES;
     val.size = val.slot * NUM_ENTRIES;
-    val2 = 0; 
+    val2 = 0;
     int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(-1 == found);
     ThashInsert(xid, hashHeader, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
@@ -172,9 +169,9 @@ START_TEST(linearHashNTAVariableSizetest)
   }
 
   Tcommit(xid);
-  
+
   printf("\n");
-  
+
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i+=10){
     if(!(i % (NUM_ENTRIES/10))) {
@@ -183,7 +180,7 @@ START_TEST(linearHashNTAVariableSizetest)
     int found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(sizeof(recordid) == found);
     free(val2);
-    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int)); 
+    found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
     assert(found);
     found = ThashLookup(xid, hashHeader, (byte*)&i, sizeof(int), (byte**)bval2);
     assert(-1==found);
@@ -216,7 +213,7 @@ START_TEST(linearHashNTAVariableSizetest)
 int NUM_THREADS = DEFAULT_NUM_THREADS;
 int NUM_T_ENTRIES = DEFAULT_NUM_T_ENTRIES;
 
-typedef struct { 
+typedef struct {
   int thread;
   recordid rid;
 } linear_hash_worker_args;
@@ -231,39 +228,39 @@ void * worker(void* arg) {
   linear_hash_worker_args * args = arg;
   int thread = args->thread;
   recordid hash = args->rid;
-  
+
   int xid = Tbegin();
 
   int i;
-  
+
   for(i = 0; i < NUM_T_ENTRIES; i++) {
     int value = i + thread * NUM_T_ENTRIES;
     recordid key = makekey(thread,i);
     ThashInsert(xid, hash, (byte*)&key, sizeof(recordid), (byte*)&value, sizeof(int));
   }
-  
+
   Tcommit(xid);
   xid = Tbegin();
-  
+
   int * value;
   int ** bvalue = &value;
   for(i = 0; i < NUM_T_ENTRIES; i+=10) {
     recordid key = makekey(thread,i);
-    int found = ThashRemove(xid, hash, (byte*)&key, sizeof(recordid)); 
+    int found = ThashRemove(xid, hash, (byte*)&key, sizeof(recordid));
     assert(found);
     found = ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)bvalue);
     assert(-1==found);
     found = ThashRemove(xid, hash, (byte*)&key, sizeof(recordid));
     assert(!found);
   }
-  
+
   Tabort(xid);
   xid = Tbegin();
-  
+
   for(i = 0; i < NUM_T_ENTRIES; i+=10) {
     recordid key = makekey(thread,i);
     int found = ThashLookup(xid, hash, (byte*)&key, sizeof(recordid), (byte**)bvalue);
-    assert(sizeof(int) == found); 
+    assert(sizeof(int) == found);
     assert(*value == i + thread * NUM_T_ENTRIES);
     free (value);
   }
@@ -298,7 +295,7 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
   srandom(tv.tv_sec * 1000000 + tv.tv_usec);
   NUM_THREADS = (int)(((double)random()/(double)RAND_MAX)* ((double)DEFAULT_NUM_THREADS) * 2.0);
   NUM_T_ENTRIES = (int)(((double)random()/(double)RAND_MAX) * ((double)DEFAULT_NUM_T_ENTRIES) * 1.0);
-  
+
   printf("\n%d threads, %d entries", NUM_THREADS, NUM_T_ENTRIES);
 
   int xid = Tbegin();
@@ -311,7 +308,7 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
     args->thread = i;
     args->rid= rid;
     pthread_create(&threads[i], NULL, &worker, args);
-    if(!(i % 50)) { 
+    if(!(i % 50)) {
       sleep(1);
     }
   }
@@ -399,9 +396,9 @@ void iteratorTest(int variableLength) {
     } else {
       hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
     }
-  
+
     int i = 0;
-  
+
     for(i = 0; i < NUM_ENTRIES; i++) {
       recordid value = makekey(0, i);
       int found = ThashInsert(xid, hash, (byte*)&i, sizeof(int), (byte*)&value, sizeof(recordid));
@@ -418,7 +415,7 @@ void iteratorTest(int variableLength) {
     int ** bkey = &key;
     recordid * value;
     recordid ** bvalue = &value;
-    int keySize; 
+    int keySize;
     int valueSize;
 
     while(ThashNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
@@ -457,7 +454,7 @@ void iteratorTest(int variableLength) {
     int ** bkey = &key;
     recordid * value;
     recordid ** bvalue = &value;
-    int keySize; 
+    int keySize;
     int valueSize;
 
     while(ThashNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
@@ -472,7 +469,7 @@ void iteratorTest(int variableLength) {
       free(value);
     }
 
-    for(int i = 0 ; i < NUM_ENTRIES; i++) { 
+    for(int i = 0 ; i < NUM_ENTRIES; i++) {
       assert(seen[i] == 1);
       seen[i] = 0;
     }
@@ -493,11 +490,11 @@ START_TEST(emptyHashIterator) {
   printf("\n");
   Tinit();
   int xid = Tbegin();
-  
+
   recordid hash = ThashCreate(xid, sizeof(int), sizeof(recordid));
-  
+
   lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), sizeof(recordid));
-  
+
   byte * key;
   byte * value;
   int keySize;
@@ -510,17 +507,17 @@ START_TEST(emptyHashIterator) {
   Tabort(xid);
 
   Tdeinit();
-  
+
 
 } END_TEST
 START_TEST(emptyHashIterator2) {
   Tinit();
   int xid = Tbegin();
-  
+
   recordid hash = ThashCreate(xid, sizeof(int), VARIABLE_LENGTH);
-  
+
   lladd_hash_iterator * it = ThashIterator(xid, hash, sizeof(int), VARIABLE_LENGTH);
-  
+
   byte * key;
   byte * value;
   int keySize;
@@ -533,7 +530,7 @@ START_TEST(emptyHashIterator2) {
   Tabort(xid);
 
   Tdeinit();
-  
+
 
 } END_TEST
 
@@ -562,7 +559,7 @@ Suite * check_suite(void) {
   #endif
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

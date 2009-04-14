@@ -1,4 +1,3 @@
-
 /*---
 This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
@@ -41,14 +40,12 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
-#include <stdlib.h>
-#include <stasis/compensations.h>
-
-#include <assert.h>
 #include "../check_includes.h"
 
+#include <stasis/compensations.h>
+
+#include <stdlib.h>
+#include <assert.h>
 
 #define LOG_NAME   "check_compensations.log"
 
@@ -60,13 +57,13 @@ void decrement(void * j) {
 void nested(int * i);
 void happy_nest(int * i);
 void nested2(int * i) {
-  try { 
+  try {
     nested(i);
   } end; //compensate;
   assert(0);
 }
 void nested3(int * i) {
-  try { 
+  try {
     happy_nest(i);
   } end; //compensate;
 }
@@ -75,7 +72,7 @@ void nested(int * i) {
   begin_action(decrement, i) {
     (*i)++;
     compensation_set_error(1);
-    break; 
+    break;
     assert(0);
   } end_action;
   assert(0);
@@ -87,13 +84,13 @@ void happy_nest(int * i) {
 }
 
 /**
-   @test 
+   @test
 
 */
 START_TEST(compensationTest)
 {
   compensations_init();
-  
+
   int * i = malloc (sizeof(int));
   *i = 0;
   begin_action(decrement, i) {
@@ -142,7 +139,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, compensationTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

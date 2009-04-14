@@ -1,12 +1,12 @@
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
+
 #include <stasis/transactional.h>
 #include <stasis/latches.h>
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
+
 #include <sched.h>
 #include <assert.h>
-#include "../check_includes.h"
 
 #define LOG_NAME   "check_bufferManager.log"
 #ifdef LONG_TEST
@@ -19,7 +19,7 @@
 #define RECORDS_PER_THREAD (NUM_PAGES * 5)
 
 
-#else 
+#else
 #define THREAD_COUNT 25
 #define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)
 #define PAGE_MULT 1000
@@ -71,7 +71,7 @@ void initializePages() {
 
 void * workerThread(void * p) {
   int i;
- 
+
   for(i = 0 ; i < READS_PER_THREAD; i++) {
     recordid rid;
     int j;
@@ -93,7 +93,7 @@ void * workerThread(void * p) {
     releasePage(p);
 
     assert(k == j);
-    
+
   }
 
   return NULL;
@@ -119,7 +119,7 @@ void * workerThreadWriting(void * q) {
 
     }
 
-    if(num_ops == MAX_TRANS_LENGTH) { 
+    if(num_ops == MAX_TRANS_LENGTH) {
       num_ops = 0;
       Tcommit(xid);
       xid = Tbegin();
@@ -144,7 +144,7 @@ void * workerThreadWriting(void * q) {
     lsn_t lsn = stasis_page_lsn_read(p);
     assert(lsn);
     p->LSN --; // XXX HACK -- Sooner or later this will break...
-    stasis_record_write(1, p, lsn, rids[i], (byte*)&val); 
+    stasis_record_write(1, p, lsn, rids[i], (byte*)&val);
     stasis_page_lsn_write(1,p,lsn);
     unlock(p->rwlatch);
 
@@ -166,7 +166,7 @@ void * workerThreadWriting(void * q) {
     assert(p->id == rids[i].page);
     writelock(p->rwlatch,0);
     assert(stasis_record_length_read(xid,p,rids[i]) == sizeof(int));
-    stasis_record_read(1, p, rids[i], (byte*)&val); 
+    stasis_record_read(1, p, rids[i], (byte*)&val);
     unlock(p->rwlatch);
 
     releasePage(p);
@@ -180,7 +180,7 @@ void * workerThreadWriting(void * q) {
 
     /*    sched_yield(); */
   }
-  
+
   Tcommit(xid);
   free(rids);
   return NULL;
@@ -202,8 +202,8 @@ START_TEST(pageSingleThreadTest) {
   Tdeinit();
 } END_TEST
 
-/** 
-    @test 
+/**
+    @test
 
     Spawns a bunch of threads, and has each one randomly load pages off of the disk.
 
@@ -235,7 +235,7 @@ START_TEST(pageLoadTest) {
 
 START_TEST(pageSingleThreadWriterTest) {
   int i = 100;
-  
+
   Tinit();
   pthread_mutex_init(&ralloc_mutex, NULL);
   workerThreadWriting(&i);
@@ -270,23 +270,23 @@ START_TEST(pageThreadedWritersTest) {
 #else
 #define BLIND_ITERS 1000000
 #endif
-void * blindRandomWorker(void * v) { 
+void * blindRandomWorker(void * v) {
   //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
   pageid_t * pageids = malloc(PINNED_PAGE_COUNT * sizeof(pageid_t));
   Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
 
-  for(int i = 0; i < PINNED_PAGE_COUNT; i++) { 
+  for(int i = 0; i < PINNED_PAGE_COUNT; i++) {
     pageids[i] = -1;
   }
 
-  for(int i = 0; i < BLIND_ITERS; i ++) { 
+  for(int i = 0; i < BLIND_ITERS; i ++) {
     int j = myrandom(PINNED_PAGE_COUNT);
     if(pageids[j] == -1) {
       pageids[j] = myrandom(MAX_PAGE_ID);
       pages[j] = loadPage(-1, pageids[j]);
       assert(pages[j]->id == pageids[j]);
-    } else { 
+    } else {
       //      dirtyPages_add(pages[j]); // Shouldn't affect buffermanager too much...
       assert(pages[j]->id == pageids[j]);
       releasePage(pages[j]);
@@ -297,7 +297,7 @@ void * blindRandomWorker(void * v) {
   return 0;
 }
 
-START_TEST(pageBlindRandomTest) { 
+START_TEST(pageBlindRandomTest) {
 
   Tinit();
 
@@ -305,7 +305,7 @@ START_TEST(pageBlindRandomTest) {
 
   Tdeinit();
 } END_TEST
-START_TEST(pageBlindThreadTest) { 
+START_TEST(pageBlindThreadTest) {
 
   Tinit();
 
@@ -315,10 +315,10 @@ START_TEST(pageBlindThreadTest) {
 
   pthread_t workers[THREAD_COUNT];
 
-  for(int i = 0; i < THREAD_COUNT; i++) { 
+  for(int i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&workers[i], NULL, blindRandomWorker, NULL);
   }
-  for(int i = 0; i < THREAD_COUNT; i++) { 
+  for(int i = 0; i < THREAD_COUNT; i++) {
     pthread_join(workers[i], NULL);
   }
 
@@ -339,7 +339,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageBlindThreadTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

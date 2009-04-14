@@ -39,19 +39,17 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <check.h>
+#include "../check_includes.h"
+
 #include <stasis/transactional.h>
+#include <stasis/multiplexer.h>
+#include <stasis/logger/logMemory.h>
 #include <pbl/pbl.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <config.h>
-
 #include <assert.h>
-
-#include "../check_includes.h"
-
-#include <stasis/multiplexer.h>
-#include <stasis/logger/logMemory.h>
 
 #include <sys/time.h>
 #include <time.h>
@@ -73,29 +71,29 @@ static void * go( void * arg) {
 
   pthread_mutex_lock(&mutex);
   pthread_mutex_unlock(&mutex);
-  
+
   int itRet = 0;
   while((itRet = Titerator_next(-1, it))) {
     byte * key, * value;
     int keySize, valueSize;
-    
+
     keySize   = Titerator_key  (-1, it, &key);
     valueSize = Titerator_value(-1, it, &value);
-    
+
     assert(keySize == sizeof(lsn_t));
     LogEntry * e = (LogEntry*)value;
     linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
-    
+
     assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
-    
+
     lsn_t i = *(lsn_t*)(arg+1);
     array[i]++;
     assert(array[i] == 1);
 
     Titerator_tupleDone(-1, it);
 
-  }  
+  }
   Titerator_close(-1, it);
   return NULL;
 }
@@ -104,25 +102,25 @@ static void * trygo( void * arg) {
 
   pthread_mutex_lock(&mutex);
   pthread_mutex_unlock(&mutex);
-  
+
   int itRet = 0;
   assert(it->type >= 0 && it->type < MAX_ITERATOR_TYPES);
   while((itRet = Titerator_tryNext(-1, it))) {
     assert(it->type >= 0 && it->type < MAX_ITERATOR_TYPES);
-  
+
     byte * key, * value;
     int keySize, valueSize;
-    
+
     keySize   = Titerator_key  (-1, it, &key);
     valueSize = Titerator_value(-1, it, &value);
-    
+
     assert(keySize == sizeof(lsn_t));
     LogEntry * e = (LogEntry*)value;
     linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
-    
+
     assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
-    
+
     lsn_t i = *(lsn_t*)(arg+1);
     array[i]++;
     assert(*(lsn_t*)key == i);
@@ -130,7 +128,7 @@ static void * trygo( void * arg) {
 
     Titerator_tupleDone(-1, it);
 
-  }  
+  }
   return NULL;
 }
 
@@ -139,7 +137,7 @@ static void * go2( void * arg) {
 
   pthread_mutex_lock(&mutex);
   pthread_mutex_unlock(&mutex);
-  
+
   int itRet = 0;
   while((itRet = Titerator_next(-1, it))) {
 
@@ -147,23 +145,23 @@ static void * go2( void * arg) {
     lladdFifo_t *** bdirtyFifo_ptr = &dirtyFifo_ptr;
     lladdFifo_t *  dirtyFifo;
     int dirtyFifoSize = Titerator_value(-1, it, (byte**)bdirtyFifo_ptr);
-    
+
     dirtyFifo = * dirtyFifo_ptr;
 
-    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);    
+    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);
 
     Titerator_tupleDone(-1, it);
 
     assert(dirtyFifoSize == sizeof(lladdFifo_t *));
-    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);    
+    assert(dirtyFifo->iterator->type >= 0 && dirtyFifo->iterator->type < MAX_ITERATOR_TYPES);
 
     trygo(dirtyFifo->iterator);
-  }  
+  }
   return NULL;
 }
 
 /**
-   @test 
+   @test
 
 */
 
@@ -182,12 +180,12 @@ START_TEST(multiplexTest) {
 
   array = (lsn_t*)calloc(NUM_INSERTS, sizeof(lsn_t));
 
-  for(i = 0; i < NUM_INSERTS; i++) { 
+  for(i = 0; i < NUM_INSERTS; i++) {
 
     (*(lsn_t*)(arg+1)) = i;
     LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, INVALID_PAGE, (byte*)arg,
 				       sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
-    
+
     ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(e));
 
 
@@ -203,14 +201,14 @@ START_TEST(multiplexTest) {
   //lladdFifoPool_t * fifoPool = lladdFifoPool_ringBufferInit(NUM_THREADS, NUM_BYTES_IN_FIFO, NULL, dirtyFifos);
   lladdFifoPool_t * fifoPool = lladdFifoPool_pointerPoolInit(NUM_THREADS, NUM_BYTES_IN_FIFO/10, NULL, dirtyFifos);
 
-  lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it, 
-						    &multiplexHashLogByKey, 
+  lladdMultiplexer_t * mux = lladdMultiplexer_alloc(xid, it,
+						    &multiplexHashLogByKey,
 						    fifoPool);
-  
 
-  // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.) 
 
-  
+  // now, read from fifos, checking to see if everything is well.  (Need to spawn one thread per fifo.)
+
+
   /* threads have static stack sizes.  Ughh. */
   pthread_attr_t attr;
   pthread_attr_init(&attr);
@@ -236,22 +234,22 @@ START_TEST(multiplexTest) {
 
     pthread_create(&workers[i], &attr, go, iterator);
     pthread_create(&workers[i+1], &attr, go2, dirtyFifos->iterator);
-    
+
   }
   //  printf("<-(%d)", fifoPool->fifoCount); fflush(stdout);
-				
+
   // This thread runs down the dirty list, consuming idle fifos' contents in
   // case other threads are busy, or not interested.
 
-  //  pthread_create(&cleaner, &attr, go2, dirtyFifos->iterator);  
+  //  pthread_create(&cleaner, &attr, go2, dirtyFifos->iterator);
 
   pthread_mutex_unlock(&mutex);
-  
+
   lladdMultiplexer_join(mux);
 
   for(i = 0; i < fifoPool->fifoCount; i+=2) {
-    pthread_join(workers[i], NULL);    
-    pthread_join(workers[i+1], NULL);    
+    pthread_join(workers[i], NULL);
+    pthread_join(workers[i+1], NULL);
   }
 
   for(i = 0; i < NUM_INSERTS; i++) {
@@ -274,7 +272,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, multiplexTest);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

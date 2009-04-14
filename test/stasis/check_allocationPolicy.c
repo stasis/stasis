@@ -39,14 +39,7 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-//#include <config.h>
 
-
-//#include <stdlib.h>
-//#include <stdio.h>
-
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/allocationPolicy.h>
@@ -56,10 +49,6 @@ terms specified in this license.
 #include <time.h>
 #include <assert.h>
 
-/*
-#include <sys/time.h>
-#include <time.h>
-*/
 #define LOG_NAME   "check_lhtable.log"
 
 long myrandom(long x) {
@@ -71,7 +60,7 @@ long myrandom(long x) {
 }
 
 /**
-   @test 
+   @test
 */
 
 START_TEST(allocationPolicy_smokeTest)
@@ -89,7 +78,7 @@ START_TEST(allocationPolicy_smokeTest)
   p.freespace = 100;
   p.lockCount = 0;
   (*pages[0]) = p;
-  
+
   p.pageid = 1;
   p.freespace = 100;
   (*pages[1]) = p;
@@ -103,7 +92,7 @@ START_TEST(allocationPolicy_smokeTest)
   (*pages[3]) = p;
 
   pages[4] = 0;
-  
+
   allocationPolicy * ap = allocationPolicyInit();
   allocationPolicyAddPages(ap, pages);
 
@@ -119,7 +108,7 @@ START_TEST(allocationPolicy_smokeTest)
 
   assert(p2->pageid == 3);
   allocationPolicyUpdateFreespaceLockedPage(ap, 1, p2, 0);
-  
+
   availablePage * p3 = allocationPolicyFindPage(ap, 2, 51);
   allocationPolicyAllocedFromPage(ap, 2, p3->pageid);
   assert(p1->pageid != p3->pageid);
@@ -141,7 +130,7 @@ START_TEST(allocationPolicy_smokeTest)
   allocationPolicyAllocedFromPage(ap, 2, p6->pageid);
   assert(p6->pageid == 1 || p6->pageid == 0);
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p6, 0);
- 
+
   availablePage * p7 = allocationPolicyFindPage(ap, 2, 50);
   assert(!p7);
 
@@ -152,14 +141,14 @@ START_TEST(allocationPolicy_smokeTest)
   allocationPolicyAllocedFromPage(ap, 2, p8->pageid);
 
   allocationPolicyUpdateFreespaceLockedPage(ap, 2, p8, 0);
-  
+
   allocationPolicyTransactionCompleted(ap, 2);
 
   allocationPolicyDeinit(ap);
 
   free(pages);
 
-  
+
 } END_TEST
 
 #define AVAILABLE_PAGE_COUNT_A 1000
@@ -173,9 +162,9 @@ static const int MAX_DESIRED_FREESPACE =
 #define PHASE_TWO_COUNT 500000
 static int nextxid = 0;
 int activexidcount = 0;
-static void takeRandomAction(allocationPolicy * ap, int * xids, 
-			     availablePage ** pages1, availablePage ** pages2) { 
-  switch(myrandom(6)) { 
+static void takeRandomAction(allocationPolicy * ap, int * xids,
+			     availablePage ** pages1, availablePage ** pages2) {
+  switch(myrandom(6)) {
   case 0 : {   // find page
     int thexid = myrandom(XACT_COUNT);
     if(xids[thexid] == -1) {
@@ -243,33 +232,33 @@ static void takeRandomAction(allocationPolicy * ap, int * xids,
 
 }
 
-START_TEST(allocationPolicy_randomTest) { 
+START_TEST(allocationPolicy_randomTest) {
 
-  struct timeval time; 
+  struct timeval time;
   gettimeofday(&time,0);
   long seed =  time.tv_usec + time.tv_sec * 1000000;
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
-  availablePage ** pages1 = 
+  availablePage ** pages1 =
     malloc((1+AVAILABLE_PAGE_COUNT_A) * sizeof(availablePage *));
-  availablePage ** pages2 = 
+  availablePage ** pages2 =
     malloc((1+AVAILABLE_PAGE_COUNT_B) * sizeof(availablePage *));
 
   int * xids = malloc(sizeof(int) * XACT_COUNT);
-  
-  for(int i = 0; i < XACT_COUNT; i++) { 
+
+  for(int i = 0; i < XACT_COUNT; i++) {
     xids[i] = -1;
   }
 
-  for(int i = 0; i < AVAILABLE_PAGE_COUNT_A; i++) { 
+  for(int i = 0; i < AVAILABLE_PAGE_COUNT_A; i++) {
     pages1[i] = malloc(sizeof(availablePage));
     pages1[i]->pageid = i;
     pages1[i]->freespace = i * FREE_MUL;
     pages1[i]->lockCount = 0;
   }
   pages1[AVAILABLE_PAGE_COUNT_A] = 0;
-  for(int i = 0 ; i < AVAILABLE_PAGE_COUNT_B; i++) { 
+  for(int i = 0 ; i < AVAILABLE_PAGE_COUNT_B; i++) {
     pages2[i] = malloc(sizeof(availablePage));
     pages2[i]->pageid = AVAILABLE_PAGE_COUNT_A + i;
     pages2[i]->freespace = (AVAILABLE_PAGE_COUNT_A + i) * FREE_MUL;
@@ -281,14 +270,14 @@ START_TEST(allocationPolicy_randomTest) {
 
   allocationPolicyAddPages(ap, pages1);
 
-  for(int k = 0; k < PHASE_ONE_COUNT; k++) { 
+  for(int k = 0; k < PHASE_ONE_COUNT; k++) {
     // Don't pass in pages2; ap doesn't know about them yet!
     takeRandomAction(ap, xids, pages1, 0);
   }
 
   allocationPolicyAddPages(ap, pages2);
 
-  for(int k = 0; k < PHASE_TWO_COUNT; k++) { 
+  for(int k = 0; k < PHASE_TWO_COUNT; k++) {
     takeRandomAction(ap, xids, pages1, pages2);
   }
 

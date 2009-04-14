@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -39,24 +39,21 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
+
 #include <stasis/transactional.h>
-
-
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
-#include "../check_includes.h"
+
 #include <assert.h>
 
 #define LOG_NAME   "check_blobRecovery.log"
-
 
 #define ARRAY_SIZE 20321
 
 
 static void arraySet(int * a, int mul) {
-  int i; 
+  int i;
 
   for ( i = 0 ; i < ARRAY_SIZE; i++) {
     a[i]= mul*i;
@@ -76,7 +73,7 @@ static int arryCmp(int * a, int * b) {
     Only performs idempotent operations (Tset).
 */
 START_TEST (recoverBlob__idempotent) {
-  int xid; 
+  int xid;
 
 
   int j[ARRAY_SIZE];
@@ -85,7 +82,7 @@ START_TEST (recoverBlob__idempotent) {
   recordid rid;
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, ARRAY_SIZE * sizeof(int));
   assert(TrecordSize(xid, rid) == (ARRAY_SIZE * sizeof(int)));
   arraySet(j, 1);
@@ -96,24 +93,24 @@ START_TEST (recoverBlob__idempotent) {
   fail_unless(!memcmp(j, k, ARRAY_SIZE * sizeof(int)), "Get/Set broken?");
 
   arraySet(k, 12312);
- 
+
   Tcommit(xid);
 
   xid = Tbegin();
 
   Tread(xid, rid, k);
-  
+
   fail_unless(!memcmp(j, k, ARRAY_SIZE * sizeof(int)), "commit broken");
 
   Tcommit(xid);
-  
+
   Tdeinit();
 
   Tinit();  /* Runs recoverBlob_.. */
 
   arraySet(k, 12312);
 
-  xid = Tbegin(); 
+  xid = Tbegin();
 
   Tread(xid, rid, k);
 
@@ -130,7 +127,7 @@ END_TEST
     @test
     Simple test: Alloc a blob, commit.  Call Tincrement on it, and
     remember its value and commit.  Then, call Tdeinit() and Tinit()
-    (Which initiates recovery), and see if the value changes.  
+    (Which initiates recovery), and see if the value changes.
 
     @todo:  Until we have a non-idempotent operation on blobs, this test can't be written.
 */
@@ -144,24 +141,24 @@ END_TEST
     Makes sure that aborted idempotent operations are correctly undone.
 */
 START_TEST (recoverBlob__idempotentAbort) {
-  
-  int xid; 
+
+  int xid;
   int j[ARRAY_SIZE];
   int k[ARRAY_SIZE];
   recordid rid;
 
   Tinit();
   xid = Tbegin();
-  
+
   rid = Talloc(xid, ARRAY_SIZE * sizeof(int));
 
   arraySet(j, 1);
- 
+
   Tset(xid, rid, j);
 
   arraySet(k, 2);
   Tread(xid, rid, k);
- 
+
   fail_unless(!memcmp(j, k, ARRAY_SIZE * sizeof(int)), "Get/set broken?!");
 
   Tcommit(xid);
@@ -169,7 +166,7 @@ START_TEST (recoverBlob__idempotentAbort) {
   xid = Tbegin();
   arraySet(k, 3);
   Tread(xid, rid, k);
-  
+
   fail_unless(!memcmp(j, k, ARRAY_SIZE * sizeof(int)), "commit broken?");
 
   Tcommit(xid);
@@ -203,7 +200,7 @@ START_TEST (recoverBlob__idempotentAbort) {
 
   arraySet(k, 12312);
 
-  xid = Tbegin(); 
+  xid = Tbegin();
 
   Tread(xid, rid, k);
 
@@ -251,7 +248,7 @@ START_TEST(recoverBlob__crash) {
   int k[ARRAY_SIZE];
 
   Tinit();
-  
+
   xid = Tbegin();
   rid = Talloc(xid, sizeof(int)* ARRAY_SIZE);
 
@@ -263,7 +260,7 @@ START_TEST(recoverBlob__crash) {
 
   Tset(xid, rid, &j);
 
-  
+
   /* RID = 9. */
 
   Tread(xid, rid, &j);
@@ -274,7 +271,7 @@ START_TEST(recoverBlob__crash) {
 
   Tcommit(xid);
   xid = Tbegin();
-  
+
   arraySet(k, 6);
 
   Tset(xid, rid, &k);
@@ -293,7 +290,7 @@ START_TEST(recoverBlob__crash) {
 
   arraySet(k, 9);
 
-  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)), 
+  fail_unless(!memcmp(j,k,ARRAY_SIZE * sizeof(int)),
               "Recovery didn't roll back in-progress xact!");
 
   Tdeinit();
@@ -405,7 +402,7 @@ START_TEST(recoverBlob__allocation) {
 /*START_TEST (recoverBlob__multiple_xacts) {
 } END_TEST*/
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {
@@ -414,7 +411,7 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("recovery");
 
   tcase_set_timeout(tc, 0); // disable timeouts
-  if(LOG_TO_MEMORY != stasis_log_type) { 
+  if(LOG_TO_MEMORY != stasis_log_type) {
     /* void * foobar; */  /* used to supress warnings. */
     /* Sub tests are added, one per line, here */
     tcase_add_test(tc, recoverBlob__idempotent);

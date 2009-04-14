@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -41,11 +41,7 @@ terms specified in this license.
 ---*/
 
 #include <config.h>
-#include <check.h>
-/*#include <assert.h> */
 
-//#include <lladd/transactional.h>
-//#include "../../src/lladd/logger/logWriter.h"
 #include "../check_includes.h"
 #include <assert.h>
 #include <libdfa/networksetup.h>
@@ -68,7 +64,7 @@ callback_fcn recv_ping, recv_pong;
 int global_kill = 100000;
 
 
-/** 
+/**
     @test
 */
 START_TEST (pingpong_check) {
@@ -77,7 +73,7 @@ START_TEST (pingpong_check) {
 //int main (int argc, char** argv) {
   DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
-      
+
   Transition * transitions = malloc (sizeof(Transition) * 4);
 
   State * states = malloc(sizeof(State) * MAX_STATE_COUNT);
@@ -90,27 +86,27 @@ START_TEST (pingpong_check) {
   for(i = 0; i < DFA_MACHINE_COUNT/4; i++) {
     /*    StateMachine initial_sm1_stack;
 	  StateMachine initial_sm2_stack;*/
-    
+
     /*    initial_sm1 = allocMachine(&(dfaSet->monoTree));
 	  initial_sm2 = allocMachine(&(dfaSet->monoTree)); */
 
     initial_sm1 = allocSmash(dfaSet->smash);
     initial_sm2 = allocSmash(dfaSet->smash);
 
-    
+
     initial_sm1->message.from_machine_id = initial_sm1->machine_id;
     initial_sm1->message.to_machine_id = initial_sm2->machine_id;
     initial_sm2->message.from_machine_id = initial_sm2->machine_id;
     initial_sm2->message.to_machine_id = initial_sm1->machine_id;
-    
+
     DEBUG("sm1 %ld, sm2 %ld\n", initial_sm1->machine_id, initial_sm2->machine_id);
-    
+
     initial_sm1->current_state = PING1;
     initial_sm2->current_state = PONG1;
-    
+
     initial_sm1->last_transition = (time_t)0;
     initial_sm2->last_transition = (time_t)0;
-    
+
     strcpy(initial_sm1->message_recipient, "127.0.0.1:10000");
     strcpy(initial_sm2->message_recipient, "127.0.0.1:10000");
   }
@@ -118,25 +114,25 @@ START_TEST (pingpong_check) {
   states[0].name      = PING1;
   states[0].retry_fcn = NULL;
   states[0].abort_fcn = NULL;
-  
+
   states[1].name      = PING2;
   states[1].retry_fcn = NULL;
   states[1].abort_fcn = NULL;
-  
+
   states[2].name      = PONG1;
   states[2].retry_fcn = NULL;
   states[2].abort_fcn = NULL;
-  
+
   states[3].name      = PONG2;
   states[3].retry_fcn = NULL;
   states[3].abort_fcn = NULL;
-  
+
   transitions[0].remote_state   = PONG1;
   transitions[0].pre_state = PING1;
   transitions[0].post_state= PING2;
   transitions[0].fcn_ptr   = &recv_ping;
   transitions[0].force     = 0;
-  
+
   transitions[1].remote_state   = PONG2;
   transitions[1].pre_state = PING2;
   transitions[1].post_state= PING1;
@@ -160,7 +156,7 @@ START_TEST (pingpong_check) {
   }
 
   main_loop(dfaSet);
-  
+
   /* Can't get here. */
 //  return 0;
 }
@@ -193,7 +189,7 @@ state_name recv_pong(void * dfaSet, StateMachine * stateMachine, Message * m, ch
   }
 }
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {

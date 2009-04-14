@@ -40,13 +40,9 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
-
-
 #include <stasis/page.h>
 
 #include <assert.h>
@@ -71,10 +67,10 @@ START_TEST(bTreeTest)
 } END_TEST
 
 /* This only takes in a page that is already initialized as a fixed page.
-   and has been initialized as a BTree Node, which involves placing an 
-   index to tell how many entries are currently valid. 
-   For now it will just return false if you try to add something to it 
-   when it is already full. 
+   and has been initialized as a BTree Node, which involves placing an
+   index to tell how many entries are currently valid.
+   For now it will just return false if you try to add something to it
+   when it is already full.
 */
 int insert(int xid, Page* p, int valueIn){
   printf ("\nbegin insert\n");
@@ -90,7 +86,7 @@ int insert(int xid, Page* p, int valueIn){
   recordid rid = { p->id, 0, sizeof(int)};
 
 
-  // if DEBUGERROR ==1 this causes a seg fault below! 
+  // if DEBUGERROR ==1 this causes a seg fault below!
   if (DEBUGERROR) {printf("\n***page->id  = %lld\n", p->id);}
   printf("\n***rid.page  = %lld\n\n", (long long)rid.page);
 
@@ -98,7 +94,7 @@ int insert(int xid, Page* p, int valueIn){
   if(DEBUG) {printf("\nrid.page  = %lld\n", (long long)rid.page);}
   if(DEBUG) {printf("\nrid.slot  = %lld\n", (long long)rid.slot);}
 
-  
+
   // Figure out how many entries are in the node
   rid.slot = 0; // need to get the variable in slot 0
 
@@ -119,20 +115,20 @@ int insert(int xid, Page* p, int valueIn){
 
   printf("\nrid2slot  = %d\n", rid.slot);
 
-  // *recordcount_ptr(p) = last accessible index on the page. 
-  int max_index = stasis_fixed_records_per_page(rid.size); // rcs made this change.  
+  // *recordcount_ptr(p) = last accessible index on the page.
+  int max_index = stasis_fixed_records_per_page(rid.size); // rcs made this change.
   //  int max_index = *recordcount_ptr(p);     // recordcount_ptr is the number of slots currently allocated on the page.
                                                // but this code seems to do it's own allocation(?)
 
 
   //THESE LINES WERE CAUSING A SEGFAULT! *******************************************
-  if (DEBUGERROR2) {printf("\nx  = %d\n", max_index);} // This causes a segfault after Debug2 
-  
+  if (DEBUGERROR2) {printf("\nx  = %d\n", max_index);} // This causes a segfault after Debug2
+
   // HACK! TO FIX THE ABOVE PROBLEM!
   //  max_index = 1021;
 
   // assert that max_index is greater than our record of how many
-  // entries we currently have on the page. 
+  // entries we currently have on the page.
   assert(max_index>rid.slot);
 
 
@@ -153,7 +149,7 @@ int insert(int xid, Page* p, int valueIn){
   // to insert the new value.
   while ( (rid.slot >= 1) && (insertLocation == 1)){
 
-    // TODO: JuSt haven't filled in the code here yet... 
+    // TODO: JuSt haven't filled in the code here yet...
     insertLocation =2;
   }
 
@@ -167,32 +163,32 @@ int insert(int xid, Page* p, int valueIn){
   printf("\n***page->id  = %lld\n", p->id);
   printf("\n***rid.page  = %lld\n", (long long)rid.page);
 
- 
+
   return 0;
 
 }
 
 /* This takes a page that is already initialized and a
-   corresponding rid and initalizes the count value for  
-   it to be a BTreeNode. Just puts the value 0 in the  
-   first index of the page. 
+   corresponding rid and initalizes the count value for
+   it to be a BTreeNode. Just puts the value 0 in the
+   first index of the page.
 */
 void initializeNewBTreeNode(int xid, Page* p){
-  
-  // need access to the first slot 
+
+  // need access to the first slot
   recordid rid = { p->id, 0, sizeof(int)};
 
   // prepare the value to go into the first slot
-  int countInt = 0; 
+  int countInt = 0;
   byte * countBuff = (byte *) & countInt;
-  
+
   // write the count out
-  stasis_record_write(xid, p, 1, rid, countBuff); 
+  stasis_record_write(xid, p, 1, rid, countBuff);
 
 }
 void testFunctions(){
   printf("testing functions");
-  
+
   // getting things ready
   int xid = Tbegin();
   pageid_t pageid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
@@ -228,24 +224,24 @@ int SimpleExample(){
 
 
   pageid_t pageid1 = TfixedPageAlloc(xid, sizeof(int)); // this does the initialize
-  
+
   Page *  p1 = loadPage(xid, pageid1);
   writelock(p1->rwlatch, 0);
   if(DEBUGP) {  printf("\n**** page->id  = %lld\n", p1->id);}
 
-  /* check consistency between rid & page's values 
+  /* check consistency between rid & page's values
    * for number of slots and record size */
   assert (p1->id == pageid1);
 
 
   /* check to make sure page is recorded as a FIXED_PAGE */
   assert( *stasis_page_type_ptr(p1) == FIXED_PAGE);
-  
+
   if (DEBUGP) { printf("\n%lld\n", (long long)pageid1); }
   byte * b1 = (byte *) malloc (sizeof (int));
   byte * b2 = (byte *) malloc (sizeof (int));
   byte * b3 = (byte *) malloc (sizeof (int));
-  //  int x = *recordcount_ptr(p1); 
+  //  int x = *recordcount_ptr(p1);
   int x = 42; //  rcs - recordcount_ptr is no longer exposed here...
   int y = 0; //rid1.slot;
   int z = 256;
@@ -253,10 +249,10 @@ int SimpleExample(){
   b1 = (byte *) & x;
   b2 = (byte *) & y;
   b3 = (byte *) & z;
- 
+
   int * x1 = (int *) b1;
-  
-  
+
+
   if (DEBUGP) { printf("\nx  = %d\n", x);}
   if (DEBUGP) { printf("\nb1 = %d\n", *b1);}
   if (DEBUGP) { printf("\nx1  = %d\n", *x1);}
@@ -264,7 +260,7 @@ int SimpleExample(){
   if (DEBUGP) { printf("\nb2  = %d\n", *b2);}
   if (DEBUGP) { printf("\nz = %d\n", z);}
   if (DEBUGP) { printf("\nb3 = %d\n", *b3);}
-  
+
   recordid rid1 = { pageid1, 0,sizeof(int)};
 
   // @todo This is a messy way to do this...
@@ -273,7 +269,7 @@ int SimpleExample(){
   stasis_record_read(xid, p1, rid1, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 
-  //  initializeNewBTreeNode(p1, rid1); 
+  //  initializeNewBTreeNode(p1, rid1);
 
   unlock(p1->rwlatch);
 
@@ -294,17 +290,17 @@ Suite * check_suite(void) {
   /* Begin a new test */
   TCase *tc = tcase_create("simple");
 
-  tcase_set_timeout(tc, 0); // disable timeouts if test takes more than 2 sec - it would get killed 
+  tcase_set_timeout(tc, 0); // disable timeouts if test takes more than 2 sec - it would get killed
 
   /* Sub tests are added, one per line, here */
    tcase_add_test(tc, bTreeTest);
 
    //  tcase_add_test(tc, simpleLinearHashTest); // put back in if playing with hashtable
 
-  
+
   /* --------------------------------------------- */
-  
-   tcase_add_checked_fixture(tc, setup, teardown);// leave stuff below here. 
+
+   tcase_add_checked_fixture(tc, setup, teardown);// leave stuff below here.
 
   suite_add_tcase(s, tc);
   return s;

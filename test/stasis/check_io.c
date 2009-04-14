@@ -1,4 +1,4 @@
-/*--- This software is copyrighted by the Regents of the University 
+/*--- This software is copyrighted by the Regents of the University
 of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
@@ -39,17 +39,14 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <check.h>
-#include <config.h>
+#include "../check_includes.h"
+
 #include <stasis/io/handle.h>
 
 #include <assert.h>
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#include "../check_includes.h"
 
 #define LOG_NAME   "check_io.log"
 
@@ -88,7 +85,7 @@ void handle_smoketest(stasis_handle_t * h) {
   stasis_write_buffer_t * w = h->write_buffer(h, sizeof(int), sizeof(int));
   *((int*)(w->buf)) = two;
   w->h->release_write_buffer(w);
-  one_read = 0;  
+  one_read = 0;
   stasis_read_buffer_t * r = h->read_buffer(h, 0, sizeof(int));
   one_read = *((int*)(r->buf));
   r->h->release_read_buffer(r);
@@ -97,9 +94,9 @@ void handle_smoketest(stasis_handle_t * h) {
   int two_read = 0;
   assert(! h->read(h, sizeof(int), (byte*)&two_read, sizeof(int)));
   assert(two == two_read);
-  
+
   assert(! h->append(h, &off, (byte*)&three, sizeof(int)));
-  
+
   w = h->append_buffer(h, sizeof(int));
   memcpy(w->buf, &four, sizeof(int));
   w->h->release_write_buffer(w);
@@ -108,7 +105,7 @@ void handle_smoketest(stasis_handle_t * h) {
   }
   int three_read = 0;
   int four_read = 0;
-  ret = h->read(h, 2*sizeof(int), (byte*)&three_read, sizeof(int)); 
+  ret = h->read(h, 2*sizeof(int), (byte*)&three_read, sizeof(int));
   assert(!ret);
 
   r = h->read_buffer(h, 3*sizeof(int), sizeof(int));
@@ -121,7 +118,7 @@ void handle_smoketest(stasis_handle_t * h) {
 }
 
 
-typedef struct { 
+typedef struct {
   int * values;
   int count;
   stasis_handle_t * h;
@@ -136,34 +133,34 @@ pthread_mutex_t trunc_mut = PTHREAD_MUTEX_INITIALIZER;
 
 void load_handle(thread_arg* t) {
   lsn_t * offsets = malloc(t->count * sizeof(lsn_t));
-  
+
   stasis_handle_t * h = t->h;
 
-  for(int i = 0; i < t->count; i++) { 
+  for(int i = 0; i < t->count; i++) {
     offsets[i] = -1;
   }
 
-  for(int i = 0; i < OPS_PER_THREAD; i++) { 
+  for(int i = 0; i < OPS_PER_THREAD; i++) {
     int val = myrandom(t->count);
-    
-    if(offsets[val] == -1) { 
+
+    if(offsets[val] == -1) {
       // Need to write it somewhere.
-      
+
       long choice = myrandom(4);
-      
-      switch(choice) { 
+
+      switch(choice) {
       case 0: {	  // overwrite old entry with write()
 	long val2 = myrandom(t->count);
 	offsets[val] = offsets[val2];
 	offsets[val2] = -1;
-	if(offsets[val] != -1) { 
+	if(offsets[val] != -1) {
 	  int ret = h->write(h, offsets[val], (const byte*)&(t->values[val]), sizeof(int));
 	  if(ret) {
 	    assert(ret == EDOM);
 	    offsets[val] = -1;
 	    i--;
 	  }
-	} else { 
+	} else {
 	  i--;
 	}
       } break;
@@ -171,20 +168,20 @@ void load_handle(thread_arg* t) {
 	long val2 = myrandom(t->count);
 	offsets[val] = offsets[val2];
 	offsets[val2] = -1;
-	if(offsets[val] != -1) { 
+	if(offsets[val] != -1) {
 	  stasis_write_buffer_t * w = h->write_buffer(h, offsets[val], sizeof(int));
-	  if(!w->error) { 
+	  if(!w->error) {
 	    *((int*)w->buf) = t->values[val];
 	    assert(w->len == sizeof(int));
 	    assert(w->off == offsets[val]);
-	  } else { 
+	  } else {
 	    assert(w->error == EDOM);
-	    offsets[val] = -1; 
+	    offsets[val] = -1;
 	    i--;
 	  }
 	  w->h->release_write_buffer(w);
 	} else {
-	  i--; 
+	  i--;
 	}
       } break;
       case 2: {	  // append
@@ -208,24 +205,24 @@ void load_handle(thread_arg* t) {
 	abort();
       }
       }
-      
+
       int check;
       int ret = h->read(h, offsets[val], (byte*)&check, sizeof(int));
-      if(!ret) { 
+      if(!ret) {
 	assert(check == t->values[val]);
       }
-      
+
 
     } else {
       // Read the value.
-      
+
       long choice = myrandom(2);
-      
-      switch(choice) { 
+
+      switch(choice) {
       case 0: {   // read
 	int j = -1;
 	int ret = h->read(h, offsets[val], (byte*)&j, sizeof(int));
-	if(!ret) { 
+	if(!ret) {
 	  assert(j == t->values[val]);
 	} else {
 	  assert(ret == EDOM);
@@ -234,7 +231,7 @@ void load_handle(thread_arg* t) {
       } break;
       case 1: {   // read_buffer
 	stasis_read_buffer_t * r = h->read_buffer(h, offsets[val], sizeof(int));
-	if(!r->error) { 
+	if(!r->error) {
 	  assert(*(int*)(r->buf) == t->values[val]);
 	  assert(r->len == sizeof(int));
 	  r->h->release_read_buffer(r);
@@ -247,7 +244,7 @@ void load_handle(thread_arg* t) {
       default:
 	abort();
       };
-      
+
     }
     // Force 1% of the time.
     if(!myrandom(100)) {
@@ -257,18 +254,18 @@ void load_handle(thread_arg* t) {
     // Truncate 1% of the time.
     if(!myrandom(100) && handle_truncate_is_supported) {
       lsn_t pre_start = h->start_position(h);
-      
+
       pthread_mutex_lock(&trunc_mut);
       lsn_t start = trunc_val;
       lsn_t stop   = start - 100 + myrandom(200);
-      if(stop > trunc_val) { 
+      if(stop > trunc_val) {
 	trunc_val = stop;
       }
       pthread_mutex_unlock(&trunc_mut);
 
       assert(pre_start <= start);
       int ret = h->truncate_start(h, stop);
-      if(!ret) { 
+      if(!ret) {
 	lsn_t post_stop = h->start_position(h);
 	assert(stop <= post_stop);
       }
@@ -277,7 +274,7 @@ void load_handle(thread_arg* t) {
   free(offsets);
 }
 
-void handle_sequentialtest(stasis_handle_t * h) { 
+void handle_sequentialtest(stasis_handle_t * h) {
   time_t seed = time(0);
   printf("Seed = %ld\n", seed);
   srandom(seed);
@@ -294,7 +291,7 @@ void handle_sequentialtest(stasis_handle_t * h) {
   free(values);
 }
 
-void handle_concurrencytest(stasis_handle_t * h) { 
+void handle_concurrencytest(stasis_handle_t * h) {
   int vc = myrandom(VALUE_COUNT) + 10;
 
   printf("Running concurrency test with %d values", vc); fflush(stdout);
@@ -304,10 +301,10 @@ void handle_concurrencytest(stasis_handle_t * h) {
   for(int i = 0; i < vc; i++) {
     values[i] = i;
   }
-  
+
   thread_arg * args = malloc(THREAD_COUNT * sizeof(thread_arg));
   pthread_t * threads = malloc(THREAD_COUNT * sizeof(pthread_t));
-  
+
   int val_per_thread = vc / THREAD_COUNT;
   trunc_val = 0;
   for(int i = 0; i < THREAD_COUNT; i++) {
@@ -325,7 +322,7 @@ void handle_concurrencytest(stasis_handle_t * h) {
   free(threads);
 }
 /**
-   @test 
+   @test
    Check the memory I/O handle.
 */
 START_TEST(io_memoryTest) {
@@ -345,7 +342,7 @@ START_TEST(io_memoryTest) {
   h->close(h);
 } END_TEST
 
-START_TEST(io_fileTest) { 
+START_TEST(io_fileTest) {
   printf("io_fileTest\n"); fflush(stdout);
   stasis_handle_t * h;
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
@@ -370,14 +367,14 @@ START_TEST(io_fileTest) {
 
 } END_TEST
 
-static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) { 
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
   stasis_handle_t * h = stasis_handle(open_memory)(off);
   //  h = stasis_handle(open_debug)(h);
   stasis_write_buffer_t * w = h->append_buffer(h, len);
   w->h->release_write_buffer(w);
-  
+
   return h;
-  
+
 }
 
 START_TEST(io_pfileTest) {
@@ -414,18 +411,18 @@ typedef struct sf_args {
   int    filePerm;
 } sf_args;
 
-static stasis_handle_t * slow_factory(void * argsP) { 
+static stasis_handle_t * slow_factory(void * argsP) {
   sf_args * args = (sf_args*) argsP;
   return stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
 }
 
-START_TEST(io_nonBlockingTest) { 
+START_TEST(io_nonBlockingTest) {
   printf("io_nonBlockingTest\n"); fflush(stdout);
   stasis_handle_t * h;
 
   sf_args slow_args = {
     "logfile.txt",
-    O_CREAT | O_RDWR, 
+    O_CREAT | O_RDWR,
     FILE_PERM
   };
 
@@ -458,7 +455,7 @@ START_TEST(io_nonBlockingTest) {
 } END_TEST
 
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {

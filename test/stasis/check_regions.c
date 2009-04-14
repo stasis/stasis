@@ -38,14 +38,14 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <check.h>
-#include <config.h>
+#include "../check_includes.h"
+
 #include <stasis/common.h>
 #include <stasis/latches.h>
+#include <stasis/transactional.h>
+
 #include <assert.h>
 
-#include <stasis/transactional.h>
-#include "../check_includes.h"
 #define LOG_NAME   "check_regions.log"
 
 pageid_t myrandom(pageid_t x) {
@@ -67,44 +67,44 @@ START_TEST(regions_smokeTest) {
   pageid_t max_page = 0;
   pageid_t page = TregionAlloc(xid, 100, 0);
   pageid_t new_page = page;
-  if(new_page + 1 + 100 > max_page) { 
+  if(new_page + 1 + 100 > max_page) {
     max_page = new_page + 1 + 100;
   }
 
   new_page = TregionAlloc(xid, 1, 0);
-  if(new_page + 2 > max_page) { 
+  if(new_page + 2 > max_page) {
     max_page = new_page + 2;
   }
   TregionDealloc(xid, page);
 
   pageid_t pages[50];
 
-  for(int i = 0; i < 50; i++) { 
+  for(int i = 0; i < 50; i++) {
     new_page = TregionAlloc(xid, 1, 0);
     pages[i] = new_page;
-    if(new_page + 2 > max_page) { 
+    if(new_page + 2 > max_page) {
       max_page = new_page + 2;
     }
   }
 
-  for(int i = 0; i < 50; i+=2) { 
+  for(int i = 0; i < 50; i+=2) {
     TregionDealloc(xid, pages[i]);
   }
 
   Tcommit(xid);
 
   xid = Tbegin();
-  for(int i = 0; i < 50; i+=2) { 
+  for(int i = 0; i < 50; i+=2) {
     new_page = TregionAlloc(xid, 1, 0);
-    if(new_page + 2 > max_page) { 
+    if(new_page + 2 > max_page) {
       max_page = new_page + 2;
     }
   }
   Tabort(xid);
   xid = Tbegin();
-  for(int i = 0; i < 50; i+=2) { 
+  for(int i = 0; i < 50; i+=2) {
     new_page = TregionAlloc(xid, 1, 0);
-    if(new_page + 2 > max_page) { 
+    if(new_page + 2 > max_page) {
       max_page = new_page + 2;
     }
   }
@@ -119,7 +119,7 @@ START_TEST(regions_smokeTest) {
 }
 END_TEST
 
-START_TEST(regions_randomizedTest) { 
+START_TEST(regions_randomizedTest) {
   Tinit();
   time_t seed = time(0);
   printf("Seed = %ld: ", seed);
@@ -132,22 +132,22 @@ START_TEST(regions_randomizedTest) {
   pageid_t max_waste = 0;
   pageid_t max_size = 0;
   pageid_t max_ideal_size = 0;
-  for(int i = 0; i < 10000; i++) { 
-    if(!(i % 100)) { 
+  for(int i = 0; i < 10000; i++) {
+    if(!(i % 100)) {
       Tcommit(xid);
       xid = Tbegin();
     }
-    if(!(i % 100)) { 
+    if(!(i % 100)) {
       fsckRegions(xid);
     }
 
-    if(myrandom(2)) { 
+    if(myrandom(2)) {
       unsigned int size = myrandom(100);
       TregionAlloc(xid, size, 0);
       pagesAlloced += size;
       regionsAlloced ++;
     } else {
-      if(regionsAlloced) { 
+      if(regionsAlloced) {
 	pageid_t victim = myrandom(regionsAlloced);
 	pageid_t victimSize;
 	pageid_t victimPage;
@@ -155,34 +155,34 @@ START_TEST(regions_randomizedTest) {
 	TregionDealloc(xid, victimPage);
 	pagesAlloced -= victimSize;
 	regionsAlloced --;
-      } else { 
+      } else {
 	i--;
       }
     }
 
-    if(regionsAlloced) { 
+    if(regionsAlloced) {
       pageid_t lastRegionStart;
       pageid_t lastRegionSize;
-      
+
       TregionFindNthActive(xid, regionsAlloced-1, &lastRegionStart, &lastRegionSize);
       pageid_t length = lastRegionStart + lastRegionSize+1;
       pageid_t ideal  = pagesAlloced + regionsAlloced + 1;
       double blowup = (double)length/(double)ideal;
       unsigned long long bytes_wasted = length - ideal;
       // printf("Region count = %d, blowup = %d / %d = %5.2f\n", regionsAlloced, length, ideal, blowup);
-      if(max_blowup < blowup) { 
+      if(max_blowup < blowup) {
 	max_blowup = blowup;
       }
-      if(max_waste < bytes_wasted) { 
+      if(max_waste < bytes_wasted) {
 	max_waste = bytes_wasted;
       }
-      if(max_size < length) { 
+      if(max_size < length) {
 	max_size = length;
       }
-      if(max_ideal_size < ideal) { 
+      if(max_ideal_size < ideal) {
 	max_ideal_size = ideal;
       }
-      if(max_region_count < regionsAlloced) { 
+      if(max_region_count < regionsAlloced) {
 	max_region_count = regionsAlloced;
       }
     }
@@ -191,19 +191,19 @@ START_TEST(regions_randomizedTest) {
   Tcommit(xid);
 
   Tdeinit();
-  if((double)max_size/(double)max_ideal_size > 5) {  
+  if((double)max_size/(double)max_ideal_size > 5) {
     // max_blowup isn't what we want here; it measures the peak
     // percentage of the file that is unused.  Instead, we want to
     // measure the actual and ideal page file sizes for this run.
     printf("WARNING: Excessive blowup ");
-  } 
+  }
   printf("Max # of regions = %lld, page file size = %5.2fM, ideal page file size = %5.2fM, (blowup = %5.2f)\n",
-	 //peak bytes wasted = %5.2fM, blowup = %3.2f\n", 
-	 max_region_count, 
-	 ((double)max_size * PAGE_SIZE)/(1024.0*1024.0), 
-	 ((double)max_ideal_size * PAGE_SIZE)/(1024.0*1024.0), 
+	 //peak bytes wasted = %5.2fM, blowup = %3.2f\n",
+	 max_region_count,
+	 ((double)max_size * PAGE_SIZE)/(1024.0*1024.0),
+	 ((double)max_ideal_size * PAGE_SIZE)/(1024.0*1024.0),
 	 (double)max_size/(double)max_ideal_size);
-  //	 ((double)max_waste * PAGE_SIZE)/(1024.0*1024.0), 
+  //	 ((double)max_waste * PAGE_SIZE)/(1024.0*1024.0),
   //	 max_blowup);
 
 } END_TEST
@@ -214,13 +214,13 @@ START_TEST(regions_lockSmokeTest) {
   pageid_t pageid = TregionAlloc(xid, 100,0);
   fsckRegions(xid);
   Tcommit(xid);
-  
+
 
   xid = Tbegin();
   int xid2 = Tbegin();
 
   TregionDealloc(xid, pageid);
-  
+
   for(int i = 0; i < 50; i++) {
     TregionAlloc(xid2, 1, 0);
   }
@@ -232,9 +232,9 @@ START_TEST(regions_lockSmokeTest) {
   Tdeinit();
 } END_TEST
 
-START_TEST(regions_lockRandomizedTest) { 
+START_TEST(regions_lockRandomizedTest) {
   Tinit();
-  
+
   const int NUM_XACTS = 100;
   const int NUM_OPS   = 10000;
   const int FUDGE = 10;
@@ -242,14 +242,14 @@ START_TEST(regions_lockRandomizedTest) {
 
   pageid_t * xidRegions[NUM_XACTS + FUDGE];
   int xidRegionCounts[NUM_XACTS + FUDGE];
-  
+
   int longXid = Tbegin();
 
   time_t seed = time(0);
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
-  for(int i = 0; i < NUM_XACTS; i++) { 
+  for(int i = 0; i < NUM_XACTS; i++) {
     xids[i] = Tbegin();
     assert(xids[i] < NUM_XACTS + FUDGE);
     xidRegions[xids[i]] = malloc(sizeof(pageid_t) * NUM_OPS);
@@ -257,23 +257,23 @@ START_TEST(regions_lockRandomizedTest) {
   }
   int activeXacts = NUM_XACTS;
 
-  for(int i = 0; i < NUM_OPS; i++) { 
+  for(int i = 0; i < NUM_OPS; i++) {
     pageid_t j;
-    if(!(i % (NUM_OPS/NUM_XACTS))) { 
+    if(!(i % (NUM_OPS/NUM_XACTS))) {
       // abort or commit one transaction randomly.
       activeXacts --;
       j = myrandom(activeXacts);
 
       if(myrandom(2)) {
 	Tcommit(xids[j]);
-      } else { 
+      } else {
 	Tabort(xids[j]);
       }
 
-      if(activeXacts == 0) { 
+      if(activeXacts == 0) {
 	break;
       }
-      for(; j < activeXacts; j++) { 
+      for(; j < activeXacts; j++) {
 	xids[j] = xids[j+1];
       }
       fsckRegions(longXid);
@@ -288,20 +288,20 @@ START_TEST(regions_lockRandomizedTest) {
     } else {
       // free
       if(xidRegionCounts[xids[j]]) {
-	pageid_t k = myrandom(xidRegionCounts[xids[j]]); 
-	
+	pageid_t k = myrandom(xidRegionCounts[xids[j]]);
+
 	TregionDealloc(xids[j], xidRegions[xids[j]][k]);
-	
+
 	xidRegionCounts[xids[j]]--;
-      
-	for(; k < xidRegionCounts[xids[j]]; k++) { 
+
+	for(; k < xidRegionCounts[xids[j]]; k++) {
 	  xidRegions[xids[j]][k] = xidRegions[xids[j]][k+1];
 	}
       }
     }
   }
 
-  for(int i = 0; i < activeXacts; i++) { 
+  for(int i = 0; i < activeXacts; i++) {
     Tabort(i);
     fsckRegions(longXid);
   }
@@ -311,18 +311,18 @@ START_TEST(regions_lockRandomizedTest) {
   Tdeinit();
 } END_TEST
 
-START_TEST(regions_recoveryTest) { 
+START_TEST(regions_recoveryTest) {
 
   Tinit();
 
   pageid_t pages[50];
   int xid1 = Tbegin();
   int xid2 = Tbegin();
-  for(int i = 0; i < 50; i+=2) { 
+  for(int i = 0; i < 50; i+=2) {
     pages[i] = TregionAlloc(xid1, myrandom(4)+1, 0);
     pages[i+1] = TregionAlloc(xid2, myrandom(2)+1, 0);
   }
-  
+
   fsckRegions(xid1);
 
   Tcommit(xid1);
@@ -332,11 +332,11 @@ START_TEST(regions_recoveryTest) {
   if(TdurabilityLevel() == VOLATILE) { return; }
 
   Tinit();
-  
+
   int xid = Tbegin();
   fsckRegions(xid);
-  
-  for(int i = 0; i < 50; i+=2) { 
+
+  for(int i = 0; i < 50; i+=2) {
     TregionDealloc(xid, pages[i]);
   }
 
@@ -351,7 +351,7 @@ START_TEST(regions_recoveryTest) {
 
 } END_TEST
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {
@@ -360,7 +360,7 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("regions_test");
   tcase_set_timeout(tc, 0); // disable timeouts
 
-  /* Sub tests are added, one per line, here */  
+  /* Sub tests are added, one per line, here */
   tcase_add_test(tc, regions_smokeTest);
   tcase_add_test(tc, regions_randomizedTest);
   tcase_add_test(tc, regions_lockSmokeTest);

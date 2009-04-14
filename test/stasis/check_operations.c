@@ -38,20 +38,18 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-#include <config.h>
-#include <check.h>
-#include <assert.h>
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/bufferManager.h>
 #include <stasis/truncation.h>
-#include "../check_includes.h"
 #include <stasis/page.h>
-#define LOG_NAME   "check_operations.log"
 
-
+#include <assert.h>
 #include <stdio.h>
+
+#define LOG_NAME   "check_operations.log"
 
 /**
    @test
@@ -98,7 +96,7 @@ START_TEST(operation_physical_do_undo) {
   /* Do, undo and redo operation without updating the LSN field of the page. */
 
   DEBUG("B\n");
-  
+
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
   // manually fill in UNDO field
@@ -106,7 +104,7 @@ START_TEST(operation_physical_do_undo) {
   unlock(p->rwlatch);
   releasePage(p);
   setToTwo->LSN = 10;
-  
+
   DEBUG("C\n");
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
@@ -180,7 +178,7 @@ START_TEST(operation_physical_do_undo) {
   */
 
   // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
-  for(int i = 0; i < 10; i++) 
+  for(int i = 0; i < 10; i++)
     stasis_log_file->write_entry(stasis_log_file,
                                  allocCommonLogEntry(-1, -1, -1));
 
@@ -193,7 +191,7 @@ START_TEST(operation_physical_do_undo) {
 
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
-  
+
   DEBUG("F\n");
   stasis_operation_redo(setToTwo,p);
 
@@ -205,14 +203,14 @@ START_TEST(operation_physical_do_undo) {
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
   assert(buf == 1);
-  
+
   DEBUG("H don't redo set to 2\n");
   stasis_operation_redo(setToTwo,p);        /* Fails */
 
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
   assert(buf == 1);
-  
+
   stasis_record_write(xid, p, 0, rid, (byte*)&buf); /* reset the page's LSN. */
 
   DEBUG("I redo set to 2\n");
@@ -227,7 +225,7 @@ START_TEST(operation_physical_do_undo) {
 }
 END_TEST
 
-/** 
+/**
     @test check the Tprepare() call by simulating crashes.
 */
 START_TEST(operation_prepare) {
@@ -263,7 +261,7 @@ START_TEST(operation_prepare) {
   Tinit();
 
   int in;
-  
+
   Tread(prepared, b, &in);
 
   assert(in == three);
@@ -279,30 +277,30 @@ START_TEST(operation_prepare) {
   assert(in == one);
 
   Tread(checker, a, &in);
-  
+
   assert(in == one);
 
   Tcommit(checker);
-  
+
   Tdeinit();
   /* Check this sequence prepare, action, crash, recover, read, action, _COMMIT_, read again. */
 
   Tinit();
-  
+
   loser = Tbegin();
   prepared = Tbegin();
   winner = Tbegin();
-  
+
   a = Talloc(winner, sizeof(int));
   b = Talloc(winner, sizeof(int));
-  
+
   one =1;
   two =2;
   three=3;
 
   Tset(winner, a, &one);
   Tset(winner, b, &one);
-  
+
   Tset(loser, a, &three);
   Tset(prepared, b, &three);
 
@@ -332,25 +330,25 @@ START_TEST(operation_prepare) {
   assert(in == two);
 
   Tread(checker, a, &in);
-  
+
   assert(in == one);
 
   Tcommit(checker);
-  
+
   Tdeinit();
 
 } END_TEST
 /**
-  @test Runs some actions as part of a nested top action, aborts the transaction, 
-  and checks that the result is as expected. 
+  @test Runs some actions as part of a nested top action, aborts the transaction,
+  and checks that the result is as expected.
 
-  @todo Write a more thorough (threaded!) nested top action test. 
+  @todo Write a more thorough (threaded!) nested top action test.
 
 */
 START_TEST(operation_nestedTopAction) {
-  
+
   Tinit();
-  
+
   int xid= Tbegin();
   int *dat;
 
@@ -370,22 +368,22 @@ START_TEST(operation_nestedTopAction) {
   Tset(xid, rid4, dat);
   Tcommit(xid);
   xid = Tbegin(); // Loser xact.
-  
+
   *dat = 10;
   Tset(xid, rid1, dat);
-  
+
   void * handle = TbeginNestedTopAction(xid, OPERATION_NOOP, NULL, 0);
-  
+
   *dat = 20;
   Tset(xid, rid2, dat);
   *dat = 30;
   Tset(xid, rid3, dat);
-  
+
   TendNestedTopAction(xid, handle);
   *dat = 40;
 
   Tset(xid, rid4, dat);
-  
+
   Tabort(xid);
 
   xid = Tbegin();
@@ -402,31 +400,31 @@ START_TEST(operation_nestedTopAction) {
   assert(dat2 == 20);
   assert(dat3 == 30);
   assert(dat4 == 4);
-  
+
   Tcommit(xid);
   Tdeinit();
-  
+
 } END_TEST
 
 START_TEST(operation_set_range) {
   Tinit();
-  
+
   int xid = Tbegin();
-  
+
   int buf1[20];
   int buf2[20];
-  
+
   int range[20];
-  
+
   recordid rid = Talloc(xid, sizeof(int) * 20);
-  
+
   for(int i = 0; i < 20; i++) {
     buf1[i] = i;
   }
-  
+
   Tset(xid, rid, buf1);
   Tcommit(xid);
-  
+
   xid = Tbegin();
   Tread(xid, rid, buf2);
   for(int i = 0; i < 20; i++) {
@@ -439,7 +437,7 @@ START_TEST(operation_set_range) {
   TsetRange(xid, rid, sizeof(int) * 10, sizeof(int) * 5, range);
   // Check forward action
   Tread(xid, rid, buf2);
-  
+
   for(int i = 0; i < 20; i++) {
     if(i < 10 || i >= 15) {
 	assert(buf2[i] == i);
@@ -447,9 +445,9 @@ START_TEST(operation_set_range) {
 	assert(buf2[i] == 100 + i - 10);
     }
   }
-  
+
   Tabort(xid);
-  
+
   xid = Tbegin();
   Tread(xid, rid, buf2);
   //Check undo.
@@ -464,14 +462,14 @@ START_TEST(operation_set_range) {
 
 START_TEST(operation_alloc_test) {
   Tinit();
-  
+
   int xid = Tbegin();
   Talloc(xid, 100);
   Tcommit(xid);
   xid = Tbegin();
   Talloc(xid, 100);
   Tcommit(xid);
-  
+
   Tdeinit();
 
 } END_TEST
@@ -480,7 +478,7 @@ START_TEST(operation_alloc_test) {
 START_TEST(operation_array_list) {
 
   Tinit();
-  
+
   int xid = Tbegin();
   recordid rid = TarrayListAlloc(xid, 4, 2, sizeof(int));
   assert(0 == TarrayListLength(xid, rid));
@@ -683,7 +681,7 @@ START_TEST(operation_reorderable) {
 
 } END_TEST
 
-/** 
+/**
   Add suite declarations here
 */
 Suite * check_suite(void) {

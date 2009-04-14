@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -39,14 +39,11 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-#include <check.h>
-#include <assert.h>
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
 
-#include "../check_includes.h"
+#include <assert.h>
 
 #define LOG_NAME   "check_logEntry.log"
 
@@ -63,14 +60,14 @@ START_TEST(rawLogEntryAlloc)
 END_TEST
 
 /** @test
-    
+
     Quick test of allocUpdateLogEntry
 
     @todo  It would be nice if this test used actual operatations table instead of making up values.*/
 
 START_TEST(updateLogEntryAlloc)
 {
-  
+
   char args[] = {'a', 'b', 'c'};
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
@@ -79,7 +76,7 @@ START_TEST(updateLogEntryAlloc)
   Tinit();  /* Needed because it sets up the operations table. */
 
   log = allocUpdateLogEntry(200, 1, OPERATION_SET,
-                            rid.page, 
+                            rid.page,
                             (const byte*)args, 3*sizeof(char));
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
@@ -110,7 +107,7 @@ START_TEST(updateLogEntryAllocNoExtras)
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
   LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_SET,
-				       rid.page, 
+				       rid.page,
 				       (byte*)args, 0);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);

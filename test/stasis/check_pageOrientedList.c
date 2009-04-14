@@ -39,14 +39,11 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-#include <check.h>
+#include "../check_includes.h"
 
 #include <stasis/transactional.h>
 
 #include <assert.h>
-#include "../check_includes.h"
 
 #define LOG_NAME   "check_pageOrientedListNTA.log"
 /** @test */
@@ -77,7 +74,7 @@ START_TEST(pagedListCheck) {
   int xid = Tbegin();
 
   recordid list = TpagedListAlloc(xid);
-  
+
   int a;
   recordid b;
   int i;
@@ -126,26 +123,26 @@ START_TEST(pagedListCheck) {
     b.page = i+1;
     b.slot = i+2;
     b.size = i+3;
-    
+
     recordid * bb;
     recordid ** bbb = &bb;
     int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
-    
+
     assert(ret == sizeof(recordid));
     assert(!memcmp(bb, &b, sizeof(recordid)));
-    
+
 
     if(!(i % 10)) {
 
       ret = TpagedListRemove(xid, list, (byte*)&a, sizeof(int));
-      
+
       assert(ret);
-      
+
       free(bb);
       bb = 0;
-            
+
       ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
-      
+
       assert(-1==ret);
       assert(!bb);
     }
@@ -164,7 +161,7 @@ START_TEST(pagedListCheck) {
     b.page = i+1;
     b.slot = i+2;
     b.size = i+3;
-    
+
     recordid * bb;
     recordid ** bbb = &bb;
     int ret = TpagedListFind(xid, list, (byte*)&a, sizeof(int), (byte**)bbb);
@@ -183,7 +180,7 @@ START_TEST(pagedListCheck) {
   int ** bkey = &key;
   recordid * value = 0;
   recordid ** bvalue = &value;
-  
+
   while(TpagedListNext(xid, it, (byte**)bkey, &keySize, (byte**)bvalue, &valueSize)) {
     assert(!seen[*key]);
     seen[*key] = 1;
@@ -192,7 +189,7 @@ START_TEST(pagedListCheck) {
     assert(value->slot == *key+2);
     assert(value->size == *key+3);
 
-    
+
     free(key);
     free(value);
     key = 0;
@@ -218,9 +215,9 @@ Suite * check_suite(void) {
 
   tcase_add_test(tc, emptyIterator);
   tcase_add_test(tc, pagedListCheck);
-  
+
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);

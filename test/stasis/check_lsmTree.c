@@ -1,5 +1,3 @@
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
@@ -8,7 +6,6 @@
 #include <limits.h>
 #include <math.h>
 #include <pthread.h>
-
 #include <sys/time.h>
 #include <time.h>
 
@@ -36,7 +33,7 @@ void insertProbeIter(lsmkey_t NUM_ENTRIES) {
 
   Tinit();
   int xid = Tbegin();
-  recordid tree = TlsmCreate(xid, intcmp, 
+  recordid tree = TlsmCreate(xid, intcmp,
 			     TlsmRegionAlloc, &alloc_conf,
 			     sizeof(lsmkey_t));
   long oldpagenum = -1;

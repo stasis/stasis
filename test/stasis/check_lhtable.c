@@ -41,18 +41,17 @@ terms specified in this license.
 ---*/
 
 #define _GNU_SOURCE
+#include "../check_includes.h"
+
+#include <stasis/lhtable.h>
+
 #include <stdio.h>
 #include <time.h>
 #include <limits.h>
-#include <config.h>
-#include <check.h>
-
-#include <stasis/lhtable.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../check_includes.h"
 /*
 #include <sys/time.h>
 #include <time.h>
@@ -60,7 +59,7 @@ terms specified in this license.
 #define LOG_NAME   "check_lhtable.log"
 
 /**
-   @test 
+   @test
 */
 
 #define NUM_ENTRIES 10000
@@ -74,7 +73,7 @@ START_TEST(lhtableTest)
 
   char** keys = malloc(NUM_ENTRIES * sizeof(char*));
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(100);
-  for(long i = 0; i < NUM_ENTRIES; i++) { 
+  for(long i = 0; i < NUM_ENTRIES; i++) {
     int keyLen = asprintf(&(keys[i]), "--> %ld <--\n", i);
     assert(keyLen == strlen(keys[i]));
     assert(!LH_ENTRY(find)(t, keys[i], strlen(keys[i])));
@@ -82,8 +81,8 @@ START_TEST(lhtableTest)
     assert((void*)i == LH_ENTRY(find)(t, keys[i], strlen(keys[i])));
 
   }
-  
-  for(long i = 0; i < NUM_ENTRIES; i+=2) { 
+
+  for(long i = 0; i < NUM_ENTRIES; i+=2) {
     char * key;
     if(-1 == asprintf(&key, "--> %ld <--\n", i))
       key = 0;
@@ -94,8 +93,8 @@ START_TEST(lhtableTest)
     free(key);
   }
   LH_ENTRY(destroy)(t);
-  
-  for(int i = 0; i < NUM_ENTRIES; i++) { 
+
+  for(int i = 0; i < NUM_ENTRIES; i++) {
     free(keys[i]);
   }
   free(keys);
@@ -126,14 +125,14 @@ char * itoa(int i) {
 }
 
 START_TEST(lhtableRandomized) {
- for(int jjj = 0; jjj < NUM_ITERS; jjj++) { 
+ for(int jjj = 0; jjj < NUM_ITERS; jjj++) {
   time_t seed = time(0);
 
 #ifdef LONG_TEST
-  if(jjj) { 
+  if(jjj) {
     printf("\nSeed = %ld\n", seed);
     srandom(seed);
-  } else { 
+  } else {
     printf("\nSeed = %d\n", 1150241705);
     srandom(1150241705);  // This seed gets the random number generator to hit RAND_MAX, which makes a good test for myrandom()
   }
@@ -153,7 +152,7 @@ START_TEST(lhtableRandomized) {
   int* setNextDel   = calloc(numSets, sizeof(int));
   int* setNextRead  = calloc(numSets, sizeof(int));
 
-  for(int i =0; i < numSets; i++) { 
+  for(int i =0; i < numSets; i++) {
     setLength[i] = myrandom(MAXSETLEN);
     sets[i] = malloc(setLength[i] * sizeof(long));
     eventCount += setLength[i];
@@ -165,11 +164,11 @@ START_TEST(lhtableRandomized) {
 
   eventCount = myrandom(eventCount * 4);
   printf("Running %lld events.\n", (long long) eventCount);
-  
-  for(int iii = 0; iii < eventCount; iii++) { 
+
+  for(int iii = 0; iii < eventCount; iii++) {
     int eventType = myrandom(3);  // 0 = insert; 1 = read; 2 = delete.
     int set = myrandom(numSets);
-    switch(eventType) { 
+    switch(eventType) {
     case 0: // insert
       if(setNextAlloc[set] != setLength[set]) {
 	long keyInt = sets[set][setNextAlloc[set]];
@@ -183,11 +182,11 @@ START_TEST(lhtableRandomized) {
       }
       break;
     case 1: // read
-      if(setNextAlloc[set] != setNextDel[set]) { 
+      if(setNextAlloc[set] != setNextDel[set]) {
 	setNextRead[set]++;
-	if(setNextRead[set] < setNextDel[set]) { 
+	if(setNextRead[set] < setNextDel[set]) {
 	  setNextRead[set] = setNextDel[set];
-	} else if(setNextRead[set] == setNextAlloc[set]) { 
+	} else if(setNextRead[set] == setNextAlloc[set]) {
 	  setNextRead[set] = setNextDel[set];
 	}
 	assert(setNextRead[set] < setNextAlloc[set] && setNextRead[set] >= setNextDel[set]);
@@ -201,7 +200,7 @@ START_TEST(lhtableRandomized) {
       }
       break;
     case 2: // delete
-      if(setNextAlloc[set] != setNextDel[set]) { 
+      if(setNextAlloc[set] != setNextDel[set]) {
 	long keyInt = sets[set][setNextDel[set]];
 	char * key = itoa(keyInt);
 	assert(keyInt == (long)LH_ENTRY(find)  (t, key, strlen(key)+1));
@@ -217,7 +216,7 @@ START_TEST(lhtableRandomized) {
     }
   }
 
-  for(int i = 0; i < numSets; i++) { 
+  for(int i = 0; i < numSets; i++) {
     free(sets[i]);
   }
   free(setNextAlloc);
@@ -225,7 +224,7 @@ START_TEST(lhtableRandomized) {
   free(setNextRead);
   free(setLength);
   LH_ENTRY(destroy)(t);
- } 
+ }
 } END_TEST
 
 Suite * check_suite(void) {
@@ -242,7 +241,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, lhtableRandomized);
 
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
 

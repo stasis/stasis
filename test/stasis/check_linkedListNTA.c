@@ -40,8 +40,6 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#include <config.h>
-#include <check.h>
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
@@ -58,7 +56,7 @@ START_TEST(linkedListNTAtest)
   Tinit();
 
   int xid = Tbegin();
-  
+
   recordid linkedList = TlinkedListCreate(xid, sizeof(int), sizeof(recordid));
   int i;
   for(i = 0; i < 1000; i++) {
@@ -68,7 +66,7 @@ START_TEST(linkedListNTAtest)
     val.slot = val.page * 1000;
     val.size = val.slot * 1000;
     recordid ** bval2 = &val2;
-    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2); 
+    int found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
     assert(-1==found);
     TlinkedListInsert(xid, linkedList, (byte*)&i, sizeof(int), (byte*)&val, sizeof(recordid));
     found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
@@ -76,9 +74,9 @@ START_TEST(linkedListNTAtest)
     assert(!memcmp(&val, val2, sizeof(recordid)));
     free(val2);
   }
-  
+
   Tcommit(xid);
-  
+
   xid = Tbegin();
   for(i = 0; i < 1000; i+=10) {
     recordid * val2 = NULL;
@@ -89,7 +87,7 @@ START_TEST(linkedListNTAtest)
     assert(val2->slot == i * 1000 * 1000);
     assert(val2->size == i * 1000 * 1000 * 1000);
     free(val2);
-    
+
     found = TlinkedListRemove(xid, linkedList, (byte*)&i, sizeof(int));
     assert(found);
     found = TlinkedListFind(xid, linkedList, (byte*)(&i), sizeof(int), (byte**)bval2);
@@ -169,7 +167,7 @@ START_TEST ( linkedListMultiThreadedNTA ) {
   Tcommit(xid);
   int i;
   pthread_t threads[NUM_THREADS];
-  
+
   for(i = 0; i < NUM_THREADS; i++) {
     workerarg * arg = malloc(sizeof(workerarg));
     arg->thread = i;
@@ -180,8 +178,8 @@ START_TEST ( linkedListMultiThreadedNTA ) {
     void * ptr;
     pthread_join(threads[i], &ptr);
   }
-  
-  
+
+
   Tdeinit();
 } END_TEST
 
@@ -196,7 +194,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, linkedListNTAtest);
   tcase_add_test(tc, linkedListMultiThreadedNTA);
   /* --------------------------------------------- */
-  
+
   tcase_add_checked_fixture(tc, setup, teardown);
 
   suite_add_tcase(s, tc);
