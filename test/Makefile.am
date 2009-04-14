@@ -1,5 +1,4 @@
 #INCLUDES = @CHECK_CFLAGS@
-if HAVE_LIBCHECK
 
 SUBDIRS = stasis
 
@@ -12,9 +11,7 @@ SUBDIRS += pobj
 endif 
 
 TESTS = check_check
-else
-TESTS = 
-endif
+
 noinst_PROGRAMS = $(TESTS)
 check_check_SOURCES = check_check.c
 #check_check_LDADD = @CHECK_LIBS@

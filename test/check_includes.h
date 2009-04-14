@@ -1,11 +1,10 @@
-#include <check.h>
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-#ifndef HAVE_TCASE_SET_TIMEOUT
-#define tcase_set_timeout(x, y) 0
-#endif
+#include "check_impl.h"
 
 void setup (void) {
   remove("logfile.txt");
