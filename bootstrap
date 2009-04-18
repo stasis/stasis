@@ -1,8 +1,6 @@
 #! /bin/sh
 
-set -x
-
-rm configure.in
+rm -f configure.in
 ln -s configure.in.lite configure.in
 rm -f config.cache
 rm -f acconfig.h
