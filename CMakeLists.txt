@@ -25,11 +25,6 @@ FIND_PACKAGE(FLEX)
 FIND_PACKAGE(BISON)
 
 
-#FIND_LIBRARY(CHECK_LIBRARY NAMES check)
-#if(NOT CHECK_LIBRARY)
-#  message(STATUS "libcheck not found; unit tests will not be built.")
-#endif(NOT CHECK_LIBRARY)
-
 FIND_LIBRARY(HAVE_CONFUSE NAMES confuse)
 if(NOT HAVE_CONFUSE)
   message(STATUS "libconfuse not found; sample application 'libdfa' will not be built") 
