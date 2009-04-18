@@ -1,51 +1,9 @@
-Stasis is an experimental flexible transactional storage library.
+Stasis is a transactional storage library.
 
-Please see the COPYING file for licensing information.  
+Please see the COPYING file for licensing information, and INSTALL for
+compilation instructions.
 
-More information about installation, a tutorial and API documentation
+More information, including papers, a tutorial and API documentation
 are available at:
 
-http://lladd.sourceforge.net/developers/html/
-
-First, make sure you have the appropriate dependencies:
-
-'make check' requires the GNU check library, 'make doc' requires Doxygen.
-
-You'll need Berkeley DB to build; it isn't actually used by Stasis, but 
-I haven't gotten around to making it optional.
-
-You also need libconfuse; it is used by some of the programs that ship 
-with Stasis.
-
-
-To build, do:
-
-./reconf
-
-or 
-
-./reconf-1.8
-
-You'll need to have a version of automake >= 1.7 for ./reconf to work,
-or have automake 1.8 for ./reconf-1.8 to work.  Different packages of
-automake should be able to coexist on the same system, and probably
-ship with your distribution.
-
-./configure
-make
-make check
-make install
-
-To build the API and internals documentation, run:
-
-make docs
-
-after configure.
-
-We don't support "make install". ;)
-
-For up-to date coverage reports and unit test pass rates, see 
 http://www.cs.berkeley.edu/~sears/stasis/
-
-The unit test logs for lcov describe how the coverage report was 
-generated.
