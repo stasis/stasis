@@ -121,7 +121,19 @@ Proceeding with system's default automake.  Expect trouble.
    $ENV{AUTOMAKE} = "$automake_base-$version";
 }
 
+my $rmNEWS = 1;
+my $rmChangeLog = 1;
+if(-f "NEWS") { $rmNEWS = 0; } else { system("touch NEWS"); }
+if(-f "ChangeLog") { $rmChangeLog = 0; }  else { system("touch ChangeLog"); }
+
+
+
 system("rm configure.in");
 system("ln -s configure.in.automake configure.in");
 
 system ("autoreconf -i", @ARGV);
+
+if($rmNEWS) { system("rm NEWS"); }
+if($rmChangeLog) { system("rm ChangeLog"); }
+
+

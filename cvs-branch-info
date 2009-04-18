@@ -1,6 +1,0 @@
-5-1-05 RCS did this:
-
-Created branch for blast stuff:
-
-cvs tag -b blast
-cvs checkout -r blast lladd
