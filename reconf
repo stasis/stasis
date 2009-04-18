@@ -17,6 +17,8 @@
 qq(
 
 #!/bin/sh
+rm configure.in
+ln -s configure.in.automake configure.in
 rm -f config.cache
 rm -f acconfig.h
 aclocal -I m4
@@ -32,6 +34,8 @@ exit
 qq(
 
 #!/bin/sh
+rm configure.in
+ln -s configure.in.automake configure.in
 rm -f config.cache
 rm -f acconfig.h
 aclocal-1.8 -I m4
@@ -43,6 +47,30 @@ exit
 
 );
 #
+# The following uses system defaults, but no longer depends on libtool or automake.
+# It is the recommended approach.
+#
+qq(
+#!/bin/sh
+rm configure.in
+ln -s configure.in.lite configure.in
+rm -f config.cache
+rm -f acconfig.h
+aclocal -I m4
+autoconf
+autoheader
+);
+#
+
+warn qq(
+This script is obsolete; stasis no longer requires automake or libtool.
+
+To build with cmake, run:
+
+ ./bootstrap
+ mkdir build ; cd build ; cmake ..
+ make -j4
+);
 
 my $aclocal_base = `which aclocal` || die "aclocal not found!";
 my $automake_base = `which automake` || die "automake not found!";
@@ -92,4 +120,8 @@ Proceeding with system's default automake.  Expect trouble.
    $ENV{ACLOCAL} = "$aclocal_base-$version";
    $ENV{AUTOMAKE} = "$automake_base-$version";
 }
+
+system("rm configure.in");
+system("ln -s configure.in.automake configure.in");
+
 system ("autoreconf -i", @ARGV);

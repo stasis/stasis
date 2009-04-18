@@ -2,10 +2,12 @@
 
 set -x
 
-## aclocal warns way too much!
-aclocal-1.8 2>&1 | grep -v '.usr.share.aclocal.' 
-# -I config
+rm configure.in
+ln -s configure.in.lite configure.in
+rm -f config.cache
+rm -f acconfig.h
+aclocal -I m4
 autoheader
-automake-1.8 --add-missing --copy
-#automake
 autoconf
+./configure --quiet
+

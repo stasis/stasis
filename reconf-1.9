@@ -1,5 +1,7 @@
 #!/bin/sh
 echo WARNING: This script is obsolete, but sometimes works when reconf does not.
+rm configure.in
+ln -s configure.in.automake configure.in
 rm -f config.cache
 rm -f acconfig.h
 aclocal-1.9 -I m4
