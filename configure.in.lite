@@ -3,8 +3,6 @@
 
 AC_PREREQ(2.59)
 AC_INIT([Stasis],[0.1],[sears@cs.berkeley.edu])
-#AM_INIT_AUTOMAKE() #hello,0.1)
-#AM_INIT_AUTOMAKE([subdir-objects]) # @todo use subdir-objects once transition to libtool is done.
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADER([config.h])
 
@@ -12,11 +10,8 @@ AC_CONFIG_HEADER([config.h])
 #AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_CPP
-#AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-## Need AC_PROG_LIBTOOL
-#AC_PROG_LIBTOOL
 AC_PROG_AWK
 AC_PROG_RANLIB
 AC_PROG_YACC
@@ -25,7 +20,6 @@ AC_PROG_LEX
 
 # For SWIG & Python
 # AC_PROG_LIBTOOL
-#AM_PATH_PYTHON(2.3)
 AC_PROG_SWIG(1.3)
 SWIG_ENABLE_CXX
 SWIG_PYTHON
@@ -52,26 +46,10 @@ if test "$db_cv_open_o_direct" = "yes"; then
 	AH_TEMPLATE(HAVE_O_DIRECT, [Define to 1 if you have the O_DIRECT flag.])
 fi
 
-AC_CHECK_LIB([check], [suite_create])
-AC_CHECK_LIB([check], [suite_create], 
-	     have_libcheck=yes,
-	     have_libcheck=no)
-
-#if test x$have_libcheck = xyes ; then
-##AM_CONDITIONAL(HAVE_LIBCHECK, true)
-#else 
-##AM_CONDITIONAL(HAVE_LIBCHECK, false)
-#AC_MSG_WARN([Check not found; cannot run unit tests!])
-#fi
-
-
 AC_CHECK_LIB([m], [sqrt])
 AC_CHECK_LIB([pthread], [pthread_create])
 
-
 AC_CONFIG_DB
-
-#AM_CONDITIONAL(DB_ENABLED, test $DB_ENABLED = 1)
 
 if test x$build_benchmarks = xyes ; then 
 if test $DB_ENABLED = 0; then 

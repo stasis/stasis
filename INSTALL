@@ -1,0 +1,29 @@
+Prerequisites (ubuntu/debian):
+
+   autoconf build-essential cmake
+
+Recommended build procedure:
+
+   ./bootstrap ; mkdir build ; cd build ; cmake ..
+   make -j 4
+   cd test ; make test
+
+Optional dependencies:
+
+   flex yacc (for a relational algebra language demo)
+   fuse (for a fuse demo)
+   swig (for python bindings)
+   libconfuse
+   Berkeley DB (for performance comparisons)
+
+Obsolete build procedure
+=========================
+
+(Uses automake and libtool)
+
+   ./reconf ; ./configure --quiet
+   make -j 4
+
+Extra requirements for obsolete build:
+
+   automake libtool
