@@ -2,13 +2,12 @@ Author:
   Russell Sears	sears@cs.berkeley.edu
 
 The following people contributed to this software in the past:
-------------------------------------------------------------
+--------------------------------------------------------------
 
 Initial version of library:
   Jason Bayer	bayer@xcf.berkeley.edu
   Jim Blomo	jim@xcf.berkeley.edu
   Jimmy Kittiyachavalit	jkit@xcf.berkeley.edu 
-
 
 The following libraries are bundled with this software:
 ------------------------------------------------------
@@ -22,6 +21,7 @@ The following libraries are bundled with this software:
   (lladd/src/lladd/crc32.c)
 
 Earlier versions of this software made use of:
+----------------------------------------------
 
   PBL - The Program Base Library
     http://www.mission-base.com/peter/source/
@@ -30,3 +30,8 @@ Earlier versions of this software made use of:
   implementation that includes (deprecated) compatibility with the
   pblHt* interface.
 
+  check - C Unit Test Framework
+    http://check.sourceforge.net/
+
+  check has been replaced with test/check_impl.h, which implements a subset
+  of the check API.
