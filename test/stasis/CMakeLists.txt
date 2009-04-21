@@ -1,3 +1,4 @@
+SUBDIRS(fault_injection)
 CREATE_CHECK(check_lhtable)
 CREATE_CHECK(check_logEntry)
 CREATE_CHECK(check_logWriter)
