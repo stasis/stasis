@@ -1,0 +1,39 @@
+num_iterations = 5
+
+num_threads = 1
+ops_per_thread = 42000
+ops_per_transaction = 5
+mallocs_before_failure = 5000
+log_writes_before_failure = 0 (0)
+page_writes_before_failure = 0 (0)
+
+num_threads = 1
+ops_per_thread = 30000
+ops_per_transaction = 10
+mallocs_before_failure = 0
+log_writes_before_failure = 20000 (35)
+page_writes_before_failure = 0 (0)
+
+num_threads = 1
+ops_per_thread = 32000
+ops_per_transaction = 20
+mallocs_before_failure = 0
+log_writes_before_failure = 0 (0)
+page_writes_before_failure = 800 (55)
+
+num_threads = 1
+ops_per_thread = 33000
+ops_per_transaction = 13
+mallocs_before_failure = 10000
+log_writes_before_failure = 0 (0)
+page_writes_before_failure = 0 (0)
+
+num_threads = 1
+ops_per_thread = 10000
+ops_per_transaction = 33
+mallocs_before_failure = 0
+log_writes_before_failure = 0 (0)
+page_writes_before_failure = 0 (0)
+
+
+
