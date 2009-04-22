@@ -72,8 +72,8 @@ const void * getUpdateArgs(const LogEntry * ret) {
   if(ret->update.arg_size == 0) {
     return NULL;
   } else {
-    return ((const byte*)ret) + 
-      sizeof(struct __raw_log_entry) + 
+    return ((const byte*)ret) +
+      sizeof(struct __raw_log_entry) +
       sizeof(UpdateLogEntry);
   }
 }
@@ -110,15 +110,15 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   return ret;
 }
 
-LogEntry * allocCLRLogEntry(const LogEntry * old_e) { 
-  CLRLogEntry * ret = calloc(1,sizeof(CLRLogEntry));
+LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
+  CLRLogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeofLogEntry(old_e));
 
   ret->LSN = -1;
   ret->prevLSN = old_e->prevLSN;
   ret->xid = old_e->xid;
   ret->type = CLRLOG;
   DEBUG("compensates: %lld\n", old_e->LSN);
-  ret->clr.compensated_lsn = old_e->LSN;
+  memcpy((void*)getCLRCompensated(ret), old_e, sizeofLogEntry(old_e));
 
   return (LogEntry*)ret;
 }
@@ -131,7 +131,9 @@ lsn_t sizeofLogEntry(const LogEntry * e) {
   switch (e->type) {
   case CLRLOG:
     {
-      return sizeof(CLRLogEntry);
+      const LogEntry * contents = getCLRCompensated(e);
+      assert(contents->type != CLRLOG);
+      return sizeof(struct __raw_log_entry) + sizeofLogEntry(contents);
     }
   case UPDATELOG:
     {

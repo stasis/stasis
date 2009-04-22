@@ -203,10 +203,8 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	  // if compensated_lsn == -1, then this clr is closing a nested top
 	  // action that was performed during undo.  Therefore, we do not
 	  // want to undo it again.
-	  if(-1 != ((CLRLogEntry*)e)->clr.compensated_lsn) {
-	    const LogEntry *ce =
-	      log->read_entry(log,((CLRLogEntry*)e)->clr.compensated_lsn);
-
+	  const LogEntry * ce = getCLRCompensated(e);
+	  if(-1 != ce->LSN) {
 	    if(ce->update.page == INVALID_PAGE) {
 	      // logical redo of end of NTA; no-op
 	    } else {
@@ -219,7 +217,6 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	      unlock(p->rwlatch);
 	      releasePage(p);
 	    }
-	    freeLogEntry(ce);
 	  }
 	} break;
       case XCOMMIT:
@@ -311,9 +308,8 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
 	}
       case CLRLOG:
         {
-	  if(-1 != ((CLRLogEntry*)e)->clr.compensated_lsn) {
-	    const LogEntry * ce
-	      = log->read_entry(log, ((CLRLogEntry*)e)->clr.compensated_lsn);
+      const LogEntry * ce = getCLRCompensated(e);
+      if(-1 != ce->LSN) {
 	    if(ce->update.page == INVALID_PAGE) {
 	      DEBUG("logical clr\n");
 	      // logical undo; effective LSN doesn't matter
@@ -327,7 +323,6 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
 	      // no-op.  Already undone during redo.
 	      // This would redo the original op.
 	    }
-	    freeLogEntry(ce);
 	  }
         }
 	break;

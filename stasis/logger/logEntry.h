@@ -55,7 +55,7 @@ BEGIN_C_DECLS
    @todo Other than some typedefs, is there anything in logEntry that belongs in the API?
 
    @ingroup LLADD_CORE
-   
+
    $Id$
 */
 
@@ -67,10 +67,6 @@ typedef struct {
      args;     @ ((byte*)ule) + sizeof(UpdateLogEntry)
   */
 } UpdateLogEntry;
-
-typedef struct {
-  lsn_t compensated_lsn;
-} CLRLogArgs;
 
 struct __raw_log_entry {
   lsn_t LSN;
@@ -87,13 +83,7 @@ typedef struct {
   UpdateLogEntry update;
 } LogEntry;
 
-typedef struct {
-  lsn_t LSN;
-  lsn_t prevLSN;
-  int   xid;
-  unsigned int type;
-  CLRLogArgs clr;
-} CLRLogEntry;
+typedef struct __raw_log_entry CLRLogEntry;
 /**
    Allocate a log entry that does not contain any extra payload
    information.  (Eg: Tbegin, Tcommit, etc.)
@@ -103,7 +93,7 @@ typedef struct {
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type);
 
 LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
-/** 
+/**
    Allocate a log entry associated with an operation implemention.  This
    is usually called inside of Tupdate().
 
@@ -136,6 +126,15 @@ lsn_t sizeofLogEntry(const LogEntry * e);
    @return the operation's arguments.
 */
 const void * getUpdateArgs(const LogEntry * e);
+
+/**
+	@return a copy of the log entry that this CLR compensated.
+ */
+static inline const LogEntry * getCLRCompensated(const LogEntry * e) {
+	return (const LogEntry*)(
+			((const struct __raw_log_entry*)e)+1
+			);
+}
 
 lsn_t getPrepareRecLSN(const LogEntry *e);
 
