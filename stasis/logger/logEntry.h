@@ -130,7 +130,7 @@ const void * getUpdateArgs(const LogEntry * e);
 /**
 	@return a copy of the log entry that this CLR compensated.
  */
-static inline const LogEntry * getCLRCompensated(const LogEntry * e) {
+static inline const LogEntry * getCLRCompensated(const CLRLogEntry * e) {
 	return (const LogEntry*)(
 			((const struct __raw_log_entry*)e)+1
 			);

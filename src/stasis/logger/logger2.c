@@ -152,16 +152,20 @@ lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) {
 
 lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
                   lsn_t compensatedLSN) {
-	LogEntry * e;
-	if(compensatedLSN == -1) {
-		e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
-                                INVALID_PAGE, NULL, 0);
-	} else {
-		e = log->read_entry(log, compensatedLSN);
-	}
+  const LogEntry * const_e;
+  LogEntry * e;
+  if(compensatedLSN == -1) {
+    const_e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
+			    INVALID_PAGE, NULL, 0);
+  } else {
+    const_e = log->read_entry(log, compensatedLSN);
+  }
+  e = malloc(sizeofLogEntry(const_e));
+  memcpy(e, const_e, sizeofLogEntry(const_e));
   e->LSN = compensatedLSN;
   lsn_t ret = LogCLR(log, e);
-  freeLogEntry(e);
+  freeLogEntry(const_e);
+  free(e);
   return ret;
 }
 

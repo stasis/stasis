@@ -203,7 +203,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	  // if compensated_lsn == -1, then this clr is closing a nested top
 	  // action that was performed during undo.  Therefore, we do not
 	  // want to undo it again.
-	  const LogEntry * ce = getCLRCompensated(e);
+	  const LogEntry * ce = getCLRCompensated((const CLRLogEntry*)e);
 	  if(-1 != ce->LSN) {
 	    if(ce->update.page == INVALID_PAGE) {
 	      // logical redo of end of NTA; no-op
@@ -308,7 +308,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
 	}
       case CLRLOG:
         {
-      const LogEntry * ce = getCLRCompensated(e);
+      const LogEntry * ce = getCLRCompensated((const CLRLogEntry*) e);
       if(-1 != ce->LSN) {
 	    if(ce->update.page == INVALID_PAGE) {
 	      DEBUG("logical clr\n");

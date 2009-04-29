@@ -53,17 +53,15 @@ terms specified in this license.
  * the right thing' and build, even if they do not \#include the
  * config.h file that all of the Stasis stuff uses.
  *
- * @todo Figure out how to let Stasis users avoid config.h.
- *
  * $Id$
  */
 
 //#define NDEBUG 1
 
-#include "config.h"
-
 #ifndef __stasis_common_h
 #define __stasis_common_h
+
+#include <sys/types.h> // for size_t
 
 #ifdef __cplusplus
 #  define BEGIN_C_DECLS extern "C" {

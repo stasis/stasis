@@ -4,6 +4,8 @@
 #include <stasis/allocationPolicy.h>
 #include <stasis/blobManager.h>
 #include <stasis/page.h>
+
+#include <string.h>
 #include <assert.h>
 //try{
 /**

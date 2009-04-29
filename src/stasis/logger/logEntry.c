@@ -131,7 +131,7 @@ lsn_t sizeofLogEntry(const LogEntry * e) {
   switch (e->type) {
   case CLRLOG:
     {
-      const LogEntry * contents = getCLRCompensated(e);
+      const LogEntry * contents = getCLRCompensated((const CLRLogEntry*) e);
       assert(contents->type != CLRLOG);
       return sizeof(struct __raw_log_entry) + sizeofLogEntry(contents);
     }
