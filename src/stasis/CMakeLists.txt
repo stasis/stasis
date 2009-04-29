@@ -33,3 +33,5 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
                    replacementPolicy/lruFast.c)
+
+INSTALL(TARGETS stasis LIBRARY DESTINATION lib)
