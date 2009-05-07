@@ -1,7 +1,4 @@
 #include <config.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #include <stasis/common.h>
 #include <stasis/latches.h>
@@ -24,7 +21,7 @@
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
 #include <stasis/blobManager.h> // XXX remove this, move Tread() to set.c
-#include <stdio.h>
+//#include <stdio.h>
 #include <assert.h>
 #include <limits.h>
 
@@ -53,33 +50,6 @@ void stasis_transaction_table_init() {
   }
 }
 
-// @todo this factory stuff doesn't really belong here...
-static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
-  stasis_handle_t * h = stasis_handle(open_memory)(off);
-  //h = stasis_handle(open_debug)(h);
-  stasis_write_buffer_t * w = h->append_buffer(h, len);
-  w->h->release_write_buffer(w);
-  return h;
-}
-typedef struct sf_args {
-  char * filename;
-  int    openMode;
-  int    filePerm;
-} sf_args;
-static stasis_handle_t * slow_file_factory(void * argsP) {
-  sf_args * args = (sf_args*) argsP;
-  stasis_handle_t * h =  stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
-  //h = stasis_handle(open_debug)(h);
-  return h;
-}
-static stasis_handle_t * slow_pfile_factory(void * argsP) {
-  stasis_handle_t * h = argsP;
-  return h;
-}
-static int (*slow_close)(stasis_handle_t * h) = 0;
-static stasis_handle_t * slow_pfile = 0;
-static int nop_close(stasis_handle_t*h) { return 0; }
-
 int Tinit() {
         pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
         stasis_initted = 1;
@@ -101,81 +71,15 @@ int Tinit() {
         }
 	stasis_page_init();
 
-#ifndef HAVE_O_DIRECT
-	if(bufferManagerO_DIRECT) {
-	  printf("O_DIRECT not supported by this build; switching to conventional buffered I/O.\n");
-	  bufferManagerO_DIRECT = 0;
-	}
-#endif
-	int openMode;
-	if(bufferManagerO_DIRECT) {
-#ifdef HAVE_O_DIRECT
-	  openMode = O_CREAT | O_RDWR | O_DIRECT;
-#else
-              printf("Can't happen\n");
-              abort();
-#endif
+	if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
+        printf("\nWarning: Using old I/O routines (with known bugs).\n");
+        openPageFile();
 	} else {
-	  openMode = O_CREAT | O_RDWR;
+		stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
+		// XXX should not be global.
+		pageHandleOpen(h);
 	}
-
-	/// @todo remove hardcoding of buffer manager implementations in transactional2.c
-
-        switch(bufferManagerFileHandleType) {
-          case BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING: {
-            struct sf_args * slow_arg = malloc(sizeof(sf_args));
-            slow_arg->filename = stasis_store_file_name;
-
-	    slow_arg->openMode = openMode;
-
-            slow_arg->filePerm = FILE_PERM;
-            // Allow 4MB of outstanding writes.
-            // @todo Where / how should we open storefile?
-            stasis_handle_t * pageFile;
-            int worker_thread_count = 4;
-            if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_PFILE) {
-              //              printf("\nusing pread()/pwrite()\n");
-              slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
-              slow_close = slow_pfile->close;
-              slow_pfile->close = nop_close;
-              pageFile =
-		stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile, 1, fast_factory,
-						 NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
-
-            } else if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_FILE) {
-              pageFile =
-		stasis_handle(open_non_blocking)(slow_file_factory, slow_arg, 0, fast_factory,
-						 NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
-            } else {
-              printf("Unknown value for config option bufferManagerNonBlockingSlowHandleType\n");
-              abort();
-            }
-            //pageFile = stasis_handle(open_debug)(pageFile);
-            pageHandleOpen(pageFile);
-          } break;
-	  case BUFFER_MANAGER_FILE_HANDLE_FILE: {
-	    stasis_handle_t * pageFile =
-	      stasis_handle_open_file(0, stasis_store_file_name,
-                                      openMode, FILE_PERM);
-	    pageHandleOpen(pageFile);
-	  } break;
-	  case BUFFER_MANAGER_FILE_HANDLE_PFILE: {
-	    stasis_handle_t * pageFile =
-	      stasis_handle_open_pfile(0, stasis_store_file_name,
-                                       openMode, FILE_PERM);
-	    pageHandleOpen(pageFile);
-	  } break;
-	  case BUFFER_MANAGER_FILE_HANDLE_DEPRECATED: {
-            printf("\nWarning: Using old I/O routines (with known bugs).\n");
-            openPageFile();
-          } break;
-          default: {
-            printf("\nUnknown buffer manager filehandle type: %d\n",
-                   bufferManagerFileHandleType);
-            abort();
-          }
-        }
-	bufInit(bufferManagerType);
+	stasis_buffer_manager_open(bufferManagerType);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
 	TallocInit();
@@ -441,14 +345,9 @@ int Tdeinit() {
   stasis_truncation_deinit();
   TnaiveHashDeinit();
   TallocDeinit();
-  bufDeinit();
+  stasis_buffer_manager_close();
   DEBUG("Closing page file tdeinit\n");
   closePageFile();
-  if(slow_pfile) {
-    slow_close(slow_pfile);
-    slow_pfile = 0;
-    slow_close = 0;
-  }
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
   dirtyPagesDeinit();
@@ -464,12 +363,8 @@ int TuncleanShutdown() {
   stasis_suppress_unclean_shutdown_warnings = 1;
   stasis_truncation_deinit();
   TnaiveHashDeinit();
-  simulateBufferManagerCrash();
-  if(slow_pfile) {
-    slow_close(slow_pfile);
-    slow_pfile = 0;
-    slow_close = 0;
-  }
+  stasis_buffer_manager_simulate_crash();
+  // XXX: closePageFile?
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
   stasis_transaction_table_num_active = 0;

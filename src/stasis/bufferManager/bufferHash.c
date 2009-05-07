@@ -376,7 +376,7 @@ static void bhSimulateBufferManagerCrash() {
   stasis_buffer_pool_deinit(stasis_buffer_pool);
 }
 
-void bhBufInit() {
+void stasis_buffer_manager_hash_open() {
 
   assert(!running);
 
@@ -390,8 +390,8 @@ void bhBufInit() {
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;
   forcePageRange = bhForcePageRange;
-  bufDeinit = bhBufDeinit;
-  simulateBufferManagerCrash = bhSimulateBufferManagerCrash;
+  stasis_buffer_manager_close = bhBufDeinit;
+  stasis_buffer_manager_simulate_crash = bhSimulateBufferManagerCrash;
 
   stasis_buffer_pool = stasis_buffer_pool_init();
 

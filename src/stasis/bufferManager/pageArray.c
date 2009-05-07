@@ -57,14 +57,14 @@ static void paBufDeinit() {
   }
 }
 
-void paBufInit () { 
+void stasis_buffer_manager_mem_array_open () { 
 
   releasePageImpl = paReleasePage;
   loadPageImpl = paLoadPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
-  bufDeinit = paBufDeinit; 
-  simulateBufferManagerCrash = paBufDeinit; 
+  stasis_buffer_manager_close = paBufDeinit; 
+  stasis_buffer_manager_simulate_crash = paBufDeinit; 
 
   pageCount = 0;
   pageMap = 0;

@@ -27,7 +27,7 @@ static void bufManSimulateBufferManagerCrash();
 
 static stasis_buffer_pool_t * stasis_buffer_pool;
 
-int bufManBufInit() {
+int stasis_buffer_manager_deprecated_open() {
 
     releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
@@ -35,8 +35,8 @@ int bufManBufInit() {
     writeBackPage = pageWrite;
     forcePages = forcePageFile;
     forcePageRange = forceRangePageFile;
-    bufDeinit = bufManBufDeinit;
-    simulateBufferManagerCrash = bufManSimulateBufferManagerCrash;
+    stasis_buffer_manager_close = bufManBufDeinit;
+    stasis_buffer_manager_simulate_crash = bufManSimulateBufferManagerCrash;
 
     stasis_buffer_pool = stasis_buffer_pool_init();
 

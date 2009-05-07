@@ -99,7 +99,7 @@ Page * loadPage(int xid, pageid_t pageid);
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
 /**
-    This is the function pointer that bufInit sets in order to
+    This is the function pointer that stasis_buffer_manager_open sets in order to
     override loadPage.
 */
 extern Page * (*loadPageImpl)(int xid, pageid_t pageid);
@@ -111,7 +111,7 @@ extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 void releasePage(Page *p);
 
 /**
-    This is the function pointer that bufInit sets in order to
+    This is the function pointer that stasis_buffer_manager_open sets in order to
     override releasePage.
 */
 extern void   (*releasePageImpl)(Page * p);
@@ -146,14 +146,14 @@ extern void (*forcePages)();
     This does not force page that have not been written to with pageWrite().
 */
 extern void (*forcePageRange)(pageid_t start, pageid_t stop);
-extern void (*simulateBufferManagerCrash)();
+extern void (*stasis_buffer_manager_simulate_crash)();
 
-int bufInit(int type);
+int stasis_buffer_manager_open(int type);
 /**
  * will write out any dirty pages, assumes that there are no running
  * transactions
  */
-extern void   (*bufDeinit)();
+extern void   (*stasis_buffer_manager_close)();
 
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)

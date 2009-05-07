@@ -15,7 +15,7 @@
 
 /**
 
-   @file 
+   @file
 
    Interface for I/O handle implementations.
 
@@ -263,7 +263,7 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_file)
-    (lsn_t start_offset, char * path, int flags, int perm);
+    (lsn_t start_offset, const char * path, int flags, int perm);
 /**
    Open a handle that is backed by a file.  This handle uses pread()
    and pwrite().  It never holds a mutex while perfoming I/O.
@@ -278,7 +278,7 @@ stasis_handle_t * stasis_handle(open_file)
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_pfile)
-     (lsn_t start_offset, char * path, int flags, int perm);
+     (lsn_t start_offset, const char * path, int flags, int perm);
 /**
    Given a factory for creating "fast" and "slow" handles, provide a
    handle that never makes callers wait for write requests to
@@ -326,7 +326,9 @@ stasis_handle_t * stasis_handle(open_pfile)
                      before blocking.
 */
 stasis_handle_t * stasis_handle(open_non_blocking)
-    (stasis_handle_t * (*slow_factory)(void * arg), void * slow_factory_arg,
+     (stasis_handle_t * (*slow_factory)(void * arg),
+     void (*slow_factory_close)(void * arg),
+     void * slow_factory_arg,
      int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
      void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
@@ -341,5 +343,9 @@ stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
    @param h All handle operations will be forwarded to h.
 */
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
+/**
+ * Open a Stasis file handle using default arguments.
+ */
+stasis_handle_t * stasis_handle(open)(const char * path);
 
 #endif

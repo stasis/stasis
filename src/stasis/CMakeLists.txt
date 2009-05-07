@@ -29,7 +29,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    operations/pageOrientedListNTA.c
                    operations/regions.c operations/lsmTree.c
                    io/rangeTracker.c io/memory.c io/file.c io/pfile.c
-                   io/non_blocking.c io/debug.c
+                   io/non_blocking.c io/debug.c io/handle.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
                    replacementPolicy/lruFast.c)

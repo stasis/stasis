@@ -426,7 +426,7 @@ START_TEST(io_nonBlockingTest) {
     FILE_PERM
   };
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
+  h = stasis_handle(open_non_blocking)(slow_factory, 0, &slow_args, 0,
 				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //  h = stasis_handle(open_debug)(h);
@@ -435,7 +435,7 @@ START_TEST(io_nonBlockingTest) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
+  h = stasis_handle(open_non_blocking)(slow_factory, 0, &slow_args, 0,
 				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //h = stasis_handle(open_debug)(h);
@@ -444,7 +444,7 @@ START_TEST(io_nonBlockingTest) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory, &slow_args, 0,
+  h = stasis_handle(open_non_blocking)(slow_factory, 0, &slow_args, 0,
 				       fast_factory, 0,
 				       5, 1024 * 1024, 100);
   handle_concurrencytest(h);

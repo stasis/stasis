@@ -169,8 +169,8 @@ void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
 void (*forcePageRange)(pageid_t start, pageid_t stop) = 0;
-void   (*bufDeinit)()  = 0;
-void   (*simulateBufferManagerCrash)()  = 0;
+void   (*stasis_buffer_manager_close)()  = 0;
+void   (*stasis_buffer_manager_simulate_crash)()  = 0;
 
 Page * loadPage(int xid, pageid_t pageid) { 
   try_ret(NULL) {
@@ -195,7 +195,7 @@ void releasePage(Page * p) {
   releasePageImpl(p);
 }
 
-int bufInit(int type) { 
+int stasis_buffer_manager_open(int type) { 
   bufferManagerType = type;
   static int lastType = 0;
   if(type == BUFFER_MANAGER_REOPEN) { 
@@ -203,13 +203,13 @@ int bufInit(int type) {
   } 
   lastType = type;
   if(type == BUFFER_MANAGER_DEPRECATED_HASH) { 
-    bufManBufInit();
+    stasis_buffer_manager_deprecated_open();
     return 0;
   } else if (type == BUFFER_MANAGER_MEM_ARRAY) { 
-    paBufInit();
+    stasis_buffer_manager_mem_array_open();
     return 0;
   } else if (type == BUFFER_MANAGER_HASH) { 
-    bhBufInit();
+    stasis_buffer_manager_hash_open();
     return 0;
   } else { 
     // XXX error handling

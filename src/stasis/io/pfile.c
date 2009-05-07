@@ -167,7 +167,7 @@ static int pfile_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
             int err = errno;
             // XXX Why is sys_errlist[] is unavailable here?
             perror("pfile_read encountered an unknown error code.");
-            fprintf(stderr, "pread() returned -1; errno is %d\n",err); 
+            fprintf(stderr, "pread() returned -1; errno is %d\n",err);
             abort(); // XXX other errors?
           }
           error = errno;
@@ -442,7 +442,7 @@ struct stasis_handle_t pfile_func = {
 };
 
 stasis_handle_t *stasis_handle(open_pfile)(lsn_t start_offset,
-                                            char *filename,
+                                            const char *filename,
                                             int flags, int mode) {
   stasis_handle_t *ret = malloc(sizeof(stasis_handle_t));
   if (!ret) { return NULL; }

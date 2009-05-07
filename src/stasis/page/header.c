@@ -1,26 +1,26 @@
-#include "../page.h"
-#include "header.h"
+#include <stasis/page.h>
+#include <stasis/page/header.h>
 #include <assert.h>
 /**
-   @file header.c is dead code(?)  
+   @file header.c is dead code(?)
    @todo Delete header.c
  */
 int headerPageInitialize() {
   Page * p;
-  try_ret(0) { 
+  try_ret(0) {
     p = loadPage(-1, 0);
     assert(!compensation_error());
   } end_ret(0);
   int freePage;
-  if(*page_type_ptr(p) != LLADD_HEADER_PAGE) { 
+  if(*page_type_ptr(p) != LLADD_HEADER_PAGE) {
     assert(*page_type_ptr(p) == 0) ;
     memset(p->memAddr, 0, PAGE_SIZE);
     stasis_page_cleanup(p);
     *page_type_ptr(p) = LLADD_HEADER_PAGE;
     *headerFreepage_ptr(p) = 1;
-    *headerFreepagelist_ptr(p) = 0;    
+    *headerFreepagelist_ptr(p) = 0;
   }
-  
+
   freePage = *headerFreepage_ptr(p);
   releasePage(p);
   assert(freePage);

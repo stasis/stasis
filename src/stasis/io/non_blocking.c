@@ -145,6 +145,7 @@ typedef struct nbw_impl {
 
   // Fields to manage slow handles
   stasis_handle_t * (*slow_factory)(void * arg);
+  void (*slow_factory_close)(void * arg);
   void * slow_factory_arg;
   int slow_force_once;
 
@@ -245,7 +246,7 @@ static inline const tree_node * allocFastHandle(nbw_impl * impl, lsn_t off,
 	DEBUG("Blocking on write.  %lld bytes (%lld max)\n",
 	       impl->used_buffer_size, impl->max_buffer_size);
       }
-      
+
       pthread_mutex_unlock(&impl->mut);
 
       np->dirty = INVALID_NODE;
@@ -361,6 +362,10 @@ static int nbw_close(stasis_handle_t * h) {
   destroyList(&impl->available_slow_handles);
   free(impl->all_slow_handles);
   assert(impl->available_slow_handle_count == 0);
+
+  if(impl->slow_factory_close) {
+	impl->slow_factory_close(impl->slow_factory_arg);
+  }
 
   free(h->impl);
   free(h);
@@ -777,7 +782,9 @@ static void * nbw_worker(void * handle) {
 }
 
 stasis_handle_t * stasis_handle(open_non_blocking)
-    (stasis_handle_t * (*slow_factory)(void * arg), void * slow_factory_arg,
+     (stasis_handle_t * (*slow_factory)(void * arg),
+     void (*slow_factory_close)(void * arg),
+     void * slow_factory_arg,
      int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),
      void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
@@ -789,6 +796,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   impl->end_pos = 0;
 
   impl->slow_factory = slow_factory;
+  impl->slow_factory_close = slow_factory_close;
   impl->slow_factory_arg = slow_factory_arg;
 
   impl->slow_force_once = slow_force_once;
