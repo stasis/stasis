@@ -145,7 +145,7 @@ typedef struct nbw_impl {
 
   // Fields to manage slow handles
   stasis_handle_t * (*slow_factory)(void * arg);
-  void (*slow_factory_close)(void * arg);
+  int (*slow_factory_close)(void * arg);
   void * slow_factory_arg;
   int slow_force_once;
 
@@ -362,14 +362,14 @@ static int nbw_close(stasis_handle_t * h) {
   destroyList(&impl->available_slow_handles);
   free(impl->all_slow_handles);
   assert(impl->available_slow_handle_count == 0);
-
+  int ret = 0;
   if(impl->slow_factory_close) {
-	impl->slow_factory_close(impl->slow_factory_arg);
+	ret = impl->slow_factory_close(impl->slow_factory_arg);
   }
 
   free(h->impl);
   free(h);
-  return 0;
+  return ret;
 }
 static lsn_t nbw_start_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
@@ -783,7 +783,7 @@ static void * nbw_worker(void * handle) {
 
 stasis_handle_t * stasis_handle(open_non_blocking)
      (stasis_handle_t * (*slow_factory)(void * arg),
-     void (*slow_factory_close)(void * arg),
+     int (*slow_factory_close)(void * arg),
      void * slow_factory_arg,
      int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),

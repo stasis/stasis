@@ -31,19 +31,10 @@ static stasis_handle_t * slow_file_factory(void * argsP) {
   //h = stasis_handle(open_debug)(h);
   return h;
 }
-static void slow_file_factory_close(void * argsP) {
-	// nop
-}
 static stasis_handle_t * slow_pfile_factory(void * argsP) {
   stasis_handle_t * h = argsP;
   return h;
 }
-static void slow_pfile_factory_close(void * argsP) {
-  stasis_handle_t * h = argsP;
-  h->close(h);
-}
-static int (*slow_close)(stasis_handle_t * h) = 0;
-static stasis_handle_t * slow_pfile = 0;
 static int nop_close(stasis_handle_t*h) { return 0; }
 
 stasis_handle_t * stasis_handle(open)(const char * path) {
@@ -80,16 +71,16 @@ stasis_handle_t * stasis_handle(open)(const char * path) {
 		int worker_thread_count = 4;
 		if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_PFILE) {
 		  //              printf("\nusing pread()/pwrite()\n");
-		  slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
-		  slow_close = slow_pfile->close;
+		  stasis_handle_t * slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
+		  int (*slow_close)(struct stasis_handle_t *) = slow_pfile->close;
 		  slow_pfile->close = nop_close;
 		  ret =
-			  stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_factory_close, slow_pfile, 1, fast_factory,
+			  stasis_handle(open_non_blocking)(slow_pfile_factory, (int(*)(void*))slow_close, slow_pfile, 1, fast_factory,
 						 NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
 
 		} else if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_FILE) {
 		  ret =
-			  stasis_handle(open_non_blocking)(slow_file_factory, slow_file_factory_close, slow_arg, 0, fast_factory,
+			  stasis_handle(open_non_blocking)(slow_file_factory, 0, slow_arg, 0, fast_factory,
 						 NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
         } else {
           printf("Unknown value for config option bufferManagerNonBlockingSlowHandleType\n");

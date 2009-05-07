@@ -327,7 +327,7 @@ stasis_handle_t * stasis_handle(open_pfile)
 */
 stasis_handle_t * stasis_handle(open_non_blocking)
      (stasis_handle_t * (*slow_factory)(void * arg),
-     void (*slow_factory_close)(void * arg),
+     int (*slow_factory_close)(void * arg),
      void * slow_factory_arg,
      int slow_force_once,
      stasis_handle_t * (*fast_factory)(lsn_t off, lsn_t len, void * arg),
