@@ -8,7 +8,7 @@
     Implements lladd's caching policy.  Looks up pageid in the cache.
     If pageid doesn't exist, then allocate a new slot for it.  If
     there are no new slots, then callback into bufferManager's
-    pageRead() function.  Eventually, this could be extended to
+    read_page() function.  Eventually, this could be extended to
     support application specific caching schemes.
 
     If you would like to implement your own caching policy, implement
@@ -18,7 +18,7 @@
     The implementation of this module does not need to be threadsafe.
 
     @param first The caller should manually read this page by calling
-    pageRead() before calling pageCacheInit. 
+    read_page() before calling pageCacheInit. 
 
     @todo pageCacheInit should not take a page as a parameter.
 

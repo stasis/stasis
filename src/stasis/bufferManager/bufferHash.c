@@ -34,6 +34,8 @@ static replacementPolicy * lru;
 
 static stasis_buffer_pool_t * stasis_buffer_pool;
 
+static stasis_page_handle_t * page_handle;
+
 static int running;
 
 typedef struct LL_ENTRY(node_t) node_t;
@@ -110,7 +112,7 @@ inline static Page * writeBackOnePage() {
   assert(old == victim);
 
   //      printf("Write(%ld)\n", (long)victim->id);
-  pageWrite(victim);   /// XXX pageCleanup and pageFlushed might be heavyweight.
+  page_handle->write(page_handle,victim);   /// XXX pageCleanup and pageFlushed might be heavyweight.
   stasis_page_cleanup(victim);
   // Make sure that no one mistakenly thinks this is still a live copy.
   victim->id = -1;
@@ -269,7 +271,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     // try to read this page from disk.
     pthread_mutex_unlock(&mut);
 
-    pageRead(ret);
+    page_handle->read(page_handle, ret);
 
     pthread_mutex_lock(&mut);
 
@@ -322,13 +324,13 @@ static void bhReleasePage(Page * p) {
   pthread_mutex_unlock(&mut);
 }
 static void bhWriteBackPage(Page * p) {
-  pageWrite(p);
+  page_handle->write(page_handle, p);
 }
 static void bhForcePages() {
-  forcePageFile();
+  page_handle->force_file(page_handle);
 }
 static void bhForcePageRange(pageid_t start, pageid_t stop) {
-  forceRangePageFile(start, stop);
+  page_handle->force_range(page_handle, start, stop);
 }
 static void bhBufDeinit() {
   running = 0;
@@ -340,7 +342,7 @@ static void bhBufDeinit() {
   const struct LH_ENTRY(pair_t) * next;
   LH_ENTRY(openlist)(cachedPages, &iter);
   while((next = LH_ENTRY(readlist)(&iter))) {
-    pageWrite((next->value));
+    page_handle->write(page_handle, (next->value));
     stasis_page_cleanup((next->value)); // normally called by writeBackOnePage()
   }
   LH_ENTRY(closelist)(&iter);
@@ -350,6 +352,7 @@ static void bhBufDeinit() {
 
   lru->deinit(lru);
   stasis_buffer_pool_deinit(stasis_buffer_pool);
+  page_handle->close(page_handle);
 }
 static void bhSimulateBufferManagerCrash() {
   running = 0;
@@ -374,10 +377,11 @@ static void bhSimulateBufferManagerCrash() {
 
   lru->deinit(lru);
   stasis_buffer_pool_deinit(stasis_buffer_pool);
+  page_handle->close(page_handle);
 }
 
-void stasis_buffer_manager_hash_open() {
-
+void stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
+  page_handle = h;
   assert(!running);
 
 #ifdef LONG_RUN

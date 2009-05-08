@@ -42,7 +42,7 @@ terms specified in this license.
 ---*/
 
 #include "../check_includes.h"
-
+#include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
 #include <stasis/page.h>
 #include <stasis/page/indirect.h>

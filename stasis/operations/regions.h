@@ -1,3 +1,6 @@
+#ifndef STASIS_OPERATIONS_REGIONS_H
+#define STASIS_OPERATIONS_REGIONS_H
+#include <stasis/operations.h>
 /**
    Allocates and deallocates regions of pages.  The page before each
    region is of type BOUNDARY_TAG.  All regions except the last one in
@@ -9,7 +12,7 @@
    a newly allocated region are undefined.
 */
 
-typedef struct boundary_tag { 
+typedef struct boundary_tag {
   pageid_t size;
   pageid_t prev_size;
   int status;
@@ -51,3 +54,4 @@ stasis_operation_impl stasis_op_impl_region_dealloc_inverse();
 void fsckRegions(int xid);
 
 // XXX need callbacks to handle transaction commit/abort.
+#endif

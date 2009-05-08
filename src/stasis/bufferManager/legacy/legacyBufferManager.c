@@ -4,6 +4,7 @@
 
 #include <stasis/bufferManager.h>
 #include <stasis/pageHandle.h>
+#include <stasis/bufferPool.h>
 #include <stasis/bufferManager/legacy/pageFile.h>
 #include <stasis/bufferManager/legacy/pageCache.h>
 
@@ -25,16 +26,28 @@ static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid)
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
 
+static stasis_page_handle_t * page_handle;
+
 static stasis_buffer_pool_t * stasis_buffer_pool;
 
-int stasis_buffer_manager_deprecated_open() {
+static void pageWrite_legacyWrapper(Page * p) {
+  page_handle->write(page_handle,p);
+}
+static void forcePageFile_legacyWrapper() {
+  page_handle->force_file(page_handle);
+}
+static void forceRangePageFile_legacyWrapper(lsn_t start, lsn_t stop) {
+  page_handle->force_range(page_handle, start, stop);
+}
 
+int stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
+    page_handle = ph;
     releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
     loadUninitPageImpl = bufManLoadUninitPage;
-    writeBackPage = pageWrite;
-    forcePages = forcePageFile;
-    forcePageRange = forceRangePageFile;
+    writeBackPage = pageWrite_legacyWrapper;
+    forcePages = forcePageFile_legacyWrapper;
+    forcePageRange = forceRangePageFile_legacyWrapper;
     stasis_buffer_manager_close = bufManBufDeinit;
     stasis_buffer_manager_simulate_crash = bufManSimulateBufferManagerCrash;
 
@@ -50,7 +63,7 @@ int stasis_buffer_manager_deprecated_open() {
 	first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
 	stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
-        pageRead(first);
+    page_handle->read(page_handle, first);
 	pageCacheInit(first);
 
 	int err = pthread_key_create(&lastPage, 0);
@@ -73,7 +86,7 @@ static void bufManBufDeinit() {
 	LH_ENTRY(openlist(activePages, &iter));
 
 	while((next = LH_ENTRY(readlist)(&iter))) {
-	  pageWrite((Page*)next->value);
+	  page_handle->write(page_handle, (Page*)next->value);
 	  DEBUG("+");
 	}
 
@@ -83,9 +96,9 @@ static void bufManBufDeinit() {
 
 	pageCacheDeinit();
 
-	//closePageFile();
-
 	stasis_buffer_pool_deinit(stasis_buffer_pool);
+
+    page_handle->close(page_handle);
 
 #ifdef PIN_COUNT
 	if(pinCount != 0) {
@@ -98,10 +111,10 @@ static void bufManBufDeinit() {
     Just close file descriptors, don't do any other clean up. (For
     testing.)
 
-    @todo buffer manager should never call closePageFile(); it not longer manages pageFile handles
+    @todo buffer manager should never call close_(); it not longer manages pageFile handles
 */
-void bufManSimulateBufferManagerCrash() {
-  closePageFile();
+static void bufManSimulateBufferManagerCrash() {
+  page_handle->close(page_handle);
 #ifdef PIN_COUNT
   pinCount = 0;
 #endif
@@ -259,12 +272,12 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
 
     assert(ret != dummy_page);
     if(ret->id != -1) {
-      pageWrite(ret);
+      page_handle->write(page_handle, ret);
     }
 
     stasis_buffer_pool_free_page(stasis_buffer_pool, ret, pageid);
     if(!uninitialized) {
-      pageRead(ret);
+      page_handle->read(page_handle, ret);
     } else {
       memset(ret->memAddr, 0, PAGE_SIZE);
       ret->dirty = 0;
@@ -283,7 +296,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
     /* @todo Put off putting this back into cache until we're done with
        it. -- This could cause the cache to empty out if the ratio of
        threads to buffer slots is above ~ 1/3, but it decreases the
-       liklihood of thrashing. */
+       likelihood of thrashing. */
     cacheInsertPage(ret);
 
     pthread_mutex_unlock(&loadPagePtr_mutex);

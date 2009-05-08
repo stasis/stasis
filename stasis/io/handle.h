@@ -1,8 +1,6 @@
-#include <stasis/transactional.h>
-
 #ifndef IO_HANDLE_H
 #define IO_HANDLE_H
-
+#include <stasis/common.h>
 
 /**
    stasis_handle() is a macro that prepends a unique prefix to the its

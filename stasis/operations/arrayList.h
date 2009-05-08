@@ -75,7 +75,7 @@ terms specified in this license.
 /** @{ */
 #ifndef __ARRAY_LIST_H
 #define __ARRAY_LIST_H
-
+#include <stasis/operations.h>
 /** Allocate a new array list.
 
     @param xid The transaction allocating the new arrayList.
@@ -108,7 +108,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
    @param rid the recordid pointing to the ArrayList.
    @return The number of items stored in the ArrayList.
  */
-compensated_function int TarrayListLength(int xid, recordid rid); 
+compensated_function int TarrayListLength(int xid, recordid rid);
 
 /** Used by Tread() and Tset() to map from arrayList index to recordid. */
 recordid dereferenceArrayListRid(int xid, Page * p, int offset);

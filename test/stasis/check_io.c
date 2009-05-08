@@ -42,7 +42,8 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/io/handle.h>
-
+#include <stasis/constants.h>
+#include <stasis/flags.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>

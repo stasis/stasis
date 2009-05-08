@@ -5,12 +5,18 @@
  *      Author: sears
  */
 #include <config.h>
+
+#include <stasis/common.h>
+#include <stasis/constants.h>
+#include <stasis/flags.h>
+#include <stasis/io/handle.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <stasis/io/handle.h>
-
+#include <assert.h>
+#include <stdio.h>
 
 // @todo this factory stuff doesn't really belong here...
 static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {

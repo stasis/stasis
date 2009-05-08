@@ -41,12 +41,12 @@ terms specified in this license.
 ---*/
 
 /**
- * @file 
+ * @file
  *
  * Provides raw access to entire pages.
  *
- * LLADD's pages are PAGE_SIZE bytes long.  Currently, two integers are 
- * reserved for the LSN and the page type. providing PAGE_SIZE-8 bytes 
+ * LLADD's pages are PAGE_SIZE bytes long.  Currently, two integers are
+ * reserved for the LSN and the page type. providing PAGE_SIZE-8 bytes
  * of usable space.
  *
  * @ingroup OPERATIONS
@@ -54,11 +54,10 @@ terms specified in this license.
  * @see page.h
  *
  * $Id$
- */ 
-
-
+ */
 #ifndef __PAGE_OPERATIONS_H__
 #define __PAGE_OPERATIONS_H__
+#include <stasis/operations.h>
 
 compensated_function pageid_t TpageAlloc(int xid);
 compensated_function pageid_t TfixedPageAlloc(int xid, int size);

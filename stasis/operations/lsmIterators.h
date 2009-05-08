@@ -5,7 +5,7 @@
 #include "stasis/bufferManager.h"
 #include "stasis/page/compression/compression.h"
 #include "stasis/page/compression/tuple.h"
-
+#include "stasis/operations.h"
 /**
    @file
 
@@ -68,7 +68,7 @@ class gcIterator {
         }
       } else {
         at_end_=true;
-      } 
+      }
     }
   explicit gcIterator()
     : i_(0),
@@ -682,7 +682,7 @@ class versioningIterator {
     toByteArray<SET,ROW>(stlSetIterator<SET,ROW> * const t);
 };
 
-template <class SET,class ROW> 
+template <class SET,class ROW>
 inline const byte * toByteArray(stlSetIterator<SET,ROW> * const t) {
   return (*(t->it_)).toByteArray();
 }

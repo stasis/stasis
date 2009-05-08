@@ -21,7 +21,7 @@
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
 #include <stasis/blobManager.h> // XXX remove this, move Tread() to set.c
-//#include <stdio.h>
+
 #include <assert.h>
 #include <limits.h>
 
@@ -51,8 +51,8 @@ void stasis_transaction_table_init() {
 }
 
 int Tinit() {
-        pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
-        stasis_initted = 1;
+    pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
+    stasis_initted = 1;
 	stasis_transaction_table_num_active = 0;
 
 	compensations_init();
@@ -60,26 +60,28 @@ int Tinit() {
         stasis_transaction_table_init();
 	stasis_operation_table_init();
 	dirtyPagesInit();
-        if(LOG_TO_FILE == stasis_log_type) {
-          stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
-                                                        stasis_log_file_mode,
-                                                        stasis_log_file_permissions);
-        } else if(LOG_TO_MEMORY == stasis_log_type) {
-          stasis_log_file = stasis_log_impl_in_memory_open();
-        } else {
-          assert(stasis_log_file != NULL);
-        }
-	stasis_page_init();
 
+	if(LOG_TO_FILE == stasis_log_type) {
+      stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                    stasis_log_file_mode,
+                                                    stasis_log_file_permissions);
+    } else if(LOG_TO_MEMORY == stasis_log_type) {
+      stasis_log_file = stasis_log_impl_in_memory_open();
+    } else {
+      assert(stasis_log_file != NULL);
+    }
+
+	stasis_page_init();
+	stasis_page_handle_t * page_handle;
 	if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
         printf("\nWarning: Using old I/O routines (with known bugs).\n");
-        openPageFile();
+        page_handle = openPageFile();
 	} else {
 		stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
 		// XXX should not be global.
-		pageHandleOpen(h);
+		page_handle = stasis_page_handle_open(h);
 	}
-	stasis_buffer_manager_open(bufferManagerType);
+	stasis_buffer_manager_open(bufferManagerType, page_handle);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
 	TallocInit();
@@ -347,7 +349,6 @@ int Tdeinit() {
   TallocDeinit();
   stasis_buffer_manager_close();
   DEBUG("Closing page file tdeinit\n");
-  closePageFile();
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
   dirtyPagesDeinit();
@@ -364,7 +365,7 @@ int TuncleanShutdown() {
   stasis_truncation_deinit();
   TnaiveHashDeinit();
   stasis_buffer_manager_simulate_crash();
-  // XXX: closePageFile?
+  // XXX: close_file?
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
   stasis_transaction_table_num_active = 0;

@@ -1,22 +1,22 @@
 /**
-   @file 
+   @file
     This file handles all of the file I/O for pages.
 
 */
 #include "config.h"
-#include <stasis/page.h>
 
+#include <stasis/page.h>
 #include <stasis/bufferManager.h>
 #include <stasis/pageHandle.h>
+#include <stasis/truncation.h>
 
 #include <stasis/bufferManager/legacy/pageFile.h>
+#include <stasis/logger/logger2.h>
 
 #include <assert.h>
-#include <stasis/logger/logger2.h>
-#include <stasis/truncation.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <stdlib.h>
 /** For O_DIRECT.  It's unclear that this is the correct thing to \#define, but it works under linux. */
 #define __USE_GNU
 
@@ -28,16 +28,16 @@
 
 static int stable = -1;
 static pthread_mutex_t stable_mutex;
-static void pfForcePageFile();
-static void pfClosePageFile();
-static void pfForceRangePageFile(lsn_t start, lsn_t stop) ;
+static void pfForcePageFile(stasis_page_handle_t* h);
+static void pfClosePageFile(stasis_page_handle_t* h);
+static void pfForceRangePageFile(stasis_page_handle_t* h, lsn_t start, lsn_t stop) ;
 inline static pageid_t myLseekNoLock(int f, pageid_t offset, int whence);
 
 static int oldOffset = -1;
 
 int pageFile_isDurable = 1;
 
-static void pfPageRead(Page *ret) {
+static void pfPageRead(stasis_page_handle_t * h, Page *ret) {
 
   pageid_t pageoffset;
   pageid_t offset;
@@ -46,7 +46,7 @@ static void pfPageRead(Page *ret) {
   pthread_mutex_lock(&stable_mutex);
 
 
-  if(oldOffset != pageoffset) { 
+  if(oldOffset != pageoffset) {
     offset = myLseekNoLock(stable, pageoffset, SEEK_SET);
     assert(offset == pageoffset);
   } else {
@@ -60,7 +60,7 @@ static void pfPageRead(Page *ret) {
   if(read_size != PAGE_SIZE) {
     if (!read_size) {  /* Past EOF... */
       memset(ret->memAddr, 0, PAGE_SIZE); // The file will be extended when we write to the new page.
-    } else if(read_size == -1) { 
+    } else if(read_size == -1) {
       perror("pageFile.c couldn't read");
       fflush(NULL);
       abort();
@@ -78,13 +78,13 @@ static void pfPageRead(Page *ret) {
 }
 /** @todo need to sync the page file to disk occasionally, so that the
     dirty page table can be kept up to date. */
-static void pfPageWrite(Page * ret) {
+static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
   assert(ret->dirty == dirtyPages_isDirty(ret));
   if(!ret->dirty) {
-    //  if(!dirtyPages_isDirty(ret)) { 
-    DEBUG(" =^)~ "); 
-    return; 
+    //  if(!dirtyPages_isDirty(ret)) {
+    DEBUG(" =^)~ ");
+    return;
   }
   pageid_t pageoffset = ret->id * PAGE_SIZE;
   pageid_t offset ;
@@ -133,12 +133,13 @@ static void pfPageWrite(Page * ret) {
 //#define PAGE_FILE_O_DIRECT
 
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
-void openPageFile() {
-  pageRead = pfPageRead;
-  pageWrite = pfPageWrite;
-  forcePageFile = pfForcePageFile;
-  forceRangePageFile = pfForceRangePageFile;
-  closePageFile = pfClosePageFile;
+stasis_page_handle_t*  openPageFile() {
+  stasis_page_handle_t * ret = malloc(sizeof(*ret));
+  ret->read = pfPageRead;
+  ret->write = pfPageWrite;
+  ret->force_file = pfForcePageFile;
+  ret->force_range = pfForceRangePageFile;
+  ret->close = pfClosePageFile;
 
   DEBUG("Opening storefile.\n");
 
@@ -149,7 +150,7 @@ void openPageFile() {
   stable = open (stasis_store_file_name,
                  O_CREAT | O_RDWR, FILE_PERM);
 #endif
-  if(!pageFile_isDurable) { 
+  if(!pageFile_isDurable) {
     fprintf(stderr, "\n**********\n");
     fprintf  (stderr, "pageFile.c: pageFile_isDurable==0; the page file will not force writes to disk.\n");
     fprintf  (stderr, "            Transactions will not be durable if the system crashes.\n**********\n");
@@ -159,13 +160,13 @@ void openPageFile() {
     fflush(NULL);
     abort();
   }
-  
-  pthread_mutex_init(&stable_mutex, NULL);
 
+  pthread_mutex_init(&stable_mutex, NULL);
+  return ret;
 }
 
-static void pfForcePageFile() { 
-  if(pageFile_isDurable) { 
+static void pfForcePageFile(stasis_page_handle_t * h) {
+  if(pageFile_isDurable) {
 #ifndef PAGE_FILE_O_DIRECT
 #ifdef HAVE_FDATASYNC
   fdatasync(stable);
@@ -176,7 +177,7 @@ static void pfForcePageFile() {
   }
 }
 
-static void pfForceRangePageFile(lsn_t start, lsn_t stop) {
+static void pfForceRangePageFile(stasis_page_handle_t * h, lsn_t start, lsn_t stop) {
   if(pageFile_isDurable) {
 #ifdef HAVE_SYNC_FILE_RANGE
   int ret = sync_file_range(stable, start, stop,
@@ -193,15 +194,15 @@ static void pfForceRangePageFile(lsn_t start, lsn_t stop) {
 #endif
   }
 }
-static void pfClosePageFile() {
+static void pfClosePageFile(stasis_page_handle_t * h) {
   assert(stable != -1);
-  forcePageFile();
+  h->force_file(h);
   DEBUG("Closing storefile\n");
 
   int ret = close(stable);
 
 
-  if(-1 == ret) { 
+  if(-1 == ret) {
     perror("Couldn't close storefile.");
     fflush(NULL);
     abort();

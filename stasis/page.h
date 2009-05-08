@@ -88,8 +88,8 @@ terms specified in this license.
 
    Page implementations are free to define their own access methods
    and APIs.  However, Stasis's record oriented page interface
-   provides a default set of methods for page access. 
-   
+   provides a default set of methods for page access.
+
    @see PAGE_RECORD_INTERFACE
 
    @todo Page deallocators should call stasis_page_cleanup()
@@ -102,8 +102,10 @@ terms specified in this license.
 #define __PAGE_H__
 
 #include <stasis/common.h>
+#include <stasis/constants.h>
 #include <stasis/latches.h>
-#include <stasis/transactional.h>
+
+#include <assert.h>
 
 BEGIN_C_DECLS
 
@@ -182,7 +184,7 @@ struct Page_s {
       Read from a record    Read lock
 
 
-      @see rwlatch, getPage(), pageRalloc(), pageRead()
+      @see rwlatch, getPage(), pageRalloc(), read_page()
 
   */
   rwl * loadlatch;
@@ -337,8 +339,8 @@ lsn_t stasis_page_lsn_read(const Page * page);
    stasis_page_type_ptr(), for example:
 
    @code
-   int * stasis_page_type_ptr(Page *p) { 
-      return ( (int*)stasis_page_lsn_ptr(Page *p) ) - 1; 
+   int * stasis_page_type_ptr(Page *p) {
+      return ( (int*)stasis_page_lsn_ptr(Page *p) ) - 1;
    }
    @endcode
 
@@ -487,7 +489,7 @@ static const size_t USABLE_SIZE_OF_PAGE = (PAGE_SIZE - sizeof(lsn_t) - sizeof(in
 
    @return The length of the record in bytes.
  */
-static inline size_t 
+static inline size_t
 stasis_record_type_to_size(ssize_t type) {
   if(type >= 0) {
     return type;

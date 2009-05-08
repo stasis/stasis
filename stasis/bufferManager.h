@@ -76,14 +76,11 @@ terms specified in this license.
        @ingroup BUFFER_MANAGER
  * $Id$
  */
-
-#include <stasis/transactional.h>
-
 #ifndef __BUFFERMANAGER_H__
 #define __BUFFERMANAGER_H__
 
 BEGIN_C_DECLS
-
+#include <stasis/pageHandle.h>
 /**
  * Obtain a pointer to a page from the buffer manager.  The page will
  * be pinned, and the pointer valid until releasePage is called.
@@ -148,7 +145,7 @@ extern void (*forcePages)();
 extern void (*forcePageRange)(pageid_t start, pageid_t stop);
 extern void (*stasis_buffer_manager_simulate_crash)();
 
-int stasis_buffer_manager_open(int type);
+int stasis_buffer_manager_open(int type, stasis_page_handle_t* ph);
 /**
  * will write out any dirty pages, assumes that there are no running
  * transactions

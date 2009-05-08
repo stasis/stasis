@@ -1,9 +1,11 @@
 #define _XOPEN_SOURCE 600
 #include <stdlib.h>
 
-#include "config.h"
+#include <config.h>
 #include <stasis/page.h>
+#include <stasis/logger/logEntry.h>
 #include <stasis/operations/pageOperations.h>
+#include <stasis/operations/regions.h>
 #include <assert.h>
 #include <alloca.h>
 
@@ -74,7 +76,7 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
 /** @todo region sizes should be dynamic. */
 #define TALLOC_PAGE_REGION_SIZE 128 // 512K
 
-/** 
+/**
     This calls loadPage and releasePage directly, and bypasses the
     logger.
 */
@@ -86,7 +88,7 @@ compensated_function void pageOperationsInit() {
   recordid rid = {0, 0, sizeof(boundary_tag)};
   // Need to find a region with some free pages in it.
   Tread(-1, rid, &t);
-  
+
 
   pthread_mutex_init(&pageAllocMutex, NULL);
 }
@@ -116,7 +118,7 @@ compensated_function pageid_t TpageAllocMany(int xid, int count) {
   return TregionAlloc(xid, count, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 
-int TpageGetType(int xid, pageid_t page) { 
+int TpageGetType(int xid, pageid_t page) {
   Page * p = loadPage(xid, page);
   int ret = *stasis_page_type_ptr(p);
   releasePage(p);
@@ -132,11 +134,11 @@ int TpageGetType(int xid, pageid_t page) {
 	load page to be used, and update in-memory data.  (obtains lock on loaded page)
 	T update() the page, zeroing it, and saving the old successor in the log.
 	relase the page (avoid deadlock in next step)
-	T update() LLADD's header page (the first in the store file) with a new copy of 
+	T update() LLADD's header page (the first in the store file) with a new copy of
 	                              the in-memory data, saving old version in the log.
      release mutex
 
-   Free: 
+   Free:
 
      obtain mutex
         determine the current head of the freelist using in-memory data
@@ -151,8 +153,8 @@ int TpageGetType(int xid, pageid_t page) {
     and setting the successor pointer. This operation physically logs
     a whole page, which makes it expensive.  Doing so is necessary in
     general, but it is possible that application specific logic could
-    avoid the physical logging here. 
-    
+    avoid the physical logging here.
+
     Instead, we should just record the fact that the page was freed
     somewhere.  That way, we don't need to read the page in, or write
     out information about it.  If we lock the page against
@@ -215,8 +217,8 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
   return 0;
 }
 
-stasis_operation_impl stasis_op_impl_page_initialize() { 
-  stasis_operation_impl o = { 
+stasis_operation_impl stasis_op_impl_page_initialize() {
+  stasis_operation_impl o = {
     OPERATION_INITIALIZE_PAGE,
     OPERATION_INITIALIZE_PAGE,
     OPERATION_NOOP,
