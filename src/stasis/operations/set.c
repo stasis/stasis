@@ -96,7 +96,7 @@ int Tset(int xid, recordid rid, const void * dat) {
   short type = stasis_record_type_read(xid,p,rid);
 
   if(type == BLOB_SLOT) {
-    writeBlob(xid,p,rid,dat);
+    stasis_blob_write(xid,p,rid,dat);
     unlock(p->rwlatch);
     releasePage(p);
   } else {

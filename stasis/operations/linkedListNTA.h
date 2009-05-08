@@ -48,7 +48,7 @@ compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * i
 compensated_function recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
 compensated_function void TlinkedListDelete(int xid, recordid list);
 
-void LinkedListNTAInit();
+void TlinkedListNTAInit();
 stasis_operation_impl stasis_op_impl_linked_list_insert();
 stasis_operation_impl stasis_op_impl_linked_list_remove();
 #endif //__LINKED_LIST_NTA_H

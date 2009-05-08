@@ -196,7 +196,7 @@ compensated_function int TarrayListLength(int xid, recordid rid) {
 
 /*----------------------------------------------------------------------------*/
 
-recordid dereferenceArrayListRid(int xid, Page * p, int offset) {
+recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset) {
   readlock(p->rwlatch,0);
   TarrayListParameters tlp = pageToTLP(xid, p);
 

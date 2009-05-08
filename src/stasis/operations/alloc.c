@@ -28,8 +28,8 @@
    Here are some requirements for alloc:
 
    [DONE] Space Reuse: There are many ways to implement this.  One method
-   (that I'm not particularly attached to) is to maintain seperate
-   linked lists for each type of page, seperated by an estimate of the
+   (that I'm not particularly attached to) is to maintain separate
+   linked lists for each type of page, separated by an estimate of the
    amount of space free (actually 'un-reserved'; see below) on the
    page.  Allocation would move pages between linked lists, and search
    in the appropriate linked list before expanding the page file.
@@ -42,7 +42,7 @@
 
    This would tell Talloc to treat the page as though 'size' bytes had
    already been reserved.  The 'free space' that Talloc () reasons
-   about would be: max(reservedSpace, usedSpace).  A seperate call,
+   about would be: max(reservedSpace, usedSpace).  A separate call,
    TallocFromPage (xid, page, size) already exists, and should ignore
    the presence of the 'reserved space' field.
 
@@ -197,20 +197,20 @@ stasis_operation_impl stasis_op_impl_realloc() {
 }
 
 static pageid_t lastFreepage;
-static allocationPolicy * allocPolicy;
-static void registerOldRegions();
+static stasis_allocation_policy_t * allocPolicy;
+static void stasis_alloc_register_old_regions();
 void TallocInit() {
   lastFreepage = PAGEID_T_MAX;
-  allocPolicy = allocationPolicyInit();
+  allocPolicy = stasis_allocation_policy_init();
 }
 void TallocPostInit() {
-  registerOldRegions();
+  stasis_alloc_register_old_regions();
 }
 void TallocDeinit() {
-  allocationPolicyDeinit(allocPolicy);
+  stasis_allocation_policy_deinit(allocPolicy);
 }
 
-static void registerOldRegions() {
+static void stasis_alloc_register_old_regions() {
   pageid_t boundary = REGION_FIRST_TAG;
   boundary_tag t;
   DEBUG("registering old regions\n");
@@ -237,14 +237,14 @@ static void registerOldRegions() {
 	  releasePage(p);
 	}
 	newPages[t.size]=0;
-	allocationPolicyAddPages(allocPolicy, newPages);
+	stasis_allocation_policy_register_new_pages(allocPolicy, newPages);
 	free(newPages);
       }
     } while(TregionNextBoundaryTag(-1, &boundary, &t, 0));  //STORAGE_MANAGER_TALLOC)) {
   }
 }
 
-static void reserveNewRegion(int xid) {
+static void stasis_alloc_reserve_new_region(int xid) {
      void* nta = TbeginNestedTopAction(xid, OPERATION_NOOP, 0,0);
 
      pageid_t firstPage = TregionAlloc(xid, TALLOC_REGION_SIZE, STORAGE_MANAGER_TALLOC);
@@ -269,7 +269,7 @@ static void reserveNewRegion(int xid) {
        newPages[i] = next;
      }
      newPages[TALLOC_REGION_SIZE]= 0;
-     allocationPolicyAddPages(allocPolicy, newPages);
+     stasis_allocation_policy_register_new_pages(allocPolicy, newPages);
      free(newPages); // Don't free the structs it points to; they are in use by the allocation policy.
 
      TendNestedTopAction(xid, nta);
@@ -292,12 +292,12 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     Page * p;
 
     availablePage * ap =
-      allocationPolicyFindPage(allocPolicy, xid,
+      stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
                                stasis_record_type_to_size(type));
 
     if(!ap) {
-      reserveNewRegion(xid);
-      ap = allocationPolicyFindPage(allocPolicy, xid,
+      stasis_alloc_reserve_new_region(xid);
+      ap = stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
                                     stasis_record_type_to_size(type));
     }
     lastFreepage = ap->pageid;
@@ -314,20 +314,20 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
       unlock(p->rwlatch);
       if(!ap->lockCount) {
-	allocationPolicyUpdateFreespaceUnlockedPage(allocPolicy, ap,
+	stasis_allocation_policy_update_freespace_unlocked_page(allocPolicy, ap,
                                                     newFreespace);
       } else {
-        allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap,
+        stasis_allocation_policy_update_freespace_locked_page(allocPolicy, xid, ap,
                                                   newFreespace);
       }
       releasePage(p);
 
-      ap = allocationPolicyFindPage(allocPolicy, xid,
+      ap = stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
                                     stasis_record_type_to_size(type));
 
       if(!ap) {
-	reserveNewRegion(xid);
-	ap = allocationPolicyFindPage(allocPolicy, xid,
+	stasis_alloc_reserve_new_region(xid);
+	ap = stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
                                       stasis_record_type_to_size(type));
       }
 
@@ -343,8 +343,8 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
     stasis_record_alloc_done(xid, p, rid);
     int newFreespace = stasis_record_freespace(xid, p);
-    allocationPolicyAllocedFromPage(allocPolicy, xid, ap->pageid);
-    allocationPolicyUpdateFreespaceLockedPage(allocPolicy, xid, ap, newFreespace);
+    stasis_allocation_policy_alloced_from_page(allocPolicy, xid, ap->pageid);
+    stasis_allocation_policy_update_freespace_locked_page(allocPolicy, xid, ap, newFreespace);
     unlock(p->rwlatch);
 
     alloc_arg a = { rid.slot, type };
@@ -353,7 +353,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
    if(type == BLOB_SLOT) {
       rid.size = size;
-      allocBlob(xid, rid);
+      stasis_blob_alloc(xid, rid);
     }
 
     releasePage(p);
@@ -361,16 +361,16 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
   return rid;
 }
 
-void allocTransactionAbort(int xid) {
+void stasis_alloc_aborted(int xid) {
   begin_action(pthread_mutex_unlock, &talloc_mutex) {
     pthread_mutex_lock(&talloc_mutex);
-    allocationPolicyTransactionCompleted(allocPolicy, xid);
+    stasis_allocation_policy_transaction_completed(allocPolicy, xid);
   } compensate;
 }
-void allocTransactionCommit(int xid) {
+void stasis_alloc_committed(int xid) {
   begin_action(pthread_mutex_unlock, &talloc_mutex) {
     pthread_mutex_lock(&talloc_mutex);
-    allocationPolicyTransactionCompleted(allocPolicy, xid);
+    stasis_allocation_policy_transaction_completed(allocPolicy, xid);
   } compensate;
 }
 
@@ -384,7 +384,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
   }
 
   pthread_mutex_lock(&talloc_mutex);
-  if(!allocationPolicyCanXidAllocFromPage(allocPolicy, xid, page)) {
+  if(!stasis_allocation_policy_can_xid_alloc_from_page(allocPolicy, xid, page)) {
     pthread_mutex_unlock(&talloc_mutex);
     return NULLRID;
   }
@@ -395,7 +395,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
 
   if(rid.size != INVALID_SLOT) {
     stasis_record_alloc_done(xid,p,rid);
-    allocationPolicyAllocedFromPage(allocPolicy, xid, page);
+    stasis_allocation_policy_alloced_from_page(allocPolicy, xid, page);
     unlock(p->rwlatch);
 
     alloc_arg a = { rid.slot, type };
@@ -404,7 +404,7 @@ compensated_function recordid TallocFromPage(int xid, pageid_t page, unsigned lo
 
     if(type == BLOB_SLOT) {
       rid.size = size;
-      allocBlob(xid,rid);
+      stasis_blob_alloc(xid,rid);
     }
 
   } else {
@@ -428,7 +428,7 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   readlock(p->rwlatch,0);
 
   recordid newrid = stasis_record_dereference(xid, p, rid);
-  allocationPolicyLockPage(allocPolicy, xid, newrid.page);
+  stasis_allocation_policy_lock_page(allocPolicy, xid, newrid.page);
 
   int64_t size = stasis_record_length_read(xid,p,rid);
   int64_t type = stasis_record_type_read(xid,p,rid);
@@ -470,7 +470,7 @@ compensated_function void Tdealloc(int xid, recordid rid) {
   pthread_mutex_unlock(&talloc_mutex);
 
   if(type==BLOB_SLOT) {
-    deallocBlob(xid,(blob_record_t*)(preimage+sizeof(alloc_arg)));
+    stasis_blob_dealloc(xid,(blob_record_t*)(preimage+sizeof(alloc_arg)));
   }
 
   free(preimage);

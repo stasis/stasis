@@ -16,8 +16,8 @@ stasis_operation_impl stasis_op_impl_alloc();
 stasis_operation_impl stasis_op_impl_dealloc();
 stasis_operation_impl stasis_op_impl_realloc();
 
-void allocTransactionAbort(int xid);
-void allocTransactionCommit(int xid);
+void stasis_alloc_aborted(int xid);
+void stasis_alloc_committed(int xid);
 
 void TallocInit();
 void TallocPostInit();

@@ -111,7 +111,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
 compensated_function int TarrayListLength(int xid, recordid rid);
 
 /** Used by Tread() and Tset() to map from arrayList index to recordid. */
-recordid dereferenceArrayListRid(int xid, Page * p, int offset);
+recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset);
 
 stasis_operation_impl stasis_op_impl_array_list_header_init();
 /** @} */

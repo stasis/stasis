@@ -81,11 +81,11 @@ static int cmpFreespace(const void * ap, const void * bp, const void * param) {
   }
 }
 
-inline static availablePage* getAvailablePage(allocationPolicy * ap, pageid_t pageid) {
+inline static availablePage* getAvailablePage(stasis_allocation_policy_t * ap, pageid_t pageid) {
   return  (availablePage*) LH_ENTRY(find)(ap->allPages, &pageid, sizeof(pageid));
 }
 
-inline static void insert_xidAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void insert_xidAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
 
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   if(!pages) { 
@@ -96,7 +96,7 @@ inline static void insert_xidAlloced(allocationPolicy * ap, int xid, availablePa
   assert(check == p);
 }
 
-inline static void remove_xidAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void remove_xidAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   assert(p->lockCount);
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   assert(pages);
@@ -104,7 +104,7 @@ inline static void remove_xidAlloced(allocationPolicy * ap, int xid, availablePa
   assert(check == p);  // sometimes fails
 }
 
-inline static void insert_xidDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void insert_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
   if(!pages) { 
@@ -117,7 +117,7 @@ inline static void insert_xidDealloced(allocationPolicy * ap, int xid, available
   assert(check);
 }
 
-inline static void remove_xidDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void remove_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
   assert(pages);
@@ -125,7 +125,7 @@ inline static void remove_xidDealloced(allocationPolicy * ap, int xid, available
   assert(check == p);
 }
 
-inline static int find_xidDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static int find_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
   if(!pages) { return 0; } 
   const availablePage * check = RB_ENTRY(find)(p, pages);
@@ -136,7 +136,7 @@ inline static int find_xidDealloced(allocationPolicy * ap, int xid, availablePag
   }
 }
 
-inline static void     lockAlloced(allocationPolicy * ap, int xid, availablePage * p) {
+inline static void     lockAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
   const availablePage * check = RB_ENTRY(delete)(p, ap->availablePages);
   assert(check == p);
 
@@ -149,7 +149,7 @@ inline static void     lockAlloced(allocationPolicy * ap, int xid, availablePage
   insert_xidAlloced(ap, xid, p);
 }
 
-inline static void   unlockAlloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void   unlockAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   remove_xidAlloced(ap, xid, p);
 
   p->lockCount--;
@@ -165,7 +165,7 @@ inline static void   unlockAlloced(allocationPolicy * ap, int xid, availablePage
 
 }
 
-inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void lockDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   if(p->lockCount == 0) { 
     // xid should own it
     lockAlloced(ap, xid, p);
@@ -205,7 +205,7 @@ inline static void lockDealloced(allocationPolicy * ap, int xid, availablePage *
   }
 }
 
-inline static void unlockDealloced(allocationPolicy * ap, int xid, availablePage * p) { 
+inline static void unlockDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) { 
   assert(p->lockCount > 0);
   p->lockCount--;
 
@@ -219,8 +219,8 @@ inline static void unlockDealloced(allocationPolicy * ap, int xid, availablePage
   }
 }
 
-allocationPolicy * allocationPolicyInit() { 
-  allocationPolicy * ap = malloc(sizeof(allocationPolicy));
+stasis_allocation_policy_t * stasis_allocation_policy_init() { 
+  stasis_allocation_policy_t * ap = malloc(sizeof(stasis_allocation_policy_t));
 
   ap->xidAlloced = LH_ENTRY(create)(10);
   ap->xidDealloced = LH_ENTRY(create)(10);
@@ -230,7 +230,7 @@ allocationPolicy * allocationPolicyInit() {
   return ap;
 }
 
-void allocationPolicyDeinit(allocationPolicy * ap) { 
+void stasis_allocation_policy_deinit(stasis_allocation_policy_t * ap) { 
   
   const availablePage * next;
   while(( next = RB_ENTRY(min)(ap->availablePages) )) { 
@@ -246,7 +246,7 @@ void allocationPolicyDeinit(allocationPolicy * ap) {
   free(ap);
 }
 
-void allocationPolicyAddPages(allocationPolicy * ap, availablePage** newPages) {
+void stasis_allocation_policy_register_new_pages(stasis_allocation_policy_t * ap, availablePage** newPages) {
 
   for(int i = 0; newPages[i] != 0; i++) {
     const availablePage * ret = RB_ENTRY(search)(newPages[i], ap->availablePages);
@@ -260,7 +260,7 @@ void allocationPolicyAddPages(allocationPolicy * ap, availablePage** newPages) {
 /// XXX need updateAlloced, updateFree, which remove a page, change
 /// its freespace / lockCount, and then re-insert them into the tree.
 
-availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int freespace) {
+availablePage * stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t * ap, int xid, int freespace) {
   // For the best fit amongst the pages in availablePages, call:
   //
   //    rblookup(RB_LUGREAT, key, availablePages) 
@@ -302,7 +302,7 @@ availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int fre
   return (availablePage*) ret; 
 }
 
-int allocationPolicyCanXidAllocFromPage(allocationPolicy *ap, int xid, pageid_t page) {
+int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) {
   availablePage * p = getAvailablePage(ap, page);
   const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
   int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
@@ -319,7 +319,7 @@ int allocationPolicyCanXidAllocFromPage(allocationPolicy *ap, int xid, pageid_t 
   }
 }
 
-void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, pageid_t page) { 
+void stasis_allocation_policy_alloced_from_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) { 
   availablePage * p = getAvailablePage(ap, page);
   const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
   int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
@@ -343,7 +343,7 @@ void allocationPolicyAllocedFromPage(allocationPolicy *ap, int xid, pageid_t pag
   }
 }
 
-void allocationPolicyLockPage(allocationPolicy *ap, int xid, pageid_t page) { 
+void stasis_allocation_policy_lock_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) { 
 
   availablePage * p = getAvailablePage(ap, page);
   lockDealloced(ap, xid, p);
@@ -351,7 +351,7 @@ void allocationPolicyLockPage(allocationPolicy *ap, int xid, pageid_t page) {
 }
 
 
-void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
+void stasis_allocation_policy_transaction_completed(stasis_allocation_policy_t * ap, int xid) {
 
   struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
 
@@ -384,7 +384,7 @@ void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid) {
 
 }
 
-void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availablePage * key, int newFree) {
+void stasis_allocation_policy_update_freespace_unlocked_page(stasis_allocation_policy_t * ap, availablePage * key, int newFree) {
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, ap->availablePages);
   assert(key == p);
   p->freespace = newFree;
@@ -392,7 +392,7 @@ void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availabl
   assert(ret == p);
 }
 
-void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, availablePage * key, int newFree) {
+void stasis_allocation_policy_update_freespace_locked_page(stasis_allocation_policy_t * ap, int xid, availablePage * key, int newFree) {
   struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
   assert(key);
   availablePage * p = (availablePage*) RB_ENTRY(delete)(key, locks);

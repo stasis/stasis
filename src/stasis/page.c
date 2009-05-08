@@ -123,7 +123,7 @@ void stasis_page_init() {
   stasis_page_impl_register(fixedImpl());
   stasis_page_impl_register(boundaryTagImpl());
   stasis_page_impl_register(arrayListImpl());
-  stasis_page_impl_register(blobImpl());
+  stasis_page_impl_register(stasis_page_blob_impl());
   stasis_page_impl_register(indirectImpl());
   stasis_page_impl_register(lsmRootImpl());
   stasis_page_impl_register(slottedLsnFreeImpl());
@@ -180,7 +180,7 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
   if(page_type == INDIRECT_PAGE) {
     rid = dereferenceIndirectRID(xid, rid);
   } else if(page_type == ARRAY_LIST_PAGE) {
-    rid = dereferenceArrayListRid(xid, p, rid.slot);
+    rid = stasis_array_list_dereference_recordid(xid, p, rid.slot);
   }
   return rid;
 }

@@ -4,7 +4,7 @@
 #include <stasis/common.h>
 
 struct allocationPolicy;
-typedef struct allocationPolicy allocationPolicy;
+typedef struct allocationPolicy stasis_allocation_policy_t;
 
 typedef struct availablePage { 
   int freespace;
@@ -12,15 +12,15 @@ typedef struct availablePage {
   int lockCount;  // Number of active transactions that have alloced or dealloced from this page.
 } availablePage;
 
-allocationPolicy * allocationPolicyInit();
-void allocationPolicyDeinit(allocationPolicy * ap);
-void allocationPolicyAddPages(allocationPolicy * ap, availablePage** newPages);
-availablePage * allocationPolicyFindPage(allocationPolicy * ap, int xid, int freespace);
-void allocationPolicyTransactionCompleted(allocationPolicy * ap, int xid);
-void allocationPolicyUpdateFreespaceUnlockedPage(allocationPolicy * ap, availablePage * key, int newFree);
-void allocationPolicyUpdateFreespaceLockedPage(allocationPolicy * ap, int xid, availablePage * key, int newFree);
-void allocationPolicyLockPage(allocationPolicy * ap, int xid, pageid_t page);
-void allocationPolicyAllocedFromPage(allocationPolicy * ap, int xid, pageid_t page);
+stasis_allocation_policy_t * stasis_allocation_policy_init();
+void stasis_allocation_policy_deinit(stasis_allocation_policy_t * ap);
+void stasis_allocation_policy_register_new_pages(stasis_allocation_policy_t * ap, availablePage** newPages);
+availablePage * stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t * ap, int xid, int freespace);
+void stasis_allocation_policy_transaction_completed(stasis_allocation_policy_t * ap, int xid);
+void stasis_allocation_policy_update_freespace_unlocked_page(stasis_allocation_policy_t * ap, availablePage * key, int newFree);
+void stasis_allocation_policy_update_freespace_locked_page(stasis_allocation_policy_t * ap, int xid, availablePage * key, int newFree);
+void stasis_allocation_policy_lock_page(stasis_allocation_policy_t * ap, int xid, pageid_t page);
+void stasis_allocation_policy_alloced_from_page(stasis_allocation_policy_t * ap, int xid, pageid_t page);
 /**
    Check to see if it is safe to allocate from a particular page.
 
@@ -35,5 +35,5 @@ void allocationPolicyAllocedFromPage(allocationPolicy * ap, int xid, pageid_t pa
    @param page The page that will be allocated from.
    @return true if the allocation would be safe.  false if not sure.
  */
-int allocationPolicyCanXidAllocFromPage(allocationPolicy * ap, int xid, pageid_t page);
+int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t * ap, int xid, pageid_t page);
 #endif // ALLOCATION_POLICY_H

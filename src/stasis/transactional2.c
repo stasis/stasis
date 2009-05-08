@@ -87,7 +87,7 @@ int Tinit() {
 	TallocInit();
 	TnaiveHashInit();
 	LinearHashNTAInit();
-	LinkedListNTAInit();
+	TlinkedListNTAInit();
 	iterator_init();
 	consumer_init();
 	setupLockManagerCallbacksNil();
@@ -254,7 +254,7 @@ compensated_function void Tread(int xid, recordid rid, void * dat) {
   short type = stasis_record_type_read(xid,p,rid);
   if(type == BLOB_SLOT) {
     DEBUG("call readBlob %lld %lld %lld\n", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
-    readBlob(xid,p,rid,dat);
+    stasis_blob_read(xid,p,rid,dat);
     assert(rid.page == p->id);
   } else {
     stasis_record_read(xid, p, rid, dat);
@@ -286,7 +286,7 @@ int Tcommit(int xid) {
   lsn = LogTransCommit(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
-  allocTransactionCommit(xid);
+  stasis_alloc_committed(xid);
 
   pthread_mutex_lock(&stasis_transaction_table_mutex);
 
@@ -320,7 +320,7 @@ int Tabort(int xid) {
   undoTrans(stasis_log_file, *t);
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
 
-  allocTransactionAbort(xid);
+  stasis_alloc_aborted(xid);
 
   return 0;
 }
