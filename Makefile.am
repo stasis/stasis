@@ -14,8 +14,10 @@ ACLOCAL_AMFLAGS = -I m4
 #-funit-at-a-time => -finline-functions-called-once
 #-Wconversion
 
-docs:
-	doxygen doc/Doxyfile-developers
+doc/Doxyfile: doc/Doxyfile.in
+	./doc/gen_doxyfile.pl < $< > $@
+docs: doc/Doxyfile
+	doxygen doc/Doxyfile
 
 tidy: precoverage
 	find . -name '*~' -exec rm '{}' \;
@@ -26,7 +28,7 @@ tidy: precoverage
 	find . -name '*.da' -exec rm '{}' \;
 	find . -name '*.gcda' -exec rm '{}' \;
 	find . -name '*.gcno' -exec rm '{}' \;
-
+	rm -f doc/Doxyfile
 
 precoverage : 
 	find . -name '*.bb' | xargs rm -f

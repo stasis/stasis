@@ -23,7 +23,28 @@ INCLUDE(CTest)
 
 FIND_PACKAGE(FLEX)
 FIND_PACKAGE(BISON)
-
+FIND_PACKAGE(Doxygen)
+if(DOXYGEN_EXECUTABLE)
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in
+    ${CMAKE_CURRENT_BINARY_DIR}/doc/Doxyfile
+  )
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/doc/developers/html/index.html
+    COMMAND rm -rf ${CMAKE_BINARY_DIR}/doc/developers
+    COMMAND mkdir -p ${CMAKE_BINARY_DIR}/doc/developers
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doc/Doxyfile
+    DEPENDS ${CMAKE_BINARY_DIR}/doc/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  )
+  add_custom_target(
+    docs ALL
+    DEPENDS
+    ${CMAKE_BINARY_DIR}/doc/developers/html/index.html
+  )
+else(DOXYGEN_EXECUTABLE)
+  message(STATUS "doxygen not found; documentation will not be built")
+endif(DOXYGEN_EXECUTABLE)
 
 FIND_LIBRARY(HAVE_CONFUSE NAMES confuse)
 if(NOT HAVE_CONFUSE)
