@@ -2,6 +2,13 @@
 #include <stasis/latches.h>
 #include <string.h>
 #include <assert.h>
+/**
+ * @file
+ *
+ * A non-durable Stasis log implementation stores log entries in RAM.
+ *
+ * @ingroup LOGGING_IMPLEMENTATIONS
+ */
 
 typedef struct {
 	rwl * flushedLSN_lock;

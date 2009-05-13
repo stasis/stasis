@@ -473,10 +473,25 @@ terms specified in this license.
  *
  */
 /**
+ * @defgroup LOGGER Log
+ *
+ * Stasis' log API consists of three components.
+ */
+/**
+ * @defgroup LOGGING_IMPLEMENTATIONS Log implementations
+ *
+ * Stasis provides a number of default log formats, and supports third-party
+ * implementations.
+ *
+ */
+/**
+ * @defgroup LOGGING_INTERFACES High-level log interfaces
+ */
+/**
  * @defgroup LOGGING_DISCIPLINES Logging Disciplines
  *
- * Stasis' log API provides a number of methods that directly
- * manipulate the log.
+ * Transactional data-structures must choose one of Stasis' recovery modes,
+ * and interact with the log accordingly.
  *
  * @section SNF STEAL/NO-FORCE recovery
  * Stasis includes a function, Tupdate(), that
@@ -489,10 +504,10 @@ terms specified in this license.
  * during commit.  Recovery works by "repeating history"; all actions
  * are redone up to some point in time after the last successful
  * transaction committed, but before the crash.  Conceptually, any
- * partially commited transactions are then rolled back using
+ * partially committed transactions are then rolled back using
  * Tabort(), as they would be during normal operation.  For more
  * information about STEAL/NO-FORCE recovery strategies, see the ARIES
- * paper (XXX cite aries properly)
+ * paper (XXX cite Aries properly)
  *
  *
  * @section SF STEAL/FORCE and bulk-logged recovery

@@ -43,40 +43,13 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-/**
- * @file
- * 
- * New version of logstreamer; designed to work with logEntry, and has
- * a simplified API.
- *
- * logstreamer is the implementation of writing the log tail
- * It must be bufferred -- in that when something is written to the log tail it
- * is not immediately written to disk, but rather just to memory. But
- * logstreamer must be able to force flush to disk, which will be done when a
- * commit log entry is written to the log tail
- * 
- * Note: using the stdio FILEs for this, and by default it is "fully" buffered.
- * The log tail may be flushed to disk without an explicit call to fflush (when
- * the program terminates, the file closes), but this is acceptable because it
- * never hurts to have more flushes to disk, as long as it doesn't hurt
- * performance.
- *
- * @todo Everything in this file cores on failure (no error handling yet)
- * @todo logWriter is optimized for forward operation, scanning backwards 
- *       (as in abort()) is very slow.  Perhaps we should maintian a 
- *       'write behind' buffer?
- *
- * $Id$
- * 
- */
-
 #include <stasis/common.h>
 #include <stasis/logger/logger2.h>
 
 BEGIN_C_DECLS
 /**
    Start a new log stream by opening the log file for reading.  This
-   is stasis's default log implementation, and uses safe writes to
+   is Stasis's default log implementation, and uses safe writes to
    perform truncation.
 
    @return NULL on error

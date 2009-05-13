@@ -8,32 +8,32 @@
 #include <stasis/redblack.h>
 #include <stasis/replacementPolicy.h>
 
-typedef struct entry { 
+typedef struct stasis_replacement_policy_lru_entry {
   void * value;
   uint64_t clock;
-} entry;
+} stasis_replacement_policy_lru_entry;
 
-typedef struct lru { 
+typedef struct stasis_replacement_policy_lru_t {
   uint64_t now;
   struct LH_ENTRY(table) * hash;
   struct RB_ENTRY(tree)  * lru;
   void * (*getNode)(void * page, void * conf);
   void   (*setNode)(void * page, void * n, void * conf);
   void * conf;
-} lru;
+} stasis_replacement_policy_lru_t;
 
-int cmp(const void * ap, const void * bp, const void * ignored) {
-  const entry * a = ap;
-  const entry * b = bp;
+static int stasis_replacement_policy_lru_entry_cmp(const void * ap, const void * bp, const void * ignored) {
+  const stasis_replacement_policy_lru_entry * a = ap;
+  const stasis_replacement_policy_lru_entry * b = bp;
 
-  return a->clock < b->clock ? -1 
-    : a->clock == b->clock ? 0 
+  return a->clock < b->clock ? -1
+    : a->clock == b->clock ? 0
     : 1;
 }
 
-static void lruDeinit(replacementPolicy* r) { 
+static void stasis_replacement_policy_lru_deinit(replacementPolicy* r) {
   //XXX free other stuff
-  lru * l = r->impl;
+  stasis_replacement_policy_lru_t * l = r->impl;
   LH_ENTRY(destroy)(l->hash);
   RB_ENTRY(destroy)(l->lru);
 
@@ -43,56 +43,56 @@ static void lruDeinit(replacementPolicy* r) {
 
 /** @todo handle clock wraps properly! */
 
-static void lruHit(replacementPolicy* r, void * p) { 
-  lru * l = r->impl;
-  entry * e = l->getNode(p, l->conf);
+static void stasis_replacement_policy_lru_hit(replacementPolicy* r, void * p) {
+  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_entry * e = l->getNode(p, l->conf);
   assert(e);
-  entry * old = (entry * ) RB_ENTRY(delete)(e, l->lru);
+  stasis_replacement_policy_lru_entry * old = (stasis_replacement_policy_lru_entry * ) RB_ENTRY(delete)(e, l->lru);
   assert(e == old);
   e->clock = l->now;
-  l->now++; 
-  old = (entry *)RB_ENTRY(search)(e, l->lru);
+  l->now++;
+  old = (stasis_replacement_policy_lru_entry *)RB_ENTRY(search)(e, l->lru);
   assert(e == old);
 }
-static void * lruGetStale(replacementPolicy* r) { 
-  lru * l = r->impl;
-  entry * e = (entry * ) RB_ENTRY(min)(l->lru);
+static void * stasis_replacement_policy_lru_get_stale(replacementPolicy* r) {
+  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry * ) RB_ENTRY(min)(l->lru);
   return  e ? e->value : 0;
 }
-static void* lruRemove(replacementPolicy* r, void * p) { 
-  lru * l = r->impl;
-  entry * e = l->getNode(p, l->conf);
+static void* stasis_replacement_policy_lru_remove(replacementPolicy* r, void * p) {
+  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_entry * e = l->getNode(p, l->conf);
   assert(e);
-  entry * old = (entry *) RB_ENTRY(delete)(e, l->lru);
+  stasis_replacement_policy_lru_entry * old = (stasis_replacement_policy_lru_entry *) RB_ENTRY(delete)(e, l->lru);
   assert(old == e);
   void * ret = e->value;
   free(e);
   return ret;
 }
-static void lruInsert(replacementPolicy* r, void * p) { 
-  lru * l = r->impl;
-  entry * e = malloc(sizeof(entry));
+static void stasis_replacement_policy_lru_insert(replacementPolicy* r, void * p) {
+  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_entry * e = malloc(sizeof(stasis_replacement_policy_lru_entry));
   e->value = p;
   e->clock = l->now;
   l->now++;
   l->setNode(p, l->conf, e);
-  entry * old = (entry *) RB_ENTRY(search)(e, l->lru);
+  stasis_replacement_policy_lru_entry * old = (stasis_replacement_policy_lru_entry *) RB_ENTRY(search)(e, l->lru);
   assert(e == old);
 }
 
-replacementPolicy * lruInit() {
+replacementPolicy * stasis_replacement_policy_lru_init() {
   replacementPolicy * ret = malloc(sizeof(replacementPolicy));
-  lru * l = malloc(sizeof(lru));
+  stasis_replacement_policy_lru_t * l = malloc(sizeof(stasis_replacement_policy_lru_t));
   l->now = 0;
   l->hash = LH_ENTRY(create)(10);
   //  l->lru = RB_ENTRY(init)((int(*)(const void*,const void*,const void*))cmp, 0);
-  l->lru = RB_ENTRY(init)(cmp, 0);
-  ret->init = lruInit;
-  ret->deinit = lruDeinit;
-  ret->hit = lruHit;
-  ret->getStale = lruGetStale;
-  ret->remove = lruRemove;
-  ret->insert = lruInsert;
+  l->lru = RB_ENTRY(init)(stasis_replacement_policy_lru_entry_cmp, 0);
+  ret->init = stasis_replacement_policy_lru_init;
+  ret->deinit = stasis_replacement_policy_lru_deinit;
+  ret->hit = stasis_replacement_policy_lru_hit;
+  ret->getStale = stasis_replacement_policy_lru_get_stale;
+  ret->remove = stasis_replacement_policy_lru_remove;
+  ret->insert = stasis_replacement_policy_lru_insert;
   ret->impl = l;
   return ret;
 }

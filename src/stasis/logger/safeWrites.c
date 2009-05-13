@@ -39,6 +39,8 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
+
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -57,6 +59,16 @@ terms specified in this license.
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/logWriterUtils.h>
 #include <stasis/logger/logHandle.h>
+
+/**
+ * @file
+ *
+ * A Stasis log implementation that uses safe writes (copy tail, force, rename) to perform truncation.
+ *
+ * @todo The safeWrites log implementation is not optimized for reading old entries.
+ *
+ * @ingroup LOGGING_IMPLEMENTATIONS
+ */
 
 /**
    Latch order:  truncate_mutex, write_mutex, read_mutex
@@ -478,11 +490,7 @@ static int close_LogWriter(stasis_log_t* log) {
   return 0;
 }
 
-void stasis_log_safe_writes_delete(const char* log_filename) {
-  remove(log_filename);
-}
-
-const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t LSN) {
+static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t LSN) {
   stasis_log_safe_writes_state* sw = log->impl;
 
   LogEntry * ret;
@@ -549,7 +557,7 @@ const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t LSN) {
    Perform the move, and release the latch.
 
 */
-int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
+static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   stasis_log_safe_writes_state* sw = log->impl;
 
   FILE *tmpLog;
@@ -734,7 +742,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
 
 }
 
-lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
+static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
   stasis_log_safe_writes_state* sw = log->impl;
 
   assert(sw->fp);
@@ -889,4 +897,8 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   sw->flushedLSN_internal = sw->nextAvailableLSN;
 
   return log;
+}
+
+void stasis_log_safe_writes_delete(const char* log_filename) {
+  remove(log_filename);
 }

@@ -3,8 +3,9 @@
 *//**
       @defgroup BUFFER_MANAGER
       @ingroup LLADD_CORE
-*//**     @defgroup BUFFER_MANAGER_IMPLEMENTATIONS
-	@ingroup BUFFER_MANAGER
+*//**
+        @defgroup BUFFER_MANAGER_IMPLEMENTATIONS
+	    @ingroup BUFFER_MANAGER
 *//**
 	@defgroup PAGE_EVICTION
 	@ingroup BUFFER_MANAGER
@@ -12,8 +13,14 @@
       @defgroup LOGGER
       @ingroup LLADD_CORE
 *//**
+        @defgroup LOGGING_IMPLEMENTATIONS
+	    @ingroup LOGGER
+*//**
+        @defgroup LOGGING_INTERFACES
+	    @ingroup LOGGER
+*//**
         @defgroup LOGGING_DISCIPLINES
-	@ingroup LOGGER
+	    @ingroup LOGGER
 *//**
       @defgroup RECOVERY
       @ingroup LLADD_CORE

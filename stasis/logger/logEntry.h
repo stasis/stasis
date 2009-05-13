@@ -123,6 +123,7 @@ LogEntry * allocCLRLogEntry(const LogEntry * e);
 void freeLogEntry(const LogEntry * e);
 /**
    @param lh The log handle the entry will be stored in.  (Needed because some log entries are of type INTERNALLOG)  May be NULL if e is not of type INTERNALLOG.
+   @param e A log entry of any type.
    @return the length, in bytes, of e.
 */
 lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e);

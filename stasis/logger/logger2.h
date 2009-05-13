@@ -43,14 +43,10 @@ terms specified in this license.
 /**
  * @file
  *
- * Interface to Stasis' log file.
+ * Transaction-level log manipulation routines (commit, update, etc...) that maintain consistency with the transaction tables.
  *
- * @ingroup LOGGING_DISCIPLINE
- *
- * $Id$
- *
+ * @ingroup LOGGING_INTERFACES
  */
-
 
 #ifndef __LOGGER2_H__
 #define __LOGGER2_H__
@@ -58,6 +54,7 @@ terms specified in this license.
 #include <stasis/common.h>
 
 typedef struct stasis_log_t stasis_log_t;
+
 typedef struct stasis_log_group_force_t stasis_log_group_force_t;
 
 typedef enum {
@@ -94,77 +91,162 @@ typedef int (guard_fcn_t)(const LogEntry *, void *);
 */
 extern TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
 
-
-
+/**
+ * Interface provided by Stasis log implementations.
+ *
+ * This struct defines the interface provided by Stasis log
+ * implementations.  New log implementations should provide a
+ * method that populates a stasis_log_t with appropriate function
+ * pointers and runtime state.
+ *
+ * @see safeWrites.c, inMemoryLog.c for example implementations.
+ *
+ * @ingroup LOGGING_IMPLEMENTATIONS
+ */
 struct stasis_log_t {
   /**
-     Needed by sizeofLogEntry
+     Return the size of an implementation-specific log entry.
+
+     Log implementations may store extra information in "internal entries".
+     These entries will be ignored by higher-level code.  In order to
+     facilitate memory management, Stasis' sizeofLogEntry() method supports
+     internal entries by calling this method.
+
+     @param log "this" log object
+     @param e A log entry with type INTERNALLOG
+     @return the length of e, in bytes.
   */
   lsn_t (*sizeof_internal_entry)(struct stasis_log_t* log, const LogEntry * e);
 
   /**
      Append a log entry to the end of the log.
 
-     @param e This call sets e->LSN to entry's offset.
+     Append a log entry to the end of the log.
+
+     @param log "this" log object
+     @param e The entry to be written to log.  After the call returns, e->LSN will be the new entry's offset.
      @return 0 on success
   */
   int (*write_entry)(struct stasis_log_t* log, LogEntry * e);
 
   /**
      Read a log entry, given its LSN.
-     @param lsn  The lsn of the log entry to be read.
+
+     Read a log entry, given its LSN.
+
+     @param log "this" log object
+     @param lsn  The LSN of the log entry to be read.  This must be the LSN of a valid log entry.
+     @return The LogEntry of interest.  Should be freed with freeLogEntry().
   */
   const LogEntry* (*read_entry)(struct stasis_log_t* log, lsn_t lsn);
 
   /**
      Given a log entry, return the LSN of the next entry.
+
+     This method returns the LSN of the log entry that will succeed the
+     given entry.  Since the meaning of the LSN field is defined by the
+     underlying log implementation, this could return the offset into some
+     underlying file, or simply e->LSN + 1.
+
+     @param log "this" log object
+     @param e A LogEntry that has already been stored in this log.
+     @return the LSN of the next entry.  Since LSN's must define an order
+             over the log, this must be greater than e->LSN.
   */
   lsn_t (*next_entry)(struct stasis_log_t* log, const LogEntry * e);
 
   /**
-     This function returns the LSN of the most recent
-     log entry that has not been flushed to disk.  If the entire log
-     is flushed, this function returns the LSN of the entry that will
-     be allocated the next time the log is appended to.
+     Return the LSN of the earliest log entry that may not survive a crash.
 
-     @param log The log file, which may or may not support durability.
+     Return the LSN of the earliest log entry that may not survive a crash.
+     If the entire log is stable, or the log does not support durability,
+     this function returns the LSN of the entry that will be allocated
+     the next time the log is appended to.
+
+     @param log "this" log object, which may or may not support durability.
      @param mode The mode in which the log entries must have been forced.
   */
   lsn_t (*first_unstable_lsn)(struct stasis_log_t* log,
                               stasis_log_force_mode_t mode);
   /**
-     This function returns the LSN of the next log entry passed to
-     write_entry.  This shouldn't be used to determine which entry a
-     particular call will assign; rather it is used to provide a lower
-     bound on the LSN of newly-loaded LSN-free pages.
+     Return the LSN that will be assigned to the next entry written to this log.
+
+     This function returns the LSN that will be assigned to the next entry
+     written to log.  Because multiple threads may be accessing the same
+     stasis_log_t object, this method should not be used to determine which
+     LSN will actually be assigned; rather it is used to compute a valid
+     lower bound of the LSN of newly-loaded LSN-free pages.
+
+     @param log "this" log object
   */
   lsn_t (*next_available_lsn)(struct stasis_log_t* log);
   /**
-     Force any enqueued, unwritten entries to disk
+     Force any enqueued, unwritten entries to disk.
+
+     Once this method returns, any log entries written before the call began
+     should survive subsequent crashes.  If the underlying log implementation
+     is not durable, then this method has no effect.
+
+     This method should not attempt to amortize the cost of multiple
+     concurrent calls; stasis_log_t::group_force provides takes care of this.
+     If group_force is non-null, callers should invoke methods on it rather
+     than call this method directly.
+
+     @param log "this" log object, which may or may not support durability.
+     @param mode The reason the log tail should be forced; in certain
+     environments, force writes that maintain the write-ahead invariant are
+     treated differently than those for transaction commit.
   */
   void (*force_tail)(struct stasis_log_t* log, stasis_log_force_mode_t mode);
 
   /**
-      @param lsn The first lsn that will be available after truncation.
-      @return 0 on success
+     Delete a prefix of the log.
+
+     This method allows the log to "forget" about old log entries.  Its
+     behavior is implementation defined.  A call to truncate amounts to a
+     promise that subsequent calls to stasis_log_t::read_entry will not
+     request entries before the truncation point.
+
+     @param log "this" log object.
+     @param lsn The truncation point; the first lsn that will be available after truncation.
+     @return 0 on success
   */
   int (*truncate)(struct stasis_log_t* log, lsn_t lsn);
 
   /**
-     Returns the LSN of the first entry of the log.  If the log is
-     empty, return the LSN that will be assigned to the next log
-     entry that is appended to the log.
+     Return the LSN of the first entry of the log.
+
+     This function returns the LSN of the earliest entry in the log, which
+     must be less than or equal to the highest value ever passed into
+     stasis_log_t::truncate().  If the log is empty, this function returns
+     the same value as stasis_log_t::next_available_lsn().
+
+     @param log "this" log object
+     @return A valid LSN that may be passed into stasis_log_t::read_entry().
   */
   lsn_t (*truncation_point)(struct stasis_log_t* log);
   /**
+     Ensure that the tail of the log is durable, and free any associated resources.
+
+     Ensure that the tail of the log is durable, and free any associated resources.
+
      @return 0 on success
   */
   int (*close)(struct stasis_log_t* log);
 
+  /**
+   * Determine whether or not this log provides durability.
+   *
+   * @return true if this log implementation is durable, zero otherwise.
+   */
   int (*is_durable)(struct stasis_log_t* log);
-
+  /**
+   * @see groupForce.c
+   */
   stasis_log_group_force_t * group_force;
-
+  /**
+   *  Implementation-specific state.
+   */
   void* impl;
 };
 
