@@ -55,7 +55,7 @@ typedef struct {
 
 void build_cache(recordid * rids, cached_addr** cache, long long count) {
   *cache = malloc (sizeof(**cache) * count);
-  lsn_t log_trunc = stasis_log_file->truncation_point(stasis_log_file);
+  lsn_t log_trunc = ((stasis_log_t*)stasis_log())->truncation_point(stasis_log());
   for(long long i = 0; i < count; i++) {
     (*cache)[i].pid = rids[i].page;
 
@@ -91,8 +91,8 @@ int my_write_entry(struct stasis_log_t* log, LogEntry *e) {
 }
 
 void emulate_remote_log() {
-    original_write_entry = stasis_log_file->write_entry;
-    stasis_log_file->write_entry = my_write_entry;
+    original_write_entry = ((stasis_log_t*)stasis_log())->write_entry;
+    ((stasis_log_t*)stasis_log())->write_entry = my_write_entry;
 }
 void emulate_remote_pages() {
     origWrite = stasis_page_impl_get(SLOTTED_LSN_FREE_PAGE)->recordWrite;
@@ -157,8 +157,8 @@ void * writeback_unit_of_work(void * ap) {
   stasis_log_reordering_handle_t * rh
     = stasis_log_reordering_handle_open(
                     &stasis_transaction_table[ua->xid%MAX_TRANSACTIONS],
-                    stasis_log_file,
-                    (0.9*stasis_log_write_buffer_size)/ua->divisor,
+                    stasis_log(),
+                    (0.9*stasis_log_file_write_buffer_size)/ua->divisor,
                     //512*1024/ua->divisor, // 0.5 mb in log tail at once
                     1000000/ua->divisor, // max num outstanding requests
                     (50 * 1024 * 1024)/ua->divisor // max backlog in bytes
@@ -166,7 +166,7 @@ void * writeback_unit_of_work(void * ap) {
   /*
 stasis_log_reordering_handle_open(&stasis_transaction_table[ua->xid%MAX_TRANSACTIONS],
                                         stasis_log_file,
-                                        (stasis_log_write_buffer_size * 0.25)/ua->divisor,
+                                        (stasis_log_file_write_buffer_size * 0.25)/ua->divisor,
                                         //512*1024/ua->divisor, // 0.5 mb in log tail at once
                                         1000000/ua->divisor, // max num outstanding requests
                                         (50 * 1024 * 1024)/ua->divisor // max backlog in bytes
@@ -178,7 +178,7 @@ stasis_log_reordering_handle_open(&stasis_transaction_table[ua->xid%MAX_TRANSACT
     TsetReorderableWriteBack(ua->xid, rh, ua->cache[idx].pid,
                              ua->cache[idx].off, ua->cache[idx].len,&ua->cache[idx].val,&old);
     //    TsetReorderable(ua->xid, rh, a->rids[(j*ua->divisor+ua->n)%a->num_rids], &val);
-    
+
   }
   stasis_log_reordering_handle_close(rh);
   return 0;
@@ -199,8 +199,8 @@ void * bg_unit_of_work(void * ap) {
 
   stasis_log_reordering_handle_t * rh
     = stasis_log_reordering_handle_open(&stasis_transaction_table[ua->xid%MAX_TRANSACTIONS],
-                                        stasis_log_file,
-                                        (stasis_log_write_buffer_size * 0.25)/ua->divisor,
+                                        stasis_log(),
+                                        (stasis_log_file_write_buffer_size * 0.25)/ua->divisor,
                                         //512*1024/ua->divisor, // 0.5 mb in log tail at once
                                         1000000/ua->divisor, // max num outstanding requests
                                         (50 * 1024 * 1024)/ua->divisor // max backlog in bytes
@@ -224,7 +224,7 @@ void* bg_worker(void * ap) {
     long long start = tv.tv_usec + tv.tv_sec * 1000000;
 
     int xid = Tbegin();
-    if(stasis_log_file->write_entry == my_write_entry) {
+    if(((stasis_log_t*)stasis_log())->write_entry == my_write_entry) {
       // based on tweaking; also, normal-net is ~ 100x slower than nromal
       int num_worker = 100;
       pthread_t workers[num_worker];

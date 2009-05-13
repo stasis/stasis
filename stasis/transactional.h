@@ -539,7 +539,6 @@ terms specified in this license.
 #include "common.h"
 #include "flags.h"
 BEGIN_C_DECLS
-
 /**
  * Initialize Stasis.  This opens the pagefile and log, initializes
  * subcomponents, and runs recovery.
@@ -768,6 +767,18 @@ int Tforget(int xid);
    after a crash.
 */
 int TdurabilityLevel();
+
+/**
+ * Force any dirty pages to disk, and truncate the log.  After this
+ * function returns, the log will be as short as possible (outstanding
+ * transactions can prevent it from completely emptying the log).
+ */
+void TtruncateLog();
+/**
+ * XXX hack: return a pointer to stasis' log handle.  This works around the fact
+ * that stasis_log_file is no longer global.
+ */
+void * stasis_log(void);
 
 #include "operations.h"
 

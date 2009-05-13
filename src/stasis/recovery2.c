@@ -290,7 +290,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
             }
 
             // Log a CLR for this entry
-            lsn_t clr_lsn = LogCLR(log, e);
+            lsn_t clr_lsn = stasis_log_write_clr(log, e);
             DEBUG("logged clr\n");
 
             stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
@@ -316,7 +316,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
 	      stasis_operation_undo(ce, 0, 0);
 	      // compensated_lsn = -1 -> that the logical undo is a NOOP.
 	      // that way, we don't undo this operation twice.
-	      LogDummyCLR(log, ce->xid, ce->prevLSN, -1);
+	      stasis_log_write_dummy_clr(log, ce->xid, ce->prevLSN, -1);
 	    } else {
 	      DEBUG("physical clr: op %d lsn %lld\n",
 		    ce->update.funcID, ce->LSN);

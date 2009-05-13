@@ -98,5 +98,5 @@ extern const int    stasis_log_dir_name_lsn_chars;
 /**
    Number of bytes that stasis' log may buffer before writeback.
  */
-extern lsn_t stasis_log_write_buffer_size;
+extern lsn_t stasis_log_file_write_buffer_size;
 #endif

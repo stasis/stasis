@@ -2,7 +2,7 @@
 #include <stasis/truncation.h>
 int main(void) {
   Tinit();
-  stasis_truncation_truncate(stasis_log_file, 1);
+  TtruncateLog();
   Tdeinit();
 
   return compensation_error();

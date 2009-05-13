@@ -21,7 +21,7 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
   // or we'll deadlock.
   writelock(ret->rwlatch,0);
   stasis_page_flushed(ret);
-  LogForce(stasis_log_file, ret->LSN, LOG_FORCE_WAL);
+  if(ph->log) { stasis_log_force(ph->log, ret->LSN, LOG_FORCE_WAL); }
   int err = ((stasis_handle_t*)ph->impl)->write(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
     printf("Couldn't write to page file: %s\n", strerror(err));
@@ -66,7 +66,8 @@ static void phClose(stasis_page_handle_t * ph) {
   }
   free(ph);
 }
-stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle) {
+stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
+                                               stasis_log_t * log) {
   DEBUG("Using pageHandle implementation\n");
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   ret->write = phWrite;
@@ -74,6 +75,7 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle) {
   ret->force_file = phForce;
   ret->force_range = phForceRange;
   ret->close = phClose;
+  ret->log = log;
   ret->impl = handle;
   return ret;
 }

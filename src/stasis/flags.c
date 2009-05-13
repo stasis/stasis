@@ -85,8 +85,8 @@ const char* stasis_log_dir_name = "stasis_log";
 #endif //STASIS_LOG_DIR_LSN_CHARS
 const int stasis_log_dir_name_lsn_chars = 20;
 
-#ifdef STASIS_LOG_WRITE_BUFFER_SIZE
-lsn_t stasis_log_write_buffer_size = STASIS_LOG_WRITE_BUFFER_SIZE;
+#ifdef STASIS_LOG_FILE_WRITE_BUFFER_SIZE
+lsn_t stasis_log_file_write_buffer_size = STASIS_LOG_FILE_WRITE_BUFFER_SIZE;
 #else
-lsn_t stasis_log_write_buffer_size = 1024 * 1024;
+lsn_t stasis_log_file_write_buffer_size = 1024 * 1024;
 #endif

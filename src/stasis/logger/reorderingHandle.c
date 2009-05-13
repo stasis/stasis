@@ -11,14 +11,14 @@ static void* stasis_log_reordering_handle_worker(void * a) {
     while(h->cur_len) {
       size_t chunk_len = 0;
       while(chunk_len < h->chunk_len && h->cur_len) {
-        LogEntry * e = LogUpdate(h->log,
+        LogEntry * e = stasis_log_write_update(h->log,
                                  h->l,
                                  h->queue[h->cur_off].p,
                                  h->queue[h->cur_off].op,
                                  h->queue[h->cur_off].arg,
                                  h->queue[h->cur_off].arg_size);
         assert(e->xid != INVALID_XID);
-        chunk_len += sizeofLogEntry(e);
+        chunk_len += sizeofLogEntry(h->log, e);
 
         if(h->queue[h->cur_off].p) {
           Page * p = h->queue[h->cur_off].p;
@@ -31,14 +31,14 @@ static void* stasis_log_reordering_handle_worker(void * a) {
             xaction table for prevLSN is their friend. */
 
         h->cur_len--;
-        h->phys_size -= sizeofLogEntry(e);
+        h->phys_size -= sizeofLogEntry(h->log, e);
         h->cur_off = (h->cur_off+1)%h->max_len;
 
       }
       if(chunk_len > 0) {
         lsn_t to_force = h->l->prevLSN;
         pthread_mutex_unlock(&h->mut);
-        LogForce(h->log, to_force, LOG_FORCE_COMMIT);
+        stasis_log_force(h->log, to_force, LOG_FORCE_COMMIT);
         if(stasis_log_reordering_usleep_after_flush) {
           usleep(stasis_log_reordering_usleep_after_flush);
         }

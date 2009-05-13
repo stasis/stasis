@@ -43,14 +43,10 @@ terms specified in this license.
 #ifndef __LLADD_LOGGING_LOGENTRY_H
 #define __LLADD_LOGGING_LOGENTRY_H
 
-#include <stasis/common.h>
-
-BEGIN_C_DECLS
-
 /**
    @file
 
-   Structs and memory managment routines for log entries
+   Structs and memory management routines for log entries
 
    @todo Other than some typedefs, is there anything in logEntry that belongs in the API?
 
@@ -59,14 +55,23 @@ BEGIN_C_DECLS
    $Id$
 */
 
-typedef struct {
+#include <stasis/common.h>
+
+BEGIN_C_DECLS
+
+typedef struct UpdateLogEntry UpdateLogEntry;
+typedef struct LogEntry LogEntry;
+typedef struct __raw_log_entry CLRLogEntry;
+
+#include <stasis/logger/logger2.h>
+struct UpdateLogEntry {
   unsigned int funcID : 8;
   pageid_t page;
   int64_t  arg_size;
   /* Implicit members:
      args;     @ ((byte*)ule) + sizeof(UpdateLogEntry)
   */
-} UpdateLogEntry;
+};
 
 struct __raw_log_entry {
   lsn_t LSN;
@@ -75,15 +80,14 @@ struct __raw_log_entry {
   unsigned int type;
 };
 
-typedef struct {
+struct LogEntry {
   lsn_t LSN;
   lsn_t prevLSN;
   int   xid;
   unsigned int type;
   UpdateLogEntry update;
-} LogEntry;
+};
 
-typedef struct __raw_log_entry CLRLogEntry;
 /**
    Allocate a log entry that does not contain any extra payload
    information.  (Eg: Tbegin, Tcommit, etc.)
@@ -118,9 +122,10 @@ LogEntry * allocCLRLogEntry(const LogEntry * e);
  */
 void freeLogEntry(const LogEntry * e);
 /**
+   @param lh The log handle the entry will be stored in.  (Needed because some log entries are of type INTERNALLOG)  May be NULL if e is not of type INTERNALLOG.
    @return the length, in bytes, of e.
 */
-lsn_t sizeofLogEntry(const LogEntry * e);
+lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e);
 /**
    @todo Remove explicit casts from getUpdateArgs calls (so we don't accidentally strip the const).
    @return the operation's arguments.

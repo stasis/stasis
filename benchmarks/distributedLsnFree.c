@@ -15,10 +15,10 @@ int main(int argc, char ** argv) {
 
   /*if(!(strcmp(mode, "writeback-pipeline"))) {
     // pipelining likes big queues
-    //  stasis_log_write_buffer_size = 50 * 1024 * 1024;
+    //  stasis_log_file_write_buffer_size = 50 * 1024 * 1024;
   } else {
   }*/
-  stasis_log_write_buffer_size = 50 * 1024 * 1024;
+  stasis_log_file_write_buffer_size = 50 * 1024 * 1024;
   Tinit();
 
   alloc_rids(num_rids,&rids,&fast);
@@ -77,7 +77,7 @@ int main(int argc, char ** argv) {
         handles[i] = stasis_log_reordering_handle_open(
                     &stasis_transaction_table[xid%MAX_TRANSACTIONS],
                     stasis_log_file,
-                    (0.9*stasis_log_write_buffer_size)/num_workers,
+                    (0.9*stasis_log_file_write_buffer_size)/num_workers,
                     //512*1024/ua->divisor, // 0.5 mb in log tail at once
                     1000000/num_workers, // max num outstanding requests
                     (50 * 1024 * 1024)/num_workers // max backlog in bytes

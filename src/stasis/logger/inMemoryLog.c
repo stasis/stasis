@@ -41,8 +41,8 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
 
   e->LSN = impl->nextAvailableLSN;
 
-  LogEntry * cpy = malloc(sizeofLogEntry(e));
-  memcpy(cpy, e, sizeofLogEntry(e));
+  LogEntry * cpy = malloc(sizeofLogEntry(log, e));
+  memcpy(cpy, e, sizeofLogEntry(log, e));
 
   DEBUG("lsn: %ld\n", e->LSN);
   impl->buffer[bufferOffset] = cpy;
@@ -129,9 +129,9 @@ static const LogEntry * stasis_log_impl_in_memory_read_entry(stasis_log_t* log,
   assert(ptr);
   assert(ptr->LSN == lsn);
 
-  LogEntry * ret = malloc(sizeofLogEntry(ptr));
+  LogEntry * ret = malloc(sizeofLogEntry(log, ptr));
 
-  memcpy(ret, ptr, sizeofLogEntry(ptr));
+  memcpy(ret, ptr, sizeofLogEntry(log, ptr));
 
   DEBUG("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
   return ret;

@@ -186,7 +186,7 @@ START_TEST(multiplexTest) {
     LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, INVALID_PAGE, (byte*)arg,
 				       sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
 
-    ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(e));
+    ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(0, e));
 
 
     free(e);

@@ -111,14 +111,14 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 }
 
 LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
-  CLRLogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeofLogEntry(old_e));
+  CLRLogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
 
   ret->LSN = -1;
   ret->prevLSN = old_e->prevLSN;
   ret->xid = old_e->xid;
   ret->type = CLRLOG;
   DEBUG("compensates: %lld\n", old_e->LSN);
-  memcpy((void*)getCLRCompensated(ret), old_e, sizeofLogEntry(old_e));
+  memcpy((void*)getCLRCompensated(ret), old_e, sizeofLogEntry(0, old_e));
 
   return (LogEntry*)ret;
 }
@@ -127,13 +127,13 @@ void freeLogEntry(const LogEntry* e) {
 }
 
 
-lsn_t sizeofLogEntry(const LogEntry * e) {
+lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e) {
   switch (e->type) {
   case CLRLOG:
     {
       const LogEntry * contents = getCLRCompensated((const CLRLogEntry*) e);
       assert(contents->type != CLRLOG);
-      return sizeof(struct __raw_log_entry) + sizeofLogEntry(contents);
+      return sizeof(struct __raw_log_entry) + sizeofLogEntry(lh, contents);
     }
   case UPDATELOG:
     {
@@ -141,7 +141,8 @@ lsn_t sizeofLogEntry(const LogEntry * e) {
         sizeof(UpdateLogEntry) + e->update.arg_size;
     }
   case INTERNALLOG:
-    return stasis_log_file->sizeof_internal_entry(stasis_log_file, e);
+    assert(lh);
+    return lh->sizeof_internal_entry(lh,e);
   case XPREPARE:
     return sizeof(struct __raw_log_entry)+sizeof(lsn_t);
   default:

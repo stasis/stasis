@@ -8,8 +8,9 @@ void stasis_slotted_lsn_free_initialize_page(Page * p) {
   *stasis_page_type_ptr(p) = SLOTTED_LSN_FREE_PAGE;
   *stasis_page_lsn_ptr(p) = -1;
 }
+// XXX still not correct; need to have an "LSN_FREE" constant.
 static void lsnFreeLoaded(Page * p) {
-  p->LSN = stasis_log_file->next_available_lsn(stasis_log_file);
+  p->LSN = 0; //stasis_log_file->next_available_lsn(stasis_log_file);
 }
 static void lsnFreeFlushed(Page * p) { }
 

@@ -225,7 +225,7 @@ static inline int isDurable_LogWriter(stasis_log_t* log) {
 
 static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
                                         const LogEntry* e) {
-  return e->LSN + sizeofLogEntry(e) + sizeof(lsn_t);
+  return e->LSN + sizeofLogEntry(log, e) + sizeof(lsn_t);
 }
 
 // crc handling
@@ -233,8 +233,8 @@ static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
 static inline void log_crc_reset(stasis_log_safe_writes_state* sw) {
   sw->crc = 0;
 }
-static inline void log_crc_update(const LogEntry * le, unsigned int * crc) {
-  *crc = stasis_crc32(le, sizeofLogEntry(le), *crc);
+static inline void log_crc_update(stasis_log_t* log, const LogEntry * e, unsigned int * crc) {
+  *crc = stasis_crc32(e, sizeofLogEntry(log, e), *crc);
 }
 static LogEntry* log_crc_dummy_entry() {
   LogEntry* ret = allocCommonLogEntry(0, -1, INTERNALLOG);
@@ -275,7 +275,7 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
         break;
       }
     } else {
-      log_crc_update(le, &crc);
+      log_crc_update(log, le, &crc);
     }
     freeLogEntry(le);
   }
@@ -303,14 +303,14 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
 
   stasis_log_safe_writes_state* sw = log->impl;
 
-  const lsn_t size = sizeofLogEntry(e);
+  const lsn_t size = sizeofLogEntry(log, e);
 
   /* Set the log entry's LSN. */
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   e->LSN = sw->nextAvailableLSN;
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
 
-  log_crc_update(e, &sw->crc);
+  log_crc_update(log, e, &sw->crc);
 
   DEBUG("Writing Log entry type = %d lsn = %ld, size = %ld\n",
         e->type, e->LSN, size);
@@ -600,7 +600,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   int firstInternalEntry = 1;
   lsn_t nextLSN = 0;
   while((le = nextInLog(lh))) {
-    size = sizeofLogEntry(le);
+    size = sizeofLogEntry(log, le);
     if(nextLSN) {
       assert(nextLSN == le->LSN);
     }
@@ -636,7 +636,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
 
   assert(sw->nextAvailableLSN == LSN + lengthOfCopiedLog);
 
-  size = sizeofLogEntry(crc_entry);
+  size = sizeofLogEntry(log, crc_entry);
 
   sw->nextAvailableLSN = nextEntry_LogWriter(log, crc_entry);
 
@@ -700,7 +700,7 @@ int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     return LLADD_IO_ERROR;
   }
 
-  setbuffer(sw->fp, sw->buffer, stasis_log_write_buffer_size);
+  setbuffer(sw->fp, sw->buffer, stasis_log_file_write_buffer_size);
 
   sw->global_offset = LSN - sizeof(lsn_t);
 
@@ -776,10 +776,8 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   stasis_log_t* log = malloc(sizeof(*log));
   memcpy(log,&proto, sizeof(proto));
   log->impl = sw;
-  // XXX hack; we call things that call into this object during init!
-  stasis_log_file = log;
 
-  sw->buffer = calloc(stasis_log_write_buffer_size, sizeof(char));
+  sw->buffer = calloc(stasis_log_file_write_buffer_size, sizeof(char));
 
   if(!sw->buffer) { return 0; /*LLADD_NO_MEM;*/ }
 
@@ -804,7 +802,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   }
 
   /* Increase the length of log's buffer, since it's in O_SYNC mode. */
-  setbuffer(sw->fp, sw->buffer, stasis_log_write_buffer_size);
+  setbuffer(sw->fp, sw->buffer, stasis_log_file_write_buffer_size);
 
   /* fread() doesn't notice when another handle writes to its file,
      even if fflush() is used to push the changes out to disk.

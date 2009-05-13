@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -42,7 +42,7 @@ terms specified in this license.
 
 /**********************************************
  * $Id$
- * 
+ *
  * sets the given reference to dat
  **********************************************/
 
@@ -55,16 +55,16 @@ terms specified in this license.
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int op_prepare(const LogEntry * e, Page * p) {
-  LogForce(stasis_log_file, e->LSN, LOG_FORCE_COMMIT);
+  //NO-OP.
   return 0;
 }
 
 stasis_operation_impl stasis_op_impl_prepare() {
   stasis_operation_impl o = {
-    OPERATION_PREPARE,
     OPERATION_PREPARE, /* id */
+    OPERATION_PREPARE,
     OPERATION_NOOP,
-    &op_prepare /* Function */
+    &op_prepare/* Function */
   };
   return o;
 }
@@ -78,7 +78,7 @@ typedef struct{
   int aborted;
 } PrepareGuardState;
 
-void * getPrepareGuardState() { 
+void * getPrepareGuardState() {
   PrepareGuardState * s = malloc (sizeof(PrepareGuardState));
   s->continueIterating = 1;
   s->prevLSN = -1;
@@ -89,10 +89,10 @@ void * getPrepareGuardState() {
 
 
 int prepareGuard(const LogEntry * e, void * state) {
-  PrepareGuardState * pgs = state; 
+  PrepareGuardState * pgs = state;
   int ret = pgs->continueIterating;
   if(e->type == UPDATELOG && !pgs->aborted) {
-    if(e->update.funcID == OPERATION_PREPARE) { 
+    if(e->update.funcID == OPERATION_PREPARE) {
       pgs->continueIterating = 0;
       pgs->prevLSN           = e->prevLSN;
     }
@@ -112,7 +112,7 @@ int prepareGuard(const LogEntry * e, void * state) {
 /** @todo When fleshing out the logHandle's prepareAction interface,
     figure out what the return value should mean... */
 int prepareAction(void * state) {
-  PrepareGuardState * pgs = state; 
+  PrepareGuardState * pgs = state;
   int ret;
   if(!(pgs->continueIterating || pgs->aborted)) {
     //assert(pgs->prevLSN != -1);
@@ -121,6 +121,6 @@ int prepareAction(void * state) {
     ret = 1;
   } else {
     ret = 0;
-  } 
+  }
   return ret;
 }

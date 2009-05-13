@@ -145,7 +145,7 @@ extern void (*forcePages)();
 extern void (*forcePageRange)(pageid_t start, pageid_t stop);
 extern void (*stasis_buffer_manager_simulate_crash)();
 
-int stasis_buffer_manager_open(int type, stasis_page_handle_t* ph);
+int stasis_buffer_manager_open(int type, stasis_page_handle_t * ph);
 /**
  * will write out any dirty pages, assumes that there are no running
  * transactions

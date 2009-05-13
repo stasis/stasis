@@ -218,8 +218,8 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
     pthread_mutex_init(&fp->read_mutex,0);
     fp->state_latch = initlock();
 
-    fp->buffer = calloc(stasis_log_write_buffer_size, sizeof(char));
-    setbuffer(fp->fp, fp->buffer, stasis_log_write_buffer_size);
+    fp->buffer = calloc(stasis_log_file_write_buffer_size, sizeof(char));
+    setbuffer(fp->fp, fp->buffer, stasis_log_file_write_buffer_size);
 
 
   }

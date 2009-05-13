@@ -31,6 +31,8 @@ TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
 static int stasis_transaction_table_num_active = 0;
 static int stasis_transaction_table_xid_count = 0;
 
+static stasis_log_t* stasis_log_file = 0;
+
 /**
 	This mutex protects stasis_transaction_table, numActiveXactions and
 	xidCount.
@@ -61,12 +63,17 @@ int Tinit() {
 	stasis_operation_table_init();
 	dirtyPagesInit();
 
+	stasis_log_file = 0;
+
 	if(LOG_TO_FILE == stasis_log_type) {
       stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                     stasis_log_file_mode,
                                                     stasis_log_file_permissions);
+      stasis_log_file->group_force =
+        stasis_log_group_force_init(stasis_log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
     } else if(LOG_TO_MEMORY == stasis_log_type) {
       stasis_log_file = stasis_log_impl_in_memory_open();
+      stasis_log_file->group_force = 0;
     } else {
       assert(stasis_log_file != NULL);
     }
@@ -75,12 +82,13 @@ int Tinit() {
 	stasis_page_handle_t * page_handle;
 	if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
         printf("\nWarning: Using old I/O routines (with known bugs).\n");
-        page_handle = openPageFile();
+        page_handle = openPageFile(stasis_log_file);
 	} else {
 		stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
 		// XXX should not be global.
-		page_handle = stasis_page_handle_open(h);
+		page_handle = stasis_page_handle_open(h, stasis_log_file);
 	}
+
 	stasis_buffer_manager_open(bufferManagerType, page_handle);
         DEBUG("Buffer manager type = %d\n", bufferManagerType);
 	pageOperationsInit();
@@ -135,7 +143,7 @@ int Tbegin() {
 
 	pthread_mutex_unlock(&stasis_transaction_table_mutex);
 
-	LogTransBegin(stasis_log_file, xidCount_tmp, &stasis_transaction_table[index]);
+	stasis_log_begin_transaction(stasis_log_file, xidCount_tmp, &stasis_transaction_table[index]);
 
 	if(globalLockManager.begin) { globalLockManager.begin(stasis_transaction_table[index].xid); }
 
@@ -155,7 +163,7 @@ static compensated_function void TactionHelper(int xid,
 
   writelock(p->rwlatch,0);
 
-  e = LogUpdate(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS],
+  e = stasis_log_write_update(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS],
                 p, op, dat, datlen);
   assert(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
@@ -183,7 +191,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
                                      p ? p->id : INVALID_PAGE,
                                      dat, datlen);
 
-  stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(e));
+  stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(0, e));
 
   e->LSN = 0;
   writelock(p->rwlatch,0);
@@ -216,7 +224,7 @@ void TreorderableWritebackUpdate(int xid, void* hp,
   assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   pthread_mutex_lock(&h->mut);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
-  stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(e));
+  stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(0, e));
   pthread_mutex_unlock(&h->mut);
 }
 compensated_function void TupdateStr(int xid, pageid_t page,
@@ -283,7 +291,7 @@ int Tcommit(int xid) {
   pthread_mutex_unlock(&stasis_transaction_table_mutex);
 #endif
 
-  lsn = LogTransCommit(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
+  lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
   stasis_alloc_committed(xid);
@@ -303,7 +311,7 @@ int Tprepare(int xid) {
   assert(xid >= 0);
   off_t i = xid % MAX_TRANSACTIONS;
   assert(stasis_transaction_table[i].xid == xid);
-  LogTransPrepare(stasis_log_file, &stasis_transaction_table[i]);
+  stasis_log_prepare_transaction(stasis_log_file, &stasis_transaction_table[i]);
   return 0;
 }
 
@@ -314,7 +322,7 @@ int Tabort(int xid) {
   TransactionLog * t =&stasis_transaction_table[xid%MAX_TRANSACTIONS];
   assert(t->xid == xid);
 
-  lsn = LogTransAbort(stasis_log_file, t);
+  lsn = stasis_log_abort_transaction(stasis_log_file, t);
 
   /** @todo is the order of the next two calls important? */
   undoTrans(stasis_log_file, *t);
@@ -327,7 +335,7 @@ int Tabort(int xid) {
 int Tforget(int xid) {
   TransactionLog * t = &stasis_transaction_table[xid%MAX_TRANSACTIONS];
   assert(t->xid == xid);
-  LogTransEnd(stasis_log_file, t);
+  stasis_log_end_aborted_transaction(stasis_log_file, t);
   stasis_transaction_table_forget(t->xid);
   return 0;
 }
@@ -350,7 +358,9 @@ int Tdeinit() {
   stasis_buffer_manager_close();
   DEBUG("Closing page file tdeinit\n");
   stasis_page_deinit();
+  stasis_log_group_force_t * group_force = stasis_log_file->group_force;
   stasis_log_file->close(stasis_log_file);
+  if(group_force) { stasis_log_group_force_deinit(group_force); }
   dirtyPagesDeinit();
 
   stasis_initted = 0;
@@ -480,6 +490,9 @@ int TdurabilityLevel() {
   }
 }
 
+void TtruncateLog() {
+  stasis_truncation_truncate(stasis_log_file, 1);
+}
 typedef struct {
   lsn_t prev_lsn;
   lsn_t compensated_lsn;
@@ -487,7 +500,7 @@ typedef struct {
 
 int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
   assert(xid >= 0);
-  LogEntry * e = LogUpdate(stasis_log_file,
+  LogEntry * e = stasis_log_write_update(stasis_log_file,
 			   &stasis_transaction_table[xid % MAX_TRANSACTIONS],
 			   NULL, op, dat, datSize);
   lsn_t prev_lsn = e->prevLSN;
@@ -497,7 +510,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 
   freeLogEntry(e);
 
-  lsn_t clrLSN = LogDummyCLR(stasis_log_file, xid, prev_lsn, compensated_lsn);
+  lsn_t clrLSN = stasis_log_write_dummy_clr(stasis_log_file, xid, prev_lsn, compensated_lsn);
 
   stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
 
@@ -506,7 +519,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
-  LogEntry * e = LogUpdate(stasis_log_file,
+  LogEntry * e = stasis_log_write_update(stasis_log_file,
                            &stasis_transaction_table[xid % MAX_TRANSACTIONS],
                            NULL, op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
@@ -528,7 +541,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   assert(xid >= 0);
 
   // Write a CLR.
-  lsn_t clrLSN = LogDummyCLR(stasis_log_file, xid,
+  lsn_t clrLSN = stasis_log_write_dummy_clr(stasis_log_file, xid,
                              h->prev_lsn, h->compensated_lsn);
 
   // Ensure that the next action in this transaction points to the CLR.
@@ -540,4 +553,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   free(h);
 
   return clrLSN;
+}
+void * stasis_log() {
+  return stasis_log_file;
 }

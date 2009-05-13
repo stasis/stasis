@@ -179,7 +179,7 @@ START_TEST(operation_physical_do_undo) {
 
   // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
   for(int i = 0; i < 10; i++)
-    stasis_log_file->write_entry(stasis_log_file,
+    ((stasis_log_t*)stasis_log())->write_entry(stasis_log(),
                                  allocCommonLogEntry(-1, -1, -1));
 
   /** @todo need to re-think check_operations.  The test is pretty broken. */
@@ -639,7 +639,7 @@ START_TEST(operation_reorderable) {
     stasis_log_reordering_handle_t * rh
       = stasis_log_reordering_handle_open(
                          &stasis_transaction_table[xid[0]% MAX_TRANSACTIONS],
-                         stasis_log_file,
+                         stasis_log(),
                          100, // bytes (far too low!)
                          10,  // log entries
                          500 // max byte size

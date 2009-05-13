@@ -17,10 +17,10 @@ int main(int argc, char** argv) {
   // XXX instead of overriding this, set tail of priority log to 80%
   // stasis log buf or something...
 
-  //  stasis_log_write_buffer_size = 50 * 1024 * 1024;
+  //  stasis_log_file_write_buffer_size = 50 * 1024 * 1024;
 
   printf("%s %s %s %s %lld\n", argv[0], argv[1], argv[2], argv[3],
-         stasis_log_write_buffer_size);
+         stasis_log_file_write_buffer_size);
 
   Tinit();
 

@@ -8,12 +8,12 @@
 #include <sys/time.h>
 #include <time.h>
 
-int main(int argc, char** argv) { 
+int main(int argc, char** argv) {
 
   Tinit();
   char * key;
   char * value;
-  
+
   int ret;
   int xid = Tbegin();
 
@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
   // bleah; gcc would warn without the casts, since it doesn't understand that %as = Allocate String
   char ** keyp = &key;     // The extra garbage is to avoid type punning warnings...
   char ** valuep = &value;
-  while(EOF != (ret=scanf("%as\t%as\n", (float*)keyp, (float*)valuep))) { 
-    if(!ret) { 
+  while(EOF != (ret=scanf("%as\t%as\n", (float*)keyp, (float*)valuep))) {
+    if(!ret) {
       printf("Could not parse input!\n");
       Tabort(xid);
       Tdeinit();
@@ -44,8 +44,8 @@ int main(int argc, char** argv) {
     free(key);
     free(value);
     count ++;
-    
-    if(!(count % 10000)) { 
+
+    if(!(count % 10000)) {
       gettimeofday(&now,0);
       double rate = ((double)count)/((double)(now.tv_sec-start.tv_sec));
       printf("%d tuples inserted (%f per sec)\n", count, rate);
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   }
   Tcommit(xid);
-  stasis_truncation_truncate(stasis_log_file, 1);
+  TtruncateLog();
   Tdeinit();
   return 0;
 }

@@ -57,6 +57,15 @@ terms specified in this license.
 
 #include <stasis/common.h>
 
+typedef struct stasis_log_t stasis_log_t;
+typedef struct stasis_log_group_force_t stasis_log_group_force_t;
+
+typedef enum {
+  LOG_FORCE_COMMIT, LOG_FORCE_WAL
+} stasis_log_force_mode_t;
+
+#include <stasis/logger/groupForce.h>
+#include <stasis/constants.h>
 /**
    Contains the state needed by the logging layer to perform
    operations on a transaction.
@@ -68,7 +77,6 @@ typedef struct TransactionLog {
   pthread_mutex_t mut;
 } TransactionLog;
 
-typedef struct stasis_log_t stasis_log_t;
 
 #include <stasis/operations.h>
 
@@ -80,9 +88,6 @@ typedef struct stasis_log_t stasis_log_t;
 typedef int (guard_fcn_t)(const LogEntry *, void *);
 
 
-typedef enum {
-  LOG_FORCE_COMMIT, LOG_FORCE_WAL
-} stasis_log_force_mode_t;
 
 /**
    XXX TransactionTable should be private to transactional2.c!
@@ -158,13 +163,10 @@ struct stasis_log_t {
 
   int (*is_durable)(struct stasis_log_t* log);
 
+  stasis_log_group_force_t * group_force;
+
   void* impl;
 };
-
-/**
-   @todo get rid of this!
- */
-extern stasis_log_t* stasis_log_file;
 
 /**
    Synchronously make a prefix of the log durable.
@@ -182,13 +184,13 @@ extern stasis_log_t* stasis_log_file;
    @see stasis_log_force_mode_t
    @see logger2.h for information about force_tail().
  */
-void LogForce(stasis_log_t* log, lsn_t lsn, stasis_log_force_mode_t mode);
+void stasis_log_force(stasis_log_t* log, lsn_t lsn, stasis_log_force_mode_t mode);
 
 /**
    Inform the logging layer that a new transaction has begun, and
    obtain a handle.
 */
-void LogTransBegin(stasis_log_t* log, int xid, TransactionLog* l);
+void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* l);
 
 /**
    Write a transaction PREPARE to the log tail.  Blocks until the
@@ -196,35 +198,35 @@ void LogTransBegin(stasis_log_t* log, int xid, TransactionLog* l);
 
    @return the lsn of the prepare log entry
 */
-lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l);
 /**
    Write a transaction COMMIT to the log tail.  Blocks until the commit
    record is stable.
 
    @return the lsn of the commit log entry.
 */
-lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l);
 
 /**
    Write a transaction ABORT to the log tail.  Does not force the log.
 
    @return the lsn of the abort log entry.
 */
-lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, TransactionLog * l);
 
 /**
    Write a end transaction record.  This entry tells recovery's undo
    phase that it may safely ignore the transaction.
 */
-lsn_t LogTransEnd (stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, TransactionLog * l);
 
 /**
-   LogUpdate writes an UPDATELOG log record to the log tail.  It
+   stasis_log_write_update writes an UPDATELOG log record to the log tail.  It
    also interprets its operation argument to the extent necessary for
    allocating and laying out the log entry.  Finally, it updates the
    state of the parameter l.
 */
-LogEntry * LogUpdate(stasis_log_t* log,
+LogEntry * stasis_log_write_update(stasis_log_t* log,
                      TransactionLog * l, Page * p, unsigned int operation,
                      const byte * arg, size_t arg_size);
 
@@ -237,11 +239,9 @@ LogEntry * LogUpdate(stasis_log_t* log,
    (Needed so that the lsn slot of the page in question can be
    updated.)
 */
-lsn_t LogCLR(stasis_log_t* log, const LogEntry * e);
+lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * e);
 
-lsn_t LogDummyCLR(stasis_log_t* log, int xid,
+lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid,
                   lsn_t prev_lsn, lsn_t compensated_lsn);
-
-
 
 #endif

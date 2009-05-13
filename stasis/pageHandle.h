@@ -1,9 +1,20 @@
 #ifndef STASIS_PAGEHANDLE_H
 #define STASIS_PAGEHANDLE_H
+
+typedef struct stasis_page_handle_t stasis_page_handle_t;
+
 #include <stasis/page.h>
 #include <stasis/io/handle.h>
+#include <stasis/logger/logger2.h>
 
-typedef struct stasis_page_handle_t {
+/**
+ * Provides page-based, write-ahead access to the page file.
+ *
+ * The operations provided by page handles maintain the write-ahead invariant,
+ * and callers to write pages to file-handle buffers, and to force write the
+ * buffers to disk.
+ */
+struct stasis_page_handle_t {
   /**
    * Write page to disk, including correct LSN.  Doing so may require a
    * call to logSync().  There is not much that can be done to avoid
@@ -56,11 +67,25 @@ typedef struct stasis_page_handle_t {
   */
   void (*close)(struct stasis_page_handle_t* ph);
   /**
+     The write ahead log associated with this page handle.
+
+     If this is non-null, stasis_page_handle implementations will call
+     stasis_log_force on this to maintain the write-ahead invariant.
+   */
+  stasis_log_t * log;
+  /**
    * Pointer to implementation-specific state.
    */
   void * impl;
-} stasis_page_handle_t;
+};
+/**
+  Open a stasis page handle.
 
-stasis_page_handle_t * stasis_page_handle_open(struct stasis_handle_t * handle);
+  @param handle A stasis_handle_t that will perform I/O to the page file.
+  @param log A stasis_log_t that will be used to maintain the write ahead invariant.
+         If null, then write ahead will not be maintained.
+  @return a handle that performs high-level (page based, write-ahead) page file I/O.
+ */
+stasis_page_handle_t * stasis_page_handle_open(struct stasis_handle_t * handle, stasis_log_t * log);
 
 #endif //STASIS_PAGEHANDLE_H

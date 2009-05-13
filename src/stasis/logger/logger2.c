@@ -52,31 +52,13 @@ terms specified in this license.
 #include <config.h>
 #include <stasis/common.h>
 
-#include <stdio.h>
-#include <assert.h>
-
 #include <stasis/logger/logger2.h>
 
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
 #include <stasis/page.h>
 
-/**
-   @todo stasis_log_file should be in transactional2.c, and not global
- */
-stasis_log_t* stasis_log_file = 0;
-
-static int pendingCommits;
-
-void LogTransBegin(stasis_log_t* log, int xid, TransactionLog* tl) {
-  tl->xid = xid;
-
-  DEBUG("Log Begin %d\n", xid);
-  tl->prevLSN = -1;
-  tl->recLSN = -1;
-}
-
-static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
+static lsn_t stasis_log_write_common(stasis_log_t* log, TransactionLog * l, int type) {
   LogEntry * e = allocCommonLogEntry(l->prevLSN, l->xid, type);
   lsn_t ret;
 
@@ -95,9 +77,9 @@ static lsn_t LogTransCommon(stasis_log_t* log, TransactionLog * l, int type) {
   freeLogEntry(e);
 
   return ret;
-
 }
-static lsn_t LogTransCommonPrepare(stasis_log_t* log, TransactionLog * l) {
+
+static lsn_t stasis_log_write_prepare(stasis_log_t* log, TransactionLog * l) {
   LogEntry * e = allocPrepareLogEntry(l->prevLSN, l->xid, l->recLSN);
   lsn_t ret;
 
@@ -120,7 +102,7 @@ static lsn_t LogTransCommonPrepare(stasis_log_t* log, TransactionLog * l) {
 
 }
 
-LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
+LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
                      Page * p, unsigned int op,
 		     const byte * arg, size_t arg_size) {
 
@@ -138,7 +120,7 @@ LogEntry * LogUpdate(stasis_log_t* log, TransactionLog * l,
   return e;
 }
 
-lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) {
+lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
   LogEntry * e = allocCLRLogEntry(old_e);
   log->write_entry(log, e);
 
@@ -150,7 +132,7 @@ lsn_t LogCLR(stasis_log_t* log, const LogEntry * old_e) {
   return ret;
 }
 
-lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
+lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN,
                   lsn_t compensatedLSN) {
   const LogEntry * const_e;
   LogEntry * e;
@@ -160,99 +142,49 @@ lsn_t LogDummyCLR(stasis_log_t* log, int xid, lsn_t prevLSN,
   } else {
     const_e = log->read_entry(log, compensatedLSN);
   }
-  e = malloc(sizeofLogEntry(const_e));
-  memcpy(e, const_e, sizeofLogEntry(const_e));
+  e = malloc(sizeofLogEntry(log, const_e));
+  memcpy(e, const_e, sizeofLogEntry(log, const_e));
   e->LSN = compensatedLSN;
-  lsn_t ret = LogCLR(log, e);
+  lsn_t ret = stasis_log_write_clr(log, e);
   freeLogEntry(const_e);
   free(e);
   return ret;
 }
 
-lsn_t LogTransCommit(stasis_log_t* log, TransactionLog * l) {
-  lsn_t lsn = LogTransCommon(log, l, XCOMMIT);
-  LogForce(log, lsn, LOG_FORCE_COMMIT);
+void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* tl) {
+  tl->xid = xid;
+
+  DEBUG("Log Begin %d\n", xid);
+  tl->prevLSN = -1;
+  tl->recLSN = -1;
+}
+
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, TransactionLog * l) {
+  return stasis_log_write_common(log, l, XABORT);
+}
+lsn_t stasis_log_end_aborted_transaction(stasis_log_t* log, TransactionLog * l) {
+	return stasis_log_write_common(log, l, XEND);
+}
+lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l) {
+  lsn_t lsn = stasis_log_write_prepare(log, l);
+  stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
   return lsn;
 }
 
-lsn_t LogTransAbort(stasis_log_t* log, TransactionLog * l) {
-  return LogTransCommon(log, l, XABORT);
-}
-lsn_t LogTransEnd(stasis_log_t* log, TransactionLog * l) {
-	return LogTransCommon(log, l, XEND);
-}
-lsn_t LogTransPrepare(stasis_log_t* log, TransactionLog * l) {
-  lsn_t lsn = LogTransCommonPrepare(log, l);
-  LogForce(log, lsn, LOG_FORCE_COMMIT);
+
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l) {
+  lsn_t lsn = stasis_log_write_common(log, l, XCOMMIT);
+  stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
   return lsn;
 }
 
-static void groupCommit(stasis_log_t* log, lsn_t lsn);
-
-void LogForce(stasis_log_t* log, lsn_t lsn,
+void stasis_log_force(stasis_log_t* log, lsn_t lsn,
               stasis_log_force_mode_t mode) {
-  if(mode == LOG_FORCE_COMMIT) {
-    groupCommit(log, lsn);
+  if((mode == LOG_FORCE_COMMIT) && log->group_force) {
+    stasis_log_group_force(log->group_force, lsn);
   } else {
     if(log->first_unstable_lsn(log,mode) <= lsn) {
       log->force_tail(log,mode);
     }
   }
-}
-
-static void groupCommit(stasis_log_t* log, lsn_t lsn) {
-  static pthread_mutex_t check_commit = PTHREAD_MUTEX_INITIALIZER;
-  static pthread_cond_t tooFewXacts = PTHREAD_COND_INITIALIZER;
-
-
-  pthread_mutex_lock(&check_commit);
-  if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
-    pthread_mutex_unlock(&check_commit);
-    return;
-  }
-  if(log->is_durable(log)) {
-    struct timeval now;
-    struct timespec timeout;
-
-    gettimeofday(&now, NULL);
-    timeout.tv_sec = now.tv_sec;
-    timeout.tv_nsec = now.tv_usec * 1000;
-    //                   0123456789  <- number of zeros on the next three lines...
-    timeout.tv_nsec +=   10000000; // wait ten msec.
-    if(timeout.tv_nsec > 1000000000) {
-      timeout.tv_nsec -= 1000000000;
-      timeout.tv_sec++;
-    }
-
-    pendingCommits++;
-    int xactcount = TactiveTransactionCount();
-    if((xactcount > 1 && pendingCommits < xactcount) ||
-       (xactcount > 20 && pendingCommits < (int)((double)xactcount * 0.95))) {
-      int retcode;
-      while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&tooFewXacts, &check_commit, &timeout))) {
-        if(retcode != 0) {
-          printf("Warning: %s:%d: pthread_cond_timedwait was interrupted by "
-                 "a signal in groupCommit().  Acting as though it timed out.\n",
-                 __FILE__, __LINE__);
-          break;
-        }
-        if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn) {
-          pendingCommits--;
-          pthread_mutex_unlock(&check_commit);
-          return;
-        }
-      }
-    }
-  } else {
-    pendingCommits++;
-  }
-  if(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) <= lsn) {
-    log->force_tail(log, LOG_FORCE_COMMIT);
-    assert(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn);
-    pthread_cond_broadcast(&tooFewXacts);
-  }
-  assert(log->first_unstable_lsn(log,LOG_FORCE_COMMIT) > lsn);
-  pendingCommits--;
-  pthread_mutex_unlock(&check_commit);
-  return;
 }

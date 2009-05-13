@@ -1,20 +1,21 @@
 ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    common.c flags.c stats.c bufferManager.c
                    linkedlist.c operations.c pageHandle.c 
-		   bufferManager/legacy/pageFile.c
+                   bufferManager/legacy/pageFile.c
                    bufferManager/legacy/pageCache.c
                    bufferManager/legacy/legacyBufferManager.c
-		   page.c bufferPool.c blobManager.c
+                   page.c bufferPool.c blobManager.c
                    recovery2.c truncation.c transactional2.c
                    allocationPolicy.c lockManager.c iterator.c
                    consumer.c arrayCollection.c ringbuffer.c fifo.c
                    multiplexer.c graph.c logger/logEntry.c
                    logger/safeWrites.c logger/logWriterUtils.c
-		   logger/filePool.c
-		   logger/inMemoryLog.c
+                   logger/filePool.c
+                   logger/inMemoryLog.c
                    logger/logHandle.c logger/logger2.c
                    logger/logMemory.c page/raw.c page/slotted.c page/lsnFree.c
                    logger/reorderingHandle.c
+                   logger/groupForce.c
                    page/fixed.c compensations.c
                    operations/pageOperations.c page/indirect.c
                    operations/decrement.c operations/increment.c

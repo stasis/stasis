@@ -94,7 +94,7 @@ static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
   // If necessary, force the log to disk so that ret's LSN will be stable.
 
   assert(ret->LSN == stasis_page_lsn_read(ret));
-  LogForce(stasis_log_file, ret->LSN, LOG_FORCE_WAL);
+  if(h->log) { stasis_log_force(h->log, ret->LSN, LOG_FORCE_WAL); }
 
   pthread_mutex_lock(&stable_mutex);
 
@@ -133,14 +133,14 @@ static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
 //#define PAGE_FILE_O_DIRECT
 
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
-stasis_page_handle_t*  openPageFile() {
+stasis_page_handle_t*  openPageFile(stasis_log_t * log) {
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   ret->read = pfPageRead;
   ret->write = pfPageWrite;
   ret->force_file = pfForcePageFile;
   ret->force_range = pfForceRangePageFile;
   ret->close = pfClosePageFile;
-
+  ret->log = log;
   DEBUG("Opening storefile.\n");
 
 #ifdef PAGE_FILE_O_DIRECT

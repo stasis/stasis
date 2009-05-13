@@ -62,7 +62,7 @@ terms specified in this license.
 
 #define LOG_NAME   "check_logWriter.log"
 
-static void setup_log() {
+static stasis_log_t * setup_log() {
   int i;
   lsn_t prevLSN = -1;
   int xid = 42;
@@ -71,7 +71,7 @@ static void setup_log() {
   Tinit();
   lsn_t firstLSN = -1;
   int  first = 1;
-
+  stasis_log_t * stasis_log_file = stasis_log();
   for(i = 0 ; i < 1000; i++) {
     LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
     const LogEntry * f;
@@ -97,8 +97,8 @@ static void setup_log() {
 
     f = stasis_log_file->read_entry(stasis_log_file, prevLSN);
 
-    fail_unless(sizeofLogEntry(e) == sizeofLogEntry(f), "Log entry changed size!!");
-    fail_unless(0 == memcmp(e,f,sizeofLogEntry(e)), "Log entries did not agree!!");
+    fail_unless(sizeofLogEntry(0, e) == sizeofLogEntry(0, f), "Log entry changed size!!");
+    fail_unless(0 == memcmp(e,f,sizeofLogEntry(0, e)), "Log entries did not agree!!");
 
     freeLogEntry(e);
     freeLogEntry(f);
@@ -118,6 +118,7 @@ static void setup_log() {
     freeLogEntry (e);
     freeLogEntry (g);
   }
+  return stasis_log_file;
 }
 /**
    @test
@@ -143,8 +144,7 @@ static void loggerTest(int logType) {
   const LogEntry * e;
   LogHandle* h;
   int i = 0;
-
-  setup_log();
+  stasis_log_t * stasis_log_file = setup_log();
   h = getLogHandle(stasis_log_file);
 
   while((e = nextInLog(h))) {
@@ -175,7 +175,7 @@ START_TEST(loggerMemTest) {
 static void logHandleColdReverseIterator(int logType) {
   const LogEntry * e;
   stasis_log_type = logType;
-  setup_log();
+  stasis_log_t * stasis_log_file = setup_log();
   LogHandle* lh = getLogHandle(stasis_log_file);
   int i = 0;
 
@@ -213,7 +213,8 @@ static void loggerTruncate(int logType) {
   const LogEntry * le2;
   const LogEntry * le3 = NULL;
   const LogEntry * tmp;
-  setup_log();
+
+  stasis_log_t * stasis_log_file = setup_log();
 
   LogHandle* lh = getLogHandle(stasis_log_file);
   int i = 0;
@@ -296,6 +297,7 @@ static void* worker_thread(void * arg) {
     lsns[i] = 0;
   }
   i = 0;
+  stasis_log_t * stasis_log_file = stasis_log();
 
   while(i < ENTRIES_PER_THREAD) {
     LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
@@ -423,6 +425,7 @@ void reopenLogWorkload(int truncating) {
 
   const int ENTRY_COUNT = 1000;
   const int SYNC_POINT = 900;
+  stasis_log_t * stasis_log_file = 0;
 
   stasis_transaction_table_active_transaction_count_set(0);
 
@@ -439,14 +442,14 @@ void reopenLogWorkload(int truncating) {
   int xid = 1;
   TransactionLog l;
   pthread_mutex_init(&l.mut,0);
-  LogTransBegin(stasis_log_file, xid, &l);
+  stasis_log_begin_transaction(stasis_log_file, xid, &l);
   lsn_t startLSN = 0;
 
   LogEntry * entries[ENTRY_COUNT];
 
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
-    entries[i] = LogUpdate(stasis_log_file,
+    entries[i] = stasis_log_write_update(stasis_log_file,
                            &l, NULL, OPERATION_NOOP, NULL, 0);
 
     if(i == SYNC_POINT) {
@@ -483,8 +486,8 @@ void reopenLogWorkload(int truncating) {
   const LogEntry * e;
   while((e = nextInLog(h))) {
     if(e->type != INTERNALLOG) {
-      assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
-      assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
+      assert(sizeofLogEntry(0, e) == sizeofLogEntry(0, entries[i]));
+      assert(!memcmp(e, entries[i], sizeofLogEntry(0, entries[i])));
       assert(i < ENTRY_COUNT);
       i++;
     }
@@ -494,7 +497,7 @@ void reopenLogWorkload(int truncating) {
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    entries2[i] = LogUpdate(stasis_log_file, &l, NULL, OPERATION_NOOP,
+    entries2[i] = stasis_log_write_update(stasis_log_file, &l, NULL, OPERATION_NOOP,
                             NULL, 0);
     if(i == SYNC_POINT) {
       stasis_log_file->force_tail(stasis_log_file, LOG_FORCE_COMMIT);
@@ -514,12 +517,12 @@ void reopenLogWorkload(int truncating) {
   while((e = nextInLog(h))) {
     if(e->type != INTERNALLOG) {
       if( i < ENTRY_COUNT) {
-	assert(sizeofLogEntry(e) == sizeofLogEntry(entries[i]));
-	assert(!memcmp(e, entries[i], sizeofLogEntry(entries[i])));
+        assert(sizeofLogEntry(0, e) == sizeofLogEntry(0, entries[i]));
+        assert(!memcmp(e, entries[i], sizeofLogEntry(0, entries[i])));
       } else {
-	assert(i < ENTRY_COUNT * 2);
-	assert(sizeofLogEntry(e) == sizeofLogEntry(entries2[i-ENTRY_COUNT]));
-	assert(!memcmp(e, entries2[i-ENTRY_COUNT], sizeofLogEntry(entries2[i-ENTRY_COUNT])));
+        assert(i < ENTRY_COUNT * 2);
+        assert(sizeofLogEntry(0, e) == sizeofLogEntry(0, entries2[i-ENTRY_COUNT]));
+        assert(!memcmp(e, entries2[i-ENTRY_COUNT], sizeofLogEntry(0, entries2[i-ENTRY_COUNT])));
       }
       i++;
     }
