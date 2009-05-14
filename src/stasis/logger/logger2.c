@@ -120,6 +120,21 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
   return e;
 }
 
+LogEntry * stasis_log_begin_nta(stasis_log_t* log, TransactionLog * l, unsigned int op,
+                                const byte * arg, size_t arg_size) {
+  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op, INVALID_PAGE, arg, arg_size);
+  return e;
+}
+lsn_t stasis_log_end_nta(stasis_log_t* log, TransactionLog * l, LogEntry * e) {
+  log->write_entry(log, e);
+  pthread_mutex_lock(&l->mut);
+  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  lsn_t ret = l->prevLSN = e->LSN;
+  pthread_mutex_unlock(&l->mut);
+  freeLogEntry(e);
+  return ret;
+}
+
 lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
   LogEntry * e = allocCLRLogEntry(old_e);
   log->write_entry(log, e);
@@ -132,22 +147,12 @@ lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
   return ret;
 }
 
-lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN,
-                  lsn_t compensatedLSN) {
-  const LogEntry * const_e;
-  LogEntry * e;
-  if(compensatedLSN == -1) {
-    const_e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
-			    INVALID_PAGE, NULL, 0);
-  } else {
-    const_e = log->read_entry(log, compensatedLSN);
-  }
-  e = malloc(sizeofLogEntry(log, const_e));
-  memcpy(e, const_e, sizeofLogEntry(log, const_e));
-  e->LSN = compensatedLSN;
+lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN) {
+  // XXX waste of log bandwidth.
+  const LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
+              INVALID_PAGE, NULL, 0);
   lsn_t ret = stasis_log_write_clr(log, e);
-  freeLogEntry(const_e);
-  free(e);
+  freeLogEntry(e);
   return ret;
 }
 

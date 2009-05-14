@@ -500,36 +500,23 @@ typedef struct {
 
 int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
   assert(xid >= 0);
-  LogEntry * e = stasis_log_write_update(stasis_log_file,
+  void * e = stasis_log_begin_nta(stasis_log_file,
 			   &stasis_transaction_table[xid % MAX_TRANSACTIONS],
-			   NULL, op, dat, datSize);
-  lsn_t prev_lsn = e->prevLSN;
-  lsn_t compensated_lsn = e->LSN;
-
+			   op, dat, datSize);
+  // HACK: breaks encapsulation.
   stasis_operation_do(e, NULL);
 
-  freeLogEntry(e);
-
-  lsn_t clrLSN = stasis_log_write_dummy_clr(stasis_log_file, xid, prev_lsn, compensated_lsn);
-
-  stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+  stasis_log_end_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], e);
 
   return 0;
 }
 
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
-  LogEntry * e = stasis_log_write_update(stasis_log_file,
-                           &stasis_transaction_table[xid % MAX_TRANSACTIONS],
-                           NULL, op, dat, datSize);
+
+  void * ret = stasis_log_begin_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
-  stasis_nta_handle * h = malloc(sizeof(stasis_nta_handle));
-
-  h->prev_lsn = e->prevLSN;
-  h->compensated_lsn = e->LSN;
-
-  freeLogEntry(e);
-  return h;
+  return ret;
 }
 
 /**
@@ -537,22 +524,13 @@ void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
     @return the lsn of the CLR.  Most users (everyone?) will ignore this.
 */
 lsn_t TendNestedTopAction(int xid, void * handle) {
-  stasis_nta_handle * h = handle;
-  assert(xid >= 0);
 
-  // Write a CLR.
-  lsn_t clrLSN = stasis_log_write_dummy_clr(stasis_log_file, xid,
-                             h->prev_lsn, h->compensated_lsn);
-
-  // Ensure that the next action in this transaction points to the CLR.
-  stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN = clrLSN;
+  lsn_t ret = stasis_log_end_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], handle);
 
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
 	 clrLSN, undoneLSN, *prevLSN);
 
-  free(h);
-
-  return clrLSN;
+  return ret;
 }
 void * stasis_log() {
   return stasis_log_file;

@@ -271,14 +271,19 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
       thisXid = e->xid;
       switch(e->type) {
       case UPDATELOG:
-	{
+      {
           if(e->update.page == INVALID_PAGE) {
-            DEBUG("logical update\n");
+            DEBUG("logical undo\n");
 
-            // logical undo: no-op; then the NTA didn't complete, and
-            // we've finished physical undo for this op
+            // logical undo:
+            //   we've rolled back any partial physical undos for this op;
+            //   perform logical undo.
+            stasis_operation_undo(e, 0, 0);
+            // write a clr to mark this logical undo as complete
+            stasis_log_write_dummy_clr(log, e->xid, e->prevLSN);
+
           } else {
-            DEBUG("physical update\n");
+            DEBUG("physical undo\n");
 
             // atomically log (getting clr), and apply undo.
             // otherwise, there's a race where the page's LSN is
@@ -302,58 +307,46 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
               releasePage(p);
             }
 
-            DEBUG("rolled back clr's update\n");
+            DEBUG("wrote clr, and rolled back update.\n");
           }
-	  break;
-	}
+          break;
+      }
       case CLRLOG:
-        {
-      const LogEntry * ce = getCLRCompensated((const CLRLogEntry*) e);
-      if(-1 != ce->LSN) {
-	    if(ce->update.page == INVALID_PAGE) {
-	      DEBUG("logical clr\n");
-	      // logical undo; effective LSN doesn't matter
-	      stasis_operation_undo(ce, 0, 0);
-	      // compensated_lsn = -1 -> that the logical undo is a NOOP.
-	      // that way, we don't undo this operation twice.
-	      stasis_log_write_dummy_clr(log, ce->xid, ce->prevLSN, -1);
-	    } else {
-	      DEBUG("physical clr: op %d lsn %lld\n",
-		    ce->update.funcID, ce->LSN);
-	      // no-op.  Already undone during redo.
-	      // This would redo the original op.
-	    }
-	  }
-        }
-	break;
+      {
+        // no-op
+      }
+      break;
       case XABORT:
-	DEBUG("Found abort for %d\n", e->xid);
-	reallyAborted = 1;
-	// Since XABORT is a no-op, we can silently ignore it.  XABORT
-	// records may be passed in by undoTrans.
-	break;
+      {
+      DEBUG("Found abort for %d\n", e->xid);
+      reallyAborted = 1;
+      // Since XABORT is a no-op, we can silently ignore it.  XABORT
+      // records may be passed in by undoTrans.
+      }
+      break;
       case XCOMMIT:
       case XEND:
-	// Should never abort a transaction that contains a commit or end record
-	abort();
+        // Should never abort a transaction that contains a commit or end record
+        abort();
       case XPREPARE: {
         DEBUG("found prepared xact %d\n", e->xid);
 
-	if(!reallyAborted) {
-	  DEBUG("xact wasn't aborted\n");
-	  prepared = 1;
+        if(!reallyAborted) {
+          DEBUG("xact wasn't aborted\n");
+          prepared = 1;
 
-          stasis_transaction_table_roll_forward_with_reclsn
-            (e->xid, e->LSN, e->prevLSN, getPrepareRecLSN(e));
-	} else {
-	  DEBUG("xact was aborted\n");
-	}
+              stasis_transaction_table_roll_forward_with_reclsn
+                (e->xid, e->LSN, e->prevLSN, getPrepareRecLSN(e));
+        } else {
+          DEBUG("xact was aborted\n");
+        }
       } break;
-      default:
-	DEBUG
-	  ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
-	   e->type, e->xid, e->LSN);
-	abort();
+      default: {
+        DEBUG
+          ("Unknown log type to undo (TYPE=%d,XID= %d,LSN=%lld), skipping...\n",
+           e->type, e->xid, e->LSN);
+        abort();
+      }
       }
       freeLogEntry(e);
     }

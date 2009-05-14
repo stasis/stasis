@@ -323,7 +323,9 @@ LogEntry * stasis_log_write_update(stasis_log_t* log,
 */
 lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * e);
 
-lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid,
-                  lsn_t prev_lsn, lsn_t compensated_lsn);
+lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prev_lsn);
 
+LogEntry * stasis_log_begin_nta(stasis_log_t* log, TransactionLog * l, unsigned int op,
+                                const byte * arg, size_t arg_size);
+lsn_t stasis_log_end_nta(stasis_log_t* log, TransactionLog * l, LogEntry * e);
 #endif
