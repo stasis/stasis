@@ -1,183 +1,59 @@
-#include <limits.h>
 #include <stasis/truncation.h>
-#include <pbl/pbl.h>
-#include <stasis/logger/logger2.h>
-#include <stasis/page.h>
-#include <assert.h>
 
-static int initialized = 0;
-static int automaticallyTuncating = 0;
-static pthread_t truncationThread;
-
-static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  shutdown_cond  = PTHREAD_COND_INITIALIZER;
-
-static pblHashTable_t * dirtyPages = 0;
-static pthread_mutex_t dirtyPages_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct stasis_truncation_t {
+  char initialized;
+  char automaticallyTruncating;
+  pthread_t truncationThread;
+  pthread_mutex_t shutdown_mutex;
+  pthread_cond_t shutdown_cond;
+  stasis_dirty_page_table_t * dirty_pages;
+  stasis_log_t * log;
+};
 
 #ifdef LONG_TEST
 #define TARGET_LOG_SIZE (1024 * 1024 * 5)
 #define TRUNCATE_INTERVAL 1
 #define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 1)
-#else 
+#else
 #define TARGET_LOG_SIZE (1024 * 1024 * 50)
 #define TRUNCATE_INTERVAL 1
 #define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 25)
 #endif
-void dirtyPages_add(Page * p) {
-  pthread_mutex_lock(&dirtyPages_mutex);
-  if(!p->dirty) { 
-    p->dirty = 1;
-    //assert(p->LSN);
-    void* ret = pblHtLookup(dirtyPages, &(p->id), sizeof(p->id));
-    assert(!ret);
-    lsn_t * insert = malloc(sizeof(lsn_t));
-    *insert = p->LSN;
-    pblHtInsert(dirtyPages, &(p->id), sizeof(p->id), insert); //(void*)p->LSN);
-  }
-  pthread_mutex_unlock(&dirtyPages_mutex);
-}
- 
-void dirtyPages_remove(Page * p) { 
-  pthread_mutex_lock(&dirtyPages_mutex);
-  //  printf("Removing page %d\n", p->id);
-  //assert(pblHtLookup(dirtyPages, &(p->id), sizeof(int)));
-  //  printf("With lsn = %d\n", (lsn_t)pblHtCurrent(dirtyPages));
-  p->dirty = 0;
-  lsn_t * old = pblHtLookup(dirtyPages, &(p->id),sizeof(p->id));
-  pblHtRemove(dirtyPages, &(p->id), sizeof(p->id));
-  if(old) {
-    free(old);
-  }
-  //assert(!ret); <--- Due to a bug in the PBL compatibility mode,
-  //there is no way to tell whether the value didn't exist, or if it
-  //was null.
-  pthread_mutex_unlock(&dirtyPages_mutex);
-}
-
-int dirtyPages_isDirty(Page * p) { 
-  int ret;
-  pthread_mutex_lock(&dirtyPages_mutex);
-  ret = p->dirty;
-  pthread_mutex_unlock(&dirtyPages_mutex);
+stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_log_t * log) {
+  stasis_truncation_t * ret = malloc(sizeof(*ret));
+  ret->initialized = 1;
+  ret->automaticallyTruncating = 0;
+  pthread_mutex_init(&ret->shutdown_mutex, 0);
+  pthread_cond_init(&ret->shutdown_cond, 0);
+  ret->dirty_pages = dpt;
+  ret->log = log;
   return ret;
 }
 
-static lsn_t dirtyPages_minRecLSN() { 
-  lsn_t lsn = LSN_T_MAX; // LogFlushedLSN ();
-  pageid_t* pageid;
-  pthread_mutex_lock(&dirtyPages_mutex);
-
-  for( pageid = (pageid_t*)pblHtFirst (dirtyPages); pageid; pageid = (pageid_t*)pblHtNext(dirtyPages)) { 
-    lsn_t * thisLSN = (lsn_t*) pblHtCurrent(dirtyPages);
-    //    printf("lsn = %d\n", thisLSN);
-    if(*thisLSN < lsn) { 
-      lsn = *thisLSN;
-    }
-  }
-  pthread_mutex_unlock(&dirtyPages_mutex);
-
-  return lsn;
-}
-
-static void dirtyPages_flush() { 
-  pageid_t * staleDirtyPages = malloc(sizeof(pageid_t) * (MAX_BUFFER_SIZE));
-  int i;
-  for(i = 0; i < MAX_BUFFER_SIZE; i++) { 
-    staleDirtyPages[i] = -1;
-  }
-  Page* p = 0;
-  pthread_mutex_lock(&dirtyPages_mutex);
-  void* tmp;
-  i = 0;
-  
-  for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) { 
-    staleDirtyPages[i] = *((pageid_t*) pblHtCurrentKey(dirtyPages));
-    i++;
-  }
-  assert(i < MAX_BUFFER_SIZE);
-  pthread_mutex_unlock(&dirtyPages_mutex);
-
-  for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
-    p = loadPage(-1, staleDirtyPages[i]);
-    writeBackPage(p);
-    releasePage(p);
-  }
-  free(staleDirtyPages);
-}
-void dirtyPages_flushRange(pageid_t start, pageid_t stop) {
-  pageid_t * staleDirtyPages = malloc(sizeof(pageid_t) * (MAX_BUFFER_SIZE));
-  int i;
-  Page * p = 0;
-
-  pthread_mutex_lock(&dirtyPages_mutex);
-
-  void *tmp;
-  i = 0;
-  for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
-    pageid_t num = *((pageid_t*) pblHtCurrentKey(dirtyPages));
-    if(num <= start && num < stop) {
-      staleDirtyPages[i] = num;
-      i++;
-    }
-  }
-  staleDirtyPages[i] = -1;
-  pthread_mutex_unlock(&dirtyPages_mutex);
-
-  for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
-    p = loadPage(-1, staleDirtyPages[i]);
-    writeBackPage(p);
-    releasePage(p);
-  }
-  free(staleDirtyPages);
-  forcePageRange(start*PAGE_SIZE,stop*PAGE_SIZE);
-
-}
-void dirtyPagesInit() { 
-  dirtyPages = pblHtCreate();
-}
-
-
-void dirtyPagesDeinit() { 
-  void * tmp;
-  int areDirty = 0;
-  for(tmp = pblHtFirst(dirtyPages); tmp; tmp = pblHtNext(dirtyPages)) {
-    free(pblHtCurrent(dirtyPages));
-    if((!areDirty) &&
-       (!stasis_suppress_unclean_shutdown_warnings)) {
-      printf("Warning:  dirtyPagesDeinit detected dirty, unwritten pages.  "
-	     "Updates lost?\n");
-      areDirty = 1;
-    }
-  }
-  pblHtDelete(dirtyPages);
-  dirtyPages = 0;
-}
-void stasis_truncation_init() { 
-  initialized = 1;
-}
-
-void stasis_truncation_deinit() { 
-  pthread_mutex_lock(&shutdown_mutex);
-  initialized = 0;
-  if(automaticallyTuncating) {
+void stasis_truncation_deinit(stasis_truncation_t * trunc) {
+  pthread_mutex_lock(&trunc->shutdown_mutex);
+  trunc->initialized = 0;
+  if(trunc->automaticallyTruncating) {
     void * ret = 0;
-    pthread_mutex_unlock(&shutdown_mutex);
-    pthread_cond_broadcast(&shutdown_cond);
-    pthread_join(truncationThread, &ret);
-  } else { 
-    pthread_mutex_unlock(&shutdown_mutex);
+    pthread_mutex_unlock(&trunc->shutdown_mutex);
+    pthread_cond_broadcast(&trunc->shutdown_cond);
+    pthread_join(trunc->truncationThread, &ret);
+  } else {
+    pthread_mutex_unlock(&trunc->shutdown_mutex);
   }
-  automaticallyTuncating = 0;
+  trunc->automaticallyTruncating = 0;
+  pthread_mutex_destroy(&trunc->shutdown_mutex);
+  pthread_cond_destroy(&trunc->shutdown_cond);
+  free(trunc);
 }
 
-static void* stasis_truncation_thread_worker(void* logp) {
-  stasis_log_t * log = logp;
-  pthread_mutex_lock(&shutdown_mutex);
-  while(initialized) {
-    if(log->first_unstable_lsn(log, LOG_FORCE_WAL) - log->truncation_point(log)
+static void* stasis_truncation_thread_worker(void* truncp) {
+  stasis_truncation_t * trunc = truncp;
+  pthread_mutex_lock(&trunc->shutdown_mutex);
+  while(trunc->initialized) {
+    if(trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL) - trunc->log->truncation_point(trunc->log)
        > TARGET_LOG_SIZE) {
-      stasis_truncation_truncate(log, 0);
+      stasis_truncation_truncate(trunc, 0);
     }
     struct timeval now;
     struct timespec timeout;
@@ -188,20 +64,20 @@ static void* stasis_truncation_thread_worker(void* logp) {
     timeout.tv_nsec = now.tv_usec;
     timeout.tv_sec += TRUNCATE_INTERVAL;
 
-    pthread_cond_timedwait(&shutdown_cond, &shutdown_mutex, &timeout);
+    pthread_cond_timedwait(&trunc->shutdown_cond, &trunc->shutdown_mutex, &timeout);
   }
-  pthread_mutex_unlock(&shutdown_mutex);
+  pthread_mutex_unlock(&trunc->shutdown_mutex);
   return (void*)0;
 }
 
-void stasis_truncation_thread_start(stasis_log_t* log) {
-  assert(!automaticallyTuncating);
-  automaticallyTuncating = 1;
-  pthread_create(&truncationThread, 0, &stasis_truncation_thread_worker, log);
+void stasis_truncation_thread_start(stasis_truncation_t* trunc) {
+  assert(!trunc->automaticallyTruncating);
+  trunc->automaticallyTruncating = 1;
+  pthread_create(&trunc->truncationThread, 0, &stasis_truncation_thread_worker, trunc);
 }
 
 
-int stasis_truncation_truncate(stasis_log_t* log, int force) {
+int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
 
   // *_minRecLSN() used to return the same value as flushed if
   //there were no outstanding transactions, but flushed might
@@ -209,36 +85,36 @@ int stasis_truncation_truncate(stasis_log_t* log, int force) {
   //LSN_T_MAX if there are no outstanding transactions / no
   //dirty pages.
 
-  lsn_t page_rec_lsn = dirtyPages_minRecLSN();
+  lsn_t page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
   lsn_t xact_rec_lsn = stasis_transaction_table_minRecLSN();
-  lsn_t flushed_lsn  = log->first_unstable_lsn(log, LOG_FORCE_WAL);
+  lsn_t flushed_lsn  = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
 
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 
-  lsn_t log_trunc = log->truncation_point(log);
+  lsn_t log_trunc = trunc->log->truncation_point(trunc->log);
   if(force || (xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
     //fprintf(stderr, "xact = %ld \t log = %ld\n", xact_rec_lsn, log_trunc);
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       //      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
       forcePages();
-      log->truncate(log, rec_lsn);
+      trunc->log->truncate(trunc->log, rec_lsn);
       return 1;
     } else {
-      lsn_t flushed = log->first_unstable_lsn(log, LOG_FORCE_WAL);
+      lsn_t flushed = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
       if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
 	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
-	dirtyPages_flush();
+	stasis_dirty_page_table_flush(trunc->dirty_pages);
 
-	page_rec_lsn = dirtyPages_minRecLSN();
+	page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
 	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
 	rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 
 	//fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
 	forcePages();
-	log->truncate(log, rec_lsn);
+	trunc->log->truncate(trunc->log, rec_lsn);
 	return 1;
       } else {
 	return 0;

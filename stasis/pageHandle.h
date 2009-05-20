@@ -74,18 +74,26 @@ struct stasis_page_handle_t {
    */
   stasis_log_t * log;
   /**
+     The dirty page table associated with this page handle.
+
+     If this is non-null, stasis_page_handle will keep the dirty page table up-to-date.
+   */
+  stasis_dirty_page_table_t * dirtyPages;
+  /**
    * Pointer to implementation-specific state.
    */
   void * impl;
 };
 /**
-  Open a stasis page handle.
+  Open a Stasis page handle.
 
   @param handle A stasis_handle_t that will perform I/O to the page file.
   @param log A stasis_log_t that will be used to maintain the write ahead invariant.
          If null, then write ahead will not be maintained.
+  @param dirtyPages A stasis_dirty_page_table that will be updated as pages are written back.
   @return a handle that performs high-level (page based, write-ahead) page file I/O.
  */
-stasis_page_handle_t * stasis_page_handle_open(struct stasis_handle_t * handle, stasis_log_t * log);
+stasis_page_handle_t * stasis_page_handle_open(struct stasis_handle_t * handle,
+                                               stasis_log_t * log, stasis_dirty_page_table_t * dirtyPages);
 
 #endif //STASIS_PAGEHANDLE_H

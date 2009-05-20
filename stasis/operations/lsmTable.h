@@ -93,7 +93,7 @@ namespace rose {
       rose::slot_index_t ret = mc->append(xid, *i);
 
       if(ret == rose::NOSPACE) {
-	dirtyPages_add(p);
+	stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
 	mc->pack();
         unlock(p->rwlatch);
 	releasePage(p);
@@ -108,7 +108,7 @@ namespace rose {
       }
       (*inserted)++;
     }
-    dirtyPages_add(p);
+    stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
     mc->pack();
     unlock(p->rwlatch);
     releasePage(p);
@@ -305,7 +305,7 @@ namespace rose {
 	double target_R = sqrt(((double)(*a->out_tree_size+*a->my_tree_size))
                          / ((C0_MEM_SIZE*(1-frac_wasted))/(4096*ratio)));
 
-	printf("R_C2-C1 = %6.1f R_C1-C0 = %6.1f target = %6.1f\n", 
+	printf("R_C2-C1 = %6.1f R_C1-C0 = %6.1f target = %6.1f\n",
 	       ((double)(*a->out_tree_size/*+*a->my_tree_size*/)) / ((double)*a->my_tree_size),
 	       ((double)*a->my_tree_size) / ((double)(C0_MEM_SIZE*(1-frac_wasted))/(4096*ratio)),
                target_R);
@@ -370,7 +370,7 @@ namespace rose {
 	TlsmFree(xid,
                  (**(typename ITERA::handle**)a->in_tree)->r_,
                  TlsmRegionDeallocRid,a->in_tree_allocer);
-        DEBUG("%d freed C?: (in_tree) %lld\n", PAGELAYOUT::FMT::TUP::NN, 
+        DEBUG("%d freed C?: (in_tree) %lld\n", PAGELAYOUT::FMT::TUP::NN,
                (**(typename ITERA::handle**)a->in_tree)->r_.page);
 
       } else {
@@ -692,7 +692,7 @@ namespace rose {
 
     pthread_mutex_unlock(h->mut);
 
-    if( (handleBytes > memSizeThresh / 2) 
+    if( (handleBytes > memSizeThresh / 2)
         && ( go || handleBytes > memSizeThresh ) ) { // XXX ok?
       printf("Handle mbytes %lld (%lld) Input size: %lld input size thresh: %lld mbytes mem size thresh: %lld\n",
 	     (long long) handleBytes / (1024*1024), (long long) h->scratch_tree->size(), (long long) *h->input_size,
@@ -791,7 +791,7 @@ namespace rose {
 
       M_LSM_LSM_LSM_M_RB_RB m12345(m123,m45,m123end,m45end);
       M_LSM_LSM_LSM_M_RB_RB m12345end(m123,m45,m123end,m45end);
-      m12345end.seekEnd(); 
+      m12345end.seekEnd();
 
       while(m12345 != m12345end) {
 	*m12345;

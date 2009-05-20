@@ -1,6 +1,7 @@
 #include <stasis/page/raw.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
+
 /**
    @todo Should rawPageInferMetadata set a page type in the Page
    struct?
@@ -23,7 +24,8 @@ void  rawPageSetData(int xid, lsn_t lsn, Page * p) {
   assertlocked(p->rwlatch);
   //  writelock(p->rwlatch, 255);
   rawPageWriteLSN(xid, p, lsn);
-  dirtyPages_add(p);
+  // XXX should be handled in releasePage.
+  stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
   //  unlock(p->rwlatch);
   return;
 }

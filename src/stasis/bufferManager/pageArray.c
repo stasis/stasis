@@ -15,15 +15,15 @@ static pthread_mutex_t pageArray_mut = PTHREAD_MUTEX_INITIALIZER;
 static Page * paLoadPage(int xid, pageid_t pageid) {
 
   pthread_mutex_lock(&pageArray_mut);
-  if(pageid >= pageCount) { 
+  if(pageid >= pageCount) {
     pageMap = realloc(pageMap, (1+pageid) * sizeof(Page*));
-    for(pageid_t i = pageCount; i <= pageid; i++) { 
+    for(pageid_t i = pageCount; i <= pageid; i++) {
       pageMap[i] = 0;
     }
     pageCount = pageid + 1;
   }
 
-  if(!pageMap[pageid]) { 
+  if(!pageMap[pageid]) {
     pageMap[pageid] = malloc(sizeof(Page));
     pageMap[pageid]->id = pageid;
     pageMap[pageid]->LSN = 0;
@@ -40,16 +40,16 @@ static Page * paLoadPage(int xid, pageid_t pageid) {
   return pageMap[pageid];
 }
 
-static void paReleasePage(Page * p) { 
-  dirtyPages_remove(p);
+static void paReleasePage(Page * p) {
+  stasis_dirty_page_table_set_clean(stasis_dirty_page_table, p);
 }
 
 static void paWriteBackPage(Page * p) {  /* no-op */ }
 static void paForcePages() { /* no-op */ }
 
-static void paBufDeinit() { 
-  for(pageid_t i =0; i < pageCount; i++) { 
-    if(pageMap[i]) { 
+static void paBufDeinit() {
+  for(pageid_t i =0; i < pageCount; i++) {
+    if(pageMap[i]) {
       deletelock(pageMap[i]->rwlatch);
       deletelock(pageMap[i]->loadlatch);
       free(pageMap[i]);
@@ -57,14 +57,14 @@ static void paBufDeinit() {
   }
 }
 
-void stasis_buffer_manager_mem_array_open () { 
+void stasis_buffer_manager_mem_array_open () {
 
   releasePageImpl = paReleasePage;
   loadPageImpl = paLoadPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
-  stasis_buffer_manager_close = paBufDeinit; 
-  stasis_buffer_manager_simulate_crash = paBufDeinit; 
+  stasis_buffer_manager_close = paBufDeinit;
+  stasis_buffer_manager_simulate_crash = paBufDeinit;
 
   pageCount = 0;
   pageMap = 0;

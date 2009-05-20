@@ -287,7 +287,7 @@ void * blindRandomWorker(void * v) {
       pages[j] = loadPage(-1, pageids[j]);
       assert(pages[j]->id == pageids[j]);
     } else {
-      //      dirtyPages_add(pages[j]); // Shouldn't affect buffermanager too much...
+      //      stasis_dirty_page_table_set_dirty(pages[j]); // Shouldn't affect buffermanager too much...
       assert(pages[j]->id == pageids[j]);
       releasePage(pages[j]);
       pageids[j] = -1;

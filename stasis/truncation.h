@@ -42,50 +42,43 @@ terms specified in this license.
 /**
  * @file
  *
- * Implementation of log truncation for lladd.
- * 
+ * Implementation of log truncation for Stasis
+ *
  * @todo TRUNCATE_INTERVAL should be dynamically set...
  * @todo log truncation policy should be set of the percentage of the log that can be truncated
  * (instead of by absolute logfile size)
  * @todo avoid copying the non-truncated tail of the log each time truncation occurs.
- * 
+ *
  * $Id$
- * 
+ *
  */
 
 #include <stasis/transactional.h>
 
 BEGIN_C_DECLS
 
-#ifndef __LLADD_TRUNCATION_H
-#define __LLADD_TRUNCATION_H 1
+#ifndef STASIS_TRUNCATION_H
+#define STASIS_TRUNCATION_H
+
+typedef struct stasis_truncation_t stasis_truncation_t;
 
 #include <stasis/logger/logger2.h>
+#include <stasis/dirtyPageTable.h>
 
-void dirtyPagesInit();
-void dirtyPagesDeinit();
-
-void dirtyPages_add(Page * p); 
-void dirtyPages_remove(Page * p);
-int  dirtyPages_isDirty(Page * p);
-
-/**
-   @todo flushRange's API sucks.  It should be two functions, "startRangeFlush" and "waitRangeFlushes" or something.
-   @todo flushRange has nothing to do with the dirty pages api, or truncation.
- */
-void dirtyPages_flushRange(pageid_t start, pageid_t stop);
-
-void stasis_truncation_init();
-void stasis_truncation_deinit();
+stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_log_t * log);
+void stasis_truncation_deinit(stasis_truncation_t * trunc);
 
 /**
    Spawn a periodic, demand-based log truncation thread.
 */
-void stasis_truncation_thread_start();
+void stasis_truncation_thread_start(stasis_truncation_t* trunc);
 /**
    Initiate a round of log truncation.
 */
-int stasis_truncation_truncate(stasis_log_t* log, int force);
-
+int stasis_truncation_truncate(stasis_truncation_t* trunc, int force);
+/**
+ * XXX if releasePage kept the dirty page table up to date, it would greatly reduce the number of places where the dirty page table is updated.
+ */
+extern stasis_dirty_page_table_t * stasis_dirty_page_table;
 END_C_DECLS
 #endif

@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -49,7 +49,7 @@ terms specified in this license.
   page types.  This interface's primary purpose is to wrap common
   functionality together, and to delegate responsibility for page
   handling to other modules.
-  
+
  Latching summary:
 
    Each page has an associated read/write lock.  This lock only
@@ -61,10 +61,10 @@ terms specified in this license.
    Read LSN            Read lock
    Record write       *READ LOCK*
    Write LSN           Write lock
- 
+
  Any circumstance where these locks are held during an I/O operation
  is a bug.
- 
+
 */
 
 
@@ -93,6 +93,7 @@ terms specified in this license.
 #include <stasis/truncation.h>
 
 static page_impl page_impls[MAX_PAGE_TYPE];
+static stasis_dirty_page_table_t * dirtyPages;
 
 void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
   assertlocked(page->rwlatch);
@@ -100,7 +101,9 @@ void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
   if(page->LSN < lsn) {
     page->LSN = lsn;
   }
-  dirtyPages_add(page);
+
+  // XXX probably should be handled by releasePage or something...
+  stasis_dirty_page_table_set_dirty(dirtyPages, page);
   return;
 }
 
@@ -115,7 +118,8 @@ lsn_t stasis_page_lsn_read(const Page * page) {
  * initializes all the important variables needed in
  * all the functions dealing with pages.
  */
-void stasis_page_init() {
+void stasis_page_init(stasis_dirty_page_table_t * dpt) {
+  dirtyPages = dpt;
   slottedPageInit();
   fixedPageInit();
 
@@ -216,7 +220,7 @@ void stasis_record_write_done(int xid, Page *p, recordid rid, byte *b) {
 }
 int stasis_record_type_read(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
-  if(page_impls[*stasis_page_type_ptr(p)].recordGetType) 
+  if(page_impls[*stasis_page_type_ptr(p)].recordGetType)
     return page_impls[*stasis_page_type_ptr(p)].recordGetType(xid, p, rid);
   else
     return INVALID_SLOT;
@@ -300,12 +304,12 @@ void stasis_page_flushed(Page * p){
     *stasis_page_lsn_ptr(p) = p->LSN;
   }
 }
-void stasis_page_cleanup(Page * p) { 
+void stasis_page_cleanup(Page * p) {
   short type = *stasis_page_type_ptr(p);
-  if(type) { 
+  if(type) {
     assert(page_impls[type].page_type == type);
     page_impls[type].pageCleanup(p);
-  } 
+  }
 }
 
 /// Generic block implementations

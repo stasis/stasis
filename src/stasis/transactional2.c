@@ -32,7 +32,9 @@ static int stasis_transaction_table_num_active = 0;
 static int stasis_transaction_table_xid_count = 0;
 
 static stasis_log_t* stasis_log_file = 0;
-
+// XXX should be static!
+stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
+static stasis_truncation_t * stasis_truncation = 0;
 /**
 	This mutex protects stasis_transaction_table, numActiveXactions and
 	xidCount.
@@ -53,62 +55,62 @@ void stasis_transaction_table_init() {
 }
 
 int Tinit() {
-    pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
-    stasis_initted = 1;
-	stasis_transaction_table_num_active = 0;
+  pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
+  stasis_initted = 1;
+  stasis_transaction_table_num_active = 0;
 
-	compensations_init();
+  compensations_init();
 
-        stasis_transaction_table_init();
-	stasis_operation_table_init();
-	dirtyPagesInit();
+  stasis_transaction_table_init();
+  stasis_operation_table_init();
+  stasis_dirty_page_table_init();
 
-	stasis_log_file = 0;
+  stasis_log_file = 0;
 
-	if(LOG_TO_FILE == stasis_log_type) {
-      stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
-                                                    stasis_log_file_mode,
-                                                    stasis_log_file_permissions);
-      stasis_log_file->group_force =
-        stasis_log_group_force_init(stasis_log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
-    } else if(LOG_TO_MEMORY == stasis_log_type) {
-      stasis_log_file = stasis_log_impl_in_memory_open();
-      stasis_log_file->group_force = 0;
-    } else {
-      assert(stasis_log_file != NULL);
-    }
+  if(LOG_TO_FILE == stasis_log_type) {
+    stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                                  stasis_log_file_mode,
+                                                  stasis_log_file_permissions);
+    stasis_log_file->group_force =
+      stasis_log_group_force_init(stasis_log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
+  } else if(LOG_TO_MEMORY == stasis_log_type) {
+    stasis_log_file = stasis_log_impl_in_memory_open();
+    stasis_log_file->group_force = 0;
+  } else {
+    assert(stasis_log_file != NULL);
+  }
 
-	stasis_page_init();
-	stasis_page_handle_t * page_handle;
-	if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
-        printf("\nWarning: Using old I/O routines (with known bugs).\n");
-        page_handle = openPageFile(stasis_log_file);
-	} else {
-		stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
-		// XXX should not be global.
-		page_handle = stasis_page_handle_open(h, stasis_log_file);
-	}
+  stasis_dirty_page_table = stasis_dirty_page_table_init();
+  stasis_page_init(stasis_dirty_page_table);
+  stasis_page_handle_t * page_handle;
+  if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
+    printf("\nWarning: Using old I/O routines (with known bugs).\n");
+    page_handle = openPageFile(stasis_log_file, stasis_dirty_page_table);
+  } else {
+    stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
+    // XXX should not be global.
+    page_handle = stasis_page_handle_open(h, stasis_log_file, stasis_dirty_page_table);
+  }
 
-	stasis_buffer_manager_open(bufferManagerType, page_handle);
-        DEBUG("Buffer manager type = %d\n", bufferManagerType);
-	pageOperationsInit();
-	TallocInit();
-	TnaiveHashInit();
-	LinearHashNTAInit();
-	TlinkedListNTAInit();
-	iterator_init();
-	consumer_init();
-	setupLockManagerCallbacksNil();
-	//setupLockManagerCallbacksPage();
+  stasis_buffer_manager_open(bufferManagerType, page_handle);
+  DEBUG("Buffer manager type = %d\n", bufferManagerType);
+  pageOperationsInit();
+  TallocInit();
+  TnaiveHashInit();
+  LinearHashNTAInit();
+  TlinkedListNTAInit();
+  iterator_init();
+  consumer_init();
+  setupLockManagerCallbacksNil();
+  //setupLockManagerCallbacksPage();
 
-	stasis_recovery_initiate(stasis_log_file);
-
-	stasis_truncation_init();
-	if(stasis_truncation_automatic) {
-          // should this be before InitiateRecovery?
-	  stasis_truncation_thread_start(stasis_log_file);
-	}
-	return 0;
+  stasis_recovery_initiate(stasis_log_file);
+  stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_log_file);
+  if(stasis_truncation_automatic) {
+    // should this be before InitiateRecovery?
+    stasis_truncation_thread_start(stasis_truncation);
+  }
+  return 0;
 }
 
 
@@ -352,7 +354,7 @@ int Tdeinit() {
     }
   }
   assert( stasis_transaction_table_num_active == 0 );
-  stasis_truncation_deinit();
+  stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
   TallocDeinit();
   stasis_buffer_manager_close();
@@ -361,7 +363,7 @@ int Tdeinit() {
   stasis_log_group_force_t * group_force = stasis_log_file->group_force;
   stasis_log_file->close(stasis_log_file);
   if(group_force) { stasis_log_group_force_deinit(group_force); }
-  dirtyPagesDeinit();
+  stasis_dirty_page_table_deinit(stasis_dirty_page_table);
 
   stasis_initted = 0;
 
@@ -372,14 +374,14 @@ int TuncleanShutdown() {
   // We're simulating a crash; don't complain when writes get lost,
   // and active transactions get rolled back.
   stasis_suppress_unclean_shutdown_warnings = 1;
-  stasis_truncation_deinit();
+  stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
   stasis_buffer_manager_simulate_crash();
   // XXX: close_file?
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
   stasis_transaction_table_num_active = 0;
-  dirtyPagesDeinit();
+  stasis_dirty_page_table_deinit(stasis_dirty_page_table);
 
   // Reset it here so the warnings will appear if a new stasis
   // instance encounters problems during a clean shutdown.
@@ -491,7 +493,7 @@ int TdurabilityLevel() {
 }
 
 void TtruncateLog() {
-  stasis_truncation_truncate(stasis_log_file, 1);
+  stasis_truncation_truncate(stasis_truncation, 1);
 }
 typedef struct {
   lsn_t prev_lsn;

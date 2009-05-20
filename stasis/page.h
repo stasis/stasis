@@ -104,6 +104,7 @@ terms specified in this license.
 #include <stasis/common.h>
 #include <stasis/constants.h>
 #include <stasis/latches.h>
+#include <stasis/dirtyPageTable.h>
 
 #include <assert.h>
 
@@ -433,7 +434,7 @@ stasis_page_pageid_t_cptr_from_end(const Page *p, int count) {
  *
  * @todo documentation group for page init and deinit?
  */
-void stasis_page_init();
+void stasis_page_init(stasis_dirty_page_table_t * dirtyPages);
 /**
  * releases all resources held by the page sub-system.
  */

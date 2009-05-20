@@ -56,7 +56,7 @@ void TlsmRegionForceRid(int xid, void *conf) {
     a.regionList.slot = i;
     pageid_t pid;
     Tread(xid,a.regionList,&pid);
-    dirtyPages_flushRange(pid, pid+a.regionSize);
+    stasis_dirty_page_table_flush_range(stasis_dirty_page_table, pid, pid+a.regionSize);
     //    TregionDealloc(xid,pid);
   }
 }
@@ -403,7 +403,7 @@ static recordid appendInternalNode(int xid, Page *p,
                                    pageid_t val_page, pageid_t lastLeaf,
 				   lsm_page_allocator_t allocator,
 				   void *allocator_state) {
-  assert(*stasis_page_type_ptr(p) == LSM_ROOT_PAGE || 
+  assert(*stasis_page_type_ptr(p) == LSM_ROOT_PAGE ||
 	 *stasis_page_type_ptr(p) == FIXED_PAGE);
   if(!depth) {
     // leaf node.

@@ -1,13 +1,8 @@
+#include <stasis/pageHandle.h>
+
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
-#include <stasis/io/handle.h>
-#include <stasis/pageHandle.h>
-#include <stasis/bufferPool.h>
-#include <stasis/logger/logger2.h>
-#include <stasis/truncation.h>
-
-#include <stasis/page.h>
 
 /**
     @todo Make sure this doesn't need to be atomic.  (It isn't!) Can
@@ -28,7 +23,7 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
     fflush(stdout);
     abort();
   }
-  dirtyPages_remove(ret);
+  stasis_dirty_page_table_set_clean(ph->dirtyPages, ret);
   unlock(ret->rwlatch);
 }
 static void phRead(stasis_page_handle_t * ph, Page * ret) {
@@ -67,7 +62,7 @@ static void phClose(stasis_page_handle_t * ph) {
   free(ph);
 }
 stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
-                                               stasis_log_t * log) {
+                                               stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   DEBUG("Using pageHandle implementation\n");
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   ret->write = phWrite;
@@ -76,6 +71,7 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
   ret->force_range = phForceRange;
   ret->close = phClose;
   ret->log = log;
+  ret->dirtyPages = dpt;
   ret->impl = handle;
   return ret;
 }

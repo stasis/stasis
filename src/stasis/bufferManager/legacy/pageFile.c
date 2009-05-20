@@ -80,9 +80,9 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret) {
     dirty page table can be kept up to date. */
 static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
-  assert(ret->dirty == dirtyPages_isDirty(ret));
+  assert(ret->dirty == stasis_dirty_page_table_is_dirty(h->dirtyPages, ret));
   if(!ret->dirty) {
-    //  if(!dirtyPages_isDirty(ret)) {
+    //  if(!stasis_dirty_page_table_is_dirty(ret)) {
     DEBUG(" =^)~ ");
     return;
   }
@@ -126,14 +126,14 @@ static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
     }
   }
 
-  dirtyPages_remove(ret);
+  stasis_dirty_page_table_set_clean(h->dirtyPages, ret);
 
   pthread_mutex_unlock(&stable_mutex);
 }
 //#define PAGE_FILE_O_DIRECT
 
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
-stasis_page_handle_t*  openPageFile(stasis_log_t * log) {
+stasis_page_handle_t*  openPageFile(stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   ret->read = pfPageRead;
   ret->write = pfPageWrite;
@@ -141,6 +141,7 @@ stasis_page_handle_t*  openPageFile(stasis_log_t * log) {
   ret->force_range = pfForceRangePageFile;
   ret->close = pfClosePageFile;
   ret->log = log;
+  ret->dirtyPages = dpt;
   DEBUG("Opening storefile.\n");
 
 #ifdef PAGE_FILE_O_DIRECT

@@ -80,7 +80,7 @@ int main(int argc, char ** argv) {
 
   for(long i =0; i < page_count; i++) {
     Page * p = loadPage(-1, i);
-    dirtyPages_add(p);
+    stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
     releasePage(p);
   }
 

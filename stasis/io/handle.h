@@ -297,6 +297,9 @@ stasis_handle_t * stasis_handle(open_pfile)
                        open_file), while a single truely concurrent
                        handle (@see open_pfile) should suffice.
 
+   @param slow_factory_close A callback that will be called when this
+                             Stasis handle is closed.
+
    @param slow_factory_arg A pointer to data that will be passed into
                            slow_factory.
 
