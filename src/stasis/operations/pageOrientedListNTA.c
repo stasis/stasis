@@ -103,7 +103,7 @@ compensated_function int TpagedListFind(int xid, recordid list, const byte * key
         dat = malloc(rid.size);
         Tread(xid, rid, dat);
 
-        if(!memcmp(dat+1, key, keySize)) {
+        if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
           int valueSize = rid.size - keySize - sizeof(pagedListEntry);
           *value = malloc(valueSize);
           memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
@@ -142,7 +142,7 @@ compensated_function int TpagedListRemove(int xid, recordid list, const byte * k
         pagedListEntry * dat = malloc(rid.size);
         Tread(xid, rid, dat);
 
-        if(!memcmp(dat+1, key, keySize)) {
+        if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
 
           if(lastSlot != -1) {
             recordid lastRid = rid;

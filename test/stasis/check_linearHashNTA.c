@@ -534,6 +534,83 @@ START_TEST(emptyHashIterator2) {
 
 } END_TEST
 
+START_TEST(lookupPrefix) {
+  int xid;
+  recordid directoryTable, rid, *rid1;
+  int found;
+
+  const char *path1 = "/home/ashok/datastore/ashok_vm/.lck-0300000000000000";
+  const char *path2 = "/home/ashok/datastore/ashok_vm/.lck-0400000000000000";
+  const char *path3 = "/home/ashok/datastore/ashok_vm/ashok_vm.vmx";
+  const char *path4 = "/home/ashok/datastore/";
+
+  Tinit();
+
+  xid = Tbegin();
+  directoryTable = ThashCreate(xid, VARIABLE_LENGTH, sizeof(recordid));
+  assert(directoryTable.page == ROOT_RECORD.page &&
+     directoryTable.slot == ROOT_RECORD.slot);
+
+  Tcommit(xid);
+
+  /* INSERT: /home/ashok/datastore/ashok_vm/.lck-0300000000000000 */
+  xid = Tbegin();
+  rid = Talloc(xid, sizeof(int));
+  ThashInsert(xid, directoryTable,
+          (byte*) path1, strlen(path1),
+          (byte*) &rid, sizeof(recordid));
+  Tcommit(xid);
+
+  /* INSERT: /home/ashok/datastore/ashok_vm/.lck-0400000000000000 */
+  xid = Tbegin();
+  rid = Talloc(xid, sizeof(int));
+  ThashInsert(xid, directoryTable,
+          (byte*) path2, strlen(path2),
+          (byte*) &rid, sizeof(recordid));
+  Tcommit(xid);
+
+  /* INSERT: /home/ashok/datastore/ashok_vm/ashok_vm.vmx */
+  xid = Tbegin();
+  rid = Talloc(xid, sizeof(int));
+  ThashInsert(xid, directoryTable,
+          (byte*) path3, strlen(path3),
+          (byte*) &rid, sizeof(recordid));
+  Tcommit(xid);
+
+  /* RETRIEVE: /home/ashok/datastore/ashok_vm/.lck-0300000000000000 */
+  xid = Tbegin();
+  found = ThashLookup(xid, directoryTable, (byte*) path1,
+              strlen(path1), (byte**) &rid1);
+  Tcommit(xid);
+  assert(found == sizeof(recordid));
+
+  /* RETRIEVE: /home/ashok/datastore/ashok_vm/.lck-0400000000000000 */
+  xid = Tbegin();
+  found = ThashLookup(xid, directoryTable, (byte*) path2,
+              strlen(path2), (byte**) &rid1);
+  Tcommit(xid);
+  assert(found == sizeof(recordid));
+
+  /* RETRIEVE: /home/ashok/datastore/ashok_vm/ashok_vm.vmx */
+  xid = Tbegin();
+  found = ThashLookup(xid, directoryTable, (byte*) path3,
+              strlen(path3), (byte**) &rid1);
+  Tcommit(xid);
+  assert(found == sizeof(recordid));
+
+  /* RETRIEVE: /home/ashok/datastore/ */
+  /* EXPECT FAILURE */
+  xid = Tbegin();
+  found = ThashLookup(xid, directoryTable, (byte*) path4,
+              strlen(path4), (byte**) &rid1);
+  Tcommit(xid);
+  DEBUG("found = %d\n", found);
+  assert(found == -1);
+
+  Tdeinit();
+
+} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("linearHashNTA");
   /* Begin a new test */
@@ -541,6 +618,7 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 1200); // 20 minute timeout
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, lookupPrefix);
   tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);
   tcase_add_test(tc, linearHashNTAVariableSizetest);
