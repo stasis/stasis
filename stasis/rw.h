@@ -11,7 +11,7 @@
  *
  *	Date	: 18 September 1997
  *
- *	Revised	: 4-7-04  Shamelessly stolen and adapted by Rusty Sears. 
+ *	Revised	: 4-7-04  Shamelessly stolen and adapted by Rusty Sears.
  *                Found the code at this url:
  *                http://www.cs.nmsu.edu/~jcook/Tools/pthreads/rw.c
  */
@@ -48,6 +48,8 @@ void writelock (rwl *lock, int d);
 int trywritelock(rwl *lock, int d);
 /** aborts if called when no thread holds this latch. */
 void assertlocked(rwl *lock);
+/** aborts if called when a thread holds this latch. */
+void assertunlocked(rwl *lock);
 void downgradelock(rwl * lock);
 void unlock(rwl * lock);
 /** @deprecated in favor of unlock() */
