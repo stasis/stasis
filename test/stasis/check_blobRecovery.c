@@ -64,6 +64,50 @@ static int arryCmp(int * a, int * b) {
   return memcmp(a,b,ARRAY_SIZE*sizeof(int));
 }
 
+const int NUM_BLOBS = 1000;
+const int BLOB_SIZE = PAGE_SIZE * 4;
+const int NUM_OPS = 5000;
+
+static byte * gen_blob(int i) {
+  static uint16_t buf[4096*4/sizeof(uint16_t)];
+
+  for(int j = 0; j < BLOB_SIZE/sizeof(uint16_t); j++) {
+    buf[j] = i+j;
+  }
+
+  return (byte*)buf;
+}
+
+START_TEST(recoverBlob__randomized) {
+  static uint16_t buf[4096*4/sizeof(uint16_t)];
+
+  recordid * blobs = malloc(sizeof(recordid) * NUM_BLOBS);
+
+  for(int i = 0; i < NUM_BLOBS; i++) {
+    blobs[i].size = -1;
+  }
+  Tinit();
+  int xid = Tbegin();
+  for(int i = 0; i < NUM_OPS; i++) {
+    if(!(i % 100)) { printf("."); fflush(stdout); }
+    int blobid = myrandom(NUM_BLOBS);
+    if(blobs[blobid].size == -1) {
+      blobs[blobid] = Talloc(xid, BLOB_SIZE);
+      Tset(xid, blobs[blobid], gen_blob(blobid));
+    } else if (myrandom(2)) {
+      Tread(xid, blobs[blobid], buf);
+      assert(!memcmp(buf, gen_blob(blobid),BLOB_SIZE));
+    } else {
+      Tdealloc(xid, blobs[blobid]);
+      blobs[blobid].size = -1;
+    }
+  }
+  Tcommit(xid);
+  Tdeinit();
+
+} END_TEST
+
+
 /**
     @test
     Simple test: Insert some stuff.  Commit.  Call Tdeinit().  Call
@@ -414,6 +458,9 @@ Suite * check_suite(void) {
   if(LOG_TO_MEMORY != stasis_log_type) {
     /* void * foobar; */  /* used to supress warnings. */
     /* Sub tests are added, one per line, here */
+
+    tcase_add_test(tc, recoverBlob__randomized);
+
     tcase_add_test(tc, recoverBlob__idempotent);
     tcase_add_test(tc, recoverBlob__idempotentAbort);
 

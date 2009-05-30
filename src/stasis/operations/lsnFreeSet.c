@@ -35,6 +35,7 @@ int TsetReorderable(int xid, stasis_log_reordering_handle_t * h,
     fflush(stderr);
     abort();
     unlock(p->rwlatch);
+    releasePage(p);
     return 1;
   } else {
     rid.size = stasis_record_type_to_size(rid.size);
@@ -53,6 +54,7 @@ int TsetReorderable(int xid, stasis_log_reordering_handle_t * h,
     stasis_record_read(xid, p, rid, b+rid.size);
 
     unlock(p->rwlatch);
+    releasePage(p);
     if(!h) {
       Tupdate(xid,rid.page,buf,sz,OPERATION_SET_LSN_FREE);
     } else {

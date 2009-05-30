@@ -57,6 +57,7 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
       unlock(cnk->rwlatch);
       // Don't care about race; writes in race have undefined semantics...
       TpageSetRange(xid,rec.offset+chunk,0,((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE),USABLE_SIZE_OF_PAGE);
+      releasePage(cnk);
     }
     Page * cnk = loadPage(xid, rec.offset+chunk);
     writelock(cnk->rwlatch,0);
@@ -68,6 +69,7 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
     memcpy(buf, ((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE), rid.size % USABLE_SIZE_OF_PAGE);
     TpageSetRange(xid,rec.offset+chunk,0,buf,USABLE_SIZE_OF_PAGE);
     free(buf);
+    releasePage(cnk);
 }
 static int stasis_page_not_supported(int xid, Page * p) { return 0; }
 

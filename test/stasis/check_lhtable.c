@@ -102,15 +102,6 @@ START_TEST(lhtableTest)
 
 } END_TEST
 
-int64_t myrandom(int64_t x) {
-  double xx = x;
-  double r = random();
-  double max = ((int64_t)RAND_MAX)+1;
-  max /= xx;
-  return (int64_t)((r/max));
-}
-
-
 #define MAXSETS   1000
 #define MAXSETLEN 10000
 #ifdef LONG_TEST

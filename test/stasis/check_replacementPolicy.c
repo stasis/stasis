@@ -8,14 +8,6 @@
 
 #define LOG_NAME   "check_replacementPolicy.log"
 
-long myrandom(long x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (long)((r/max));
-}
-
 #define OBJECT_COUNT 1000
 #define OP_COUNT     10000000
 

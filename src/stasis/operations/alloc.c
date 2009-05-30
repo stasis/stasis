@@ -289,7 +289,6 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
   begin_action_ret(pthread_mutex_unlock, &talloc_mutex, NULLRID) {
     pthread_mutex_lock(&talloc_mutex);
-    Page * p;
 
     availablePage * ap =
       stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
@@ -302,23 +301,24 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
     }
     lastFreepage = ap->pageid;
 
-    p = loadPage(xid, lastFreepage);
+    Page * p = loadPage(xid, lastFreepage);
+
     writelock(p->rwlatch, 0);
     while(stasis_record_freespace(xid, p) < stasis_record_type_to_size(type)) {
       stasis_record_compact(p);
       int newFreespace = stasis_record_freespace(xid, p);
 
       if(newFreespace >= stasis_record_type_to_size(type)) {
-	break;
+        break;
       }
 
       unlock(p->rwlatch);
       if(!ap->lockCount) {
-	stasis_allocation_policy_update_freespace_unlocked_page(allocPolicy, ap,
-                                                    newFreespace);
+        stasis_allocation_policy_update_freespace_unlocked_page(allocPolicy, ap,
+                                                                newFreespace);
       } else {
         stasis_allocation_policy_update_freespace_locked_page(allocPolicy, xid, ap,
-                                                  newFreespace);
+                                                              newFreespace);
       }
       releasePage(p);
 
@@ -326,9 +326,9 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
                                     stasis_record_type_to_size(type));
 
       if(!ap) {
-	stasis_alloc_reserve_new_region(xid);
-	ap = stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
-                                      stasis_record_type_to_size(type));
+        stasis_alloc_reserve_new_region(xid);
+        ap = stasis_allocation_policy_pick_suitable_page(allocPolicy, xid,
+                                                         stasis_record_type_to_size(type));
       }
 
       lastFreepage = ap->pageid;
@@ -351,7 +351,7 @@ compensated_function recordid Talloc(int xid, unsigned long size) {
 
     Tupdate(xid, rid.page, &a, sizeof(a), OPERATION_ALLOC);
 
-   if(type == BLOB_SLOT) {
+    if(type == BLOB_SLOT) {
       rid.size = size;
       stasis_blob_alloc(xid, rid);
     }

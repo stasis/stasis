@@ -51,14 +51,6 @@ terms specified in this license.
 
 #define LOG_NAME   "check_io.log"
 
-long myrandom(long x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (long)((r/max));
-}
-
 int handle_truncate_is_supported = 1;
 
 void handle_smoketest(stasis_handle_t * h) {

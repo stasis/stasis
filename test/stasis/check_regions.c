@@ -40,21 +40,12 @@ terms specified in this license.
 ---*/
 #include "../check_includes.h"
 
-#include <stasis/common.h>
 #include <stasis/latches.h>
 #include <stasis/transactional.h>
 
 #include <assert.h>
 
 #define LOG_NAME   "check_regions.log"
-
-pageid_t myrandom(pageid_t x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (pageid_t)((r/max));
-}
 
 
 /**

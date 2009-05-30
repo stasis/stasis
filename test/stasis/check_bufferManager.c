@@ -31,14 +31,6 @@
 
 #define MAX_TRANS_LENGTH 100 // Number of writes per transaction.  Keeping this low allows truncation.
 
-long myrandom(long x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (long)((r/max));
-}
-
 void initializePages() {
 
   int i;
@@ -292,6 +284,13 @@ void * blindRandomWorker(void * v) {
       releasePage(pages[j]);
       pageids[j] = -1;
       pages[j] = 0;
+    }
+  }
+  for(int i =0 ; i < PINNED_PAGE_COUNT; i++) {
+    if(pages[i]) {
+      releasePage(pages[i]);
+      pages[i] = 0;
+      pageids[i] = -1;
     }
   }
   return 0;

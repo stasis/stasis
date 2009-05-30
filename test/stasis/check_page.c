@@ -352,7 +352,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
   unlock(p->rwlatch);
 
   pid = TpageAlloc(xid);
-
+  releasePage(p);
   p = loadPage(xid,pid);
   writelock(p->rwlatch,0);
   memset(p->memAddr, 0, PAGE_SIZE);
@@ -361,6 +361,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
   checkPageIterators(xid,p,10);
 
   unlock(p->rwlatch);
+  releasePage(p);
 
   Tcommit(xid);
   Tdeinit();

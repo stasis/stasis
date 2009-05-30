@@ -190,7 +190,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   pthread_mutex_lock(&h->mut);
 
   LogEntry * e = allocUpdateLogEntry(-1, h->l->xid, op,
-                                     p ? p->id : INVALID_PAGE,
+                                     p->id,
                                      dat, datlen);
 
   stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(0, e));
@@ -200,7 +200,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   stasis_operation_do(e, p);
   unlock(p->rwlatch);
   pthread_mutex_unlock(&h->mut);
-  releasePage(p);
+  // page will be released by the log handle...
   freeLogEntry(e);
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,

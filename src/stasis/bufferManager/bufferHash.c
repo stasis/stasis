@@ -50,8 +50,12 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
 
 }
 
-#define pagePendingPtr(p)  ((struct Page_s **)(&((p)->next)))
-#define pagePinCountPtr(p) ((int*)(&((p)->queue)))
+static inline struct Page_s ** pagePendingPtr(Page * p) {
+  return ((struct Page_s **)(&((p)->next)));
+}
+static inline int* pagePinCountPtr(Page * p) {
+  return ((int*)(&((p)->queue)));
+}
 
 #ifdef LONG_RUN
 
@@ -342,8 +346,11 @@ static void bhBufDeinit() {
   const struct LH_ENTRY(pair_t) * next;
   LH_ENTRY(openlist)(cachedPages, &iter);
   while((next = LH_ENTRY(readlist)(&iter))) {
-    page_handle->write(page_handle, (next->value));
-    stasis_page_cleanup((next->value)); // normally called by writeBackOnePage()
+    Page * p = next->value;
+    assertunlocked(p->rwlatch);
+    assert(0 == *pagePinCountPtr(p));
+    page_handle->write(page_handle, p);
+    stasis_page_cleanup(p); // normally called by writeBackOnePage()
   }
   LH_ENTRY(closelist)(&iter);
   LH_ENTRY(destroy)(cachedPages);

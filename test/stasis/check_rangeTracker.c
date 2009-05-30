@@ -10,14 +10,6 @@
 #define LOG_NAME   "check_rangeTracker.log"
 #define QUANTIZATION 7
 
-long myrandom(long x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (long)((r/max));
-}
-
 void rangeTrackerFreeRet(range ** ret)  {
   for(int i = 0; ret[i]; i++) {
     free(ret[i]);
