@@ -153,7 +153,7 @@ page_impl * stasis_page_impl_get(int id) {
   assert(page_impls[id].page_type == id);
   return & page_impls[id];
 }
-void stasis_record_write(int xid, Page * p, lsn_t lsn, recordid rid, const byte *dat) {
+void stasis_record_write(int xid, Page * p, recordid rid, const byte *dat) {
   assertlocked(p->rwlatch);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
   assert(rid.size <= BLOB_THRESHOLD_SIZE);

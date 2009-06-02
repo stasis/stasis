@@ -116,7 +116,7 @@ START_TEST(linearHashNTAtest)
     found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
     assert(!found);
   }
-  printf("\nabort()\n"); fflush(stdout);
+  printf("\n"); fflush(stdout);
   Tabort(xid);
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i++) {
@@ -132,12 +132,15 @@ START_TEST(linearHashNTAtest)
   }
   Tcommit(xid);
   Tdeinit();
+  printf("\n"); fflush(stdout);
 } END_TEST
 
 /** @test
 */
 START_TEST(linearHashNTAVariableSizetest)
 {
+  fflush(stdout); printf("\n");
+
   Tinit();
 
   int xid = Tbegin();
@@ -187,7 +190,7 @@ START_TEST(linearHashNTAVariableSizetest)
     found = ThashRemove(xid, hashHeader, (byte*)&i, sizeof(int));
     assert(!found);
   }
-  printf("\nabort()\n"); fflush(stdout);
+  printf("\n"); fflush(stdout);
   Tabort(xid);
   xid = Tbegin();
   for(i = 0; i < NUM_ENTRIES; i++) {
@@ -201,6 +204,7 @@ START_TEST(linearHashNTAVariableSizetest)
     assert(val2->size == val2->slot * NUM_ENTRIES);
     free(val2);
   }
+  printf("\n");
   Tcommit(xid);
   Tdeinit();
 } END_TEST
@@ -487,7 +491,6 @@ START_TEST(linearHashNTAVariableLengthIteratortest) {
 } END_TEST
 
 START_TEST(emptyHashIterator) {
-  printf("\n");
   Tinit();
   int xid = Tbegin();
 

@@ -183,8 +183,8 @@ void initializeNewBTreeNode(int xid, Page* p){
   byte * countBuff = (byte *) & countInt;
 
   // write the count out
-  stasis_record_write(xid, p, 1, rid, countBuff);
-
+  stasis_record_write(xid, p, rid, countBuff);
+  stasis_page_lsn_write(xid, p, 1);
 }
 void testFunctions(){
   printf("testing functions");
@@ -265,7 +265,8 @@ int SimpleExample(){
 
   // @todo This is a messy way to do this...
 
-  stasis_record_write(xid, p1, 1, rid1, b1);
+  stasis_record_write(xid, p1, rid1, b1);
+  stasis_page_lsn_write(xid, p1, 1);
   stasis_record_read(xid, p1, rid1, b2);
   if (DEBUGP) { printf("\nb2** = %d\n",*((int *) b2));}
 

@@ -110,7 +110,7 @@ static int op_alloc(const LogEntry* e, Page* p) {
   if(e->update.arg_size == sizeof(alloc_arg) + size) {
     // if we're aborting a dealloc we better have a sane preimage to apply
     rid.size = size;
-    stasis_record_write(e->xid,p,e->LSN,rid,(const byte*)(arg+1));
+    stasis_record_write(e->xid,p,rid,(const byte*)(arg+1));
     rid.size = arg->type;
   } else {
     // otherwise, no preimage

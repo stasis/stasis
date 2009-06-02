@@ -48,7 +48,8 @@ int main (int argc, char ** argv) {
     for(long long i = 0; i < num_rids; i++) {
       Page *p = loadPage(-1, rids[i].page);
       writelock(p->rwlatch,0);
-      stasis_record_write(-1, p, last_lsn, rids[i], (byte*)&cache[i].val);
+      stasis_record_write(-1, p, rids[i], (byte*)&cache[i].val);
+      stasis_page_lsn_write(-1, p, last_lsn);
       unlock(p->rwlatch);
       releasePage(p);
       releasePage(p);

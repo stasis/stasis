@@ -136,7 +136,7 @@ void * workerThreadWriting(void * q) {
     lsn_t lsn = stasis_page_lsn_read(p);
     assert(lsn);
     p->LSN --; // XXX HACK -- Sooner or later this will break...
-    stasis_record_write(1, p, lsn, rids[i], (byte*)&val);
+    stasis_record_write(1, p, rids[i], (byte*)&val);
     stasis_page_lsn_write(1,p,lsn);
     unlock(p->rwlatch);
 

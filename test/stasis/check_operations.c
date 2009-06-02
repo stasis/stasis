@@ -100,7 +100,8 @@ START_TEST(operation_physical_do_undo) {
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
   // manually fill in UNDO field
-  stasis_record_write(xid, p, lsn, rid, (byte*)&buf);
+  stasis_record_write(xid, p, rid, (byte*)&buf);
+  stasis_page_lsn_write(xid, p, lsn);
   unlock(p->rwlatch);
   releasePage(p);
   setToTwo->LSN = 10;
@@ -164,7 +165,8 @@ START_TEST(operation_physical_do_undo) {
 
   p = loadPage(xid, rid.page);
   writelock(p->rwlatch,0);
-  stasis_record_write(xid, p, lsn, rid, (byte*)&buf);
+  stasis_record_write(xid, p, rid, (byte*)&buf);
+  stasis_page_lsn_write(xid, p, lsn);
   unlock(p->rwlatch);
   releasePage(p);
   /* Trace of test:
@@ -211,8 +213,8 @@ START_TEST(operation_physical_do_undo) {
 
   assert(buf == 1);
 
-  stasis_record_write(xid, p, 0, rid, (byte*)&buf); /* reset the page's LSN. */
-
+  stasis_record_write(xid, p, rid, (byte*)&buf); /* reset the page's LSN. */
+  stasis_page_lsn_write(xid, p, 0);
   DEBUG("I redo set to 2\n");
 
   stasis_operation_redo(setToTwo,p);        /* Succeeds */
@@ -553,7 +555,8 @@ START_TEST(operation_lsn_free) {
     for(int i = 0; i < 100; i++) {
       rid[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
       stasis_record_alloc_done(xid, p, rid[i]);
-      stasis_record_write(xid, p, -1, rid[i], (const byte*)&fortyTwo);
+      stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
+      stasis_page_lsn_write(xid, p, -1);
     }
     byte * new = malloc(PAGE_SIZE);
     memcpy(new, p->memAddr, PAGE_SIZE);
@@ -618,7 +621,8 @@ START_TEST(operation_reorderable) {
     for(int i = 0; i < 100; i++) {
       rid[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
       stasis_record_alloc_done(xid, p, rid[i]);
-      stasis_record_write(xid, p, -1, rid[i], (const byte*)&fortyTwo);
+      stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
+      stasis_page_lsn_write(xid, p, -1);
     }
     byte * new = malloc(PAGE_SIZE);
     memcpy(new, p->memAddr, PAGE_SIZE);

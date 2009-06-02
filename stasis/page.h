@@ -517,12 +517,8 @@ stasis_record_type_to_size(ssize_t type) {
  * @param rid recordid where you want to write
  * @param dat the new value of the record.
  *
- * @todo this updates the LSN of the page that points to blob, even if
- *       the page is otherwise untouched!!  This is slow and breaks
- *       recovery.
- *
  */
-void stasis_record_write(int xid, Page * page, lsn_t lsn, recordid rid, const byte *dat);
+void stasis_record_write(int xid, Page * page, recordid rid, const byte *dat);
 /**
  * Read a record.  This call will be dispatched to the proper page implementation.
  *

@@ -3,7 +3,7 @@ This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
 associated with the software unless explicitly disclaimed in
 individual files.
-                                                                                                                                  
+
 The authors hereby grant permission to use, copy, modify, distribute,
 and license this software and its documentation for any purpose,
 provided that existing copyright notices are retained in all copies
@@ -13,20 +13,20 @@ authorized uses. Modifications to this software may be copyrighted by
 their authors and need not follow the licensing terms described here,
 provided that the new terms are clearly indicated on the first page of
 each file where they apply.
-                                                                                                                                  
+
 IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
 DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-                                                                                                                                  
+
 THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
 NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
 THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
 MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-                                                                                                                                  
+
 GOVERNMENT USE: If you are acquiring this software on behalf of the
 U.S. government, the Government shall have only "Restricted Rights" in
 the software and related documentation as defined in the Federal
@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 /**********************************************
  * $Id$
- * 
+ *
  * sets the given reference to dat
  **********************************************/
 
@@ -63,7 +63,7 @@ static int op_set(const LogEntry *e, Page *p) {
   assert(stasis_record_type_to_size(rid.size) == rid.size);
   assert(stasis_record_length_read(e->xid,p,rid) == rid.size);
 
-  stasis_record_write(e->xid, p, e->LSN, rid, b);
+  stasis_record_write(e->xid, p, rid, b);
 
   return 0;
 }
@@ -79,7 +79,7 @@ static int op_set_inverse(const LogEntry *e, Page *p) {
   assert(e->update.arg_size == sizeof(slotid_t) + sizeof(int64_t) + 2 * rid.size);
   assert(stasis_record_type_to_size(rid.size) == rid.size);
 
-  stasis_record_write(e->xid, p, e->LSN, rid, b+rid.size);
+  stasis_record_write(e->xid, p, rid, b+rid.size);
 
   return 0;
 }
@@ -156,7 +156,7 @@ static int op_set_range(const LogEntry* e, Page* p) {
   stasis_record_read(e->xid, p, rid, tmp);
 
   memcpy(tmp+range->offset, data, diffLength);
-  stasis_record_write(e->xid, p, e->LSN, rid, tmp);
+  stasis_record_write(e->xid, p, rid, tmp);
 
   free(tmp);
   return 0;
@@ -177,7 +177,7 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
 
   stasis_record_read(e->xid, p, rid, tmp);
   memcpy(tmp+range->offset, data, diffLength);
-  stasis_record_write(e->xid, p, e->LSN, rid, tmp);
+  stasis_record_write(e->xid, p, rid, tmp);
 
   free(tmp);
   return 0;
@@ -198,8 +198,8 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   // Copy new value into log structure
   memcpy(range + 1, dat, length);
 
-  // No further locking is necessary here; readRecord protects the 
-  // page layout, but attempts at concurrent modification have undefined 
+  // No further locking is necessary here; readRecord protects the
+  // page layout, but attempts at concurrent modification have undefined
   // results.  (See page.c)
   readlock(p->rwlatch,0);
 
@@ -216,7 +216,7 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
   releasePage(p);
 }
 
-stasis_operation_impl stasis_op_impl_set() { 
+stasis_operation_impl stasis_op_impl_set() {
 	stasis_operation_impl o = {
 	  OPERATION_SET,
 	  OPERATION_SET,
@@ -226,7 +226,7 @@ stasis_operation_impl stasis_op_impl_set() {
 	return o;
 }
 
-stasis_operation_impl stasis_op_impl_set_inverse() { 
+stasis_operation_impl stasis_op_impl_set_inverse() {
 	stasis_operation_impl o = {
 	  OPERATION_SET_INVERSE,
 	  OPERATION_SET_INVERSE,
