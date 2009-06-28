@@ -509,11 +509,6 @@ stasis_record_type_to_size(ssize_t type) {
  * @param page a pointer to an in-memory copy of the page as it
  * currently exists.  This copy will be updated by writeRecord.
  *
- * @param lsn the LSN that the updated record will reflect.  This is
- * needed by recovery, and undo.  (The LSN of a page must always
- * increase.  Undos are handled by passing in the LSN of the CLR that
- * records the undo.)
- *
  * @param rid recordid where you want to write
  * @param dat the new value of the record.
  *
