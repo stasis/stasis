@@ -92,9 +92,6 @@ static int ts_value(int xid, void * it, byte ** val) {
 }
 static void ts_tupleDone(int xid, void * it) {
 
-}
-static void ts_releaseLock(int xid, void *it) {
-
 } */
 /*static const lladdIterator_def_t ts_it = {
   ts_close, ts_next, ts_tnext, ts_key, ts_value, ts_tupleDone, noopTupDone
@@ -218,10 +215,6 @@ static void kvt_tupleDone(int xid, void * it) {
   kvt_impl * kvt = it;
   Titerator_tupleDone(xid, kvt->it);
 }
-static void kvt_releaseLock(int xid, void *it) {
-  kvt_impl * kvt = it;
-  Titerator_releaseLock(xid, kvt->it);
-}
 
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
@@ -300,10 +293,6 @@ static int kv_value(int xid, void * it, byte ** val) {
 static void kv_tupleDone(int xid, void * it) {
   kv_impl * kv = it;
   Titerator_tupleDone(xid, kv->it);
-}
-static void kv_releaseLock(int xid, void *it) {
-  kv_impl * kv = it;
-  Titerator_releaseLock(xid, kv->it);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -480,9 +469,6 @@ static int s_value(int xid, void * it, byte ** val) {
 static void s_tupleDone(int xid, void * it) {
   Titerator_tupleDone(xid, ((select_impl*)it)->it);
 }
-static void s_releaseLock(int xid, void *it) {
-  Titerator_releaseLock(xid, ((select_impl*)it)->it);
-}
 
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
@@ -563,10 +549,6 @@ static void p_tupleDone(int xid, void * it) {
   project_impl * impl = it;
   if(impl->haveTup) { tupleFree(impl->tup); impl->haveTup = 0; }
   Titerator_tupleDone(xid,impl->it);
-}
-static void p_releaseLock(int xid, void *it) {
-  project_impl * impl = it;
-  Titerator_releaseLock(xid,impl->it);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -786,9 +768,6 @@ static int j_value(int xid, void * it, byte ** val) {
 }
 static void j_tupleDone(int xid, void * it) {
 }
-static void j_releaseLock(int xid, void *it) {
-  // noop
-}
 
 //////////////////////////////////////////////////////////////////////////////////
 ///                                                                            ///
@@ -838,23 +817,23 @@ lladdIterator_t* ReferentialAlgebra_ExecuteQuery(int xid,
  */
 void ReferentialAlgebra_init() {
   lladdIterator_def_t select_def = {
-    s_close, s_next, s_tryNext, s_key, s_value, s_tupleDone, s_releaseLock
+    s_close, s_next, s_tryNext, s_key, s_value, s_tupleDone
     };
   lladdIterator_register(SELECT_ITERATOR, select_def);
   lladdIterator_def_t project_def = {
-    p_close, p_next, p_tryNext, p_key, p_value, p_tupleDone, p_releaseLock
+    p_close, p_next, p_tryNext, p_key, p_value, p_tupleDone
   };
   lladdIterator_register(PROJECT_ITERATOR, project_def);
   lladdIterator_def_t keyval_def = {
-    kv_close, kv_next, kv_tryNext, kv_key, kv_value, kv_tupleDone, kv_releaseLock
+    kv_close, kv_next, kv_tryNext, kv_key, kv_value, kv_tupleDone,
   };
   lladdIterator_register(KEYVAL_ITERATOR, keyval_def);
   lladdIterator_def_t keyvaltup_def = {
-    kvt_close, kvt_next, kvt_tryNext, kvt_key, kvt_value, kvt_tupleDone, kvt_releaseLock
+    kvt_close, kvt_next, kvt_tryNext, kvt_key, kvt_value, kvt_tupleDone,
   };
   lladdIterator_register(KEYVALTUP_ITERATOR, keyvaltup_def);
   lladdIterator_def_t j_def = {
-    j_close, j_next, j_tryNext, j_key, j_value, j_tupleDone, j_releaseLock
+    j_close, j_next, j_tryNext, j_key, j_value, j_tupleDone
   };
   lladdIterator_register(JOIN_ITERATOR, j_def);
 }

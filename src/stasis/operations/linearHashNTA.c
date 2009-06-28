@@ -50,7 +50,6 @@ void LinearHashNTAInit() {
    linearHashNTAIterator_key,
    linearHashNTAIterator_value,
    noopTupDone,
-   noopTupDone
   };
   lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
 }

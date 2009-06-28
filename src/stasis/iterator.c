@@ -16,23 +16,21 @@ static void noopTupDone(int xid, void * foo) { }
 
 void iterator_init() {
   lladdIterator_def_t array_def = {
-    arrayIterator_close,        
-    arrayIterator_next,         
-    arrayIterator_next,         
-    arrayIterator_key,         
-    arrayIterator_value,         
+    arrayIterator_close,
+    arrayIterator_next,
+    arrayIterator_next,
+    arrayIterator_key,
+    arrayIterator_value,
     noopTupDone,
-    noopTupDone
   };
   lladdIterator_register(ARRAY_ITERATOR, array_def);
   lladdIterator_def_t logMemory_def = {
-    logMemory_Iterator_close,    
-    logMemory_Iterator_next,    
-    logMemory_Iterator_tryNext,    
-    logMemory_Iterator_key,   
-    logMemory_Iterator_value,    
+    logMemory_Iterator_close,
+    logMemory_Iterator_next,
+    logMemory_Iterator_tryNext,
+    logMemory_Iterator_key,
+    logMemory_Iterator_value,
     logMemory_Iterator_releaseTuple,
-    logMemory_Iterator_releaseLock,
   };
   lladdIterator_register(LOG_MEMORY_ITERATOR, logMemory_def);
   lladdIterator_def_t pointer_def = {
@@ -42,7 +40,6 @@ void iterator_init() {
     lladdFifoPool_iterator_key,
     lladdFifoPool_iterator_value,
     lladdFifoPool_iterator_tupleDone,
-    lladdFifoPool_iterator_releaseLock
   };
   lladdIterator_register(POINTER_ITERATOR, pointer_def);
 }
@@ -55,4 +52,3 @@ int  Titerator_tryNext(int xid, lladdIterator_t * it)             { return itera
 int  Titerator_key    (int xid, lladdIterator_t * it, byte ** key){ return iterators[it->type].key  (xid, it->impl, key);      }
 int  Titerator_value(int xid, lladdIterator_t * it, byte ** value){ return iterators[it->type].value(xid, it->impl, value);    }
 void Titerator_tupleDone(int xid, lladdIterator_t * it)           {        iterators[it->type].tupleDone(xid, it->impl);       }
-void Titerator_releaseLock(int xid, lladdIterator_t * it)         {        iterators[it->type].releaseLock(xid, it->impl);     }
