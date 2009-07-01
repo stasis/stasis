@@ -149,7 +149,7 @@ typedef struct {
 #include "operations/regions.h"
 #include "operations/lsmTree.h"
 #include "operations/lsnFreeSet.h"
-
+#include "operations/group.h"
 /**
    Initialize stasis' operation table.
  */

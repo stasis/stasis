@@ -5,6 +5,7 @@
 #include <stasis/operations.h>
 #include <stasis/arrayCollection.h>
 #include <stasis/logger/logMemory.h>
+#include <stasis/operations/group.h>
 
 static lladdIterator_def_t iterators[MAX_ITERATOR_TYPES];
 
@@ -42,6 +43,8 @@ void iterator_init() {
     lladdFifoPool_iterator_tupleDone,
   };
   lladdIterator_register(POINTER_ITERATOR, pointer_def);
+
+  stasis_log_structured_group_init();
 }
 
 

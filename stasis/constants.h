@@ -257,6 +257,7 @@ static const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 #define ARRAY_ITERATOR           1
 #define LOG_MEMORY_ITERATOR      2
 #define POINTER_ITERATOR         3
+#define STASIS_LOG_STRUCTURED_GROUP_ITERATOR 4
 
 #define USER_DEFINED_ITERATOR 10
 

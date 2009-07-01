@@ -24,6 +24,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    operations/alloc.c operations/noop.c
                    operations/arrayList.c
                    operations/lsnFreeSet.c
+                   operations/group/logStructured.c
                    hash.c
                    operations/naiveLinearHash.c
                    operations/linearHashNTA.c
