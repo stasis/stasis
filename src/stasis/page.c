@@ -67,9 +67,6 @@ terms specified in this license.
 
 */
 
-
-/* _XOPEN_SOURCE is needed for posix_memalign */
-#define _XOPEN_SOURCE 600
 #include <stdlib.h>
 
 #include <config.h>
@@ -87,7 +84,6 @@ terms specified in this license.
 #include <stasis/compensations.h>
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>
-#include <stasis/page/indirect.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
@@ -128,7 +124,6 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   stasis_page_impl_register(boundaryTagImpl());
   stasis_page_impl_register(arrayListImpl());
   stasis_page_impl_register(stasis_page_blob_impl());
-  stasis_page_impl_register(indirectImpl());
   stasis_page_impl_register(lsmRootImpl());
   stasis_page_impl_register(slottedLsnFreeImpl());
 }
@@ -181,9 +176,7 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
   assertlocked(p->rwlatch);
 
   int page_type = p->pageType;
-  if(page_type == INDIRECT_PAGE) {
-    rid = dereferenceIndirectRID(xid, rid);
-  } else if(page_type == ARRAY_LIST_PAGE) {
+  if(page_type == ARRAY_LIST_PAGE) {
     rid = stasis_array_list_dereference_recordid(xid, p, rid.slot);
   }
   return rid;

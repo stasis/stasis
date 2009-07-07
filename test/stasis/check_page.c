@@ -1,4 +1,3 @@
-
 /*---
 This software is copyrighted by the Regents of the University of
 California, and other parties. The following terms apply to all files
@@ -48,7 +47,6 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/page.h>
-#include <stasis/page/indirect.h>
 #include <stasis/page/slotted.h>
 #include <stasis/blobManager.h>
 #include <stasis/bufferManager.h>
@@ -491,6 +489,7 @@ START_TEST(fixedPageThreadTest) {
   pthread_mutex_destroy(&random_mutex);
 } END_TEST
 
+
 START_TEST(pageCheckSlotTypeTest) {
 	Tinit();
 	int xid = Tbegin();
@@ -510,23 +509,14 @@ START_TEST(pageCheckSlotTypeTest) {
 		  a bit questionable, but should work. */
 	p = loadPage(-1, fixedRoot.page);
 
-        readlock(p->rwlatch, 0);
+    readlock(p->rwlatch, 0);
 	assert(stasis_record_type_read(xid, p, fixedRoot) == NORMAL_SLOT);
+	unlock(p->rwlatch);
+	releasePage(p);
 
 	fixedRoot.slot = 1;
-	// Force it to use indirect implementation (we're checking an array list page...)
-	recordid  fixedEntry = dereferenceIndirectRID(xid, fixedRoot);
 
-	fixedRoot.slot = 0;
-
-        unlock(p->rwlatch);
-	releasePage(p);
-
-	p = loadPage(-1, fixedEntry.page);
-        readlock(p->rwlatch, 0);
-        assert(stasis_record_type_read(xid, p, fixedEntry) == NORMAL_SLOT);
-        unlock(p->rwlatch);
-	releasePage(p);
+    assert(TrecordType(xid, fixedRoot) == NORMAL_SLOT);
 
 	p = loadPage(-1, blob.page);
         readlock(p->rwlatch, 0);
@@ -572,13 +562,6 @@ START_TEST(pageTrecordTypeTest) {
 	assert(TrecordType(xid, fixedRoot) == NORMAL_SLOT);
 
 	fixedRoot.slot = 1;
-	// This is an array list page, but we want to check the state
-	// of the internal node.
-	recordid  fixedEntry = dereferenceIndirectRID(xid, fixedRoot);
-
-	fixedRoot.slot = 0;
-
-	assert(TrecordType(xid, fixedEntry) == NORMAL_SLOT);
 
 	int type = TrecordType(xid, blob);
 	assert(type == BLOB_SLOT);

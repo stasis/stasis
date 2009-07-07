@@ -18,7 +18,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    logger/reorderingHandle.c
                    logger/groupForce.c
                    page/fixed.c compensations.c
-                   operations/pageOperations.c page/indirect.c
+                   operations/pageOperations.c
                    operations/decrement.c operations/increment.c
                    operations/prepare.c operations/set.c
                    operations/alloc.c operations/noop.c
