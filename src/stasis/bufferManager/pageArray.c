@@ -12,7 +12,7 @@ static Page ** pageMap;
 static pageid_t pageCount;
 static pthread_mutex_t pageArray_mut = PTHREAD_MUTEX_INITIALIZER;
 
-static Page * paLoadPage(int xid, pageid_t pageid) {
+static Page * paLoadPage(int xid, pageid_t pageid, pagetype_t type) {
 
   pthread_mutex_lock(&pageArray_mut);
   if(pageid >= pageCount) {
@@ -26,6 +26,7 @@ static Page * paLoadPage(int xid, pageid_t pageid) {
   if(!pageMap[pageid]) {
     pageMap[pageid] = malloc(sizeof(Page));
     pageMap[pageid]->id = pageid;
+    pageMap[pageid]->pageType = type;
     pageMap[pageid]->LSN = 0;
     pageMap[pageid]->dirty = 0;
     pageMap[pageid]->next = 0;

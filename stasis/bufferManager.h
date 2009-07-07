@@ -99,7 +99,7 @@ Page * loadUninitializedPage(int xid, pageid_t pageid);
     This is the function pointer that stasis_buffer_manager_open sets in order to
     override loadPage.
 */
-extern Page * (*loadPageImpl)(int xid, pageid_t pageid);
+extern Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type);
 extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it

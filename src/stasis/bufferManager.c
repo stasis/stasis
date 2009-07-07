@@ -139,7 +139,6 @@ compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * 
 compensated_function void  __profile_releasePage(Page * p) {
   pthread_mutex_lock(&profile_load_mutex);
 
-  //  int pageid = p->id;
   int * pins = LH_ENTRY(find)(profile_load_pins_hash, &p, sizeof(void*));
 
   assert(pins);
@@ -163,7 +162,7 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
-Page * (*loadPageImpl)(int xid, pageid_t pageid) = 0;
+Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type) = 0;
 Page * (*loadUninitPageImpl)(int xid, pageid_t pageid) = 0;
 void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
@@ -173,19 +172,18 @@ void   (*stasis_buffer_manager_close)()  = 0;
 void   (*stasis_buffer_manager_simulate_crash)()  = 0;
 
 Page * loadPage(int xid, pageid_t pageid) {
-  try_ret(NULL) {
-    // This lock is released at Tcommit()
-    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  } end_ret(NULL);
-
-  return loadPageImpl(xid, pageid);
+  // This lock is released at Tcommit()
+  if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+  return loadPageImpl(xid, pageid, UNKNOWN_TYPE_PAGE);
 
 }
+Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type) {
+  if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
+  return loadPageImpl(xid, pageid, type);
+}
 Page * loadUninitializedPage(int xid, pageid_t pageid) {
-  try_ret(NULL) {
-    // This lock is released at Tcommit()
-    if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  } end_ret(NULL);
+  // This lock is released at Tcommit()
+  if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
 
   return loadUninitPageImpl(xid, pageid);
 

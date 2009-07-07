@@ -21,7 +21,7 @@ static pthread_key_t lastPage;
 #define RW 1
 
 static void bufManBufDeinit();
-static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid);
+static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid, pagetype_t type);
 static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid);
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
@@ -130,7 +130,7 @@ static void bufManReleasePage (Page * p) {
 
 }
 
-static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
+static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pagetype_t type) {
   Page * ret;
   int spin  = 0;
 
@@ -284,7 +284,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       *stasis_page_lsn_ptr(ret) = ret->LSN;
 
       // XXX need mutex for this call?
-      stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
+      stasis_page_loaded(ret, type);
     }
 
     writeunlock(ret->loadlatch);
@@ -327,7 +327,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n");
       fflush(NULL);
-      return bufManGetPage(pageid, locktype, uninitialized);
+      return bufManGetPage(pageid, locktype, uninitialized, type);
     }
 
   }
@@ -335,7 +335,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
 }
 
 
-static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid) {
+static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid, pagetype_t type) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -353,7 +353,7 @@ static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid) {
     ret = 0;
   }
   if(!ret) {
-    ret = bufManGetPage(pageid, RO, 0);
+    ret = bufManGetPage(pageid, RO, 0, type);
     pthread_setspecific(lastPage, ret);
   }
 
@@ -384,7 +384,7 @@ static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid)
     ret = 0;
   }
   if(!ret) {
-    ret = bufManGetPage(pageid, RO, 1);
+    ret = bufManGetPage(pageid, RO, 1, UNKNOWN_TYPE_PAGE);
     pthread_setspecific(lastPage, ret);
   }
 

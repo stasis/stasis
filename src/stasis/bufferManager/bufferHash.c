@@ -190,7 +190,7 @@ static void * writeBackWorker(void * ignored) {
   return 0;
 }
 
-static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitialized) {
+static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
 
   // Note:  Calls to loadlatch in this function violate lock order, but
   // should be safe, since we make sure no one can have a writelock
@@ -283,7 +283,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     memset(ret->memAddr,0,PAGE_SIZE);
     *stasis_page_lsn_ptr(ret) = ret->LSN;
     ret->dirty = 0;
-    stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
+    stasis_page_loaded(ret, type);
   }
   *pagePendingPtr(ret) = 0;
   // Would remove from lru, but getFreePage() guarantees that it isn't
@@ -306,11 +306,11 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   return ret;
 }
 
-static Page * bhLoadPageImpl(int xid, const pageid_t pageid) {
-  return bhLoadPageImpl_helper(xid,pageid,0);
+static Page * bhLoadPageImpl(int xid, const pageid_t pageid, pagetype_t type) {
+  return bhLoadPageImpl_helper(xid,pageid,0, type);
 }
 static Page * bhLoadUninitPageImpl(int xid, const pageid_t pageid) {
-  return bhLoadPageImpl_helper(xid,pageid,1); // 1 means dont care about preimage of page.
+  return bhLoadPageImpl_helper(xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 
 
