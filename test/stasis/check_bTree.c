@@ -235,7 +235,7 @@ int SimpleExample(){
 
 
   /* check to make sure page is recorded as a FIXED_PAGE */
-  assert( *stasis_page_type_ptr(p1) == FIXED_PAGE);
+  assert( p1->pageType == FIXED_PAGE);
 
   if (DEBUGP) { printf("\n%lld\n", (long long)pageid1); }
   byte * b1 = (byte *) malloc (sizeof (int));

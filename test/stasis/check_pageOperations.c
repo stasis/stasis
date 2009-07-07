@@ -77,12 +77,11 @@ START_TEST(pageOpCheckRecovery) {
   memset(p.memAddr, 1, USABLE_SIZE_OF_PAGE);
   // Reset the page type after overwriting it with memset.  Otherwise, Stasis
   // will try to interpret it when it flushes the page to disk.
-  *stasis_page_type_ptr(&p) = 0;
+  p.pageType = 0;
 
   TpageSetRange(xid, pageid1, 0, p.memAddr, USABLE_SIZE_OF_PAGE);
 
   memset(p.memAddr, 2, USABLE_SIZE_OF_PAGE);
-  *stasis_page_type_ptr(&p) = 0;
 
   TpageSetRange(xid, pageid2, 0, p.memAddr, USABLE_SIZE_OF_PAGE);
 
@@ -121,23 +120,19 @@ START_TEST(pageOpCheckRecovery) {
   assert(pageid2 != pageid3);
 
   memset(p.memAddr, 3, USABLE_SIZE_OF_PAGE);
-  *stasis_page_type_ptr(&p) = 0;
   TpageSetRange(xid, pageid3, 0, p.memAddr, USABLE_SIZE_OF_PAGE);
 
   byte newAddr[USABLE_SIZE_OF_PAGE];
 
   memset(p.memAddr, 1, USABLE_SIZE_OF_PAGE);
-  *stasis_page_type_ptr(&p) = 0;
   TpageGet(xid, pageid1, newAddr);
   assert(!memcmp(p.memAddr, newAddr, USABLE_SIZE_OF_PAGE));
 
   memset(p.memAddr, 2, USABLE_SIZE_OF_PAGE);
-  *stasis_page_type_ptr(&p) = 0;
   TpageGet(xid, pageid2, newAddr);
   assert(!memcmp(p.memAddr, newAddr, USABLE_SIZE_OF_PAGE));
 
   memset(p.memAddr, 3, USABLE_SIZE_OF_PAGE);
-  *stasis_page_type_ptr(&p) = 0;
   TpageGet(xid, pageid3, newAddr);
   assert(!memcmp(p.memAddr, newAddr, USABLE_SIZE_OF_PAGE));
   Tcommit(xid);

@@ -223,7 +223,7 @@ static void stasis_alloc_register_old_regions() {
 	for(pageid_t i = 0; i < t.size; i++) {
 	  Page * p = loadPage(-1, boundary + i);
 	  readlock(p->rwlatch,0);
-	  if(*stasis_page_type_ptr(p) == SLOTTED_PAGE) {
+	  if(p->pageType == SLOTTED_PAGE) {
 	    availablePage * next = malloc(sizeof(availablePage));
 	    next->pageid = boundary+i;
 	    next->freespace = stasis_record_freespace(-1, p);

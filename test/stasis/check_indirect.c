@@ -102,11 +102,7 @@ START_TEST(indirectAlloc) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *stasis_page_type_ptr(p);
-
-  assert(page_type == SLOTTED_PAGE);
-
-  fail_unless(page_type == SLOTTED_PAGE, NULL);
+  assert(p->pageType == SLOTTED_PAGE);
 
   releasePage(p);
 
@@ -123,13 +119,7 @@ START_TEST(indirectAlloc) {
 
   p = loadPage(xid, page);
 
-  page_type = *stasis_page_type_ptr(p);
-
-  assert(page_type == INDIRECT_PAGE);
-
-  fail_unless(page_type == INDIRECT_PAGE, NULL);
-
-
+  assert(p->pageType == INDIRECT_PAGE);
 
   printf("{page = %lld, slot = %d, size = %lld}\n", (pageid_t)rid.page, rid.slot, (pageid_t)rid.size);
 
@@ -147,13 +137,7 @@ START_TEST(indirectAlloc) {
 
   p = loadPage(xid, page);
 
-  page_type = *stasis_page_type_ptr(p);
-
-  assert(page_type == INDIRECT_PAGE);
-
-  fail_unless(page_type == INDIRECT_PAGE, NULL);
-
-
+  assert(p->pageType == INDIRECT_PAGE);
 
   printf("{page = %lld, slot = %d, size = %lld}\n", (pageid_t)rid.page, rid.slot, (pageid_t)rid.size);
 
@@ -178,11 +162,7 @@ START_TEST(indirectAccessDirect) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *stasis_page_type_ptr(p);
-
-  assert(page_type == SLOTTED_PAGE);
-
-  fail_unless(page_type == SLOTTED_PAGE, NULL);
+  assert(p->pageType == SLOTTED_PAGE);
 
   releasePage(p);
 
@@ -223,11 +203,7 @@ START_TEST(indirectAccessIndirect) {
 
   Page * p = loadPage(xid, page);
 
-  int page_type = *stasis_page_type_ptr(p);
-
-  assert(page_type == INDIRECT_PAGE);
-
-  fail_unless(page_type == INDIRECT_PAGE, NULL);
+  assert(p->pageType == INDIRECT_PAGE);
 
   Tcommit(xid);
   xid = Tbegin();

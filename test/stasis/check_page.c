@@ -323,7 +323,7 @@ static void checkPageIterators(int xid, Page *p,int record_count) {
   assertRecordCountSizeType(xid, p, record_count, sizeof(int64_t), NORMAL_SLOT);
 
 
-  if(*stasis_page_type_ptr(p) == SLOTTED_PAGE) {
+  if(p->pageType == SLOTTED_PAGE) {
     recordid other = first;
     other.slot = 3;
     stasis_record_free(xid,p,other);

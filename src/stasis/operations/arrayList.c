@@ -91,7 +91,7 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
   stasis_record_write(e->xid, p, firstDataPageRid, (const byte*)&firstDataPage);
 
 
-  *stasis_page_type_ptr(p) = ARRAY_LIST_PAGE;
+  p->pageType = ARRAY_LIST_PAGE;
 
   return 0;
 }

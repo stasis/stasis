@@ -71,7 +71,7 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret) {
   }
 
   ret->dirty = 0;
-  stasis_page_loaded(ret);
+  stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
 
   pthread_mutex_unlock(&stable_mutex);
 

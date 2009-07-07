@@ -284,7 +284,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized) {
       *stasis_page_lsn_ptr(ret) = ret->LSN;
 
       // XXX need mutex for this call?
-      stasis_page_loaded(ret);
+      stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
     }
 
     writeunlock(ret->loadlatch);

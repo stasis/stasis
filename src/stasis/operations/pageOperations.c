@@ -120,7 +120,7 @@ compensated_function pageid_t TpageAllocMany(int xid, int count) {
 
 int TpageGetType(int xid, pageid_t page) {
   Page * p = loadPage(xid, page);
-  int ret = *stasis_page_type_ptr(p);
+  int ret = p->pageType;
   releasePage(p);
   return ret;
 }

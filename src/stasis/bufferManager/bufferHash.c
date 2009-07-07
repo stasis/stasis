@@ -283,7 +283,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     memset(ret->memAddr,0,PAGE_SIZE);
     *stasis_page_lsn_ptr(ret) = ret->LSN;
     ret->dirty = 0;
-    stasis_page_loaded(ret);
+    stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
   }
   *pagePendingPtr(ret) = 0;
   // Would remove from lru, but getFreePage() guarantees that it isn't

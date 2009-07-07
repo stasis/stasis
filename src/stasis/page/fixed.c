@@ -13,7 +13,7 @@ int stasis_fixed_records_per_page(size_t size) {
 void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
   assertlocked(page->rwlatch);
   stasis_page_cleanup(page);
-  *stasis_page_type_ptr(page) = FIXED_PAGE;
+  page->pageType = FIXED_PAGE;
   *recordsize_ptr(page) = size;
   assert(count <= stasis_fixed_records_per_page(size));
   *recordcount_ptr(page)= count;
@@ -21,7 +21,7 @@ void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
 
 static void checkRid(Page * page, recordid rid) {
   assertlocked(page->rwlatch);
-  assert(*stasis_page_type_ptr(page)); // any more specific breaks pages based on this one
+  assert(page->pageType); // any more specific breaks pages based on this one
   assert(page->id == rid.page);
   assert(*recordsize_ptr(page) == rid.size);
   assert(stasis_fixed_records_per_page(rid.size) > rid.slot);
@@ -48,7 +48,7 @@ static int fixedGetType(int xid, Page *p, recordid rid) {
   //  checkRid(p, rid);
   if(rid.slot < *recordcount_ptr(p)) {
     int type = *recordsize_ptr(p);
-    if(type > 0) { 
+    if(type > 0) {
       type = NORMAL_SLOT;
     }
     return type;
@@ -65,7 +65,7 @@ static void fixedSetType(int xid, Page *p, recordid rid, int type) {
 }
 static int fixedGetLength(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
-  assert(*stasis_page_type_ptr(p));
+  assert(p->pageType);
   return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : stasis_record_type_to_size(*recordsize_ptr(p));
 }
@@ -124,6 +124,7 @@ void fixedCleanup(Page *p) { }
 page_impl fixedImpl() {
   static page_impl pi = {
     FIXED_PAGE,
+    1,
     fixedRead,
     fixedWrite,
     0,// readDone
@@ -159,5 +160,5 @@ page_impl arrayListImpl() {
   return pi;
 }
 
-void fixedPageInit() { } 
+void fixedPageInit() { }
 void fixedPageDeinit() { }

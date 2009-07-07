@@ -40,7 +40,7 @@ static void phRead(stasis_page_handle_t * ph, Page * ret) {
     }
   }
   ret->dirty = 0;
-  stasis_page_loaded(ret);
+  stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
   unlock(ret->rwlatch);
 }
 static void phForce(stasis_page_handle_t * ph) {

@@ -3,7 +3,7 @@
 #include <stasis/logger/reorderingHandle.h>
 #include <string.h>
 static int op_lsn_free_set(const LogEntry *e, Page *p) {
-  if(*stasis_page_type_ptr(p) != SLOTTED_LSN_FREE_PAGE) {  abort() ; }
+  if(p->pageType != SLOTTED_LSN_FREE_PAGE) {  abort() ; }
   assert(e->update.arg_size >= (sizeof(pageoff_t) * 2));
   int size = e->update.arg_size;
   size -= (2*sizeof(pageoff_t));
@@ -14,7 +14,7 @@ static int op_lsn_free_set(const LogEntry *e, Page *p) {
   return 0;
 }
 static int op_lsn_free_unset(const LogEntry *e, Page *p) {
-  if(*stasis_page_type_ptr(p) != SLOTTED_LSN_FREE_PAGE) { return 0; }
+  if(p->pageType != SLOTTED_LSN_FREE_PAGE) { return 0; }
   assert(e->update.arg_size >= (sizeof(pageoff_t) * 2));
   int size = e->update.arg_size;
   size -= (2*sizeof(pageoff_t));

@@ -110,6 +110,9 @@ typedef int32_t slotid_t;
 typedef uint16_t pageoff_t;
 #define PAGEOFF_T_MAX UINT16_MAX;
 
+typedef int16_t pagetype_t;
+#define PAGETYPE_T_MAX INT16_MAX;
+
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/
 /*#define NO_LATCHES */

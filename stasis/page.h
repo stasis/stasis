@@ -123,6 +123,16 @@ BEGIN_C_DECLS
 */
 struct Page_s {
   pageid_t id;
+  /**
+   * The type of this page.  Set when the page is loaded from disk.  If the page contains
+   * a header, this will be set automatically.  Otherwise, it must be passed in by the code
+   * that pinned the page.
+   */
+  int pageType;
+  /**
+   * The LSN of the page (or an estimate).  Set when page is loaded from disk.
+   * The on-page LSN (if any) is set at page writeback.
+   */
   lsn_t LSN;
   byte *memAddr;
   byte dirty;
@@ -540,7 +550,7 @@ void stasis_record_free(int xid, Page * p, recordid rid);
 int stasis_block_supported(int xid, Page * p);
 int stasis_record_freespace(int xid, Page * p);
 void stasis_record_compact(Page * p);
-void stasis_page_loaded(Page * p);
+void stasis_page_loaded(Page * p, pagetype_t type);
 void stasis_page_flushed(Page * p);
 void stasis_page_cleanup(Page * p);
 /**
@@ -677,7 +687,7 @@ void stasis_block_done(int xid, Page * p, block_t * done);
 */
 typedef struct page_impl {
   int page_type;
-
+  int has_header;
   // ---------- Record access
 
   /**

@@ -11,7 +11,7 @@
 void indirectInitialize(Page * p, int height) {
   stasis_page_cleanup(p);
   *level_ptr(p) = height;
-  *stasis_page_type_ptr(p) = INDIRECT_PAGE;
+  p->pageType = INDIRECT_PAGE;
   memset(p->memAddr, INVALID_SLOT, ((size_t)level_ptr(p)) - ((size_t)p->memAddr));
 }
 /** @todo Is locking for dereferenceRID really necessary? */
@@ -24,7 +24,7 @@ compensated_function recordid dereferenceIndirectRID(int xid, recordid rid) {
   //  printf("a"); fflush(stdout);
   int offset = 0;
   int max_slot;
-  while(*stasis_page_type_ptr(page) == INDIRECT_PAGE) {
+  while(page->pageType == INDIRECT_PAGE) {
     int i = 0;
     for(max_slot = *maxslot_ptr(page, i); ( max_slot + offset ) <= rid.slot; max_slot = *maxslot_ptr(page, i)) {
       i++;
@@ -78,7 +78,7 @@ compensated_function recordid rallocMany(int xid, int recordSize, int recordCoun
   recordid ret;
   int page;
   try_ret(NULLRID) {
-    page = TpageAlloc(xid/*, SLOTTED_PAGE*/);
+    page = TpageAlloc(xid);
   }end_ret(NULLRID);
   try_ret(NULLRID) {
     ret = __rallocMany(xid, page, recordSize, recordCount);
@@ -111,7 +111,7 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
   p.memAddr = buffer;
   p.rwlatch = initlock();
   p.loadlatch = initlock();
-  *stasis_page_type_ptr(&p) = UNINITIALIZED_PAGE;
+  p.pageType = UNINITIALIZED_PAGE;
 
   if(number_of_pages > 1) {
 
@@ -158,9 +158,9 @@ compensated_function recordid __rallocMany(int xid, pageid_t parentPage, int rec
 
       *page_ptr(&p, i) = firstChildPage + i;
       if(i) {
-	*maxslot_ptr(&p, i) = *maxslot_ptr(&p, i-1) + min(tmpRecordCount+1, next_level_records_per_page);
+        *maxslot_ptr(&p, i) = *maxslot_ptr(&p, i-1) + min(tmpRecordCount+1, next_level_records_per_page);
       } else {
-	*maxslot_ptr(&p, i) = min(tmpRecordCount+1, next_level_records_per_page);
+        *maxslot_ptr(&p, i) = min(tmpRecordCount+1, next_level_records_per_page);
       }
       i++;
     }
@@ -206,7 +206,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
   readlock(p->rwlatch, 0);
   int i = 0;
   unsigned int ret;
-  if(*stasis_page_type_ptr(p) == INDIRECT_PAGE) {
+  if(p->pageType == INDIRECT_PAGE) {
 
     while(*maxslot_ptr(p, i) > 0) {
       i++;
@@ -216,7 +216,7 @@ compensated_function int indirectPageRecordCount(int xid, recordid rid) {
     } else {
       ret = (*maxslot_ptr(p, i-1)) - 1;
     }
-  } else if (*stasis_page_type_ptr(p) == SLOTTED_PAGE) {
+  } else if (p->pageType == SLOTTED_PAGE) {
 
     int numslots = *numslots_ptr(p);
     ret = 0;
@@ -247,6 +247,7 @@ void indirectFlushed(Page *p) {
 void indirectCleanup(Page *p) { }
 static page_impl pi = {
     INDIRECT_PAGE,
+    1,
     0, //read,
     0, //write,
     0, //readDone

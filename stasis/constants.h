@@ -227,7 +227,7 @@ static const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 #define XPREPARE 8
 
 /* Page types */
-
+#define UNKNOWN_TYPE_PAGE (-1)
 #define UNINITIALIZED_PAGE  0
 #define SLOTTED_PAGE        1
 #define INDIRECT_PAGE       2

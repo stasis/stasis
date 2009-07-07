@@ -278,7 +278,7 @@ recordid TlsmCreate(int xid, int comparator,
   Page *p = loadPage(xid, ret.page);
   writelock(p->rwlatch,0);
   stasis_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord) + keySize, 0);
-  *stasis_page_type_ptr(p) = LSM_ROOT_PAGE;
+  p->pageType = LSM_ROOT_PAGE;
 
   lsmTreeState *state = malloc(sizeof(lsmTreeState));
   state->lastLeaf = -1; /// XXX define something in constants.h?
@@ -403,8 +403,7 @@ static recordid appendInternalNode(int xid, Page *p,
                                    pageid_t val_page, pageid_t lastLeaf,
 				   lsm_page_allocator_t allocator,
 				   void *allocator_state) {
-  assert(*stasis_page_type_ptr(p) == LSM_ROOT_PAGE ||
-	 *stasis_page_type_ptr(p) == FIXED_PAGE);
+  assert(p->pageType == LSM_ROOT_PAGE || p->pageType == FIXED_PAGE);
   if(!depth) {
     // leaf node.
     recordid ret = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+key_len);
@@ -720,7 +719,7 @@ pageid_t TlsmLastPage(int xid, recordid tree) {
   }
   Page * root = loadPage(xid, tree.page);
   readlock(root->rwlatch,0);
-  assert(*stasis_page_type_ptr(root) == LSM_ROOT_PAGE);
+  assert(root->pageType == LSM_ROOT_PAGE);
   lsmTreeState *state = root->impl;
   int keySize = getKeySize(xid,root);
   if(state->lastLeaf == -1) {

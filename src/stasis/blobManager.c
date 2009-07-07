@@ -51,7 +51,7 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
     for(; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) {
       Page * cnk = loadPage(xid, rec.offset+chunk);
       writelock(cnk->rwlatch,0);
-      if(*stasis_page_type_ptr(cnk) != BLOB_PAGE) {
+      if(cnk->pageType != BLOB_PAGE) {
         stasis_page_blob_initialize(cnk);
       }
       unlock(cnk->rwlatch);
@@ -61,7 +61,7 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
     }
     Page * cnk = loadPage(xid, rec.offset+chunk);
     writelock(cnk->rwlatch,0);
-    if(*stasis_page_type_ptr(cnk) != BLOB_PAGE) {
+    if(p->pageType != BLOB_PAGE) {
       stasis_page_blob_initialize(cnk);
     }
     unlock(cnk->rwlatch);
@@ -86,6 +86,7 @@ static void stasis_page_blob_cleanup(Page *p) { }
 page_impl stasis_page_blob_impl() {
   page_impl pi = {
       BLOB_PAGE,
+      1,
       0, //read,
       0, //write,
       0, //readDone
@@ -115,5 +116,5 @@ void stasis_page_blob_initialize(Page * p) {
   assertlocked(p->rwlatch);
   DEBUG("lsn: %lld\n",(long long)p->LSN);
   stasis_page_cleanup(p);
-  *stasis_page_type_ptr(p) = BLOB_PAGE;
+  p->pageType = BLOB_PAGE;
 }
