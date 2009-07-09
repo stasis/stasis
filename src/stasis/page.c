@@ -126,6 +126,7 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   stasis_page_impl_register(stasis_page_blob_impl());
   stasis_page_impl_register(lsmRootImpl());
   stasis_page_impl_register(slottedLsnFreeImpl());
+  stasis_page_impl_register(segmentImpl());
 }
 
 void stasis_page_deinit() {

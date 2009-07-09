@@ -901,6 +901,7 @@ int stasis_fixed_records_per_page(size_t size);
 void stasis_page_blob_initialize(Page * p);
 
 page_impl slottedLsnFreeImpl();
+page_impl segmentImpl();
 END_C_DECLS
 
 #endif

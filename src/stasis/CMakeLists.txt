@@ -14,10 +14,15 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    logger/filePool.c
                    logger/inMemoryLog.c
                    logger/logHandle.c logger/logger2.c
-                   logger/logMemory.c page/raw.c page/slotted.c page/lsnFree.c
+                   logger/logMemory.c
                    logger/reorderingHandle.c
                    logger/groupForce.c
-                   page/fixed.c compensations.c
+                   page/slotted.c
+                   page/fixed.c 
+                   page/raw.c
+                   page/lsnFree.c
+                   page/segment.c
+                   compensations.c
                    operations/pageOperations.c
                    operations/decrement.c operations/increment.c
                    operations/prepare.c operations/set.c
