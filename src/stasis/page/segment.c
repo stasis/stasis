@@ -12,7 +12,7 @@ static int notSupported(int xid, Page * p) { return 0; }
 page_impl segmentImpl() {
 static page_impl pi =  {
     SEGMENT_PAGE,
-    0,
+    0,  // has header
     0,
     0,
     0,// readDone

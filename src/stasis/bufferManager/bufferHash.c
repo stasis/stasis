@@ -275,7 +275,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     // try to read this page from disk.
     pthread_mutex_unlock(&mut);
 
-    page_handle->read(page_handle, ret);
+    page_handle->read(page_handle, ret, type);
 
     pthread_mutex_lock(&mut);
 

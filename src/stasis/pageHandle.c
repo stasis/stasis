@@ -26,7 +26,7 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
   stasis_dirty_page_table_set_clean(ph->dirtyPages, ret);
   unlock(ret->rwlatch);
 }
-static void phRead(stasis_page_handle_t * ph, Page * ret) {
+static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
   writelock(ret->rwlatch,0);
   int err = ((stasis_handle_t*)ph->impl)->read(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
@@ -40,7 +40,7 @@ static void phRead(stasis_page_handle_t * ph, Page * ret) {
     }
   }
   ret->dirty = 0;
-  stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
+  stasis_page_loaded(ret, type);
   unlock(ret->rwlatch);
 }
 static void phForce(stasis_page_handle_t * ph) {

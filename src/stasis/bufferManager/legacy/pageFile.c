@@ -37,7 +37,7 @@ static int oldOffset = -1;
 
 int pageFile_isDurable = 1;
 
-static void pfPageRead(stasis_page_handle_t * h, Page *ret) {
+static void pfPageRead(stasis_page_handle_t * h, Page *ret, pagetype_t type) {
 
   pageid_t pageoffset;
   pageid_t offset;
@@ -71,7 +71,7 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret) {
   }
 
   ret->dirty = 0;
-  stasis_page_loaded(ret, UNKNOWN_TYPE_PAGE);
+  stasis_page_loaded(ret, type);
 
   pthread_mutex_unlock(&stable_mutex);
 

@@ -63,7 +63,7 @@ int stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
 	first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
 	stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
-    page_handle->read(page_handle, first);
+    page_handle->read(page_handle, first, UNKNOWN_TYPE_PAGE);
 	pageCacheInit(first);
 
 	int err = pthread_key_create(&lastPage, 0);
@@ -277,7 +277,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pag
 
     stasis_buffer_pool_free_page(stasis_buffer_pool, ret, pageid);
     if(!uninitialized) {
-      page_handle->read(page_handle, ret);
+      page_handle->read(page_handle, ret, type);
     } else {
       memset(ret->memAddr, 0, PAGE_SIZE);
       ret->dirty = 0;
