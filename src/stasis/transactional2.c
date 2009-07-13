@@ -119,7 +119,7 @@ int Tbegin() {
 	int i, index = 0;
 	int xidCount_tmp;
 
-        assert(stasis_initted);
+    assert(stasis_initted);
 
 	pthread_mutex_lock(&stasis_transaction_table_mutex);
 
@@ -152,27 +152,33 @@ int Tbegin() {
 	return stasis_transaction_table[index].xid;
 }
 
-static compensated_function void TactionHelper(int xid,
-					       const void * dat, size_t datlen, int op,
-					       Page * p) {
+compensated_function void Tupdate(int xid, pageid_t page,
+					       const void * dat, size_t datlen, int op) {
+  assert(stasis_initted);
+  assert(page != INVALID_PAGE);
   LogEntry * e;
   assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
+
+  Page * p = (page == SEGMENT_PAGEID) ? 0 : loadPage(xid, page);
+
   try {
-    if(globalLockManager.writeLockPage) {
-      globalLockManager.writeLockPage(xid, p->id);
+    if(globalLockManager.writeLockPage && p) {
+      globalLockManager.writeLockPage(xid, page);
     }
   } end;
 
-  writelock(p->rwlatch,0);
+  if(p) writelock(p->rwlatch,0);
 
   e = stasis_log_write_update(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS],
-                p, op, dat, datlen);
+                page, op, dat, datlen);
+
   assert(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   stasis_operation_do(e, p);
   freeLogEntry(e);
 
-  unlock(p->rwlatch);
+  if(p) unlock(p->rwlatch);
+  if(p) releasePage(p);
 }
 
 void TreorderableUpdate(int xid, void * hp, pageid_t page,
@@ -232,14 +238,6 @@ void TreorderableWritebackUpdate(int xid, void* hp,
 compensated_function void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {
   Tupdate(xid, page, dat, datlen, op);
-}
-
-compensated_function void Tupdate(int xid, pageid_t page,
-				  const void *dat, size_t datlen, int op) {
-  Page * p = loadPage(xid, page);
-  assert(stasis_initted);
-  TactionHelper(xid, dat, datlen, op, p);
-  releasePage(p);
 }
 
 compensated_function void TreadStr(int xid, recordid rid, char * dat) {

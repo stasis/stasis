@@ -284,7 +284,7 @@ void stasis_page_loaded(Page * p, pagetype_t type){
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
   if(p->pageType) {
     assert(page_impls[p->pageType].page_type == p->pageType);
-    page_impls[p->pageType].pageLoaded(p);
+    if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
   } else {
     p->LSN = *stasis_page_lsn_ptr(p);  // XXX kludge - shouldn't special-case UNINITIALIZED_PAGE
   }
@@ -298,7 +298,7 @@ void stasis_page_flushed(Page * p){
       *stasis_page_type_ptr(p)= type;
       *stasis_page_lsn_ptr(p) = p->LSN;
     }
-    page_impls[type].pageFlushed(p);
+    if(page_impls[type].pageFlushed) page_impls[type].pageFlushed(p);
   } else {
     *stasis_page_type_ptr(p)= type;
     *stasis_page_lsn_ptr(p) = p->LSN;
@@ -308,7 +308,7 @@ void stasis_page_cleanup(Page * p) {
   short type = p->pageType;
   if(type) {
     assert(page_impls[type].page_type == type);
-    page_impls[type].pageCleanup(p);
+    if(page_impls[type].pageCleanup) page_impls[type].pageCleanup(p);
   }
 }
 

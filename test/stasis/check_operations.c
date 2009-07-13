@@ -685,6 +685,58 @@ START_TEST(operation_reorderable) {
 
 } END_TEST
 
+START_TEST(operation_segment) {
+  const int SEGMENT_TEST = 42;
+  Tinit();
+  int xid = Tbegin();
+  recordid regionrid = Talloc(xid, sizeof(pageid_t));
+  pageid_t region_start = TregionAlloc(xid, 10000, SEGMENT_TEST);
+  Tset(xid, regionrid, &region_start);
+  Tcommit(xid);
+
+  xid = Tbegin();
+
+  for(int i = 0; i < 10000 / sizeof(i); i++) {
+    int ret = Tpwrite(xid, (byte*)&i, sizeof(i), region_start * PAGE_SIZE + i * sizeof(i));
+    assert(ret == sizeof(i));
+  }
+  Tcommit(xid);
+
+  TuncleanShutdown();
+
+  Tinit();
+  xid = Tbegin();
+  for(int i = 0; i < 10000 / sizeof(i); i++) {
+    int buf;
+    int ret = Tpread(xid, (byte*)&buf, sizeof(buf), region_start * PAGE_SIZE + i * sizeof(i));
+    assert(buf == i);
+    assert(ret == sizeof(buf));
+    if(i % 2) {
+      buf = 0;
+      Tpwrite(xid, (byte*)&buf, sizeof(buf), region_start * PAGE_SIZE + i * sizeof(i));
+    }
+  }
+
+  for(int i = 0; i < 10000 / sizeof(i); i++) {
+    int buf;
+    int ret = Tpread(xid, (byte*)&buf, sizeof(buf), region_start * PAGE_SIZE + i * sizeof(i));
+    assert(buf == (i % 2 ? 0 : i));
+    assert(ret == sizeof(buf));
+  }
+  Tabort(xid);
+  xid = Tbegin();
+
+  for(int i = 0; i < 10000 / sizeof(i); i++) {
+    int buf;
+    int ret = Tpread(xid, (byte*)&buf, sizeof(buf), region_start * PAGE_SIZE + i * sizeof(i));
+    assert(buf == i);
+    assert(ret == sizeof(buf));
+  }
+  Tcommit(xid);
+  Tdeinit();
+
+} END_TEST
+
 /**
   Add suite declarations here
 */
@@ -706,6 +758,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_array_list);
   tcase_add_test(tc, operation_lsn_free);
   tcase_add_test(tc, operation_reorderable);
+  tcase_add_test(tc, operation_segment);
  /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

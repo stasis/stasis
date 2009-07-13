@@ -150,6 +150,8 @@ typedef struct {
 #include "operations/lsmTree.h"
 #include "operations/lsnFreeSet.h"
 #include "operations/group.h"
+#include "operations/segmentFile.h"
+
 /**
    Initialize stasis' operation table.
  */

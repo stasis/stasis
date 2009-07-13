@@ -103,13 +103,12 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, TransactionLog * l) {
 }
 
 LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
-                     Page * p, unsigned int op,
+                     pageid_t page, unsigned int op,
 		     const byte * arg, size_t arg_size) {
 
   LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
-                                     p ? p->id : INVALID_PAGE,
+                                     page,
                                      arg, arg_size);
-
   log->write_entry(log, e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);

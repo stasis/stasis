@@ -309,7 +309,7 @@ lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, TransactionLog * l)
    state of the parameter l.
 */
 LogEntry * stasis_log_write_update(stasis_log_t* log,
-                     TransactionLog * l, Page * p, unsigned int operation,
+                     TransactionLog * l, pageid_t page, unsigned int operation,
                      const byte * arg, size_t arg_size);
 
 /**

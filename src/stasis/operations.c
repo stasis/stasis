@@ -113,23 +113,23 @@ void stasis_operation_table_init() {
 
   stasis_operation_impl_register(stasis_op_impl_region_dealloc());
   stasis_operation_impl_register(stasis_op_impl_region_dealloc_inverse());
+
+  stasis_operation_impl_register(stasis_op_impl_segment_file_pwrite());
+  stasis_operation_impl_register(stasis_op_impl_segment_file_pwrite_inverse());
 }
 
 
 
 void stasis_operation_do(const LogEntry * e, Page * p) {
-  if(p) {
-    assertlocked(p->rwlatch);
-    assert(e->update.funcID != OPERATION_INVALID);
-    stasis_operation_table[e->update.funcID].run(e, p);
 
-    DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
-	  e->LSN, e->update.page, stasis_page_lsn_read(p));
+  if(p) assertlocked(p->rwlatch);
+  assert(e->update.funcID != OPERATION_INVALID);
+  stasis_operation_table[e->update.funcID].run(e, p);
 
-    stasis_page_lsn_write(e->xid, p, e->LSN);
-  } else {
-    stasis_operation_table[e->update.funcID].run(e,NULL);
-  }
+  DEBUG("OPERATION xid %d Do, %lld {%lld:%lld}\n", e->xid,
+      e->LSN, e->update.page, p ? stasis_page_lsn_read(p) : -1);
+
+  if(p) stasis_page_lsn_write(e->xid, p, e->LSN);
 
 }
 
@@ -144,7 +144,7 @@ void stasis_operation_redo(const LogEntry * e, Page * p) {
   if(stasis_operation_table[e->update.funcID].redo == OPERATION_NOOP) {
     return;
   }
-  if(stasis_page_lsn_read(p) < e->LSN ||
+  if((!p) || stasis_page_lsn_read(p) < e->LSN ||
      e->update.funcID == OPERATION_SET_LSN_FREE ||
      e->update.funcID == OPERATION_SET_LSN_FREE_INVERSE) {
     DEBUG("OPERATION xid %d Redo, %lld {%lld:%lld}\n", e->xid,
@@ -157,7 +157,7 @@ void stasis_operation_redo(const LogEntry * e, Page * p) {
     assert(stasis_operation_table[e->update.funcID].redo != OPERATION_INVALID);
     stasis_operation_table[stasis_operation_table[e->update.funcID].redo]
       .run(e,p);
-    stasis_page_lsn_write(e->xid, p, e->LSN);
+    if(p) stasis_page_lsn_write(e->xid, p, e->LSN);
   } else {
     DEBUG("OPERATION xid %d skip redo, %lld {%lld:%lld}\n", e->xid,
            e->LSN, e->update.page, stasis_page_lsn_read(p));
@@ -172,8 +172,8 @@ void stasis_operation_undo(const LogEntry * e, lsn_t effective_lsn, Page * p) {
   int undo = stasis_operation_table[e->update.funcID].undo;
   assert(undo != OPERATION_INVALID);
 
-  if(e->update.page == INVALID_PAGE) {
-    // logical undos are excuted unconditionally.
+  if(e->update.page == INVALID_PAGE || e->update.page == SEGMENT_PAGEID) {
+    // logical undos are executed unconditionally, as are segment-based undos
 
     DEBUG("OPERATION xid %d FuncID %d Undo, %d LSN %lld {logical}\n", e->xid,
           e->update.funcID, undo, e->LSN);

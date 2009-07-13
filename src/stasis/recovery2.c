@@ -187,19 +187,21 @@ static void stasis_recovery_redo(stasis_log_t* log) {
       // Check to see if this entry's action needs to be redone
       switch(e->type) {
       case UPDATELOG:
-        {
-          if(e->update.page == INVALID_PAGE) {
-            // logical redo; ignore
-          } else {
-	    Page * p = loadPage(e->xid, e->update.page);
-	    writelock(p->rwlatch,0);
-	    stasis_operation_redo(e,p);
-	    unlock(p->rwlatch);
-	    releasePage(p);
-          }
-        } break;
+      {
+        if(e->update.page == INVALID_PAGE) {
+          // this entry specifies a logical undo operation; ignore it.
+        } else if(e->update.page == SEGMENT_PAGEID) {
+          stasis_operation_redo(e,0);
+        } else {
+          Page * p = loadPage(e->xid, e->update.page);
+          writelock(p->rwlatch,0);
+          stasis_operation_redo(e,p);
+          unlock(p->rwlatch);
+          releasePage(p);
+        }
+      } break;
       case CLRLOG:
-	{
+        {
 	  // if compensated_lsn == -1, then this clr is closing a nested top
 	  // action that was performed during undo.  Therefore, we do not
 	  // want to undo it again.

@@ -450,7 +450,7 @@ void reopenLogWorkload(int truncating) {
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
     entries[i] = stasis_log_write_update(stasis_log_file,
-                           &l, NULL, OPERATION_NOOP, NULL, 0);
+                           &l, 0, OPERATION_NOOP, NULL, 0);
 
     if(i == SYNC_POINT) {
       if(truncating) {
@@ -497,7 +497,7 @@ void reopenLogWorkload(int truncating) {
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    entries2[i] = stasis_log_write_update(stasis_log_file, &l, NULL, OPERATION_NOOP,
+    entries2[i] = stasis_log_write_update(stasis_log_file, &l, 0, OPERATION_NOOP,
                             NULL, 0);
     if(i == SYNC_POINT) {
       stasis_log_file->force_tail(stasis_log_file, LOG_FORCE_COMMIT);

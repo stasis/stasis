@@ -130,8 +130,10 @@ terms specified in this license.
 
 #define OPERATION_PAGE_SET_RANGE     10
 #define OPERATION_PAGE_SET_RANGE_INVERSE 11
-// 12
-// 13
+
+#define OPERATION_SEGMENT_FILE_PWRITE 12
+#define OPERATION_SEGMENT_FILE_PWRITE_INVERSE 13
+
 // 14
 // 15
 // 16
@@ -189,6 +191,7 @@ terms specified in this license.
 #define SLOT_TYPE_END (-4)
 
 #define INVALID_PAGE (-1)
+#define SEGMENT_PAGEID (-2)
 
 //   TODO unify naming convention for ROOT_RECORD, NULLRID
 static const recordid ROOT_RECORD = {1, 0, -1};

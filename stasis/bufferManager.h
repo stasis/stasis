@@ -93,7 +93,10 @@ BEGIN_C_DECLS
  */
 Page * loadPage(int xid, pageid_t pageid);
 
+Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type);
+
 Page * loadUninitializedPage(int xid, pageid_t pageid);
+
 
 /**
     This is the function pointer that stasis_buffer_manager_open sets in order to

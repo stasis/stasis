@@ -13,7 +13,7 @@ static void* stasis_log_reordering_handle_worker(void * a) {
       while(chunk_len < h->chunk_len && h->cur_len) {
         LogEntry * e = stasis_log_write_update(h->log,
                                  h->l,
-                                 h->queue[h->cur_off].p,
+                                 h->queue[h->cur_off].p->id,
                                  h->queue[h->cur_off].op,
                                  h->queue[h->cur_off].arg,
                                  h->queue[h->cur_off].arg_size);
