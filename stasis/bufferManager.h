@@ -97,6 +97,7 @@ Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type);
 
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
+Page * getCachedPage(int xid, const pageid_t pageid);
 
 /**
     This is the function pointer that stasis_buffer_manager_open sets in order to
@@ -104,6 +105,12 @@ Page * loadUninitializedPage(int xid, pageid_t pageid);
 */
 extern Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type);
 extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
+/**
+    Get a page from cache.  This function should never block on I/O.
+
+    @return a pointer to the page, or NULL if the page is not in cache, or is being read from disk.
+ */
+extern Page * (*getCachedPageImpl)(int xid, pageid_t pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.

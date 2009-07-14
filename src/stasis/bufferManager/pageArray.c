@@ -62,6 +62,7 @@ void stasis_buffer_manager_mem_array_open () {
 
   releasePageImpl = paReleasePage;
   loadPageImpl = paLoadPage;
+  getCachedPageImpl = paLoadPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
   stasis_buffer_manager_close = paBufDeinit;

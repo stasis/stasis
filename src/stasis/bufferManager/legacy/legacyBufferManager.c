@@ -45,6 +45,7 @@ int stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
     releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
     loadUninitPageImpl = bufManLoadUninitPage;
+    getCachedPageImpl = bufManLoadPage; // Since this code is deprecated, loadPage is "good enough" though it breaks segments.
     writeBackPage = pageWrite_legacyWrapper;
     forcePages = forcePageFile_legacyWrapper;
     forcePageRange = forceRangePageFile_legacyWrapper;

@@ -91,9 +91,11 @@ void stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
   pthread_mutex_unlock(&dirtyPages->mutex);
 
   for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
-    p = loadPage(-1, staleDirtyPages[i]);
-    writeBackPage(p);
-    releasePage(p);
+    p = getCachedPage(-1, staleDirtyPages[i]);
+    if(p) {
+      writeBackPage(p);
+      releasePage(p);
+    }
   }
   free(staleDirtyPages);
 }
@@ -117,9 +119,11 @@ void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages,
   pthread_mutex_unlock(&dirtyPages->mutex);
 
   for(i = 0; i < MAX_BUFFER_SIZE && staleDirtyPages[i] != -1; i++) {
-    p = loadPage(-1, staleDirtyPages[i]);
-    writeBackPage(p);
-    releasePage(p);
+    p = getCachedPage(-1, staleDirtyPages[i]);
+    if(p) {
+      writeBackPage(p);
+      releasePage(p);
+    }
   }
   free(staleDirtyPages);
   forcePageRange(start*PAGE_SIZE,stop*PAGE_SIZE);

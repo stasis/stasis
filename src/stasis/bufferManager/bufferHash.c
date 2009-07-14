@@ -190,6 +190,27 @@ static void * writeBackWorker(void * ignored) {
   return 0;
 }
 
+static Page * bhGetCachedPage(int xid, const pageid_t pageid) {
+  pthread_mutex_lock(&mut);
+  // Is the page in cache?
+  Page * ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(pageid));
+  if(ret) {
+    checkPageState(ret);
+    if(!*pagePendingPtr(ret)) {
+      // good
+      if(!*pagePinCountPtr(ret) ) {
+        // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
+        lru->remove(lru, ret);
+      }
+      (*pagePinCountPtr(ret))++;
+    } else {
+      ret = 0;
+    }
+  }
+  pthread_mutex_unlock(&mut);
+  return ret;
+}
+
 static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
 
   // Note:  Calls to loadlatch in this function violate lock order, but
@@ -397,6 +418,7 @@ void stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
 
   loadPageImpl = bhLoadPageImpl;
   loadUninitPageImpl = bhLoadUninitPageImpl;
+  getCachedPageImpl = bhGetCachedPage;
   releasePageImpl = bhReleasePage;
   writeBackPage = bhWriteBackPage;
   forcePages = bhForcePages;

@@ -164,6 +164,7 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type) = 0;
 Page * (*loadUninitPageImpl)(int xid, pageid_t pageid) = 0;
+Page * (*getCachedPageImpl)(int xid, pageid_t pageid) = 0;
 void   (*releasePageImpl)(Page * p) = 0;
 void (*writeBackPage)(Page * p) = 0;
 void (*forcePages)() = 0;
@@ -175,7 +176,6 @@ Page * loadPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
   return loadPageImpl(xid, pageid, UNKNOWN_TYPE_PAGE);
-
 }
 Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
@@ -186,9 +186,10 @@ Page * loadUninitializedPage(int xid, pageid_t pageid) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
 
   return loadUninitPageImpl(xid, pageid);
-
 }
-
+Page * getCachedPage(int xid, pageid_t pageid) {
+  return getCachedPageImpl(xid, pageid);
+}
 void releasePage(Page * p) {
   releasePageImpl(p);
 }
