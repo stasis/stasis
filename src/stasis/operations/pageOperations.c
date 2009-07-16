@@ -166,6 +166,7 @@ int TpageGetType(int xid, pageid_t page) {
 stasis_operation_impl stasis_op_impl_page_set_range() {
   stasis_operation_impl o = {
     OPERATION_PAGE_SET_RANGE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_PAGE_SET_RANGE,
     OPERATION_PAGE_SET_RANGE_INVERSE,
     op_page_set_range
@@ -176,6 +177,7 @@ stasis_operation_impl stasis_op_impl_page_set_range() {
 stasis_operation_impl stasis_op_impl_page_set_range_inverse() {
   stasis_operation_impl o = {
     OPERATION_PAGE_SET_RANGE_INVERSE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_PAGE_SET_RANGE_INVERSE,
     OPERATION_PAGE_SET_RANGE,
     &op_page_set_range_inverse
@@ -220,6 +222,7 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
 stasis_operation_impl stasis_op_impl_page_initialize() {
   stasis_operation_impl o = {
     OPERATION_INITIALIZE_PAGE,
+    UNINITIALIZED_PAGE,
     OPERATION_INITIALIZE_PAGE,
     OPERATION_NOOP,
     op_initialize_page

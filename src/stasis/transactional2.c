@@ -159,7 +159,7 @@ compensated_function void Tupdate(int xid, pageid_t page,
   LogEntry * e;
   assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
 
-  Page * p = (page == SEGMENT_PAGEID) ? 0 : loadPage(xid, page);
+  Page * p = loadPageForOperation(xid, page, op);
 
   try {
     if(globalLockManager.writeLockPage && p) {

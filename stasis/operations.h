@@ -84,6 +84,13 @@ typedef struct {
    */
   int id;
   /**
+   * The type of the page this operation modifies.  If UNKNWON_TYPE_PAGE,
+   * then the page's header will be trusted.  If UNINITIALIZED_PAGE, then
+   * the contents of the in-memory version of the page will be undefined
+   * before the operation is applied.  (This is used for allocation).
+   */
+  pagetype_t page_type;
+  /**
    * ID of redo operation; logical operations typically
    * set this to OPERATION_NOOP.
    */
@@ -208,6 +215,8 @@ void stasis_operation_undo(const LogEntry * e, lsn_t clr_lsn,
     @param p The page the redo should be applied to.  Must be writelock()'ed.
 */
 void stasis_operation_redo(const LogEntry * e, Page * p);
+
+pagetype_t stasis_operation_type(int op);
 
 END_C_DECLS
 

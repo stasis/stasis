@@ -187,6 +187,23 @@ Page * loadUninitializedPage(int xid, pageid_t pageid) {
 
   return loadUninitPageImpl(xid, pageid);
 }
+
+Page * loadPageForOperation(int xid, pageid_t pageid, int op) {
+  pagetype_t type = stasis_operation_type(op);
+  Page * p;
+  if(pageid == SEGMENT_PAGEID) {
+    assert(type = SEGMENT_PAGE);
+    p = 0;
+  } else if(type == UNINITIALIZED_PAGE) {
+    p = loadUninitializedPage(xid, pageid);
+  } else if(type == UNKNOWN_TYPE_PAGE) {
+    p = loadPage(xid, pageid);
+  } else {
+    p = loadPageOfType(xid, pageid, type);
+  }
+  return p;
+}
+
 Page * getCachedPage(int xid, pageid_t pageid) {
   return getCachedPageImpl(xid, pageid);
 }

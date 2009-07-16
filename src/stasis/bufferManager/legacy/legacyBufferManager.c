@@ -22,6 +22,7 @@ static pthread_key_t lastPage;
 
 static void bufManBufDeinit();
 static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid, pagetype_t type);
+static compensated_function Page *bufManGetCachedPage(int xid, pageid_t pageid);
 static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid);
 static void bufManReleasePage (Page * p);
 static void bufManSimulateBufferManagerCrash();
@@ -45,7 +46,7 @@ int stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
     releasePageImpl = bufManReleasePage;
     loadPageImpl = bufManLoadPage;
     loadUninitPageImpl = bufManLoadUninitPage;
-    getCachedPageImpl = bufManLoadPage; // Since this code is deprecated, loadPage is "good enough" though it breaks segments.
+    getCachedPageImpl = bufManGetCachedPage;
     writeBackPage = pageWrite_legacyWrapper;
     forcePages = forcePageFile_legacyWrapper;
     forcePageRange = forceRangePageFile_legacyWrapper;
@@ -335,8 +336,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pag
   return ret;
 }
 
-
-static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid, pagetype_t type) {
+static compensated_function Page *bufManLoadPage(int xid, const pageid_t pageid, pagetype_t type) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -365,6 +365,11 @@ static compensated_function Page *bufManLoadPage(int xid, pageid_t pageid, paget
 #endif
 
   return ret;
+}
+
+static Page* bufManGetCachedPage(int xid, const pageid_t pageid) {
+  // XXX hack; but this code is deprecated
+  return bufManLoadPage(xid, pageid, UNKNOWN_TYPE_PAGE);
 }
 
 static compensated_function Page *bufManLoadUninitPage(int xid, pageid_t pageid) {

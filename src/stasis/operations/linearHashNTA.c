@@ -163,6 +163,7 @@ compensated_function static int op_linear_hash_remove(const LogEntry* e, Page* p
 stasis_operation_impl stasis_op_impl_linear_hash_insert() {
   stasis_operation_impl o = {
     OPERATION_LINEAR_HASH_INSERT,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP,
     OPERATION_LINEAR_HASH_REMOVE,
     &op_linear_hash_insert
@@ -172,6 +173,7 @@ stasis_operation_impl stasis_op_impl_linear_hash_insert() {
 stasis_operation_impl stasis_op_impl_linear_hash_remove() {
   stasis_operation_impl o = {
     OPERATION_LINEAR_HASH_REMOVE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP,
     OPERATION_LINEAR_HASH_INSERT,
     &op_linear_hash_remove

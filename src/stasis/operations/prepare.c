@@ -62,6 +62,7 @@ static int op_prepare(const LogEntry * e, Page * p) {
 stasis_operation_impl stasis_op_impl_prepare() {
   stasis_operation_impl o = {
     OPERATION_PREPARE, /* id */
+    UNKNOWN_TYPE_PAGE,
     OPERATION_PREPARE,
     OPERATION_NOOP,
     &op_prepare/* Function */

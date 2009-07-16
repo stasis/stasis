@@ -40,7 +40,9 @@ static Page * paLoadPage(int xid, pageid_t pageid, pagetype_t type) {
   pthread_mutex_unlock(&pageArray_mut);
   return pageMap[pageid];
 }
-
+static Page* paGetCachedPage(int xid, pageid_t page) {
+  return paLoadPage(xid, page, UNKNOWN_TYPE_PAGE);
+}
 static void paReleasePage(Page * p) {
   stasis_dirty_page_table_set_clean(stasis_dirty_page_table, p);
 }
@@ -62,7 +64,7 @@ void stasis_buffer_manager_mem_array_open () {
 
   releasePageImpl = paReleasePage;
   loadPageImpl = paLoadPage;
-  getCachedPageImpl = paLoadPage;
+  getCachedPageImpl = paGetCachedPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
   stasis_buffer_manager_close = paBufDeinit;

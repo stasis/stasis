@@ -217,41 +217,45 @@ compensated_function void TsetRange(int xid, recordid rid, int offset, int lengt
 }
 
 stasis_operation_impl stasis_op_impl_set() {
-	stasis_operation_impl o = {
-	  OPERATION_SET,
-	  OPERATION_SET,
-	  OPERATION_SET_INVERSE,
-	  op_set
-	};
-	return o;
+  stasis_operation_impl o = {
+    OPERATION_SET,
+    UNKNOWN_TYPE_PAGE,
+    OPERATION_SET,
+    OPERATION_SET_INVERSE,
+    op_set
+  };
+  return o;
 }
 
 stasis_operation_impl stasis_op_impl_set_inverse() {
-	stasis_operation_impl o = {
-	  OPERATION_SET_INVERSE,
-	  OPERATION_SET_INVERSE,
-	  OPERATION_SET,
-	  op_set_inverse
-	};
-	return o;
+  stasis_operation_impl o = {
+    OPERATION_SET_INVERSE,
+    UNKNOWN_TYPE_PAGE,
+    OPERATION_SET_INVERSE,
+    OPERATION_SET,
+    op_set_inverse
+  };
+  return o;
 }
 
 stasis_operation_impl stasis_op_impl_set_range() {
-	stasis_operation_impl o = {
-		OPERATION_SET_RANGE,
-		OPERATION_SET_RANGE,
-		OPERATION_SET_RANGE_INVERSE,
-		op_set_range
-	};
-	return o;
+  stasis_operation_impl o = {
+    OPERATION_SET_RANGE,
+    UNKNOWN_TYPE_PAGE,
+    OPERATION_SET_RANGE,
+    OPERATION_SET_RANGE_INVERSE,
+    op_set_range
+  };
+  return o;
 }
 
 stasis_operation_impl stasis_op_impl_set_range_inverse() {
-	stasis_operation_impl o = {
-		OPERATION_SET_RANGE_INVERSE,
-		OPERATION_SET_RANGE_INVERSE,
-		OPERATION_SET_RANGE,
-		op_set_range_inverse
-	};
-	return o;
+  stasis_operation_impl o = {
+    OPERATION_SET_RANGE_INVERSE,
+    UNKNOWN_TYPE_PAGE,
+    OPERATION_SET_RANGE_INVERSE,
+    OPERATION_SET_RANGE,
+    op_set_range_inverse
+  };
+  return o;
 }

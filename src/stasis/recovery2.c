@@ -193,7 +193,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
         } else if(e->update.page == SEGMENT_PAGEID) {
           stasis_operation_redo(e,0);
         } else {
-          Page * p = loadPage(e->xid, e->update.page);
+          Page * p = loadPageForOperation(e->xid, e->update.page, e->update.funcID);
           writelock(p->rwlatch,0);
           stasis_operation_redo(e,p);
           unlock(p->rwlatch);
@@ -213,7 +213,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	      // need to grab latch page here so that Tabort() can be atomic
 	      // below...
 
-	      Page * p = loadPage(e->xid, ce->update.page);
+	      Page * p = loadPageForOperation(e->xid, ce->update.page, ce->update.funcID);
 	      writelock(p->rwlatch,0);
 	      stasis_operation_undo(ce, e->LSN, p);
 	      unlock(p->rwlatch);
@@ -290,11 +290,8 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
             // atomically log (getting clr), and apply undo.
             // otherwise, there's a race where the page's LSN is
             // updated before we undo.
-            Page* p = NULL;
-            if(e->update.page != INVALID_PAGE) {
-              p = loadPage(e->xid, e->update.page);
-              writelock(p->rwlatch,0);
-            }
+            Page* p = loadPageForOperation(e->xid, e->update.page, e->update.funcID);
+            if(p) writelock(p->rwlatch,0);
 
             // Log a CLR for this entry
             lsn_t clr_lsn = stasis_log_write_clr(log, e);

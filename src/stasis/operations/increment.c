@@ -64,6 +64,7 @@ static int op_decrement(const LogEntry* e, Page* p) {
 stasis_operation_impl stasis_op_impl_increment() {
   stasis_operation_impl o = {
     OPERATION_INCREMENT,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_INCREMENT,
     OPERATION_DECREMENT,
     op_decrement

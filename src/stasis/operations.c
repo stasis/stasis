@@ -193,3 +193,6 @@ void stasis_operation_undo(const LogEntry * e, lsn_t effective_lsn, Page * p) {
     }
   }
 }
+pagetype_t stasis_operation_type(int op) {
+  return stasis_operation_table[op].page_type;
+}

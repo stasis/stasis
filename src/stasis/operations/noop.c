@@ -55,6 +55,7 @@ int noop(const LogEntry* e, Page* p) {
 stasis_operation_impl stasis_op_impl_noop() {
   stasis_operation_impl o = {
     OPERATION_NOOP,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP,
     OPERATION_NOOP,
     &noop

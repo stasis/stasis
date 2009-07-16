@@ -167,6 +167,7 @@ static pthread_mutex_t talloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 stasis_operation_impl stasis_op_impl_alloc() {
   stasis_operation_impl o = {
     OPERATION_ALLOC,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_ALLOC,
     OPERATION_DEALLOC,
     op_alloc
@@ -178,6 +179,7 @@ stasis_operation_impl stasis_op_impl_alloc() {
 stasis_operation_impl stasis_op_impl_dealloc() {
   stasis_operation_impl o = {
     OPERATION_DEALLOC,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_DEALLOC,
     OPERATION_REALLOC,
     op_dealloc
@@ -189,6 +191,7 @@ stasis_operation_impl stasis_op_impl_dealloc() {
 stasis_operation_impl stasis_op_impl_realloc() {
   stasis_operation_impl o = {
     OPERATION_REALLOC,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_REALLOC,
     OPERATION_NOOP,
     op_realloc

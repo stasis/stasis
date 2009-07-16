@@ -203,12 +203,14 @@ int main (int argc, char ** argv) {
   {
     stasis_operation_impl op_ins = {
       TREE_INSERT,
+      UNKNOWN_TYPE_PAGE,
       OPERATION_NOOP,
       TREE_REMOVE,
       op_tree_insert
     };
     stasis_operation_impl op_rem = {
       TREE_REMOVE,
+      UNKNOWN_TYPE_PAGE,
       OPERATION_NOOP,
       TREE_INSERT,
       op_tree_remove

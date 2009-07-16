@@ -133,6 +133,7 @@ compensated_function int TlinkedListInsert(int xid, recordid list, const byte * 
 stasis_operation_impl stasis_op_impl_linked_list_insert() {
   stasis_operation_impl o = { 
     OPERATION_LINKED_LIST_INSERT,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP, 
     OPERATION_LINKED_LIST_REMOVE,
     &op_linked_list_nta_insert
@@ -142,6 +143,7 @@ stasis_operation_impl stasis_op_impl_linked_list_insert() {
 stasis_operation_impl stasis_op_impl_linked_list_remove() {
   stasis_operation_impl o = { 
     OPERATION_LINKED_LIST_REMOVE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP, 
     OPERATION_LINKED_LIST_INSERT,
     &op_linked_list_nta_remove

@@ -2,7 +2,13 @@
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
 #include <assert.h>
-/** @todo should page implementations provide readLSN / writeLSN??? */
+
+// plan: slotted fsck on read / write.  Make it more thorough so that the other methods only check for record existence.
+//       intermediate ops assume that slotted.c is correctly implemented (ie: fsck passes iff page is OK, page always "stays" OK)
+//       stop calloing slotted fsck on each operation.  This should speed things up a *lot*.
+// benchmark page ops (real time) + hash table (user time)
+
+
 #include <stasis/truncation.h>
 
 /**

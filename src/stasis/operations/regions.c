@@ -483,6 +483,7 @@ pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocationManager) {
 stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
   stasis_operation_impl o = {
     OPERATION_ALLOC_BOUNDARY_TAG,
+    UNINITIALIZED_PAGE,
     OPERATION_ALLOC_BOUNDARY_TAG,
     OPERATION_NOOP,
     op_alloc_boundary_tag
@@ -493,6 +494,7 @@ stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
 stasis_operation_impl stasis_op_impl_region_alloc() {
   stasis_operation_impl o = {
     OPERATION_ALLOC_REGION,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP,
     OPERATION_ALLOC_REGION_INVERSE,
     noop
@@ -502,6 +504,7 @@ stasis_operation_impl stasis_op_impl_region_alloc() {
 stasis_operation_impl stasis_op_impl_region_alloc_inverse() {
   stasis_operation_impl o = {
     OPERATION_ALLOC_REGION_INVERSE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_ALLOC_REGION_INVERSE,
     OPERATION_INVALID,
     op_dealloc_region
@@ -511,6 +514,7 @@ stasis_operation_impl stasis_op_impl_region_alloc_inverse() {
 stasis_operation_impl stasis_op_impl_region_dealloc() {
   stasis_operation_impl o = {
     OPERATION_DEALLOC_REGION,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_NOOP,
     OPERATION_DEALLOC_REGION_INVERSE,
     noop
@@ -521,6 +525,7 @@ stasis_operation_impl stasis_op_impl_region_dealloc() {
 stasis_operation_impl stasis_op_impl_region_dealloc_inverse() {
   stasis_operation_impl o = {
     OPERATION_DEALLOC_REGION_INVERSE,
+    UNKNOWN_TYPE_PAGE,
     OPERATION_DEALLOC_REGION_INVERSE,
     OPERATION_INVALID,
     op_alloc_region

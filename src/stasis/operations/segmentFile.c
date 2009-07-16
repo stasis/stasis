@@ -129,6 +129,7 @@ static int op_segment_file_pwrite_inverse(const LogEntry* e, Page* p) {
 stasis_operation_impl stasis_op_impl_segment_file_pwrite() {
   static stasis_operation_impl o = {
     OPERATION_SEGMENT_FILE_PWRITE,
+    SEGMENT_PAGE,
     OPERATION_SEGMENT_FILE_PWRITE,
     OPERATION_SEGMENT_FILE_PWRITE_INVERSE,
     op_segment_file_pwrite
@@ -139,6 +140,7 @@ stasis_operation_impl stasis_op_impl_segment_file_pwrite() {
 stasis_operation_impl stasis_op_impl_segment_file_pwrite_inverse() {
   static stasis_operation_impl o = {
     OPERATION_SEGMENT_FILE_PWRITE_INVERSE,
+    SEGMENT_PAGE,
     OPERATION_SEGMENT_FILE_PWRITE_INVERSE,
     OPERATION_SEGMENT_FILE_PWRITE,
     op_segment_file_pwrite_inverse

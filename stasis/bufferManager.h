@@ -97,6 +97,8 @@ Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type);
 
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
+Page * loadPageForOperation(int xid, pageid_t pageid, int op);
+
 Page * getCachedPage(int xid, const pageid_t pageid);
 
 /**
@@ -110,7 +112,7 @@ extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 
     @return a pointer to the page, or NULL if the page is not in cache, or is being read from disk.
  */
-extern Page * (*getCachedPageImpl)(int xid, pageid_t pageid);
+extern Page * (*getCachedPageImpl)(int xid, const pageid_t pageid);
 /**
    loadPage aquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
