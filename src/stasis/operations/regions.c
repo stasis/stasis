@@ -23,7 +23,7 @@ static void TdeallocBoundaryTag(int xid, pageid_t page);
     top action's logical undo grabs the necessary latches.
 */
 static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   recordid rid = {p->id, 0, sizeof(boundary_tag)};
   assert(e->update.arg_size == sizeof(boundary_tag));
   p->pageType = BOUNDARY_TAG_PAGE;

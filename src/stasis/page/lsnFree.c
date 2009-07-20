@@ -3,7 +3,7 @@
 #include <stasis/logger/logger2.h>
 
 void stasis_slotted_lsn_free_initialize_page(Page * p) {
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   p->pageType = SLOTTED_LSN_FREE_PAGE;
 }
 // XXX still not correct; need to have an "LSN_FREE" constant.
@@ -13,7 +13,7 @@ static void lsnFreeLoaded(Page * p) {
 static void lsnFreeFlushed(Page * p) { }
 
 page_impl slottedLsnFreeImpl() {
-  page_impl pi = slottedImpl();
+  page_impl pi = stasis_page_slotted_impl();
   pi.page_type = SLOTTED_LSN_FREE_PAGE;
   pi.pageLoaded = lsnFreeLoaded;
   pi.pageLoaded = lsnFreeFlushed;

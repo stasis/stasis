@@ -71,7 +71,7 @@ START_TEST(operation_physical_do_undo) {
   Page * p = loadPage(xid, pnum);
 
   writelock(p->rwlatch, 0);
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   rid = stasis_record_alloc_begin(xid, p, sizeof(int));
   stasis_record_alloc_done(xid, p, rid);
   unlock(p->rwlatch);

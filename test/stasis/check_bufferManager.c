@@ -47,7 +47,7 @@ void initializePages() {
 
     assert(p->id != -1);
     writelock(p->rwlatch,0);
-    stasis_slotted_initialize_page(p);
+    stasis_page_slotted_initialize_page(p);
     stasis_record_alloc_done(-1, p, rid);
     int * buf = (int*)stasis_record_write_begin(-1, p, rid);
     *buf = i;

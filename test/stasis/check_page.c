@@ -220,7 +220,7 @@ START_TEST(pageNoThreadTest)
   p = loadPage(-1, 0);
   writelock(p->rwlatch,0);
   memset(p->memAddr, 0, PAGE_SIZE);
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   unlock(p->rwlatch);
   worker_thread(p);
 
@@ -251,14 +251,14 @@ START_TEST(pageCheckMacros) {
 
   *stasis_page_lsn_ptr(&p) = lsn;
   *stasis_page_type_ptr(&p) = 10;
-  *freespace_ptr(&p) = 15;
-  *numslots_ptr(&p)  = 20;
-  *slot_ptr(&p, 0)   = 30;
-  *slot_ptr(&p, 1)   = 35;
-  *slot_ptr(&p, 40)   = 40;
-  *slot_length_ptr(&p, 0)   = 31;
-  *slot_length_ptr(&p, 1)   = 36;
-  *slot_length_ptr(&p, 40)   = 41;
+  *stasis_page_slotted_freespace_ptr(&p) = 15;
+  *stasis_page_slotted_numslots_ptr(&p)  = 20;
+  *stasis_page_slotted_slot_ptr(&p, 0)   = 30;
+  *stasis_page_slotted_slot_ptr(&p, 1)   = 35;
+  *stasis_page_slotted_slot_ptr(&p, 40)   = 40;
+  *stasis_page_slotted_slot_length_ptr(&p, 0)   = 31;
+  *stasis_page_slotted_slot_length_ptr(&p, 1)   = 36;
+  *stasis_page_slotted_slot_length_ptr(&p, 40)   = 41;
 
   *stasis_page_byte_ptr_from_start(&p, 0) = 50;
   *stasis_page_byte_ptr_from_start(&p, 1) = 51;
@@ -269,14 +269,14 @@ START_TEST(pageCheckMacros) {
   assert(*stasis_page_lsn_ptr(&p) == lsn);
   assert(*stasis_page_type_ptr(&p) == 10);
   //assert(end_of_usable_space_ptr(&p) == stasis_page_type_ptr(&p));
-  assert(*freespace_ptr(&p) == 15);
-  assert(*numslots_ptr(&p)  == 20);
-  assert(*slot_ptr(&p, 0) == 30);
-  assert(*slot_ptr(&p, 1) == 35);
-  assert(*slot_ptr(&p, 40) == 40);
-  assert(*slot_length_ptr(&p, 0) == 31);
-  assert(*slot_length_ptr(&p, 1) == 36);
-  assert(*slot_length_ptr(&p, 40) == 41);
+  assert(*stasis_page_slotted_freespace_ptr(&p) == 15);
+  assert(*stasis_page_slotted_numslots_ptr(&p)  == 20);
+  assert(*stasis_page_slotted_slot_ptr(&p, 0) == 30);
+  assert(*stasis_page_slotted_slot_ptr(&p, 1) == 35);
+  assert(*stasis_page_slotted_slot_ptr(&p, 40) == 40);
+  assert(*stasis_page_slotted_slot_length_ptr(&p, 0) == 31);
+  assert(*stasis_page_slotted_slot_length_ptr(&p, 1) == 36);
+  assert(*stasis_page_slotted_slot_length_ptr(&p, 40) == 41);
 
   assert(*stasis_page_byte_ptr_from_start(&p, 0) == 50);
   assert(*stasis_page_byte_ptr_from_start(&p, 1) == 51);
@@ -343,7 +343,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
   Page * p = loadPage(xid,pid);
   writelock(p->rwlatch,0);
   memset(p->memAddr, 0, PAGE_SIZE);
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
 
   checkPageIterators(xid,p,10);
 
@@ -386,7 +386,7 @@ START_TEST(pageNoThreadMultPageTest)
   *stasis_page_lsn_ptr(p) = p->LSN;
 
   writelock(p->rwlatch,0);
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   unlock(p->rwlatch);
   multiple_simultaneous_pages(p);
   // Normally, you would call pageWriteLSN() to update the LSN.  This
@@ -426,7 +426,7 @@ START_TEST(pageThreadTest) {
   Page * p = loadPage(-1, 2);
   writelock(p->rwlatch,0);
   memset(p->memAddr, 0, PAGE_SIZE);
-  stasis_slotted_initialize_page(p);
+  stasis_page_slotted_initialize_page(p);
   unlock(p->rwlatch);
   p->LSN = 0;
   *stasis_page_lsn_ptr(p) = p->LSN;

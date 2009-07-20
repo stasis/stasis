@@ -893,7 +893,7 @@ page_impl* stasis_page_impl_get(int id);
 	     Its contents will be overwritten.  It was probably
 	     returned by loadPage()
  */
-void stasis_slotted_initialize_page(Page * p);
+void stasis_page_slotted_initialize_page(Page * p);
 void stasis_slotted_lsn_free_initialize_page(Page * p);
 void stasis_fixed_initialize_page(Page * page, size_t size, int count);
 void stasis_indirect_initialize_page(Page * p, int height);

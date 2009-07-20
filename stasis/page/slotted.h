@@ -60,36 +60,21 @@ Slotted page layout:
 
 ************************************************************************/
 
-#define SLOTTED_PAGE_OVERHEAD_PER_RECORD (2 * sizeof(short))
-#define SLOTTED_PAGE_HEADER_OVERHEAD (3 * sizeof(short))
+static inline int16_t* stasis_page_slotted_freespace_ptr(Page * p) { return stasis_page_int16_ptr_from_end((p), 1); }
+static inline int16_t* stasis_page_slotted_numslots_ptr(Page * p) { return stasis_page_int16_ptr_from_end(p, 2); }
+static inline int16_t* stasis_page_slotted_freelist_ptr(Page * p) { return stasis_page_int16_ptr_from_end(p, 3); }
+static inline int16_t* stasis_page_slotted_slot_ptr(Page * p, slotid_t n) { return stasis_page_int16_ptr_from_end(p, (2*(n))+4); }
+static inline int16_t* stasis_page_slotted_slot_length_ptr(Page * p, slotid_t n) { return stasis_page_int16_ptr_from_end((p), (2*(n))+5); }
+static inline byte*    stasis_page_slotted_record_ptr(Page * p, slotid_t n) { return stasis_page_byte_ptr_from_start((p), *stasis_page_slotted_slot_ptr((p), (n))); }
 
-//#define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
-//#define SLOTTED_PAGE_SKIP_SANITY_CHECKS 1
+static inline const int16_t* stasis_page_slotted_freespace_cptr(const Page * p) { return stasis_page_slotted_freespace_ptr((Page*)p); }
+static inline const int16_t* stasis_page_slotted_numslots_cptr(const Page * p) { return stasis_page_slotted_numslots_ptr((Page*)p); }
+static inline const int16_t* stasis_page_slotted_freelist_cptr(const Page * p) { return stasis_page_slotted_freelist_ptr((Page*)p); }
+static inline const int16_t* stasis_page_slotted_slot_cptr(const Page * p, slotid_t n) { return stasis_page_slotted_slot_ptr((Page*)p, n); }
+static inline const int16_t* stasis_page_slotted_slot_length_cptr(const Page * p, slotid_t n) { return stasis_page_slotted_slot_length_ptr((Page*)p, n); }
+static inline const byte* stasis_page_slotted_record_cptr(const Page * p, slotid_t n) { return stasis_page_slotted_record_ptr((Page*)p, n); }
 
-#ifdef LONG_TEST
-#define SLOTTED_PAGE_CHECK_FOR_OVERLAP 1
-#endif
-
-/**
- @todo rename and rewrite slotted.h macros as static inline functions.
- */
-#define freespace_ptr(page)      stasis_page_int16_ptr_from_end((page), 1)
-#define numslots_ptr(page)       stasis_page_int16_ptr_from_end((page), 2)
-#define freelist_ptr(page)       stasis_page_int16_ptr_from_end((page), 3)
-#define slot_ptr(page, n)        stasis_page_int16_ptr_from_end((page), (2*(n))+4)
-#define slot_length_ptr(page, n) stasis_page_int16_ptr_from_end((page), (2*(n))+5)
-#define record_ptr(page, n)      stasis_page_byte_ptr_from_start((page), \
-								 *slot_ptr((page), (n)))
-
-#define freespace_cptr(page)      stasis_page_int16_cptr_from_end((page), 1)
-#define numslots_cptr(page)       stasis_page_int16_cptr_from_end((page), 2)
-#define freelist_cptr(page)       stasis_page_int16_cptr_from_end((page), 3)
-#define slot_cptr(page, n)        stasis_page_int16_cptr_from_end((page), (2*(n))+4)
-#define slot_length_cptr(page, n) stasis_page_int16_cptr_from_end((page), (2*(n))+5)
-#define record_cptr(page, n)      stasis_page_byte_cptr_from_start((page), \
-								   *slot_cptr((page), (n)))
-
-void slottedPageInit();
-void slottedPageDeinit();
-page_impl slottedImpl();
-page_impl boundaryTagImpl();
+void stasis_page_slotted_init();
+void stasis_page_slotted_deinit();
+page_impl stasis_page_slotted_impl();
+page_impl stasis_page_boundary_tag_impl();

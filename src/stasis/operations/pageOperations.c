@@ -206,7 +206,7 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
 
   switch(arg->slot) {
   case SLOTTED_PAGE:
-    stasis_slotted_initialize_page(p);
+    stasis_page_slotted_initialize_page(p);
     break;
   case FIXED_PAGE:
     stasis_fixed_initialize_page(p, arg->type,
