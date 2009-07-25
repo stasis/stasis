@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include <stasis/transactional.h>
+#include <stasis/page/slotted.h>
 
 int main(int argc, char* argv[]) {
   unlink("storefile.txt");
@@ -45,7 +46,20 @@ int main(int argc, char* argv[]) {
   int xid = Tbegin();
 
   pageid_t page = TpageAlloc(xid);
-  if(mode == 0) {
+  if(mode == -1) {
+    Page * p = loadPage(xid, page);
+    writelock(p->rwlatch, 0);
+    stasis_page_slotted_initialize_page(p);
+
+    recordid rid = stasis_record_alloc_begin(xid, p, sizeof(uint64_t));
+    stasis_record_alloc_done(xid, p, rid);
+    for(unsigned long long i = 0; i < count; i++) {
+      uint64_t val = i;
+      *((int*)stasis_page_slotted_record_ptr(p, rid.slot)) = val;
+    }
+    unlock(p->rwlatch);
+    releasePage(p);
+  } else if(mode == 0) {
     Page * p = loadPage(xid, page);
     writelock(p->rwlatch, 0);
     stasis_page_slotted_initialize_page(p);

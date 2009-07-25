@@ -528,7 +528,9 @@ static void slottedCleanup(Page *p) { }
 
 void stasis_page_slotted_init() {
 #ifdef SLOTTED_PAGE_CHECK_FOR_OVERLAP
+#ifdef SLOTTED_PAGE_OLD_CHECKS
   printf("slotted.c: Using expensive page sanity checking.\n");
+#endif
 #endif
 }
 
