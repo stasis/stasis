@@ -46,7 +46,7 @@ static inline void slottedFsck(const Page const * page) {
   const long slotListStart = (long)stasis_page_slotted_slot_length_ptr(&dummy, numslots-1);
   assert(slotListStart < PAGE_SIZE && slotListStart >= 0);
   assert(page_type == SLOTTED_PAGE ||
-	 page_type == BOUNDARY_TAG_PAGE ||
+         page_type == BOUNDARY_TAG_PAGE ||
          page_type == SLOTTED_LSN_FREE_PAGE);
   assert(numslots >= 0);
   assert(numslots * SLOTTED_PAGE_OVERHEAD_PER_RECORD < PAGE_SIZE);
@@ -80,10 +80,10 @@ static inline void slottedFsck(const Page const * page) {
     const short slot_offset = slot_offsets[i];
     if(slot_offset == INVALID_SLOT) {
       if(slot_length == INVALID_SLOT) {
-	assert(!foundEndOfList);
-	foundEndOfList = 1;
+        assert(!foundEndOfList);
+        foundEndOfList = 1;
       } else {
-	assert (slot_offsets[slot_length] == INVALID_SLOT);
+        assert (slot_offsets[slot_length] == INVALID_SLOT);
       }
     } else {
       assert(slot_offset + slot_length <= freespace);
@@ -130,8 +130,8 @@ static inline void slottedFsck(const Page const * page) {
       short slot_len = stasis_record_type_to_size(*stasis_page_slotted_slot_length_cptr(page, i));
 
       for(short j = 0; j < slot_len; j++) {
-	assert(image[slot_offset + j] == 0xFF);
-	image[slot_offset + j] = ci;
+        assert(image[slot_offset + j] == 0xFF);
+        image[slot_offset + j] = ci;
       }
     }
   }
@@ -242,141 +242,7 @@ static size_t slottedFreespaceForSlot(Page * page, int slot) {
   }
 }
 
-/**
-  Allocate data on a page after deciding which recordid to allocate,
-  and making sure there is enough freespace.
-
-  Allocation is complicated without locking.  Consider this situation:
-
-   (1) *numslot_ptr(page) is 10
-   (2) An aborting transcation calls really_do_ralloc(page) with rid.slot = 12
-   (3) *numslot_ptr(page) must be incremented to 12.  Now, what happens to 11?
-     - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
-   (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
-       be reused by aborting transactions...)
-
-  For now, we make sure that we don't alloc off a page that another active
-  transaction dealloced from.
-
-  @param page A pointer to the page.
-  @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
-*/
-static void really_do_ralloc(Page * page, recordid rid) {
-  assertlocked(page->rwlatch);
-
-  short freeSpace;
-
-  // Compact the page if we don't have enough room.
-  if(slottedFreespaceForSlot(page, rid.slot) < stasis_record_type_to_size(rid.size)) {
-    slottedCompact(page);
-
-    // Make sure we have enough enough free space for the new record
-    assert (slottedFreespaceForSlot(page, rid.slot) >= stasis_record_type_to_size(rid.size));
-  }
-
-  freeSpace = *stasis_page_slotted_freespace_ptr(page);
-
-  // Remove this entry from the freelist (if necessary) slottedCompact
-  // assumes that this does not change the order of items in the list.
-  // If it did, then slottedCompact could leaks slot id's (or worse!)
-  if(rid.slot < *stasis_page_slotted_numslots_ptr(page) && *stasis_page_slotted_slot_ptr(page,rid.slot) == INVALID_SLOT) {
-    short next = *stasis_page_slotted_freelist_ptr(page);
-    short last = INVALID_SLOT;
-    // special case:  is the slot physically before us the predecessor?
-    if(rid.slot > 0) {
-      if(*stasis_page_slotted_slot_length_ptr(page, rid.slot-1) == rid.slot && *stasis_page_slotted_slot_ptr(page, rid.slot-1) == INVALID_SLOT) {
-	next = rid.slot;
-	last = rid.slot-1;
-      }
-    }
-    while(next != INVALID_SLOT && next != rid.slot) {
-      last = next;
-      assert(next < *stasis_page_slotted_numslots_ptr(page));
-      short next_slot_ptr = *stasis_page_slotted_slot_ptr(page, next);
-      assert(next_slot_ptr == INVALID_SLOT);
-      next = *stasis_page_slotted_slot_length_ptr(page, next);
-    }
-    if(next == rid.slot) {
-      if(last == INVALID_SLOT) {
-	*stasis_page_slotted_freelist_ptr(page) = *stasis_page_slotted_slot_length_ptr(page, rid.slot);
-      } else {
-	*stasis_page_slotted_slot_length_ptr(page, last) = *stasis_page_slotted_slot_length_ptr(page, rid.slot);
-      }
-    }
-  }
-
-  // Insert any slots that come between the previous numslots_ptr()
-  // and the slot we're allocating onto the freelist.  In order to
-  // promote the reuse of free slot numbers, we go out of our way to make sure
-  // that we put them in the list in increasing order.  (Note:  slottedCompact's
-  // correctness depends on this behavior!)
-
-
-  if(rid.slot > *stasis_page_slotted_numslots_ptr(page)) {
-    short lastSlot;
-    short numSlots = *stasis_page_slotted_numslots_ptr(page);
-    if(*stasis_page_slotted_freelist_ptr(page) == INVALID_SLOT) {
-
-      *stasis_page_slotted_freelist_ptr(page) = numSlots;
-      lastSlot = numSlots;
-
-      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
-      // will set slot_length_ptr on next iteration.
-
-
-      (*stasis_page_slotted_numslots_ptr(page))++;
-    } else {
-      lastSlot = INVALID_SLOT;
-      short next = *stasis_page_slotted_freelist_ptr(page);
-      while(next != INVALID_SLOT) {
-	lastSlot = next;
-	next = *stasis_page_slotted_slot_length_ptr(page, lastSlot);
-	assert(lastSlot < *stasis_page_slotted_numslots_ptr(page));
-	assert(*stasis_page_slotted_slot_ptr(page, lastSlot) == INVALID_SLOT);
-      }
-      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
-
-    }
-
-    // lastSlot now contains the tail of the free list.  We can start adding slots to the list starting at *numslots_ptr.
-
-    while(*stasis_page_slotted_numslots_ptr(page) < rid.slot) {
-      *stasis_page_slotted_slot_length_ptr(page, lastSlot) = *stasis_page_slotted_numslots_ptr(page);
-      lastSlot = *stasis_page_slotted_numslots_ptr(page);
-      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
-      (*stasis_page_slotted_numslots_ptr(page))++;
-    }
-
-    // Terminate the end of the list.
-    assert(lastSlot < *stasis_page_slotted_numslots_ptr(page));
-    *stasis_page_slotted_slot_length_ptr(page, lastSlot) = INVALID_SLOT;
-
-  }
-
-  if(*stasis_page_slotted_numslots_ptr(page) == rid.slot) {
-    *stasis_page_slotted_numslots_ptr(page) = rid.slot+1;
-  }
-
-  assert(*stasis_page_slotted_numslots_ptr(page) > rid.slot);
-
-  DEBUG("Num slots %d\trid.slot %d\n", *stasis_page_slotted_numslots_ptr(page), rid.slot);
-
-  // Reserve space for this record and record the space's offset in
-  // the slot header.
-
-  assert(rid.slot < *stasis_page_slotted_numslots_ptr(page));
-  *stasis_page_slotted_freespace_ptr(page) = freeSpace + stasis_record_type_to_size(rid.size);
-  *stasis_page_slotted_slot_ptr(page, rid.slot)  = freeSpace;
-
-  *stasis_page_slotted_slot_length_ptr(page, rid.slot) = rid.size;
-
-}
-
-// --------------------------------------------------------------------------
-// PUBLIC API IS BELOW THIS LINE
-// --------------------------------------------------------------------------
-
-static inline void sanityCheck(Page * p, recordid rid) {
+static inline void slottedSanityCheck(Page * p, recordid rid) {
 #ifdef SLOTTED_PAGE_OLD_CHECKS
   assert(p->id == rid.page);
   assert(rid.size < BLOB_THRESHOLD_SIZE); // Caller deals with this now!
@@ -384,14 +250,18 @@ static inline void sanityCheck(Page * p, recordid rid) {
 #endif
 }
 
+// --------------------------------------------------------------------------
+// PUBLIC API IS BELOW THIS LINE
+// --------------------------------------------------------------------------
+
 static const byte* slottedRead (int xid, Page *p, recordid rid) {
-  sanityCheck(p, rid);
+  slottedSanityCheck(p, rid);
 
   return stasis_page_slotted_record_ptr(p, rid.slot);
 }
 
 static byte* slottedWrite(int xid, Page *p, recordid rid) {
-  sanityCheck(p, rid);
+  slottedSanityCheck(p, rid);
 
   return stasis_page_slotted_record_ptr(p, rid.slot);
 }
@@ -407,7 +277,7 @@ static int slottedGetType(int xid, Page *p, recordid rid) {
   return ret >= 0 ? NORMAL_SLOT : ret;
 }
 static void slottedSetType(int xid, Page *p, recordid rid, int type) {
-  sanityCheck(p, rid);
+  slottedSanityCheck(p, rid);
 
   int old_type = *stasis_page_slotted_slot_length_ptr(p, rid.slot);
   assert(rid.slot < *stasis_page_slotted_numslots_ptr(p));
@@ -436,7 +306,7 @@ static int slottedGetLength(int xid, Page *p, recordid rid) {
 }
 
 static recordid slottedNext(int xid, Page *p, recordid rid) {
-  sanityCheck(p, rid);
+  slottedSanityCheck(p, rid);
 
   short n = *stasis_page_slotted_numslots_ptr(p);
   rid.slot ++;
@@ -486,14 +356,139 @@ static recordid slottedPreRalloc(int xid, Page * p, int type) {
   return rid;
 }
 
-static void slottedPostRalloc(int xid, Page * p, recordid rid) {
-  sanityCheck(p, rid);
+/**
+  Allocate data on a page after deciding which recordid to allocate,
+  and making sure there is enough freespace.
 
-  really_do_ralloc(p, rid);
+  Allocation is complicated without locking.  Consider this situation:
+
+   (1) *numslot_ptr(page) is 10
+   (2) An aborting transcation calls really_do_ralloc(page) with rid.slot = 12
+   (3) *numslot_ptr(page) must be incremented to 12.  Now, what happens to 11?
+     - If 11 was also deleted by a transaction that could abort, we should lock it so that it won't be reused.
+   (4) This function adds it to the freelist to avoid leaking space.  (Therefore, Talloc() can return recordids that will
+       be reused by aborting transactions...)
+
+  For now, we make sure that we don't alloc off a page that another active
+  transaction dealloced from.
+
+  @param xid The transaction allocating the record.
+  @param page A pointer to the page.
+  @param rid Recordid with 'internal' size.  The size should have already been translated to a type if necessary.
+*/
+static void slottedPostRalloc(int xid, Page * page, recordid rid) {
+  slottedSanityCheck(page, rid);
+
+  short freeSpace;
+
+  // Compact the page if we don't have enough room.
+  if(slottedFreespaceForSlot(page, rid.slot) < stasis_record_type_to_size(rid.size)) {
+    slottedCompact(page);
+
+    // Make sure we have enough enough free space for the new record
+    assert (slottedFreespaceForSlot(page, rid.slot) >= stasis_record_type_to_size(rid.size));
+  }
+
+  freeSpace = *stasis_page_slotted_freespace_ptr(page);
+
+  // Remove this entry from the freelist (if necessary) slottedCompact
+  // assumes that this does not change the order of items in the list.
+  // If it did, then slottedCompact could leaks slot id's (or worse!)
+  if(rid.slot < *stasis_page_slotted_numslots_ptr(page) && *stasis_page_slotted_slot_ptr(page,rid.slot) == INVALID_SLOT) {
+    short next = *stasis_page_slotted_freelist_ptr(page);
+    short last = INVALID_SLOT;
+    // special case:  is the slot physically before us the predecessor?
+    if(rid.slot > 0) {
+      if(*stasis_page_slotted_slot_length_ptr(page, rid.slot-1) == rid.slot && *stasis_page_slotted_slot_ptr(page, rid.slot-1) == INVALID_SLOT) {
+    next = rid.slot;
+    last = rid.slot-1;
+      }
+    }
+    while(next != INVALID_SLOT && next != rid.slot) {
+      last = next;
+      assert(next < *stasis_page_slotted_numslots_ptr(page));
+      short next_slot_ptr = *stasis_page_slotted_slot_ptr(page, next);
+      assert(next_slot_ptr == INVALID_SLOT);
+      next = *stasis_page_slotted_slot_length_ptr(page, next);
+    }
+    if(next == rid.slot) {
+      if(last == INVALID_SLOT) {
+    *stasis_page_slotted_freelist_ptr(page) = *stasis_page_slotted_slot_length_ptr(page, rid.slot);
+      } else {
+    *stasis_page_slotted_slot_length_ptr(page, last) = *stasis_page_slotted_slot_length_ptr(page, rid.slot);
+      }
+    }
+  }
+
+  // Insert any slots that come between the previous numslots_ptr()
+  // and the slot we're allocating onto the freelist.  In order to
+  // promote the reuse of free slot numbers, we go out of our way to make sure
+  // that we put them in the list in increasing order.  (Note:  slottedCompact's
+  // correctness depends on this behavior!)
+
+
+  if(rid.slot > *stasis_page_slotted_numslots_ptr(page)) {
+    short lastSlot;
+    short numSlots = *stasis_page_slotted_numslots_ptr(page);
+    if(*stasis_page_slotted_freelist_ptr(page) == INVALID_SLOT) {
+
+      *stasis_page_slotted_freelist_ptr(page) = numSlots;
+      lastSlot = numSlots;
+
+      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
+      // will set slot_length_ptr on next iteration.
+
+
+      (*stasis_page_slotted_numslots_ptr(page))++;
+    } else {
+      lastSlot = INVALID_SLOT;
+      short next = *stasis_page_slotted_freelist_ptr(page);
+      while(next != INVALID_SLOT) {
+    lastSlot = next;
+    next = *stasis_page_slotted_slot_length_ptr(page, lastSlot);
+    assert(lastSlot < *stasis_page_slotted_numslots_ptr(page));
+    assert(*stasis_page_slotted_slot_ptr(page, lastSlot) == INVALID_SLOT);
+      }
+      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
+
+    }
+
+    // lastSlot now contains the tail of the free list.  We can start adding slots to the list starting at *numslots_ptr.
+
+    while(*stasis_page_slotted_numslots_ptr(page) < rid.slot) {
+      *stasis_page_slotted_slot_length_ptr(page, lastSlot) = *stasis_page_slotted_numslots_ptr(page);
+      lastSlot = *stasis_page_slotted_numslots_ptr(page);
+      *stasis_page_slotted_slot_ptr(page, lastSlot) = INVALID_SLOT;
+      (*stasis_page_slotted_numslots_ptr(page))++;
+    }
+
+    // Terminate the end of the list.
+    assert(lastSlot < *stasis_page_slotted_numslots_ptr(page));
+    *stasis_page_slotted_slot_length_ptr(page, lastSlot) = INVALID_SLOT;
+
+  }
+
+  if(*stasis_page_slotted_numslots_ptr(page) == rid.slot) {
+    *stasis_page_slotted_numslots_ptr(page) = rid.slot+1;
+  }
+
+  assert(*stasis_page_slotted_numslots_ptr(page) > rid.slot);
+
+  DEBUG("Num slots %d\trid.slot %d\n", *stasis_page_slotted_numslots_ptr(page), rid.slot);
+
+  // Reserve space for this record and record the space's offset in
+  // the slot header.
+
+  assert(rid.slot < *stasis_page_slotted_numslots_ptr(page));
+  *stasis_page_slotted_freespace_ptr(page) = freeSpace + stasis_record_type_to_size(rid.size);
+  *stasis_page_slotted_slot_ptr(page, rid.slot)  = freeSpace;
+
+  *stasis_page_slotted_slot_length_ptr(page, rid.slot) = rid.size;
+
 }
 
 static void slottedFree(int xid, Page * p, recordid rid) {
-  sanityCheck(p, rid);
+  slottedSanityCheck(p, rid);
 
   if(*stasis_page_slotted_freespace_ptr(p) == *stasis_page_slotted_slot_ptr(p, rid.slot) + stasis_record_type_to_size(rid.size)) {
     (*stasis_page_slotted_freespace_ptr(p)) -= stasis_record_type_to_size(rid.size);
