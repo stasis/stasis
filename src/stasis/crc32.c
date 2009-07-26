@@ -1,7 +1,5 @@
 // Calculate a CRC 32 checksum.
 #include <stasis/crc32.h>  /*Added 10-6-04 */
-#include <stdlib.h>
-#include <stdio.h>
 
 // LAST MODIFIED:[7-28-93]
 

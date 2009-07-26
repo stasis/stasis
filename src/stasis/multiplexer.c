@@ -1,19 +1,18 @@
 #include <stasis/multiplexer.h>
 #include <stasis/crc32.h>
-#include <stdlib.h>
 #include <stasis/operations/linearHashNTA.h>
 
 #include <stasis/logger/logMemory.h>
 
-lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it, 
+lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
 					    void (*multiplexer)(byte * key,
-							      size_t keySize, 
-							      byte * value, 
-							      size_t valueSize, 
+							      size_t keySize,
+							      byte * value,
+							      size_t valueSize,
 							      byte ** multiplexKey,
 							      size_t * multiplexKeySize),
 					    /*		    lladdConsumer_t * getConsumer(struct lladdFifoPool_t* fifoPool,
-									  byte* multiplexKey, 
+									  byte* multiplexKey,
 									  size_t multiplexKeySize), */
 					    lladdFifoPool_t * fifoPool) {
   lladdMultiplexer_t * ret = malloc(sizeof(lladdMultiplexer_t));
@@ -37,14 +36,14 @@ int lladdMultiplexer_join(lladdMultiplexer_t * multiplexer) {
   return pthread_join(multiplexer->worker,NULL);
 }
 
-void * lladdMultiplexer_flush(lladdMultiplexer_t * m) { 
+void * lladdMultiplexer_flush(lladdMultiplexer_t * m) {
   //  lladdMultiplexer_t * m = arg;
   lladdConsumer_t * consumer;
 
   while(Titerator_tryNext(m->xid, m->it)) {
     byte * mkey, * key, * value;
     size_t mkeySize, keySize, valueSize;
-    
+
     keySize   = Titerator_key  (m->xid, m->it, &key);
     valueSize = Titerator_value(m->xid, m->it, &value);
 
@@ -56,12 +55,12 @@ void * lladdMultiplexer_flush(lladdMultiplexer_t * m) {
     Titerator_tupleDone(m->xid, m->it);
     lladdFifoPool_markDirty(m->xid, m->fifoPool, fifo);
   }
-  
+
   // iterate over pblhash, closing consumers.
 
   /*  Titerator_close(m->xid, m->it);
 
-  // @todo Does this belong in its own function in fifo.c? 
+  // @todo Does this belong in its own function in fifo.c?
 
   lladdFifoPool_t * pool = m->fifoPool;
   int i;
@@ -77,14 +76,14 @@ void * lladdMultiplexer_flush(lladdMultiplexer_t * m) {
 }
 
 
-void * multiplexer_worker(void * arg) { 
+void * multiplexer_worker(void * arg) {
   lladdMultiplexer_t * m = arg;
   lladdConsumer_t * consumer;
 
   while(Titerator_next(m->xid, m->it)) {
     byte * mkey, * key, * value;
     size_t mkeySize, keySize, valueSize;
-    
+
     keySize   = Titerator_key  (m->xid, m->it, &key);
     valueSize = Titerator_value(m->xid, m->it, &value);
 
@@ -96,7 +95,7 @@ void * multiplexer_worker(void * arg) {
     Titerator_tupleDone(m->xid, m->it);
     lladdFifoPool_markDirty(m->xid, m->fifoPool, fifo);
   }
-  
+
   // iterate over pblhash, closing consumers.
 
   Titerator_close(m->xid, m->it);
@@ -122,9 +121,9 @@ void * multiplexer_worker(void * arg) {
 
 */
 void multiplexHashLogByKey(byte * key,
-			   size_t keySize, 
-			   byte * value, 
-			   size_t valueSize, 
+			   size_t keySize,
+			   byte * value,
+			   size_t valueSize,
 			   byte ** multiplexKey,
 			   size_t * multiplexKeySize) {
   // We don't care what the key is.  It's probably an LSN.
@@ -149,7 +148,7 @@ void multiplexHashLogByKey(byte * key,
     break;
   case OPERATION_LINEAR_HASH_REMOVE:
     {
-      linearHash_insert_arg * arg = (linearHash_insert_arg*)updateArgs;  // this *is* correct.  Don't ask.... 
+      linearHash_insert_arg * arg = (linearHash_insert_arg*)updateArgs;  // this *is* correct.  Don't ask....
       *multiplexKey = (byte*) (arg + 1);
       *multiplexKeySize = arg->keySize;
     }

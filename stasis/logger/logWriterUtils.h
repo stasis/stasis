@@ -1,11 +1,12 @@
-/** 
-    @file 
-	
-    A few io wrapper functions to simplify file I/O code in LLADD. 
+/**
+    @file
+
+    A few io wrapper functions to simplify file I/O code in LLADD.
 
 */
 
 #include <stasis/common.h>
+#include <stdio.h>
 
 BEGIN_C_DECLS
 

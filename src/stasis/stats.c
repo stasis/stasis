@@ -3,6 +3,7 @@
 #include <stasis/latches.h>
 
 #include <math.h>
+#include <stdio.h>
 
 void acquired_lock(profile_tuple * tup, long spin_count) {
   tup->sum_spin += spin_count;
@@ -33,9 +34,9 @@ void print_profile_tuple(profile_tuple * tup) {
     double std_spin = sqrt((((double)tup->sum_spin2) / ((double)tup->count)) - (mean_spin * mean_spin));
     double mean_hold = ((double)tup->sum_hold)/ ((double)tup->count);
     double std_hold = sqrt((((double)tup->sum_hold2) / ((double)tup->count)) - (mean_hold * mean_hold));
-    
-    printf("{count=%ld spin[%1.4lf %1.4lf %0.0lf] held[%1.4lf %1.4lf %0.0lf]us}", tup->count, 
-	   mean_spin, std_spin, tup->max_spin, 
+
+    printf("{count=%ld spin[%1.4lf %1.4lf %0.0lf] held[%1.4lf %1.4lf %0.0lf]us}", tup->count,
+	   mean_spin, std_spin, tup->max_spin,
 	   mean_hold, std_hold, tup->max_hold);
   } else {
     printf("{count=0}");

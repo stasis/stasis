@@ -1,9 +1,6 @@
 #include <stasis/transactional.h>
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
 
 typedef struct {
   short nextEntry;

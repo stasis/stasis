@@ -15,21 +15,10 @@
  *                Found the code at this url:
  *                http://www.cs.nmsu.edu/~jcook/Tools/pthreads/rw.c
  */
+#include <stasis/common.h>
 
-#include <stdlib.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <unistd.h>
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
-
-#ifdef __cplusplus
-#  define BEGIN_C_DECLS extern "C" {
-#  define END_C_DECLS   }
-#else /* !__cplusplus */
-#  define BEGIN_C_DECLS
-#  define END_C_DECLS
-#endif /* __cplusplus */
 
 BEGIN_C_DECLS
 

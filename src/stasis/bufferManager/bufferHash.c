@@ -1,5 +1,3 @@
-#include <pthread.h>
-#include <config.h>
 #include <stasis/bufferManager/bufferHash.h>
 
 #include <stasis/bufferPool.h>
@@ -11,7 +9,9 @@
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferManager.h>
 #include <stasis/page.h>
+
 #include <assert.h>
+#include <stdio.h>
 
 //#define LATCH_SANITY_CHECKING
 

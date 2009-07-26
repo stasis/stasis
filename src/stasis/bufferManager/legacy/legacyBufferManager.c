@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include <stasis/common.h>
 
 #include <stasis/bufferManager.h>
@@ -11,6 +9,8 @@
 #include <stasis/page.h>
 
 #include <stasis/lhtable.h>
+
+#include <stdio.h>
 
 static struct LH_ENTRY(table) *activePages; /* page lookup */
 static pthread_mutex_t loadPagePtr_mutex;

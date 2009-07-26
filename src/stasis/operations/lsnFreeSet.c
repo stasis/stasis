@@ -1,7 +1,9 @@
 #include <stasis/operations.h>
 #include <stasis/page.h>
 #include <stasis/logger/reorderingHandle.h>
-#include <string.h>
+
+#include <stdio.h>
+
 static int op_lsn_free_set(const LogEntry *e, Page *p) {
   if(p->pageType != SLOTTED_LSN_FREE_PAGE) {  abort() ; }
   assert(e->update.arg_size >= (sizeof(pageoff_t) * 2));

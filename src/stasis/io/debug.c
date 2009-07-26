@@ -1,6 +1,5 @@
 #include <stasis/io/handle.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 /** @file
 

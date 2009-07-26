@@ -41,15 +41,6 @@ terms specified in this license.
 ---*/
 
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <assert.h>
-
 #include <config.h>
 #include <stasis/common.h>
 
@@ -59,6 +50,10 @@ terms specified in this license.
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/logWriterUtils.h>
 #include <stasis/logger/logHandle.h>
+
+#include <assert.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 /**
  * @file

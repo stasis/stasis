@@ -1,7 +1,4 @@
-#include <stdlib.h> 
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
+#include <stasis/common.h>
 #include <stasis/ringbuffer.h>
 
 //#define TRACK_OFFSETS
@@ -50,7 +47,7 @@ ringBufferLog_t * openLogRingBuffer(size_t size, lsn_t initialOffset) {
   ret->size = size;
   ret->start = initialOffset % size;
   ret->end   = initialOffset % size;
-  
+
 #ifdef TRACK_OFFSETS
   ret->offset= initialOffset / size;
 #endif
@@ -61,14 +58,14 @@ void closeLogRingBuffer(ringBufferLog_t * log) {
   free(log->buf);
   free(log);
 }
-/** 
+/**
     This function copies size bytes from the ringbuffer at offset
     'offset'.  size must be less than log->size.
-    
+
     It probably also should lie within the boundaries defined by start
     and end, but this is optional.
 */
-static void memcpyFromRingBuffer(byte * dest, ringBufferLog_t * log, lsn_t lsn, size_t size) { 
+static void memcpyFromRingBuffer(byte * dest, ringBufferLog_t * log, lsn_t lsn, size_t size) {
   lsn_t offset = lsn_to_offset(log, lsn);
   if(offset + size < log->size) {
     memcpy(dest, &(log->buf[offset]), size);
@@ -111,7 +108,7 @@ int ringBufferAppend(ringBufferLog_t * log, byte * dat, size_t size) {
   log->end += size; // lsn_to_offset(log, log->end + size);
 
   return 0;
-  
+
 }
 
 lsn_t ringBufferAppendPosition(ringBufferLog_t * log) {
@@ -142,7 +139,7 @@ static int stasis_ringbuffer_truncate(ringBufferLog_t * log, lsn_t lsn) {
 #ifdef TRACK_OFFSETS
   lsn_t newStart = lsn_to_offset(log, lsn);
 
-  if(newStart < lsn_to_offset(log, log->start)) {  // buffer wrapped. 
+  if(newStart < lsn_to_offset(log, log->start)) {  // buffer wrapped.
     log->offset += log->size;
   }
 #endif

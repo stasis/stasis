@@ -1,7 +1,5 @@
 #include <stasis/operations.h>
 #include <stasis/hash.h>
-#include <limits.h>
-#include <assert.h>
 #include <stasis/latches.h>
 #include <stasis/page.h>
 
@@ -20,10 +18,9 @@
 #define headerHashBits (headerRidB->page)
 #define headerNextSplit (headerRidB->slot)
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include <pbl/pbl.h>
+
+#include <assert.h>
 /**
   next.size == 0 implies empty bucket
   next.size == -1 implies end of list

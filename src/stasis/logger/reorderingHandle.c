@@ -1,6 +1,7 @@
 #include <stasis/transactional.h>
 #include <stasis/logger/reorderingHandle.h>
-#include <string.h>
+
+#include <stdio.h>
 
 long stasis_log_reordering_usleep_after_flush = 0;
 

@@ -1,12 +1,11 @@
+#include <stasis/common.h>
 #include <stasis/transactional.h>
-#include <stdlib.h>
-#include <stdio.h>
-typedef struct { 
+typedef struct {
   byte * keyArray;
   byte * valueArray;
   unsigned int element;
-  unsigned int keySize; 
-  unsigned int valueSize; 
+  unsigned int keySize;
+  unsigned int valueSize;
   unsigned int elementCount;
 } array_iterator_t;
 
@@ -55,14 +54,14 @@ int  arrayIterator_value(int xid, void * impl, byte ** value) {
 }
 
 
-typedef struct { 
+typedef struct {
   byte * array;
   int element;
-  int elementSize; 
+  int elementSize;
   int elementCount;
 } pointer_array_iterator_t;
 
 
 /*lladdIterator_t * ptrArray_iterator(byte * array, int elementCount) {
-  
+
 }*/

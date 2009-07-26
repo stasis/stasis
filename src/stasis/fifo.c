@@ -1,14 +1,11 @@
 #include <stasis/fifo.h>
 #include <stasis/crc32.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stasis/logger/logMemory.h>
 
-#include <string.h>
 #include <assert.h>
-
-/** 
-    Obtain a member of a fifoPool based on the value of multiplexKey.  Use CRC32 to assign the key to a consumer. 
+#include <stdio.h>
+/**
+    Obtain a member of a fifoPool based on the value of multiplexKey.  Use CRC32 to assign the key to a consumer.
 */
 lladdFifo_t * lladdFifoPool_getFifoCRC32( lladdFifoPool_t * pool, byte * multiplexKey, size_t multiplexKeySize) {
   int memberId =  stasis_crc32(multiplexKey, multiplexKeySize, (unsigned int)-1) % pool->fifoCount;
@@ -28,7 +25,7 @@ void lladdFifoPool_markDirty(int xid, lladdFifoPool_t * pool, lladdFifo_t * fifo
    consumerCount is the number of consumers in the pool.
    @todo this function should be generalized to other consumer implementations.
 */
-lladdFifoPool_t * lladdFifoPool_ringBufferInit (int consumerCount, int bufferSize, 
+lladdFifoPool_t * lladdFifoPool_ringBufferInit (int consumerCount, int bufferSize,
 					   lladdFifoPool_getFifo_t * getFifo, lladdFifo_t * dirtyPoolFifo) {
   lladdFifoPool_t * pool = malloc(sizeof(lladdFifoPool_t));
 
@@ -44,7 +41,7 @@ lladdFifoPool_t * lladdFifoPool_ringBufferInit (int consumerCount, int bufferSiz
   return pool;
 }
 
-typedef struct { 
+typedef struct {
   int maxPtrs;
   int outPtrs;
   pthread_mutex_t mutex;
@@ -58,7 +55,7 @@ typedef struct pointerFifoEntry {
   int valSize;
 } pointerFifoEntry;
 
-typedef struct { 
+typedef struct {
   pointerFifoEntry * first;
   pointerFifoEntry * last;
   pointerFifoEntry * current;
@@ -104,13 +101,13 @@ int lladdFifoPool_iterator_next(int xid, void * it) {
 }
 int lladdFifoPool_iterator_tryNext(int xid, void * it) {
   pointerFifoImpl * impl = (pointerFifoImpl *) it;
-  
+
   pthread_mutex_lock(&(impl->mutex));
 
   if(impl->last == NULL) {
     pthread_mutex_unlock(&(impl->mutex));
     return 0;
-  } else { 
+  } else {
     doNext(xid, impl);
   }
 
@@ -152,10 +149,10 @@ void lladdFifoPool_iterator_close(int xid, void * it) {
   pthread_mutex_lock(&(impl->mutex));
   assert(impl->eof);
   assert((!impl->first) && (!impl->last));
-  if(firstWarn) { 
+  if(firstWarn) {
     printf("Leaking iterators in lladdFifoPool_iterator_close\n");
     firstWarn = 0;
-  } 
+  }
   pthread_mutex_unlock(&(impl->mutex));
 }
 
@@ -184,12 +181,12 @@ int lladdFifoPool_consumer_push(int xid, void * it, byte * key, size_t keySize, 
   memcpy(((byte*)(entry+1))+keySize, val, valSize);
   entry->keySize = keySize;
   entry->valSize = valSize;
-  
+
   pthread_mutex_lock(&(impl->mutex));
-  
+
   entry->next = impl->first;
-  if(impl->last == NULL) { 
-    impl->last = entry; 
+  if(impl->last == NULL) {
+    impl->last = entry;
     assert(!impl->first);
   } else {
     assert(impl->first);
@@ -201,14 +198,14 @@ int lladdFifoPool_consumer_push(int xid, void * it, byte * key, size_t keySize, 
   pthread_cond_broadcast(&(impl->readOK));
   pthread_mutex_unlock(&(impl->mutex));
 
-  
+
   return 0;
 }
 
 
-lladdFifoPool_t * lladdFifoPool_pointerPoolInit (int consumerCount, int pointerCount, 
-						 lladdFifoPool_getFifo_t * getFifo, lladdFifo_t * dirtyPoolFifo) { 
-  
+lladdFifoPool_t * lladdFifoPool_pointerPoolInit (int consumerCount, int pointerCount,
+						 lladdFifoPool_getFifo_t * getFifo, lladdFifo_t * dirtyPoolFifo) {
+
   lladdFifoPool_t * pool = malloc(sizeof(lladdFifoPool_t));
 
   pool->pool          = malloc(sizeof(lladdFifo_t*) * consumerCount);
@@ -226,7 +223,7 @@ lladdFifoPool_t * lladdFifoPool_pointerPoolInit (int consumerCount, int pointerC
     pool->pool[i]->consumer = malloc(sizeof(lladdConsumer_t));
     pool->pool[i]->iterator->type = POINTER_ITERATOR;
     pool->pool[i]->consumer->type = POINTER_CONSUMER;
-    pointerFifoImpl * impl = 
+    pointerFifoImpl * impl =
       (pointerFifoImpl*) (pool->pool[i]->consumer->impl = pool->pool[i]->iterator->impl = malloc(sizeof(pointerFifoImpl)));
     impl->first = NULL;
     impl->last  = NULL;

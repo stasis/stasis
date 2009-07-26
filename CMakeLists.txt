@@ -56,6 +56,21 @@ if(NOT HAVE_FUSE)
   message(STATUS "fuse not found; sample application 'stasis_fuse' will not be built")
 endif(NOT HAVE_FUSE)
 
+
+INCLUDE(CheckFunctionExists)
+INCLUDE(CheckCSourceCompiles)
+CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
+CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
+CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+int main(int argc, char * argv[]) {
+ argc = O_DIRECT;
+}
+" HAVE_O_DIRECT) 
+
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)
   TARGET_LINK_LIBRARIES(${NAME} ${COMMON_LIBRARIES})
@@ -75,7 +90,8 @@ ENDMACRO(CREATE_EXECUTABLE)
 
 # Output the config.h file
 #CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
+		    ${CMAKE_CURRENT_SOURCE_DIR}
 		    ${CMAKE_CURRENT_SOURCE_DIR}/src
 		    /usr/include)
 # set linker path for this and all subdirs
@@ -95,3 +111,5 @@ INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/stasis
         FILES_MATCHING PATTERN "*.h"
         PATTERN ".svn" EXCLUDE
         PATTERN ".deps" EXCLUDE)
+
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)

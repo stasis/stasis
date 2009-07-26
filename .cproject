@@ -26,6 +26,7 @@
 <option id="gnu.c.compiler.option.include.paths.2049135479" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 <listOptionValue builtIn="false" value="&quot;${workspace_loc:/stasis/src/}&quot;"/>
 <listOptionValue builtIn="false" value="&quot;${workspace_loc:/stasis/}&quot;"/>
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stasis/build/}&quot;"/>
 </option>
 <inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1962414466" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 </tool>

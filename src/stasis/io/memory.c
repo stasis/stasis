@@ -1,8 +1,4 @@
 #include <stasis/io/handle.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <errno.h>
 /** @file */
 
 typedef struct mem_impl {
@@ -25,25 +21,25 @@ static int mem_close(stasis_handle_t * h) {
 static lsn_t mem_start_position(stasis_handle_t *h) {
   lsn_t ret;
   mem_impl* impl = (mem_impl*)(h->impl);
-  
+
   pthread_mutex_lock(&impl->mut);
   ret = impl->start_pos;
   pthread_mutex_unlock(&impl->mut);
 
   return ret;
 }
-static lsn_t mem_end_position(stasis_handle_t *h) { 
+static lsn_t mem_end_position(stasis_handle_t *h) {
   lsn_t ret;
   mem_impl* impl = (mem_impl*)(h->impl);
-  
+
   pthread_mutex_lock(&impl->mut);
   ret = impl->end_pos;
   pthread_mutex_unlock(&impl->mut);
 
   return ret;
 }
-static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h, 
-						lsn_t off, lsn_t len) { 
+static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
+						lsn_t off, lsn_t len) {
   mem_impl* impl = (mem_impl*)(h->impl);
 
   stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
@@ -53,13 +49,13 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
 
   int error = 0;
 
-  if(impl->start_pos > off) { 
+  if(impl->start_pos > off) {
     error = EDOM;
-  } else if(impl->end_pos > off+len) { 
+  } else if(impl->end_pos > off+len) {
     // Just need to return buffer; h's state is unchanged.
-  } else { 
+  } else {
     byte * newbuf;
-    if(off+len-impl->start_pos) { 
+    if(off+len-impl->start_pos) {
       newbuf = realloc(impl->buf, off+len - impl->start_pos);
     } else {
       free(impl->buf);
@@ -68,19 +64,19 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
     if(newbuf) {
       impl->buf = newbuf;
       impl->end_pos = off+len;
-    } else { 
+    } else {
       error = ENOMEM;
     }
   }
 
-  if(error) { 
+  if(error) {
     ret->h = h;
     ret->off = 0;
     ret->buf = 0;
     ret->len = 0;
     ret->impl = 0;
     ret->error = error;
-  } else { 
+  } else {
     ret->h = h;
     ret->off = off;
     ret->buf = &(impl->buf[off-impl->start_pos]);
@@ -92,7 +88,7 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
   return ret;
 }
 
-static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h, 
+static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
 						 lsn_t len) {
   mem_impl * impl = (mem_impl*)(h->impl);
 
@@ -108,19 +104,19 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
   if(newlen == 0) {
     free(impl->buf);
     newbuf = malloc(0);
-  } else { 
+  } else {
     newbuf = realloc(impl->buf, impl->end_pos - impl->start_pos);
   }
-  if(newbuf) { 
+  if(newbuf) {
     impl->buf = newbuf;
-  
+
     ret->h = h;
     ret->off = off;
     ret->buf = &(impl->buf[off-impl->start_pos]);
     ret->len = len;
     ret->impl = 0;
     ret->error = 0;
-  } else { 
+  } else {
     // if we requested a zero length buffer, this is OK.
     ret->h = h;
     ret->off = 0;
@@ -131,7 +127,7 @@ static stasis_write_buffer_t * mem_append_buffer(stasis_handle_t * h,
   }
   return ret;
 }
-static int mem_release_write_buffer(stasis_write_buffer_t * w) { 
+static int mem_release_write_buffer(stasis_write_buffer_t * w) {
   mem_impl * impl = (mem_impl*)(w->h->impl);
   pthread_mutex_unlock(&(impl->mut));
   free(w);
@@ -139,14 +135,14 @@ static int mem_release_write_buffer(stasis_write_buffer_t * w) {
 }
 
 static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
-					      lsn_t off, lsn_t len) { 
+					      lsn_t off, lsn_t len) {
   mem_impl * impl = (mem_impl*)(h->impl);
   pthread_mutex_lock(&(impl->mut));
-  
+
   stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
   if(!ret) { return NULL; }
 
-  if(off < impl->start_pos || off + len > impl->end_pos) { 
+  if(off < impl->start_pos || off + len > impl->end_pos) {
     ret->h = h;
     ret->buf = 0;
     ret->len = 0;
@@ -163,34 +159,34 @@ static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
   }
   return ret;
 }
-static int mem_release_read_buffer(stasis_read_buffer_t * r) { 
+static int mem_release_read_buffer(stasis_read_buffer_t * r) {
   mem_impl * impl = (mem_impl*)(r->h->impl);
   pthread_mutex_unlock(&(impl->mut));
   free(r);
   return 0;
 }
 
-static int mem_write(stasis_handle_t * h, lsn_t off, 
-		     const byte * dat, lsn_t len) { 
+static int mem_write(stasis_handle_t * h, lsn_t off,
+		     const byte * dat, lsn_t len) {
   // Overlapping writes aren't atomic; no latch needed.
   stasis_write_buffer_t * w = mem_write_buffer(h, off, len);
   int ret;
-  if(w->error) { 
+  if(w->error) {
     ret = w->error;
-  } else { 
+  } else {
     memcpy(w->buf, dat, len);
     ret = 0;
-  } 
+  }
   mem_release_write_buffer(w);
   return ret;
 }
 
-static int mem_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len) { 
+static int mem_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len) {
   stasis_write_buffer_t * w = mem_append_buffer(h, len);
   int ret;
-  if(w->error) { 
+  if(w->error) {
     ret = w->error;
-  } else { 
+  } else {
     memcpy(w->buf, dat, len);
     ret = 0;
   }
@@ -199,16 +195,16 @@ static int mem_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t 
   return ret;
 }
 
-static int mem_read(stasis_handle_t * h, 
-		    lsn_t off, byte * buf, lsn_t len) { 
+static int mem_read(stasis_handle_t * h,
+		    lsn_t off, byte * buf, lsn_t len) {
   stasis_read_buffer_t * r = mem_read_buffer(h, off, len);
   int ret;
-  if(r->error) { 
+  if(r->error) {
     ret = r->error;
-  } else { 
+  } else {
     memcpy(buf, r->buf, len);
     ret = 0;
-  } 
+  }
   mem_release_read_buffer(r);
   return ret;
 }
@@ -218,20 +214,20 @@ static int mem_force(stasis_handle_t *h) {
 static int mem_force_range(stasis_handle_t *h,lsn_t start, lsn_t stop) {
   return 0;
 }
-static int mem_truncate_start(stasis_handle_t * h, lsn_t new_start) { 
+static int mem_truncate_start(stasis_handle_t * h, lsn_t new_start) {
   mem_impl* impl = (mem_impl*) h->impl;
   pthread_mutex_lock(&(impl->mut));
-  if(new_start < impl->start_pos) { 
+  if(new_start < impl->start_pos) {
     pthread_mutex_unlock(&impl->mut);
     return 0;
-  } 
-  if(new_start > impl->end_pos) { 
+  }
+  if(new_start > impl->end_pos) {
     pthread_mutex_unlock(&impl->mut);
     return EDOM;
   }
 
   byte * new_buf = malloc(impl->end_pos -new_start);
-  
+
   memcpy(new_buf, &(impl->buf[new_start - impl->start_pos]), impl->end_pos - new_start);
 
   free(impl->buf);
@@ -274,6 +270,6 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset) {
   impl->start_pos = start_offset;
   impl->end_pos = start_offset;
   impl->buf = malloc(0);
-    
+
   return ret;
 }

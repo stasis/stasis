@@ -1,7 +1,7 @@
 #include "config.h"
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
-#include <assert.h>
+//#include <assert.h>
 
 #define SLOTTED_PAGE_OVERHEAD_PER_RECORD (2 * sizeof(short))
 #define SLOTTED_PAGE_HEADER_OVERHEAD (3 * sizeof(short))
@@ -21,7 +21,6 @@
 #define SLOTTED_PAGE_CHECK_FOR_OVERLAP
 #endif
 #include <stasis/truncation.h>
-
 /**
    Run sanity checks to make sure page is in a consistent state.
 

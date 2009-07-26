@@ -1,15 +1,11 @@
-#include "config.h"
 #include <stasis/common.h>
 #include <stasis/constants.h>
 #include <stasis/io/handle.h>
 #include <stasis/linkedlist.h>
 #include <stasis/redblack.h>
-#include <pthread.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <assert.h>
+
 #include <stdio.h>
-#include <string.h>
+#include <assert.h>
 
 /**
 

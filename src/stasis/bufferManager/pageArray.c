@@ -1,5 +1,3 @@
-#include <stdlib.h>
-#include <config.h>
 #include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
 #include <stasis/bufferPool.h>

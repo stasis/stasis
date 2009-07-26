@@ -1,21 +1,15 @@
 #define _SVID_SOURCE
 #define _BSD_SOURCE
 #include <dirent.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
-
-#include <pthread.h>
 
 #include <stasis/common.h>
 #include <stasis/latches.h>
 #include <stasis/logger/filePool.h>
+
+#include <stdio.h>
+
 /**
    @see stasis_log_safe_writes_state for more documentation;
         identically named fields serve analagous purposes.

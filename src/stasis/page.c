@@ -67,18 +67,10 @@ terms specified in this license.
 
 */
 
-#include <stdlib.h>
-
-#include <config.h>
 #include <stasis/common.h>
 #include <stasis/latches.h>
 #include <stasis/page.h>
-
-#include <assert.h>
-#include <stdio.h>
-
 #include <stasis/constants.h>
-#include <assert.h>
 #include <stasis/blobManager.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
@@ -87,6 +79,8 @@ terms specified in this license.
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
+
+#include <assert.h>
 
 static page_impl page_impls[MAX_PAGE_TYPE];
 static stasis_dirty_page_table_t * dirtyPages;

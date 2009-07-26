@@ -1,6 +1,4 @@
-#include <config.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stasis/common.h>
 #include <stasis/doubleLinkedList.h>
 #include <assert.h>
 
@@ -12,7 +10,7 @@ list * LL_ENTRY(create)() {
   list* ret = malloc(sizeof(list));
 
   // bypass const annotation on head, tail...
-  list tmp = { 
+  list tmp = {
     malloc(sizeof(node_t)),
     malloc(sizeof(node_t))
   };
@@ -25,16 +23,16 @@ list * LL_ENTRY(create)() {
   return ret;
 }
 
-void LL_ENTRY(destroy)(list* l) { 
+void LL_ENTRY(destroy)(list* l) {
   value_t * n;
-  while((n = LL_ENTRY(pop)(l))) { 
+  while((n = LL_ENTRY(pop)(l))) {
     // nop
   }
   free(l->head);
   free(l->tail);
   free(l);
 }
-node_t * LL_ENTRY(push)(list* l, value_t * v) { 
+node_t * LL_ENTRY(push)(list* l, value_t * v) {
   node_t * n = malloc(sizeof(node_t));
   n->v = v;
   LL_ENTRY(pushNode)(l, n);
@@ -42,15 +40,15 @@ node_t * LL_ENTRY(push)(list* l, value_t * v) {
 }
 value_t* LL_ENTRY(pop) (list* l) {
   node_t * n = LL_ENTRY(popNode)(l);
-  if(n) { 
+  if(n) {
     value_t * v = n->v;
     free(n);
     return v;
-  } else { 
+  } else {
     return 0;
   }
 }
-node_t * LL_ENTRY(unshift)(list* l, value_t * v) { 
+node_t * LL_ENTRY(unshift)(list* l, value_t * v) {
   node_t * n = malloc(sizeof(node_t));
   n->v = v;
   LL_ENTRY(unshiftNode)(l, n);
@@ -58,17 +56,17 @@ node_t * LL_ENTRY(unshift)(list* l, value_t * v) {
 }
 value_t * LL_ENTRY(shift) (list* l) {
   node_t * n = LL_ENTRY(shiftNode)(l);
-  if(n) { 
+  if(n) {
     value_t * v = n->v;
     free(n);
     return v;
-  } else { 
+  } else {
     return 0;
   }
 }
 
 
-void LL_ENTRY(pushNode)(list* l, node_t * n) { 
+void LL_ENTRY(pushNode)(list* l, node_t * n) {
 
   // Need to update 3 nodes: n , tail, tail->prev
 
@@ -85,7 +83,7 @@ void LL_ENTRY(pushNode)(list* l, node_t * n) {
 node_t* LL_ENTRY(popNode) (list* l) {
   node_t * n = l->tail->prev;
   assert(n != l->tail);
-  if(n != l->head) { 
+  if(n != l->head) {
     assert(n->prev != 0);
     assert(n->next == l->tail);
 
@@ -96,12 +94,12 @@ node_t* LL_ENTRY(popNode) (list* l) {
     l->tail->prev = n->prev;
 
     return n;
-  } else { 
+  } else {
     assert(n->prev == 0);
     return 0;
   }
 }
-void LL_ENTRY(unshiftNode)(list* l, node_t * n) { 
+void LL_ENTRY(unshiftNode)(list* l, node_t * n) {
 
   // n
   n->prev = l->head;
@@ -116,27 +114,27 @@ void LL_ENTRY(unshiftNode)(list* l, node_t * n) {
 node_t * LL_ENTRY(shiftNode) (list* l) {
   node_t * n = l->head->next;
   assert(n != l->head);
-  if(n != l->tail) { 
+  if(n != l->tail) {
     assert(n->next != 0);
     assert(n->prev == l->head);
-    
+
     // n->next
     n->next->prev = n->prev;
-    
+
     // head
     l->head->next = n->next;
 
     return n;
-  } else { 
+  } else {
     assert(n->next == 0);
     return 0;
   }
 }
-void LL_ENTRY(remove)(list * l, node_t * n) { 
+void LL_ENTRY(remove)(list * l, node_t * n) {
   LL_ENTRY(removeNoFree)(l,n);
   free(n);
 }
-void LL_ENTRY(removeNoFree)(list * l, node_t * n) { 
+void LL_ENTRY(removeNoFree)(list * l, node_t * n) {
   assert(n != l->head);
   assert(n != l->tail);
   assert(n->next != n);

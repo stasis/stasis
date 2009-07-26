@@ -39,10 +39,6 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <stdlib.h>
-
-#include <stasis/common.h>
 #include <stasis/logger/logHandle.h>
 
 struct LogHandle {

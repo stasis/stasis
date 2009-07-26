@@ -23,7 +23,7 @@
 #include <stasis/blobManager.h> // XXX remove this, move Tread() to set.c
 
 #include <assert.h>
-#include <limits.h>
+#include <stdio.h>
 
 static int stasis_initted = 0;
 

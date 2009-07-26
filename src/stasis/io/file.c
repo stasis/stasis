@@ -1,20 +1,10 @@
 #include <config.h>
-#ifdef HAVE_SYNC_FILE_RANGE
-#define _GNU_SOURCE
-#endif
 #include <fcntl.h>
 #include <stasis/common.h>
 #include <stasis/io/handle.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <unistd.h>
+
 #include <stdio.h>
 #include <assert.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 /** @file */
 

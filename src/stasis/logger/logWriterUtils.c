@@ -1,7 +1,5 @@
-#include <stdio.h>
 #include <stasis/logger/logWriterUtils.h>
-#include <stdlib.h>
-/** @file 
+/** @file
 
     This file contains old-ish utility methods that wrap fseek, read, etc...
 

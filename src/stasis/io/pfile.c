@@ -1,8 +1,5 @@
 #include <config.h>
 #define _XOPEN_SOURCE 500
-#ifdef HAVE_SYNC_FILE_RANGE
-#define _GNU_SOURCE
-#endif
 #include <fcntl.h>
 
 #include <unistd.h>

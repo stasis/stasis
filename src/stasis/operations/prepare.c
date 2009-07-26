@@ -49,9 +49,9 @@ terms specified in this license.
 #include <stasis/operations.h>
 #include <stasis/logger/logger2.h>
 
-#include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+
 recordid prepare_bogus_rec  = { 0, 0, 0};
 
 static int op_prepare(const LogEntry * e, Page * p) {

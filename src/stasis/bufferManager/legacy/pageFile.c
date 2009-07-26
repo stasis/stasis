@@ -14,16 +14,14 @@
 #include <stasis/logger/logger2.h>
 
 #include <assert.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <stdlib.h>
-/** For O_DIRECT.  It's unclear that this is the correct thing to \#define, but it works under linux. */
-#define __USE_GNU
+
+#include <stdio.h>
 
 #include <fcntl.h>
 #include <unistd.h>
 
-/** Allows boostrapping of the header page. */
+/** Allows bootstrapping of the header page. */
 #include <stasis/operations/pageOperations.h>
 
 static int stable = -1;

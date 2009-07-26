@@ -1,11 +1,10 @@
 #include <stasis/iterator.h>
-#include <assert.h>
-#include <stdlib.h>
-
 #include <stasis/operations.h>
 #include <stasis/arrayCollection.h>
 #include <stasis/logger/logMemory.h>
 #include <stasis/operations/group.h>
+
+#include <assert.h>
 
 static lladdIterator_def_t iterators[MAX_ITERATOR_TYPES];
 

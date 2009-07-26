@@ -1,8 +1,7 @@
 #include <stasis/pageHandle.h>
 
 #include <assert.h>
-#include <string.h>
-#include <errno.h>
+#include <stdio.h>
 
 /**
     @todo Make sure this doesn't need to be atomic.  (It isn't!) Can

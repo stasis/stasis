@@ -75,24 +75,29 @@ terms specified in this license.
 
 #include <limits.h>
 
-#if STDC_HEADERS
-#  include <stdlib.h>
-#  include <string.h>
-#elif HAVE_STRINGS_H
-#  include <strings.h>
-#endif /*STDC_HEADERS*/
+//#if STDC_HEADERS
+//#  include <stdlib.h>
+//#  include <string.h>
+//#elif HAVE_STRINGS_H
+//#  include <strings.h>
+//#endif /*STDC_HEADERS*/
+//
+//#if HAVE_UNISTD_H
+//#  include <unistd.h>
+//#endif
+//
+//#if HAVE_ERRNO_H
+//#  include <errno.h>
+//#endif /*HAVE_ERRNO_H*/
+//#ifndef errno
+// /* Some systems define this! */
+//extern int errno;
+//#endif
 
-#if HAVE_UNISTD_H
-#  include <unistd.h>
-#endif
-
-#if HAVE_ERRNO_H
-#  include <errno.h>
-#endif /*HAVE_ERRNO_H*/
-#ifndef errno
-/* Some systems #define this! */
-extern int errno;
-#endif
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<errno.h>
 
 //#define byte unsigned char
 //#define lsn_t long
@@ -116,6 +121,10 @@ typedef int16_t pagetype_t;
 /*#define DEBUGGING   */
 /*#define PROFILE_LATCHES*/
 /*#define NO_LATCHES */
+
+#if _POSIX_C_SOURCE >= 199309L || _XOPEN_SOURCE >= 500
+#define HAVE_FDATASYNC
+#endif
 
 #ifdef DEBUGGING
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */

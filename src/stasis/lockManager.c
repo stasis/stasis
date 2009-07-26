@@ -1,21 +1,19 @@
 #include <pbl/pbl.h>
 #include <stasis/lockManager.h>
 #include <stasis/compensations.h>
+#include <stasis/latches.h>
+#include <stasis/hash.h>
+
 #include <sys/time.h>
 #include <time.h>
-#include <stasis/latches.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
+
 #include <assert.h>
-#include <string.h>
-#include <stasis/hash.h>
 
 
 #define MUTEX_COUNT 32
 // These next two correspond to MUTEX count, and are the appropriate values to pass into hash().
 #define MUTEX_BITS  5
-#define MUTEX_EXT   32 
+#define MUTEX_EXT   32
 
 static pthread_mutex_t mutexes[MUTEX_COUNT];
 
@@ -43,7 +41,7 @@ void lockManagerInitHashed() {
   }
   xidLockTable = pblHtCreate();
   ridLockTable = pblHtCreate();
-  
+
 }
 pblHashTable_t * lockManagerBeginTransactionUnlocked(int xid) {
   pblHashTable_t * xidLocks = pblHtCreate();
@@ -69,7 +67,7 @@ lock* createLock(byte * dat, int datLen) {
   ret->readers = 0;
   ret->writers = 0;
   ret->waiting = 0;
-  
+
   pblHtInsert(ridLockTable, dat, datLen, ret);
   return ret;
 }
@@ -113,7 +111,7 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
     struct timeval tv;
     int tod_ret = gettimeofday (&tv, NULL);
     tv.tv_sec++; // Wait up to one second to obtain a lock before detecting deadlock.
-    struct timespec ts; 
+    struct timespec ts;
     ts.tv_sec = tv.tv_sec;
     ts.tv_nsec = tv.tv_usec * 1000;
     if(tod_ret != 0) {
@@ -129,7 +127,7 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
 	return LLADD_DEADLOCK;
       }
     } while(ridLock->writers);
-  } 
+  }
   if(currentLockLevel < LM_READLOCK) {
     ridLock->readers++;
     pblHtRemove(xidLocks, dat, datLen);
@@ -176,7 +174,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     struct timeval tv;
     int tod_ret = gettimeofday(&tv, NULL);
     tv.tv_sec++;
-    struct timespec ts; 
+    struct timespec ts;
     ts.tv_sec = tv.tv_sec;
     ts.tv_nsec = tv.tv_usec * 1000;
     if(tod_ret != 0) {
@@ -184,7 +182,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
       compensation_set_error(LLADD_INTERNAL_ERROR);
       return LLADD_INTERNAL_ERROR;
     }
-    while(ridLock->writers || (ridLock->readers - me)) { 
+    while(ridLock->writers || (ridLock->readers - me)) {
       int lockret = pthread_cond_timedwait(&ridLock->writeOK, mut, &ts);
       if(lockret == ETIMEDOUT) {
 	ridLock->waiting--;
@@ -288,7 +286,7 @@ int lockManagerCommitHashed(int xid, int datLen) {
     int tmpret = decrementLock(currentKey, datLen, currentLevel);
     // Pass any error(s) up to the user.
     // (This logic relies on the fact that currently it only returns 0 and LLADD_INTERNAL_ERROR)
-    if(tmpret) {  
+    if(tmpret) {
       ret = tmpret;
     }
   }

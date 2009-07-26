@@ -3,15 +3,14 @@
 int ___compensation_count___ = 0;
 
 #include <assert.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+
 static pthread_key_t error_key;
 
 void compensations_init () {
   int ret = pthread_key_create(&error_key, NULL);
-  assert(!ret); 
-  pthread_setspecific(error_key, NULL); 
+  assert(!ret);
+  pthread_setspecific(error_key, NULL);
 }
 
 void compensations_deinit() {

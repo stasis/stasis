@@ -1,13 +1,8 @@
-#define _XOPEN_SOURCE 600
-#include <stdlib.h>
-
-#include <config.h>
 #include <stasis/page.h>
 #include <stasis/logger/logEntry.h>
 #include <stasis/operations/pageOperations.h>
 #include <stasis/operations/regions.h>
 #include <assert.h>
-#include <alloca.h>
 
 static pthread_mutex_t pageAllocMutex;
 

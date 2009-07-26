@@ -1,9 +1,7 @@
 #include <stasis/graph.h>
-#include <alloca.h>
-#include <assert.h>
-#include <stdlib.h>
 #include <stasis/page.h>
 #include <stasis/crc32.h>
+#include <assert.h>
 
 int numOut = 0;
 int numTset = 0;
@@ -39,12 +37,12 @@ pthread_mutex_t counters = PTHREAD_MUTEX_INITIALIZER;
 
 /** @todo need to load the correct pages, since the local fifo doesn't refer to a single page!!! */
 void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t * global, lladdFifoPool_t * pool, int num) {
-  
+
   int * node        = alloca(sizeof(int) * (transClos_outdegree+1));
   int * nodeScratch = alloca(sizeof(int) * (transClos_outdegree+1));
-  
+
   int myFifo = -1;
-  
+
   int deltaNumOut = 0;
   int deltaNumSkipped = 0;
   int deltaNumShortcutted = 0;
@@ -54,7 +52,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
     byte * brid;
     recordid localRid;
     size_t size = Titerator_value(xid, local->iterator, &brid);
-    
+
     assert(size == sizeof(recordid));
     recordid * rid = (recordid*)brid;
     localRid = *rid;
@@ -62,11 +60,11 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
     if(myFifo == -1) {
       if(useCRC) {
 	myFifo = stasis_crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned int)-1) % pool->fifoCount;
-      } else { 
+      } else {
 	myFifo = rid->page % pool->fifoCount;
       }
       //      printf("Switched locality sets... %d\n", myFifo);
-    } else { 
+    } else {
       //      assert(myFifo == crc32((byte*)&(rid->page), sizeof(rid->page), (unsigned long)-1L) % pool->fifoCount);
     }
 
@@ -80,11 +78,11 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
       numTset++;
       Tset(xid, localRid, (const byte*)node);  /// @todo TsetRange?
       int i;
-      for(i =0 ; i < transClos_outdegree; i++) { 
+      for(i =0 ; i < transClos_outdegree; i++) {
 	recordid nextRid = arrayList;
 	nextRid.slot = node[i];
 	Page * p = loadPage(xid, arrayList.page); // just pin it forever and ever
-	nextRid = stasis_array_list_dereference_recordid(xid, p, nextRid.slot); 
+	nextRid = stasis_array_list_dereference_recordid(xid, p, nextRid.slot);
 	releasePage(p);
 
 	int thisFifo = stasis_crc32((byte*)&(nextRid.page), sizeof(nextRid.page), (unsigned int)-1) % pool->fifoCount;
@@ -100,7 +98,7 @@ void multiTraverse(int xid, recordid arrayList, lladdFifo_t * local, lladdFifo_t
 	    deltaNumOut++;
 	  } else {
 	    deltaNumSkipped++;
-	  } 
+	  }
 	} else {
 	  // @todo check nextRid to see if we're the worker that will consume it, or (easier) if it stays on the same page.
 	  Tconsumer_push(xid, global->consumer, NULL, 0, (byte*)&nextRid, sizeof(recordid));

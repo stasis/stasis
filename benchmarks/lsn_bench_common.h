@@ -1,6 +1,6 @@
 #include <stasis/transactional.h>
-#include <string.h>
-#include <unistd.h>
+
+#include <stdio.h>
 
 void alloc_rids(long long num_rids, recordid ** slow, recordid ** fast) {
   *slow = malloc(num_rids * sizeof(**slow));

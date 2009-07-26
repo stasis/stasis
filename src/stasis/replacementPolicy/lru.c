@@ -1,12 +1,9 @@
-#include <config.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <stdio.h>
-
 #include <stasis/common.h>
 #include <stasis/lhtable.h>
 #include <stasis/redblack.h>
 #include <stasis/replacementPolicy.h>
+
+#include <assert.h>
 
 typedef struct stasis_replacement_policy_lru_entry {
   void * value;
