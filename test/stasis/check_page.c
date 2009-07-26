@@ -587,6 +587,70 @@ START_TEST(pageTrecordTypeTest) {
 	Tdeinit();
 } END_TEST
 
+START_TEST(pageTreeOpTest) {
+  Tinit();
+  int xid = Tbegin();
+
+  pageid_t page = TpageAlloc(xid);
+
+  // run a sanity check on a page pinned in ram; don't bother logging (since we don't care about recovery for this test)
+  Page *p = loadPage(xid, page);
+
+  writelock(p->rwlatch, 0);
+
+  stasis_page_slotted_initialize_page(p);
+
+  recordid rids[5];
+  // Alloc + set five records
+  for(int i = 0; i < 5; i++) {
+    rids[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
+    stasis_record_alloc_done(xid, p, rids[i]);
+    assert(rids[i].slot == i);
+    stasis_record_write(xid, p, rids[i], (byte*)(&i));
+  }
+  //Read them back, free the odd ones.
+  for(int i = 0; i < 5; i++) {
+    int j;
+    stasis_record_read(xid, p, rids[i], (byte*)(&j));
+    assert(i == j);
+    if(i % 2) {
+      stasis_record_free(xid, p, rids[i]);
+    }
+  }
+  // Close holes due to odd ones.
+  stasis_record_compact_slotids(xid, p);
+  for(int i = 0; i < 3; i++) {
+    int k = i * 2;
+    int j;
+    assert(stasis_record_type_read(xid, p, rids[i]) == NORMAL_SLOT);
+    stasis_record_read(xid, p, rids[i], (byte*)(&j));
+    assert(j == k);
+  }
+  // Reinsert odd ones at the end, then splice them back to their original position
+  for(int i = 1; i < 5; i+=2) {
+    recordid rid = stasis_record_alloc_begin(xid, p, sizeof(int));
+    stasis_record_alloc_done(xid, p, rid);
+    stasis_record_write(xid, p, rid, (byte*)(&i));
+    stasis_record_splice(xid, p, i, rid.slot);
+    int j;
+    stasis_record_read(xid, p, rids[i], (byte*)(&j));
+    assert(i == j);
+  }
+  // Does it still look right?
+  for(int i = 0; i < 5; i++) {
+    int j;
+    stasis_record_read(xid, p, rids[i], (byte*)(&j));
+    assert(i == j);
+  }
+  // (tdeinit till fsck it at shutdown)
+  unlock(p->rwlatch);
+
+  releasePage(p);
+
+  Tcommit(xid);
+  Tdeinit();
+} END_TEST
+
 
 Suite * check_suite(void) {
   Suite *s = suite_create("page");
@@ -599,6 +663,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageCheckMacros);
   tcase_add_test(tc, pageCheckSlotTypeTest);
   tcase_add_test(tc, pageTrecordTypeTest);
+  tcase_add_test(tc, pageTreeOpTest);
   tcase_add_test(tc, pageNoThreadMultPageTest);
   tcase_add_test(tc, pageNoThreadTest);
   tcase_add_test(tc, pageThreadTest);

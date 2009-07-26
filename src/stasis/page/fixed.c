@@ -85,6 +85,9 @@ static int fixedFreespace(int xid, Page * p) {
 static void fixedCompact(Page * p) {
   // no-op
 }
+static void fixedCompactSlotIds(int xid, Page * p) {
+  abort();
+}
 static recordid fixedPreAlloc(int xid, Page *p, int size) {
   assertlocked(p->rwlatch);
   if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
@@ -102,6 +105,9 @@ static void fixedPostAlloc(int xid, Page *p, recordid rid) {
   assert(*recordcount_ptr(p) == rid.slot);
   assert(*recordsize_ptr(p) == rid.size);
   (*recordcount_ptr(p))++;
+}
+static void fixedSplice(int xid, Page *p, slotid_t first, slotid_t second) {
+  abort();
 }
 static void fixedFree(int xid, Page *p, recordid rid) {
   assertlocked(p->rwlatch);
@@ -140,8 +146,10 @@ page_impl fixedImpl() {
     stasis_block_done_default_impl,
     fixedFreespace,
     fixedCompact,
+    fixedCompactSlotIds,
     fixedPreAlloc,
     fixedPostAlloc,
+    fixedSplice,
     fixedFree,
     0, // XXX dereference
     fixedLoaded, // loaded

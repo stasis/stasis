@@ -102,8 +102,10 @@ page_impl stasis_page_blob_impl() {
       0, //pageGenericBlockDone,
       0, //freespace,
       0, //compact,
+      0, //compact slotids
       0, //preRalloc,
       0, //postRalloc,
+      0, //splice,
       0, //Free,
       0, //XXX page_impl_dereference_identity,
       stasis_page_blob_loaded,

@@ -207,6 +207,22 @@ static void slottedCompact(Page * page) {
 #endif // SLOTTED_PAGE_OLD_CHECKS
 }
 
+static void slottedCompactSlotIDs(int xid, Page * p) {
+  int16_t numSlots = *stasis_page_slotted_numslots_ptr(p);
+  int16_t out = 0;
+  for(int16_t in = 0; in < numSlots; in++) {
+    if(*stasis_page_slotted_slot_ptr(p, in) == INVALID_SLOT) {
+      // nop
+    } else {
+      *stasis_page_slotted_slot_ptr(p, out) = *stasis_page_slotted_slot_cptr(p, in);
+      *stasis_page_slotted_slot_length_ptr(p, out) = *stasis_page_slotted_slot_length_cptr(p, in);
+      out++;
+    }
+  }
+  *stasis_page_slotted_numslots_ptr(p) = out;
+  *stasis_page_slotted_freelist_ptr(p) = INVALID_SLOT;
+}
+
 /**
    Check to see how many bytes can fit in a given slot.  This
    makes it possible for callers to guarantee the safety
@@ -487,6 +503,18 @@ static void slottedPostRalloc(int xid, Page * page, recordid rid) {
 
 }
 
+static void slottedSpliceSlot(int xid, Page *p, slotid_t a, slotid_t b) {
+  assert(a < b);
+  int16_t b_slot = *stasis_page_slotted_slot_cptr(p, b);
+  int16_t b_slot_len = *stasis_page_slotted_slot_length_cptr(p, b);
+  for(int16_t i = b-1; i >= a; i--) {
+    *stasis_page_slotted_slot_ptr(p, i+1) = *stasis_page_slotted_slot_cptr(p, i);
+    *stasis_page_slotted_slot_length_ptr(p, i+1) = *stasis_page_slotted_slot_length_cptr(p, i);
+  }
+  *stasis_page_slotted_slot_ptr(p, a) = b_slot;
+  *stasis_page_slotted_slot_length_ptr(p, b) = b_slot_len;
+}
+
 static void slottedFree(int xid, Page * p, recordid rid) {
   slottedSanityCheck(p, rid);
 
@@ -560,8 +588,10 @@ static page_impl pi =  {
     stasis_block_done_default_impl,
     slottedFreespace,
     slottedCompact,
+    slottedCompactSlotIDs,
     slottedPreRalloc,
     slottedPostRalloc,
+    slottedSpliceSlot,
     slottedFree,
     0, //XXX page_impl_dereference_identity,
     slottedLoaded,

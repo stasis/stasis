@@ -546,10 +546,12 @@ recordid stasis_record_first(int xid, Page * p);
 recordid stasis_record_next(int xid, Page * p, recordid prev);
 recordid stasis_record_alloc_begin(int xid, Page * p, int size);
 void stasis_record_alloc_done(int xid, Page * p, recordid rid);
+void stasis_record_splice(int xid, Page * p, slotid_t first, slotid_t second);
 void stasis_record_free(int xid, Page * p, recordid rid);
 int stasis_block_supported(int xid, Page * p);
 int stasis_record_freespace(int xid, Page * p);
 void stasis_record_compact(Page * p);
+void stasis_record_compact_slotids(int xid, Page * p);
 void stasis_page_loaded(Page * p, pagetype_t type);
 void stasis_page_flushed(Page * p);
 void stasis_page_cleanup(Page * p);
@@ -783,6 +785,11 @@ typedef struct page_impl {
   */
   void(*pageCompact)(Page *p);
   /**
+   * Compact the slotids on the page; the order of valid records will
+   * be preserved, but holes due to invalid slots will be closed.
+   */
+  void(*pageCompactSlotIDs)(int xid, Page *p);
+  /**
       Generate a new, appropriately sized recordid.  This is the first
       of two allocation phases, and does not actually modify the page.
       The caller of this function must call stasis_record_alloc_done() before
@@ -808,6 +815,19 @@ typedef struct page_impl {
       @see Talloc(), page_impl.recordPreAlloc()
   */
   void (*recordPostAlloc)(int xid, Page *p, recordid rid);
+  /** Reorder records within a page.  The second slot will be moved before the
+   *  first slot; all intermediate slots will be shifted up one slotid.  The
+   *  intermediate records must always be valid; this can be ensured by calling
+   *  pageCompact().  As long as no records are freed after the page is allocated
+   *  or compacted, all intermediate records will be valid.
+   *
+   *  @param xid The active transaction
+   *  @param p The page that will be modified.  The page must be latched against writes.
+   *  @param first The first slot to be shifted to higher slots in the page.
+   *  @param second The slot which will be moved to first's original location.  Second
+   *                must be greater than first.
+   */
+  void (*recordSplice)(int xid, Page *p, slotid_t first, slotid_t second);
   /** Free a record.  The page implementation doesn't need to worry
       about uncommitted deallocations; that is handled by a higher
       level.

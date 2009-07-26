@@ -245,6 +245,10 @@ void stasis_record_alloc_done(int xid, Page * p, recordid rid){
   page_impls[p->pageType]
     .recordPostAlloc(xid, p, rid);
 }
+void stasis_record_splice(int xid, Page * p, slotid_t first, slotid_t second) {
+  page_impls[p->pageType]
+    .recordSplice(xid, p, first, second);
+}
 void stasis_record_free(int xid, Page * p, recordid rid){
   page_impls[p->pageType]
     .recordFree(xid, p, rid);
@@ -273,6 +277,10 @@ int stasis_record_freespace(int xid, Page * p){
 void stasis_record_compact(Page * p){
   page_impls[p->pageType]
     .pageCompact(p);
+}
+void stasis_record_compact_slotids(int xid, Page * p) {
+  page_impls[p->pageType]
+    .pageCompactSlotIDs(xid, p);
 }
 /** @todo How should the LSN of pages without a page_type be handled?
 
