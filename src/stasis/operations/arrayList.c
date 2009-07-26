@@ -1,5 +1,3 @@
-#include <config.h>
-
 #include <stasis/operations/arrayList.h>
 
 #include <assert.h>

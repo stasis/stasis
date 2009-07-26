@@ -44,12 +44,7 @@ terms specified in this license.
  *
  * implementation of the page buffer
  * *************************************************/
-
-#include <config.h>
-
 #ifdef PROFILE_LATCHES_WRITE_ONLY
-
-
 
 #define _GNU_SOURCE
 #include <stdio.h>  // Need _GNU_SOURCE for asprintf

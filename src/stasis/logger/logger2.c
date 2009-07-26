@@ -45,13 +45,7 @@ terms specified in this license.
 
    Abstract log implementation.  Provides access to methods that
    directly read and write log entries, force the log to disk, etc.
-
-   @todo Switch logger2 to use function pointers
 */
-
-#include <config.h>
-#include <stasis/common.h>
-
 #include <stasis/logger/logger2.h>
 
 #include <stasis/logger/safeWrites.h>

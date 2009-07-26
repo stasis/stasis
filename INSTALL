@@ -1,10 +1,10 @@
 Prerequisites (ubuntu/debian):
 
-   autoconf build-essential cmake
+   build-essential cmake
 
 Recommended build procedure:
 
-   ./bootstrap ; mkdir build ; cd build ; cmake ..
+   mkdir build ; cd build ; cmake ..
    make -j 4
    cd test ; make test
 
@@ -19,7 +19,7 @@ Optional dependencies:
 Obsolete build procedure
 =========================
 
-(Uses automake and libtool)
+(Uses autoconf, automake and libtool)
 
    ./reconf ; ./configure --quiet
    make -j 4

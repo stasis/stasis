@@ -5,13 +5,6 @@
    Implements three phase recovery
 
 */
-
-#include <config.h>
-#include <stasis/common.h>
-
-#include <stdio.h>
-#include <assert.h>
-
 #include <pbl/pbl.h>
 
 #include <stasis/recovery.h>
@@ -25,6 +18,9 @@
 /** @todo Get rid of linkedlist */
 #include <stasis/linkedlist.h>
 #include <stasis/page.h> // Needed for pageReadLSN.
+
+#include <stdio.h>
+#include <assert.h>
 
 static pblHashTable_t * transactionLSN;
 static LinkedList * rollbackLSNs = NULL;

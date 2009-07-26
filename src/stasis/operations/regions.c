@@ -1,7 +1,7 @@
-#include "config.h"
 #include <stasis/page.h>
 #include <stasis/operations.h>
 #include <stasis/logger/logger2.h>
+
 #include <assert.h>
 
 typedef struct regionAllocLogArg{

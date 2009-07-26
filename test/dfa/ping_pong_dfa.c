@@ -39,9 +39,6 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-
 #include "../check_includes.h"
 #include <assert.h>
 #include <libdfa/networksetup.h>

@@ -1,4 +1,3 @@
-#include "config.h"
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
 //#include <assert.h>

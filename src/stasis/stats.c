@@ -1,4 +1,3 @@
-#include <config.h>
 #include <stasis/common.h>
 #include <stasis/latches.h>
 

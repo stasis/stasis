@@ -5,13 +5,10 @@
    allows bufferManager's implementation to focus on providing atomic
    writes, and locking.
 */
-#include <config.h>
 #include <stasis/common.h>
 
 #include <stasis/page.h>
-
 #include <stasis/bufferManager.h>
-
 #include <stasis/bufferManager/legacy/pageCache.h>
 
 #include <assert.h>
@@ -57,7 +54,7 @@ static void headInsert(Page *ret) {
 }
 
 static void middleInsert(Page *ret) {
-  
+
   assert(cache_state == FULL);
 
   /*	assert( bufferSize == MAX_BUFFER_SIZE ); */
@@ -82,7 +79,7 @@ static void qRemove(Page *ret) {
   assert(cache_state == FULL);
 
   assert(ret->next != ret && ret->prev != ret);
-  
+
 	if( ret->prev )
 	  ret->prev->next = ret->next;
 	else /* is head */
@@ -90,7 +87,7 @@ static void qRemove(Page *ret) {
 	if( ret->next ) {
 		ret->next->prev = ret->prev;
 		/* TODO: these if can be better organizeed for speed */
-		if( ret == repMiddle ) 
+		if( ret == repMiddle )
 			/* select new middle */
 			repMiddle = ret->next;
 	}
@@ -112,12 +109,12 @@ void cacheInsertPage (Page * ret) {
     if(bufferSize == MAX_BUFFER_SIZE/* - 1*/) {  /* Set up page kick mechanism. */
       int i;
       Page *iter;
-      
+
       cache_state = FULL;
-      
+
       headInsert(ret);
       assert(ret->next != ret && ret->prev != ret);
-      
+
       /* split up queue:
        * "in all cases studied ... fixing the primary region to 30% ...
        * resulted in the best performance"
@@ -127,7 +124,7 @@ void cacheInsertPage (Page * ret) {
 	repMiddle->queue = 1;
 	repMiddle = repMiddle->next;
       }
-      
+
       for( iter = repMiddle; iter; iter = iter->next ) {
 	iter->queue = 2;
       }
@@ -154,12 +151,12 @@ void cacheHitOnPage(Page * ret) {
       qRemove(ret);
       headInsert(ret);
       assert(ret->next != ret && ret->prev != ret);
-      
+
       if( ret->queue == 2 ) {
 	/* keep first queue same size */
 	repMiddle = repMiddle->prev;
 	repMiddle->queue = 2;
-	
+
 	ret->queue = 1;
       }
     }

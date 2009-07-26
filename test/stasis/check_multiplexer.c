@@ -46,13 +46,10 @@ terms specified in this license.
 #include <stasis/logger/logMemory.h>
 #include <pbl/pbl.h>
 
-#include <stdlib.h>
-#include <string.h>
-#include <config.h>
-#include <assert.h>
-
 #include <sys/time.h>
 #include <time.h>
+
+#include <assert.h>
 
 #define LOG_NAME   "check_iterator.log"
 

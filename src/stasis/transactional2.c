@@ -1,6 +1,3 @@
-#include <config.h>
-
-#include <stasis/common.h>
 #include <stasis/latches.h>
 #include <stasis/transactional.h>
 #include <stasis/recovery.h>

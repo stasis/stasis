@@ -39,16 +39,13 @@ authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
-
-#include <config.h>
-#include <stasis/common.h>
-
-#include <assert.h>
-
 #include <stasis/page.h> // For stasis_record_type_to_size()
 #include <stasis/logger/logger2.h> // needed for LoggerSizeOfInternalLogEntry()
 #include <stasis/logger/logEntry.h>
 #include <stasis/crc32.h>
+
+#include <assert.h>
+
 LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry));
   ret->LSN     = -1;

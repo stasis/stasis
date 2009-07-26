@@ -4,9 +4,6 @@
  *  Created on: May 12, 2009
  *      Author: sears
  */
-
-#include <config.h>
-#include <stasis/common.h>
 #include <stasis/logger/logger2.h>
 
 #include <stdio.h>

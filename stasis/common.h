@@ -122,10 +122,6 @@ typedef int16_t pagetype_t;
 /*#define PROFILE_LATCHES*/
 /*#define NO_LATCHES */
 
-#if _POSIX_C_SOURCE >= 199309L || _XOPEN_SOURCE >= 500
-#define HAVE_FDATASYNC
-#endif
-
 #ifdef DEBUGGING
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */
 #define DEBUG(...) \
@@ -161,8 +157,6 @@ typedef struct {
    Include stasis/page.h for the complete definition.
 */
 typedef struct Page_s Page;
-
-
 
 #include "compensations.h"
 

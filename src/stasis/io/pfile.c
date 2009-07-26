@@ -1,18 +1,10 @@
 #include <config.h>
-#define _XOPEN_SOURCE 500
-#include <fcntl.h>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <errno.h>
-#include <assert.h>
-
-
-#include <stasis/common.h>
 #include <stasis/io/handle.h>
-#include <pthread.h>
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <assert.h>
 
 /**
    @file
