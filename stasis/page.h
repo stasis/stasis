@@ -544,6 +544,7 @@ void stasis_record_type_write(int xid, Page * p, recordid rid, int type);
 int stasis_record_length_read(int xid, Page *p, recordid rid);
 recordid stasis_record_first(int xid, Page * p);
 recordid stasis_record_next(int xid, Page * p, recordid prev);
+recordid stasis_record_last(int xid, Page * p);
 recordid stasis_record_alloc_begin(int xid, Page * p, int size);
 void stasis_record_alloc_done(int xid, Page * p, recordid rid);
 void stasis_record_splice(int xid, Page * p, slotid_t first, slotid_t second);
@@ -747,6 +748,15 @@ typedef struct page_impl {
   */
   recordid (*recordNext)(int xid, Page *p, recordid rid);
 
+ /**
+      This returns the last potentially occupied slot in the page (in slot order).
+      The slot is guaranteed to be valid if pageCompactSlotIDs was just called,
+      or if no records have been freed since the page was created or compacted.
+
+      @param p the page of interest.
+      @return a slot id greater than or equal to all valid slots on the page.
+  */
+  recordid (*recordLast)(int xid, Page *p);
   // -------- "Exotic" (optional) access methods.
 
   /*

@@ -153,6 +153,7 @@ typedef struct {
 #include "operations/linkedListNTA.h"
 #include "operations/pageOrientedListNTA.h"
 #include "operations/linearHashNTA.h"
+#include "operations/bTree.h"
 #include "operations/regions.h"
 #include "operations/lsmTree.h"
 #include "operations/lsnFreeSet.h"

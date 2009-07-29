@@ -25,6 +25,12 @@ static inline recordid fixedFirst(int xid, Page *p) {
   rid.size = *recordsize_ptr(p);
   return fixedNext(xid, p, rid);
 }
+static inline recordid fixedLast(int xid, Page *p) {
+  recordid rid = { p->id, -1, 0 };
+  rid.size = *recordsize_ptr(p);
+  rid.slot = -1+*recordcount_ptr(p);
+  return rid;
+}
 
 void fixedPageInit();
 void fixedPageDeinit();

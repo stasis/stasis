@@ -341,6 +341,11 @@ static recordid slottedFirst(int xid, Page *p) {
   recordid rid = { p->id, -1, 0 };
   return slottedNext(xid, p, rid);
 }
+static recordid slottedLast(int xid, Page *p) {
+  recordid rid = {p->id, -1, 0 };
+  rid.slot = (*stasis_page_slotted_numslots_cptr(p)) - 1;
+  return rid;
+}
 
 static int notSupported(int xid, Page * p) { return 0; }
 
@@ -502,15 +507,16 @@ static void slottedPostRalloc(int xid, Page * page, recordid rid) {
 }
 
 static void slottedSpliceSlot(int xid, Page *p, slotid_t a, slotid_t b) {
+  if(a==b) { return; } // no-op
   assert(a < b);
   int16_t b_slot = *stasis_page_slotted_slot_cptr(p, b);
   int16_t b_slot_len = *stasis_page_slotted_slot_length_cptr(p, b);
   for(int16_t i = b-1; i >= a; i--) {
-    *stasis_page_slotted_slot_ptr(p, i+1) = *stasis_page_slotted_slot_cptr(p, i);
+    *stasis_page_slotted_slot_ptr(p, i+1)             = *stasis_page_slotted_slot_cptr(p, i);
     *stasis_page_slotted_slot_length_ptr(p, i+1) = *stasis_page_slotted_slot_length_cptr(p, i);
   }
   *stasis_page_slotted_slot_ptr(p, a) = b_slot;
-  *stasis_page_slotted_slot_length_ptr(p, b) = b_slot_len;
+  *stasis_page_slotted_slot_length_ptr(p, a) = b_slot_len;
 }
 
 static void slottedFree(int xid, Page * p, recordid rid) {
@@ -580,6 +586,7 @@ static page_impl pi =  {
     slottedGetLength,
     slottedFirst,
     slottedNext,
+    slottedLast,
     notSupported, // is block supported
     stasis_block_first_default_impl,
     stasis_block_next_default_impl,

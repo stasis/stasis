@@ -22,6 +22,7 @@ static page_impl pi =  {
     0,
     0,
     0,
+    0,
     notSupported, // is block supported
     stasis_block_first_default_impl,
     stasis_block_next_default_impl,
@@ -32,6 +33,8 @@ static page_impl pi =  {
     0,
     0,
     0, //XXX page_impl_dereference_identity,
+    0,
+    0,
     0,
     0,
     0

@@ -265,6 +265,9 @@ static const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 
 #define USER_DEFINED_ITERATOR 10
 
+#define BYTE_ARRAY_COMPARATOR 1
+
+#define MAX_COMPARATOR 10
 
 
 #endif

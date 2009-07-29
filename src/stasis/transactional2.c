@@ -95,6 +95,7 @@ int Tinit() {
   TallocInit();
   TnaiveHashInit();
   LinearHashNTAInit();
+  BtreeInit();
   TlinkedListNTAInit();
   iterator_init();
   consumer_init();

@@ -140,6 +140,7 @@ page_impl fixedImpl() {
     fixedGetLength,
     fixedFirst,
     fixedNext,
+    fixedLast,
     notSupported, // notSupported,
     stasis_block_first_default_impl,
     stasis_block_next_default_impl,

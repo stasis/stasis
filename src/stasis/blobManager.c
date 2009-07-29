@@ -96,6 +96,7 @@ page_impl stasis_page_blob_impl() {
       0, //getLength,
       0, //recordFirst,
       0, //recordNext,
+      0, //recordLast,
       stasis_page_not_supported, // is block supported
       0, //pageGenericBlockFirst,
       0, //pageGenericBlockNext,

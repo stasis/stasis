@@ -231,6 +231,10 @@ recordid stasis_record_next(int xid, Page * p, recordid prev){
   return page_impls[p->pageType]
     .recordNext(xid,p,prev);
 }
+recordid stasis_record_last(int xid, Page * p) {
+  return page_impls[p->pageType]
+    .recordLast(xid,p);
+}
 recordid stasis_record_alloc_begin(int xid, Page * p, int size){
   return page_impls[p->pageType]
     .recordPreAlloc(xid,p,size);
