@@ -67,7 +67,6 @@ This script is obsolete; stasis no longer requires automake or libtool.
 
 To build with cmake, run:
 
- ./bootstrap
  mkdir build ; cd build ; cmake ..
  make -j4
 );
