@@ -6,16 +6,42 @@
  *  Created on: Apr 14, 2009
  *      Author: sears
  */
-
 #ifndef CHECK_IMPL_H_
 #define CHECK_IMPL_H_
+
+#include <stasis/common.h>
+#include <sys/time.h>
+#include <pthread.h>
 
 #define CK_NORMAL 0
 
 #define START_TEST(x) static void x() {
 #define END_TEST }
 
-#define tcase_set_timeout(x, y)
+static int reaper_enabled = 0;
+static pthread_t reaper;
+static pthread_cond_t reaper_cond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t reaper_mut = PTHREAD_MUTEX_INITIALIZER;
+void * reaper_impl(void* arg) {
+  long long seconds = (intptr_t)arg;
+  struct timeval now;
+  struct timespec timeout;
+
+  gettimeofday(&now, 0);
+
+  timeout.tv_sec = now.tv_sec + seconds;
+  timeout.tv_nsec = now.tv_usec * 1000;
+
+  pthread_mutex_lock(&reaper_mut);
+  int timedout;
+  timedout = pthread_cond_timedwait(&reaper_cond, &reaper_mut, &timeout);
+  assert(timedout != EINTR);
+  assert(!timedout);
+
+  pthread_mutex_unlock(&reaper_mut);
+
+  return 0;
+}
 
 #define fail_unless(x,y) assert(x)
 
@@ -26,6 +52,12 @@ typedef struct {
 	char **names;
 	int count;
 } TCase;
+
+void tcase_set_timeout(TCase* tc, int seconds) {
+  if(seconds == 0) return;
+  pthread_create(&reaper, 0, reaper_impl, (void*)(intptr_t)seconds);
+  reaper_enabled = 1;
+}
 
 typedef struct {
 	char * name;
@@ -98,6 +130,10 @@ static void srunner_run_all(SRunner* sr, int ignored) {
 		sr->s->tc->tests[i]();
 		if(sr->s->tc->teardown) { sr->s->tc->teardown(); }
 		fprintf(stderr, "pass\n");
+	}
+	if(reaper_enabled) {
+	  pthread_cond_signal(&reaper_cond);
+	  pthread_join(reaper,0);
 	}
 	fprintf(stderr,"All tests passed.\n");
 }
