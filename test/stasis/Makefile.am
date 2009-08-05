@@ -1,7 +1,7 @@
 # INCLUDES = @CHECK_CFLAGS@
 
 ## Had to disable check_lht because lht needs to be rewritten.
-TESTS = check_lhtable check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery check_bufferManager check_pageOperations check_linearHash check_header check_linkedListNTA check_linearHashNTA check_pageOrientedList check_lockManager check_compensations check_errorHandling check_ringbuffer check_iterator check_multiplexer check_bTree check_regions check_allocationPolicy check_io check_rangeTracker check_replacementPolicy check_lsmTree check_groupBy
+TESTS = check_lhtable check_logEntry check_logWriter check_page check_operations check_transactional2 check_recovery check_blobRecovery check_bufferManager check_pageOperations check_linearHash check_header check_linkedListNTA check_linearHashNTA check_pageOrientedList check_lockManager check_compensations check_errorHandling check_ringbuffer check_iterator check_multiplexer check_bTree check_regions check_allocationPolicy check_dirtyPageTable check_io check_rangeTracker check_replacementPolicy check_lsmTree check_groupBy
 
 noinst_PROGRAMS = $(TESTS)
 LDADD = $(top_builddir)/src/stasis/libstasis.la
