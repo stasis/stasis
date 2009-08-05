@@ -10,6 +10,7 @@
 #include <set>
 #include "lsmIterators.h"
 #include <stasis/truncation.h>
+#include <stasis/dirtyPageTable.h>
 
 namespace rose {
 
@@ -93,7 +94,7 @@ namespace rose {
       rose::slot_index_t ret = mc->append(xid, *i);
 
       if(ret == rose::NOSPACE) {
-	stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
+	stasis_dirty_page_table_set_dirty((stasis_dirty_page_table_t*)stasis_runtime_dirty_page_table(), p);
 	mc->pack();
         unlock(p->rwlatch);
 	releasePage(p);
@@ -108,7 +109,7 @@ namespace rose {
       }
       (*inserted)++;
     }
-    stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
+    stasis_dirty_page_table_set_dirty((stasis_dirty_page_table_t*)stasis_runtime_dirty_page_table(), p);
     mc->pack();
     unlock(p->rwlatch);
     releasePage(p);

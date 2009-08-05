@@ -29,7 +29,6 @@ static int stasis_transaction_table_num_active = 0;
 static int stasis_transaction_table_xid_count = 0;
 
 static stasis_log_t* stasis_log_file = 0;
-// XXX should be static!
 stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
 static stasis_truncation_t * stasis_truncation = 0;
 /**
@@ -51,6 +50,10 @@ void stasis_transaction_table_init() {
   }
 }
 
+void * stasis_runtime_dirty_page_table() {
+  return stasis_dirty_page_table;
+}
+
 int Tinit() {
   pthread_mutex_init(&stasis_transaction_table_mutex, NULL);
   stasis_initted = 1;
@@ -60,7 +63,6 @@ int Tinit() {
 
   stasis_transaction_table_init();
   stasis_operation_table_init();
-  stasis_dirty_page_table_init();
 
   stasis_log_file = 0;
 

@@ -76,9 +76,5 @@ void stasis_truncation_thread_start(stasis_truncation_t* trunc);
    Initiate a round of log truncation.
 */
 int stasis_truncation_truncate(stasis_truncation_t* trunc, int force);
-/**
- * XXX if releasePage kept the dirty page table up to date, it would greatly reduce the number of places where the dirty page table is updated.
- */
-extern stasis_dirty_page_table_t * stasis_dirty_page_table;
 END_C_DECLS
 #endif
