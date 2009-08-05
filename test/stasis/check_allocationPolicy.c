@@ -44,6 +44,7 @@ terms specified in this license.
 
 #include <stasis/allocationPolicy.h>
 #include <stasis/common.h>
+#include <stasis/constants.h>
 
 #include <sys/time.h>
 #include <time.h>
@@ -58,88 +59,60 @@ terms specified in this license.
 START_TEST(allocationPolicy_smokeTest)
 {
 
-  availablePage ** pages = malloc(5 * sizeof(availablePage*));
-
-  for(int i = 0; i < 4; i++) {
-    pages[i] = malloc(sizeof(availablePage));
-  }
-
-  availablePage p;
-
-  p.pageid = 0;
-  p.freespace = 100;
-  p.lockCount = 0;
-  (*pages[0]) = p;
-
-  p.pageid = 1;
-  p.freespace = 100;
-  (*pages[1]) = p;
-
-  p.pageid = 2;
-  p.freespace = 50;
-  (*pages[2]) = p;
-
-  p.pageid = 3;
-  p.freespace = 25;
-  (*pages[3]) = p;
-
-  pages[4] = 0;
-
   stasis_allocation_policy_t * ap = stasis_allocation_policy_init();
-  stasis_allocation_policy_register_new_pages(ap, pages);
+  stasis_allocation_policy_register_new_page(ap, 0, 100);
+  stasis_allocation_policy_register_new_page(ap, 1, 100);
+  stasis_allocation_policy_register_new_page(ap, 2, 50);
+  stasis_allocation_policy_register_new_page(ap, 3, 25);
 
-  availablePage * p1 = stasis_allocation_policy_pick_suitable_page(ap, 1, 51);
-  stasis_allocation_policy_alloced_from_page(ap, 1, p1->pageid);
+  pageid_t pageid1 = stasis_allocation_policy_pick_suitable_page(ap, 1, 51);
+  assert(pageid1 != INVALID_PAGE);
+  stasis_allocation_policy_alloced_from_page(ap, 1, pageid1);
+  assert(pageid1 == 0 || pageid1 == 1);
+  stasis_allocation_policy_update_freespace(ap, pageid1, 0);
 
-  assert(p1);
-  assert(p1->pageid == 0 || p1->pageid == 1);
-  stasis_allocation_policy_update_freespace_locked_page(ap, 1, p1, 0);
+  pageid_t pageid2 = stasis_allocation_policy_pick_suitable_page(ap, 1, 21);
+  assert(pageid2 != INVALID_PAGE);
+  stasis_allocation_policy_alloced_from_page(ap, 1, pageid2);
+  assert(pageid2 == 3);
+  stasis_allocation_policy_update_freespace(ap, pageid2, 0);
 
-  availablePage * p2 = stasis_allocation_policy_pick_suitable_page(ap, 1, 21);
-  stasis_allocation_policy_alloced_from_page(ap, 1, p2->pageid);
+  pageid_t pageid3 = stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
+  stasis_allocation_policy_alloced_from_page(ap, 2, pageid3);
+  assert(pageid1 != pageid3);
+  stasis_allocation_policy_update_freespace(ap, pageid3, 0);
 
-  assert(p2->pageid == 3);
-  stasis_allocation_policy_update_freespace_locked_page(ap, 1, p2, 0);
+  pageid_t pageid4 = stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
+  assert(pageid4 == INVALID_PAGE);
 
-  availablePage * p3 = stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
-  stasis_allocation_policy_alloced_from_page(ap, 2, p3->pageid);
-  assert(p1->pageid != p3->pageid);
-  stasis_allocation_policy_update_freespace_locked_page(ap, 2, p3, 0);
+  pageid_t pageid5 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
+  stasis_allocation_policy_alloced_from_page(ap, 2, pageid5);
+  assert(pageid5== 2);
+  stasis_allocation_policy_update_freespace(ap, pageid5, 0);
 
-  availablePage * p4 = stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
-  assert(!p4);
-
-  availablePage * p5 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
-  stasis_allocation_policy_alloced_from_page(ap, 2, p5->pageid);
-  assert(p5 && p5->pageid == 2);
-  stasis_allocation_policy_update_freespace_locked_page(ap, 2, p5, 0);
-
-  stasis_allocation_policy_update_freespace_locked_page(ap, 1, p1, 100);
+  stasis_allocation_policy_update_freespace(ap, pageid1, 100);
   stasis_allocation_policy_transaction_completed(ap, 1);
-  stasis_allocation_policy_update_freespace_unlocked_page(ap, p2, 25);
+  stasis_allocation_policy_update_freespace(ap, pageid2, 25);
 
-  availablePage * p6 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
-  stasis_allocation_policy_alloced_from_page(ap, 2, p6->pageid);
-  assert(p6->pageid == 1 || p6->pageid == 0);
-  stasis_allocation_policy_update_freespace_locked_page(ap, 2, p6, 0);
+  pageid_t pageid6 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
+  stasis_allocation_policy_alloced_from_page(ap, 2, pageid6);
+  assert(pageid6 == 1 || pageid6 == 0);
+  stasis_allocation_policy_update_freespace(ap, pageid6, 0);
 
-  availablePage * p7 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
-  assert(!p7);
+  pageid_t pageid7 = stasis_allocation_policy_pick_suitable_page(ap, 2, 50);
+  assert(pageid7 == INVALID_PAGE);
 
-  stasis_allocation_policy_update_freespace_unlocked_page(ap, pages[3], 51);
+  stasis_allocation_policy_update_freespace(ap, 3, 51);
 
-  availablePage * p8 =stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
-  assert(p8->pageid == 3);
-  stasis_allocation_policy_alloced_from_page(ap, 2, p8->pageid);
+  pageid_t pageid8 =stasis_allocation_policy_pick_suitable_page(ap, 2, 51);
+  assert(pageid8 == 3);
+  stasis_allocation_policy_alloced_from_page(ap, 2, pageid8);
 
-  stasis_allocation_policy_update_freespace_locked_page(ap, 2, p8, 0);
+  stasis_allocation_policy_update_freespace(ap, pageid8, 0);
 
   stasis_allocation_policy_transaction_completed(ap, 2);
 
   stasis_allocation_policy_deinit(ap);
-
-  free(pages);
-
 
 } END_TEST
 
@@ -155,8 +128,8 @@ static const int MAX_DESIRED_FREESPACE =
 static int nextxid = 0;
 int activexidcount = 0;
 static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
-			     availablePage ** pages1, availablePage ** pages2) {
-  switch(myrandom(6)) {
+			     pageid_t * pages1, pageid_t * pages2) {
+  switch(myrandom(5)) {
   case 0 : {   // find page
     int thexid = myrandom(XACT_COUNT);
     if(xids[thexid] == -1) {
@@ -166,9 +139,9 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
       DEBUG("xid begins\n");
     }
     int thefreespace = myrandom(MAX_DESIRED_FREESPACE);
-    availablePage * p =
+    pageid_t p =
       stasis_allocation_policy_pick_suitable_page(ap, xids[thexid], thefreespace);
-    if(p) {
+    if(p != INVALID_PAGE) {
       DEBUG("alloc succeeds\n");
       // xxx validate returned value...
     } else {
@@ -185,7 +158,7 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
     DEBUG("complete");
   } break;
   case 2 : {   // update freespace unlocked
-    int thespacediff = myrandom(MAX_DESIRED_FREESPACE/2) - (MAX_DESIRED_FREESPACE/2);
+    int thespacediff = myrandom(MAX_DESIRED_FREESPACE) - (MAX_DESIRED_FREESPACE/2);
     int thexid;
     if(!activexidcount) { break; }
     while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
@@ -195,33 +168,32 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
     } else {
       minfreespace = 0;
     }
-    availablePage * p = stasis_allocation_policy_pick_suitable_page(ap, xids[thexid],
+    pageid_t p = stasis_allocation_policy_pick_suitable_page(ap, xids[thexid],
                                                  minfreespace);
-    if(p && p->lockCount == 0) {
-      int thenewfreespace = p->freespace+thespacediff;
-      stasis_allocation_policy_update_freespace_unlocked_page(ap, p, thenewfreespace);
+    if(p != INVALID_PAGE) {
+      int thenewfreespace = myrandom(MAX_DESIRED_FREESPACE/2)+thespacediff;
+      stasis_allocation_policy_update_freespace(ap, p, thenewfreespace);
       //      printf("updated freespace unlocked");
     }
   } break;
-  case 3 : {   // update freespace locked
-  } break;
-  case 4 : {   // lock page
-  } break;
-  case 5 : {   // alloced from page
-
-    // xxx this case is nonsense.  we pick a random page, alloc from it, and allocation policy correctly sees that we're violating protocol, and cores...
-    // xxx write better one..
-    /*        int thexid;
+  case 3 : {   // dealloc from page
+    int thexid;
     if(!activexidcount) { break; }
-    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
-    pageid_t thepage=myrandom(AVAILABLE_PAGE_COUNT_A + pages2?AVAILABLE_PAGE_COUNT_B:0);
-    stasis_allocation_policy_alloced_from_page(ap,thexid,thepage); */
-
+    while(xids[thexid = myrandom(XACT_COUNT)] == -1) {}
+    pageid_t p = pages1[myrandom(AVAILABLE_PAGE_COUNT_A)];
+    stasis_allocation_policy_dealloced_from_page(ap, xids[thexid], p);
   } break;
-
+  case 4 : {   // alloced from page
+    int thexid;
+    if(!activexidcount) { break; }
+    while(xids[thexid = myrandom(XACT_COUNT)] == -1) {}
+    pageid_t p = pages1[myrandom(AVAILABLE_PAGE_COUNT_A)];
+    if(stasis_allocation_policy_can_xid_alloc_from_page(ap, xids[thexid], p)) {
+      stasis_allocation_policy_alloced_from_page(ap, xids[thexid], p);
+    }
+  } break;
+  default: abort();
   }
-
-
 }
 
 START_TEST(allocationPolicy_randomTest) {
@@ -232,10 +204,8 @@ START_TEST(allocationPolicy_randomTest) {
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
-  availablePage ** pages1 =
-    malloc((1+AVAILABLE_PAGE_COUNT_A) * sizeof(availablePage *));
-  availablePage ** pages2 =
-    malloc((1+AVAILABLE_PAGE_COUNT_B) * sizeof(availablePage *));
+  pageid_t * pages1 = malloc(AVAILABLE_PAGE_COUNT_A * sizeof(pageid_t));
+  pageid_t * pages2 = malloc(AVAILABLE_PAGE_COUNT_B * sizeof(pageid_t));
 
   int * xids = malloc(sizeof(int) * XACT_COUNT);
 
@@ -243,34 +213,29 @@ START_TEST(allocationPolicy_randomTest) {
     xids[i] = -1;
   }
 
-  for(int i = 0; i < AVAILABLE_PAGE_COUNT_A; i++) {
-    pages1[i] = malloc(sizeof(availablePage));
-    pages1[i]->pageid = i;
-    pages1[i]->freespace = i * FREE_MUL;
-    pages1[i]->lockCount = 0;
-  }
-  pages1[AVAILABLE_PAGE_COUNT_A] = 0;
-  for(int i = 0 ; i < AVAILABLE_PAGE_COUNT_B; i++) {
-    pages2[i] = malloc(sizeof(availablePage));
-    pages2[i]->pageid = AVAILABLE_PAGE_COUNT_A + i;
-    pages2[i]->freespace = (AVAILABLE_PAGE_COUNT_A + i) * FREE_MUL;
-    pages2[i]->lockCount = 0;
-  }
-  pages2[AVAILABLE_PAGE_COUNT_B] = 0;
 
   stasis_allocation_policy_t * ap = stasis_allocation_policy_init();
 
-  stasis_allocation_policy_register_new_pages(ap, pages1);
+  for(int i = 0; i < AVAILABLE_PAGE_COUNT_A; i++) {
+    pages1[i] = i;
+    stasis_allocation_policy_register_new_page(ap, i, i * FREE_MUL);
+  }
 
   for(int k = 0; k < PHASE_ONE_COUNT; k++) {
     // Don't pass in pages2; ap doesn't know about them yet!
     takeRandomAction(ap, xids, pages1, 0);
   }
 
-  stasis_allocation_policy_register_new_pages(ap, pages2);
+  for(int i = 0 ; i < AVAILABLE_PAGE_COUNT_B; i++) {
+    pages2[i] = AVAILABLE_PAGE_COUNT_A + i;
+    stasis_allocation_policy_register_new_page(ap, pages2[i], (AVAILABLE_PAGE_COUNT_A + i) * FREE_MUL);
+  }
 
   for(int k = 0; k < PHASE_TWO_COUNT; k++) {
     takeRandomAction(ap, xids, pages1, pages2);
+  }
+  for(int i = 0; i < XACT_COUNT; i++) {
+    if(xids[i] != INVALID_XID) { stasis_allocation_policy_transaction_completed(ap, xids[i]); }
   }
 
   stasis_allocation_policy_deinit(ap);

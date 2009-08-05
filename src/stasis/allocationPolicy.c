@@ -36,371 +36,456 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define ALLOCATION_POLICY_SANITY_CHECKS
+/**
+ * Allocation Policy maintains the following tables:
+ *
+ *   AllPages: _pageid_, freespace, key1: pageid
+ *
+ *   XidAlloced:  _xid, pageid_ key1: xid,pageid, key2: pageid,xid
+ *   XidDealloced: _xid, pageid_: key1: xid,pageid, key2: pageid,xid
+ *
+ * And the following views:
+ *
+ *   AvailablePages: (_pageid_, freespace)  The rows of AllPages with no entries in xidAllloced or xidDealloced.  key1: pageid, key2: freespace, pageid
+ *   PageOwners: (xid, freespace, _pageid_) The rows of AllPages with an entry in xidAlloced, and at most one entry in xidDealloced, key1: pageid, key2 = xid, freespace, pageid
+ */
+// Tables:
+typedef struct {
+  pageid_t pageid;
+  size_t freespace;
+} allPages_pageid_freespace;
+typedef struct {
+  int xid;
+  pageid_t pageid;
+} xidAllocedDealloced_xid_pageid;
 
-// Each availablePage should either be in availablePages, or in
-// xidAlloced and pageOwners.  If a transaction allocs and
-// deallocs from the same page, then it only has an entry for that
-// page in xidAlloced.
-//
-// xidAlloced is an lhtable of type (int xid) -> (rbtree of availablePage*)
-// xidDealloced is an lhtable of type (int xid) -> (lhtable of int pageid -> availablePage *)
-// pageOwners is an lhtable of type (int pageid) -> (int xid)
-// availablePages is a rbtree of availablePage*.
+// Views:
 
-struct allocationPolicy {
-  struct LH_ENTRY(table) * xidAlloced;
-  struct LH_ENTRY(table) * xidDealloced;
-  struct RB_ENTRY(tree)  * availablePages;
-  struct LH_ENTRY(table) * pageOwners;
-  struct LH_ENTRY(table) * allPages;
+typedef struct {
+  pageid_t pageid;
+  size_t freespace;
+} availablePages_pageid_freespace;
+typedef struct {
+  int xid;
+  size_t freespace;
+  pageid_t pageid;
+} pageOwners_xid_freespace_pageid;
+
+struct stasis_allocation_policy_t {
+  // views
+  struct rbtree * availablePages_key_pageid;
+  struct rbtree * availablePages_key_freespace_pageid;
+  struct rbtree * pageOwners_key_pageid;
+  struct rbtree * pageOwners_key_xid_freespace_pageid;
+  // tables
+  struct rbtree * allPages_key_pageid;
+  struct rbtree * xidAlloced_key_xid_pageid;
+  struct rbtree * xidAlloced_key_pageid_xid;
+  struct rbtree * xidDealloced_key_xid_pageid;
+  struct rbtree * xidDealloced_key_pageid_xid;
+  // flags
+  char reuseWithinXact;
 };
 
-inline static int cmpPageid(const void * ap, const void * bp, const void * param) {
-  const availablePage * a = (const availablePage *)ap;
-  const availablePage * b = (const availablePage *)bp;
+// View maintenance functions.  Called by the table insertion functions.
 
-  if(a->pageid < b->pageid) {
-    return -1;
-  } else if (a->pageid > b->pageid) {
+// ######## Helpers ###############
+
+static int void_single_add(void * val, struct rbtree * a) {
+  const void * old = rbdelete(val, a);
+  rbsearch(val, a);
+  int found = (old != 0);
+  if(found) { free((void*)old); }
+  return found;
+}
+
+static int void_single_remove(void * val, struct rbtree * a) {
+  const void * old = rbdelete(val, a);
+  int found = (old != 0);
+  if(found) { free((void*)old); }
+  return found;
+}
+static int void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
+  const void *old1, *old2 ;
+
+  old1 = rbdelete(val, a);
+  rbsearch(val, a);
+  int found1 = (old1 != 0);
+
+  old2 = rbdelete(val, b);
+  rbsearch(val,b);
+  assert(old1 == old2);
+  if(found1) { free((void*)old1); }
+
+  return found1;
+}
+static int void_double_remove(const void * val, struct rbtree * primary, struct rbtree * secondary) {
+  const void * fullTuple= rbdelete(val, primary);
+  int found1 = (fullTuple != 0);
+  if(found1) {
+    const void * old = rbdelete(fullTuple, secondary);
+    assert(old == fullTuple);
+    free((void*)fullTuple);
+    return 1;
+  } else {
+    return 0;
+  }
+}
+// ######## AvailablePages ###########
+static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid);
+static int availablePages_add(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
+  int ret = availablePages_remove(ap, pageid);
+  availablePages_pageid_freespace* tup= malloc(sizeof(*tup));
+  tup->pageid = pageid;
+  tup->freespace = freespace;
+  void_double_add(tup, ap->availablePages_key_pageid, ap->availablePages_key_freespace_pageid);
+  return ret;
+}
+static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
+  availablePages_pageid_freespace tup = {pageid, -1};
+  return void_double_remove(&tup, ap->availablePages_key_pageid, ap->availablePages_key_freespace_pageid);
+}
+
+// ######## PageOwners ###########
+static int pageOwners_remove(stasis_allocation_policy_t *ap, pageid_t pageid);
+static int pageOwners_add(stasis_allocation_policy_t *ap, int xid, size_t freespace, pageid_t pageid) {
+
+  int ret = pageOwners_remove(ap, pageid);
+
+  pageOwners_xid_freespace_pageid * tup = malloc(sizeof(*tup));
+  tup->xid = xid;
+  tup->freespace = freespace;
+  tup->pageid = pageid;
+
+  void_double_add(tup, ap->pageOwners_key_pageid, ap->pageOwners_key_xid_freespace_pageid);
+  return ret;
+}
+
+static int pageOwners_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
+  pageOwners_xid_freespace_pageid tup = { INVALID_XID, -1, pageid };
+  return void_double_remove(&tup, ap->pageOwners_key_pageid, ap->pageOwners_key_xid_freespace_pageid);
+}
+int pageOwners_lookup_by_xid_freespace(stasis_allocation_policy_t *ap, int xid, size_t freespace, pageid_t* pageid) {
+  pageOwners_xid_freespace_pageid query = { xid, freespace, 0 };
+  // find lowest numbered page w/ enough freespace.
+  const pageOwners_xid_freespace_pageid *tup = rblookup(RB_LUGTEQ, &query, ap->pageOwners_key_xid_freespace_pageid);
+  if(tup && tup->xid == xid) {
+    assert(tup->freespace >= freespace);
+    *pageid = tup->pageid;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+int pageOwners_lookup_by_pageid(stasis_allocation_policy_t* ap, pageid_t pageid, int *xid, size_t *freespace) {
+  const pageOwners_xid_freespace_pageid query = { 0, 0, pageid };
+  const pageOwners_xid_freespace_pageid *tup = rbfind(&query, ap->pageOwners_key_pageid);
+  if(tup) {
+    *xid = tup->xid;
+    *freespace = tup->freespace;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+/// TABLE METHODS FOLLOW.  These functions perform view maintenance.
+
+// ######## AllPages #############
+static int allPages_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pageid, size_t *freespace) {
+  allPages_pageid_freespace query = {pageid, 0};
+  const allPages_pageid_freespace * tup = rbfind(&query, ap->allPages_key_pageid);
+  if(tup) {
+    assert(tup->pageid == pageid);
+    *freespace = tup->freespace;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+static int allPages_add(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
+  allPages_pageid_freespace * tup = malloc(sizeof(*tup));
+  tup->pageid = pageid;
+  tup->freespace = freespace;
+  int ret = void_single_add(tup, ap->allPages_key_pageid);
+  if(!ret) {
+    int ret2 = availablePages_add(ap, pageid, freespace);
+    assert(!ret2);
+  } else {
+    // page may or may not be in availablePages...
+  }
+  return ret;
+}
+/** Assumes that the page is not in use by an outstanding xact */
+static int allPages_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
+  allPages_pageid_freespace tup = { pageid, -1 };
+  int found = void_single_remove(&tup, ap->allPages_key_pageid);
+  int found2 = availablePages_remove(ap, pageid);
+  assert(found == found2);
+  return found;
+}
+static void allPages_removeAll(stasis_allocation_policy_t *ap) {
+  const allPages_pageid_freespace * tup;
+  while((tup = rbmin(ap->allPages_key_pageid))) {
+    allPages_remove(ap, tup->pageid);
+  }
+}
+
+static void allPages_set_freespace(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
+  allPages_pageid_freespace * tup = malloc(sizeof(*tup));
+  tup->pageid = pageid;
+  tup->freespace = freespace;
+  int existed = void_single_add(tup, ap->allPages_key_pageid);
+  assert(existed);
+  int availableExisted = availablePages_remove(ap, pageid);
+  if(availableExisted) {
+    availablePages_add(ap, pageid, freespace);
+  }
+  int xid;
+  size_t oldfreespace;
+  int ownerExisted = pageOwners_lookup_by_pageid(ap, pageid, &xid, &oldfreespace);
+  if(ownerExisted) {
+    pageOwners_add(ap, xid, freespace, pageid);
+  }
+  assert(!(ownerExisted && availableExisted));
+}
+static int xidAllocedDealloced_helper_lookup_by_xid(struct rbtree *t, int xid, pageid_t **pages, size_t*count) {
+  xidAllocedDealloced_xid_pageid query = {xid, -1};
+  const xidAllocedDealloced_xid_pageid *tup = rblookup(RB_LUGTEQ, &query, t);
+  int ret = 0;
+  *pages = 0;
+  *count = 0;
+  while(tup && tup->xid == xid) {
+    ret = 1;
+    // add pageid to ret value
+    (*count)++;
+    *pages = realloc(*pages, *count * sizeof(*pages[0]));
+//    printf("pages %x count %x *pages %x len %lld \n", pages, count, *pages, *count * sizeof(*pages[0]));
+    fflush(stdout);
+    (*pages)[(*count) - 1] = tup->pageid;
+    tup = rblookup(RB_LUGREAT, tup, t);
+  }
+  return ret;
+}
+static int xidAllocedDealloced_helper_lookup_by_pageid(struct rbtree *t, pageid_t pageid, int ** xids, size_t * count) {
+  xidAllocedDealloced_xid_pageid query = {-1, pageid};
+  const xidAllocedDealloced_xid_pageid *tup = rblookup(RB_LUGTEQ, &query, t);
+  int ret = 0;
+  *xids = 0;
+  *count = 0;
+  while (tup && tup->pageid == pageid) {
+    ret = 1;
+    // add xid to ret value.
+    (*count)++;
+    *xids = realloc(*xids, *count * sizeof(*xids[0]));
+    (*xids)[(*count) - 1] = tup->xid;
+    tup = rblookup(RB_LUGREAT, tup, t);
+  }
+  return ret;
+}
+
+static int xidAlloced_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pageid, int **xids, size_t * count);
+static int xidDealloced_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pageid, int **xids, size_t * count);
+
+static int update_views_for_page(stasis_allocation_policy_t *ap, pageid_t pageid) {
+  size_t xidAllocCount;
+  size_t xidDeallocCount;
+  int ret = 0;
+  int * allocXids;
+  int * deallocXids;
+  size_t freespace;
+  int inAllPages = allPages_lookup_by_pageid(ap, pageid, &freespace);
+  assert(inAllPages);
+  int inXidAlloced = xidAlloced_lookup_by_pageid(ap, pageid, &allocXids, &xidAllocCount);
+  int inXidDealloced = xidDealloced_lookup_by_pageid(ap, pageid, &deallocXids, &xidDeallocCount);
+  if(! inXidAlloced) { xidAllocCount = 0; allocXids = 0;}
+  if(! inXidDealloced) { xidDeallocCount = 0; deallocXids = 0; }
+  if(xidAllocCount == 0 && xidDeallocCount == 0) {
+    pageOwners_remove(ap, pageid);
+    availablePages_add(ap, pageid, freespace);
+  } else if ((xidAllocCount == 1 && xidDeallocCount == 0)
+               || (xidAllocCount == 1 && xidDeallocCount == 1 && ap->reuseWithinXact && (allocXids[0] == deallocXids[0]))) {
+    pageOwners_add(ap, allocXids[0], freespace, pageid);
+    availablePages_remove(ap, pageid);
+  } else {
+    pageOwners_remove(ap, pageid);
+    availablePages_remove(ap, pageid);
+  }
+  if(allocXids) { free(allocXids); }
+  if(deallocXids) { free(deallocXids); }
+  return ret;
+}
+static int xidAllocedDealloced_helper_add(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree* second, int xid, pageid_t pageid) {
+  xidAllocedDealloced_xid_pageid * tup = malloc(sizeof(*tup));
+  tup->xid = xid;
+  tup->pageid = pageid;
+  int existed = void_double_add(tup, first, second);
+  if(!existed) {
+    update_views_for_page(ap, pageid);
+  }
+  return existed;
+}
+static int xidAllocedDealloced_helper_remove(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree*second, int xid, pageid_t pageid) {
+  xidAllocedDealloced_xid_pageid query = { xid, pageid };
+  int existed = void_double_remove(&query, first, second);
+  if(existed) {
+    update_views_for_page(ap, pageid);
+  }
+  return existed;
+}
+static int xidAlloced_lookup_by_xid(stasis_allocation_policy_t *ap, int xid, pageid_t ** pages, size_t * count) {
+  return xidAllocedDealloced_helper_lookup_by_xid(ap->xidAlloced_key_xid_pageid, xid, pages, count);
+}
+static int xidAlloced_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pageid, int **xids, size_t * count) {
+  return xidAllocedDealloced_helper_lookup_by_pageid(ap->xidAlloced_key_pageid_xid, pageid, xids, count);
+}
+static int xidAlloced_add(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  return xidAllocedDealloced_helper_add(ap, ap->xidAlloced_key_pageid_xid, ap->xidAlloced_key_xid_pageid, xid, pageid);
+}
+static int xidAlloced_remove(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  return xidAllocedDealloced_helper_remove(ap, ap->xidAlloced_key_pageid_xid, ap->xidAlloced_key_xid_pageid, xid, pageid);
+}
+static int xidDealloced_lookup_by_xid(stasis_allocation_policy_t *ap, int xid, pageid_t ** pages, size_t * count) {
+  return xidAllocedDealloced_helper_lookup_by_xid(ap->xidDealloced_key_xid_pageid, xid, pages, count);
+}
+static int xidDealloced_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pageid, int **xids, size_t * count) {
+  return xidAllocedDealloced_helper_lookup_by_pageid(ap->xidDealloced_key_pageid_xid, pageid, xids, count);
+}
+static int xidDealloced_add(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  return xidAllocedDealloced_helper_add(ap, ap->xidDealloced_key_pageid_xid, ap->xidDealloced_key_xid_pageid, xid, pageid);
+}
+static int xidDealloced_remove(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  return xidAllocedDealloced_helper_remove(ap, ap->xidDealloced_key_pageid_xid, ap->xidDealloced_key_xid_pageid, xid, pageid);
+}
+
+static int availablePages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+  const availablePages_pageid_freespace *a = ap, *b = bp;
+  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+}
+static int availablePages_cmp_freespace_pageid(const void *ap, const void *bp, const void* ign) {
+  const availablePages_pageid_freespace *a = ap, *b = bp;
+  return a->freespace < b->freespace ? -1 : a->freespace > b->freespace ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+}
+int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t freespace, pageid_t *pageid) {
+  const availablePages_pageid_freespace query = { 0, freespace };
+  const availablePages_pageid_freespace *tup = rblookup(RB_LUGTEQ, &query, ap->availablePages_key_freespace_pageid);
+  if(tup && tup->freespace >= freespace ) {
+    *pageid = tup->pageid;
     return 1;
   } else {
     return 0;
   }
 }
 
-static int cmpFreespace(const void * ap, const void * bp, const void * param) {
-  const availablePage * a = (const availablePage *) ap;
-  const availablePage * b = (const availablePage *) bp;
-
-  if(a->freespace < b->freespace) {
-    return -1;
-  } else if (a->freespace > b->freespace) {
-    return 1;
-  } else {
-    return cmpPageid(ap,bp,param);
-  }
+static int pageOwners_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+  const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
+  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
 }
-
-inline static availablePage* getAvailablePage(stasis_allocation_policy_t * ap, pageid_t pageid) {
-  return  (availablePage*) LH_ENTRY(find)(ap->allPages, &pageid, sizeof(pageid));
+static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp, const void* ign) {
+  const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
+  return a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : a->freespace < b->freespace ? -1 : a->freespace > b->freespace ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
 }
-
-inline static void insert_xidAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-
-  struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
-  if(!pages) {
-    pages = RB_ENTRY(init)(cmpFreespace, 0);
-    LH_ENTRY(insert)(ap->xidAlloced, &xid, sizeof(xid), pages);
-  }
-  const availablePage * check = RB_ENTRY(search)(p, pages);
-  assert(check == p);
+static int allPages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+  const allPages_pageid_freespace *a = ap, *b = bp;
+  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
 }
-
-inline static void remove_xidAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  assert(p->lockCount);
-  struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
-  assert(pages);
-  const availablePage * check = RB_ENTRY(delete)(p, pages);
-  assert(check == p);  // sometimes fails
+static int xidAllocedDealloced_cmp_pageid_xid(const void *ap, const void *bp, const void* ign) {
+  const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
+  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : 0;
 }
-
-inline static void insert_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-
-  struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
-  if(!pages) {
-    pages = RB_ENTRY(init)(cmpPageid, 0);
-    LH_ENTRY(insert)(ap->xidDealloced, &xid, sizeof(xid), pages);
-  }
-  assert(pages);
-  const availablePage * check = RB_ENTRY(search)(p, pages);
-  // XXX Assert that the page wasn't already there?
-  assert(check);
-}
-
-inline static void remove_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-
-  struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
-  assert(pages);
-  const availablePage * check = RB_ENTRY(delete)(p, pages);
-  assert(check == p);
-}
-
-inline static int find_xidDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  struct RB_ENTRY(tree) * pages = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
-  if(!pages) { return 0; }
-  const availablePage * check = RB_ENTRY(find)(p, pages);
-  if(check) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-inline static void     lockAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  const availablePage * check = RB_ENTRY(delete)(p, ap->availablePages);
-  assert(check == p);
-
-  assert(p->lockCount == 0);
-  p->lockCount = 1;
-
-  int * xidp = malloc(sizeof(int));
-  *xidp = xid;
-  LH_ENTRY(insert)(ap->pageOwners, &(p->pageid), sizeof(p->pageid), xidp);
-  insert_xidAlloced(ap, xid, p);
-}
-
-inline static void   unlockAlloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  remove_xidAlloced(ap, xid, p);
-
-  p->lockCount--;
-  //  assert(p->lockCount == 1);
-  //  p->lockCount = 0;
-  if(!p->lockCount) {
-    const availablePage * check = RB_ENTRY(search)(p, ap->availablePages);
-    assert(check == p);
-  }
-  int * xidp = LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
-  //assert(*xidp == xid);
-  if(xidp) { free(xidp); }
-
-}
-
-inline static void lockDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  if(p->lockCount == 0) {
-    // xid should own it
-    lockAlloced(ap, xid, p);
-  } else if(p->lockCount == 1) {
-    int * xidp = LH_ENTRY(find)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
-    if(!xidp) {
-
-      // The only active transaction that touched this page deallocated from it,
-      // so just add the page to our dealloced table.
-
-      p->lockCount++;
-      insert_xidDealloced(ap, xid, p);
-
-    } else if(*xidp != xid) {
-
-      // Remove from the other transaction's "alloced" table.
-      remove_xidAlloced(ap, *xidp, p);
-      assert(p->lockCount == 1);
-
-      // Place in other transaction's "dealloced" table.
-      insert_xidDealloced(ap, *xidp, p);
-
-      // This page no longer has an owner
-      LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid));
-      free(xidp);
-
-      // Add to our "dealloced" table, increment lockCount.
-      p->lockCount++;
-      insert_xidDealloced(ap, xid, p);
-    }
-  } else {
-    // not owned by anyone... is it already in this xid's Dealloced table?
-    if(!find_xidDealloced(ap, xid, p)) {
-      p->lockCount++;
-      insert_xidDealloced(ap, xid, p);
-    }
-  }
-}
-
-inline static void unlockDealloced(stasis_allocation_policy_t * ap, int xid, availablePage * p) {
-  assert(p->lockCount > 0);
-  p->lockCount--;
-
-  remove_xidDealloced(ap, xid, p);
-  if(!p->lockCount) {
-    // put it back into available pages.
-    LH_ENTRY(remove)(ap->pageOwners, &(p->pageid), sizeof(p->pageid)); // XXX new feb-29
-
-    const availablePage * check = RB_ENTRY(search)(p, ap->availablePages);
-    assert(check == p);
-  }
+static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, const void* ign) {
+  const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
+  return a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
 }
 
 stasis_allocation_policy_t * stasis_allocation_policy_init() {
-  stasis_allocation_policy_t * ap = malloc(sizeof(stasis_allocation_policy_t));
-
-  ap->xidAlloced = LH_ENTRY(create)(10);
-  ap->xidDealloced = LH_ENTRY(create)(10);
-  ap->availablePages = RB_ENTRY(init)(cmpFreespace, 0);
-  ap->pageOwners = LH_ENTRY(create)(10);
-  ap->allPages = LH_ENTRY(create)(10);
+  stasis_allocation_policy_t * ap = malloc(sizeof(*ap));
+  ap->availablePages_key_pageid = rbinit(availablePages_cmp_pageid, 0);
+  ap->availablePages_key_freespace_pageid = rbinit(availablePages_cmp_freespace_pageid, 0);
+  ap->pageOwners_key_pageid = rbinit(pageOwners_cmp_pageid, 0);
+  ap->pageOwners_key_xid_freespace_pageid = rbinit(pageOwners_cmp_xid_freespace_pageid, 0);
+  ap->allPages_key_pageid = rbinit(allPages_cmp_pageid, 0);
+  ap->xidAlloced_key_pageid_xid = rbinit(xidAllocedDealloced_cmp_pageid_xid, 0);
+  ap->xidAlloced_key_xid_pageid = rbinit(xidAllocedDealloced_cmp_xid_pageid, 0);
+  ap->xidDealloced_key_pageid_xid = rbinit(xidAllocedDealloced_cmp_pageid_xid, 0);
+  ap->xidDealloced_key_xid_pageid = rbinit(xidAllocedDealloced_cmp_xid_pageid, 0);
+  ap->reuseWithinXact = 0;
   return ap;
 }
-
 void stasis_allocation_policy_deinit(stasis_allocation_policy_t * ap) {
-
-  const availablePage * next;
-  while(( next = RB_ENTRY(min)(ap->availablePages) )) {
-    RB_ENTRY(delete)(next, ap->availablePages);
-    free((void*)next);
-  }
-  LH_ENTRY(destroy)(ap->xidAlloced);
-  LH_ENTRY(destroy)(ap->xidDealloced);
-  RB_ENTRY(destroy)(ap->availablePages);
-  LH_ENTRY(destroy)(ap->pageOwners);
-  LH_ENTRY(destroy)(ap->allPages);
-
+  allPages_removeAll(ap);  // frees entries in availablePages, asserts that all pages are available.
+  rbdestroy(ap->availablePages_key_pageid);
+  rbdestroy(ap->availablePages_key_freespace_pageid);
+  rbdestroy(ap->pageOwners_key_pageid);
+  rbdestroy(ap->pageOwners_key_xid_freespace_pageid);
+  rbdestroy(ap->allPages_key_pageid);
+  rbdestroy(ap->xidAlloced_key_pageid_xid);
+  rbdestroy(ap->xidAlloced_key_xid_pageid);
+  rbdestroy(ap->xidDealloced_key_pageid_xid);
+  rbdestroy(ap->xidDealloced_key_xid_pageid);
   free(ap);
 }
-
-void stasis_allocation_policy_register_new_pages(stasis_allocation_policy_t * ap, availablePage** newPages) {
-
-  for(int i = 0; newPages[i] != 0; i++) {
-    const availablePage * ret = RB_ENTRY(search)(newPages[i], ap->availablePages);
-    assert(ret == newPages[i]);
-    LH_ENTRY(insert)(ap->allPages, &(newPages[i]->pageid), sizeof(newPages[i]->pageid), newPages[i]);
-
-  }
-
+void stasis_allocation_policy_register_new_page(stasis_allocation_policy_t * ap, pageid_t pageid, size_t freespace) {
+  int existed = allPages_add(ap,pageid,freespace);
+  assert(!existed);
 }
-
-/// XXX need updateAlloced, updateFree, which remove a page, change
-/// its freespace / lockCount, and then re-insert them into the tree.
-
-availablePage * stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t * ap, int xid, int freespace) {
-  // For the best fit amongst the pages in availablePages, call:
-  //
-  //    rblookup(RB_LUGREAT, key, availablePages)
-  //
-  // For the page with the most freespace, call:
-  //
-  //    rbmax(availablePages);
-  //
-  availablePage tmp = { .freespace = freespace, .pageid = 0, .lockCount = 0 };
-
-  struct RB_ENTRY(tree) * locks;
-
-  // If we haven't heard of this transaction yet, then create an entry
-  // for it.
-
-  if(0 == (locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid)))) {
-    // Since this is cmpPageid, we can change the amount of freespace
-    // without modifying the tree.
-    locks = RB_ENTRY(init)(cmpFreespace, 0);
-    LH_ENTRY(insert)(ap->xidAlloced, &xid, sizeof(xid), locks);
- }
-
-  const availablePage *ret;
-
-  // Does this transaction already have an appropriate page?
-
-  if(!(ret = RB_ENTRY(lookup)(RB_LUGREAT, &tmp, locks))) {
-
-    // No; get a page from the availablePages.
-
-    ret = RB_ENTRY(lookup)(RB_LUGREAT, &tmp, ap->availablePages);
-    /*if(ret) {
-      assert(ret->lockCount == 0);
-      lockAlloced(ap, xid, (availablePage*) ret);
-      } */
-  }
-
-  // Done.  (If ret is null, then it's the caller's problem.)
-  return (availablePage*) ret;
-}
-
-int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) {
-  availablePage * p = getAvailablePage(ap, page);
-  const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
-  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
-  if(!(xidp || check1)) {
-    // the page is not available, and not owned.
-    return 0; // can't safely alloc from page
-  }
-  if(check1) {
-    // the page is available and unlocked
-    return 1; // can safely alloc from page
+pageid_t stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t * ap, int xid, size_t freespace) {
+  // does the xid have a suitable page?
+  pageid_t pageid;
+  int found = pageOwners_lookup_by_xid_freespace(ap, xid, freespace, &pageid);
+  if(found) { return pageid; }
+  // pick one from global pool.
+  found = availablePages_lookup_by_freespace(ap, freespace, &pageid);
+  if(found) {
+    return pageid;
   } else {
-    // someone owns the page.  Is it this xid?
-    return (*xidp == xid);
+    return INVALID_PAGE;
   }
 }
+void stasis_allocation_policy_transaction_completed(stasis_allocation_policy_t * ap, int xid) {
+  pageid_t *allocPages;
+  pageid_t *deallocPages;
+  size_t allocCount;
+  size_t deallocCount;
+  int alloced = xidAlloced_lookup_by_xid(ap, xid, &allocPages, &allocCount);
+  int dealloced = xidDealloced_lookup_by_xid(ap, xid, &deallocPages, &deallocCount);
 
-void stasis_allocation_policy_alloced_from_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) {
-  availablePage * p = getAvailablePage(ap, page);
-  const availablePage * check1 = RB_ENTRY(find)(p, ap->availablePages);
-  int * xidp = LH_ENTRY(find)(ap->pageOwners, &(page), sizeof(page));
-  if(!(xidp || check1)) {
-    // the page is not available, and is not owned.
-    // this can happen if more than one transaction deallocs from the same page
-    assert(p->lockCount);
-    printf("Two transactions concurrently dealloced from page; now a "
-	   "transaction has alloced from it.  This leads to unrecoverable "
-	   "schedules.  Refusing to continue.");
-    fflush(stdout);
+  if(alloced) {
+    for(size_t i = 0; i < allocCount; i++) {
+      xidAlloced_remove(ap, xid, allocPages[i]);
+    }
+    free(allocPages);
+  }
+  if(dealloced) {
+    for(size_t i = 0; i < deallocCount; i++) {
+      xidDealloced_remove(ap, xid, deallocPages[i]);
+    }
+    free(deallocPages);
+  }
+}
+void stasis_allocation_policy_update_freespace(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
+  allPages_set_freespace(ap, pageid, freespace);
+}
+void stasis_allocation_policy_dealloced_from_page(stasis_allocation_policy_t *ap, int xid, pageid_t pageid) {
+  xidDealloced_add(ap, xid, pageid);
+}
+void stasis_allocation_policy_alloced_from_page(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  if(!stasis_allocation_policy_can_xid_alloc_from_page(ap, xid, pageid)) {
+    fprintf(stderr, "A transaction allocated space from a page that contains records deallocated by another active transaction.  "
+        "This leads to unrecoverable schedules.  Refusing to continue.");
+    fflush(stderr);
     abort();
   }
-  if(check1) {
-    assert(p->lockCount == 0);
-    lockAlloced(ap, xid, (availablePage*)p);
-  } else {
-    // new: this xact is allocing on a page that an active xact alloced on.
-    // perhaps this is safe, but it's spooky.
-    assert(*xidp == xid);
+  xidAlloced_add(ap, xid, pageid);
+}
+int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t * ap, int xid, pageid_t pageid) {
+  int *xids;
+  size_t count;
+  int ret = 1;
+  int existed = xidDealloced_lookup_by_pageid(ap, pageid, &xids, &count);
+  if(!existed) { count = 0;  xids = 0;}
+  for(size_t i = 0; i < count ; i++) {
+    if(xids[i] != xid) { ret = 0; }
   }
-}
-
-void stasis_allocation_policy_lock_page(stasis_allocation_policy_t *ap, int xid, pageid_t page) {
-
-  availablePage * p = getAvailablePage(ap, page);
-  lockDealloced(ap, xid, p);
-
-}
-
-
-void stasis_allocation_policy_transaction_completed(stasis_allocation_policy_t * ap, int xid) {
-
-  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
-
-  if(locks) {
-
-    availablePage * next;
-
-    while(( next = (void*)RB_ENTRY(min)(locks) )) {
-      unlockAlloced(ap, xid, (next));           // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
-    }
-
-    LH_ENTRY(remove)(ap->xidAlloced, &xid, sizeof(xid));
-    RB_ENTRY(destroy)(locks);
-
-  }
-
-  locks = LH_ENTRY(find)(ap->xidDealloced, &xid, sizeof(xid));
-
-  if(locks) {
-    availablePage * next;
-
-    while(( next = (void*)RB_ENTRY(min)(locks) )) {
-      unlockDealloced(ap, xid, (availablePage*)next);         // This is really inefficient.  (We're wasting hashtable lookups.  Also, an iterator would be faster.)
-    }
-
-    LH_ENTRY(remove)(ap->xidDealloced, &xid, sizeof(xid));
-    RB_ENTRY(destroy)(locks);
-
-  }
-
-}
-
-void stasis_allocation_policy_update_freespace_unlocked_page(stasis_allocation_policy_t * ap, availablePage * key, int newFree) {
-  availablePage * p = (availablePage*) RB_ENTRY(delete)(key, ap->availablePages);
-  assert(key == p);
-  p->freespace = newFree;
-  const availablePage * ret = RB_ENTRY(search)(p, ap->availablePages);
-  assert(ret == p);
-}
-
-void stasis_allocation_policy_update_freespace_locked_page(stasis_allocation_policy_t * ap, int xid, availablePage * key, int newFree) {
-  struct RB_ENTRY(tree) * locks = LH_ENTRY(find)(ap->xidAlloced, &xid, sizeof(xid));
-  assert(key);
-  availablePage * p = (availablePage*) RB_ENTRY(delete)(key, locks);
-  assert(p); // sometimes fails
-  p->freespace = newFree;
-  key->freespace = newFree;
-  const availablePage * ret = RB_ENTRY(search)(p, locks);
-  assert(ret == p);
-  assert(p->lockCount == 1);
+  if(xids) { free(xids); }
+  return ret;
 }
