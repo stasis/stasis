@@ -336,8 +336,9 @@ static recordid slottedNext(int xid, Page *p, recordid rid) {
 }
 
 static recordid slottedFirst(int xid, Page *p) {
+#ifdef SLOTTED_PAGE_OLD_CHECKS
   slottedFsck(p);
-
+#endif
   recordid rid = { p->id, -1, 0 };
   return slottedNext(xid, p, rid);
 }
@@ -350,14 +351,18 @@ static recordid slottedLast(int xid, Page *p) {
 static int notSupported(int xid, Page * p) { return 0; }
 
 static int slottedFreespace(int xid, Page * p) {
+#ifdef SLOTTED_PAGE_OLD_CHECKS
   slottedFsck(p);
+#endif
 
   return slottedFreespaceForSlot(p, INVALID_SLOT);
 }
 
 static recordid slottedPreRalloc(int xid, Page * p, int type) {
   assert(type != INVALID_SLOT);
+#ifdef SLOTTED_PAGE_OLD_CHECKS
   slottedFsck(p);
+#endif
 
   recordid rid;
   rid.page = p->id;
@@ -536,8 +541,9 @@ static void slottedFree(int xid, Page * p, recordid rid) {
     *stasis_page_slotted_freelist_ptr(p) = rid.slot;
     assert(slottedGetType(xid,p,rid)==INVALID_SLOT);
   }
-
+#ifdef SLOTTED_PAGE_OLD_CHECKS
   slottedFsck(p);
+#endif
 }
 
 
