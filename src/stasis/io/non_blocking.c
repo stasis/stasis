@@ -535,6 +535,7 @@ static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
   tree_node scratch;
   scratch.start_pos = start;
   scratch.end_pos = start+1;
+  if(!stop) stop =  impl->end_pos;
   const tree_node * n = RB_ENTRY(lookup)(RB_LUGTEQ,&scratch,impl->fast_handles);   // min)(impl->fast_handles);
   int blocked = 0;
   while(n) {
