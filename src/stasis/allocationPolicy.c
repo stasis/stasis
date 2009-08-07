@@ -306,6 +306,9 @@ static int update_views_for_page(stasis_allocation_policy_t *ap, pageid_t pageid
                || (xidAllocCount == 1 && xidDeallocCount == 1 && ap->reuseWithinXact && (allocXids[0] == deallocXids[0]))) {
     pageOwners_add(ap, allocXids[0], freespace, pageid);
     availablePages_remove(ap, pageid);
+  } else if ((xidAllocCount ==0 && xidDeallocCount == 1)) {
+    pageOwners_add(ap, deallocXids[0], freespace, pageid);
+    availablePages_remove(ap, pageid);
   } else {
     pageOwners_remove(ap, pageid);
     availablePages_remove(ap, pageid);
