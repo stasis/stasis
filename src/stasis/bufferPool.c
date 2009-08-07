@@ -104,7 +104,7 @@ Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t * ret) {
   pthread_mutex_lock(&ret->mut);
 
   page = &(ret->pool[ret->nextPage]);
-
+  assert(!page->dirty);
   (ret->nextPage)++;
   /* There's a dummy page that we need to keep around, thus the +1 */
   assert(ret->nextPage <= MAX_BUFFER_SIZE + 1);
@@ -119,6 +119,7 @@ void stasis_buffer_pool_free_page(stasis_buffer_pool_t * ret, Page *p, pageid_t 
   writelock(p->rwlatch, 10);
   p->id = id;
   p->LSN = 0;
-  p->dirty = 0;
+  assert(!p->dirty);
+//  p->dirty = 0;
   writeunlock(p->rwlatch);
 }

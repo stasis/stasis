@@ -9,11 +9,14 @@
     out, or forcing the log too early?
 */
 static void phWrite(stasis_page_handle_t * ph, Page * ret) {
-  if(!ret->dirty) { return; }
+  DEBUG("%lld\n", ret->id);
   // This lock is only held to make the page implementation happy.  We should
   // implicitly have exclusive access to the page before this function is called,
   // or we'll deadlock.
+
+  /// TODO Turn into trywritelock + test for trouble.
   writelock(ret->rwlatch,0);
+  if(!ret->dirty) { unlock(ret->rwlatch); return; }
   stasis_page_flushed(ret);
   if(ph->log) { stasis_log_force(ph->log, ret->LSN, LOG_FORCE_WAL); }
   int err = ((stasis_handle_t*)ph->impl)->write(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
@@ -38,7 +41,7 @@ static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
       abort();
     }
   }
-  ret->dirty = 0;
+  assert(!ret->dirty);
   stasis_page_loaded(ret, type);
   unlock(ret->rwlatch);
 }

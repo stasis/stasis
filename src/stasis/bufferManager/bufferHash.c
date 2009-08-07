@@ -9,7 +9,6 @@
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferManager.h>
 #include <stasis/page.h>
-
 #include <assert.h>
 #include <stdio.h>
 
@@ -47,7 +46,6 @@ static node_t * pageGetNode(void * page, void * ignore) {
 static void pageSetNode(void * page, node_t * n, void * ignore) {
   Page * p = page;
   p->prev = (Page *) n;
-
 }
 
 static inline struct Page_s ** pagePendingPtr(Page * p) {
@@ -92,6 +90,22 @@ inline static void checkPageState(Page * p) { }
 
 #endif
 
+inline static int tryToWriteBackPage(Page * p) {
+
+  if(*pagePendingPtr(p) || *pagePinCountPtr(p)) {
+    return 0;
+  }
+
+  DEBUG("Write(%ld)\n", (long)victim->id);
+  page_handle->write(page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
+  stasis_page_cleanup(p);
+
+  assert(!p->dirty);
+  // Make sure that no one mistakenly thinks this is still a live copy.
+  p->id = -1;
+
+  return 1;
+}
 /** You need to hold mut before calling this.
 
     @return the page that was just written back.  It will not be in
@@ -115,11 +129,8 @@ inline static Page * writeBackOnePage() {
   Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(victim->id));
   assert(old == victim);
 
-  //      printf("Write(%ld)\n", (long)victim->id);
-  page_handle->write(page_handle,victim);   /// XXX pageCleanup and pageFlushed might be heavyweight.
-  stasis_page_cleanup(victim);
-  // Make sure that no one mistakenly thinks this is still a live copy.
-  victim->id = -1;
+  int couldWriteBackPage = tryToWriteBackPage(victim);
+  assert(couldWriteBackPage);
 
 #ifdef LATCH_SANITY_CHECKING
   // We can release the lock since we just grabbed it to see if
@@ -127,6 +138,7 @@ inline static Page * writeBackOnePage() {
   // no-one will touch the page for now.
   unlock(victim->loadlatch);
 #endif
+
   return victim;
 }
 
@@ -160,6 +172,7 @@ inline static Page * getFreePage() {
   assert(!*pagePinCountPtr(ret));
   assert(!*pagePendingPtr(ret));
   assert(!pageGetNode(ret,0));
+  assert(!ret->dirty);
   return ret;
 }
 
@@ -176,6 +189,7 @@ static void * writeBackWorker(void * ignored) {
       assert(freeCount < freeListLength);
       freeList[freeCount] = victim;
       freeCount++;
+      assert(!pageGetNode(victim, 0));
       checkPageState(victim);
     } else {
       static int warned = 0;
@@ -196,13 +210,18 @@ static Page * bhGetCachedPage(int xid, const pageid_t pageid) {
   Page * ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(pageid));
   if(ret) {
     checkPageState(ret);
+#ifdef LATCH_SANITY_CHECKING
+    int locked = tryreadlock(ret->loadlatch,0);
+    assert(locked);
+#endif
     if(!*pagePendingPtr(ret)) {
-      // good
       if(!*pagePinCountPtr(ret) ) {
         // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
         lru->remove(lru, ret);
       }
       (*pagePinCountPtr(ret))++;
+      checkPageState(ret);
+      assert(ret->id == pageid);
     } else {
       ret = 0;
     }
@@ -277,6 +296,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
       }
 
       freeList[freeCount] = ret2;
+      assert(!pageGetNode(ret2, 0));
       freeCount++;
     }
     // try again.
@@ -303,7 +323,8 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   } else {
     memset(ret->memAddr,0,PAGE_SIZE);
     *stasis_page_lsn_ptr(ret) = ret->LSN;
-    ret->dirty = 0;
+    assert(!ret->dirty);
+//    ret->dirty = 0;
     stasis_page_loaded(ret, type);
   }
   *pagePendingPtr(ret) = 0;
@@ -348,8 +369,8 @@ static void bhReleasePage(Page * p) {
 #endif
   pthread_mutex_unlock(&mut);
 }
-static void bhWriteBackPage(Page * p) {
-  page_handle->write(page_handle, p);
+static int bhWriteBackPage(Page * p) {
+  return tryToWriteBackPage(p);
 }
 static void bhForcePages() {
   page_handle->force_file(page_handle);

@@ -31,8 +31,9 @@ static stasis_page_handle_t * page_handle;
 
 static stasis_buffer_pool_t * stasis_buffer_pool;
 
-static void pageWrite_legacyWrapper(Page * p) {
+static int pageWrite_legacyWrapper(Page * p) {
   page_handle->write(page_handle,p);
+  return 1; // XXX probably unsafe.
 }
 static void forcePageFile_legacyWrapper() {
   page_handle->force_file(page_handle);

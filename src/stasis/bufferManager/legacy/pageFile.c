@@ -67,8 +67,7 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret, pagetype_t type) {
       abort();
     }
   }
-
-  ret->dirty = 0;
+  assert(ret->dirty == 0);
   stasis_page_loaded(ret, type);
 
   pthread_mutex_unlock(&stable_mutex);
@@ -78,9 +77,7 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret, pagetype_t type) {
     dirty page table can be kept up to date. */
 static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
-  assert(ret->dirty == stasis_dirty_page_table_is_dirty(h->dirtyPages, ret));
-  if(!ret->dirty) {
-    //  if(!stasis_dirty_page_table_is_dirty(ret)) {
+  if(!stasis_dirty_page_table_is_dirty(h->dirtyPages, ret)) {
     DEBUG(" =^)~ ");
     return;
   }

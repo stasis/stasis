@@ -139,7 +139,7 @@ extern void   (*releasePageImpl)(Page * p);
      storage.  For compatibility, such buffer managers should ignore
      this call.)
 */
-extern void (*writeBackPage)(Page * p);
+extern int (*writeBackPage)(Page * p);
 /**
     Force any written back pages to disk.
 
