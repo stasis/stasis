@@ -396,6 +396,9 @@ static void bhBufDeinit() {
   pthread_cond_signal(&needFree); // Wake up the writeback thread so it will exit.
   pthread_join(worker, 0);
 
+  // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
+  stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
   LH_ENTRY(openlist)(cachedPages, &iter);
@@ -403,7 +406,9 @@ static void bhBufDeinit() {
     Page * p = next->value;
     assertunlocked(p->rwlatch);
     assert(0 == *pagePinCountPtr(p));
-    page_handle->write(page_handle, p);
+    readlock(p->rwlatch,0);
+    assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
+    unlock(p->rwlatch);
     stasis_page_cleanup(p); // normally called by writeBackOnePage()
   }
   LH_ENTRY(closelist)(&iter);
