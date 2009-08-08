@@ -277,7 +277,9 @@ static void TregionAllocHelper(int xid, pageid_t page, pageid_t pageCount, int a
       // prevents the file from becoming sparse.
       for(pageid_t i = page+1; i < newPageid; i++) {
         Page * p = loadUninitializedPage(xid, i);
+        writelock(p->rwlatch, 0);
         stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+        unlock(p->rwlatch);
         releasePage(p);
       }
 

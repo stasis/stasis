@@ -32,6 +32,7 @@ struct stasis_dirty_page_table_t {
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
   pthread_mutex_lock(&dirtyPages->mutex);
+  assertlocked(p->rwlatch);
   if(!p->dirty) {
     p->dirty = 1;
     dpt_entry * e = malloc(sizeof(*e));

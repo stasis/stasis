@@ -51,8 +51,8 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
 static inline struct Page_s ** pagePendingPtr(Page * p) {
   return ((struct Page_s **)(&((p)->next)));
 }
-static inline int* pagePinCountPtr(Page * p) {
-  return ((int*)(&((p)->queue)));
+static inline intptr_t* pagePinCountPtr(Page * p) {
+  return ((intptr_t*)(&((p)->queue)));
 }
 
 #ifdef LONG_RUN
@@ -92,7 +92,7 @@ inline static void checkPageState(Page * p) { }
 
 inline static int tryToWriteBackPage(pageid_t page) {
 
-  Page * p = lhfind(cachedPages, &page, sizeof(page));
+  Page * p = LH_ENTRY(find)(cachedPages, &page, sizeof(page));
 
   if(!p) { return ENOENT; }
 
@@ -105,7 +105,7 @@ inline static int tryToWriteBackPage(pageid_t page) {
   DEBUG("Write(%ld)\n", (long)victim->id);
   page_handle->write(page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
 
-  assert(!p->dirty);
+  assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
 
   return 0;
 }
@@ -379,7 +379,10 @@ static void bhReleasePage(Page * p) {
   pthread_mutex_unlock(&mut);
 }
 static int bhWriteBackPage(pageid_t pageid) {
-  return tryToWriteBackPage(pageid);
+  pthread_mutex_lock(&mut);
+  int ret = tryToWriteBackPage(pageid);
+  pthread_mutex_unlock(&mut);
+  return ret;
 }
 static void bhForcePages() {
   page_handle->force_file(page_handle);
