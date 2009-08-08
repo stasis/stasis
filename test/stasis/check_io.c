@@ -455,7 +455,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("io");
   /* Begin a new test */
   TCase *tc = tcase_create("io_test");
-  tcase_set_timeout(tc, 600); // ten minute timeout
+//  tcase_set_timeout(tc, 1800); // thirty minute timeout
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, io_memoryTest);
