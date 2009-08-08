@@ -69,6 +69,7 @@ void * worker(void*arg) {
   for(int i = 0; i < NUM_STEPS; i++) {
     pageid_t page = myrandom(NUM_PAGES);
     Page * p = loadPage(-1, page);
+    writelock(p->rwlatch, 0);
     switch(myrandom(6)) {
     case 0: {
       stasis_dirty_page_table_set_dirty(dpt, p);
@@ -86,6 +87,7 @@ void * worker(void*arg) {
       stasis_dirty_page_table_minRecLSN(dpt);
     } break;
     case 5: {
+      unlock(p->rwlatch);
       releasePage(p);
       pageid_t start = myrandom(NUM_PAGES);
       pageid_t stop = myrandom(NUM_PAGES);
@@ -96,9 +98,11 @@ void * worker(void*arg) {
       }
       stasis_dirty_page_table_flush_range(dpt, start, stop);
       p = loadPage(-1, start);
+      writelock(p->rwlatch, 0);
     } break;
     default: abort();
     };
+    unlock(p->rwlatch);
     releasePage(p);
   }
   return 0;
