@@ -90,21 +90,24 @@ inline static void checkPageState(Page * p) { }
 
 #endif
 
-inline static int tryToWriteBackPage(Page * p) {
+inline static int tryToWriteBackPage(pageid_t page) {
+
+  Page * p = lhfind(cachedPages, &page, sizeof(page));
+
+  if(!p) { return ENOENT; }
+
+  assert(p->id == page);
 
   if(*pagePendingPtr(p) || *pagePinCountPtr(p)) {
-    return 0;
+    return EBUSY;
   }
 
   DEBUG("Write(%ld)\n", (long)victim->id);
   page_handle->write(page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
-  stasis_page_cleanup(p);
 
   assert(!p->dirty);
-  // Make sure that no one mistakenly thinks this is still a live copy.
-  p->id = -1;
 
-  return 1;
+  return 0;
 }
 /** You need to hold mut before calling this.
 
@@ -126,11 +129,17 @@ inline static Page * writeBackOnePage() {
   checkPageState(victim);
 
   lru->remove(lru, victim);
+
+  int err= tryToWriteBackPage(victim->id);
+  assert(!err);
+
   Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(victim->id));
   assert(old == victim);
 
-  int couldWriteBackPage = tryToWriteBackPage(victim);
-  assert(couldWriteBackPage);
+  stasis_page_cleanup(victim);
+  // Make sure that no one mistakenly thinks this is still a live copy.
+  victim->id = -1;
+
 
 #ifdef LATCH_SANITY_CHECKING
   // We can release the lock since we just grabbed it to see if
@@ -369,8 +378,8 @@ static void bhReleasePage(Page * p) {
 #endif
   pthread_mutex_unlock(&mut);
 }
-static int bhWriteBackPage(Page * p) {
-  return tryToWriteBackPage(p);
+static int bhWriteBackPage(pageid_t pageid) {
+  return tryToWriteBackPage(pageid);
 }
 static void bhForcePages() {
   page_handle->force_file(page_handle);

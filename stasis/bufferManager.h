@@ -138,8 +138,10 @@ extern void   (*releasePageImpl)(Page * p);
     (Not all buffer managers support synchronous writes to stable
      storage.  For compatibility, such buffer managers should ignore
      this call.)
+
+     @return 0 on success, ENOENT if the page is not in cache, and EBUSY if the page is pinned.
 */
-extern int (*writeBackPage)(Page * p);
+extern int (*writeBackPage)(pageid_t p);
 /**
     Force any written back pages to disk.
 

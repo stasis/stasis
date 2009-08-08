@@ -31,9 +31,12 @@ static stasis_page_handle_t * page_handle;
 
 static stasis_buffer_pool_t * stasis_buffer_pool;
 
-static int pageWrite_legacyWrapper(Page * p) {
+static int pageWrite_legacyWrapper(pageid_t pageid) {
+  Page * p = loadPage(-1, pageid);
+  // XXX this is unsafe; the page could be pinned!
   page_handle->write(page_handle,p);
-  return 1; // XXX probably unsafe.
+  releasePage(p);
+  return 0;
 }
 static void forcePageFile_legacyWrapper() {
   page_handle->force_file(page_handle);

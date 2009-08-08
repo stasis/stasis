@@ -130,7 +130,7 @@ Suite * check_suite(void) {
 
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, dirtyPageTable_randomTest);
-//  tcase_add_test(tc, dirtyPageTable_threadTest);
+  tcase_add_test(tc, dirtyPageTable_threadTest);
 
   /* --------------------------------------------- */
 

@@ -47,7 +47,7 @@ static void paReleasePage(Page * p) {
   stasis_dirty_page_table_set_clean(stasis_runtime_dirty_page_table(), p);
 }
 
-static int paWriteBackPage(Page * p) { return 1;  /* no-op */ }
+static int paWriteBackPage(pageid_t p) { return 0;  /* no-op */ }
 static void paForcePages() { /* no-op */ }
 static void paForcePageRange(pageid_t start, pageid_t stop) { /* no-op */ }
 
