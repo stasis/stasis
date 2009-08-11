@@ -21,12 +21,7 @@ static pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t readComplete = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t needFree     = PTHREAD_COND_INITIALIZER;
 
-static pageid_t freeLowWater;
-static pageid_t freeListLength;
-static pageid_t freeCount;
 static pageid_t pageCount;
-
-static Page ** freeList;
 
 // A page is in LRU iff !pending, !pinned
 static replacementPolicy * lru;
@@ -109,47 +104,6 @@ inline static int tryToWriteBackPage(pageid_t page) {
 
   return 0;
 }
-/** You need to hold mut before calling this.
-
-    @return the page that was just written back.  It will not be in
-    lru or cachedPages after the call returns.
-*/
-inline static Page * writeBackOnePage() {
-  Page * victim = lru->getStale(lru);
-  // Make sure we have an exclusive lock on victim.
-  if(!victim) return 0;
-
-  assert(! *pagePendingPtr(victim));
-  assert(! *pagePinCountPtr(victim));
-#ifdef LATCH_SANITY_CHECKING
-  int latched = trywritelock(victim->loadlatch,0);
-  assert(latched);
-#endif
-
-  checkPageState(victim);
-
-  lru->remove(lru, victim);
-
-  int err= tryToWriteBackPage(victim->id);
-  assert(!err);
-
-  Page * old = LH_ENTRY(remove)(cachedPages, &(victim->id), sizeof(victim->id));
-  assert(old == victim);
-
-  stasis_page_cleanup(victim);
-  // Make sure that no one mistakenly thinks this is still a live copy.
-  victim->id = -1;
-
-
-#ifdef LATCH_SANITY_CHECKING
-  // We can release the lock since we just grabbed it to see if
-  // anyone else has pinned the page...  the caller holds mut, so
-  // no-one will touch the page for now.
-  unlock(victim->loadlatch);
-#endif
-
-  return victim;
-}
 
 /** Returns a free page.  The page will not be in freeList,
     cachedPages or lru. */
@@ -162,21 +116,27 @@ inline static Page * getFreePage() {
     (*pagePendingPtr(ret)) = 0;
     pageSetNode(ret,0,0);
     pageCount++;
- } else {
-    if(!freeCount) {
-      ret = writeBackOnePage();
+  } else {
+    while((ret = lru->getStale(lru))) {
+      // Make sure we have an exclusive lock on victim.
       if(!ret) {
         printf("bufferHash.c: Cannot find free page for application request.\nbufferHash.c: This should not happen unless all pages have been pinned.\nbufferHash.c: Crashing.");
         abort();
       }
-    } else {
-      ret = freeList[freeCount-1];
-      freeList[freeCount-1] = 0;
-      freeCount--;
+      assert(!*pagePinCountPtr(ret));
+      assert(!*pagePendingPtr(ret));
+      if(ret->dirty) {
+        pthread_mutex_unlock(&mut);
+        stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+        pthread_mutex_lock(&mut);
+      } else {
+        break;
+      }
     }
-    if(freeCount < freeLowWater) {
-      pthread_cond_signal(&needFree);
-    }
+
+    lru->remove(lru, ret);
+    Page * check = LH_ENTRY(remove)(cachedPages, &ret->id, sizeof(ret->id));
+    assert(check == ret);
   }
   assert(!*pagePinCountPtr(ret));
   assert(!*pagePendingPtr(ret));
@@ -188,26 +148,13 @@ inline static Page * getFreePage() {
 static void * writeBackWorker(void * ignored) {
   pthread_mutex_lock(&mut);
   while(1) {
-    while(running && (freeCount == freeListLength || pageCount < MAX_BUFFER_SIZE)) {
+    while(running && pageCount < MAX_BUFFER_SIZE) {
       pthread_cond_wait(&needFree, &mut);
     }
     if(!running) { break; }
-    Page * victim = writeBackOnePage();
-
-    if(victim) {
-      assert(freeCount < freeListLength);
-      freeList[freeCount] = victim;
-      freeCount++;
-      assert(!pageGetNode(victim, 0));
-      checkPageState(victim);
-    } else {
-      static int warned = 0;
-      if(!warned) {
-        printf("bufferHash.c: writeBackWorker() could not find a page to write back.\nbufferHash.c:\tThis means a significant fraction of the buffer pool is pinned.\n");
-        warned = 1;
-      }
-      pthread_cond_wait(&needFree, &mut);
-    }
+    pthread_mutex_unlock(&mut);
+    stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+    pthread_mutex_lock(&mut);
   }
   pthread_mutex_unlock(&mut);
   return 0;
@@ -290,23 +237,20 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(pageid));
 
     if(!ret) {
+
+      stasis_page_cleanup(ret2);
+      // Make sure that no one mistakenly thinks this is still a live copy.
+      ret2->id = -1;
+
       // No, so we're ready to add it.
       ret = ret2;
       // Esacpe from this loop.
       break;
     } else {
-      // Put the page back on the free list
-
-      // It's possible that we wrote this page back even though the
-      // freeList didn't have any free space; extend free list if necessary.
-      if(freeListLength == freeCount) {
-        freeList = realloc(freeList, freeListLength+1);
-        freeListLength++;
-      }
-
-      freeList[freeCount] = ret2;
-      assert(!pageGetNode(ret2, 0));
-      freeCount++;
+      // Put the page we were about to evict back in cached pages
+      LH_ENTRY(insert)(cachedPages, &ret2->id, sizeof(ret2->id), ret2);
+      lru->insert(lru, ret2);
+      // On the next loop iteration, we'll probably return the page the other thread inserted for us.
     }
     // try again.
   } while(1);
@@ -352,6 +296,10 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   pthread_mutex_unlock(&mut);
   pthread_cond_broadcast(&readComplete);
 
+  // TODO Improve writeback policy
+  if(stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()) > MAX_BUFFER_SIZE / 5) {
+    pthread_cond_signal(&needFree);
+  }
   assert(ret->id == pageid);
   checkPageState (ret);
   return ret;
@@ -414,8 +362,6 @@ static void bhBufDeinit() {
   LH_ENTRY(closelist)(&iter);
   LH_ENTRY(destroy)(cachedPages);
 
-  free(freeList);
-
   lru->deinit(lru);
   stasis_buffer_pool_deinit(stasis_buffer_pool);
   page_handle->close(page_handle);
@@ -438,8 +384,6 @@ static void bhSimulateBufferManagerCrash() {
   }
   LH_ENTRY(closelist)(&iter);
   LH_ENTRY(destroy)(cachedPages);
-
-  free(freeList);
 
   lru->deinit(lru);
   stasis_buffer_pool_deinit(stasis_buffer_pool);
@@ -470,12 +414,7 @@ void stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
 
   cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
 
-  freeListLength = 6 + MAX_BUFFER_SIZE / 100;
-  freeLowWater  = freeListLength - 5;
-  freeCount = 0;
   pageCount = 0;
-
-  freeList = calloc(freeListLength, sizeof(Page*));
 
   running = 1;
 

@@ -27,6 +27,7 @@ static int dpt_cmp(const void *ap, const void * bp, const void * ignored) {
 
 struct stasis_dirty_page_table_t {
   struct rbtree * table;
+  pageid_t count;
   pthread_mutex_t mutex;
 };
 
@@ -40,6 +41,7 @@ void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, P
     e->lsn = p->LSN;
     const void * ret = rbsearch(e, dirtyPages->table);
     assert(ret == e); // otherwise, the entry was already in the table.
+    dirtyPages->count++;
   } else {
     dpt_entry e = { p->id, 0};
     assert(rbfind(&e, dirtyPages->table));
@@ -57,6 +59,7 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
     assert(p->dirty);
     p->dirty = 0;
     free((void*)e);
+    dirtyPages->count--;
   } else {
     assert(!p->dirty);
   }
@@ -86,6 +89,13 @@ lsn_t stasis_dirty_page_table_minRecLSN(stasis_dirty_page_table_t * dirtyPages) 
   }
   pthread_mutex_unlock(&dirtyPages->mutex);
   return lsn;
+}
+
+pageid_t stasis_dirty_page_table_dirty_count(stasis_dirty_page_table_t * dirtyPages) {
+  pthread_mutex_lock(&dirtyPages->mutex);
+  pageid_t ret = dirtyPages->count;
+  pthread_mutex_unlock(&dirtyPages->mutex);
+  return ret;
 }
 
 void stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {

@@ -9,7 +9,7 @@
     out, or forcing the log too early?
 */
 static void phWrite(stasis_page_handle_t * ph, Page * ret) {
-  DEBUG("%lld\n", ret->id);
+  DEBUG("\nPAGEWRITE %lld\n", ret->id);
   // This lock is only held to make the page implementation happy.  We should
   // implicitly have exclusive access to the page before this function is called,
   // or we'll deadlock.

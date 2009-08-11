@@ -119,6 +119,7 @@ void stasis_buffer_pool_free_page(stasis_buffer_pool_t * ret, Page *p, pageid_t 
   writelock(p->rwlatch, 10);
   p->id = id;
   p->LSN = 0;
+  p->pageType = UNINITIALIZED_PAGE;
   assert(!p->dirty);
 //  p->dirty = 0;
   writeunlock(p->rwlatch);
