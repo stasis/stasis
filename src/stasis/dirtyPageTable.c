@@ -29,6 +29,8 @@ struct stasis_dirty_page_table_t {
   struct rbtree * table;
   pageid_t count;
   pthread_mutex_t mutex;
+  pthread_cond_t flushDone;
+  int flushing;
 };
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
@@ -102,13 +104,19 @@ pageid_t stasis_dirty_page_table_dirty_count(stasis_dirty_page_table_t * dirtyPa
   return ret;
 }
 
-void stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
+int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
   dpt_entry dummy = { 0, 0 };
   const int stride = 200;
   pageid_t vals[stride];
   int off = 0;
   int strides = 0;
   pthread_mutex_lock(&dirtyPages->mutex);
+  if(dirtyPages->flushing) {
+    pthread_cond_wait(&dirtyPages->flushDone, &dirtyPages->mutex);
+    pthread_mutex_unlock(&dirtyPages->mutex);
+    return EAGAIN;
+  }
+  dirtyPages->flushing = 1;
   for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->table) ;
         e;
         e = rblookup(RB_LUGREAT, &dummy, dirtyPages->table)) {
@@ -129,11 +137,29 @@ void stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
   for(int i = 0; i < off; i++) {
     writeBackPage(vals[i]);
   }
+  pthread_mutex_lock(&dirtyPages->mutex);
+  dirtyPages->flushing = 0;
+  pthread_cond_broadcast(&dirtyPages->flushDone);
+  pthread_mutex_unlock(&dirtyPages->mutex);
+
 //  if(strides < 5) { DEBUG("strides: %d dirtyCount = %lld\n", strides, stasis_dirty_page_table_dirty_count(dirtyPages)); }
+
+  return 0;
 }
 void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages, pageid_t start, pageid_t stop) {
 
   pthread_mutex_lock(&dirtyPages->mutex);
+  int waitCount = 0;
+  while(dirtyPages->flushing) {
+    pthread_cond_wait(&dirtyPages->flushDone, &dirtyPages->mutex);
+    waitCount++;
+    if(waitCount == 2) {
+      // a call to stasis_dirty_page_table_flush was initiated and completed since we were called.
+      pthread_mutex_unlock(&dirtyPages->mutex);
+      return;
+    } // else, a call to flush returned, but that call could have been initiated before we were called...
+  }
+
   pageid_t * staleDirtyPages = 0;
   pageid_t n = 0;
   dpt_entry dummy = { start, 0 };
@@ -159,6 +185,8 @@ stasis_dirty_page_table_t * stasis_dirty_page_table_init() {
   ret->table = rbinit(dpt_cmp, 0);
   ret->count = 0;
   pthread_mutex_init(&ret->mutex, 0);
+  pthread_cond_init(&ret->flushDone, 0);
+  ret->flushing = 0;
   return ret;
 }
 

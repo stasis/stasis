@@ -105,7 +105,9 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
       lsn_t flushed = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
       if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
         DEBUG("Flushing dirty buffers: rec_lsn = %lld log_trunc = %lld flushed = %lld\n", rec_lsn, log_trunc, flushed);
-        stasis_dirty_page_table_flush(trunc->dirty_pages);
+        if(EAGAIN == stasis_dirty_page_table_flush(trunc->dirty_pages)) {
+          stasis_dirty_page_table_flush(trunc->dirty_pages); // can ignore ret val, since some other thread successfully initiated + completed a flush since our first call.
+        }
 
         page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
         rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;

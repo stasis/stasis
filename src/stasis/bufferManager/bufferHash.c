@@ -139,6 +139,8 @@ inline static Page * getFreePage() {
       if(ret->dirty) {
         pthread_mutex_unlock(&mut);
         DEBUG("Blocking app thread");
+        // We don't really care if this flush happens, so long as *something* is being written back, so ignore the EAGAIN it could return.
+        // (Besides, once this returns EAGAIN twice, we know that some other flush concurrently was initiated + returned, so we're good to go...)
         stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
         pthread_mutex_lock(&mut);
       } else {
@@ -170,6 +172,7 @@ static void * writeBackWorker(void * ignored) {
     if(!running) { break; }
     pthread_mutex_unlock(&mut);
     DEBUG("Calling flush\n");
+    // ignore ret val; this flush is for performance, not correctness.
     stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
     pthread_mutex_lock(&mut);
   }
@@ -364,7 +367,8 @@ static void bhBufDeinit() {
   pthread_join(worker, 0);
 
   // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
-  stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
+  int ret = stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
+  assert(!ret); // currently the only return value that we'll see is EAGAIN, which means a concurrent thread is in writeback... That should never be the case!
 
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
