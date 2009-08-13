@@ -13,9 +13,8 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
   // This lock is only held to make the page implementation happy.  We should
   // implicitly have exclusive access to the page before this function is called,
   // or we'll deadlock.
-
-  /// TODO Turn into trywritelock + test for trouble.
-  writelock(ret->rwlatch,0);
+  int locked = trywritelock(ret->rwlatch,0);
+  assert(locked);
   if(!ret->dirty) { unlock(ret->rwlatch); return; }
   stasis_page_flushed(ret);
   if(ph->log) { stasis_log_force(ph->log, ret->LSN, LOG_FORCE_WAL); }
@@ -29,7 +28,8 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
   unlock(ret->rwlatch);
 }
 static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
-  writelock(ret->rwlatch,0);
+  int locked = trywritelock(ret->rwlatch,0);
+  assert(locked);
   int err = ((stasis_handle_t*)ph->impl)->read(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
     if(err == EDOM) {
@@ -50,7 +50,7 @@ static void phForce(stasis_page_handle_t * ph) {
   assert(!err);
 }
 static void phForceRange(stasis_page_handle_t * ph, lsn_t start, lsn_t stop) {
-  int err = ((stasis_handle_t*)ph->impl)->force_range(ph->impl,start,stop);
+  int err = ((stasis_handle_t*)ph->impl)->force_range(ph->impl,start*PAGE_SIZE,stop*PAGE_SIZE);
   assert(!err);
 }
 static void phClose(stasis_page_handle_t * ph) {

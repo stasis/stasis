@@ -77,6 +77,7 @@ static void pfPageRead(stasis_page_handle_t * h, Page *ret, pagetype_t type) {
     dirty page table can be kept up to date. */
 static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
   /** If the page is clean, there's no reason to write it out. */
+  assertlocked(ret->rwlatch);
   if(!stasis_dirty_page_table_is_dirty(h->dirtyPages, ret)) {
     DEBUG(" =^)~ ");
     return;

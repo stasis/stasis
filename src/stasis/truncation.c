@@ -1,5 +1,5 @@
 #include <stasis/truncation.h>
-
+#include <stdio.h>
 struct stasis_truncation_t {
   char initialized;
   char automaticallyTruncating;
@@ -104,20 +104,20 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
     } else {
       lsn_t flushed = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
       if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
-	//fprintf(stderr, "Flushing dirty buffers: rec_lsn = %ld log_trunc = %ld flushed = %ld\n", rec_lsn, log_trunc, flushed);
-	stasis_dirty_page_table_flush(trunc->dirty_pages);
+        DEBUG("Flushing dirty buffers: rec_lsn = %lld log_trunc = %lld flushed = %lld\n", rec_lsn, log_trunc, flushed);
+        stasis_dirty_page_table_flush(trunc->dirty_pages);
 
-	page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
-	rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
-	rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
+        page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
+        rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
+        rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
 
-	//fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
+        //fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
-	forcePages();
-	trunc->log->truncate(trunc->log, rec_lsn);
-	return 1;
+        forcePages();
+        trunc->log->truncate(trunc->log, rec_lsn);
+        return 1;
       } else {
-	return 0;
+        return 0;
       }
     }
   } else {

@@ -30,6 +30,8 @@ static stasis_buffer_pool_t * stasis_buffer_pool;
 
 static stasis_page_handle_t * page_handle;
 
+static int flushing;
+
 static int running;
 
 typedef struct LL_ENTRY(node_t) node_t;
@@ -49,7 +51,14 @@ static inline struct Page_s ** pagePendingPtr(Page * p) {
 static inline intptr_t* pagePinCountPtr(Page * p) {
   return ((intptr_t*)(&((p)->queue)));
 }
-
+static inline int needFlush() {
+  pageid_t count = stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table());
+  const pageid_t needed = 1000; //MAX_BUFFER_SIZE / 5;
+  if(count > needed) {
+    DEBUG("Need flush?  Dirty: %lld Total: %lld ret = %d\n", count, needed, count > needed);
+  }
+  return  count > needed;
+}
 #ifdef LONG_RUN
 
 inline static void checkPageState(Page * p) {
@@ -96,11 +105,13 @@ inline static int tryToWriteBackPage(pageid_t page) {
   if(*pagePendingPtr(p) || *pagePinCountPtr(p)) {
     return EBUSY;
   }
-
   DEBUG("Write(%ld)\n", (long)victim->id);
   page_handle->write(page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
 
-  assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
+//  int locked = trywritelock(p->rwlatch,0);
+//  assert(locked);
+//  assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
+//  unlock(p->rwlatch);
 
   return 0;
 }
@@ -127,7 +138,8 @@ inline static Page * getFreePage() {
       assert(!*pagePendingPtr(ret));
       if(ret->dirty) {
         pthread_mutex_unlock(&mut);
-        stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+        DEBUG("Blocking app thread");
+        stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
         pthread_mutex_lock(&mut);
       } else {
         break;
@@ -148,12 +160,17 @@ inline static Page * getFreePage() {
 static void * writeBackWorker(void * ignored) {
   pthread_mutex_lock(&mut);
   while(1) {
-    while(running && pageCount < MAX_BUFFER_SIZE) {
+    while(running && (!needFlush())) {
+      flushing = 0;
+      DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
       pthread_cond_wait(&needFree, &mut);
+      DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
+      flushing = 1;
     }
     if(!running) { break; }
     pthread_mutex_unlock(&mut);
-    stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+    DEBUG("Calling flush\n");
+    stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
     pthread_mutex_lock(&mut);
   }
   pthread_mutex_unlock(&mut);
@@ -297,7 +314,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   pthread_cond_broadcast(&readComplete);
 
   // TODO Improve writeback policy
-  if(stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()) > MAX_BUFFER_SIZE / 5) {
+  if((!flushing) && needFlush()) {
     pthread_cond_signal(&needFree);
   }
   assert(ret->id == pageid);
@@ -339,13 +356,15 @@ static void bhForcePageRange(pageid_t start, pageid_t stop) {
   page_handle->force_range(page_handle, start, stop);
 }
 static void bhBufDeinit() {
+  pthread_mutex_lock(&mut);
   running = 0;
+  pthread_mutex_unlock(&mut);
 
   pthread_cond_signal(&needFree); // Wake up the writeback thread so it will exit.
   pthread_join(worker, 0);
 
   // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
-  stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), 0, 0);
+  stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
 
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
@@ -367,7 +386,9 @@ static void bhBufDeinit() {
   page_handle->close(page_handle);
 }
 static void bhSimulateBufferManagerCrash() {
+  pthread_mutex_lock(&mut);
   running = 0;
+  pthread_mutex_unlock(&mut);
 
   pthread_cond_signal(&needFree);
   pthread_join(worker, 0);
@@ -407,6 +428,8 @@ void stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
   forcePageRange = bhForcePageRange;
   stasis_buffer_manager_close = bhBufDeinit;
   stasis_buffer_manager_simulate_crash = bhSimulateBufferManagerCrash;
+
+  flushing = 0;
 
   stasis_buffer_pool = stasis_buffer_pool_init();
 

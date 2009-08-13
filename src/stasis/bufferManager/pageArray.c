@@ -44,7 +44,9 @@ static Page* paGetCachedPage(int xid, pageid_t page) {
   return paLoadPage(xid, page, UNKNOWN_TYPE_PAGE);
 }
 static void paReleasePage(Page * p) {
+  writelock(p->rwlatch,0);
   stasis_dirty_page_table_set_clean(stasis_runtime_dirty_page_table(), p);
+  unlock(p->rwlatch);
 }
 
 static int paWriteBackPage(pageid_t p) { return 0;  /* no-op */ }

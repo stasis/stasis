@@ -155,6 +155,9 @@ extern void (*forcePages)();
     Force written back pages that fall within a particular range to disk.
 
     This does not force page that have not been written to with pageWrite().
+
+    @param start the first pageid to be forced to disk
+    @param stop the page after the last page to be forced to disk.
 */
 extern void (*forcePageRange)(pageid_t start, pageid_t stop);
 extern void (*stasis_buffer_manager_simulate_crash)();
