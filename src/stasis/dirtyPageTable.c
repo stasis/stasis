@@ -34,51 +34,55 @@ struct stasis_dirty_page_table_t {
 };
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
-  pthread_mutex_lock(&dirtyPages->mutex);
   assertlocked(p->rwlatch);
   if(!p->dirty) {
     p->dirty = 1;
     dpt_entry * e = malloc(sizeof(*e));
     e->p = p->id;
     e->lsn = p->LSN;
+    pthread_mutex_lock(&dirtyPages->mutex);
     const void * ret = rbsearch(e, dirtyPages->table);
     assert(ret == e); // otherwise, the entry was already in the table.
     dirtyPages->count++;
+    pthread_mutex_unlock(&dirtyPages->mutex);
+#ifdef SANITY_CHECKS
   } else {
+    pthread_mutex_lock(&dirtyPages->mutex);
     dpt_entry e = { p->id, 0};
     assert(rbfind(&e, dirtyPages->table));
+    pthread_mutex_unlock(&dirtyPages->mutex);
+#endif //SANITY_CHECKS
   }
-  pthread_mutex_unlock(&dirtyPages->mutex);
 }
 
 void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, Page * p) {
-  pthread_mutex_lock(&dirtyPages->mutex);
   assertlocked(p->rwlatch);
-  dpt_entry dummy = {p->id, 0};
-  const dpt_entry * e = rbdelete(&dummy, dirtyPages->table);
-
-  if(e) {
+  if(p->dirty) {
+    pthread_mutex_lock(&dirtyPages->mutex);
+    dpt_entry dummy = {p->id, 0};
+    const dpt_entry * e = rbdelete(&dummy, dirtyPages->table);
+    assert(e);
     assert(e->p == p->id);
     assert(p->dirty);
     p->dirty = 0;
     free((void*)e);
     dirtyPages->count--;
-  } else {
-    assert(!p->dirty);
+    pthread_mutex_unlock(&dirtyPages->mutex);
   }
-  pthread_mutex_unlock(&dirtyPages->mutex);
 }
 
 int stasis_dirty_page_table_is_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
   int ret;
-  pthread_mutex_lock(&dirtyPages->mutex);
   assertlocked(p->rwlatch);
 
   ret = p->dirty;
+#ifdef SANITY_CHECKS
+  pthread_mutex_lock(&dirtyPages->mutex);
   dpt_entry e = { p->id, 0};
   const void* found = rbfind(&e, dirtyPages->table);
   assert((found && ret) || !(found||ret));
   pthread_mutex_unlock(&dirtyPages->mutex);
+#endif
   return ret;
 }
 

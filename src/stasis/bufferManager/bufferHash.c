@@ -1,8 +1,19 @@
+
+// Multiple include trick.
+#define HASH_ENTRY(x) bh_hash##x
+#define HASH_FCN(val,y,z) (*(pageid_t*)val)
+#define LH_ENTRY(x) bh##x
+#define LH_HASH(val,len,x,y) bh_hash(val,len,x,y)
+#undef PBL_COMPAT
+#define PBL_COMPAT 0
+#include <stasis/hash.h>
+#include "../lhtable.c"
+// End multiple include trick.
+
 #include <stasis/bufferManager/bufferHash.h>
 
 #include <stasis/bufferPool.h>
 #include <stasis/doubleLinkedList.h>
-#include <stasis/lhtable.h>
 
 #include <stasis/pageHandle.h>
 

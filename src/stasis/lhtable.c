@@ -178,7 +178,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
   struct LH_ENTRY(pair_t) * splitBucketRoot =
     &(table->bucketList[splitBucket]);
   while(splitBucketRoot->key &&
-	(stasis_linear_hash(splitBucketRoot->key, splitBucketRoot->keyLength,
+	(HASH_ENTRY()(splitBucketRoot->key, splitBucketRoot->keyLength,
 	     table->bucketListBits, table->bucketListNextExtension) ==
 	 newBucket)) {
     insertIntoLinkedList(table, newBucket,
@@ -188,7 +188,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 			 splitBucketRoot->key, splitBucketRoot->keyLength);
   }
   if(splitBucketRoot->key) {
-    assert(stasis_linear_hash(splitBucketRoot->key, splitBucketRoot->keyLength,
+    assert(HASH_ENTRY()(splitBucketRoot->key, splitBucketRoot->keyLength,
 		table->bucketListBits, table->bucketListNextExtension)
 	   == splitBucket);
   } else {
@@ -200,7 +200,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
     // the list doesn't change its successor.
     struct LH_ENTRY(pair_t) * newNext = next->next;
 
-    uint64_t hashCode = stasis_linear_hash(next->key, next->keyLength,
+    uint64_t hashCode = HASH_ENTRY()(next->key, next->keyLength,
                                            table->bucketListBits,
                                            table->bucketListNextExtension);
 
@@ -222,7 +222,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
   struct LH_ENTRY(table) * ret = malloc(sizeof(struct LH_ENTRY(table)));
   ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
-  stasis_linear_hash_get_size_params(initialSize,
+  HASH_ENTRY(_get_size_params)(initialSize,
 		       &(ret->bucketListBits),
 		       &(ret->bucketListNextExtension));
   ret->bucketListLength = initialSize;
@@ -239,7 +239,7 @@ LH_ENTRY(value_t) * LH_ENTRY(insert) (struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  intptr_t bucket = stasis_linear_hash(key, len,
+  intptr_t bucket = HASH_ENTRY()(key, len,
 		     table->bucketListBits, table->bucketListNextExtension);
   struct LH_ENTRY(pair_t) * thePair = 0;
   struct LH_ENTRY(pair_t) * junk;
@@ -291,7 +291,7 @@ LH_ENTRY(value_t) * LH_ENTRY(remove) (struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  intptr_t bucket = stasis_linear_hash(key, len,
+  intptr_t bucket = HASH_ENTRY()(key, len,
                                        table->bucketListBits,
                                        table->bucketListNextExtension);
 
@@ -308,7 +308,7 @@ LH_ENTRY(value_t) * LH_ENTRY(find)(struct LH_ENTRY(table) * table,
 #ifdef NAIVE_LOCKING
   pthread_mutex_lock(&(table->lock));
 #endif
-  intptr_t bucket = stasis_linear_hash(key, len,
+  intptr_t bucket = HASH_ENTRY()(key, len,
                                       table->bucketListBits,
                                       table->bucketListNextExtension);
   struct LH_ENTRY(pair_t) * predecessor;
@@ -411,7 +411,7 @@ void LH_ENTRY(stats)(){
 #endif
 }
 
-#ifdef  PBL_COMPAT
+#if PBL_COMPAT
 
 // ============ Legacy PBL compatibility functions.  There are defined in pbl.h
 
