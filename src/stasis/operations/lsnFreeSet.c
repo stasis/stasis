@@ -1,3 +1,4 @@
+#include <stasis/bufferManager.h>
 #include <stasis/operations.h>
 #include <stasis/page.h>
 #include <stasis/logger/reorderingHandle.h>

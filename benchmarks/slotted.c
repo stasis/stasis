@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
 #include <stasis/page/slotted.h>
 
 int main(int argc, char* argv[]) {

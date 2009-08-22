@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
 #include <stasis/page/raw.h>
 #include <assert.h>
 

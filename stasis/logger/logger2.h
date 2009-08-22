@@ -62,6 +62,7 @@ typedef enum {
 } stasis_log_force_mode_t;
 
 #include <stasis/logger/groupForce.h>
+#include <stasis/logger/logEntry.h>
 #include <stasis/constants.h>
 /**
    Contains the state needed by the logging layer to perform
@@ -73,9 +74,6 @@ typedef struct TransactionLog {
   lsn_t recLSN;
   pthread_mutex_t mut;
 } TransactionLog;
-
-
-#include <stasis/operations.h>
 
 /**
    A callback function that allows logHandle's iterator to stop

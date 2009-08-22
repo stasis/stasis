@@ -43,6 +43,7 @@ terms specified in this license.
 
 #include <config.h>
 #include <stasis/common.h>
+#include <stasis/flags.h>
 
 #include <stasis/latches.h>
 #include <stasis/crc32.h>

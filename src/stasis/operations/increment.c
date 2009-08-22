@@ -48,7 +48,7 @@ terms specified in this license.
 #include <stasis/operations.h>
 #include <stasis/page.h>
 
-static int op_decrement(const LogEntry* e, Page* p) {
+static int op_increment(const LogEntry* e, Page* p) {
   int i;
 
   assert(e->update.arg_size == sizeof(slotid_t));
@@ -67,7 +67,10 @@ stasis_operation_impl stasis_op_impl_increment() {
     UNKNOWN_TYPE_PAGE,
     OPERATION_INCREMENT,
     OPERATION_DECREMENT,
-    op_decrement
+    op_increment
   };
   return o;
+}
+void Tincrement(int xid, recordid rid) {
+  Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
 }

@@ -2,13 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
+
 #include <unistd.h>
 #include <stasis/page/raw.h>
 #include <string.h>
 
-int main(int argc, char** argv) { 
+int main(int argc, char** argv) {
   assert(argc == 3);
-  
+
 #define ZEROCOPY 0
 #define LSNMODE  1
 
@@ -18,7 +20,7 @@ int main(int argc, char** argv) {
 
   int longsPerPage = PAGE_SIZE / sizeof(long);
 
-  if(ZEROCOPY == mode) { 
+  if(ZEROCOPY == mode) {
     printf("Running ZEROCOPY mode. Count = %d\n", count);
   }
 
@@ -26,18 +28,18 @@ int main(int argc, char** argv) {
   int xid = Tbegin();
 
   long * buf = malloc(longsPerPage * sizeof(long));
-  
-  for(int i = 0; i < count; i++) { 
+
+  for(int i = 0; i < count; i++) {
     int pageNum = TpageAlloc(xid);
 
     Page * p = loadPage(xid, pageNum);
-    if(ZEROCOPY == mode) { 
+    if(ZEROCOPY == mode) {
       long * data = (long*) rawPageGetData(xid, p);
       for(int j = 0; j < longsPerPage; j++) {
 	data[j] = j;
       }
       rawPageSetData(xid, 0, p);
-    } else if(LSNMODE == mode) { 
+    } else if(LSNMODE == mode) {
       long * data = (long*) rawPageGetData(xid, p);
       memcpy(buf, data, PAGE_SIZE);
       for(int j = 0; j < longsPerPage; j++) {

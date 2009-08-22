@@ -16,6 +16,8 @@
 #include <stasis/doubleLinkedList.h>
 
 #include <stasis/pageHandle.h>
+#include <stasis/dirtyPageTable.h>
+#include <stasis/transactional.h>
 
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferManager.h>

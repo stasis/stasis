@@ -6,6 +6,8 @@
  */
 #include<stasis/operations/bTree.h>
 
+#include <stasis/bufferManager.h>
+
 static stasis_comparator_t * btree_comparators;
 
 static int stasis_btree_byte_array_comparator(const void * a, size_t alen, const void * b, size_t blen, void* arg) {

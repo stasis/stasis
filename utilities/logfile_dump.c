@@ -1,10 +1,13 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
+#include <stasis/operations.h>
 #include <stasis/logger/logHandle.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
+#include <stasis/flags.h>
 
 static char * logEntryToString(const LogEntry * le) {
   char * ret = NULL;

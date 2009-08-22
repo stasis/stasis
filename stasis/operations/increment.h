@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 
 /**
- * @file 
+ * @file
  *
  * sample logical operation that increments the contents of a record
  * by one.  The record should contain a 32-bit integer.
@@ -55,7 +55,7 @@ terms specified in this license.
  * @ingroup OPERATIONS
  *
  * $Id$
- */ 
+ */
 
 
 #ifndef __INCREMENT_H__
@@ -63,9 +63,7 @@ terms specified in this license.
 
 #include <stasis/constants.h>
 
-static inline void Tincrement(int xid, recordid rid) {
-  Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_INCREMENT);
-}
+void Tincrement(int xid, recordid rid);
 stasis_operation_impl stasis_op_impl_increment();
 
 #endif

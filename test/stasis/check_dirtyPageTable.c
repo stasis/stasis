@@ -49,6 +49,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
 #include <stasis/dirtyPageTable.h>
 
 #include <sys/time.h>
@@ -70,6 +71,7 @@ void * worker(void*arg) {
     pageid_t page = myrandom(NUM_PAGES);
     Page * p = loadPage(-1, page);
     writelock(p->rwlatch, 0);
+    if(! (i % 100000)) { printf("."); fflush(stdout); }
     switch(myrandom(6)) {
     case 0: {
       stasis_dirty_page_table_set_dirty(dpt, p);

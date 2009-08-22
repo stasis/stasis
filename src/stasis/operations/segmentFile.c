@@ -5,6 +5,7 @@
  *      Author: sears
  */
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
 
 #include <string.h>
 

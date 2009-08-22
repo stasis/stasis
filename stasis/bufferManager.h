@@ -78,7 +78,7 @@ terms specified in this license.
  */
 #ifndef __BUFFERMANAGER_H__
 #define __BUFFERMANAGER_H__
-
+#include <stasis/common.h>
 BEGIN_C_DECLS
 #include <stasis/pageHandle.h>
 /**

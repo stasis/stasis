@@ -1,4 +1,5 @@
 #include <stasis/page.h>
+#include <stasis/bufferManager.h>
 #include <stasis/logger/logEntry.h>
 #include <stasis/operations/pageOperations.h>
 #include <stasis/operations/regions.h>

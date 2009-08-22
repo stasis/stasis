@@ -355,7 +355,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
     freeLogHandle(lh);
   }
 }
-void stasis_recovery_initiate(stasis_log_t* log) {
+void stasis_recovery_initiate(stasis_log_t* log, stasis_alloc_t * alloc) {
 
   transactionLSN = pblHtCreate();
   DEBUG("Analysis started\n");
@@ -363,8 +363,8 @@ void stasis_recovery_initiate(stasis_log_t* log) {
   DEBUG("Redo started\n");
   stasis_recovery_redo(log);
   DEBUG("Undo started\n");
-  TallocPostInit();
   stasis_recovery_undo(log,1);
+  TallocPostInit(alloc);
   DEBUG("Recovery complete.\n");
 
   for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {

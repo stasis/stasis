@@ -65,11 +65,11 @@ terms specified in this license.
 #define __OPERATIONS_H__
 
 #include <stasis/common.h>
-#include <stasis/transactional.h>
+//#include <stasis/transactional.h>
 #include <stasis/logger/logEntry.h>
-#include <stasis/bufferManager.h>
-#include <stasis/iterator.h>
-#include <stasis/arrayCollection.h>
+//#include <stasis/bufferManager.h>
+//#include <stasis/iterator.h>
+//#include <stasis/arrayCollection.h>
 BEGIN_C_DECLS
 
 

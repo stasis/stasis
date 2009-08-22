@@ -46,8 +46,8 @@ terms specified in this license.
  * by one.  The record should contain a 32-bit integer.
  *
  * @ingroup OPERATIONS
- * 
- * @see increment.h 
+ *
+ * @see increment.h
  *
  * $Id$
  */
@@ -57,9 +57,7 @@ terms specified in this license.
 
 #include <stasis/constants.h>
 
-static inline void Tdecrement(int xid, recordid rid) {
-  Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_DECREMENT);
-}
+void Tdecrement(int xid, recordid rid);
 stasis_operation_impl stasis_op_impl_decrement();
 
 #endif

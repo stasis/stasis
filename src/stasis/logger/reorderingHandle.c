@@ -1,5 +1,6 @@
 #include <stasis/transactional.h>
 #include <stasis/logger/reorderingHandle.h>
+#include <stasis/bufferManager.h>
 
 #include <stdio.h>
 

@@ -8,7 +8,7 @@
 #ifndef BTREE_H_
 #define BTREE_H_
 
-#include <stasis/transactional.h>
+#include <stasis/operations.h>
 
 typedef int(*stasis_comparator_t)(const void*, size_t, const void*, size_t, void*);
 typedef int16_t stasis_comparator_id_t;

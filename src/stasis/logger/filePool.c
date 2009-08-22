@@ -5,11 +5,13 @@
 #include <fcntl.h>
 
 #include <stasis/common.h>
+#include <stasis/flags.h>
+
 #include <stasis/latches.h>
 #include <stasis/logger/filePool.h>
 
 #include <stdio.h>
-
+#include <assert.h>
 /**
    @see stasis_log_safe_writes_state for more documentation;
         identically named fields serve analagous purposes.

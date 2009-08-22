@@ -1,4 +1,5 @@
 #include <stasis/truncation.h>
+#include <stasis/bufferManager.h>
 #include <stdio.h>
 struct stasis_truncation_t {
   char initialized;

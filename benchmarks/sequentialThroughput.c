@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <stasis/transactional.h>
+#include <stasis/bufferManager.h>
 #include <stasis/truncation.h>
 
 /*static stasis_handle_t * memory_factory(lsn_t off, lsn_t len, void * ignored) {

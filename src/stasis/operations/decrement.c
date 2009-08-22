@@ -70,3 +70,6 @@ stasis_operation_impl stasis_op_impl_decrement() {
   };
   return o;
 }
+void Tdecrement(int xid, recordid rid) {
+  Tupdate(xid,rid.page,&rid.slot,sizeof(rid.slot),OPERATION_DECREMENT);
+}

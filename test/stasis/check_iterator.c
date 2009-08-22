@@ -42,6 +42,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/arrayCollection.h>
 #include <pbl/pbl.h>
 
 #include <stdlib.h>

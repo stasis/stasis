@@ -31,6 +31,8 @@ static int stasis_transaction_table_xid_count = 0;
 static stasis_log_t* stasis_log_file = 0;
 stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
 static stasis_truncation_t * stasis_truncation = 0;
+static stasis_alloc_t * stasis_alloc = 0;
+
 /**
 	This mutex protects stasis_transaction_table, numActiveXactions and
 	xidCount.
@@ -52,6 +54,9 @@ void stasis_transaction_table_init() {
 
 void * stasis_runtime_dirty_page_table() {
   return stasis_dirty_page_table;
+}
+void * stasis_runtime_alloc_state() {
+  return stasis_alloc;
 }
 
 int Tinit() {
@@ -94,7 +99,7 @@ int Tinit() {
   stasis_buffer_manager_open(bufferManagerType, page_handle);
   DEBUG("Buffer manager type = %d\n", bufferManagerType);
   pageOperationsInit();
-  TallocInit();
+  stasis_alloc = TallocInit();
   TnaiveHashInit();
   LinearHashNTAInit();
   BtreeInit();
@@ -104,7 +109,7 @@ int Tinit() {
   setupLockManagerCallbacksNil();
   //setupLockManagerCallbacksPage();
 
-  stasis_recovery_initiate(stasis_log_file);
+  stasis_recovery_initiate(stasis_log_file, stasis_alloc);
   stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_log_file);
   if(stasis_truncation_automatic) {
     // should this be before InitiateRecovery?
@@ -294,7 +299,7 @@ int Tcommit(int xid) {
   lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
-  stasis_alloc_committed(xid);
+  stasis_alloc_committed(stasis_alloc, xid);
 
   pthread_mutex_lock(&stasis_transaction_table_mutex);
 
@@ -328,7 +333,7 @@ int Tabort(int xid) {
   undoTrans(stasis_log_file, *t);
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
 
-  stasis_alloc_aborted(xid);
+  stasis_alloc_aborted(stasis_alloc, xid);
 
   return 0;
 }
@@ -354,7 +359,7 @@ int Tdeinit() {
   assert( stasis_transaction_table_num_active == 0 );
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
-  TallocDeinit();
+  TallocDeinit(stasis_alloc);
   stasis_buffer_manager_close();
   DEBUG("Closing page file tdeinit\n");
   stasis_page_deinit();

@@ -1,3 +1,4 @@
+#include <stasis/bufferManager.h>
 #include <stasis/graph.h>
 #include <stasis/page.h>
 #include <stasis/crc32.h>

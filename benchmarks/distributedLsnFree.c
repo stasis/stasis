@@ -1,5 +1,4 @@
 #include "lsn_bench_common.h"
-
 int main(int argc, char ** argv) {
   unlink("storefile.txt");
   unlink("logfile.txt");

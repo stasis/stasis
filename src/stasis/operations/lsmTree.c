@@ -3,6 +3,8 @@
 #include <stasis/operations/lsmTree.h>
 #include <stasis/truncation.h>
 #include <stasis/constants.h>
+#include <stasis/bufferManager.h>
+#include <stasis/transactional.h>
 //  XXX including fixed.h breaks page api encapsulation; we need a "last slot"
 // call.
 #include <stasis/page/fixed.h>
