@@ -5,9 +5,10 @@
  *      Author: sears
  */
 #include <stasis/logger/logger2.h>
-
+#include <stasis/transactional.h>
 #include <stdio.h>
 #include <assert.h>
+#include <sys/time.h>
 
 struct stasis_log_group_force_t {
     stasis_log_t * log;

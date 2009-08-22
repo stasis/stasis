@@ -27,6 +27,20 @@
 
 //#define LATCH_SANITY_CHECKING
 
+struct stasis_buffer_hash_t {
+  struct LH_ENTRY(table) * cachedPages;
+  pthread_t worker;
+  pthread_mutex_t mut;
+  pthread_cond_t readComplete;
+  pthread_cond_t needFree;
+  pageid_t pageCount;
+  replacementPolicy *lru;
+  stasis_buffer_pool_t *buffer_pool;
+  stasis_page_handle_t *page_handler;
+  int flushing;
+  int running;
+};
+
 static struct LH_ENTRY(table) * cachedPages;
 
 static pthread_t worker;

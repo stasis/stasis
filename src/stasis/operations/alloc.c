@@ -204,18 +204,17 @@ stasis_operation_impl stasis_op_impl_realloc() {
 }
 
 static void stasis_alloc_register_old_regions();
-stasis_alloc_t* TallocInit() {
+stasis_alloc_t* stasis_alloc_init(stasis_allocation_policy_t * allocPolicy) {
   stasis_alloc_t * alloc = malloc(sizeof(*alloc));
   alloc->lastFreepage = PAGEID_T_MAX;
-  alloc->allocPolicy = stasis_allocation_policy_init();
+  alloc->allocPolicy = allocPolicy;
   pthread_mutex_init(&alloc->mut, 0);
   return alloc;
 }
-void TallocPostInit(stasis_alloc_t * alloc) {
+void stasis_alloc_post_init(stasis_alloc_t * alloc) {
   stasis_alloc_register_old_regions(alloc);
 }
-void TallocDeinit(stasis_alloc_t * alloc) {
-  stasis_allocation_policy_deinit(alloc->allocPolicy);
+void stasis_alloc_deinit(stasis_alloc_t * alloc) {
   pthread_mutex_destroy(&alloc->mut);
   free(alloc);
 }

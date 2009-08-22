@@ -364,7 +364,7 @@ void stasis_recovery_initiate(stasis_log_t* log, stasis_alloc_t * alloc) {
   stasis_recovery_redo(log);
   DEBUG("Undo started\n");
   stasis_recovery_undo(log,1);
-  TallocPostInit(alloc);
+  stasis_alloc_post_init(alloc);
   DEBUG("Recovery complete.\n");
 
   for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {

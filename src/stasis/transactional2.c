@@ -11,6 +11,7 @@
 #include <stasis/bufferManager/legacy/pageFile.h>
 
 
+
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
@@ -32,6 +33,7 @@ static stasis_log_t* stasis_log_file = 0;
 stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
 static stasis_truncation_t * stasis_truncation = 0;
 static stasis_alloc_t * stasis_alloc = 0;
+static stasis_allocation_policy_t * stasis_allocation_policy = 0;
 
 /**
 	This mutex protects stasis_transaction_table, numActiveXactions and
@@ -99,7 +101,8 @@ int Tinit() {
   stasis_buffer_manager_open(bufferManagerType, page_handle);
   DEBUG("Buffer manager type = %d\n", bufferManagerType);
   pageOperationsInit();
-  stasis_alloc = TallocInit();
+  stasis_allocation_policy = stasis_allocation_policy_init();
+  stasis_alloc = stasis_alloc_init(stasis_allocation_policy);
   TnaiveHashInit();
   LinearHashNTAInit();
   BtreeInit();
@@ -359,7 +362,8 @@ int Tdeinit() {
   assert( stasis_transaction_table_num_active == 0 );
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
-  TallocDeinit(stasis_alloc);
+  stasis_alloc_deinit(stasis_alloc);
+  stasis_allocation_policy_deinit(stasis_allocation_policy);
   stasis_buffer_manager_close();
   DEBUG("Closing page file tdeinit\n");
   stasis_page_deinit();
@@ -379,6 +383,9 @@ int TuncleanShutdown() {
   stasis_suppress_unclean_shutdown_warnings = 1;
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
+  stasis_alloc_deinit(stasis_alloc);
+  stasis_allocation_policy_deinit(stasis_allocation_policy);
+
   stasis_buffer_manager_simulate_crash();
   // XXX: close_file?
   stasis_page_deinit();

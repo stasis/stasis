@@ -13,7 +13,7 @@
 #define __ALLOC_H 1
 
 #include <stasis/operations.h>
-
+#include <stasis/allocationPolicy.h>
 stasis_operation_impl stasis_op_impl_alloc();
 stasis_operation_impl stasis_op_impl_dealloc();
 stasis_operation_impl stasis_op_impl_realloc();
@@ -23,9 +23,9 @@ typedef struct stasis_alloc_t stasis_alloc_t;
 void stasis_alloc_aborted(stasis_alloc_t* alloc, int xid);
 void stasis_alloc_committed(stasis_alloc_t* alloc, int xid);
 
-stasis_alloc_t* TallocInit();
-void TallocPostInit(stasis_alloc_t* alloc);
-void TallocDeinit(stasis_alloc_t* alloc);
+stasis_alloc_t* stasis_alloc_init(stasis_allocation_policy_t * allocPolicy);
+void stasis_alloc_post_init(stasis_alloc_t* alloc);
+void stasis_alloc_deinit(stasis_alloc_t* alloc);
 /**
     Allocate a record.
 
