@@ -362,11 +362,11 @@ static int xidDealloced_remove(stasis_allocation_policy_t * ap, int xid, pageid_
 
 static int availablePages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const availablePages_pageid_freespace *a = ap, *b = bp;
-  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 static int availablePages_cmp_freespace_pageid(const void *ap, const void *bp, const void* ign) {
   const availablePages_pageid_freespace *a = ap, *b = bp;
-  return a->freespace < b->freespace ? -1 : a->freespace > b->freespace ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->freespace < b->freespace) ? -1 : (a->freespace > b->freespace) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t freespace, pageid_t *pageid) {
   const availablePages_pageid_freespace query = { 0, freespace };
@@ -381,23 +381,23 @@ int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t fr
 
 static int pageOwners_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
-  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp, const void* ign) {
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
-  return a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : a->freespace < b->freespace ? -1 : a->freespace > b->freespace ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : (a->freespace < b->freespace) ? -1 : (a->freespace > b->freespace) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 static int allPages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const allPages_pageid_freespace *a = ap, *b = bp;
-  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 static int xidAllocedDealloced_cmp_pageid_xid(const void *ap, const void *bp, const void* ign) {
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
-  return a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : 0;
 }
 static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, const void* ign) {
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
-  return a->xid < b->xid ? -1 : a->xid > b->xid ? 1 : a->pageid < b->pageid ? -1 : a->pageid > b->pageid ? 1 : 0;
+  return (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
 }
 
 stasis_allocation_policy_t * stasis_allocation_policy_init() {

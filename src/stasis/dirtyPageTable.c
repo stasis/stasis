@@ -23,7 +23,7 @@ static int dpt_cmp(const void *ap, const void * bp, const void * ignored) {
   const dpt_entry * a = ap;
   const dpt_entry * b = bp;
 
-  return a->p < b->p ? -1 : (a->p == b->p ? 0 : 1);
+  return (a->p < b->p) ? -1 : ((a->p == b->p) ? 0 : 1);
 }
 
 struct stasis_dirty_page_table_t {
