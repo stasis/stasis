@@ -30,7 +30,7 @@ static pthread_mutex_t stat_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 */
 
-#define NAIVE_LOCKING
+//#define NAIVE_LOCKING
 
 
 struct LH_ENTRY(table) {
