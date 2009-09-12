@@ -409,11 +409,17 @@ static void syncLog_LogWriter(stasis_log_t * log,
   pthread_mutex_unlock(&sw->write_mutex);
 
   fflush(sw->fp);
-  // If we opened the logfile with O_SYNC, fflush() is sufficient.
-  // Otherwise, we're running in soft commit mode and need to manually force
-  // the log before allowing page writeback.
-  if(sw->softcommit && mode == LOG_FORCE_WAL) {
-    fsync(fileno(sw->fp));
+
+  // We can skip the fsync if we opened with O_SYNC, or if we're in softcommit mode, and not forcing for WAL.
+
+  if(sw->softcommit && mode == LOG_FORCE_WAL  // soft commit mode; syncing for wal
+      || !(sw->softcommit || (sw->filemode & O_SYNC)) // neither soft commit nor opened with O_SYNC
+  ) {
+#ifdef HAVE_FDATASYNC
+  fdatasync(fileno(sw->fp));
+#else
+  fsync(fileno(sw->fp));
+#endif
   }
 
   // update flushedLSN after fflush returns.
@@ -749,7 +755,7 @@ static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
 }
 
 stasis_log_t* stasis_log_safe_writes_open(const char * filename,
-                                          int filemode, int fileperm) {
+                                          int filemode, int fileperm, int softcommit) {
 
   stasis_log_t proto = {
     sizeofInternalLogEntry_LogWriter, // sizeof_internal_entry
@@ -775,7 +781,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   }
   sw->filemode = filemode;
   sw->fileperm = fileperm;
-  sw->softcommit = !(filemode & O_SYNC);
+  sw->softcommit = softcommit;
 
   stasis_log_t* log = malloc(sizeof(*log));
   memcpy(log,&proto, sizeof(proto));

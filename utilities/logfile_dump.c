@@ -67,7 +67,8 @@ int main() {
   stasis_log_t* log;
   if(NULL == (log = stasis_log_safe_writes_open(stasis_log_file_name,
                                                 stasis_log_file_mode,
-                                                stasis_log_file_permissions))){
+                                                stasis_log_file_permissions,
+                                                stasis_log_softcommit))){
     printf("Couldn't open log.\n");
   }
 

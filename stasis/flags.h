@@ -77,6 +77,7 @@ extern int stasis_log_type;
 extern char * stasis_log_file_name;
 extern int    stasis_log_file_mode;
 extern int    stasis_log_file_permissions;
+extern int    stasis_log_softcommit;
 
 extern char * stasis_store_file_name;
 

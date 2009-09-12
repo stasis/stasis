@@ -64,7 +64,7 @@ char * stasis_store_file_name = "storefile.txt";
 #ifdef STASIS_LOG_FILE_MODE
 int stasis_log_file_mode = STASIS_LOG_FILE_MODE;
 #else
-int stasis_log_file_mode = (O_CREAT | O_RDWR | O_SYNC);
+int stasis_log_file_mode = (O_CREAT | O_RDWR);
 #endif
 
 #ifdef STASIS_LOG_FILE_PERMISSIONS
@@ -72,6 +72,12 @@ int stasis_log_file_permissions = STASIS_LOG_FILE_PERMISSIONS;
 #else
 int stasis_log_file_permissions = (S_IRUSR | S_IWUSR | S_IRGRP|
                                    S_IWGRP | S_IROTH | S_IWOTH);
+#endif
+
+#ifdef STASIS_LOG_SOFTCOMMIT
+int stasis_log_softcommit = STASIS_LOG_SOFTCOMMIT;
+#else
+int stasis_log_softcommit = 0;
 #endif
 
 #ifdef STASIS_LOG_DIR

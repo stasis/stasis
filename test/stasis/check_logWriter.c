@@ -432,7 +432,8 @@ void reopenLogWorkload(int truncating) {
   if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                   stasis_log_file_mode,
-                                                  stasis_log_file_permissions);
+                                                  stasis_log_file_permissions,
+                                                  stasis_log_softcommit);
   } else if(LOG_TO_MEMORY == stasis_log_type) {
     stasis_log_file = stasis_log_impl_in_memory_open();
   } else {
@@ -465,7 +466,8 @@ void reopenLogWorkload(int truncating) {
   if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                   stasis_log_file_mode,
-                                                  stasis_log_file_permissions);
+                                                  stasis_log_file_permissions,
+                                                  stasis_log_softcommit);
   } else if(LOG_TO_MEMORY == stasis_log_type) {
     stasis_log_file = stasis_log_impl_in_memory_open();
   } else {

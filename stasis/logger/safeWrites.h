@@ -56,7 +56,8 @@ BEGIN_C_DECLS
 */
 stasis_log_t* stasis_log_safe_writes_open(const char * filename,
                             int filemode,
-                            int fileperm);
+                            int fileperm,
+                            int softcommit);
 
 /**
   Actually deletes the log file that may have been written to disk! Danger!!

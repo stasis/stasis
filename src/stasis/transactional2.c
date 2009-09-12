@@ -76,7 +76,8 @@ int Tinit() {
   if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                                   stasis_log_file_mode,
-                                                  stasis_log_file_permissions);
+                                                  stasis_log_file_permissions,
+                                                  stasis_log_softcommit);
     stasis_log_file->group_force =
       stasis_log_group_force_init(stasis_log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
   } else if(LOG_TO_MEMORY == stasis_log_type) {
