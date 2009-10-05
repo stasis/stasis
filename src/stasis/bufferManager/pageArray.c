@@ -91,3 +91,6 @@ stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
   pthread_mutex_init(&pa->mut,0);
   return bm;
 }
+stasis_buffer_manager_t* stasis_buffer_manager_mem_array_factory(stasis_log_t * log, stasis_dirty_page_table_t *dpt) {
+  return stasis_buffer_manager_mem_array_open();
+}

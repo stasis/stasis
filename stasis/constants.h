@@ -91,7 +91,6 @@ terms specified in this license.
 /*#define MAX_BUFFER_SIZE 7 */
 #endif
 
-#define BUFFER_MANAGER_REOPEN 0
 #define BUFFER_MANAGER_HASH   1
 #define BUFFER_MANAGER_MEM_ARRAY 2
 #define BUFFER_MANAGER_DEPRECATED_HASH 3

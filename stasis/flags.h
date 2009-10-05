@@ -1,5 +1,8 @@
 #ifndef _STASIS_FLAGS_H__
 #define _STASIS_FLAGS_H__
+#include <stasis/bufferManager.h>
+#include <stasis/logger/logger2.h>
+#include <stasis/dirtyPageTable.h>
 /**
     This is the type of buffer manager that is being used.
 
@@ -13,7 +16,7 @@
          (The constants are named BUFFER_MANAGER_*)
 
  */
-extern int bufferManagerType;
+extern stasis_buffer_manager_t* (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*);
 /**
    This determines which type of file handle the buffer manager will use.
 

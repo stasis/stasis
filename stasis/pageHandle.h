@@ -100,4 +100,5 @@ struct stasis_page_handle_t {
 stasis_page_handle_t * stasis_page_handle_open(struct stasis_handle_t * handle,
                                                stasis_log_t * log, stasis_dirty_page_table_t * dirtyPages);
 
+stasis_page_handle_t* stasis_page_handle_default_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt);
 #endif //STASIS_PAGEHANDLE_H

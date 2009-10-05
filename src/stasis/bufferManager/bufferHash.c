@@ -35,6 +35,8 @@ typedef struct {
   replacementPolicy *lru;
   stasis_buffer_pool_t *buffer_pool;
   stasis_page_handle_t *page_handle;
+  stasis_dirty_page_table_t *dpt;
+  stasis_log_t *log;
   int flushing;
   int running;
 } stasis_buffer_hash_t;
@@ -56,9 +58,9 @@ static inline struct Page_s ** pagePendingPtr(Page * p) {
 static inline intptr_t* pagePinCountPtr(Page * p) {
   return ((intptr_t*)(&((p)->queue)));
 }
-static inline int needFlush() {
-  // XXX need to remove call to stasis_runtime*
-  pageid_t count = stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table());
+static inline int needFlush(stasis_buffer_manager_t * bm) {
+  stasis_buffer_hash_t *bh = bm->impl;
+  pageid_t count = stasis_dirty_page_table_dirty_count(bh->dpt);
   const pageid_t needed = 1000; //MAX_BUFFER_SIZE / 5;
   if(count > needed) {
     DEBUG("Need flush?  Dirty: %lld Total: %lld ret = %d\n", count, needed, count > needed);
@@ -143,7 +145,7 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
         DEBUG("Blocking app thread");
         // We don't really care if this flush happens, so long as *something* is being written back, so ignore the EAGAIN it could return.
         // (Besides, once this returns EAGAIN twice, we know that some other flush concurrently was initiated + returned, so we're good to go...)
-        stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
+        stasis_dirty_page_table_flush(bh->dpt);
         pthread_mutex_lock(&bh->mut);
       } else {
         break;
@@ -166,18 +168,18 @@ static void * writeBackWorker(void * bmp) {
   stasis_buffer_hash_t * bh = bm->impl;
   pthread_mutex_lock(&bh->mut);
   while(1) {
-    while(bh->running && (!needFlush())) {
+    while(bh->running && (!needFlush(bm))) {
       bh->flushing = 0;
-      DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
+      DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
       pthread_cond_wait(&bh->needFree, &bh->mut);
-      DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
+      DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
       bh->flushing = 1;
     }
     if(!bh->running) { break; }
     pthread_mutex_unlock(&bh->mut);
     DEBUG("Calling flush\n");
     // ignore ret val; this flush is for performance, not correctness.
-    stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table()); // XXX no call to stasis_runtime_*
+    stasis_dirty_page_table_flush(bh->dpt);
     pthread_mutex_lock(&bh->mut);
   }
   pthread_mutex_unlock(&bh->mut);
@@ -323,7 +325,7 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
   pthread_cond_broadcast(&bh->readComplete);
 
   // TODO Improve writeback policy
-  if((!bh->flushing) && needFlush()) {
+  if((!bh->flushing) && needFlush(bm)) {
     pthread_cond_signal(&bh->needFree);
   }
   assert(ret->id == pageid);
@@ -378,7 +380,7 @@ static void bhBufDeinit(stasis_buffer_manager_t * bm) {
   pthread_join(bh->worker, 0);
 
   // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
-  int ret = stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
+  int ret = stasis_dirty_page_table_flush(bh->dpt);
   assert(!ret); // currently the only return value that we'll see is EAGAIN, which means a concurrent thread is in writeback... That should never be the case!
 
   struct LH_ENTRY(list) iter;
@@ -389,7 +391,7 @@ static void bhBufDeinit(stasis_buffer_manager_t * bm) {
     assertunlocked(p->rwlatch);
     assert(0 == *pagePinCountPtr(p));
     readlock(p->rwlatch,0);
-    assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
+    assert(!stasis_dirty_page_table_is_dirty(bh->dpt, p));
     unlock(p->rwlatch);
     stasis_page_cleanup(p); // normally called by writeBackOnePage()
   }
@@ -437,7 +439,7 @@ static void bhSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
   free(bh);
 }
 
-stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
+stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   stasis_buffer_manager_t *bm = malloc(sizeof(*bm));
   stasis_buffer_hash_t *bh = malloc(sizeof(*bh));
 
@@ -454,6 +456,8 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bm->impl = bh;
 
   bh->page_handle = h;
+  bh->log = log;
+  bh->dpt = dpt;
   bh->running = 0;
 
 #ifdef LONG_RUN
@@ -481,4 +485,9 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   pthread_create(&bh->worker, 0, writeBackWorker, bm);
 
   return bm;
+}
+
+stasis_buffer_manager_t* stasis_buffer_manager_hash_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
+  stasis_page_handle_t *ph = stasis_page_handle_default_factory(log, dpt);
+  return stasis_buffer_manager_hash_open(ph, log, dpt);
 }

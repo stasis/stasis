@@ -68,25 +68,16 @@ void * stasis_runtime_alloc_state() {
   return stasis_alloc;
 }
 
-static stasis_buffer_manager_t* stasis_runtime_buffer_manager_open(int type, stasis_page_handle_t * ph) {
-  bufferManagerType = type;
-  static int lastType = 0;
-  if(type == BUFFER_MANAGER_REOPEN) {
-    type = lastType;
-  }
-  lastType = type;
-  if(type == BUFFER_MANAGER_DEPRECATED_HASH) {
-    return stasis_buffer_manager_deprecated_open(ph);
-  } else if (type == BUFFER_MANAGER_MEM_ARRAY) {
-    stasis_buffer_manager_t *ret = stasis_buffer_manager_mem_array_open();
-    ph->close(ph); // XXX should never have been opened in the first place!
-    return ret;
-  } else if (type == BUFFER_MANAGER_HASH) {
-    return stasis_buffer_manager_hash_open(ph);
+stasis_page_handle_t* stasis_page_handle_default_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
+  stasis_page_handle_t * ret;
+  if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
+    printf("\nWarning: Using old I/O routines (with known bugs).\n");
+    ret = openPageFile(log, dpt);
   } else {
-    // XXX error handling
-    abort();
+    stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
+    ret = stasis_page_handle_open(h, log, dpt);
   }
+  return ret;
 }
 
 int Tinit() {
@@ -117,22 +108,14 @@ int Tinit() {
 
   stasis_dirty_page_table = stasis_dirty_page_table_init();
   stasis_page_init(stasis_dirty_page_table);
-  stasis_page_handle_t * page_handle;
-  if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
-    printf("\nWarning: Using old I/O routines (with known bugs).\n");
-    page_handle = openPageFile(stasis_log_file, stasis_dirty_page_table);
-  } else {
-    stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
-    // XXX should not be global.
-    page_handle = stasis_page_handle_open(h, stasis_log_file, stasis_dirty_page_table);
-  }
 
-  stasis_buffer_manager = stasis_runtime_buffer_manager_open(bufferManagerType, page_handle);
-  DEBUG("Buffer manager type = %d\n", bufferManagerType);
+  stasis_buffer_manager = stasis_buffer_manager_factory(stasis_log_file, stasis_dirty_page_table);
+
   stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table, stasis_buffer_manager); // xxx circular dependency.
   pageOperationsInit();
   stasis_allocation_policy = stasis_allocation_policy_init();
   stasis_alloc = stasis_alloc_init(stasis_allocation_policy);
+
   TnaiveHashInit();
   LinearHashNTAInit();
   BtreeInit();
@@ -523,7 +506,7 @@ int stasis_transaction_table_forget(int xid) {
 }
 
 int TdurabilityLevel() {
-  if(bufferManagerType == BUFFER_MANAGER_MEM_ARRAY) {
+  if(stasis_buffer_manager_factory == BUFFER_MANAGER_MEM_ARRAY) {
     return VOLATILE;
   } else if(stasis_log_type == LOG_TO_MEMORY) {
     return PERSISTENT;

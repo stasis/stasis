@@ -4,6 +4,7 @@
 
 #include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
+#include <stasis/bufferManager/legacy/legacyBufferManager.h>
 #include <stasis/truncation.h>
 
 /*static stasis_handle_t * memory_factory(lsn_t off, lsn_t len, void * ignored) {
@@ -42,7 +43,7 @@ int main(int argc, char ** argv) {
       direct = 1;
       bufferManagerO_DIRECT = 1;
     } else if(!strcmp(argv[i], "--deprecatedBM")) {
-      bufferManagerType = BUFFER_MANAGER_DEPRECATED_HASH;
+      stasis_buffer_manager_factory = stasis_buffer_manager_deprecated_factory;
       legacyBM = 1;
     } else if(!strcmp(argv[i], "--deprecatedFH")) {
       bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_DEPRECATED;

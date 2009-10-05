@@ -407,3 +407,7 @@ static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *
 
   return ret;
 }
+stasis_buffer_manager_t* stasis_buffer_manager_deprecated_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
+  stasis_page_handle_t * ph = stasis_page_handle_default_factory(log, dpt);
+  return stasis_buffer_manager_deprecated_open(ph);
+}

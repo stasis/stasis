@@ -2,14 +2,18 @@
 #include <stasis/flags.h>
 #include <stasis/constants.h>
 
+#include <stasis/bufferManager/bufferHash.h>
+#include <stasis/bufferManager/pageArray.h>
+#include <stasis/bufferManager/legacy/legacyBufferManager.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifdef BUFFER_MANAGER_TYPE
-int bufferManagerType = BUFFER_MANAGER_TYPE;
+#ifdef STASIS_BUFFER_MANAGER_FACTORY
+int stasis_buffer_manager_factory = STASIS_BUFFER_MANAGER_FACTORY;
 #else
-int bufferManagerType = BUFFER_MANAGER_HASH;
+stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_hash_factory;
 #endif
 
 #ifdef BUFFER_MANAGER_O_DIRECT

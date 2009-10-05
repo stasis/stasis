@@ -50,6 +50,8 @@ terms specified in this license.
 
 #include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
+#include <stasis/bufferManager/pageArray.h>
+
 #include <stasis/dirtyPageTable.h>
 
 #include <sys/time.h>
@@ -110,13 +112,13 @@ void * worker(void*arg) {
   return 0;
 }
 START_TEST(dirtyPageTable_randomTest) {
-  bufferManagerType = BUFFER_MANAGER_MEM_ARRAY;
+  stasis_buffer_manager_factory = stasis_buffer_manager_mem_array_factory;
   Tinit();
   worker(0);
   Tdeinit();
 } END_TEST
 START_TEST(dirtyPageTable_threadTest) {
-  bufferManagerType = BUFFER_MANAGER_MEM_ARRAY;
+  stasis_buffer_manager_factory = stasis_buffer_manager_mem_array_factory;
   Tinit();
   pthread_t thread[NUM_WORKERS];
   for(int i = 0; i < NUM_WORKERS; i++) {
