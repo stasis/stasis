@@ -10,7 +10,6 @@
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/page.h>
-#include <stasis/bufferManager.h>
 
 #include <stdio.h>
 
@@ -28,6 +27,7 @@ static int dpt_cmp(const void *ap, const void * bp, const void * ignored) {
 
 struct stasis_dirty_page_table_t {
   struct rbtree * table;
+  stasis_buffer_manager_t * bufferManager;
   pageid_t count;
   pthread_mutex_t mutex;
   pthread_cond_t flushDone;
@@ -131,7 +131,7 @@ int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
     if(off == stride) {
       pthread_mutex_unlock(&dirtyPages->mutex);
       for(pageid_t i = 0; i < off; i++) {
-        writeBackPage(vals[i]);
+        dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, vals[i]);
       }
       off = 0;
       strides++;
@@ -140,7 +140,7 @@ int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
   }
   pthread_mutex_unlock(&dirtyPages->mutex);
   for(int i = 0; i < off; i++) {
-    writeBackPage(vals[i]);
+    dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, vals[i]);
   }
   pthread_mutex_lock(&dirtyPages->mutex);
   dirtyPages->flushing = 0;
@@ -150,6 +150,30 @@ int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
 //  if(strides < 5) { DEBUG("strides: %d dirtyCount = %lld\n", strides, stasis_dirty_page_table_dirty_count(dirtyPages)); }
 
   return 0;
+}
+
+int stasis_dirty_page_table_get_flush_candidates(stasis_dirty_page_table_t * dirtyPages, pageid_t start, pageid_t stop, int count, pageid_t* range_starts, pageid_t* range_ends) {
+  pthread_mutex_lock(&dirtyPages->mutex);
+  int n = 0;
+  int b = -1;
+  dpt_entry dummy;
+  dummy.lsn = -1;
+  dummy.p = start;
+
+  for(const dpt_entry *e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->table);
+      e && (stop == 0 || e->p < stop) && n < count;
+      e = rblookup(RB_LUGREAT, e, dirtyPages->table)) {
+    if(n == 0 || range_ends[b] != e->p) {
+      b++;
+      range_starts[b] = e->p;
+      range_ends[b] = e->p+1;
+    } else {
+      range_ends[b]++;
+    }
+    n++;
+  }
+  pthread_mutex_unlock(&dirtyPages->mutex);
+  return b+1;
 }
 void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages, pageid_t start, pageid_t stop) {
 
@@ -178,11 +202,14 @@ void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages,
   pthread_mutex_unlock(&dirtyPages->mutex);
 
   for(pageid_t i = 0; i < n; i++) {
-      int err = writeBackPage(staleDirtyPages[i]);
+      int err = dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, staleDirtyPages[i]);
       if(stop && (err == EBUSY)) { abort(); /*api violation!*/ }
   }
   free(staleDirtyPages);
-//  forcePageRange(start*PAGE_SIZE,stop*PAGE_SIZE);
+}
+
+void stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table_t * dpt, stasis_buffer_manager_t *bufferManager) {
+  dpt->bufferManager = bufferManager;
 }
 
 stasis_dirty_page_table_t * stasis_dirty_page_table_init() {

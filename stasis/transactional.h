@@ -801,6 +801,8 @@ void * stasis_runtime_dirty_page_table();
 
 void * stasis_runtime_alloc_state();
 
+void * stasis_runtime_buffer_manager();
+
 #include "operations.h"
 
 END_C_DECLS

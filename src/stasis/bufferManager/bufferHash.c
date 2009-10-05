@@ -15,19 +15,17 @@
 #include <stasis/bufferPool.h>
 #include <stasis/doubleLinkedList.h>
 
-#include <stasis/pageHandle.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/transactional.h>
 
 #include <stasis/replacementPolicy.h>
-#include <stasis/bufferManager.h>
 #include <stasis/page.h>
 #include <assert.h>
 #include <stdio.h>
 
 //#define LATCH_SANITY_CHECKING
 
-struct stasis_buffer_hash_t {
+typedef struct {
   struct LH_ENTRY(table) * cachedPages;
   pthread_t worker;
   pthread_mutex_t mut;
@@ -36,30 +34,10 @@ struct stasis_buffer_hash_t {
   pageid_t pageCount;
   replacementPolicy *lru;
   stasis_buffer_pool_t *buffer_pool;
-  stasis_page_handle_t *page_handler;
+  stasis_page_handle_t *page_handle;
   int flushing;
   int running;
-};
-
-static struct LH_ENTRY(table) * cachedPages;
-
-static pthread_t worker;
-static pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t readComplete = PTHREAD_COND_INITIALIZER;
-static pthread_cond_t needFree     = PTHREAD_COND_INITIALIZER;
-
-static pageid_t pageCount;
-
-// A page is in LRU iff !pending, !pinned
-static replacementPolicy * lru;
-
-static stasis_buffer_pool_t * stasis_buffer_pool;
-
-static stasis_page_handle_t * page_handle;
-
-static int flushing;
-
-static int running;
+} stasis_buffer_hash_t;
 
 typedef struct LL_ENTRY(node_t) node_t;
 
@@ -79,6 +57,7 @@ static inline intptr_t* pagePinCountPtr(Page * p) {
   return ((intptr_t*)(&((p)->queue)));
 }
 static inline int needFlush() {
+  // XXX need to remove call to stasis_runtime*
   pageid_t count = stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table());
   const pageid_t needed = 1000; //MAX_BUFFER_SIZE / 5;
   if(count > needed) {
@@ -121,9 +100,9 @@ inline static void checkPageState(Page * p) { }
 
 #endif
 
-inline static int tryToWriteBackPage(pageid_t page) {
-
-  Page * p = LH_ENTRY(find)(cachedPages, &page, sizeof(page));
+inline static int tryToWriteBackPage(stasis_buffer_manager_t *bm, pageid_t page) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  Page * p = LH_ENTRY(find)(bh->cachedPages, &page, sizeof(page));
 
   if(!p) { return ENOENT; }
 
@@ -133,29 +112,25 @@ inline static int tryToWriteBackPage(pageid_t page) {
     return EBUSY;
   }
   DEBUG("Write(%ld)\n", (long)victim->id);
-  page_handle->write(page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
-
-//  int locked = trywritelock(p->rwlatch,0);
-//  assert(locked);
-//  assert(!stasis_dirty_page_table_is_dirty(stasis_runtime_dirty_page_table(), p));
-//  unlock(p->rwlatch);
+  bh->page_handle->write(bh->page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
 
   return 0;
 }
 
 /** Returns a free page.  The page will not be in freeList,
     cachedPages or lru. */
-inline static Page * getFreePage() {
+inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
+  stasis_buffer_hash_t * bh = bm->impl;
   Page * ret;
-  if(pageCount < MAX_BUFFER_SIZE) {
-    ret = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
-    stasis_buffer_pool_free_page(stasis_buffer_pool, ret,-1);
+  if(bh->pageCount < MAX_BUFFER_SIZE) {
+    ret = stasis_buffer_pool_malloc_page(bh->buffer_pool);
+    stasis_buffer_pool_free_page(bh->buffer_pool, ret,-1);
     (*pagePinCountPtr(ret)) = 0;
     (*pagePendingPtr(ret)) = 0;
     pageSetNode(ret,0,0);
-    pageCount++;
+    bh->pageCount++;
   } else {
-    while((ret = lru->getStale(lru))) {
+    while((ret = bh->lru->getStale(bh->lru))) {
       // Make sure we have an exclusive lock on victim.
       if(!ret) {
         printf("bufferHash.c: Cannot find free page for application request.\nbufferHash.c: This should not happen unless all pages have been pinned.\nbufferHash.c: Crashing.");
@@ -164,19 +139,19 @@ inline static Page * getFreePage() {
       assert(!*pagePinCountPtr(ret));
       assert(!*pagePendingPtr(ret));
       if(ret->dirty) {
-        pthread_mutex_unlock(&mut);
+        pthread_mutex_unlock(&bh->mut);
         DEBUG("Blocking app thread");
         // We don't really care if this flush happens, so long as *something* is being written back, so ignore the EAGAIN it could return.
         // (Besides, once this returns EAGAIN twice, we know that some other flush concurrently was initiated + returned, so we're good to go...)
         stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
-        pthread_mutex_lock(&mut);
+        pthread_mutex_lock(&bh->mut);
       } else {
         break;
       }
     }
 
-    lru->remove(lru, ret);
-    Page * check = LH_ENTRY(remove)(cachedPages, &ret->id, sizeof(ret->id));
+    bh->lru->remove(bh->lru, ret);
+    Page * check = LH_ENTRY(remove)(bh->cachedPages, &ret->id, sizeof(ret->id));
     assert(check == ret);
   }
   assert(!*pagePinCountPtr(ret));
@@ -186,31 +161,34 @@ inline static Page * getFreePage() {
   return ret;
 }
 
-static void * writeBackWorker(void * ignored) {
-  pthread_mutex_lock(&mut);
+static void * writeBackWorker(void * bmp) {
+  stasis_buffer_manager_t* bm = bmp;
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
   while(1) {
-    while(running && (!needFlush())) {
-      flushing = 0;
+    while(bh->running && (!needFlush())) {
+      bh->flushing = 0;
       DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
-      pthread_cond_wait(&needFree, &mut);
+      pthread_cond_wait(&bh->needFree, &bh->mut);
       DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(stasis_runtime_dirty_page_table()));
-      flushing = 1;
+      bh->flushing = 1;
     }
-    if(!running) { break; }
-    pthread_mutex_unlock(&mut);
+    if(!bh->running) { break; }
+    pthread_mutex_unlock(&bh->mut);
     DEBUG("Calling flush\n");
     // ignore ret val; this flush is for performance, not correctness.
-    stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
-    pthread_mutex_lock(&mut);
+    stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table()); // XXX no call to stasis_runtime_*
+    pthread_mutex_lock(&bh->mut);
   }
-  pthread_mutex_unlock(&mut);
+  pthread_mutex_unlock(&bh->mut);
   return 0;
 }
 
-static Page * bhGetCachedPage(int xid, const pageid_t pageid) {
-  pthread_mutex_lock(&mut);
+static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
   // Is the page in cache?
-  Page * ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(pageid));
+  Page * ret = LH_ENTRY(find)(bh->cachedPages, &pageid, sizeof(pageid));
   if(ret) {
     checkPageState(ret);
 #ifdef LATCH_SANITY_CHECKING
@@ -220,7 +198,7 @@ static Page * bhGetCachedPage(int xid, const pageid_t pageid) {
     if(!*pagePendingPtr(ret)) {
       if(!*pagePinCountPtr(ret) ) {
         // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
-        lru->remove(lru, ret);
+        bh->lru->remove(bh->lru, ret);
       }
       (*pagePinCountPtr(ret))++;
       checkPageState(ret);
@@ -229,11 +207,12 @@ static Page * bhGetCachedPage(int xid, const pageid_t pageid) {
       ret = 0;
     }
   }
-  pthread_mutex_unlock(&mut);
+  pthread_mutex_unlock(&bh->mut);
   return ret;
 }
 
-static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
+static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
+  stasis_buffer_hash_t * bh = bm->impl;
 
   // Note:  Calls to loadlatch in this function violate lock order, but
   // should be safe, since we make sure no one can have a writelock
@@ -241,10 +220,10 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
 
   void* check;
 
-  pthread_mutex_lock(&mut);
+  pthread_mutex_lock(&bh->mut);
 
   // Is the page in cache?
-  Page * ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(pageid));
+  Page * ret = LH_ENTRY(find)(bh->cachedPages, &pageid,sizeof(pageid));
 
   do {
 
@@ -253,9 +232,9 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     while(ret) {
       checkPageState(ret);
       if(*pagePendingPtr(ret)) {
-        pthread_cond_wait(&readComplete, &mut);
+        pthread_cond_wait(&bh->readComplete, &bh->mut);
         if(ret->id != pageid) {
-          ret = LH_ENTRY(find)(cachedPages, &pageid, sizeof(pageid));
+          ret = LH_ENTRY(find)(bh->cachedPages, &pageid, sizeof(pageid));
         }
       } else {
 #ifdef LATCH_SANITY_CHECKING
@@ -264,11 +243,11 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
 #endif
         if(! *pagePinCountPtr(ret) ) {
           // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
-          lru->remove(lru, ret);
+          bh->lru->remove(bh->lru, ret);
         }
         (*pagePinCountPtr(ret))++;
         checkPageState(ret);
-        pthread_mutex_unlock(&mut);
+        pthread_mutex_unlock(&bh->mut);
         assert(ret->id == pageid);
         return ret;
       }
@@ -278,10 +257,10 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
     assert(!ret);
 
     // Remove a page from the freelist.  This may cause writeback, and release our latch.
-    Page * ret2 = getFreePage();
+    Page * ret2 = getFreePage(bm);
 
     // Did some other thread put the page in cache for us?
-    ret = LH_ENTRY(find)(cachedPages, &pageid,sizeof(pageid));
+    ret = LH_ENTRY(find)(bh->cachedPages, &pageid,sizeof(pageid));
 
     if(!ret) {
 
@@ -295,8 +274,8 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
       break;
     } else {
       // Put the page we were about to evict back in cached pages
-      LH_ENTRY(insert)(cachedPages, &ret2->id, sizeof(ret2->id), ret2);
-      lru->insert(lru, ret2);
+      LH_ENTRY(insert)(bh->cachedPages, &ret2->id, sizeof(ret2->id), ret2);
+      bh->lru->insert(bh->lru, ret2);
       // On the next loop iteration, we'll probably return the page the other thread inserted for us.
     }
     // try again.
@@ -305,7 +284,7 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   // Add a pending entry to cachedPages to block like-minded threads and writeback
   (*pagePendingPtr(ret)) = (void*)1;
 
-  check = LH_ENTRY(insert)(cachedPages,&pageid,sizeof(pageid), ret);
+  check = LH_ENTRY(insert)(bh->cachedPages,&pageid,sizeof(pageid), ret);
   assert(!check);
 
   ret->id = pageid;
@@ -314,11 +293,11 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
 
     // Now, it is safe to release the mutex; other threads won't
     // try to read this page from disk.
-    pthread_mutex_unlock(&mut);
+    pthread_mutex_unlock(&bh->mut);
 
-    page_handle->read(page_handle, ret, type);
+    bh->page_handle->read(bh->page_handle, ret, type);
 
-    pthread_mutex_lock(&mut);
+    pthread_mutex_lock(&bh->mut);
 
   } else {
     memset(ret->memAddr,0,PAGE_SIZE);
@@ -340,58 +319,63 @@ static Page * bhLoadPageImpl_helper(int xid, const pageid_t pageid, int uninitia
   assert(locked);
 #endif
 
-  pthread_mutex_unlock(&mut);
-  pthread_cond_broadcast(&readComplete);
+  pthread_mutex_unlock(&bh->mut);
+  pthread_cond_broadcast(&bh->readComplete);
 
   // TODO Improve writeback policy
-  if((!flushing) && needFlush()) {
-    pthread_cond_signal(&needFree);
+  if((!bh->flushing) && needFlush()) {
+    pthread_cond_signal(&bh->needFree);
   }
   assert(ret->id == pageid);
   checkPageState (ret);
   return ret;
 }
 
-static Page * bhLoadPageImpl(int xid, const pageid_t pageid, pagetype_t type) {
-  return bhLoadPageImpl_helper(xid,pageid,0, type);
+static Page * bhLoadPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid, pagetype_t type) {
+  return bhLoadPageImpl_helper(bm, xid, pageid, 0, type);
 }
-static Page * bhLoadUninitPageImpl(int xid, const pageid_t pageid) {
-  return bhLoadPageImpl_helper(xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
+static Page * bhLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid) {
+  return bhLoadPageImpl_helper(bm, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 
 
-static void bhReleasePage(Page * p) {
-  pthread_mutex_lock(&mut);
+static void bhReleasePage(stasis_buffer_manager_t * bm, Page * p) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
   checkPageState(p);
   (*pagePinCountPtr(p))--;
   if(!(*pagePinCountPtr(p))) {
     assert(!pageGetNode(p, 0));
-    lru->insert(lru,p);
+    bh->lru->insert(bh->lru,p);
   }
 #ifdef LATCH_SANITY_CHECKING
   unlock(p->loadlatch);
 #endif
-  pthread_mutex_unlock(&mut);
+  pthread_mutex_unlock(&bh->mut);
 }
-static int bhWriteBackPage(pageid_t pageid) {
-  pthread_mutex_lock(&mut);
-  int ret = tryToWriteBackPage(pageid);
-  pthread_mutex_unlock(&mut);
+static int bhWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
+  int ret = tryToWriteBackPage(bm, pageid);
+  pthread_mutex_unlock(&bh->mut);
   return ret;
 }
-static void bhForcePages() {
-  page_handle->force_file(page_handle);
+static void bhForcePages(stasis_buffer_manager_t* bm) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  bh->page_handle->force_file(bh->page_handle);
 }
-static void bhForcePageRange(pageid_t start, pageid_t stop) {
-  page_handle->force_range(page_handle, start, stop);
+static void bhForcePageRange(stasis_buffer_manager_t *bm, pageid_t start, pageid_t stop) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  bh->page_handle->force_range(bh->page_handle, start, stop);
 }
-static void bhBufDeinit() {
-  pthread_mutex_lock(&mut);
-  running = 0;
-  pthread_mutex_unlock(&mut);
+static void bhBufDeinit(stasis_buffer_manager_t * bm) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
+  bh->running = 0;
+  pthread_mutex_unlock(&bh->mut);
 
-  pthread_cond_signal(&needFree); // Wake up the writeback thread so it will exit.
-  pthread_join(worker, 0);
+  pthread_cond_signal(&bh->needFree); // Wake up the writeback thread so it will exit.
+  pthread_join(bh->worker, 0);
 
   // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
   int ret = stasis_dirty_page_table_flush(stasis_runtime_dirty_page_table());
@@ -399,7 +383,7 @@ static void bhBufDeinit() {
 
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
-  LH_ENTRY(openlist)(cachedPages, &iter);
+  LH_ENTRY(openlist)(bh->cachedPages, &iter);
   while((next = LH_ENTRY(readlist)(&iter))) {
     Page * p = next->value;
     assertunlocked(p->rwlatch);
@@ -410,23 +394,29 @@ static void bhBufDeinit() {
     stasis_page_cleanup(p); // normally called by writeBackOnePage()
   }
   LH_ENTRY(closelist)(&iter);
-  LH_ENTRY(destroy)(cachedPages);
+  LH_ENTRY(destroy)(bh->cachedPages);
 
-  lru->deinit(lru);
-  stasis_buffer_pool_deinit(stasis_buffer_pool);
-  page_handle->close(page_handle);
+  bh->lru->deinit(bh->lru);
+  stasis_buffer_pool_deinit(bh->buffer_pool);
+  bh->page_handle->close(bh->page_handle);
+
+  pthread_mutex_destroy(&bh->mut);
+  pthread_cond_destroy(&bh->needFree);
+  pthread_cond_destroy(&bh->readComplete);
+  free(bh);
 }
-static void bhSimulateBufferManagerCrash() {
-  pthread_mutex_lock(&mut);
-  running = 0;
-  pthread_mutex_unlock(&mut);
+static void bhSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
+  bh->running = 0;
+  pthread_mutex_unlock(&bh->mut);
 
-  pthread_cond_signal(&needFree);
-  pthread_join(worker, 0);
+  pthread_cond_signal(&bh->needFree);
+  pthread_join(bh->worker, 0);
 
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
-  LH_ENTRY(openlist)(cachedPages, &iter);
+  LH_ENTRY(openlist)(bh->cachedPages, &iter);
   while((next = LH_ENTRY(readlist)(&iter))) {
     Page * p = next->value;
     writelock(p->rwlatch,0);
@@ -435,42 +425,60 @@ static void bhSimulateBufferManagerCrash() {
     unlock(p->rwlatch);
   }
   LH_ENTRY(closelist)(&iter);
-  LH_ENTRY(destroy)(cachedPages);
+  LH_ENTRY(destroy)(bh->cachedPages);
 
-  lru->deinit(lru);
-  stasis_buffer_pool_deinit(stasis_buffer_pool);
-  page_handle->close(page_handle);
+  bh->lru->deinit(bh->lru);
+  stasis_buffer_pool_deinit(bh->buffer_pool);
+  bh->page_handle->close(bh->page_handle);
+
+  pthread_mutex_destroy(&bh->mut);
+  pthread_cond_destroy(&bh->needFree);
+  pthread_cond_destroy(&bh->readComplete);
+  free(bh);
 }
 
-void stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
-  page_handle = h;
-  assert(!running);
+stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h) {
+  stasis_buffer_manager_t *bm = malloc(sizeof(*bm));
+  stasis_buffer_hash_t *bh = malloc(sizeof(*bh));
+
+  bm->loadPageImpl = bhLoadPageImpl;
+  bm->loadUninitPageImpl = bhLoadUninitPageImpl;
+  bm->getCachedPageImpl = bhGetCachedPage;
+  bm->releasePageImpl = bhReleasePage;
+  bm->writeBackPage = bhWriteBackPage;
+  bm->forcePages = bhForcePages;
+  bm->forcePageRange = bhForcePageRange;
+  bm->stasis_buffer_manager_close = bhBufDeinit;
+  bm->stasis_buffer_manager_simulate_crash = bhSimulateBufferManagerCrash;
+
+  bm->impl = bh;
+
+  bh->page_handle = h;
+  bh->running = 0;
 
 #ifdef LONG_RUN
   printf("Using expensive bufferHash sanity checking.\n");
 #endif
 
-  loadPageImpl = bhLoadPageImpl;
-  loadUninitPageImpl = bhLoadUninitPageImpl;
-  getCachedPageImpl = bhGetCachedPage;
-  releasePageImpl = bhReleasePage;
-  writeBackPage = bhWriteBackPage;
-  forcePages = bhForcePages;
-  forcePageRange = bhForcePageRange;
-  stasis_buffer_manager_close = bhBufDeinit;
-  stasis_buffer_manager_simulate_crash = bhSimulateBufferManagerCrash;
+  bh->flushing = 0;
 
-  flushing = 0;
+  bh->buffer_pool = stasis_buffer_pool_init();
 
-  stasis_buffer_pool = stasis_buffer_pool_init();
+  bh->lru = lruFastInit(pageGetNode, pageSetNode, 0);
 
-  lru = lruFastInit(pageGetNode, pageSetNode, 0);
+  bh->cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
 
-  cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
+  bh->pageCount = 0;
 
-  pageCount = 0;
+  bh->running = 1;
 
-  running = 1;
+  pthread_mutex_init(&bh->mut,0);
 
-  pthread_create(&worker, 0, writeBackWorker, 0);
+  pthread_cond_init(&bh->needFree,0);
+
+  pthread_cond_init(&bh->readComplete,0);
+
+  pthread_create(&bh->worker, 0, writeBackWorker, bm);
+
+  return bm;
 }

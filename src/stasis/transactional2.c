@@ -10,7 +10,9 @@
 
 #include <stasis/bufferManager/legacy/pageFile.h>
 
-
+#include <stasis/bufferManager/pageArray.h>
+#include <stasis/bufferManager/bufferHash.h>
+#include <stasis/bufferManager/legacy/legacyBufferManager.h>
 
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
@@ -34,6 +36,11 @@ stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
 static stasis_truncation_t * stasis_truncation = 0;
 static stasis_alloc_t * stasis_alloc = 0;
 static stasis_allocation_policy_t * stasis_allocation_policy = 0;
+static stasis_buffer_manager_t * stasis_buffer_manager = 0;
+
+void * stasis_runtime_buffer_manager() {
+  return stasis_buffer_manager;
+}
 
 /**
 	This mutex protects stasis_transaction_table, numActiveXactions and
@@ -59,6 +66,27 @@ void * stasis_runtime_dirty_page_table() {
 }
 void * stasis_runtime_alloc_state() {
   return stasis_alloc;
+}
+
+static stasis_buffer_manager_t* stasis_runtime_buffer_manager_open(int type, stasis_page_handle_t * ph) {
+  bufferManagerType = type;
+  static int lastType = 0;
+  if(type == BUFFER_MANAGER_REOPEN) {
+    type = lastType;
+  }
+  lastType = type;
+  if(type == BUFFER_MANAGER_DEPRECATED_HASH) {
+    return stasis_buffer_manager_deprecated_open(ph);
+  } else if (type == BUFFER_MANAGER_MEM_ARRAY) {
+    stasis_buffer_manager_t *ret = stasis_buffer_manager_mem_array_open();
+    ph->close(ph); // XXX should never have been opened in the first place!
+    return ret;
+  } else if (type == BUFFER_MANAGER_HASH) {
+    return stasis_buffer_manager_hash_open(ph);
+  } else {
+    // XXX error handling
+    abort();
+  }
 }
 
 int Tinit() {
@@ -99,8 +127,9 @@ int Tinit() {
     page_handle = stasis_page_handle_open(h, stasis_log_file, stasis_dirty_page_table);
   }
 
-  stasis_buffer_manager_open(bufferManagerType, page_handle);
+  stasis_buffer_manager = stasis_runtime_buffer_manager_open(bufferManagerType, page_handle);
   DEBUG("Buffer manager type = %d\n", bufferManagerType);
+  stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table, stasis_buffer_manager); // xxx circular dependency.
   pageOperationsInit();
   stasis_allocation_policy = stasis_allocation_policy_init();
   stasis_alloc = stasis_alloc_init(stasis_allocation_policy);
@@ -114,7 +143,7 @@ int Tinit() {
   //setupLockManagerCallbacksPage();
 
   stasis_recovery_initiate(stasis_log_file, stasis_alloc);
-  stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_log_file);
+  stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_buffer_manager, stasis_log_file);
   if(stasis_truncation_automatic) {
     // should this be before InitiateRecovery?
     stasis_truncation_thread_start(stasis_truncation);
@@ -365,7 +394,7 @@ int Tdeinit() {
   TnaiveHashDeinit();
   stasis_alloc_deinit(stasis_alloc);
   stasis_allocation_policy_deinit(stasis_allocation_policy);
-  stasis_buffer_manager_close();
+  stasis_buffer_manager->stasis_buffer_manager_close(stasis_buffer_manager);
   DEBUG("Closing page file tdeinit\n");
   stasis_page_deinit();
   stasis_log_group_force_t * group_force = stasis_log_file->group_force;
@@ -387,7 +416,7 @@ int TuncleanShutdown() {
   stasis_alloc_deinit(stasis_alloc);
   stasis_allocation_policy_deinit(stasis_allocation_policy);
 
-  stasis_buffer_manager_simulate_crash();
+  stasis_buffer_manager->stasis_buffer_manager_simulate_crash(stasis_buffer_manager);
   // XXX: close_file?
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);

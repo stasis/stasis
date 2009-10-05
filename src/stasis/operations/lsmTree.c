@@ -59,7 +59,8 @@ void TlsmRegionForceRid(int xid, void *conf) {
     pageid_t pid;
     Tread(xid,a.regionList,&pid);
     stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), pid, pid+a.regionSize);
-    forcePageRange(pid, pid+a.regionSize);
+    stasis_buffer_manager_t *bm = stasis_runtime_buffer_manager();
+    bm->forcePageRange(bm, pid, pid+a.regionSize);
     //    TregionDealloc(xid,pid);
   }
 }

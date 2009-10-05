@@ -57,16 +57,8 @@ terms specified in this license.
 #include <assert.h>
 
 #include <stasis/bufferManager.h>
-#include <stasis/bufferManager/pageArray.h>
-#include <stasis/bufferManager/bufferHash.h>
-
-//#include <stasis/bufferManager/legacy/pageCache.h>
-#include <stasis/bufferManager/legacy/legacyBufferManager.h>
-
-#include <stasis/bufferPool.h>
 
 #include <stasis/lockManager.h>
-#include <stasis/pageHandle.h>
 
 #undef loadPage
 #undef releasePage
@@ -130,7 +122,6 @@ compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * 
 
 }
 
-
 compensated_function void  __profile_releasePage(Page * p) {
   pthread_mutex_lock(&profile_load_mutex);
 
@@ -157,30 +148,23 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
-Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type) = 0;
-Page * (*loadUninitPageImpl)(int xid, pageid_t pageid) = 0;
-Page * (*getCachedPageImpl)(int xid, pageid_t pageid) = 0;
-void   (*releasePageImpl)(Page * p) = 0;
-int (*writeBackPage)(pageid_t page) = 0;
-void (*forcePages)() = 0;
-void (*forcePageRange)(pageid_t start, pageid_t stop) = 0;
-void   (*stasis_buffer_manager_close)()  = 0;
-void   (*stasis_buffer_manager_simulate_crash)()  = 0;
-
 Page * loadPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  return loadPageImpl(xid, pageid, UNKNOWN_TYPE_PAGE);
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  return bm->loadPageImpl(bm, xid, pageid, UNKNOWN_TYPE_PAGE);
 }
 Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  return loadPageImpl(xid, pageid, type);
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  return bm->loadPageImpl(bm, xid, pageid, type);
 }
 Page * loadUninitializedPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
 
-  return loadUninitPageImpl(xid, pageid);
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  return bm->loadUninitPageImpl(bm, xid, pageid);
 }
 
 Page * loadPageForOperation(int xid, pageid_t pageid, int op) {
@@ -200,31 +184,10 @@ Page * loadPageForOperation(int xid, pageid_t pageid, int op) {
 }
 
 Page * getCachedPage(int xid, pageid_t pageid) {
-  return getCachedPageImpl(xid, pageid);
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  return bm->getCachedPageImpl(bm, xid, pageid);
 }
 void releasePage(Page * p) {
-  releasePageImpl(p);
-}
-
-int stasis_buffer_manager_open(int type, stasis_page_handle_t * ph) {
-  bufferManagerType = type;
-  static int lastType = 0;
-  if(type == BUFFER_MANAGER_REOPEN) {
-    type = lastType;
-  }
-  lastType = type;
-  if(type == BUFFER_MANAGER_DEPRECATED_HASH) {
-    stasis_buffer_manager_deprecated_open(ph);
-    return 0;
-  } else if (type == BUFFER_MANAGER_MEM_ARRAY) {
-    stasis_buffer_manager_mem_array_open();
-    ph->close(ph); // XXX should never have been opened in the first place!
-    return 0;
-  } else if (type == BUFFER_MANAGER_HASH) {
-    stasis_buffer_manager_hash_open(ph);
-    return 0;
-  } else {
-    // XXX error handling
-    abort();
-  }
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  bm->releasePageImpl(bm, p);
 }

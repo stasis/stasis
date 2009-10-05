@@ -64,8 +64,9 @@ typedef struct stasis_truncation_t stasis_truncation_t;
 
 #include <stasis/logger/logger2.h>
 #include <stasis/dirtyPageTable.h>
+#include <stasis/bufferManager.h>
 
-stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_log_t * log);
+stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_buffer_manager_t * bufferManager, stasis_log_t * log);
 void stasis_truncation_deinit(stasis_truncation_t * trunc);
 
 /**

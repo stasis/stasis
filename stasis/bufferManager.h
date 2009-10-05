@@ -80,7 +80,6 @@ terms specified in this license.
 #define __BUFFERMANAGER_H__
 #include <stasis/common.h>
 BEGIN_C_DECLS
-#include <stasis/pageHandle.h>
 /**
  * Obtain a pointer to a page from the buffer manager.  The page will
  * be pinned, and the pointer valid until releasePage is called.
@@ -99,75 +98,64 @@ Page * loadUninitializedPage(int xid, pageid_t pageid);
 
 Page * loadPageForOperation(int xid, pageid_t pageid, int op);
 
-Page * getCachedPage(int xid, const pageid_t pageid);
-
-/**
-    This is the function pointer that stasis_buffer_manager_open sets in order to
-    override loadPage.
-*/
-extern Page * (*loadPageImpl)(int xid, pageid_t pageid, pagetype_t type);
-extern Page * (*loadUninitPageImpl)(int xid, pageid_t pageid);
 /**
     Get a page from cache.  This function should never block on I/O.
 
     @return a pointer to the page, or NULL if the page is not in cache, or is being read from disk.
  */
-extern Page * (*getCachedPageImpl)(int xid, const pageid_t pageid);
+Page * getCachedPage(int xid, const pageid_t pageid);
+
 /**
-   loadPage aquires a lock when it is called, effectively pinning it
+   loadPage acquires a lock when it is called, effectively pinning it
    in memory.  releasePage releases this lock.
 */
 void releasePage(Page *p);
 
-/**
-    This is the function pointer that stasis_buffer_manager_open sets in order to
-    override releasePage.
-*/
-extern void   (*releasePageImpl)(Page * p);
-/**
- * initialize buffer manager
- * @return 0 on success
- * @return error code on failure
- */
-/**
-    This is used by truncation to move dirty pages from Stasis cache
-    into the operating system cache.  Once writeBackPage(p) returns,
-    calling forcePages() will synchronously force page number p to
-    disk.
+typedef struct stasis_buffer_manager_t stasis_buffer_manager_t;
 
-    (Not all buffer managers support synchronous writes to stable
-     storage.  For compatibility, such buffer managers should ignore
-     this call.)
+struct stasis_buffer_manager_t {
+  Page * (*loadPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid, pagetype_t type);
+  Page * (*loadUninitPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid);
+  Page * (*getCachedPageImpl)(stasis_buffer_manager_t*, int xid, const pageid_t pageid);
+  void   (*releasePageImpl)(stasis_buffer_manager_t*, Page * p);
+  /**
+      This is used by truncation to move dirty pages from Stasis cache
+      into the operating system cache.  Once writeBackPage(p) returns,
+      calling forcePages() will synchronously force page number p to
+      disk.
 
-     @return 0 on success, ENOENT if the page is not in cache, and EBUSY if the page is pinned.
-*/
-extern int (*writeBackPage)(pageid_t p);
-/**
-    Force any written back pages to disk.
+      (Not all buffer managers support synchronous writes to stable
+       storage.  For compatibility, such buffer managers should ignore
+       this call.)
 
-    @see writeBackPage for more information.
+       @return 0 on success, ENOENT if the page is not in cache, and EBUSY if the page is pinned.
+  */
+  int    (*writeBackPage)(stasis_buffer_manager_t*, pageid_t p);
+  /**
+      Force any written back pages to disk.
 
-    If the buffer manager doesn't support stable storage, this call is
-    a no-op.
-*/
-extern void (*forcePages)();
-/**
-    Force written back pages that fall within a particular range to disk.
+      @see writeBackPage for more information.
 
-    This does not force page that have not been written to with pageWrite().
+      If the buffer manager doesn't support stable storage, this call is
+      a no-op.
+  */
+  void   (*forcePages)(struct stasis_buffer_manager_t*);
+  /**
+      Force written back pages that fall within a particular range to disk.
 
-    @param start the first pageid to be forced to disk
-    @param stop the page after the last page to be forced to disk.
-*/
-extern void (*forcePageRange)(pageid_t start, pageid_t stop);
-extern void (*stasis_buffer_manager_simulate_crash)();
+      This does not force page that have not been written to with pageWrite().
 
-int stasis_buffer_manager_open(int type, stasis_page_handle_t * ph);
-/**
- * will write out any dirty pages, assumes that there are no running
- * transactions
- */
-extern void   (*stasis_buffer_manager_close)();
+      @param start the first pageid to be forced to disk
+      @param stop the page after the last page to be forced to disk.
+  */
+  void   (*forcePageRange)(struct stasis_buffer_manager_t*, pageid_t start, pageid_t stop);
+  void   (*stasis_buffer_manager_simulate_crash)(struct stasis_buffer_manager_t*);
+  /**
+   * Write out any dirty pages.  Assumes that there are no running transactions
+   */
+  void   (*stasis_buffer_manager_close)(struct stasis_buffer_manager_t*);
+  void * impl;
+};
 
 #ifdef PROFILE_LATCHES_WRITE_ONLY
 #define loadPage(x,y) __profile_loadPage((x), (y), __FILE__, __LINE__)

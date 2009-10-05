@@ -8,6 +8,7 @@ struct stasis_truncation_t {
   pthread_mutex_t shutdown_mutex;
   pthread_cond_t shutdown_cond;
   stasis_dirty_page_table_t * dirty_pages;
+  stasis_buffer_manager_t * buffer_manager;
   stasis_log_t * log;
 };
 
@@ -20,13 +21,14 @@ struct stasis_truncation_t {
 #define TRUNCATE_INTERVAL 1
 #define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 25)
 #endif
-stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_log_t * log) {
+stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_buffer_manager_t *buffer_manager, stasis_log_t *log) {
   stasis_truncation_t * ret = malloc(sizeof(*ret));
   ret->initialized = 1;
   ret->automaticallyTruncating = 0;
   pthread_mutex_init(&ret->shutdown_mutex, 0);
   pthread_cond_init(&ret->shutdown_cond, 0);
   ret->dirty_pages = dpt;
+  ret->buffer_manager = buffer_manager;
   ret->log = log;
   return ret;
 }
@@ -99,7 +101,7 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       //      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
-      forcePages();
+      trunc->buffer_manager->forcePages(trunc->buffer_manager);
       trunc->log->truncate(trunc->log, rec_lsn);
       return 1;
     } else {
@@ -116,7 +118,7 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
 
         //fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
-        forcePages();
+        trunc->buffer_manager->forcePages(trunc->buffer_manager);
         trunc->log->truncate(trunc->log, rec_lsn);
         return 1;
       } else {
