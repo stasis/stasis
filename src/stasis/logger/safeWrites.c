@@ -412,7 +412,7 @@ static void syncLog_LogWriter(stasis_log_t * log,
 
   // We can skip the fsync if we opened with O_SYNC, or if we're in softcommit mode, and not forcing for WAL.
 
-  if(sw->softcommit && mode == LOG_FORCE_WAL  // soft commit mode; syncing for wal
+  if((sw->softcommit && mode == LOG_FORCE_WAL)  // soft commit mode; syncing for wal
       || !(sw->softcommit || (sw->filemode & O_SYNC)) // neither soft commit nor opened with O_SYNC
   ) {
 #ifdef HAVE_FDATASYNC
