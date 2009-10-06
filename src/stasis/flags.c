@@ -11,7 +11,7 @@
 #include <fcntl.h>
 
 #ifdef STASIS_BUFFER_MANAGER_FACTORY
-int stasis_buffer_manager_factory = STASIS_BUFFER_MANAGER_FACTORY;
+stasis_buffer_manager_t * stasis_buffer_manager_factory = STASIS_BUFFER_MANAGER_FACTORY;
 #else
 stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_hash_factory;
 #endif
