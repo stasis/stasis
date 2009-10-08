@@ -1,7 +1,7 @@
+#include <stasis/transactional.h>
 #include <stasis/page/raw.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
-
 /**
    @todo Should rawPageInferMetadata set a page type in the Page
    struct?

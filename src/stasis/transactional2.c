@@ -131,6 +131,7 @@ int Tinit() {
     // should this be before InitiateRecovery?
     stasis_truncation_thread_start(stasis_truncation);
   }
+  stasis_log_file->set_truncation(stasis_log_file, stasis_truncation);
   return 0;
 }
 
@@ -506,7 +507,7 @@ int stasis_transaction_table_forget(int xid) {
 }
 
 int TdurabilityLevel() {
-  if(stasis_buffer_manager_factory == BUFFER_MANAGER_MEM_ARRAY) {
+  if(stasis_buffer_manager_factory == stasis_buffer_manager_mem_array_factory) {
     return VOLATILE;
   } else if(stasis_log_type == LOG_TO_MEMORY) {
     return PERSISTENT;

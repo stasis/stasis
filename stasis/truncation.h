@@ -52,13 +52,12 @@ terms specified in this license.
  * $Id$
  *
  */
-
-#include <stasis/transactional.h>
-
-BEGIN_C_DECLS
-
 #ifndef STASIS_TRUNCATION_H
 #define STASIS_TRUNCATION_H
+
+#include <stasis/common.h>
+
+BEGIN_C_DECLS
 
 typedef struct stasis_truncation_t stasis_truncation_t;
 

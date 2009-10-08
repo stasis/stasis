@@ -1,6 +1,9 @@
+#include <stasis/transactional.h>
 #include <stasis/truncation.h>
 #include <stasis/bufferManager.h>
 #include <stdio.h>
+#include <assert.h>
+
 struct stasis_truncation_t {
   char initialized;
   char automaticallyTruncating;

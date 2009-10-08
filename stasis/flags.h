@@ -77,6 +77,8 @@ extern int stasis_truncation_automatic;
 */
 extern int stasis_log_type;
 
+extern size_t stasis_log_in_memory_max_entries;
+
 extern char * stasis_log_file_name;
 extern int    stasis_log_file_mode;
 extern int    stasis_log_file_permissions;

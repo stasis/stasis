@@ -1,7 +1,9 @@
 #include <stasis/logger/inMemoryLog.h>
+#include <stasis/flags.h>
 #include <stasis/latches.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 /**
  * @file
  *
@@ -17,6 +19,8 @@ typedef struct {
 	rwl * globalOffset_lock;
 	LogEntry ** buffer;
 	lsn_t bufferLen;
+	lsn_t maxLen;
+	stasis_truncation_t *trunc;
 } stasis_log_impl_in_memory;
 
 static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
@@ -31,16 +35,29 @@ static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
 
 static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e) {
   stasis_log_impl_in_memory * impl = log->impl;
-  writelock(impl->flushedLSN_lock, 0);
   lsn_t bufferOffset;
-
   int done = 0;
+  int blockCount = 0;
+  writelock(impl->flushedLSN_lock, 0);
   writelock(impl->globalOffset_lock,0);
   do{
     bufferOffset = impl->nextAvailableLSN - impl->globalOffset;
     if(bufferOffset >= impl->bufferLen) {
-      impl->bufferLen *= 2;
-      impl->buffer = realloc(impl->buffer, impl->bufferLen * sizeof(LogEntry *));
+      if(2 * impl->bufferLen > impl->maxLen) {
+        unlock(impl->globalOffset_lock);
+        unlock(impl->flushedLSN_lock);
+        blockCount++;
+        if(blockCount == 100) {
+          fprintf(stderr, "ERROR: Log blocked waiting to truncate, but truncation is not succeeding.\n"); fflush(stderr);
+          abort();
+        }
+        stasis_truncation_truncate(impl->trunc, 1);
+        writelock(impl->flushedLSN_lock, 0);
+        writelock(impl->globalOffset_lock, 0);
+      } else {
+        impl->bufferLen *= 2;
+        impl->buffer = realloc(impl->buffer, impl->bufferLen * sizeof(LogEntry *));
+      }
     } else {
       done = 1;
     }
@@ -88,7 +105,7 @@ static int stasis_log_impl_in_memory_truncate(stasis_log_t * log, lsn_t lsn) {
     for(int i = impl->globalOffset; i < lsn; i++) {
       free(impl->buffer[i - impl->globalOffset]);
     }
-    assert((lsn-impl->globalOffset) + (impl->nextAvailableLSN -lsn) < impl->bufferLen);
+    assert((lsn-impl->globalOffset) + (impl->nextAvailableLSN -lsn) <= impl->bufferLen);
     memmove(&(impl->buffer[0]), &(impl->buffer[lsn - impl->globalOffset]),
 			sizeof(LogEntry*) * (impl->nextAvailableLSN - lsn));
     impl->globalOffset = lsn;
@@ -148,6 +165,10 @@ static lsn_t stasis_log_impl_in_memory_sizeof_internal_entry(stasis_log_t* log,
   abort();
 }
 static int stasis_log_impl_in_memory_is_durable(stasis_log_t*log) { return 0; }
+static void stasis_log_impl_in_memory_set_truncation(stasis_log_t *log, stasis_truncation_t *trunc) {
+  stasis_log_impl_in_memory *impl = log->impl;
+  impl->trunc = trunc;
+}
 
 stasis_log_t* stasis_log_impl_in_memory_open() {
   stasis_log_impl_in_memory * impl = malloc(sizeof(*impl));
@@ -155,9 +176,17 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
   impl->globalOffset_lock = initlock();
   impl->globalOffset = 0;
   impl->nextAvailableLSN = 0;
-  impl->buffer = malloc(4096 * 1024 * sizeof (LogEntry *));
-  impl->bufferLen =4096 * 1024;
+  if(stasis_log_in_memory_max_entries == 0) {
+    impl->bufferLen =4096 * 1024;
+    impl->maxLen = 0;
+  } else {
+    impl->bufferLen = stasis_log_in_memory_max_entries;
+    impl->maxLen = impl->bufferLen;
+  }
+  impl->buffer = malloc(impl->bufferLen * sizeof (LogEntry *));
+  impl->trunc = 0;
   static stasis_log_t proto = {
+    stasis_log_impl_in_memory_set_truncation,
     stasis_log_impl_in_memory_sizeof_internal_entry,
     stasis_log_impl_in_memory_write_entry,
     stasis_log_impl_in_memory_read_entry,

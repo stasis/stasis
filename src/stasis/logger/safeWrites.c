@@ -754,10 +754,15 @@ static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
   return ret;
 }
 
+static void setTruncation_LogWriter(stasis_log_t* log, stasis_truncation_t *trunc) {
+  // logwriter does not support hard limits on its size, so this is a no-op
+}
+
 stasis_log_t* stasis_log_safe_writes_open(const char * filename,
                                           int filemode, int fileperm, int softcommit) {
 
   stasis_log_t proto = {
+    setTruncation_LogWriter,
     sizeofInternalLogEntry_LogWriter, // sizeof_internal_entry
     writeLogEntry_LogWriter,// write_entry
     readLSNEntry_LogWriter, // read_entry

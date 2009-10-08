@@ -54,6 +54,7 @@ terms specified in this license.
 #include <stasis/common.h>
 
 typedef struct stasis_log_t stasis_log_t;
+typedef struct TransactionLog TransactionLog;
 
 typedef struct stasis_log_group_force_t stasis_log_group_force_t;
 
@@ -63,17 +64,18 @@ typedef enum {
 
 #include <stasis/logger/groupForce.h>
 #include <stasis/logger/logEntry.h>
+#include <stasis/truncation.h>
 #include <stasis/constants.h>
 /**
    Contains the state needed by the logging layer to perform
    operations on a transaction.
  */
-typedef struct TransactionLog {
+struct TransactionLog {
   int xid;
   lsn_t prevLSN;
   lsn_t recLSN;
   pthread_mutex_t mut;
-} TransactionLog;
+};
 
 /**
    A callback function that allows logHandle's iterator to stop
@@ -102,6 +104,15 @@ extern TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
  * @ingroup LOGGING_IMPLEMENTATIONS
  */
 struct stasis_log_t {
+  /**
+     Register a truncation policy with the log.
+
+     If this method is not called, and the log's length is
+     constrained by a hard limit, then truncation might not occur
+     promptly (or at all) when the log runs out of space.
+
+   */
+  void (*set_truncation)(struct stasis_log_t *log, stasis_truncation_t *trunc);
   /**
      Return the size of an implementation-specific log entry.
 

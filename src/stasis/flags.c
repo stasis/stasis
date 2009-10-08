@@ -36,7 +36,7 @@ int bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 #endif
 
 #ifdef STASIS_SUPPRESS_UNCLEAN_SHUTDOWN_WARNINGS
-#error stasus_suppress_unclean_shutdown_warnings cannot be set at compile time.
+#error stasis_suppress_unclean_shutdown_warnings cannot be set at compile time.
 #endif
 int stasis_suppress_unclean_shutdown_warnings = 0;
 
@@ -52,6 +52,11 @@ int stasis_log_type = STASIS_LOG_TYPE;
 int stasis_log_type = LOG_TO_FILE;
 #endif
 
+#ifdef STASIS_LOG_IN_MEMORY_MAX_ENTRIES
+size_t stasis_log_in_memory_max_entries = STASIS_LOG_IN_MEMORY_MAX_ENTRIES;
+#else
+size_t stasis_log_in_memory_max_entries = 0;  // unlimited
+#endif
 
 #ifdef STASIS_LOG_FILE_NAME
 char * stasis_log_file_name = STASIS_LOG_FILE_NAME;
