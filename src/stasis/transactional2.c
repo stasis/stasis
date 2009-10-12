@@ -313,10 +313,14 @@ static inline int TcommitHelper(int xid, int force) {
   pthread_mutex_unlock(&stasis_transaction_table_mutex);
 #endif
 
-  lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], force);
-  if(globalLockManager.commit) { globalLockManager.commit(xid); }
+  if(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN != INVALID_LSN) {
 
-  stasis_alloc_committed(stasis_alloc, xid);
+    lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], force);
+    if(globalLockManager.commit) { globalLockManager.commit(xid); }
+
+    stasis_alloc_committed(stasis_alloc, xid);
+
+  }
 
   pthread_mutex_lock(&stasis_transaction_table_mutex);
 
