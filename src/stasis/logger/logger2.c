@@ -59,7 +59,7 @@ static lsn_t stasis_log_write_common(stasis_log_t* log, TransactionLog * l, int 
   log->write_entry(log, e);
 
   pthread_mutex_lock(&l->mut);
-  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   pthread_mutex_unlock(&l->mut);
 
@@ -82,7 +82,7 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, TransactionLog * l) {
   log->write_entry(log, e);
 
   pthread_mutex_lock(&l->mut);
-  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   pthread_mutex_unlock(&l->mut);
   DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n",
@@ -107,7 +107,7 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
   pthread_mutex_lock(&l->mut);
-  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
   pthread_mutex_unlock(&l->mut);
   return e;
@@ -121,7 +121,7 @@ LogEntry * stasis_log_begin_nta(stasis_log_t* log, TransactionLog * l, unsigned 
 lsn_t stasis_log_end_nta(stasis_log_t* log, TransactionLog * l, LogEntry * e) {
   log->write_entry(log, e);
   pthread_mutex_lock(&l->mut);
-  if(l->prevLSN == -1) { l->recLSN = e->LSN; }
+  if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   lsn_t ret = l->prevLSN = e->LSN;
   pthread_mutex_unlock(&l->mut);
   freeLogEntry(e);
@@ -153,8 +153,8 @@ void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* tl
   tl->xid = xid;
 
   DEBUG("Log Begin %d\n", xid);
-  tl->prevLSN = -1;
-  tl->recLSN = -1;
+  tl->prevLSN = INVALID_LSN;
+  tl->recLSN = INVALID_LSN;
 }
 
 lsn_t stasis_log_abort_transaction(stasis_log_t* log, TransactionLog * l) {
