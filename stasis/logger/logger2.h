@@ -269,7 +269,9 @@ struct stasis_log_t {
 
    @param log A log that already contains the entries to be forced to disk.
    @param lsn Log entries up to and including the one that overlaps lsn will
-              be durable after this call returns.
+              be durable after this call returns.  If INVALID_LSN is passed in,
+              the log will be immediately forced up to the current tail, bypassing
+              group commit.
    @param mode The durability mode associated with this call.
 
    @see stasis_log_force_mode_t
@@ -296,7 +298,7 @@ lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l);
 
    @return the lsn of the commit log entry.
 */
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l, int force);
 
 /**
    Write a transaction ABORT to the log tail.  Does not force the log.

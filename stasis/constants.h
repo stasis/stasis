@@ -179,6 +179,8 @@ terms specified in this license.
 
 #define INVALID_XID (-1)
 
+#define INVALID_LSN (-1)
+
 /** This constant is used as a placeholder to mark slot locations that are invalid.
     @see slotted.c, indirect.c
 */

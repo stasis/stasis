@@ -633,6 +633,16 @@ compensated_function void TreadStr(int xid, recordid rid, char *dat);
 int Tcommit(int xid);
 
 /**
+ * Non-durably commit an active transaction.  The transaction will still be atomic.
+ */
+int TsoftCommit(int xid);
+/**
+ * Make any non-durably committed transactions durable.  This call is not atomic;
+ * some subset of the non-durable transactions may commit if the system crashes
+ * before this call returns.
+ */
+void TforceCommits();
+/**
  * Abort (rollback) an active transaction.  Each transaction should be
  * completed with exactly one call to Tcommit() or Tabort().
  *

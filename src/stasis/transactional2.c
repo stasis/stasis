@@ -304,7 +304,7 @@ compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
   releasePage(p);
 }
 
-int Tcommit(int xid) {
+static inline int TcommitHelper(int xid, int force) {
   lsn_t lsn;
   assert(xid >= 0);
 #ifdef DEBUGGING
@@ -313,7 +313,7 @@ int Tcommit(int xid) {
   pthread_mutex_unlock(&stasis_transaction_table_mutex);
 #endif
 
-  lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS]);
+  lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], force);
   if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
   stasis_alloc_committed(stasis_alloc, xid);
@@ -327,6 +327,16 @@ int Tcommit(int xid) {
   pthread_mutex_unlock(&stasis_transaction_table_mutex);
 
   return 0;
+}
+
+int Tcommit(int xid) {
+  return TcommitHelper(xid, 1); // 1 -> force write log
+}
+int TsoftCommit(int xid) {
+  return TcommitHelper(xid, 0); // 0 -> don't force write log.
+}
+void TforceCommits() {
+  stasis_log_force(stasis_log_file, INVALID_LSN, LOG_FORCE_COMMIT);
 }
 
 int Tprepare(int xid) {

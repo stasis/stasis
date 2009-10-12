@@ -170,19 +170,25 @@ lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l) {
 }
 
 
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l) {
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l, int force) {
   lsn_t lsn = stasis_log_write_common(log, l, XCOMMIT);
-  stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
+  if(force) {
+    stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
+  }
   return lsn;
 }
 
 void stasis_log_force(stasis_log_t* log, lsn_t lsn,
               stasis_log_force_mode_t mode) {
-  if((mode == LOG_FORCE_COMMIT) && log->group_force) {
-    stasis_log_group_force(log->group_force, lsn);
+  if(lsn == INVALID_LSN) {
+    log->force_tail(log,mode);
   } else {
-    if(log->first_unstable_lsn(log,mode) <= lsn) {
-      log->force_tail(log,mode);
+    if((mode == LOG_FORCE_COMMIT) && log->group_force) {
+      stasis_log_group_force(log->group_force, lsn);
+    } else {
+      if(log->first_unstable_lsn(log,mode) <= lsn) {
+        log->force_tail(log,mode);
+      }
     }
   }
 }

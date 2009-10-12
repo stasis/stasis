@@ -52,6 +52,8 @@ terms specified in this license.
 
 #define BLOBS_PER_THREAD 50
 
+int soft = 0;
+
 void arraySet(int * array, int val) {
   int i;
   for(i = 0; i < 1024; i++) {
@@ -219,8 +221,11 @@ void * writingWorkerThread ( void * v ) {
       printf("R%d", i/100);fflush(NULL);
     }
   }
-
-  Tcommit(xid);
+  if(soft) {
+    TsoftCommit(xid);
+  } else {
+    Tcommit(xid);
+  }
 
   xid = Tbegin();
 
@@ -229,8 +234,11 @@ void * writingWorkerThread ( void * v ) {
     Tread(xid, rids[i], &j);
     assert(i + offset == j);
     }
-
-  Tcommit(xid);
+  if(soft) {
+    TsoftCommit(xid);
+  } else {
+    Tcommit(xid);
+  }
   free(rids);
 
   return NULL;
@@ -351,7 +359,7 @@ START_TEST(transactional_nothreads_commit) {
 START_TEST(transactional_threads_commit) {
   pthread_t workers[THREAD_COUNT];
   int i;
-
+  soft = 0;
   Tinit();
 
   for(i = 0; i < THREAD_COUNT; i++) {
@@ -366,6 +374,28 @@ START_TEST(transactional_threads_commit) {
   }
 
   Tdeinit();
+} END_TEST
+
+START_TEST(transactional_threads_softcommit) {
+  pthread_t workers[THREAD_COUNT];
+  int i;
+  soft = 1;
+
+  Tinit();
+
+  for(i = 0; i < THREAD_COUNT; i++) {
+    int arg = i + 100;
+    pthread_create(&workers[i], NULL, writingWorkerThread, &arg);
+
+  }
+  for(i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(workers[i], NULL);
+
+
+  }
+  TforceCommits();
+  Tdeinit();
+  soft = 0;
 } END_TEST
 
 /**
@@ -452,6 +482,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, transactional_smokeTest);
   tcase_add_test(tc, transactional_nothreads_commit);
   tcase_add_test(tc, transactional_threads_commit);
+  tcase_add_test(tc, transactional_threads_softcommit);
   tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_abort);
   tcase_add_test(tc, transactional_blobs_nothreads_abort);
