@@ -7,6 +7,7 @@
 
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
+#include <stasis/logger/inMemoryLog.h>
 #include <stasis/flags.h>
 
 #include <pthread.h>
@@ -43,9 +44,11 @@ int main(int argc, char * argv[]) {
   if(*endptr != 0) { printf(usage, argv[0]); abort(); }
 
   pthread_t workers[numthreads];
-
-  l = stasis_log_safe_writes_open(stasis_log_file_name, stasis_log_file_mode, stasis_log_file_permissions, 0);
-
+  if(stasis_log_type == LOG_TO_FILE) {
+    l = stasis_log_safe_writes_open(stasis_log_file_name, stasis_log_file_mode, stasis_log_file_permissions, 0);
+  } else {
+    l = stasis_log_impl_in_memory_open();
+  }
   for(int i = 0; i < numthreads; i++) {
     pthread_create(&workers[i], 0, worker, &numops);
   }
