@@ -23,7 +23,7 @@ typedef struct {
 #include "rw.h"
 
 /**
-   Keeps some profiling information along with a read/write lock. 
+   Keeps some profiling information along with a read/write lock.
 */
 
 typedef struct {

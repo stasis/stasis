@@ -155,6 +155,8 @@ int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *
 
 */
 
+#ifndef HAVE_PTHREAD_RWLOCK
+
 #undef rwl
 #undef initlock
 #undef readlock
@@ -354,3 +356,5 @@ void __profile_deletelock (__profile_rwl *lock) {
 
   deletelock(lock->lock);
 }
+
+#endif // HAVE_PTHREAD_RWLOCK
