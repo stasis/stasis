@@ -740,41 +740,6 @@ int TisActiveTransaction(int xid);
 int TactiveTransactionCount();
 
 /**
-   Initialize Stasis' transaction table.  Called by Tinit() and unit
-   tests that wish to test portions of Stasis in isolation.
- */
-void stasis_transaction_table_init();
-
-/**
- *  Used by recovery to prevent reuse of old transaction ids.
- *
- *  Should not be used elsewhere.
- *
- * @param xid  The highest transaction id issued so far.
- */
-void stasis_transaction_table_max_transaction_id_set(int xid);
-/**
- *  Used by test cases to mess with internal transaction table state.
- *
- * @param xid  The new active transaction count.
- */
-void stasis_transaction_table_active_transaction_count_set(int xid);
-
-int stasis_transaction_table_roll_forward(int xid, lsn_t lsn, lsn_t prevLSN);
-/**
-   @todo update Tprepare() to not write reclsn to log, then remove
-         this function.
- */
-int stasis_transaction_table_roll_forward_with_reclsn(int xid, lsn_t lsn,
-                                                      lsn_t prevLSN,
-                                                      lsn_t recLSN);
-int stasis_transaction_table_forget(int xid);
-
-/**
-    This is used by log truncation.
-*/
-lsn_t stasis_transaction_table_minRecLSN();
-/**
  * Called at the end of transactions aborted by recovery, after the transaction
  * has been completely rolled back (ie: all rollback entries are in the log's
  * in-memory write buffer).

@@ -3,7 +3,7 @@ lib_LTLIBRARIES=libstasis.la
 libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common.c flags.c \
 		   stats.c linkedlist.c operations.c pageHandle.c \
 		   page.c bufferPool.c blobManager.c recovery2.c truncation.c \
-		   dirtyPageTable.c \
+		   dirtyPageTable.c transactionTable.c \
 		   transactional2.c allocationPolicy.c \
 		   lockManager.c iterator.c consumer.c arrayCollection.c ringbuffer.c fifo.c multiplexer.c graph.c\
 	           logger/logEntry.c \

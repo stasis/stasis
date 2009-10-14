@@ -6,7 +6,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c
                    bufferManager/legacy/legacyBufferManager.c
                    page.c bufferPool.c blobManager.c
                    recovery2.c truncation.c transactional2.c
-                   dirtyPageTable.c
+                   dirtyPageTable.c transactionTable.c
                    allocationPolicy.c lockManager.c iterator.c
                    consumer.c arrayCollection.c ringbuffer.c fifo.c
                    multiplexer.c graph.c logger/logEntry.c

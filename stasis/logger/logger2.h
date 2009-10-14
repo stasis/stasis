@@ -54,7 +54,6 @@ terms specified in this license.
 #include <stasis/common.h>
 
 typedef struct stasis_log_t stasis_log_t;
-typedef struct TransactionLog TransactionLog;
 
 typedef struct stasis_log_group_force_t stasis_log_group_force_t;
 
@@ -66,16 +65,7 @@ typedef enum {
 #include <stasis/logger/logEntry.h>
 #include <stasis/truncation.h>
 #include <stasis/constants.h>
-/**
-   Contains the state needed by the logging layer to perform
-   operations on a transaction.
- */
-struct TransactionLog {
-  int xid;
-  lsn_t prevLSN;
-  lsn_t recLSN;
-  pthread_mutex_t mut;
-};
+#include <stasis/transactionTable.h>
 
 /**
    A callback function that allows logHandle's iterator to stop
@@ -83,13 +73,6 @@ struct TransactionLog {
    called.
 */
 typedef int (guard_fcn_t)(const LogEntry *, void *);
-
-
-
-/**
-   XXX TransactionTable should be private to transactional2.c!
-*/
-extern TransactionLog stasis_transaction_table[MAX_TRANSACTIONS];
 
 /**
  * Interface provided by Stasis log implementations.
