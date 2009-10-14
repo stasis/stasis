@@ -11,6 +11,7 @@ struct stasis_truncation_t {
   pthread_mutex_t shutdown_mutex;
   pthread_cond_t shutdown_cond;
   stasis_dirty_page_table_t * dirty_pages;
+  stasis_transaction_table_t * transaction_table;
   stasis_buffer_manager_t * buffer_manager;
   stasis_log_t * log;
 };
@@ -24,13 +25,15 @@ struct stasis_truncation_t {
 #define TRUNCATE_INTERVAL 1
 #define MIN_INCREMENTAL_TRUNCATION (1024 * 1024 * 25)
 #endif
-stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_buffer_manager_t *buffer_manager, stasis_log_t *log) {
+stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_transaction_table_t * tbl,
+                                             stasis_buffer_manager_t *buffer_manager, stasis_log_t *log) {
   stasis_truncation_t * ret = malloc(sizeof(*ret));
   ret->initialized = 1;
   ret->automaticallyTruncating = 0;
   pthread_mutex_init(&ret->shutdown_mutex, 0);
   pthread_cond_init(&ret->shutdown_cond, 0);
   ret->dirty_pages = dpt;
+  ret->transaction_table = tbl;
   ret->buffer_manager = buffer_manager;
   ret->log = log;
   return ret;
@@ -92,7 +95,7 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
   //dirty pages.
 
   lsn_t page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
-  lsn_t xact_rec_lsn = stasis_transaction_table_minRecLSN();
+  lsn_t xact_rec_lsn = stasis_transaction_table_minRecLSN(trunc->transaction_table);
   lsn_t flushed_lsn  = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
 
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;

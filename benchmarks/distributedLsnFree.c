@@ -112,7 +112,7 @@ int main(int argc, char ** argv) {
             } */
     }
     if(net) {
-      last_lsn = stasis_transaction_table[xid%MAX_TRANSACTIONS].prevLSN;
+      last_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
     }
     Tcommit(xid);
   }

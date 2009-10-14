@@ -427,7 +427,7 @@ void reopenLogWorkload(int truncating) {
   const int SYNC_POINT = 900;
   stasis_log_t * stasis_log_file = 0;
 
-  stasis_transaction_table_active_transaction_count_set(0);
+  stasis_transaction_table_active_transaction_count_set(stasis_runtime_transaction_table(), 0);
 
   if(LOG_TO_FILE == stasis_log_type) {
     stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
@@ -441,7 +441,7 @@ void reopenLogWorkload(int truncating) {
   }
 
   int xid = 1;
-  TransactionLog l;
+  stasis_transaction_table_entry_t l;
   pthread_mutex_init(&l.mut,0);
   stasis_log_begin_transaction(stasis_log_file, xid, &l);
   lsn_t startLSN = 0;

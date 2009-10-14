@@ -52,7 +52,7 @@ terms specified in this license.
 #include <stasis/logger/inMemoryLog.h>
 #include <stasis/page.h>
 
-static lsn_t stasis_log_write_common(stasis_log_t* log, TransactionLog * l, int type) {
+static lsn_t stasis_log_write_common(stasis_log_t* log, stasis_transaction_table_entry_t * l, int type) {
   LogEntry * e = allocCommonLogEntry(l->prevLSN, l->xid, type);
   lsn_t ret;
 
@@ -73,7 +73,7 @@ static lsn_t stasis_log_write_common(stasis_log_t* log, TransactionLog * l, int 
   return ret;
 }
 
-static lsn_t stasis_log_write_prepare(stasis_log_t* log, TransactionLog * l) {
+static lsn_t stasis_log_write_prepare(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
   LogEntry * e = allocPrepareLogEntry(l->prevLSN, l->xid, l->recLSN);
   lsn_t ret;
 
@@ -96,7 +96,7 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, TransactionLog * l) {
 
 }
 
-LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
+LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_entry_t * l,
                      pageid_t page, unsigned int op,
 		     const byte * arg, size_t arg_size) {
 
@@ -113,12 +113,12 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, TransactionLog * l,
   return e;
 }
 
-LogEntry * stasis_log_begin_nta(stasis_log_t* log, TransactionLog * l, unsigned int op,
+LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size) {
   LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op, INVALID_PAGE, arg, arg_size);
   return e;
 }
-lsn_t stasis_log_end_nta(stasis_log_t* log, TransactionLog * l, LogEntry * e) {
+lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e) {
   log->write_entry(log, e);
   pthread_mutex_lock(&l->mut);
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
@@ -149,7 +149,7 @@ lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN) {
   return ret;
 }
 
-void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* tl) {
+void stasis_log_begin_transaction(stasis_log_t* log, int xid, stasis_transaction_table_entry_t* tl) {
   tl->xid = xid;
 
   DEBUG("Log Begin %d\n", xid);
@@ -157,20 +157,20 @@ void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* tl
   tl->recLSN = INVALID_LSN;
 }
 
-lsn_t stasis_log_abort_transaction(stasis_log_t* log, TransactionLog * l) {
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
   return stasis_log_write_common(log, l, XABORT);
 }
-lsn_t stasis_log_end_aborted_transaction(stasis_log_t* log, TransactionLog * l) {
+lsn_t stasis_log_end_aborted_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
 	return stasis_log_write_common(log, l, XEND);
 }
-lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l) {
+lsn_t stasis_log_prepare_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
   lsn_t lsn = stasis_log_write_prepare(log, l);
   stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
   return lsn;
 }
 
 
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l, int force) {
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l, int force) {
   lsn_t lsn = stasis_log_write_common(log, l, XCOMMIT);
   if(force) {
     stasis_log_force(log, lsn, LOG_FORCE_COMMIT);

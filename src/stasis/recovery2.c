@@ -8,6 +8,9 @@
 #include <pbl/pbl.h>
 
 #include <stasis/recovery.h>
+
+#include <stasis/transactionTable.h>
+
 #include <stasis/bufferManager.h>
 #include <stasis/lockManager.h>
 
@@ -45,7 +48,7 @@ static pthread_mutex_t rollback_mutex = PTHREAD_MUTEX_INITIALIZER;
        no longer reads the pages in, there's no longer any reason to build
        the list of dirty pages.
 */
-static void stasis_recovery_analysis(stasis_log_t* log) {
+static void stasis_recovery_analysis(stasis_log_t* log, stasis_transaction_table_t * tbl) {
 
   DEBUG("Recovery: Analysis\n");
 
@@ -111,7 +114,7 @@ static void stasis_recovery_analysis(stasis_log_t* log) {
 	lsn_t* free_lsn = pblHtLookup(transactionLSN, &(e->xid), sizeof(int));
 	pblHtRemove(transactionLSN,    &(e->xid), sizeof(int));
 	free(free_lsn);
-	stasis_transaction_table_forget(e->xid);
+	stasis_transaction_table_forget(tbl, e->xid);
       }
       break;
     case UPDATELOG:
@@ -148,7 +151,7 @@ static void stasis_recovery_analysis(stasis_log_t* log) {
     freeLogEntry(e);
   }
   freeLogHandle(lh);
-  stasis_transaction_table_max_transaction_id_set(highestXid);
+  stasis_transaction_table_max_transaction_id_set(tbl, highestXid);
 }
 
 /**
@@ -168,7 +171,7 @@ static void stasis_recovery_analysis(stasis_log_t* log) {
                                     Y  (NTA replaces physical undo)
  */
 
-static void stasis_recovery_redo(stasis_log_t* log) {
+static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t * tbl) {
   LogHandle* lh = getLogHandle(log);
   const LogEntry  * e;
 
@@ -178,7 +181,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
     // Is this log entry part of a transaction that needs to be redone?
     if(pblHtLookup(transactionLSN, &(e->xid), sizeof(int)) != NULL) {
       if(e->type != INTERNALLOG) {
-        stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
+        stasis_transaction_table_roll_forward(tbl, e->xid, e->LSN, e->prevLSN);
       }
       // Check to see if this entry's action needs to be redone
       switch(e->type) {
@@ -219,7 +222,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
 	} break;
       case XCOMMIT:
 	{
-          stasis_transaction_table_forget(e->xid);
+          stasis_transaction_table_forget(tbl, e->xid);
 
 	  if(globalLockManager.commit)
 	    globalLockManager.commit(e->xid);
@@ -246,7 +249,7 @@ static void stasis_recovery_redo(stasis_log_t* log) {
   freeLogHandle(lh);
 
 }
-static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
+static void stasis_recovery_undo(stasis_log_t* log, stasis_transaction_table_t * tbl, int recovery) {
   LogHandle* lh;
 
   DEBUG("Recovery: Undo\n");
@@ -293,7 +296,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
             lsn_t clr_lsn = stasis_log_write_clr(log, e);
             DEBUG("logged clr\n");
 
-            stasis_transaction_table_roll_forward(e->xid, e->LSN, e->prevLSN);
+            stasis_transaction_table_roll_forward(tbl, e->xid, e->LSN, e->prevLSN);
 
             stasis_operation_undo(e, clr_lsn, p);
 
@@ -331,7 +334,7 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
           prepared = 1;
 
               stasis_transaction_table_roll_forward_with_reclsn
-                (e->xid, e->LSN, e->prevLSN, getPrepareRecLSN(e));
+                (tbl, e->xid, e->LSN, e->prevLSN, getPrepareRecLSN(e));
         } else {
           DEBUG("xact was aborted\n");
         }
@@ -355,15 +358,15 @@ static void stasis_recovery_undo(stasis_log_t* log, int recovery) {
     freeLogHandle(lh);
   }
 }
-void stasis_recovery_initiate(stasis_log_t* log, stasis_alloc_t * alloc) {
+void stasis_recovery_initiate(stasis_log_t* log, stasis_transaction_table_t * tbl, stasis_alloc_t * alloc) {
 
   transactionLSN = pblHtCreate();
   DEBUG("Analysis started\n");
-  stasis_recovery_analysis(log);
+  stasis_recovery_analysis(log, tbl);
   DEBUG("Redo started\n");
-  stasis_recovery_redo(log);
+  stasis_recovery_redo(log, tbl);
   DEBUG("Undo started\n");
-  stasis_recovery_undo(log,1);
+  stasis_recovery_undo(log, tbl, 1);
   stasis_alloc_post_init(alloc);
   DEBUG("Recovery complete.\n");
 
@@ -377,7 +380,7 @@ void stasis_recovery_initiate(stasis_log_t* log, stasis_alloc_t * alloc) {
 }
 
 
-void undoTrans(stasis_log_t* log, TransactionLog transaction) {
+void undoTrans(stasis_log_t* log, stasis_transaction_table_t * tbl, stasis_transaction_table_entry_t transaction) {
 
   pthread_mutex_lock(&rollback_mutex);
   assert(!rollbackLSNs);
@@ -389,7 +392,7 @@ void undoTrans(stasis_log_t* log, TransactionLog transaction) {
     /* Nothing to undo.  (Happens for read-only xacts.) */
   }
 
-  stasis_recovery_undo(log, 0);
+  stasis_recovery_undo(log, tbl, 0);
   if(rollbackLSNs) {
     destroyList(&rollbackLSNs);
   }

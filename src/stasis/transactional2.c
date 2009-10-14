@@ -29,7 +29,8 @@
 static int stasis_initted = 0;
 
 static stasis_log_t* stasis_log_file = 0;
-stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
+static stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
+static stasis_transaction_table_t * stasis_transaction_table;
 static stasis_truncation_t * stasis_truncation = 0;
 static stasis_alloc_t * stasis_alloc = 0;
 static stasis_allocation_policy_t * stasis_allocation_policy = 0;
@@ -38,9 +39,11 @@ static stasis_buffer_manager_t * stasis_buffer_manager = 0;
 void * stasis_runtime_buffer_manager() {
   return stasis_buffer_manager;
 }
-
 void * stasis_runtime_dirty_page_table() {
   return stasis_dirty_page_table;
+}
+void * stasis_runtime_transaction_table() {
+  return stasis_transaction_table;
 }
 void * stasis_runtime_alloc_state() {
   return stasis_alloc;
@@ -63,7 +66,6 @@ int Tinit() {
 
   compensations_init();
 
-  stasis_transaction_table_init();
   stasis_operation_table_init();
 
   stasis_log_file = 0;
@@ -82,7 +84,9 @@ int Tinit() {
     assert(stasis_log_file != NULL);
   }
 
-  stasis_dirty_page_table = stasis_dirty_page_table_init();
+  stasis_transaction_table = stasis_transaction_table_init();
+  stasis_dirty_page_table  = stasis_dirty_page_table_init();
+
   stasis_page_init(stasis_dirty_page_table);
 
   stasis_buffer_manager = stasis_buffer_manager_factory(stasis_log_file, stasis_dirty_page_table);
@@ -101,8 +105,9 @@ int Tinit() {
   setupLockManagerCallbacksNil();
   //setupLockManagerCallbacksPage();
 
-  stasis_recovery_initiate(stasis_log_file, stasis_alloc);
-  stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_buffer_manager, stasis_log_file);
+  stasis_recovery_initiate(stasis_log_file, stasis_transaction_table, stasis_alloc);
+  stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_transaction_table,
+                                             stasis_buffer_manager, stasis_log_file);
   if(stasis_truncation_automatic) {
     // should this be before InitiateRecovery?
     stasis_truncation_thread_start(stasis_truncation);
@@ -118,7 +123,7 @@ int Tbegin() {
 
   int xid;
 
-  TransactionLog* newXact = stasis_transaction_table_begin(&xid);
+  stasis_transaction_table_entry_t* newXact = stasis_transaction_table_begin(stasis_transaction_table, &xid);
   if(newXact != 0) {
     stasis_log_begin_transaction(stasis_log_file, xid, newXact);
 
@@ -136,8 +141,8 @@ compensated_function void Tupdate(int xid, pageid_t page,
   assert(stasis_initted);
   assert(page != INVALID_PAGE);
   LogEntry * e;
-  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
-
+  stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
+  assert(xact);
   Page * p = loadPageForOperation(xid, page, op);
 
   try {
@@ -148,10 +153,9 @@ compensated_function void Tupdate(int xid, pageid_t page,
 
   if(p) writelock(p->rwlatch,0);
 
-  e = stasis_log_write_update(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS],
-                page, op, dat, datlen);
+  e = stasis_log_write_update(stasis_log_file, xact, page, op, dat, datlen);
 
-  assert(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN == e->LSN);
+  assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   stasis_operation_do(e, p);
   freeLogEntry(e);
@@ -163,7 +167,7 @@ compensated_function void Tupdate(int xid, pageid_t page,
 void TreorderableUpdate(int xid, void * hp, pageid_t page,
                         const void *dat, size_t datlen, int op) {
   stasis_log_reordering_handle_t * h = (typeof(h))hp;
-  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   Page * p = loadPage(xid, page);
   assert(p);
   try {
@@ -190,9 +194,8 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,
                       const void *dat, size_t datlen, int op) {
-  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
-  TransactionLog* l = &stasis_transaction_table[xid % MAX_TRANSACTIONS];
+  stasis_transaction_table_entry_t* l = stasis_transaction_table_get(stasis_transaction_table, xid);
   stasis_log_file->write_entry(stasis_log_file, e);
 
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
@@ -208,7 +211,7 @@ void TreorderableWritebackUpdate(int xid, void* hp,
                                  pageid_t page, const void * dat,
                                  size_t datlen, int op) {
   stasis_log_reordering_handle_t* h = hp;
-  assert(xid >= 0 && stasis_transaction_table[xid % MAX_TRANSACTIONS].xid == xid);
+  assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   pthread_mutex_lock(&h->mut);
   LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
   stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(0, e));
@@ -264,22 +267,18 @@ compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
 static inline int TcommitHelper(int xid, int force) {
   lsn_t lsn;
   assert(xid >= 0);
-#ifdef DEBUGGING
-  pthread_mutex_lock(&stasis_transaction_table_mutex);
-  assert(stasis_transaction_table_num_active <= MAX_TRANSACTIONS);
-  pthread_mutex_unlock(&stasis_transaction_table_mutex);
-#endif
 
-  if(stasis_transaction_table[xid % MAX_TRANSACTIONS].prevLSN != INVALID_LSN) {
+  stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
+  if(xact->prevLSN != INVALID_LSN) {
 
-    lsn = stasis_log_commit_transaction(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], force);
+    lsn = stasis_log_commit_transaction(stasis_log_file, xact, force);
     if(globalLockManager.commit) { globalLockManager.commit(xid); }
 
     stasis_alloc_committed(stasis_alloc, xid);
 
   }
 
-  stasis_transaction_table_commit(xid);
+  stasis_transaction_table_commit(stasis_transaction_table, xid);
 
   return 0;
 }
@@ -296,9 +295,9 @@ void TforceCommits() {
 
 int Tprepare(int xid) {
   assert(xid >= 0);
-  off_t i = xid % MAX_TRANSACTIONS;
-  assert(stasis_transaction_table[i].xid == xid);
-  stasis_log_prepare_transaction(stasis_log_file, &stasis_transaction_table[i]);
+  stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
+  assert(xact);
+  stasis_log_prepare_transaction(stasis_log_file, xact);
   return 0;
 }
 
@@ -306,13 +305,13 @@ int Tabort(int xid) {
   lsn_t lsn;
   assert(xid >= 0);
 
-  TransactionLog * t =&stasis_transaction_table[xid%MAX_TRANSACTIONS];
+  stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
 
   lsn = stasis_log_abort_transaction(stasis_log_file, t);
 
   /** @todo is the order of the next two calls important? */
-  undoTrans(stasis_log_file, *t);
+  undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
 
   stasis_alloc_aborted(stasis_alloc, xid);
@@ -320,25 +319,24 @@ int Tabort(int xid) {
   return 0;
 }
 int Tforget(int xid) {
-  TransactionLog * t = &stasis_transaction_table[xid%MAX_TRANSACTIONS];
+  stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
   stasis_log_end_aborted_transaction(stasis_log_file, t);
-  stasis_transaction_table_forget(t->xid);
+  stasis_transaction_table_forget(stasis_transaction_table, t->xid);
   return 0;
 }
 int Tdeinit() {
 
-  int * active = stasis_transaction_table_list_active();
-  int count = stasis_transaction_table_num_active();
+  int * active = stasis_transaction_table_list_active(stasis_transaction_table);
+  int count = stasis_transaction_table_num_active(stasis_transaction_table);
 
   for(int i = 0; i < count; i++) {
     if(!stasis_suppress_unclean_shutdown_warnings) {
-      fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n",
-          stasis_transaction_table[i].xid);
+      fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", active[i]);
     }
     Tabort(active[i]);
   }
-  assert( stasis_transaction_table_num_active() == 0 );
+  assert( stasis_transaction_table_num_active(stasis_transaction_table) == 0 );
 
   free(active);
 
@@ -352,7 +350,7 @@ int Tdeinit() {
   stasis_log_group_force_t * group_force = stasis_log_file->group_force;
   stasis_log_file->close(stasis_log_file);
   if(group_force) { stasis_log_group_force_deinit(group_force); }
-  stasis_transaction_table_deinit();
+  stasis_transaction_table_deinit(stasis_transaction_table);
   stasis_dirty_page_table_deinit(stasis_dirty_page_table);
 
   stasis_initted = 0;
@@ -373,7 +371,7 @@ int TuncleanShutdown() {
   // XXX: close_file?
   stasis_page_deinit();
   stasis_log_file->close(stasis_log_file);
-  stasis_transaction_table_deinit();
+  stasis_transaction_table_deinit(stasis_transaction_table);
   stasis_dirty_page_table_deinit(stasis_dirty_page_table);
 
   // Reset it here so the warnings will appear if a new stasis
@@ -401,14 +399,15 @@ typedef struct {
 } stasis_nta_handle;
 
 int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
+  stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(xid >= 0);
   void * e = stasis_log_begin_nta(stasis_log_file,
-			   &stasis_transaction_table[xid % MAX_TRANSACTIONS],
+			   xact,
 			   op, dat, datSize);
   // HACK: breaks encapsulation.
   stasis_operation_do(e, NULL);
 
-  stasis_log_end_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], e);
+  stasis_log_end_nta(stasis_log_file, xact, e);
 
   return 0;
 }
@@ -416,7 +415,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
 
-  void * ret = stasis_log_begin_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], op, dat, datSize);
+  void * ret = stasis_log_begin_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
   return ret;
 }
@@ -427,7 +426,7 @@ void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
 */
 lsn_t TendNestedTopAction(int xid, void * handle) {
 
-  lsn_t ret = stasis_log_end_nta(stasis_log_file, &stasis_transaction_table[xid % MAX_TRANSACTIONS], handle);
+  lsn_t ret = stasis_log_end_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), handle);
 
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
 	 clrLSN, undoneLSN, *prevLSN);

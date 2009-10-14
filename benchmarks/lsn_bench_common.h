@@ -157,7 +157,7 @@ void * writeback_unit_of_work(void * ap) {
 
   stasis_log_reordering_handle_t * rh
     = stasis_log_reordering_handle_open(
-                    &stasis_transaction_table[ua->xid%MAX_TRANSACTIONS],
+                    stasis_transaction_table_get(stasis_runtime_transaction_table(), ua->xid),
                     stasis_log(),
                     (0.9*stasis_log_file_write_buffer_size)/ua->divisor,
                     //512*1024/ua->divisor, // 0.5 mb in log tail at once
@@ -199,7 +199,7 @@ void * bg_unit_of_work(void * ap) {
   bulk_worker_args * a = ua->a;
 
   stasis_log_reordering_handle_t * rh
-    = stasis_log_reordering_handle_open(&stasis_transaction_table[ua->xid%MAX_TRANSACTIONS],
+    = stasis_log_reordering_handle_open(stasis_transaction_table_get(stasis_runtime_transaction_table(), ua->xid),
                                         stasis_log(),
                                         (stasis_log_file_write_buffer_size * 0.25)/ua->divisor,
                                         //512*1024/ua->divisor, // 0.5 mb in log tail at once

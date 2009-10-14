@@ -75,7 +75,7 @@ void stasis_log_reordering_handle_close(stasis_log_reordering_handle_t * h) {
   free(h);
 }
 stasis_log_reordering_handle_t *
-stasis_log_reordering_handle_open(TransactionLog * l,
+stasis_log_reordering_handle_open(stasis_transaction_table_entry_t * l,
                                   stasis_log_t* log,
                                   size_t chunk_len,
                                   size_t max_len,

@@ -774,6 +774,8 @@ void * stasis_log(void);
  */
 void * stasis_runtime_dirty_page_table();
 
+void * stasis_runtime_transaction_table();
+
 void * stasis_runtime_alloc_state();
 
 void * stasis_runtime_buffer_manager();

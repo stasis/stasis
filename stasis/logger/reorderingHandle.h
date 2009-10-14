@@ -13,7 +13,7 @@ typedef struct {
 } stasis_log_reordering_op_t;
 
 typedef struct stasis_log_reordering_handle_t {
-  TransactionLog *l;
+  stasis_transaction_table_entry_t *l;
   stasis_log_t * log;
   pthread_mutex_t mut;
   pthread_cond_t done;
@@ -34,7 +34,7 @@ typedef struct stasis_log_reordering_handle_t {
 void stasis_log_reordering_handle_flush(stasis_log_reordering_handle_t * h);
 void stasis_log_reordering_handle_close(stasis_log_reordering_handle_t * h);
 stasis_log_reordering_handle_t *
-stasis_log_reordering_handle_open(TransactionLog * l,
+stasis_log_reordering_handle_open(stasis_transaction_table_entry_t * l,
                                   stasis_log_t* log,
                                   size_t chunk_len,
                                   size_t max_len,

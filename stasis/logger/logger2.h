@@ -266,7 +266,7 @@ void stasis_log_force(stasis_log_t* log, lsn_t lsn, stasis_log_force_mode_t mode
    Inform the logging layer that a new transaction has begun, and
    obtain a handle.
 */
-void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* l);
+void stasis_log_begin_transaction(stasis_log_t* log, int xid, stasis_transaction_table_entry_t* l);
 
 /**
    Write a transaction PREPARE to the log tail.  Blocks until the
@@ -274,27 +274,27 @@ void stasis_log_begin_transaction(stasis_log_t* log, int xid, TransactionLog* l)
 
    @return the lsn of the prepare log entry
 */
-lsn_t stasis_log_prepare_transaction(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_prepare_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l);
 /**
    Write a transaction COMMIT to the log tail.  Blocks until the commit
    record is stable.
 
    @return the lsn of the commit log entry.
 */
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, TransactionLog * l, int force);
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l, int force);
 
 /**
    Write a transaction ABORT to the log tail.  Does not force the log.
 
    @return the lsn of the abort log entry.
 */
-lsn_t stasis_log_abort_transaction(stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l);
 
 /**
    Write a end transaction record.  This entry tells recovery's undo
    phase that it may safely ignore the transaction.
 */
-lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, TransactionLog * l);
+lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, stasis_transaction_table_entry_t * l);
 
 /**
    stasis_log_write_update writes an UPDATELOG log record to the log tail.  It
@@ -303,7 +303,7 @@ lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, TransactionLog * l)
    state of the parameter l.
 */
 LogEntry * stasis_log_write_update(stasis_log_t* log,
-                     TransactionLog * l, pageid_t page, unsigned int operation,
+                     stasis_transaction_table_entry_t * l, pageid_t page, unsigned int operation,
                      const byte * arg, size_t arg_size);
 
 /**
@@ -319,7 +319,7 @@ lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * e);
 
 lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prev_lsn);
 
-LogEntry * stasis_log_begin_nta(stasis_log_t* log, TransactionLog * l, unsigned int op,
+LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size);
-lsn_t stasis_log_end_nta(stasis_log_t* log, TransactionLog * l, LogEntry * e);
+lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e);
 #endif
