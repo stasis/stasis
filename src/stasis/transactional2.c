@@ -326,9 +326,8 @@ int Tforget(int xid) {
   return 0;
 }
 int Tdeinit() {
-
-  int * active = stasis_transaction_table_list_active(stasis_transaction_table);
-  int count = stasis_transaction_table_num_active(stasis_transaction_table);
+  int count;
+  int * active = stasis_transaction_table_list_active(stasis_transaction_table, &count);
 
   for(int i = 0; i < count; i++) {
     if(!stasis_suppress_unclean_shutdown_warnings) {
@@ -336,8 +335,10 @@ int Tdeinit() {
     }
     Tabort(active[i]);
   }
-  assert( stasis_transaction_table_num_active(stasis_transaction_table) == 0 );
+  free(active);
 
+  active = stasis_transaction_table_list_active(stasis_transaction_table, &count);
+  assert( count == 0 );
   free(active);
 
   stasis_truncation_deinit(stasis_truncation);
@@ -434,11 +435,11 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   return ret;
 }
 
-int TactiveTransactionCount(void) {
-  return stasis_transaction_table_num_active(stasis_transaction_table);
+int TactiveThreadCount(void) {
+  return stasis_transaction_table_num_active_threads(stasis_transaction_table);
 }
-int* TlistActiveTransactions(void) {
-  return stasis_transaction_table_list_active(stasis_transaction_table);
+int* TlistActiveTransactions(int *count) {
+  return stasis_transaction_table_list_active(stasis_transaction_table, count);
 }
 int TisActiveTransaction(int xid) {
   return stasis_transaction_table_is_active(stasis_transaction_table, xid);

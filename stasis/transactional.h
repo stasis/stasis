@@ -725,7 +725,7 @@ lsn_t TendNestedTopAction(int xid, void * handle);
 
    @return an array of transaction ids.
  */
-int* TlistActiveTransactions(void);
+int* TlistActiveTransactions(int *count);
 
 /**
  * Checks to see if a transaction is still active.
@@ -737,7 +737,7 @@ int TisActiveTransaction(int xid);
 /*
  * @return the number of currently active transactions.
  */
-int TactiveTransactionCount(void);
+int TactiveThreadCount(void);
 
 /**
  * Called at the end of transactions aborted by recovery, after the transaction

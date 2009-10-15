@@ -49,8 +49,8 @@ stasis_transaction_table_entry_t * stasis_transaction_table_get(stasis_transacti
 int stasis_transaction_table_commit(stasis_transaction_table_t*,int xid);
 int stasis_transaction_table_forget(stasis_transaction_table_t*,int xid);
 
-int stasis_transaction_table_num_active(stasis_transaction_table_t*);
-int* stasis_transaction_table_list_active(stasis_transaction_table_t*);
+int stasis_transaction_table_num_active_threads(stasis_transaction_table_t*);
+int* stasis_transaction_table_list_active(stasis_transaction_table_t*, int *count);
 int stasis_transaction_table_is_active(stasis_transaction_table_t*, int xid);
 
 #endif /* TRANSACTIONTABLE_H_ */

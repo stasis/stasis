@@ -128,7 +128,7 @@ struct stasis_log_t {
 
      @param log "this" log object
      @param lsn  The LSN of the log entry to be read.  This must be the LSN of a valid log entry.
-     @return The LogEntry of interest.  Should be freed with freeLogEntry().
+     @return The LogEntry of interest.  Should be freed with freeLogEntry().  A NULL return value means the log was truncated past the requested entry.
   */
   const LogEntry* (*read_entry)(struct stasis_log_t* log, lsn_t lsn);
 

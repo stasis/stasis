@@ -71,10 +71,7 @@ void stasis_log_group_force(stasis_log_group_force_t* lh, lsn_t lsn) {
     }
 
     lh->pendingCommits++;
-    if(!stasis_log_group_force_should_wait(lh->minNumActive, lh->pendingCommits)) {
-      lh->minNumActive = TactiveTransactionCount();
-    }
-    int xactcount = lh->minNumActive;;
+    int xactcount = TactiveThreadCount();
     if(stasis_log_group_force_should_wait(xactcount, lh->pendingCommits)) {
       int retcode;
       while(ETIMEDOUT != (retcode = pthread_cond_timedwait(&lh->tooFewXacts, &lh->check_commit, &timeout))) {
