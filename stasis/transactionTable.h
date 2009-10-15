@@ -21,7 +21,9 @@ struct stasis_transaction_table_entry_t {
   int xid;
   lsn_t prevLSN;
   lsn_t recLSN;
+#ifndef HAVE_GCC_ATOMICS
   pthread_mutex_t mut;
+#endif
 };
 /**
    Initialize Stasis' transaction table.  Called by Tinit() and unit

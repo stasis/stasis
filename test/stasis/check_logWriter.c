@@ -445,7 +445,7 @@ void reopenLogWorkload(int truncating) {
 
   int xid = 1;
   stasis_transaction_table_entry_t l;
-  pthread_mutex_init(&l.mut,0);
+//  pthread_mutex_init(&l.mut,0);
   stasis_log_begin_transaction(stasis_log_file, xid, &l);
   lsn_t startLSN = 0;
 

@@ -79,6 +79,13 @@ int main(int argc, char * argv[]) {
 }
 " HAVE_GETLINE) 
 
+CHECK_C_SOURCE_COMPILES("
+int main(int argc, char* argv[]) {
+  int i;
+  __sync_bool_compare_and_swap(&i, 0, 1);
+}
+" HAVE_GCC_ATOMICS)
+
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)
   TARGET_LINK_LIBRARIES(${NAME} ${COMMON_LIBRARIES})

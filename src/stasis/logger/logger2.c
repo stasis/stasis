@@ -58,10 +58,10 @@ static lsn_t stasis_log_write_common(stasis_log_t* log, stasis_transaction_table
 
   log->write_entry(log, e);
 
-  pthread_mutex_lock(&l->mut);
+//  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
-  pthread_mutex_unlock(&l->mut);
+//  pthread_mutex_unlock(&l->mut);
 
   DEBUG("Log Common %d, LSN: %ld type: %ld (prevLSN %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
@@ -81,10 +81,10 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, stasis_transaction_tabl
         e->xid, e->prevLSN, l->recLSN, getPrepareRecLSN(e));
   log->write_entry(log, e);
 
-  pthread_mutex_lock(&l->mut);
+//  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
-  pthread_mutex_unlock(&l->mut);
+//  pthread_mutex_unlock(&l->mut);
   DEBUG("Log Common prepare XXX %d, LSN: %ld type: %ld (prevLSN %ld)\n",
         e->xid, (long int)e->LSN, (long int)e->type, (long int)e->prevLSN);
 
@@ -106,10 +106,10 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
   log->write_entry(log, e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
-  pthread_mutex_lock(&l->mut);
+//  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
-  pthread_mutex_unlock(&l->mut);
+//  pthread_mutex_unlock(&l->mut);
   return e;
 }
 
@@ -120,10 +120,10 @@ LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entr
 }
 lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e) {
   log->write_entry(log, e);
-  pthread_mutex_lock(&l->mut);
+//  pthread_mutex_lock(&l->mut);
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   lsn_t ret = l->prevLSN = e->LSN;
-  pthread_mutex_unlock(&l->mut);
+//  pthread_mutex_unlock(&l->mut);
   freeLogEntry(e);
   return ret;
 }
