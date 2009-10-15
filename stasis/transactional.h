@@ -560,14 +560,14 @@ BEGIN_C_DECLS
  *
  * @return 0 on success
  */
-int Tinit();
+int Tinit(void);
 
 /**
  * Start a new transaction, and return a new transaction id (xid).
  *
  * @return positive transaction ID (xid) on success, negative return value on error
  */
-int Tbegin();
+int Tbegin(void);
 
 /**
  * Used when extending Stasis.
@@ -641,7 +641,7 @@ int TsoftCommit(int xid);
  * some subset of the non-durable transactions may commit if the system crashes
  * before this call returns.
  */
-void TforceCommits();
+void TforceCommits(void);
 /**
  * Abort (rollback) an active transaction.  Each transaction should be
  * completed with exactly one call to Tcommit() or Tabort().
@@ -659,7 +659,7 @@ int Tabort(int xid);
  *
  * @return 0 on success
  */
-int Tdeinit();
+int Tdeinit(void);
 /**
  * Uncleanly shutdown Stasis.  This function frees any resources that
  * Stasis is holding, and flushes the log, but it does not flush dirty
@@ -668,7 +668,7 @@ int Tdeinit();
  *
  * @return 0 on success
 */
-int TuncleanShutdown();
+int TuncleanShutdown(void);
 /**
  *  Used by the recovery process.
  *  Revives Tprepare'ed transactions.
@@ -725,7 +725,7 @@ lsn_t TendNestedTopAction(int xid, void * handle);
 
    @return an array of transaction ids.
  */
-int* TlistActiveTransactions();
+int* TlistActiveTransactions(void);
 
 /**
  * Checks to see if a transaction is still active.
@@ -737,7 +737,7 @@ int TisActiveTransaction(int xid);
 /*
  * @return the number of currently active transactions.
  */
-int TactiveTransactionCount();
+int TactiveTransactionCount(void);
 
 /**
  * Called at the end of transactions aborted by recovery, after the transaction
@@ -756,14 +756,14 @@ int Tforget(int xid);
    apply committed transactions, and roll back active transactions
    after a crash.
 */
-int TdurabilityLevel();
+int TdurabilityLevel(void);
 
 /**
  * Force any dirty pages to disk, and truncate the log.  After this
  * function returns, the log will be as short as possible (outstanding
  * transactions can prevent it from completely emptying the log).
  */
-void TtruncateLog();
+void TtruncateLog(void);
 /**
  * XXX hack: return a pointer to stasis' log handle.  This works around the fact
  * that stasis_log_file is no longer global.
@@ -772,13 +772,13 @@ void * stasis_log(void);
 /**
  * XXX if releasePage kept the dirty page table up to date, it would greatly reduce the number of places where the dirty page table is updated.
  */
-void * stasis_runtime_dirty_page_table();
+void * stasis_runtime_dirty_page_table(void);
 
-void * stasis_runtime_transaction_table();
+void * stasis_runtime_transaction_table(void);
 
-void * stasis_runtime_alloc_state();
+void * stasis_runtime_alloc_state(void);
 
-void * stasis_runtime_buffer_manager();
+void * stasis_runtime_buffer_manager(void);
 
 #include "operations.h"
 

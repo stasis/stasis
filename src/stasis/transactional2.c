@@ -433,6 +433,18 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
 
   return ret;
 }
+
+int TactiveTransactionCount(void) {
+  return stasis_transaction_table_num_active(stasis_transaction_table);
+}
+int* TlistActiveTransactions(void) {
+  return stasis_transaction_table_list_active(stasis_transaction_table);
+}
+int TisActiveTransaction(int xid) {
+  return stasis_transaction_table_is_active(stasis_transaction_table, xid);
+}
+
+
 void * stasis_log() {
   return stasis_log_file;
 }

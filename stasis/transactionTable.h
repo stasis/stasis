@@ -30,20 +30,6 @@ struct stasis_transaction_table_entry_t {
 stasis_transaction_table_t* stasis_transaction_table_init();
 /** Free resources associated with the transaction table */
 void stasis_transaction_table_deinit(stasis_transaction_table_t*);
-/**
- *  Used by recovery to prevent reuse of old transaction ids.
- *
- *  Should not be used elsewhere.
- *
- * @param xid  The highest transaction id issued so far.
- */
-void stasis_transaction_table_max_transaction_id_set(stasis_transaction_table_t*,int xid);
-/**
- *  Used by test cases to mess with internal transaction table state.
- *
- * @param xid  The new active transaction count.
- */
-void stasis_transaction_table_active_transaction_count_set(stasis_transaction_table_t*,int xid);
 
 int stasis_transaction_table_roll_forward(stasis_transaction_table_t*,int xid, lsn_t lsn, lsn_t prevLSN);
 /**

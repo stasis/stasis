@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
       for(int j = 0; j < longsPerPage; j++) {
 	data[j] = j;
       }
-      rawPageSetData(xid, 0, p);
+      rawPageSetData(xid, 0, p); // XXX writelatch!
     } else if(LSNMODE == mode) {
       long * data = (long*) rawPageGetData(xid, p);
       memcpy(buf, data, PAGE_SIZE);

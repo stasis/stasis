@@ -35,7 +35,7 @@ struct stasis_dirty_page_table_t {
 };
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
-  assertlocked(p->rwlatch);
+  assert(!tryreadlock(p->rwlatch,0));
   if(!p->dirty) {
     p->dirty = 1;
     dpt_entry * e = malloc(sizeof(*e));
@@ -57,7 +57,7 @@ void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, P
 }
 
 void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, Page * p) {
-  assertlocked(p->rwlatch);
+  assert(!tryreadlock(p->rwlatch,0));
   if(p->dirty) {
     pthread_mutex_lock(&dirtyPages->mutex);
     dpt_entry dummy = {p->id, 0};
@@ -74,7 +74,7 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
 
 int stasis_dirty_page_table_is_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
   int ret;
-  assertlocked(p->rwlatch);
+  assert(!trywritelock(p->rwlatch,0));
 
   ret = p->dirty;
 #ifdef SANITY_CHECKS

@@ -20,7 +20,9 @@ Page ** p;
 static void* worker(void* arg) {
   Page * p = arg;
   for(unsigned long i = 0; i < numops; i++) {
+    writelock(p->rwlatch,0);
     stasis_dirty_page_table_set_dirty(dpt, p);
+    unlock(p->rwlatch);
   }
   return 0;
 }
