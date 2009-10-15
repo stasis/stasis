@@ -145,9 +145,15 @@ static const LogEntry * stasis_log_impl_in_memory_read_entry(stasis_log_t* log,
                                                  lsn_t lsn) {
   stasis_log_impl_in_memory * impl = log->impl;
   DEBUG("lsn: %ld\n", lsn);
-  if(lsn >= impl->nextAvailableLSN) { return 0; }
-  assert(lsn-impl->globalOffset >= 0 && lsn-impl->globalOffset< impl->bufferLen);
   readlock(impl->globalOffset_lock, 0);
+  if(lsn >= impl->nextAvailableLSN) {
+    unlock(impl->globalOffset_lock);
+    return NULL;
+  }
+  if(!(lsn-impl->globalOffset >= 0 && lsn-impl->globalOffset< impl->bufferLen)) {
+    unlock(impl->globalOffset_lock);
+    return NULL;
+  }
   LogEntry * ptr = impl->buffer[lsn - impl->globalOffset];
   unlock(impl->globalOffset_lock);
   assert(ptr);
