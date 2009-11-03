@@ -312,11 +312,11 @@ static void* worker_thread(void * arg) {
 
     if(threshold < 3) {
       if(i > 10) {
-	needToTruncate = 1;
-	if(lsns[i - 10] > truncated_to) {
-	  truncated_to = lsns[i - 10];
-	  myTruncVal = truncated_to;
-	}
+        needToTruncate = 1;
+        if(lsns[i - 10] > truncated_to) {
+          truncated_to = lsns[i - 10];
+          myTruncVal = truncated_to;
+        }
       }
     }
 
@@ -355,9 +355,14 @@ static void* worker_thread(void * arg) {
       pthread_mutex_unlock(&random_mutex);
 
       const LogEntry * e = stasis_log_file->read_entry(stasis_log_file, lsn);
-
-      assert(e->xid == entry+key);
-      freeLogEntry(e);
+      if(e == NULL) {
+        pthread_mutex_lock(&random_mutex);
+        assert(lsn < truncated_to);
+        pthread_mutex_unlock(&random_mutex);
+      } else {
+        assert(e->xid == entry+key);
+        freeLogEntry(e);
+      }
     } else {
       pthread_mutex_unlock(&random_mutex);
     }

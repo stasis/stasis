@@ -494,7 +494,7 @@ static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t L
 
   if(LSN >= sw->nextAvailableLSN) {
     pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
-    return 0;
+    return NULL;
   }
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
 
@@ -507,7 +507,11 @@ static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t L
     assert(flushedLSNInternal(sw) > LSN);
   }
 
-  assert(sw->global_offset <= LSN);
+  if(sw->global_offset > LSN) {
+    // Return NULL; the caller read before the beginning of the log.
+    pthread_mutex_unlock(&sw->read_mutex);
+    return NULL;
+  }
 
   off_t newPosition = LSN - sw->global_offset;
   newPosition = lseek(sw->ro_fd, newPosition, SEEK_SET);

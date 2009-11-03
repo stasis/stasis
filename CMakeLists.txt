@@ -71,6 +71,14 @@ int main(int argc, char * argv[]) {
 }
 " HAVE_O_DIRECT) 
 
+CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
+#include <stdio.h>
+
+int main(int argc, char * argv[]) {
+    getline(0,0,0);
+}
+" HAVE_GETLINE) 
+
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)
   TARGET_LINK_LIBRARIES(${NAME} ${COMMON_LIBRARIES})

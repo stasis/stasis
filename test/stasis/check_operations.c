@@ -125,7 +125,7 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("D\n");
 
   p = loadPage(xid, rid.page);
-  readlock(p->rwlatch,0);
+  writelock(p->rwlatch,0);
   assert(10 == stasis_page_lsn_read(p)); // "page lsn not set correctly."
 
   setToTwo->LSN = 5;

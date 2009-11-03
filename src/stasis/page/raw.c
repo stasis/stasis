@@ -25,7 +25,7 @@ void  rawPageSetData(int xid, lsn_t lsn, Page * p) {
   //  writelock(p->rwlatch, 255);
   rawPageWriteLSN(xid, p, lsn);
   // XXX should be handled in releasePage.
-  stasis_dirty_page_table_set_dirty(stasis_dirty_page_table, p);
+  stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
   //  unlock(p->rwlatch);
   return;
 }

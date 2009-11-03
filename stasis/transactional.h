@@ -794,6 +794,10 @@ void TtruncateLog();
  * that stasis_log_file is no longer global.
  */
 void * stasis_log(void);
+/**
+ * XXX if releasePage kept the dirty page table up to date, it would greatly reduce the number of places where the dirty page table is updated.
+ */
+void * stasis_runtime_dirty_page_table();
 
 #include "operations.h"
 

@@ -24,7 +24,7 @@ static Page * paLoadPage(int xid, pageid_t pageid, pagetype_t type) {
   if(!pageMap[pageid]) {
     pageMap[pageid] = malloc(sizeof(Page));
     pageMap[pageid]->id = pageid;
-    pageMap[pageid]->pageType = type;
+    pageMap[pageid]->pageType = type == UNKNOWN_TYPE_PAGE ? 0 : type;
     pageMap[pageid]->LSN = 0;
     pageMap[pageid]->dirty = 0;
     pageMap[pageid]->next = 0;
@@ -34,6 +34,8 @@ static Page * paLoadPage(int xid, pageid_t pageid, pagetype_t type) {
     pageMap[pageid]->rwlatch = initlock();
     pageMap[pageid]->loadlatch = initlock();
     pageMap[pageid]->memAddr= calloc(PAGE_SIZE, sizeof(byte));
+  } else{
+    if(type != UNKNOWN_TYPE_PAGE) { assert(type == pageMap[pageid]->pageType); }
   }
   pthread_mutex_unlock(&pageArray_mut);
   return pageMap[pageid];
@@ -42,11 +44,12 @@ static Page* paGetCachedPage(int xid, pageid_t page) {
   return paLoadPage(xid, page, UNKNOWN_TYPE_PAGE);
 }
 static void paReleasePage(Page * p) {
-  stasis_dirty_page_table_set_clean(stasis_dirty_page_table, p);
+  stasis_dirty_page_table_set_clean(stasis_runtime_dirty_page_table(), p);
 }
 
 static void paWriteBackPage(Page * p) {  /* no-op */ }
 static void paForcePages() { /* no-op */ }
+static void paForcePageRange(pageid_t start, pageid_t stop) { /* no-op */ }
 
 static void paBufDeinit() {
   for(pageid_t i =0; i < pageCount; i++) {
@@ -65,6 +68,7 @@ void stasis_buffer_manager_mem_array_open () {
   getCachedPageImpl = paGetCachedPage;
   writeBackPage = paWriteBackPage;
   forcePages = paForcePages;
+  forcePageRange = paForcePageRange;
   stasis_buffer_manager_close = paBufDeinit;
   stasis_buffer_manager_simulate_crash = paBufDeinit;
 
