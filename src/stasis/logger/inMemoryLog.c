@@ -38,9 +38,9 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
   writelock(impl->globalOffset_lock,0);
   do{
     bufferOffset = impl->nextAvailableLSN - impl->globalOffset;
-    if(bufferOffset > impl->bufferLen) {
+    if(bufferOffset >= impl->bufferLen) {
       impl->bufferLen *= 2;
-      impl->buffer = realloc(impl->buffer, impl->bufferLen);
+      impl->buffer = realloc(impl->buffer, impl->bufferLen * sizeof(LogEntry *));
     } else {
       done = 1;
     }
