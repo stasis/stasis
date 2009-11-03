@@ -98,8 +98,8 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
 LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis)
 
 SET(COMMON_LIBRARIES stasis m pthread)
-SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT ${CMAKE_C_FLAGS}")
-SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/stasis
         DESTINATION include/
