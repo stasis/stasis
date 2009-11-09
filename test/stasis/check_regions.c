@@ -351,6 +351,8 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("regions_test");
   tcase_set_timeout(tc, 0); // disable timeouts
 
+  stasis_log_softcommit = 1; // disable forcing log at commit
+
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, regions_smokeTest);
   tcase_add_test(tc, regions_randomizedTest);
