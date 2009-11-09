@@ -182,6 +182,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     p->id = pageid;
     if(uninitialized) {
       type = UNINITIALIZED_PAGE;
+      stasis_page_loaded(p, UNINITIALIZED_PAGE);
     } else {
       ch->page_handle->read(ch->page_handle, p, type);
     }
@@ -193,7 +194,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
   if(first) { ch->lru->hit(ch->lru, p); }
   readlock(p->loadlatch, 0);
   hashtable_unlock(&h);
-
+  assert(p->id == pageid);
   return p;
 }
 static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid, pagetype_t type) {

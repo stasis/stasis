@@ -76,6 +76,7 @@ terms specified in this license.
 #include <stasis/compensations.h>
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>
+#include <stasis/page/uninitialized.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
@@ -113,6 +114,7 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   stasis_page_slotted_init();
   fixedPageInit();
 
+  stasis_page_impl_register(stasis_page_uninitialized_impl());
   stasis_page_impl_register(stasis_page_slotted_impl());
   stasis_page_impl_register(fixedImpl());
   stasis_page_impl_register(stasis_page_boundary_tag_impl());
@@ -288,34 +290,24 @@ void stasis_record_compact_slotids(int xid, Page * p) {
 */
 void stasis_page_loaded(Page * p, pagetype_t type){
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
-  if(p->pageType) {
-    assert(page_impls[p->pageType].page_type == p->pageType);
-    if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
-  } else {
-    p->LSN = *stasis_page_lsn_ptr(p);  // XXX kludge - shouldn't special-case UNINITIALIZED_PAGE
-  }
+  assert(page_impls[p->pageType].page_type == p->pageType);
+  if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
 }
 void stasis_page_flushed(Page * p){
 
   pagetype_t type = p->pageType;
-  if(type) {
-    assert(page_impls[type].page_type == type);
-    if(page_impls[type].has_header) {
-      *stasis_page_type_ptr(p)= type;
-      *stasis_page_lsn_ptr(p) = p->LSN;
-    }
-    if(page_impls[type].pageFlushed) page_impls[type].pageFlushed(p);
-  } else {
+
+  assert(page_impls[type].page_type == type);
+  if(page_impls[type].has_header) {
     *stasis_page_type_ptr(p)= type;
     *stasis_page_lsn_ptr(p) = p->LSN;
   }
+  if(page_impls[type].pageFlushed) page_impls[type].pageFlushed(p);
 }
 void stasis_page_cleanup(Page * p) {
   short type = p->pageType;
-  if(type) {
-    assert(page_impls[type].page_type == type);
-    if(page_impls[type].pageCleanup) page_impls[type].pageCleanup(p);
-  }
+  assert(page_impls[type].page_type == type);
+  if(page_impls[type].pageCleanup) page_impls[type].pageCleanup(p);
 }
 
 /// Generic block implementations

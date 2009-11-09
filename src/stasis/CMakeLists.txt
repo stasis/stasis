@@ -18,6 +18,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    logger/logMemory.c
                    logger/reorderingHandle.c
                    logger/groupForce.c
+                   page/uninitialized.c
                    page/slotted.c
                    page/fixed.c 
                    page/raw.c

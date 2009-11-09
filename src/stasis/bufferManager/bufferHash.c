@@ -302,10 +302,8 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     pthread_mutex_lock(&bh->mut);
 
   } else {
-    memset(ret->memAddr,0,PAGE_SIZE);
-    *stasis_page_lsn_ptr(ret) = ret->LSN;
+    type = UNINITIALIZED_PAGE;
     assert(!ret->dirty);
-//    ret->dirty = 0;
     stasis_page_loaded(ret, type);
   }
   *pagePendingPtr(ret) = 0;
