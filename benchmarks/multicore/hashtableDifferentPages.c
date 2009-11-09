@@ -40,7 +40,7 @@ int main(int argc, char * argv[]) {
   pthread_t workers[numthreads];
   pageid_t pids[numthreads];
 
-  ht = hashtable_init(numthreads * 10, 0);
+  ht = hashtable_init(numthreads * 10);
 
   for(int i = 0; i < numthreads; i++) {
     pids[i] = i*2   ;

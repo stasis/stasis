@@ -61,7 +61,7 @@ terms specified in this license.
 #define LOG_NAME   "check_lhtable.log"
 
 
-#define NUM_OPS 100000000
+#define NUM_OPS 10000000
 #define NUM_ENTRIES 10000
 #define NUM_THREADS 100
 #define THREAD_ENTRIES ((NUM_ENTRIES/NUM_THREADS)-1)
@@ -115,14 +115,14 @@ void * worker(void * arg) {
 }
 
 START_TEST(singleThreadHashTest) {
-  ht = hashtable_init((pageid_t)((double)THREAD_ENTRIES * 1.1), 0);
+  ht = hashtable_init((pageid_t)((double)THREAD_ENTRIES * 1.1));
   int i = 0;
   worker(&i);
   hashtable_deinit(ht);
 } END_TEST
 
 START_TEST(concurrentHashTest) {
-  ht = hashtable_init((pageid_t)((double)NUM_ENTRIES * 1.1), 0);
+  ht = hashtable_init((pageid_t)((double)NUM_ENTRIES * 1.1));
   pthread_t workers[NUM_THREADS];
   for(int i = 0 ; i < NUM_THREADS; i++) {
     int * ip = malloc(sizeof(int));

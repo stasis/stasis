@@ -1,6 +1,7 @@
 ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLinkedList.c
                    common.c flags.c stats.c bufferManager.c
                    linkedlist.c operations.c pageHandle.c 
+                   bufferManager/concurrentBufferManager.c
                    bufferManager/legacy/pageFile.c
                    bufferManager/legacy/pageCache.c
                    bufferManager/legacy/legacyBufferManager.c
@@ -42,6 +43,6 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    io/non_blocking.c io/debug.c io/handle.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
-                   replacementPolicy/lruFast.c)
+                   replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c)
 
 INSTALL(TARGETS stasis LIBRARY DESTINATION lib)
