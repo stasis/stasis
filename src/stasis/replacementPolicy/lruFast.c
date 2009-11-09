@@ -20,7 +20,7 @@ static void  hit(struct replacementPolicy * r, void * p) {
   lruFast * l = r->impl;
   //  node_t * n = LH_ENTRY(find)(l->hash, &id, sizeof(int));
   node_t * n = l->getNode(p, l->conf);
-  assert(n);
+  if(!n) { return; } // ignore attempts to hit pages not in lru
   LL_ENTRY(removeNoFree)(l->lru, n);
   LL_ENTRY(pushNode)(l->lru, n);
 }

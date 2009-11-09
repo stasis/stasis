@@ -43,6 +43,6 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    io/non_blocking.c io/debug.c io/handle.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
-                   replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c)
+                   replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c)
 
 INSTALL(TARGETS stasis LIBRARY DESTINATION lib)

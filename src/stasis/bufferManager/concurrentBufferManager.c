@@ -261,10 +261,13 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 #endif
 
   ch->buffer_pool = stasis_buffer_pool_init();
-
-  ch->lru = lruFastInit(pageGetNode, pageSetNode, 0);
-  ch->lru = replacementPolicyThreadsafeWrapperInit(ch->lru);
+  replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
+  for(int i = 0; i < 37; i++) {
+    lrus[i] = lruFastInit(pageGetNode, pageSetNode, 0);
+  }
+  ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
   ch->ht = hashtable_init(MAX_BUFFER_SIZE * 4);
+  free(lrus);
 
   for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);

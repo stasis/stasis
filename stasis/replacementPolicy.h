@@ -39,3 +39,5 @@ replacementPolicy * lruFastInit(
 		   struct LL_ENTRY(node_t) * n,
 		   void * conf),
    void * conf);
+replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp);
+replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count);
