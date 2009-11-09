@@ -105,20 +105,6 @@ static int void_single_remove(void * val, struct rbtree * a) {
   if(found) { free((void*)old); }
   return found;
 }
-static int void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
-  const void *old1, *old2 ;
-
-  old1 = rbdelete(val, a);
-  rbsearch(val, a);
-  int found1 = (old1 != 0);
-
-  old2 = rbdelete(val, b);
-  rbsearch(val,b);
-  assert(old1 == old2);
-  if(found1) { free((void*)old1); }
-
-  return found1;
-}
 static int void_double_remove(const void * val, struct rbtree * primary, struct rbtree * secondary) {
   const void * fullTuple= rbdelete(val, primary);
   int found1 = (fullTuple != 0);
@@ -130,6 +116,20 @@ static int void_double_remove(const void * val, struct rbtree * primary, struct 
   } else {
     return 0;
   }
+}
+static int void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
+//  const void *old1, *old2 ;
+  int found = void_double_remove(val, a, b);
+//  old1 = rbdelete(val, a);
+  rbsearch(val, a);
+//  int found1 = (old1 != 0);
+
+//  old2 = rbdelete(val, b);
+  rbsearch(val,b);
+//  assert(old1 == old2);
+//  if(found1) { free((void*)old1); }
+
+  return found;
 }
 // ######## AvailablePages ###########
 static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid);

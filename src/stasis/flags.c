@@ -13,7 +13,8 @@
 #ifdef STASIS_BUFFER_MANAGER_FACTORY
 stasis_buffer_manager_t * stasis_buffer_manager_factory = STASIS_BUFFER_MANAGER_FACTORY;
 #else
-stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_hash_factory;
+stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt);
+stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_concurrent_hash_factory;
 #endif
 
 #ifdef BUFFER_MANAGER_O_DIRECT
