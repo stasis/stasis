@@ -91,24 +91,22 @@ struct stasis_allocation_policy_t {
 
 // ######## Helpers ###############
 
-static int void_single_add(void * val, struct rbtree * a) {
-  const void * old = rbdelete(val, a);
-  rbsearch(val, a);
-  int found = (old != 0);
-  if(found) { free((void*)old); }
-  return found;
-}
-
 static int void_single_remove(void * val, struct rbtree * a) {
   const void * old = rbdelete(val, a);
   int found = (old != 0);
   if(found) { free((void*)old); }
   return found;
 }
+
+static int void_single_add(void * val, struct rbtree * a) {
+  int found = void_single_remove(val, a);
+  rbsearch(val, a);
+  return found;
+}
+
 static int void_double_remove(const void * val, struct rbtree * primary, struct rbtree * secondary) {
   const void * fullTuple= rbdelete(val, primary);
-  int found1 = (fullTuple != 0);
-  if(found1) {
+  if(fullTuple != 0) {
     const void * old = rbdelete(fullTuple, secondary);
     assert(old == fullTuple);
     free((void*)fullTuple);
@@ -117,19 +115,11 @@ static int void_double_remove(const void * val, struct rbtree * primary, struct 
     return 0;
   }
 }
-static int void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
-//  const void *old1, *old2 ;
-  int found = void_double_remove(val, a, b);
-//  old1 = rbdelete(val, a);
-  rbsearch(val, a);
-//  int found1 = (old1 != 0);
-
-//  old2 = rbdelete(val, b);
-  rbsearch(val,b);
-//  assert(old1 == old2);
-//  if(found1) { free((void*)old1); }
-
-  return found;
+static void void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
+  const void * ao = rbsearch(val, a);
+  assert(ao == val);
+  const void * bo = rbsearch(val, b);
+  assert(bo == val);
 }
 // ######## AvailablePages ###########
 static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid);
@@ -142,7 +132,7 @@ static int availablePages_add(stasis_allocation_policy_t *ap, pageid_t pageid, s
   return ret;
 }
 static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
-  availablePages_pageid_freespace tup = {pageid, -1};
+  availablePages_pageid_freespace tup = {pageid, 0};
   return void_double_remove(&tup, ap->availablePages_key_pageid, ap->availablePages_key_freespace_pageid);
 }
 
@@ -162,7 +152,7 @@ static int pageOwners_add(stasis_allocation_policy_t *ap, int xid, size_t freesp
 }
 
 static int pageOwners_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
-  pageOwners_xid_freespace_pageid tup = { INVALID_XID, -1, pageid };
+  pageOwners_xid_freespace_pageid tup = { INVALID_XID, 0, pageid };
   return void_double_remove(&tup, ap->pageOwners_key_pageid, ap->pageOwners_key_xid_freespace_pageid);
 }
 int pageOwners_lookup_by_xid_freespace(stasis_allocation_policy_t *ap, int xid, size_t freespace, pageid_t* pageid) {
@@ -217,7 +207,7 @@ static int allPages_add(stasis_allocation_policy_t *ap, pageid_t pageid, size_t 
 }
 /** Assumes that the page is not in use by an outstanding xact */
 static int allPages_remove(stasis_allocation_policy_t *ap, pageid_t pageid) {
-  allPages_pageid_freespace tup = { pageid, -1 };
+  allPages_pageid_freespace tup = { pageid, 0 };
   int found = void_single_remove(&tup, ap->allPages_key_pageid);
   int found2 = availablePages_remove(ap, pageid);
   assert(found == found2);
@@ -249,7 +239,7 @@ static void allPages_set_freespace(stasis_allocation_policy_t *ap, pageid_t page
   assert(!(ownerExisted && availableExisted));
 }
 static int xidAllocedDealloced_helper_lookup_by_xid(struct rbtree *t, int xid, pageid_t **pages, size_t*count) {
-  xidAllocedDealloced_xid_pageid query = {xid, -1};
+  xidAllocedDealloced_xid_pageid query = {xid, 0};
   const xidAllocedDealloced_xid_pageid *tup = rblookup(RB_LUGTEQ, &query, t);
   int ret = 0;
   *pages = 0;
@@ -267,7 +257,7 @@ static int xidAllocedDealloced_helper_lookup_by_xid(struct rbtree *t, int xid, p
   return ret;
 }
 static int xidAllocedDealloced_helper_lookup_by_pageid(struct rbtree *t, pageid_t pageid, int ** xids, size_t * count) {
-  xidAllocedDealloced_xid_pageid query = {-1, pageid};
+  xidAllocedDealloced_xid_pageid query = {0, pageid};
   const xidAllocedDealloced_xid_pageid *tup = rblookup(RB_LUGTEQ, &query, t);
   int ret = 0;
   *xids = 0;
@@ -317,11 +307,15 @@ static int update_views_for_page(stasis_allocation_policy_t *ap, pageid_t pageid
   if(deallocXids) { free(deallocXids); }
   return ret;
 }
+static int xidAllocedDealloced_helper_remove(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree*second, int xid, pageid_t pageid);
+
 static int xidAllocedDealloced_helper_add(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree* second, int xid, pageid_t pageid) {
+  int existed = xidAllocedDealloced_helper_remove(ap, first, second, xid, pageid);
+
   xidAllocedDealloced_xid_pageid * tup = malloc(sizeof(*tup));
   tup->xid = xid;
   tup->pageid = pageid;
-  int existed = void_double_add(tup, first, second);
+  void_double_add(tup, first, second);
   if(!existed) {
     update_views_for_page(ap, pageid);
   }
@@ -362,11 +356,16 @@ static int xidDealloced_remove(stasis_allocation_policy_t * ap, int xid, pageid_
 
 static int availablePages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const availablePages_pageid_freespace *a = ap, *b = bp;
-  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 :
+        (0));
 }
 static int availablePages_cmp_freespace_pageid(const void *ap, const void *bp, const void* ign) {
   const availablePages_pageid_freespace *a = ap, *b = bp;
-  return (a->freespace < b->freespace) ? -1 : (a->freespace > b->freespace) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->freespace < b->freespace) ? -1 :
+        ((a->freespace > b->freespace) ? 1 :
+        ((a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 : 0)));
 }
 int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t freespace, pageid_t *pageid) {
   const availablePages_pageid_freespace query = { 0, freespace };
@@ -381,23 +380,36 @@ int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t fr
 
 static int pageOwners_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
-  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 : 0);
 }
 static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp, const void* ign) {
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
-  return (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : (a->freespace < b->freespace) ? -1 : (a->freespace > b->freespace) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->xid < b->xid) ? -1 :
+        ((a->xid > b->xid) ? 1 :
+        ((a->freespace < b->freespace) ? -1 :
+        ((a->freespace > b->freespace) ? 1 :
+        ((a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 : 0)))));
 }
 static int allPages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
   const allPages_pageid_freespace *a = ap, *b = bp;
-  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 : 0);
 }
 static int xidAllocedDealloced_cmp_pageid_xid(const void *ap, const void *bp, const void* ign) {
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
-  return (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : 0;
+  return (a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 :
+        ((a->xid < b->xid) ? -1 :
+        ((a->xid > b->xid) ? 1 : 0)));
 }
 static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, const void* ign) {
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
-  return (a->xid < b->xid) ? -1 : (a->xid > b->xid) ? 1 : (a->pageid < b->pageid) ? -1 : (a->pageid > b->pageid) ? 1 : 0;
+  return (a->xid < b->xid) ? -1 :
+        ((a->xid > b->xid) ? 1 :
+        ((a->pageid < b->pageid) ? -1 :
+        ((a->pageid > b->pageid) ? 1 : 0)));
 }
 
 stasis_allocation_policy_t * stasis_allocation_policy_init() {
