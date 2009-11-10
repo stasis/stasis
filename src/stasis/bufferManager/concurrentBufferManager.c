@@ -126,8 +126,12 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
   while(tls->p == NULL) {
     Page * tmp = ch->lru->getStale(ch->lru);
     hashtable_bucket_handle_t h;
-    tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h); // Deadlocks here.
-    if(tls->p && trywritelock(tls->p->loadlatch,0)) {
+    tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h);
+    if(tls->p) {
+      // TODO: It would be nice to make this a trywritelock to avoid blocking here.
+      // However, this would cause subtle problems; page->id could change while we're in LRU.  LRU partitions its latches on page->id, and references state
+      // stored with the page...
+      writelock(tls->p->loadlatch,0);
       // note that the removes are atomic.  This is guaranteed by the hashtable lock.
       ch->lru->remove(ch->lru, tls->p);
       // The getStale was not atomic, which is OK (but we can't trust tmp anymore...)
@@ -139,19 +143,24 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       assert(!tls->p->dirty);
       unlock(tls->p->loadlatch);
       break;
-    } else if(tls->p) {
-      // page is pinned or something.  Oh well.  Throw this one back (atomically).
-      hashtable_remove_cancel(ch->ht, &h);
-      // hit the page.  This is safe because lru latches it.  (We might be hitting some arbitrary page here, but don't care)
-      ch->lru->hit(ch->lru, tmp);
-      // Go around the loop again.
-      tls->p = NULL;
+//    } else if(tls->p) {
+//      // page is pinned or something.  Oh well.  Throw this one back (atomically).
+//      hashtable_remove_cancel(ch->ht, &h);
+//      // hit the page.  This is safe because lru latches it.  (We might be hitting some arbitrary page here, but don't care)
+//      ch->lru->hit(ch->lru, tmp);
+//      // Go around the loop again.
+//      tls->p = NULL;
     } else {
       // otherwise, page is not in hashtable, but it is in LRU.  We can observe this because getStale and hashtable remove are not atomic.
       // remove failed; need to 'complete' it to release latch (otherwise, this is a no-op)
+
+      // no need to hit the page; we will not spin on it for long (the other thread will be removing it from lru before it blocks on I/O)
+
+      // hit the page so we don't spin on it; readlock suffices, since we don't want to change the pageid.
+//      readlock(tmp->loadlatch,0);
+//      ch->lru->hit(ch->lru, tmp);
+//      unlock(tmp->loadlatch);
       hashtable_remove_finish(ch->ht, &h);
-      // hit the page so we don't spin on it.
-      ch->lru->hit(ch->lru, tmp);
     }
     count ++;
     if(count == 100) {
@@ -173,10 +182,11 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     p = tls->p;
     tls->p = NULL;
 
-    ch->lru->insert(ch->lru, p);
-
     int succ = trywritelock(p->loadlatch, 0);
     assert(succ);
+
+    ch->lru->insert(ch->lru, p);
+
     hashtable_unlock(&h);
 
     p->id = pageid;
@@ -191,8 +201,8 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     tls = populateTLS(bm);
     if(needFlush(bm)) { pthread_cond_signal(&ch->needFree); }
   }
-  if(first) { ch->lru->hit(ch->lru, p); }
   readlock(p->loadlatch, 0);
+  if(first) { ch->lru->hit(ch->lru, p); }
   hashtable_unlock(&h);
   assert(p->id == pageid);
   return p;
