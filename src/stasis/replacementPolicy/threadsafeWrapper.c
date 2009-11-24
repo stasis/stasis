@@ -37,13 +37,13 @@ static void* tsRemove  (struct replacementPolicy* impl, void * page) {
   pthread_mutex_unlock(&rp->mut);
   return ret;
 }
-//static void* tsGetStaleAndRemove  (struct replacementPolicy* impl) {
-//  stasis_replacement_policy_threadsafe_wrapper_t * rp = impl->impl;
-//  pthread_mutex_lock(&rp->mut);
-//  void *ret = rp->impl->getStaleAndRemove(rp->impl);
-//  pthread_mutex_unlock(&rp->mut);
-//  return ret;
-//}
+static void* tsGetStaleAndRemove  (struct replacementPolicy* impl) {
+  stasis_replacement_policy_threadsafe_wrapper_t * rp = impl->impl;
+  pthread_mutex_lock(&rp->mut);
+  void *ret = rp->impl->getStaleAndRemove(rp->impl);
+  pthread_mutex_unlock(&rp->mut);
+  return ret;
+}
 static void  tsInsert  (struct replacementPolicy* impl, void * page) {
   stasis_replacement_policy_threadsafe_wrapper_t * rp = impl->impl;
   pthread_mutex_lock(&rp->mut);
@@ -60,7 +60,7 @@ replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp)
   ret->deinit = tsDeinit;
   ret->hit = tsHit;
   ret->getStale = tsGetStale;
-//  ret->getStaleAndRemove = tsGetStaleAndRemove;
+  ret->getStaleAndRemove = tsGetStaleAndRemove;
   ret->remove = tsRemove;
   ret->insert = tsInsert;
   ret->impl = rpw;

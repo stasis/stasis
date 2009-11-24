@@ -64,13 +64,24 @@ static void* cwRemove  (struct replacementPolicy* impl, void * page) {
   pthread_mutex_unlock(&rp->mut[bucket]);
   return ret;
 }
-//static void* tsGetStaleAndRemove  (struct replacementPolicy* impl) {
-//  stasis_replacement_policy_threadsafe_wrapper_t * rp = impl->impl;
-//  pthread_mutex_lock(&rp->mut);
-//  void *ret = rp->impl->getStaleAndRemove(rp->impl);
-//  pthread_mutex_unlock(&rp->mut);
-//  return ret;
-//}
+static void* tsGetStaleAndRemove  (struct replacementPolicy* impl) {
+  stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
+  intptr_t bucket = (intptr_t)pthread_getspecific(rp->next_bucket);
+  intptr_t oldbucket = bucket;
+  void *ret = 0;
+  while(ret == 0) {
+    while(pthread_mutex_trylock(&rp->mut[bucket])) {
+      bucket = (bucket + 1) % rp->num_buckets;
+    }
+    ret = rp->impl[bucket]->getStaleAndRemove(rp->impl[bucket]);
+    pthread_mutex_unlock(&rp->mut[bucket]);
+    bucket = (bucket + 1) % rp->num_buckets;
+  }
+  if(bucket != oldbucket) {
+    pthread_setspecific(rp->next_bucket, (void*) bucket);
+  }
+  return ret;
+}
 static void  cwInsert  (struct replacementPolicy* impl, void * page) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   unsigned int bucket = bucket_hash(rp, page);
@@ -95,7 +106,7 @@ replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp
   ret->deinit = cwDeinit;
   ret->hit = cwHit;
   ret->getStale = cwGetStale;
-//  ret->getStaleAndRemove = tsGetStaleAndRemove;
+  ret->getStaleAndRemove = tsGetStaleAndRemove;
   ret->remove = cwRemove;
   ret->insert = cwInsert;
   ret->impl = rpw;

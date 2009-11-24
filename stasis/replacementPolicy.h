@@ -28,6 +28,7 @@ typedef struct replacementPolicy {
   void (*hit)     (struct replacementPolicy* impl, void * page);
   void*(*getStale)(struct replacementPolicy* impl);
   void*(*remove)  (struct replacementPolicy* impl, void * page);
+  void*(*getStaleAndRemove)(struct replacementPolicy* impl);
   void (*insert)  (struct replacementPolicy* impl, void * page);
   void * impl;
 } replacementPolicy;

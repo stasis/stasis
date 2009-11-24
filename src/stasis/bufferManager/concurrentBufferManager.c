@@ -108,10 +108,13 @@ static Page * chGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
 static void deinitTLS(void *tlsp) {
   stasis_buffer_concurrent_hash_tls_t * tls = tlsp;
   stasis_buffer_concurrent_hash_t *ch = tls->bm->impl;
-  if(tls->p) {
-    ch->lru->insert(ch->lru, tls->p);
+
+  Page * p = tls->p;
+  p->id = -1;
+  while(hashtable_test_and_set(ch->ht,p->id, p)) {
+    p->id --;
   }
-  free(tls);
+  ch->lru->insert(ch->lru, tls->p);
 }
 static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_manager_t* bm) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
@@ -124,7 +127,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
   }
   int count = 0;
   while(tls->p == NULL) {
-    Page * tmp = ch->lru->getStale(ch->lru);
+    Page * tmp = ch->lru->getStaleAndRemove(ch->lru);
     hashtable_bucket_handle_t h;
     tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h);
     if(tls->p) {
@@ -132,9 +135,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       // However, this would cause subtle problems; page->id could change while we're in LRU.  LRU partitions its latches on page->id, and references state
       // stored with the page...
       writelock(tls->p->loadlatch,0);
-      // note that the removes are atomic.  This is guaranteed by the hashtable lock.
-      ch->lru->remove(ch->lru, tls->p);
-      // The getStale was not atomic, which is OK (but we can't trust tmp anymore...)
+      // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
       tmp = 0;
       if(tls->p->id >= 0) {
         ch->page_handle->write(ch->page_handle, tls->p);
@@ -151,17 +152,10 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
 //      // Go around the loop again.
 //      tls->p = NULL;
     } else {
-      // page is not in hashtable, but it is in LRU.  We can observe this because getStale and hashtable remove are not atomic.
-
-      // no need to hit the page; we will not spin on it for long (the other thread will be removing it from lru before it blocks on I/O)
-
-      // hit the page so we don't spin on it; readlock suffices, since we don't want to change the pageid.
-//      readlock(tmp->loadlatch,0);
-//      ch->lru->hit(ch->lru, tmp);
-//      unlock(tmp->loadlatch);
-
-      // remove failed; need to 'complete' it to release latch (this call is a no-op)
-      hashtable_remove_finish(ch->ht, &h);
+      // page is not in hashtable, but it is in LRU.  getStale and hashtable remove are not atomic.
+      // However, we cannot observe this; the lru remove happens before the hashtable remove,
+      // and the hashtable insert happens before the lru insert.
+      abort();
     }
     count ++;
     if(count == 100) {
@@ -185,7 +179,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
 
     int succ = trywritelock(p->loadlatch, 0);
     assert(succ);
-
+    // this has to happen after the hashtable insertion succeeds, otherwise above, we could get a page from lru that isn't in the cache.
     ch->lru->insert(ch->lru, p);
 
     hashtable_unlock(&h);

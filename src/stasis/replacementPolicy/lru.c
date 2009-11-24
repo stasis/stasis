@@ -69,6 +69,12 @@ static void* stasis_replacement_policy_lru_remove(replacementPolicy* r, void * p
   free(e);
   return ret;
 }
+static void* stasis_replacement_policy_lru_get_stale_and_remove(replacementPolicy* r) {
+  void* ret = stasis_replacement_policy_lru_get_stale(r);
+  stasis_replacement_policy_lru_remove(r, ret);
+  return ret;
+}
+
 static void stasis_replacement_policy_lru_insert(replacementPolicy* r, void * p) {
   stasis_replacement_policy_lru_t * l = r->impl;
   stasis_replacement_policy_lru_entry * e = malloc(sizeof(stasis_replacement_policy_lru_entry));
@@ -92,6 +98,7 @@ replacementPolicy * stasis_replacement_policy_lru_init() {
   ret->hit = stasis_replacement_policy_lru_hit;
   ret->getStale = stasis_replacement_policy_lru_get_stale;
   ret->remove = stasis_replacement_policy_lru_remove;
+  ret->getStaleAndRemove = stasis_replacement_policy_lru_get_stale_and_remove;
   ret->insert = stasis_replacement_policy_lru_insert;
   ret->impl = l;
   return ret;
