@@ -33,6 +33,8 @@
 #include <stasis/redblack.h>
 #include <stasis/transactional.h>
 
+
+
 #include <assert.h>
 #include <stdio.h>
 
@@ -316,9 +318,9 @@ static int xidAllocedDealloced_helper_add(stasis_allocation_policy_t *ap, struct
   tup->xid = xid;
   tup->pageid = pageid;
   void_double_add(tup, first, second);
-  if(!existed) {
-    update_views_for_page(ap, pageid);
-  }
+//  if(!existed) {
+  update_views_for_page(ap, pageid);
+//  }
   return existed;
 }
 static int xidAllocedDealloced_helper_remove(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree*second, int xid, pageid_t pageid) {
@@ -354,18 +356,28 @@ static int xidDealloced_remove(stasis_allocation_policy_t * ap, int xid, pageid_
   return xidAllocedDealloced_helper_remove(ap, ap->xidDealloced_key_pageid_xid, ap->xidDealloced_key_xid_pageid, xid, pageid);
 }
 
+#ifdef TSEARCH
+static int availablePages_cmp_pageid(const void *ap, const void *bp) {
+#else
 static int availablePages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const availablePages_pageid_freespace *a = ap, *b = bp;
   return (a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 :
         (0));
 }
+#ifdef TSEARCH
+static int availablePages_cmp_freespace_pageid(const void *ap, const void *bp) {
+#else
 static int availablePages_cmp_freespace_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const availablePages_pageid_freespace *a = ap, *b = bp;
-  return (a->freespace < b->freespace) ? -1 :
+  int ret = (a->freespace < b->freespace) ? -1 :
         ((a->freespace > b->freespace) ? 1 :
         ((a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 : 0)));
+//  printf("freespace = %d, %d pageid = %d, %d ret = %d\n", a->freespace, b->freespace, (int)a->pageid, (int)b->pageid, ret);
+  return ret;
 }
 int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t freespace, pageid_t *pageid) {
   const availablePages_pageid_freespace query = { 0, freespace };
@@ -378,12 +390,20 @@ int availablePages_lookup_by_freespace(stasis_allocation_policy_t *ap, size_t fr
   }
 }
 
+#ifdef TSEARCH
+static int pageOwners_cmp_pageid(const void *ap, const void *bp) {
+#else
 static int pageOwners_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
   return (a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 : 0);
 }
+#ifdef TSEARCH
+static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp) {
+#else
 static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const pageOwners_xid_freespace_pageid *a = ap, *b = bp;
   return (a->xid < b->xid) ? -1 :
         ((a->xid > b->xid) ? 1 :
@@ -392,19 +412,31 @@ static int pageOwners_cmp_xid_freespace_pageid(const void *ap, const void *bp, c
         ((a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 : 0)))));
 }
+#ifdef TSEARCH
+static int allPages_cmp_pageid(const void *ap, const void *bp) {
+#else
 static int allPages_cmp_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const allPages_pageid_freespace *a = ap, *b = bp;
   return (a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 : 0);
 }
+#ifdef TSEARCH
+static int xidAllocedDealloced_cmp_pageid_xid(const void *ap, const void *bp) {
+#else
 static int xidAllocedDealloced_cmp_pageid_xid(const void *ap, const void *bp, const void* ign) {
+#endif
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
   return (a->pageid < b->pageid) ? -1 :
         ((a->pageid > b->pageid) ? 1 :
         ((a->xid < b->xid) ? -1 :
         ((a->xid > b->xid) ? 1 : 0)));
 }
+#ifdef TSEARCH
+static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp) {
+#else
 static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, const void* ign) {
+#endif
   const xidAllocedDealloced_xid_pageid *a = ap, *b = bp;
   return (a->xid < b->xid) ? -1 :
         ((a->xid > b->xid) ? 1 :
@@ -447,10 +479,14 @@ pageid_t stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t 
   // does the xid have a suitable page?
   pageid_t pageid;
   int found = pageOwners_lookup_by_xid_freespace(ap, xid, freespace, &pageid);
-  if(found) { return pageid; }
+  if(found) {
+    assert(stasis_allocation_policy_can_xid_alloc_from_page(ap, xid, pageid));
+    return pageid;
+  }
   // pick one from global pool.
   found = availablePages_lookup_by_freespace(ap, freespace, &pageid);
   if(found) {
+    assert(stasis_allocation_policy_can_xid_alloc_from_page(ap, xid, pageid));
     return pageid;
   } else {
     return INVALID_PAGE;
@@ -502,5 +538,8 @@ int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t 
     if(xids[i] != xid) { ret = 0; }
   }
   if(xids) { free(xids); }
+//  if(!ret) {
+//    assert(! availablePages_remove(ap, pageid));
+//  }
   return ret;
 }

@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <stasis/common.h>
+#undef STLSEARCH  // XXX
 #include <stasis/io/rangeTracker.h>
 #include <stasis/redblack.h>
 

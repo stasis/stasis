@@ -36,5 +36,6 @@ libstasis_la_SOURCES=crc32.c redblack.c lhtable.c rw.c doubleLinkedList.c common
                    bufferManager/legacy/pageFile.c \
 		   bufferManager/legacy/pageCache.c \
 		   bufferManager/legacy/legacyBufferManager.c \
-	           replacementPolicy/lru.c replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c
+	           replacementPolicy/lru.c replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c \
+		   stlredblack.cpp
 AM_CFLAGS=${GLOBAL_CFLAGS}

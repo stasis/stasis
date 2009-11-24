@@ -1,4 +1,7 @@
 #include <stasis/common.h>
+
+#undef STLSEARCH  // XXX
+
 #include <stasis/constants.h>
 #include <stasis/io/handle.h>
 #include <stasis/linkedlist.h>

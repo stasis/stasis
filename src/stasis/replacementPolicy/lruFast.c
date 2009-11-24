@@ -66,7 +66,6 @@ replacementPolicy * lruFastInit(
   ret->remove = remove;
   ret->insert = insert;
   lruFast * l = malloc(sizeof(lruFast));
-  //  l->hash = LH_ENTRY(create)(256);
   l->lru = LL_ENTRY(create)();
   l->getNode = getNode;
   l->setNode = setNode;

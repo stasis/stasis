@@ -26,6 +26,9 @@
 */ 
  
 /* Stop multiple includes */
+#ifdef STLSEARCH
+#include "stlredblack.h"
+#else
 #ifndef _REDBLACK_H
 
 #ifndef RB_CUSTOMIZE
@@ -188,4 +191,4 @@ RB_STATIC void RB_ENTRY(closelist)(RBLIST *);
  * Initial import of files. Versions are now all over the place. Oh well
  *
  */
-
+#endif

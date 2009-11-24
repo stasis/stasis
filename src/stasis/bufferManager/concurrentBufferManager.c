@@ -151,8 +151,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
 //      // Go around the loop again.
 //      tls->p = NULL;
     } else {
-      // otherwise, page is not in hashtable, but it is in LRU.  We can observe this because getStale and hashtable remove are not atomic.
-      // remove failed; need to 'complete' it to release latch (otherwise, this is a no-op)
+      // page is not in hashtable, but it is in LRU.  We can observe this because getStale and hashtable remove are not atomic.
 
       // no need to hit the page; we will not spin on it for long (the other thread will be removing it from lru before it blocks on I/O)
 
@@ -160,6 +159,8 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
 //      readlock(tmp->loadlatch,0);
 //      ch->lru->hit(ch->lru, tmp);
 //      unlock(tmp->loadlatch);
+
+      // remove failed; need to 'complete' it to release latch (this call is a no-op)
       hashtable_remove_finish(ch->ht, &h);
     }
     count ++;
@@ -270,15 +271,18 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 #ifdef LONG_RUN
   printf("Using expensive bufferHash sanity checking.\n");
 #endif
-
   ch->buffer_pool = stasis_buffer_pool_init();
+#ifdef CONCURRENT_LRU
   replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
   for(int i = 0; i < 37; i++) {
     lrus[i] = lruFastInit(pageGetNode, pageSetNode, 0);
   }
   ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
-  ch->ht = hashtable_init(MAX_BUFFER_SIZE * 4);
   free(lrus);
+#else
+  ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit(pageGetNode, pageSetNode, 0));
+#endif
+  ch->ht = hashtable_init(MAX_BUFFER_SIZE * 4);
 
   for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);

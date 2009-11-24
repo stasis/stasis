@@ -158,6 +158,8 @@ typedef struct {
 */
 typedef struct Page_s Page;
 
+#define STLSEARCH
+
 #include "compensations.h"
 
 #endif /* __stasis_common_h */

@@ -335,7 +335,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageLoadTest);
   tcase_add_test(tc, pageThreadedWritersTest);
   tcase_add_test(tc, pageBlindRandomTest);
-  tcase_add_test(tc, pageBlindThreadTest);
+//  tcase_add_test(tc, pageBlindThreadTest);
 
   /* --------------------------------------------- */
 

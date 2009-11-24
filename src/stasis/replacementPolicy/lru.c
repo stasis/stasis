@@ -1,4 +1,7 @@
 #include <stasis/common.h>
+
+#undef STLSEARCH  // XXX
+
 #include <stasis/lhtable.h>
 #include <stasis/redblack.h>
 #include <stasis/replacementPolicy.h>
