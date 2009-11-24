@@ -194,7 +194,13 @@ void * hashtable_insert(hashtable_t *ht, pageid_t p, void * val) {
   return ret;
 }
 void * hashtable_test_and_set(hashtable_t *ht, pageid_t p, void * val) {
-  void * ret = hashtable_op(TRYINSERT, ht, p, val);
+  hashtable_bucket_handle_t h;
+  void * ret = hashtable_begin_op(TRYINSERT, ht, p, val, &h);
+  if(ret) {
+    hashtable_end_op(LOOKUP, ht, val, &h);
+  } else {
+    hashtable_end_op(INSERT, ht, val, &h);
+  }
   return ret;
 }
 void * hashtable_lookup(hashtable_t *ht, pageid_t p) {
