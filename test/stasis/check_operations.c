@@ -188,7 +188,7 @@ START_TEST(operation_physical_do_undo) {
   Tcommit(xid);
   Tdeinit();
   return;
-
+#if 0
   setToTwo->LSN = 10;
 
   p = loadPage(xid, rid.page);
@@ -224,6 +224,7 @@ START_TEST(operation_physical_do_undo) {
   unlock(p->rwlatch);
   releasePage(p);
   Tdeinit();
+#endif // 0
 }
 END_TEST
 

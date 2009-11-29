@@ -58,7 +58,11 @@ static void noop_free(void* node) {}
 void compat_rbdestroy(rbtree * tp) {
   compat_rbtree* t = (compat_rbtree*)tp;
   if(t->root) {
+#ifdef HAVE_TDESTROY
     tdestroy(&(t->root), noop_free);
+#else
+    abort(); // TODO
+#endif 
   }
 }
 static pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;

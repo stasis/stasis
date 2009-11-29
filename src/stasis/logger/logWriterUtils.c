@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200112L /* for flockfile() */
+#include <stdio.h>
 #include <stasis/logger/logWriterUtils.h>
 /** @file
 

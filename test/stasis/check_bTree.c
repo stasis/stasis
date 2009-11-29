@@ -64,7 +64,7 @@ START_TEST(bTreeTest) {
   TbtreeInsert(xid, rid, NULL, &key, sizeof(key), (byte*)&val, sizeof(val));
 
   uint64_t* theval = 0;
-  size_t thevalsize = -1;
+  size_t thevalsize = ((size_t)0)-1;
   int found =TbtreeLookup(xid, rid, NULL, &key, sizeof(key), (byte**)&theval, &thevalsize);
   assert(found);
   assert(thevalsize == sizeof(val));
@@ -79,7 +79,7 @@ START_TEST(bTreeTest) {
       i = 200 - j;
     }
     void * scratch;
-    size_t scratchsize=-1;
+    size_t scratchsize=((size_t)0)-1;
     assert(!TbtreeLookup(xid, rid, NULL, (byte*)&i, sizeof(i), (byte**)&scratch, &scratchsize));
     TbtreeInsert(xid, rid, NULL, (byte*)&i, sizeof(i), (byte*)&i, sizeof(i));
     assert(TbtreeLookup(xid, rid, NULL, (byte*)&i, sizeof(i), (byte**)&scratch, &scratchsize));

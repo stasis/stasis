@@ -73,7 +73,6 @@ void nested(int * i) {
     (*i)++;
     compensation_set_error(1);
     break;
-    assert(0);
   } end_action;
   assert(0);
 }

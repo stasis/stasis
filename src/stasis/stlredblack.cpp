@@ -12,15 +12,18 @@
 #include <stdio.h>
 #undef end
 
+extern "C" {
+  typedef int (*c_cmp_t)(const void*, const void*, const void*);
+}
 
 class MyCompare {
-  int (*cmp_)(const void*, const void*, const void*);
+  c_cmp_t cmp_;
   const void *arg_;
   public:
   bool operator() (const void* const &arg1, const void* const &arg2) const {
     return cmp_(arg1,arg2,arg_) < 0;
   };
-  MyCompare(int (*cmp)(const void *, const void *, const void*)) : cmp_(cmp), arg_(NULL) {}
+  MyCompare(c_cmp_t cmp, int dummy) : cmp_(cmp), arg_(NULL) {}
 };
 
 typedef std::set<const void*,MyCompare> rb;
@@ -28,7 +31,7 @@ typedef std::set<const void*,MyCompare> rb;
 extern "C" {
 
 rbtree * stl_rbinit(int(*cmp)(const void*,const void*,const void*), int ignored) {
-  return reinterpret_cast<rbtree*>(new rb(MyCompare(cmp)));
+  return reinterpret_cast<rbtree*>(new rb(MyCompare(cmp, 0)));
 }
 const void * stl_rbdelete(const void * key, rbtree * tp) {
   rb::iterator it = reinterpret_cast<rb*>(tp)->find(key);

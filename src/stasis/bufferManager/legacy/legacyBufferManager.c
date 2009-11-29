@@ -37,7 +37,7 @@ static int pageWrite_legacyWrapper(stasis_buffer_manager_t *ignored, pageid_t pa
   releasePage(p);
   return 0;
 }
-static void forcePageFile_legacyWrapper() {
+static void forcePageFile_legacyWrapper(stasis_buffer_manager_t *ignored) {
   page_handle->force_file(page_handle);
 }
 static void forceRangePageFile_legacyWrapper(stasis_buffer_manager_t *ignored, lsn_t start, lsn_t stop) {

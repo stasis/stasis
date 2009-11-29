@@ -61,6 +61,7 @@ INCLUDE(CheckFunctionExists)
 INCLUDE(CheckCSourceCompiles)
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
+CHECK_FUNCTION_EXISTS(tdestroy HAVE_TDESTROY)
 CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -70,6 +71,9 @@ int main(int argc, char * argv[]) {
  argc = O_DIRECT;
 }
 " HAVE_O_DIRECT) 
+
+CHECK_C_SOURCE_COMPILES("#include <alloca.h>
+int main(int argc, char * argv[]) { alloca(1); }" HAVE_ALLOCA_H)
 
 CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
 #include <stdio.h>
@@ -85,6 +89,16 @@ int main(int argc, char* argv[]) {
   __sync_bool_compare_and_swap(&i, 0, 1);
 }
 " HAVE_GCC_ATOMICS)
+
+CHECK_C_SOURCE_COMPILES("
+#include <pthread.h>
+#include <limits.h>
+int main(int argc, char* argv[]) {
+  pthread_attr_t a;
+  pthread_attr_setstacksize(&a, PTHREAD_STACK_MIN);
+  return 0;
+}
+" HAVE_PTHREAD_STACK_MIN)
 
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)
@@ -112,9 +126,15 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
 # set linker path for this and all subdirs
 LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis)
 
-SET(COMMON_LIBRARIES stasis m pthread)
-SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
-SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+IF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
+  SET(COMMON_LIBRARIES stasis m pthread)
+  SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+ELSEIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "SunPro" )
+  SET(COMMON_LIBRARIES stasis m pthread Crun Cstd)
+  SET(CMAKE_C_FLAGS "-g -xc99=all -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-g -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+ENDIF ()
 
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/stasis
         DESTINATION include/

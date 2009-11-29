@@ -1,3 +1,4 @@
+#include <config.h>
 #define __USE_GNU
 #define _GNU_SOURCE
 #include <stasis/latches.h>
