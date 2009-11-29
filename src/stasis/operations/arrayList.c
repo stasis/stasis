@@ -207,7 +207,11 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
   try_ret(compensation_error()) {
     for(pageid_t i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
       /* Alloc block i */
+#ifdef HAVE_POWL
       pageid_t blockSize = alp.initialSize * powl(alp.multiplier, i);
+#else
+      pageid_t blockSize = alp.initialSize * powf(alp.multiplier, i);
+#endif
       pageid_t newFirstPage = TpageAllocMany(xid, blockSize);
       DEBUG("block %d\n", i);
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;

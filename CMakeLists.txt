@@ -62,6 +62,8 @@ INCLUDE(CheckCSourceCompiles)
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
 CHECK_FUNCTION_EXISTS(tdestroy HAVE_TDESTROY)
+SET(CMAKE_REQUIRED_FLAGS "-lm")
+CHECK_FUNCTION_EXISTS(powl HAVE_POWL)
 CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -127,23 +129,31 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
 LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis)
 
 IF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
-  SET(COMMON_LIBRARIES stasis m pthread)
+  SET(COMMON_LIBRARIES stasis m pthread stdc++)
   SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-variadic-macros -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 ELSEIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "SunPro" )
   SET(COMMON_LIBRARIES stasis m pthread Crun Cstd)
   SET(CMAKE_C_FLAGS "-g -xc99=all -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "-g -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
-ENDIF ()
+ELSE( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
+  # TODO: how to detect compilers correctly on old cmake???  This is a huge hack; it uses old gcc 
+  # options, since cmake is old...
+  SET(COMMON_LIBRARIES stasis m pthread stdc++)
+  SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+ENDIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
 
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/stasis
         DESTINATION include/
-        FILES_MATCHING PATTERN "*.h"
+        #FILES_MATCHING
+        PATTERN "*.h"
         PATTERN ".svn" EXCLUDE
         PATTERN ".deps" EXCLUDE)
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/stasis
         DESTINATION include/
-        FILES_MATCHING PATTERN "*.h"
+        #FILES_MATCHING
+        PATTERN "*.h"
         PATTERN ".svn" EXCLUDE
         PATTERN ".deps" EXCLUDE)
 

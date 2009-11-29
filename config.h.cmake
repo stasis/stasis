@@ -6,6 +6,7 @@
 #cmakedefine HAVE_PTHREAD_STACK_MIN
 #cmakedefine HAVE_ALLOCA_H
 #cmakedefine HAVE_TDESTROY
+#cmakedefine HAVE_POWL
 
 #ifndef HAVE_PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN 32768 // wild guess.
