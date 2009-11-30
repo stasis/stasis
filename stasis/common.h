@@ -134,18 +134,22 @@ typedef int16_t pagetype_t;
  * represents how to look up a record on a page
  * @todo int64_t (for recordid.size) is a stopgap fix.
  */
+#pragma pack(push,1)
 typedef struct {
   pageid_t page;
   slotid_t slot;
   int64_t size;
 } recordid;
+#pragma pack(pop)
 
 // TODO move blob_record_t into an operation header.
+#pragma pack(push,1)
 typedef struct {
   size_t offset;
   size_t size;
   // unsigned fd : 1;
 } blob_record_t;
+#pragma pack(pop)
 
 /*
    Define Page as an incomplete type to hide its implementation from clients.
