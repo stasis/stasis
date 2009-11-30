@@ -5,6 +5,7 @@
  *      Author: sears
  */
 #define _GNU_SOURCE
+#include <config.h>
 #include <search.h>
 #include <stdlib.h>
 #include <stasis/tsearchcompat.h>
@@ -54,7 +55,10 @@ const void * compat_rbsearch(const void * key, rbtree * tp) {
   void** ret = (void**)tsearch(key, &(t->root), t->cmp);
   return ret ? *ret : 0;
 }
+#ifdef HAVE_TDESTROY
 static void noop_free(void* node) {}
+#endif
+
 void compat_rbdestroy(rbtree * tp) {
   compat_rbtree* t = (compat_rbtree*)tp;
   if(t->root) {
