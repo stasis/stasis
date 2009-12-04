@@ -22,6 +22,7 @@ template <class COMPRESSOR, class TYPE> class Pstar {
   Pstar(int xid, Page *p): p_(p), plug_(COMPRESSOR(xid, p->memAddr)) {
     stasis_page_cleanup(p);
     *stasis_page_type_ptr(p) = plugin_id<Pstar<COMPRESSOR,TYPE>,COMPRESSOR,TYPE>();
+    p->pageType = *stasis_page_type_ptr(p);
     *freespace_ptr() = (intptr_t)recordsize_ptr() - (intptr_t)p_->memAddr;
     *recordsize_ptr() = sizeof(TYPE);
     free_bytes_ = *freespace_ptr() - plug_.bytes_used() - plug_.max_overrun();

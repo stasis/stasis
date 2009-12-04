@@ -10,6 +10,7 @@ static int notSupported(int xid, Page * p) { return 0; }
 
 static void uninitializedLoaded(Page *p) {
   p->LSN = *stasis_page_lsn_cptr(p);
+  p->impl = 0;
 }
 static void uninitializedFlushed(Page *p) {
   *stasis_page_type_ptr(p)= p->pageType;

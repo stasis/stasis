@@ -150,6 +150,7 @@ class StaticMulticolumn {
 #undef STATIC_MC_INIT
 
   *stasis_page_type_ptr(p) = plugin_id();
+  p->pageType = *stasis_page_type_ptr(p);
   p->impl = this;
 }
 
