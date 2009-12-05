@@ -47,9 +47,6 @@ struct stasis_page_handle_t {
      concurrent calls will be passed the same value of ret.
 
      @see bufferManager.c for the implementation of read_page.
-
-     @todo read_page and pageWrite should be stored in a struct returned by
-     an initializer, not in global function pointers.
   */
   void (*read)(struct stasis_page_handle_t* ph, Page * ret, pagetype_t type);
   /**
