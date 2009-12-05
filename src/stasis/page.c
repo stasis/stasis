@@ -280,12 +280,6 @@ void stasis_record_compact_slotids(int xid, Page * p) {
   page_impls[p->pageType]
     .pageCompactSlotIDs(xid, p);
 }
-/** @todo How should the LSN of pages without a page_type be handled?
-
-    This only works because we don't have LSN-free pages yet.  With
-    LSN-free pages, we'll need special "loadPageForAlloc(), and
-    loadPageOfType() methods (or something...)
-*/
 void stasis_page_loaded(Page * p, pagetype_t type){
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
   if(p->pageType) {

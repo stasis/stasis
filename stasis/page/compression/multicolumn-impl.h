@@ -34,6 +34,7 @@ Multicolumn<TUPLE>::Multicolumn(int xid, Page *p, column_number_t column_count,
   }
 
   *stasis_page_type_ptr(p) = plugin_id();
+  p->pageType = *stasis_page_type_cptr(p);
   p->impl = this;
 }
 

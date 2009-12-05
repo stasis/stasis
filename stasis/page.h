@@ -867,14 +867,6 @@ typedef struct page_impl {
 
       This function should set p->LSN to an appropriate value.
 
-      @todo In order to support "raw" pages, we need a new page read
-      method that lets the caller decide which page type should handle
-      the call to stasis_page_loaded().
-
-      @todo stasis_page_loaded() should set p->pageType.
-
-      @todo set *stasis_page_type_ptr() to UNINITIALIZED_PAGE when appropriate.
-
   */
   void (*pageLoaded)(Page * p);
   /** This is called before the page is written back to disk.
