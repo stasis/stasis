@@ -3,9 +3,14 @@ require Inline;
 
 my $STASIS_DIR;
 BEGIN {
- $STASIS_DIR = $ENV{STASIS_DIR}
-   || die "\nNeed STASIS_DIR environment variable!!\n\n";
-#'/home/sears/stasis4';
+ $STASIS_DIR = $ENV{STASIS_DIR};
+ if(!defined($STASIS_DIR)) {
+  $STASIS_DIR = $INC{"Stasis.pm"};
+  $STASIS_DIR =~ s~/lang/perl/Stasis.pm~~g;
+  print $STASIS_DIR;
+ }
+ 1;
+#die "\nNeed STASIS_DIR environment variable!!\n\n";
 }
 use Inline C => Config => LIBS =>
     "-L$STASIS_DIR/build/src/stasis/ " .

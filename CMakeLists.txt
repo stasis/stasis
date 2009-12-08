@@ -11,7 +11,7 @@ Project(Stasis)
 
 SET(PACKAGE_VERSION 1)
 
-SUBDIRS(src test utilities benchmarks examples)
+SUBDIRS(src test utilities benchmarks examples lang)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(FLEX_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(BISON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
