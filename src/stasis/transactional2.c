@@ -68,6 +68,13 @@ int Tinit() {
 
   stasis_operation_table_init();
 
+  stasis_transaction_table = stasis_transaction_table_init();
+  stasis_dirty_page_table  = stasis_dirty_page_table_init();
+
+  stasis_page_init(stasis_dirty_page_table);
+
+  // XXX move into stasis_log_safe_writes_factory()
+
   stasis_log_file = 0;
 
   if(LOG_TO_FILE == stasis_log_type) {
@@ -83,11 +90,6 @@ int Tinit() {
   } else {
     assert(stasis_log_file != NULL);
   }
-
-  stasis_transaction_table = stasis_transaction_table_init();
-  stasis_dirty_page_table  = stasis_dirty_page_table_init();
-
-  stasis_page_init(stasis_dirty_page_table);
 
   stasis_buffer_manager = stasis_buffer_manager_factory(stasis_log_file, stasis_dirty_page_table);
 
