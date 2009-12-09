@@ -43,8 +43,9 @@ my $rid;
 
 sub walk {
     my $from = shift;
+    my $h = shift;
     my $level  = shift || 0;
-    my $to = Stasis::ThashLookup($xid, $rid, $from);
+    my $to = $h->{$from};
     myprint $from;
     $level += (length($from) + 4);
 
@@ -54,7 +55,7 @@ sub walk {
         foreach my $f (@tok) {
             if($first) { myprint " => "; } else { my $n = $level; while($n--) {myprint " ";} }
             $first = 0;
-            walk($f,$level);
+            walk($f,$h,$level);
         }
     } else {
         myprint "\n";
@@ -67,13 +68,18 @@ if(Stasis::TrecordType($xid, Stasis::ROOT_RID()) == Stasis::INVALID_SLOT()) {
     $rid = Stasis::ROOT_RID();
 }
 
+my %hash;
+tie(%hash, 'Stasis::Hash', $xid, $rid);
+
+
 while(my $line = <>) {
     chomp $line;
     my @tok = split '\s+', $line;
     if($tok[0] eq "c") {
-        Stasis::ThashInsert($xid, $rid, $tok[1], $tok[2]);
+        #Stasis::ThashInsert($xid, $rid, $tok[1], $tok[2]);
+	$hash{$tok[1]} = $tok[2];
     } elsif($tok[0] eq "q") {
-        walk $tok[1];
+        walk $tok[1], \%hash;
     }
 
 }

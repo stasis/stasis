@@ -7,10 +7,8 @@ BEGIN {
  if(!defined($STASIS_DIR)) {
   $STASIS_DIR = $INC{"Stasis.pm"};
   $STASIS_DIR =~ s~/lang/perl/Stasis.pm~~g;
-  print $STASIS_DIR;
  }
  1;
-#die "\nNeed STASIS_DIR environment variable!!\n\n";
 }
 use Inline C => Config => LIBS =>
     "-L$STASIS_DIR/build/src/stasis/ " .
@@ -25,6 +23,76 @@ use Inline ( C => 'DATA',
 sub version {
    return "Stasis 0.1";
 }
+
+package Stasis::Hash;
+
+require Tie::Hash;
+
+@ISA = qw(Tie::Hash);
+
+sub TIEHASH {
+    my $class = shift;
+    my $xid = shift; 
+    my $rid = shift; 
+    defined ($xid) || die "need xid to tie hash";
+    defined ($rid) || die "need rid to tie hash";
+
+    my $this = {
+	xid => $xid,
+	rid => $rid,
+    };
+
+    return bless $this, $class;
+}
+sub FETCH {
+    my $this = shift;
+    my $key = shift;
+    my $ret = Stasis::ThashLookup($$this{xid}, $$this{rid}, $key);
+    ## Oddly, returning without the defined() check leads to a segfault(??)
+    if(defined($ret)) { return $ret; } else { return; }
+}
+sub STORE {
+    my $this = shift;
+    my $key = shift;
+    my $val = shift;
+    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $val);
+}
+sub DELETE {
+    my $this = shift;
+    my $key = shift;
+    return Stasis::ThashRemove($$this{xid}, $$this{rid}, $key);
+}
+sub FIRSTKEY {
+    my $this = shift;
+    $$this{it} = Stasis::ThashIterator($$this{xid}, $$this{rid});
+    if(Stasis::Titerator_next($$this{xid}, $$this{it})) {
+	return Stasis::Titerator_key($$this{xid}, $$this{it});
+    } else {
+	Stasis::Titerator_close($$this{xid}, $$this{it});
+	return;
+    }
+}
+sub NEXTKEY {
+    my $this = shift;
+    my $lastkey = shift;
+    print("."); $|=1;
+    Stasis::Titerator_tupleDone($$this{xid}, $$this{it});
+    if(Stasis::Titerator_next($$this{xid}, $$this{it})) {
+	return Stasis::Titerator_key($$this{xid}, $$this{it});
+    } else {
+	Stasis::Titerator_close($$this{xid}, $$this{it});
+	return;
+    }
+}
+sub EXISTS {
+    my $this = shift;
+    my $key = shift;
+}
+sub CLEAR { 
+    my $this = shift;
+}
+
+package Stasis;
 
 __DATA__
 __C__
@@ -227,6 +295,29 @@ SV* stasis_perl_ThashLookup(int xid, recordid hash, SV * key) {
   }
 }
 
+void * stasis_perl_ThashIterator(int xid, recordid hash) {
+    return ThashGenericIterator(xid, hash);
+}
+
+int stasis_perl_Titerator_next(int xid, void *it) {
+    return Titerator_next(xid, it);
+}
+SV* stasis_perl_Titerator_key(int xid, void *it) {
+    byte * bytes;
+    STRLEN sz = Titerator_key(xid, it, &bytes);
+    return SV_bytes(bytes, sz);
+}
+SV* stasis_perl_Titerator_value(int xid, void *it) {
+    byte * bytes;
+    STRLEN sz = Titerator_value(xid, it, &bytes);
+    return SV_bytes(bytes, sz);
+}
+void stasis_perl_Titerator_tupleDone(int xid, void *it) {
+    Titerator_tupleDone(xid, it);
+}
+void stasis_perl_Titerator_close(int xid, void *it) {
+    Titerator_close(xid, it);
+}
 SV* stasis_perl_ROOT_RID() {
   return SV_recordid(ROOT_RECORD);
 }
