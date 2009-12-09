@@ -29,7 +29,8 @@ struct stasis_page_handle_t {
    * @see bufferManager.c for the implementation of pageWrite
    *
    * @param dat  The page to be flushed to disk.  No concurrent calls
-   * may have the same value of dat.
+   * may have the same value of dat; typical callers hold a writelock
+   * on dat->loadlatch.
    *
    */
   void (*write)(struct stasis_page_handle_t* ph, Page * dat);
