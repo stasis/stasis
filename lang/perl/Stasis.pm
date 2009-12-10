@@ -47,9 +47,7 @@ sub TIEHASH {
 sub FETCH {
     my $this = shift;
     my $key = shift;
-    my $ret = Stasis::ThashLookup($$this{xid}, $$this{rid}, $key);
-    ## Oddly, returning without the defined() check leads to a segfault(??)
-    if(defined($ret)) { return $ret; } else { return; }
+    return Stasis::ThashLookup($$this{xid}, $$this{rid}, $key);
 }
 sub STORE {
     my $this = shift;
@@ -291,7 +289,7 @@ SV* stasis_perl_ThashLookup(int xid, recordid hash, SV * key) {
     free(valb);
     return ret;
   } else {
-    return 0;
+    return &PL_sv_undef;
   }
 }
 
