@@ -10,9 +10,11 @@ BEGIN {
  }
  1;
 }
-use Inline C => Config => LIBS =>
-    "-L$STASIS_DIR/build/src/stasis/ " .
-    "-lstasis ",
+use Inline C => Config => (LIBS =>
+			   "-L$STASIS_DIR/build/src/stasis/ " .
+			   "-lstasis ",
+			   CCFLAGS => "-Wall -pedantic -Werror -std=c99  -DPERL_GCC_PEDANTIC"
+			   ),
   ENABLE => AUTOWRAP,
   TYPEMAPS => "$STASIS_DIR/lang/perl/typemap",
   PREFIX => 'stasis_perl_';
@@ -96,8 +98,6 @@ __DATA__
 __C__
 #include "stasis/transactional.h"
 
-static int initted;
-
 int Tinit();
 int Tdeinit();
 int Tbegin();
@@ -151,14 +151,14 @@ static byte * bytes_SV(SV* sv, STRLEN * sz) {
   byte * ret = 0;
   IV valI;
   NV valN;
-  char* valP;
+  byte* valP;
   byte * tmp;
   recordid valR;
   char code;
   if(SvIOK(sv)) {
     // signed int, machine length
     valI = SvIV(sv);
-    *sz = sizeof(IV);
+    *sz = (STRLEN)sizeof(IV);
     tmp = (byte*)&valI;
     code = 'I';
   } else if (SvNOK(sv)) {
@@ -207,7 +207,7 @@ static SV * SV_bytes(byte* bytes, STRLEN sz) {
     ret = newSVnv(*(NV*)bytes);
   } break;
   case 'P': {
-    ret = newSVpvn(bytes,sz-2);
+    ret = newSVpvn((const char*)bytes,sz-2);
   } break;
   case 'R': {
     assert(sz-1 == sizeof(recordid));
@@ -219,6 +219,8 @@ static SV * SV_bytes(byte* bytes, STRLEN sz) {
   }
   return ret;
 }
+
+/** Records */
 
 recordid TallocScalar(int xid, SV* sv) {
   STRLEN sz;
@@ -237,7 +239,7 @@ int stasis_perl_Tset(int xid, recordid rid, SV * sv) {
 }
 SV* stasis_perl_Tread(int xid, recordid rid) {
   rid.size = TrecordSize(xid, rid);
-  char * buf = malloc(rid.size);
+  byte * buf = malloc(rid.size);
   Tread(xid, rid, buf);
   SV* ret = SV_bytes(buf, rid.size);
   free(buf);
@@ -254,6 +256,8 @@ recordid stasis_perl_TreadRecordid(int xid, recordid rid) {
   Tread(xid, rid, &buf);
   return buf;
 }
+
+/** Hash table */
 
 recordid stasis_perl_ThashCreate(int xid) {
   return ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
@@ -297,6 +301,25 @@ void * stasis_perl_ThashIterator(int xid, recordid hash) {
     return ThashGenericIterator(xid, hash);
 }
 
+/** Arrays */
+
+recordid stasis_perl_TarrayList_alloc(int xid, SV* exemplar) {
+  byte * bytes;
+  size_t sz;
+  bytes = bytes_SV(exemplar, &sz);
+  return TarrayListAlloc(xid, 4, 2, sz);
+  free(bytes);
+}
+
+int stasis_perl_TarrayList_extend(int xid, recordid rid, int slots) {
+  return TarrayListExtend(xid, rid, slots);
+}
+int stasis_perl_TarrayList_length(int xid, recordid rid) {
+  return TarrayListLength(xid, rid);
+}
+
+/** Iterators */
+
 int stasis_perl_Titerator_next(int xid, void *it) {
     return Titerator_next(xid, it);
 }
@@ -327,31 +350,3 @@ SV* stasis_perl_NULL_RID() {
 int stasis_perl_INVALID_SLOT() {
   return INVALID_SLOT;
 }
-
-/*SV* new() {
-  void * session = 0;
-  Tinit();
-
-  SV*    obj_ref = newSViv(0);
-  SV*    obj = newSVrv(obj_ref, "Stasis");
-
-  sv_setiv(obj, (IV)session);
-  SvREADONLY_on(obj);
-  return obj_ref;
-}
-
-int begin_xact(SV* obj) {
-  return Tbegin();
-}
-
-void commit_xact(SV* obj, int xid) {
-  Tcommit(xid);
-}
-void abort_xact(SV* obj, int xid) {
-  Tabort(xid);
-}
-
-void DESTROY(SV* obj) {
-  Tdeinit();
-}
-*/

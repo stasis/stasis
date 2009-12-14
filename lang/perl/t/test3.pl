@@ -49,7 +49,7 @@ Stasis::Tabort($xid);
 $xid = Stasis::Tbegin();
 tie %h, 'Stasis::Hash', $xid, $rid;
 
-my $i = 0;
+$i = 0;
 foreach my $x (qw(k l m n o p q r s t)) {
     $i++;
     $h{$x}=$i;
