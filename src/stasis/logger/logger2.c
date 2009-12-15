@@ -157,11 +157,17 @@ void stasis_log_begin_transaction(stasis_log_t* log, int xid, stasis_transaction
   tl->recLSN = INVALID_LSN;
 }
 
-lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
-  return stasis_log_write_common(log, l, XABORT);
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_t *table, stasis_transaction_table_entry_t * l) {
+  stasis_transaction_table_invoke_callbacks(table, l, PRE_COMMIT);
+  lsn_t ret = stasis_log_write_common(log, l, XABORT);
+  // rest of callbacks happen after rollback completes, in end_aborted_transaction.
+  return ret;
 }
-lsn_t stasis_log_end_aborted_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
-	return stasis_log_write_common(log, l, XEND);
+lsn_t stasis_log_end_aborted_transaction(stasis_log_t* log, stasis_transaction_table_t *table, stasis_transaction_table_entry_t * l) {
+  lsn_t ret = stasis_log_write_common(log, l, XEND);
+  stasis_transaction_table_invoke_callbacks(table, l, AT_COMMIT);
+  stasis_transaction_table_invoke_callbacks(table, l, POST_COMMIT);
+  return ret;
 }
 lsn_t stasis_log_prepare_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l) {
   lsn_t lsn = stasis_log_write_prepare(log, l);
@@ -170,11 +176,14 @@ lsn_t stasis_log_prepare_transaction(stasis_log_t* log, stasis_transaction_table
 }
 
 
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l, int force) {
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_t *table, stasis_transaction_table_entry_t * l, int force) {
+  stasis_transaction_table_invoke_callbacks(table, l, PRE_COMMIT);
   lsn_t lsn = stasis_log_write_common(log, l, XCOMMIT);
+  stasis_transaction_table_invoke_callbacks(table, l, AT_COMMIT);
   if(force) {
     stasis_log_force(log, lsn, LOG_FORCE_COMMIT);
   }
+  stasis_transaction_table_invoke_callbacks(table, l, POST_COMMIT);
   return lsn;
 }
 

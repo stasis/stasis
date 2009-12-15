@@ -96,7 +96,7 @@ int Tinit() {
   stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table, stasis_buffer_manager); // xxx circular dependency.
   pageOperationsInit();
   stasis_allocation_policy = stasis_allocation_policy_init();
-  stasis_alloc = stasis_alloc_init(stasis_allocation_policy);
+  stasis_alloc = stasis_alloc_init(stasis_transaction_table, stasis_allocation_policy);
 
   TnaiveHashInit();
   LinearHashNTAInit();
@@ -272,12 +272,8 @@ static inline int TcommitHelper(int xid, int force) {
 
   stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   if(xact->prevLSN != INVALID_LSN) {
-
-    lsn = stasis_log_commit_transaction(stasis_log_file, xact, force);
+    lsn = stasis_log_commit_transaction(stasis_log_file, stasis_transaction_table, xact, force);
     if(globalLockManager.commit) { globalLockManager.commit(xid); }
-
-    stasis_alloc_committed(stasis_alloc, xid);
-
   }
 
   stasis_transaction_table_commit(stasis_transaction_table, xid);
@@ -310,20 +306,18 @@ int Tabort(int xid) {
   stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
 
-  lsn = stasis_log_abort_transaction(stasis_log_file, t);
+  lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
 
   /** @todo is the order of the next two calls important? */
   undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
   if(globalLockManager.abort) { globalLockManager.abort(xid); }
-
-  stasis_alloc_aborted(stasis_alloc, xid);
 
   return 0;
 }
 int Tforget(int xid) {
   stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
-  stasis_log_end_aborted_transaction(stasis_log_file, t);
+  stasis_log_end_aborted_transaction(stasis_log_file, stasis_transaction_table, t);
   stasis_transaction_table_forget(stasis_transaction_table, t->xid);
   return 0;
 }

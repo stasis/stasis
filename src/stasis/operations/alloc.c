@@ -94,9 +94,11 @@ typedef struct {
 } alloc_arg;
 
 struct stasis_alloc_t {
-    pthread_mutex_t mut;
-    pageid_t lastFreepage;
-    stasis_allocation_policy_t * allocPolicy;
+  pthread_mutex_t mut;
+  pageid_t lastFreepage;
+  int callback_id;
+  stasis_transaction_table_t * xact_table;
+  stasis_allocation_policy_t * allocPolicy;
 };
 
 static int op_alloc(const LogEntry* e, Page* p) {
@@ -122,7 +124,6 @@ static int op_alloc(const LogEntry* e, Page* p) {
     // otherwise, no preimage
     assert(e->update.arg_size == sizeof(alloc_arg));
   }
-
   return ret;
 }
 
@@ -203,14 +204,25 @@ stasis_operation_impl stasis_op_impl_realloc() {
   return o;
 }
 
-static void stasis_alloc_register_old_regions();
-stasis_alloc_t* stasis_alloc_init(stasis_allocation_policy_t * allocPolicy) {
+int stasis_alloc_callback(int xid, void * arg) {
+  stasis_alloc_t * alloc = arg;
+  pthread_mutex_lock(&alloc->mut);
+  stasis_allocation_policy_transaction_completed(alloc->allocPolicy, xid);
+  pthread_mutex_unlock(&alloc->mut);
+  return 0;
+}
+
+stasis_alloc_t* stasis_alloc_init(stasis_transaction_table_t * tbl, stasis_allocation_policy_t * allocPolicy) {
   stasis_alloc_t * alloc = malloc(sizeof(*alloc));
   alloc->lastFreepage = PAGEID_T_MAX;
   alloc->allocPolicy = allocPolicy;
   pthread_mutex_init(&alloc->mut, 0);
+  alloc->callback_id = stasis_transaction_table_register_callback(tbl, stasis_alloc_callback, AT_COMMIT);
+  alloc->xact_table = tbl;
   return alloc;
 }
+
+static void stasis_alloc_register_old_regions();
 void stasis_alloc_post_init(stasis_alloc_t * alloc) {
   stasis_alloc_register_old_regions(alloc);
 }
@@ -343,18 +355,10 @@ recordid Talloc(int xid, unsigned long size) {
   releasePage(p);
   pthread_mutex_unlock(&alloc->mut);
 
-  return rid;  // TODO return NULLRID on error
-}
+  stasis_transaction_table_set_argument(alloc->xact_table, xid, alloc->callback_id,
+					AT_COMMIT, alloc);
 
-void stasis_alloc_aborted(stasis_alloc_t* alloc, int xid) {
-  pthread_mutex_lock(&alloc->mut);
-  stasis_allocation_policy_transaction_completed(alloc->allocPolicy, xid);
-  pthread_mutex_unlock(&alloc->mut);
-}
-void stasis_alloc_committed(stasis_alloc_t* alloc, int xid) {
-  pthread_mutex_lock(&alloc->mut);
-  stasis_allocation_policy_transaction_completed(alloc->allocPolicy, xid);
-  pthread_mutex_unlock(&alloc->mut);
+  return rid;  // TODO return NULLRID on error
 }
 
 recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
@@ -397,6 +401,8 @@ recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
   releasePage(p);
   pthread_mutex_unlock(&alloc->mut);
 
+  stasis_transaction_table_set_argument(alloc->xact_table, xid, alloc->callback_id,
+					AT_COMMIT, alloc);
   return rid;
 }
 
@@ -457,6 +463,9 @@ void Tdealloc(int xid, recordid rid) {
   }
 
   free(preimage);
+
+  stasis_transaction_table_set_argument(alloc->xact_table, xid, alloc->callback_id,
+					AT_COMMIT, alloc);
 
 }
 

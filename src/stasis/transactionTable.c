@@ -24,6 +24,8 @@ struct stasis_transaction_table_t {
    */
   pthread_key_t   key;
   stasis_transaction_table_entry_t table[MAX_TRANSACTIONS];
+  stasis_transaction_table_callback_t * commitCallbacks[3];
+  int commitCallbackCount[3];
 };
 
 static inline int test_and_set_entry(stasis_transaction_table_entry_t* e, int old, int new) {
@@ -121,6 +123,53 @@ int stasis_transaction_table_is_active(stasis_transaction_table_t *tbl, int xid)
   return xid >= 0 && tbl->table[xid].xid == xid;
 }
 
+int stasis_transaction_table_register_callback(stasis_transaction_table_t *tbl,
+                                                             stasis_transaction_table_callback_t cb,
+                                                             stasis_transaction_table_callback_type_t type) {
+  assert(type >= 0 && type < 3);
+  stasis_transaction_table_callback_t **list = &tbl->commitCallbacks[type];
+  int *count = &tbl->commitCallbackCount[type];
+
+  *list = realloc(*list, (1+*count) * sizeof(*list[0]));
+  *list[*count] = cb;
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    void *** args;
+    args = &tbl->table[i].commitArgs[type];
+    *args = realloc(*args, (1+*count) * sizeof(*args[0]));
+    *args[*count] = 0;
+  }
+  *count = 1 + *count;
+
+  return 0;
+}
+
+int stasis_transaction_table_invoke_callbacks(stasis_transaction_table_t *tbl,
+                                              stasis_transaction_table_entry_t * entry,
+                                              stasis_transaction_table_callback_type_t type) {
+  assert(type >= 0 && type < 3);
+  stasis_transaction_table_callback_t *list = tbl->commitCallbacks[type];
+  int count = tbl->commitCallbackCount[type];
+  void **args = entry->commitArgs[type];
+
+  int ret = 0;
+  for(int i = 0; i < count; i++) {
+    if(args[i]) {
+      ret = list[i](entry->xid, args[i]) || ret;
+      args[i] = 0;
+    }
+  }
+  return ret;
+}
+int stasis_transaction_table_set_argument(stasis_transaction_table_t *tbl, int xid, int callback_id,
+                                          stasis_transaction_table_callback_type_t type, void *arg) {
+  assert(type >= 0 && type < 3);
+  int count = tbl->commitCallbackCount[type];
+  void ** args = tbl->table[xid].commitArgs[type];
+  assert(count > callback_id);
+  args[callback_id] = arg;
+  return 0;
+}
+
 int* stasis_transaction_table_list_active(stasis_transaction_table_t *tbl, int *count) {
   int * ret = malloc(sizeof(*ret));
   ret[0] = INVALID_XID;
@@ -147,9 +196,17 @@ stasis_transaction_table_t *  stasis_transaction_table_init() {
 
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
     tbl->table[i].xid = INVALID_XTABLE_XID;
+    tbl->table[i].commitArgs[0] = 0;
+    tbl->table[i].commitArgs[1] = 0;
+    tbl->table[i].commitArgs[2] = 0;
 #ifndef HAVE_GCC_ATOMICS
     pthread_mutex_init(&(tbl->table[i].mut),0);
 #endif
+  }
+
+  for(int i = 0; i < 3; i++) {
+    tbl->commitCallbacks[i] = 0;
+    tbl->commitCallbackCount[i] = 0;
   }
 
   DEBUG("initted xact table!\n");
@@ -162,11 +219,19 @@ stasis_transaction_table_t *  stasis_transaction_table_init() {
 void stasis_transaction_table_deinit(stasis_transaction_table_t *tbl) {
 #ifndef HAVE_GCC_ATOMICS
   pthread_mutex_destroy(&tbl->mut);
+#endif
 
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+#ifndef HAVE_GCC_ATOMICS
     pthread_mutex_destroy(&tbl->table[i].mut);
-  }
 #endif
+    for(int j = 0; j < 3; j++) {
+      if(tbl->table[i].commitArgs[j]) { free(tbl->table[i].commitArgs[j]); }
+    }
+  }
+  for(int j = 0; j < 3; j++) {
+    if(tbl->commitCallbacks[j]) { free(tbl->commitCallbacks[j]); }
+  }
 
   pthread_key_delete(tbl->key);
   free(tbl);

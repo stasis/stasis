@@ -281,20 +281,20 @@ lsn_t stasis_log_prepare_transaction(stasis_log_t* log, stasis_transaction_table
 
    @return the lsn of the commit log entry.
 */
-lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l, int force);
+lsn_t stasis_log_commit_transaction(stasis_log_t* log, stasis_transaction_table_t * tbl, stasis_transaction_table_entry_t * l, int force);
 
 /**
    Write a transaction ABORT to the log tail.  Does not force the log.
 
    @return the lsn of the abort log entry.
 */
-lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_entry_t * l);
+lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_t * tbl, stasis_transaction_table_entry_t * l);
 
 /**
    Write a end transaction record.  This entry tells recovery's undo
    phase that it may safely ignore the transaction.
 */
-lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, stasis_transaction_table_entry_t * l);
+lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, stasis_transaction_table_t *tbl, stasis_transaction_table_entry_t * l);
 
 /**
    stasis_log_write_update writes an UPDATELOG log record to the log tail.  It

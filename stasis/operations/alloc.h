@@ -20,10 +20,7 @@ stasis_operation_impl stasis_op_impl_realloc();
 
 typedef struct stasis_alloc_t stasis_alloc_t;
 
-void stasis_alloc_aborted(stasis_alloc_t* alloc, int xid);
-void stasis_alloc_committed(stasis_alloc_t* alloc, int xid);
-
-stasis_alloc_t* stasis_alloc_init(stasis_allocation_policy_t * allocPolicy);
+stasis_alloc_t* stasis_alloc_init(stasis_transaction_table_t * tbl, stasis_allocation_policy_t * allocPolicy);
 void stasis_alloc_post_init(stasis_alloc_t* alloc);
 void stasis_alloc_deinit(stasis_alloc_t* alloc);
 /**
