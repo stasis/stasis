@@ -79,6 +79,17 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
   return 0;
 }
 
+LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz, void **handle) {
+  // XXX need to assign LSN here.
+  return malloc(sz);
+}
+
+int stasis_log_impl_in_memory_entry_done(struct stasis_log_t* log, LogEntry* e, void * handle) {
+  int ret = stasis_log_impl_in_memory_write_entry(log, e);
+  free(e);
+  return ret;
+}
+
 static lsn_t stasis_log_impl_in_memory_first_unstable_lsn(stasis_log_t* log,
                                     stasis_log_force_mode_t mode) {
   stasis_log_impl_in_memory * impl = log->impl;
@@ -195,6 +206,8 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
     stasis_log_impl_in_memory_set_truncation,
     stasis_log_impl_in_memory_sizeof_internal_entry,
     stasis_log_impl_in_memory_write_entry,
+    stasis_log_impl_in_memory_reserve_entry,
+    stasis_log_impl_in_memory_entry_done,
     stasis_log_impl_in_memory_read_entry,
     stasis_log_impl_in_memory_next_entry,
     stasis_log_impl_in_memory_first_unstable_lsn,

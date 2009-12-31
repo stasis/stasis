@@ -367,6 +367,17 @@ static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
   return ret;
 }
 
+LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz, void **handle) {
+  // XXX need to assign LSN here
+  return malloc(sz);
+}
+
+int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e, void * handle) {
+  int ret = writeLogEntry_LogWriter(log, e);
+  free(e);
+  return ret;
+}
+
 static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,
                                               const LogEntry * e) {
   return sizeof(struct __raw_log_entry);
@@ -769,6 +780,8 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     setTruncation_LogWriter,
     sizeofInternalLogEntry_LogWriter, // sizeof_internal_entry
     writeLogEntry_LogWriter,// write_entry
+    reserveEntry_LogWriter,
+    entryDone_LogWriter,
     readLSNEntry_LogWriter, // read_entry
     nextEntry_LogWriter,// next_entry
     flushedLSN_LogWriter, // first_unstable_lsn

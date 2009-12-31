@@ -6,7 +6,7 @@
 #include <stasis/bufferManager.h>
 #include <stasis/bufferManager/legacy/legacyBufferManager.h>
 #include <stasis/truncation.h>
-
+#include <stasis/logger/logger2.h>
 /*static stasis_handle_t * memory_factory(lsn_t off, lsn_t len, void * ignored) {
   stasis_handle_t * h = stasis_handle(open_memory)(off);
   //h = stasis_handle(open_debug)(h);
@@ -31,17 +31,26 @@ static inline long mb_to_page(long mb) {
   return (mb * 1024 * 1024) / PAGE_SIZE;
 }
 
+const char * usage = "./sequentialThroughput [--direct] [--page_count mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
+
 int main(int argc, char ** argv) {
   int direct = 0;
   int legacyBM = 0;
   int legacyFH = 0;
   int stake = 0;
+  int log_mode = 0;
   long page_count = mb_to_page(100);
 
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--direct")) {
       direct = 1;
       bufferManagerO_DIRECT = 1;
+    } else if(!strcmp(argv[i], "--log_safe_writes")) {
+      stasis_log_type = LOG_TO_FILE;
+      log_mode = 1;
+    } else if(!strcmp(argv[i], "--log_memory")) {
+      stasis_log_type = LOG_TO_MEMORY;
+      log_mode = 1;
     } else if(!strcmp(argv[i], "--deprecatedBM")) {
       stasis_buffer_manager_factory = stasis_buffer_manager_deprecated_factory;
       legacyBM = 1;
@@ -71,7 +80,7 @@ int main(int argc, char ** argv) {
       i++;
       stake = mb_to_page(atoll(argv[i]));
     } else {
-      printf("Unknown argument: %s\n", argv[i]);
+      printf("Unknown argument: %s\nUsage: %s\n", argv[i], usage);
       return 1;
     }
   }
@@ -83,22 +92,40 @@ int main(int argc, char ** argv) {
 
   Tinit();
 
-  if(stake) {
-    Page * p = loadPage(-1, stake);
-    writelock(p->rwlatch,0);
-    stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
-    unlock(p->rwlatch);
-    releasePage(p);
-  }
+  if(log_mode) {
+    lsn_t prevLSN = -1;
+    byte * arg = calloc(PAGE_SIZE, 1);
+    LogEntry * e = allocUpdateLogEntry(prevLSN, -1, OPERATION_NOOP,
+                                       0,
+                                       arg, PAGE_SIZE);
+    stasis_log_t * l = stasis_log();
+    for(long i = 0; i < page_count; i++) {
+      void * h;
+      LogEntry * e2 = l->reserve_entry(l, sizeofLogEntry(l, e), &h);
+      e->prevLSN = e->LSN;
+      e->LSN = -1;
+      memcpy(e2, e, sizeofLogEntry(l, e));
+      l->entry_done(l, e2, h);
+    }
+    freeLogEntry(e);
+    free(arg);
+  } else {
+    if(stake) {
+      Page * p = loadPage(-1, stake);
+      writelock(p->rwlatch,0);
+      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+      unlock(p->rwlatch);
+      releasePage(p);
+    }
 
-  for(long i =0; i < page_count; i++) {
-    Page * p = loadPage(-1, i);
-    writelock(p->rwlatch,0);
-    stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
-    unlock(p->rwlatch);
-    releasePage(p);
+    for(long i =0; i < page_count; i++) {
+      Page * p = loadPage(-1, i);
+      writelock(p->rwlatch,0);
+      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+      unlock(p->rwlatch);
+      releasePage(p);
+    }
   }
-
   Tdeinit();
   return 0;
 }
