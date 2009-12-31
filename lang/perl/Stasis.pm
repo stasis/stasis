@@ -175,6 +175,11 @@ static byte * bytes_SV(SV* sv, STRLEN * sz) {
     *sz = sizeof(recordid);
     tmp = (byte*)&valR;
     code = 'R';
+  } else if (sv_isobject(sv) && sv_derived_from(sv, "Stasis::Hash")) {
+    valR = recordid_SV(sv);
+    *sz = sizeof(recordid);
+    tmp = (byte*)&valR;
+    code = 'H';
   } else {
     abort();
   }
@@ -212,6 +217,11 @@ static SV * SV_bytes(byte* bytes, STRLEN sz) {
   case 'R': {
     assert(sz-1 == sizeof(recordid));
     ret = SV_recordid(*(recordid*)bytes);
+  } break;
+  case 'H': {
+    assert(sz-1 == sizeof(recordid));
+    ret = SV_recordid(*(recordid*)bytes);
+    ret = sv_bless(ret, gv_stashpv("Stasis::Hash", GV_ADD));
   } break;
   default: {
     abort();
