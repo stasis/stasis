@@ -123,7 +123,7 @@ struct stasis_log_t {
 
   LogEntry* (*reserve_entry)(struct stasis_log_t* log, size_t sz, void **handle);
 
-  int (*entry_done)(struct stasis_log_t* log, LogEntry* e, void * handle);
+  int (*write_entry_done)(struct stasis_log_t* log, LogEntry* e, void * handle);
 
   /**
      Read a log entry, given its LSN.
@@ -136,6 +136,10 @@ struct stasis_log_t {
   */
   const LogEntry* (*read_entry)(struct stasis_log_t* log, lsn_t lsn);
 
+  /**
+   * Free any resources associated with reading a log entry.  This should be called once for each call to read_entry.
+   */
+  void (*read_entry_done)(struct stasis_log_t *log, const LogEntry *e);
   /**
      Given a log entry, return the LSN of the next entry.
 

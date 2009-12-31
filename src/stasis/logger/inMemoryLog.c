@@ -170,13 +170,10 @@ static const LogEntry * stasis_log_impl_in_memory_read_entry(stasis_log_t* log,
   assert(ptr);
   assert(ptr->LSN == lsn);
 
-  LogEntry * ret = malloc(sizeofLogEntry(log, ptr));
-
-  memcpy(ret, ptr, sizeofLogEntry(log, ptr));
-
   DEBUG("lsn: %ld prevlsn: %ld\n", ptr->LSN, ptr->prevLSN);
-  return ret;
+  return ptr;
 }
+static void stasis_log_impl_in_memory_read_entry_done(stasis_log_t* log, const LogEntry *e) { /* no-op */ }
 static lsn_t stasis_log_impl_in_memory_sizeof_internal_entry(stasis_log_t* log,
                                                 const LogEntry * e) {
   abort();
@@ -209,6 +206,7 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
     stasis_log_impl_in_memory_reserve_entry,
     stasis_log_impl_in_memory_entry_done,
     stasis_log_impl_in_memory_read_entry,
+    stasis_log_impl_in_memory_read_entry_done,
     stasis_log_impl_in_memory_next_entry,
     stasis_log_impl_in_memory_first_unstable_lsn,
     stasis_log_impl_in_memory_next_available_lsn,

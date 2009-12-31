@@ -106,7 +106,7 @@ int main(int argc, char ** argv) {
       e->prevLSN = e->LSN;
       e->LSN = -1;
       memcpy(e2, e, sizeofLogEntry(l, e));
-      l->entry_done(l, e2, h);
+      l->write_entry_done(l, e2, h);
     }
     freeLogEntry(l, e);
     free(arg);

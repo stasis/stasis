@@ -77,11 +77,11 @@ LogHandle* getLSNHandle(stasis_log_t * log, lsn_t lsn) {
 }
 
 void freeLogHandle(LogHandle* lh) {
-  if(lh->last) { freeLogEntry(lh->log, lh->last); }
+  if(lh->last) { lh->log->read_entry_done(lh->log, lh->last); }
   free(lh);
 }
 const LogEntry * nextInLog(LogHandle * h) {
-  if(h->last) { freeLogEntry(h->log, h->last); }
+  if(h->last) { h->log->read_entry_done(h->log, h->last); }
   const LogEntry * ret = h->log->read_entry(h->log,h->next_offset);
   if(ret != NULL) {
     set_offsets(h, ret);
@@ -92,7 +92,7 @@ const LogEntry * nextInLog(LogHandle * h) {
 
 const LogEntry * previousInTransaction(LogHandle * h) {
   const LogEntry * ret = NULL;
-  if(h->last) { freeLogEntry(h->log, h->last); }
+  if(h->last) { h->log->read_entry_done(h->log, h->last); }
   if(h->prev_offset > 0) {
     ret = h->log->read_entry(h->log, h->prev_offset);
     set_offsets(h, ret);

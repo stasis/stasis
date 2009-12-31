@@ -549,6 +549,10 @@ static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t L
   return ret;
 
 }
+
+void readEntryDone_LogWriter(stasis_log_t *log, const LogEntry *e) {
+  free((void*)e);
+}
 /**
    Truncates the log file.  In the single-threaded case, this works as
    follows:
@@ -779,6 +783,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     reserveEntry_LogWriter,
     entryDone_LogWriter,
     readLSNEntry_LogWriter, // read_entry
+    readEntryDone_LogWriter, // read_entry
     nextEntry_LogWriter,// next_entry
     flushedLSN_LogWriter, // first_unstable_lsn
     nextAvailableLSN_LogWriter, // newt_available_lsn

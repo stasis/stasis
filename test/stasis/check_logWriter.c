@@ -101,7 +101,7 @@ static stasis_log_t * setup_log() {
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(0, e)), "Log entries did not agree!!");
 
     freeLogEntry(stasis_log_file, e);
-    freeLogEntry(stasis_log_file, f);
+    stasis_log_file->read_entry_done(stasis_log_file, f);
 
     e = allocUpdateLogEntry(stasis_log_file, prevLSN, xid, 1, rid.page, args_size);
     memcpy(stasis_log_entry_update_args_ptr(e), args, args_size);
@@ -252,19 +252,19 @@ static void loggerTruncate(int logType) {
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
 
-  freeLogEntry(stasis_log_file, tmp);
+  stasis_log_file->read_entry_done(stasis_log_file, tmp);
   tmp = stasis_log_file->read_entry(stasis_log_file, le2->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le2->LSN, NULL);
 
-  freeLogEntry(stasis_log_file, tmp);
+  stasis_log_file->read_entry_done(stasis_log_file, tmp);
   tmp = stasis_log_file->read_entry(stasis_log_file, le3->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
 
-  freeLogEntry(stasis_log_file, tmp);
+  stasis_log_file->read_entry_done(stasis_log_file, tmp);
   freeLogHandle(lh);
   lh = getLogHandle(stasis_log_file);
 
@@ -374,7 +374,7 @@ static void* worker_thread(void * arg) {
         pthread_mutex_unlock(&random_mutex);
       } else {
         assert(e->xid == entry+key);
-        freeLogEntry(stasis_log_file, e);
+        stasis_log_file->read_entry_done(stasis_log_file, e);
       }
     } else {
       pthread_mutex_unlock(&random_mutex);
