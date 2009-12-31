@@ -57,7 +57,7 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
   assert(e->update.arg_size == sizeof(array_list_parameter_t));
 
   const array_list_parameter_t * alp
-    = (const array_list_parameter_t*)getUpdateArgs(e);
+    = stasis_log_entry_update_args_cptr(e);
 
   stasis_fixed_initialize_page(p, sizeof(pageid_t),
 			       stasis_fixed_records_per_page(sizeof(pageid_t)));

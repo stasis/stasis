@@ -104,7 +104,7 @@ struct stasis_alloc_t {
 static int op_alloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
 
-  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
   recordid rid = {
     p->id,
     arg->slot,
@@ -129,7 +129,7 @@ static int op_alloc(const LogEntry* e, Page* p) {
 
 static int op_dealloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
-  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
   recordid rid = {
     p->id,
     arg->slot,
@@ -147,7 +147,7 @@ static int op_dealloc(const LogEntry* e, Page* p) {
 
 static int op_realloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
-  const alloc_arg* arg = (const alloc_arg*)getUpdateArgs(e);
+  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
 
   recordid rid = {
     p->id,

@@ -133,7 +133,7 @@ typedef struct {
 
 //compensated_function static int operateInsert(int xid, Page *p,  lsn_t lsn, recordid rid, const void *dat) {
 compensated_function static int op_linear_hash_insert(const LogEntry* e, Page* p) {
-  const linearHash_remove_arg * args = (const linearHash_remove_arg*)getUpdateArgs(e);
+  const linearHash_remove_arg * args = stasis_log_entry_update_args_cptr(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;
   int valueSize = args->valueSize;
@@ -149,7 +149,7 @@ compensated_function static int op_linear_hash_insert(const LogEntry* e, Page* p
   return 0;
 }
 compensated_function static int op_linear_hash_remove(const LogEntry* e, Page* p) {
-  const linearHash_insert_arg * args = (const linearHash_insert_arg*) getUpdateArgs(e);
+  const linearHash_insert_arg * args = stasis_log_entry_update_args_cptr(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;
 

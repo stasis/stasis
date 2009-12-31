@@ -104,7 +104,7 @@ static stasis_log_t * setup_log() {
     freeLogEntry(f);
 
     e = allocUpdateLogEntry(prevLSN, xid, 1, rid.page, args_size);
-    memcpy(getUpdateArgs(e), args, args_size);
+    memcpy(stasis_log_entry_update_args_ptr(e), args, args_size);
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->prevLSN;
 

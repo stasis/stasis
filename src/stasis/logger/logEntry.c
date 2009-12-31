@@ -63,7 +63,8 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
   *(lsn_t*)(((struct __raw_log_entry*)ret)+1)=recLSN;
   return ret;
 }
-void * getUpdateArgs(LogEntry * ret) {
+
+const void * stasis_log_entry_update_args_cptr(const LogEntry * ret) {
   assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
   if(ret->update.arg_size == 0) {
@@ -75,6 +76,9 @@ void * getUpdateArgs(LogEntry * ret) {
   }
 }
 
+void * stasis_log_entry_update_args_ptr(LogEntry * ret) {
+  return (void*)stasis_log_entry_update_args_cptr(ret);
+}
 
 lsn_t getPrepareRecLSN(const LogEntry *e) {
   lsn_t ret = *(lsn_t*)(((struct __raw_log_entry*)e)+1);

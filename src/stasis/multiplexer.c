@@ -128,7 +128,7 @@ void multiplexHashLogByKey(byte * key,
 			   size_t * multiplexKeySize) {
   // We don't care what the key is.  It's probably an LSN.
   const LogEntry * log = (const LogEntry*) value;
-  const byte * updateArgs = getUpdateArgs(log);  // assume the log is a logical update entry.
+  const byte * updateArgs = stasis_log_entry_update_args_cptr(log);  // assume the log is a logical update entry.
   switch(log->update.funcID) {
 
     // If you really want to know why insert takes

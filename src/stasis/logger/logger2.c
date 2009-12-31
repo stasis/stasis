@@ -102,7 +102,7 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
 
   LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
                                      page, arg_size);
-  memcpy(getUpdateArgs(e), arg, arg_size);
+  memcpy(stasis_log_entry_update_args_ptr(e), arg, arg_size);
   log->write_entry(log, e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
@@ -116,7 +116,7 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
 LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size) {
   LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op, INVALID_PAGE, arg_size);
-  memcpy(getUpdateArgs(e), arg, arg_size);
+  memcpy(stasis_log_entry_update_args_ptr(e), arg, arg_size);
   return e;
 }
 lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e) {

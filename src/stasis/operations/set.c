@@ -53,7 +53,7 @@ terms specified in this license.
 #include <assert.h>
 static int op_set(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
-  const byte * b = getUpdateArgs(e);
+  const byte * b = stasis_log_entry_update_args_cptr(e);
   recordid rid;
 
   rid.page = p->id;
@@ -70,7 +70,7 @@ static int op_set(const LogEntry *e, Page *p) {
 }
 static int op_set_inverse(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
-  const byte * b = getUpdateArgs(e);
+  const byte * b = stasis_log_entry_update_args_cptr(e);
   recordid rid;
 
   rid.page = p->id;
@@ -145,7 +145,7 @@ static int op_set_range(const LogEntry* e, Page* p) {
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
-  const set_range_t * range = (const set_range_t*)getUpdateArgs(e);
+  const set_range_t * range = stasis_log_entry_update_args_cptr(e);
   recordid rid;
   rid.page = p->id;
   rid.slot = range->slot;
@@ -167,7 +167,7 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
-  const set_range_t * range = (const set_range_t*)getUpdateArgs(e);
+  const set_range_t * range = stasis_log_entry_update_args_cptr(e);
   recordid rid;
   rid.page = p->id;
   rid.slot = range->slot;

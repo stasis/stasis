@@ -79,7 +79,7 @@ static void * go( void * arg) {
 
     assert(keySize == sizeof(lsn_t));
     LogEntry * e = (LogEntry*)value;
-    linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
+    linearHash_remove_arg * arg = (linearHash_remove_arg*)stasis_log_entry_update_args_ptr(e);
 
     assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
@@ -113,7 +113,7 @@ static void * trygo( void * arg) {
 
     assert(keySize == sizeof(lsn_t));
     LogEntry * e = (LogEntry*)value;
-    linearHash_remove_arg * arg = (linearHash_remove_arg*)getUpdateArgs(e);
+    linearHash_remove_arg * arg = (linearHash_remove_arg*)stasis_log_entry_update_args_ptr(e);
 
     assert(arg->keySize == sizeof(lsn_t));
     assert(arg->valueSize == sizeof(char));
@@ -182,7 +182,7 @@ START_TEST(multiplexTest) {
     (*(lsn_t*)(arg+1)) = i;
     LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, INVALID_PAGE,
                                        sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
-    memcpy(getUpdateArgs(e), arg, sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
+    memcpy(stasis_log_entry_update_args_ptr(e), arg, sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
 
     ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(0, e));
 

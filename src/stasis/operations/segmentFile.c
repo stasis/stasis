@@ -112,7 +112,7 @@ ssize_t Tpwrite(int xid, const byte * buf, size_t count, off_t offset) {
 static int op_segment_file_pwrite(const LogEntry* e, Page* p) {
   assert(p == 0);
   size_t count = (e->update.arg_size - sizeof(segment_file_arg_t)) / 2;
-  segment_file_arg_t * arg = (segment_file_arg_t*)getUpdateArgs(e);
+  const segment_file_arg_t * arg = stasis_log_entry_update_args_cptr(e);
   off_t offset = arg->offset;
   read_write_helper(0, e->xid, e->LSN, (byte*)(arg+1), count, offset);
   return 0;
@@ -121,7 +121,7 @@ static int op_segment_file_pwrite(const LogEntry* e, Page* p) {
 static int op_segment_file_pwrite_inverse(const LogEntry* e, Page* p) {
   assert(p == 0);
   size_t count = (e->update.arg_size - sizeof(segment_file_arg_t)) / 2;
-  segment_file_arg_t * arg = (segment_file_arg_t*)getUpdateArgs(e);
+  const segment_file_arg_t * arg = stasis_log_entry_update_args_cptr(e);
   off_t offset = arg->offset;
   read_write_helper(0, e->xid, e->LSN, ((byte*)(arg+1))+count, count, offset);
   return 0;

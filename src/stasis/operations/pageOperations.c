@@ -11,24 +11,24 @@ static int op_page_set_range(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(int));
   assert(!((e->update.arg_size - sizeof(int)) % 2));
 
-  int off = *(int*)getUpdateArgs(e);
+  int off = *(const int*)stasis_log_entry_update_args_cptr(e);
   int len = (e->update.arg_size - sizeof(int)) >> 1;
 
   assert(off+len <=PAGE_SIZE);
 
-  memcpy(p->memAddr + off, ((const byte*)getUpdateArgs(e))+sizeof(int), len);
+  memcpy(p->memAddr + off, ((const byte*)stasis_log_entry_update_args_cptr(e))+sizeof(int), len);
   return 0;
 }
 static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(int));
   assert(!((e->update.arg_size - sizeof(int)) % 2));
 
-  int off = *(int*)getUpdateArgs(e);
+  int off = *(const int*)stasis_log_entry_update_args_cptr(e);
   int len = (e->update.arg_size - sizeof(int)) >> 1;
 
   assert(off+len <=PAGE_SIZE);
 
-  memcpy(p->memAddr + off, ((const byte*)getUpdateArgs(e))+sizeof(int)+len,
+  memcpy(p->memAddr + off, ((const byte*)stasis_log_entry_update_args_cptr(e))+sizeof(int)+len,
 	 len);
   return 0;
 }
@@ -198,7 +198,7 @@ void TinitializeFixedPage(int xid, pageid_t page, int slotLength) {
 
 static int op_initialize_page(const LogEntry* e, Page* p) {
   assert(e->update.arg_size == sizeof(page_init_arg));
-  const page_init_arg* arg = (const page_init_arg*)getUpdateArgs(e);
+  const page_init_arg* arg = stasis_log_entry_update_args_cptr(e);
 
   switch(arg->slot) {
   case SLOTTED_PAGE:

@@ -57,7 +57,7 @@ static int insert_node(int xid, recordid rid, tree_node* node) {
 static int op_tree_insert(const LogEntry* e, Page* p) {
   // TODO: Latching
   assert(p == NULL);
-  const tree_op_args* a = getUpdateArgs(e);
+  const tree_op_args* a = stasis_log_entry_update_args_cptr(e);
 
   recordid root_rid = { a->page, a->slot, sizeof(tree_root) };
   tree_root root;
@@ -154,7 +154,7 @@ static int remove_node(int xid, recordid rid, int val) {
 static int op_tree_remove(const LogEntry* e, Page* p) {
   // TODO: Latching
   assert(p == NULL);
-  const tree_op_args* a = getUpdateArgs(e);
+  const tree_op_args* a = stasis_log_entry_update_args_cptr(e);
   recordid root_rid = { a->page, a->slot, sizeof(tree_root) };
   return remove_node(e->xid, root_rid, a->val);
 }

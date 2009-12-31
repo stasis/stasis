@@ -52,7 +52,7 @@ static int op_increment(const LogEntry* e, Page* p) {
   int i;
 
   assert(e->update.arg_size == sizeof(slotid_t));
-  recordid r = {p->id, *(slotid_t*)getUpdateArgs(e), sizeof(int)};
+  recordid r = {p->id, *(const slotid_t*)stasis_log_entry_update_args_cptr(e), sizeof(int)};
 
   stasis_record_read(e->xid, p, r, (byte*)&i);
   i++;

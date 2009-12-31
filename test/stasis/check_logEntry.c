@@ -77,7 +77,7 @@ START_TEST(updateLogEntryAlloc)
 
   log = allocUpdateLogEntry(200, 1, OPERATION_SET,
                             rid.page, 3*sizeof(char));
-  memcpy(getUpdateArgs(log), args, 3*sizeof(char));
+  memcpy(stasis_log_entry_update_args_ptr(log), args, 3*sizeof(char));
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
@@ -87,10 +87,10 @@ START_TEST(updateLogEntryAlloc)
   assert(log->update.page   == 3);
   assert(log->update.arg_size   == 3*sizeof(char));
 
-  assert(getUpdateArgs(log) != NULL);
-  assert(args[0] == ((char*)getUpdateArgs(log))[0]);
-  assert(args[1] == ((char*)getUpdateArgs(log))[1]);
-  assert(args[2] == ((char*)getUpdateArgs(log))[2]);
+  assert(stasis_log_entry_update_args_ptr(log) != NULL);
+  assert(args[0] == ((char*)stasis_log_entry_update_args_ptr(log))[0]);
+  assert(args[1] == ((char*)stasis_log_entry_update_args_ptr(log))[1]);
+  assert(args[2] == ((char*)stasis_log_entry_update_args_ptr(log))[2]);
 
   //  printf("sizes %d %d\n",sizeofLogEntry(log),(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + (sizeof(char))));
 
@@ -103,7 +103,6 @@ END_TEST
 
 START_TEST(updateLogEntryAllocNoExtras)
 {
-  char args[] = {'a', 'b', 'c'};
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
   LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_SET,
@@ -117,7 +116,7 @@ START_TEST(updateLogEntryAllocNoExtras)
   assert(log->update.page   == 3);
   assert(log->update.arg_size    == 0);
 
-  assert(getUpdateArgs(log) == NULL);
+  assert(stasis_log_entry_update_args_ptr(log) == NULL);
 
   assert(sizeofLogEntry(0, log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))));
   free(log);

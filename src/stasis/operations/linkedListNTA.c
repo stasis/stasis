@@ -63,7 +63,7 @@ typedef struct {
 
 compensated_function static int op_linked_list_nta_insert(const LogEntry* e, Page* p) {
   assert(!p);
-  stasis_linked_list_remove_log * log = (stasis_linked_list_remove_log*)getUpdateArgs(e);;
+  const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);;
 
   byte * key;
   byte * value;
@@ -86,7 +86,7 @@ compensated_function static int op_linked_list_nta_insert(const LogEntry* e, Pag
 }
 compensated_function static int op_linked_list_nta_remove(const LogEntry *e, Page* p) {
   assert(!p);
-  stasis_linked_list_remove_log * log = (stasis_linked_list_remove_log*)getUpdateArgs(e);
+  const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);
 
   byte * key;
   int keySize;

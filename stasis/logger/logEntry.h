@@ -127,10 +127,10 @@ void freeLogEntry(const LogEntry * e);
 */
 lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e);
 /**
-   @todo Remove explicit casts from getUpdateArgs calls (so we don't accidentally strip the const).
-   @return the operation's arguments.
+ *    @return the operation's arguments, or NULL if there are no arguments.
 */
-void * getUpdateArgs(LogEntry * e);
+void * stasis_log_entry_update_args_ptr(LogEntry * e);
+const void * stasis_log_entry_update_args_cptr(const LogEntry * e);
 
 /**
 	@return a copy of the log entry that this CLR compensated.

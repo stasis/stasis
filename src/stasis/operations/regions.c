@@ -30,7 +30,7 @@ static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
   p->pageType = BOUNDARY_TAG_PAGE;
   stasis_record_alloc_done(e->xid, p, rid);
   byte * buf = stasis_record_write_begin(e->xid, p, rid);
-  memcpy(buf, getUpdateArgs(e), stasis_record_length_read(e->xid, p, rid));
+  memcpy(buf, stasis_log_entry_update_args_cptr(e), stasis_record_length_read(e->xid, p, rid));
   stasis_record_write_done(e->xid, p, rid, buf);
   return 0;
 }
@@ -39,14 +39,14 @@ static int op_alloc_region(const LogEntry *e, Page* p) {
   pthread_mutex_lock(&region_mutex);
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
-  regionAllocArg *dat = (regionAllocArg*)getUpdateArgs(e);
+  const regionAllocArg *dat = stasis_log_entry_update_args_cptr(e);
   TregionAllocHelper(e->xid, dat->startPage, dat->pageCount, dat->allocationManager);
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
   return 0;
 }
 
-static int operate_dealloc_region_unlocked(int xid, regionAllocArg *dat) {
+static int operate_dealloc_region_unlocked(int xid, const regionAllocArg *dat) {
 
   pageid_t firstPage = dat->startPage + 1;
 
@@ -70,7 +70,7 @@ static int op_dealloc_region(const LogEntry* e, Page* p) {
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
 
-  ret = operate_dealloc_region_unlocked(e->xid, (regionAllocArg*)getUpdateArgs(e));
+  ret = operate_dealloc_region_unlocked(e->xid, stasis_log_entry_update_args_cptr(e));
 
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
@@ -157,7 +157,7 @@ void regionsInit() {
     // hack; allocate a fake log entry; pass it into ourselves.
     LogEntry * e = allocUpdateLogEntry(0,0,OPERATION_ALLOC_BOUNDARY_TAG,
                                        p->id, sizeof(boundary_tag));
-    memcpy(getUpdateArgs(e), &t, sizeof(boundary_tag));
+    memcpy(stasis_log_entry_update_args_ptr(e), &t, sizeof(boundary_tag));
     writelock(p->rwlatch,0);
     op_alloc_boundary_tag(e,p);
     unlock(p->rwlatch);
