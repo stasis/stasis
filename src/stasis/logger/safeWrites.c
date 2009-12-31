@@ -244,13 +244,13 @@ static inline void log_crc_reset(stasis_log_safe_writes_state* sw) {
 static inline void log_crc_update(stasis_log_t* log, const LogEntry * e, unsigned int * crc) {
   *crc = stasis_crc32(e, sizeofLogEntry(log, e), *crc);
 }
-static LogEntry* log_crc_dummy_entry() {
-  LogEntry* ret = allocCommonLogEntry(0, -1, INTERNALLOG);
+static LogEntry* log_crc_dummy_entry(stasis_log_t *log) {
+  LogEntry* ret = allocCommonLogEntry(log, 0, -1, INTERNALLOG);
   assert(ret->prevLSN == 0);
   return ret;
 }
-static LogEntry* log_crc_entry(unsigned int crc) {
-  LogEntry* ret = allocCommonLogEntry(crc, -1, INTERNALLOG);
+static LogEntry* log_crc_entry(stasis_log_t *log, unsigned int crc) {
+  LogEntry* ret = allocCommonLogEntry(log, crc, -1, INTERNALLOG);
   return ret;
 }
 
@@ -279,13 +279,13 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
                (unsigned int) le->prevLSN, crc, le->LSN);
         // The log wasn't successfully forced to this point; discard
         // everything after the last CRC.
-        freeLogEntry(le);
+        freeLogEntry(log, le);
         break;
       }
     } else {
       log_crc_update(log, le, &crc);
     }
-    freeLogEntry(le);
+    freeLogEntry(log, le);
   }
   return ret;
 }
@@ -411,7 +411,7 @@ static void syncLog_LogWriter(stasis_log_t * log,
   newFlushedLSN = sw->nextAvailableLSN;
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
 
-  LogEntry* crc_entry = log_crc_entry(sw->crc);
+  LogEntry* crc_entry = log_crc_entry(log, sw->crc);
   writeLogEntryUnlocked(log, crc_entry);
   free(crc_entry);
   // Reset log_crc to zero each time a crc entry is written.
@@ -631,28 +631,24 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     }
     nextLSN = nextEntry_LogWriter(log, le);
 
+    LogEntry *firstCRC = 0;
     // zero out crc of first entry during copy
     if(firstInternalEntry && le->type == INTERNALLOG) {
-      LogEntry * firstCRC = malloc(size);
+      firstCRC = malloc(size);
       memcpy(firstCRC, le, size);
-      freeLogEntry(le);
       firstCRC->prevLSN = 0;
       le = firstCRC;
+      firstInternalEntry = 0;
     }
 
     lengthOfCopiedLog += (size + sizeof(lsn_t));
 
     myFwrite(&size, sizeof(lsn_t), tmpLog);
     myFwrite(le, size, tmpLog);
-    if(firstInternalEntry && le->type == INTERNALLOG) {
-      free((void*)le); // remove const qualifier + free
-      firstInternalEntry = 0;
-    } else {
-      freeLogEntry(le);
-    }
+    if(firstCRC) { free(firstCRC); }
   }
   freeLogHandle(lh);
-  LogEntry * crc_entry = log_crc_dummy_entry();
+  LogEntry * crc_entry = log_crc_dummy_entry(log);
 
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   crc_entry->LSN = sw->nextAvailableLSN;

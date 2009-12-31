@@ -46,7 +46,7 @@ terms specified in this license.
 
 #include <assert.h>
 
-LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
+LogEntry * allocCommonLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry));
   ret->LSN     = -1;
   ret->prevLSN = prevLSN;
@@ -54,7 +54,7 @@ LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type) {
   ret->type    = type;
   return ret;
 }
-LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
+LogEntry * allocPrepareLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid, lsn_t recLSN) {
   LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeof(lsn_t));
   ret->LSN = -1;
   ret->prevLSN = prevLSN;
@@ -86,7 +86,7 @@ lsn_t getPrepareRecLSN(const LogEntry *e) {
   return ret;
 }
 
-LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
+LogEntry * allocUpdateLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid,
 			       unsigned int op, pageid_t page,
 			       unsigned int arg_size) {
   /** Use calloc since the struct might not be packed in memory;
@@ -107,7 +107,7 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   return ret;
 }
 
-LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
+LogEntry * allocCLRLogEntry(stasis_log_t* log, const LogEntry * old_e) {
   CLRLogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
 
   ret->LSN = -1;
@@ -119,18 +119,18 @@ LogEntry * allocCLRLogEntry(const LogEntry * old_e) {
 
   return (LogEntry*)ret;
 }
-void freeLogEntry(const LogEntry* e) {
+void freeLogEntry(stasis_log_t* log, const LogEntry* e) {
   free((void*)e);
 }
 
 
-lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e) {
+lsn_t sizeofLogEntry(stasis_log_t * log, const LogEntry * e) {
   switch (e->type) {
   case CLRLOG:
     {
       const LogEntry * contents = getCLRCompensated((const CLRLogEntry*) e);
       assert(contents->type != CLRLOG);
-      return sizeof(struct __raw_log_entry) + sizeofLogEntry(lh, contents);
+      return sizeof(struct __raw_log_entry) + sizeofLogEntry(log, contents);
     }
   case UPDATELOG:
     {
@@ -138,8 +138,8 @@ lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e) {
         sizeof(UpdateLogEntry) + e->update.arg_size;
     }
   case INTERNALLOG:
-    assert(lh);
-    return lh->sizeof_internal_entry(lh,e);
+    assert(log);
+    return log->sizeof_internal_entry(log,e);
   case XPREPARE:
     return sizeof(struct __raw_log_entry)+sizeof(lsn_t);
   default:

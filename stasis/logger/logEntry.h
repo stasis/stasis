@@ -94,9 +94,9 @@ struct LogEntry {
 
    @return a LogEntry that should be freed with free().
  */
-LogEntry * allocCommonLogEntry(lsn_t prevLSN, int xid, unsigned int type);
+LogEntry * allocCommonLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid, unsigned int type);
 
-LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
+LogEntry * allocPrepareLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid, lsn_t recLSN);
 /**
    Allocate a log entry associated with an operation implemention.  This
    is usually called inside of Tupdate().
@@ -104,7 +104,7 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
    @return a LogEntry that should be freed with free().
 
 */
-LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
+LogEntry * allocUpdateLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid,
 			       unsigned int op, pageid_t page, unsigned int arg_size);
 
 /**
@@ -112,20 +112,18 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
    entries are undone.  This moves undo operations into the redo
    phase, by recording the inverse of the original operation, and sets
    prevLSN to the prevLSN of old_e.
-
-   @return a LogEntry that should be freed with free().
 */
-LogEntry * allocCLRLogEntry(const LogEntry * e);
+LogEntry * allocCLRLogEntry(stasis_log_t *log, const LogEntry * e);
 /**
    @param e a log entry returned from one of the alloc???LogEntry functions.
  */
-void freeLogEntry(const LogEntry * e);
+void freeLogEntry(stasis_log_t *log, const LogEntry * e);
 /**
    @param lh The log handle the entry will be stored in.  (Needed because some log entries are of type INTERNALLOG)  May be NULL if e is not of type INTERNALLOG.
    @param e A log entry of any type.
    @return the length, in bytes, of e.
 */
-lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e);
+lsn_t sizeofLogEntry(stasis_log_t * log, const LogEntry * e);
 /**
  *    @return the operation's arguments, or NULL if there are no arguments.
 */

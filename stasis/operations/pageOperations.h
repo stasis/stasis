@@ -79,6 +79,6 @@ stasis_operation_impl stasis_op_impl_page_initialize();
 
 stasis_operation_impl stasis_op_impl_fixed_page_alloc();
 
-compensated_function void pageOperationsInit();
+compensated_function void pageOperationsInit(stasis_log_t *log);
 
 #endif

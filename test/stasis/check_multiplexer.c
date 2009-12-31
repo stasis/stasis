@@ -180,14 +180,14 @@ START_TEST(multiplexTest) {
   for(i = 0; i < NUM_INSERTS; i++) {
 
     (*(lsn_t*)(arg+1)) = i;
-    LogEntry * e = allocUpdateLogEntry(-1, -1, OPERATION_LINEAR_HASH_INSERT, INVALID_PAGE,
+    LogEntry * e = allocUpdateLogEntry(stasis_log(), -1, -1, OPERATION_LINEAR_HASH_INSERT, INVALID_PAGE,
                                        sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
     memcpy(stasis_log_entry_update_args_ptr(e), arg, sizeof(linearHash_remove_arg) + sizeof(lsn_t) + sizeof(char));
 
     ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(0, e));
 
 
-    free(e);
+    freeLogEntry(stasis_log(), e);
 
   }
 

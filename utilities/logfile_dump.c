@@ -82,7 +82,6 @@ int main() {
 
       free(s);
     }
-    freeLogEntry(le);
   }
   freeLogHandle(lh);
 

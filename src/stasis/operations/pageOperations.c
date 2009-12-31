@@ -76,9 +76,9 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
     This calls loadPage and releasePage directly, and bypasses the
     logger.
 */
-compensated_function void pageOperationsInit() {
+compensated_function void pageOperationsInit(stasis_log_t *log) {
 
-  regionsInit();
+  regionsInit(log);
 
   boundary_tag t;
   recordid rid = {0, 0, sizeof(boundary_tag)};

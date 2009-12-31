@@ -46,6 +46,8 @@ struct LogHandle {
   lsn_t         next_offset;
   /** The LSN of the log entry that we would return if previous is called. */
   lsn_t         prev_offset;
+  /** The last LogEntry this iterator returned */
+  const LogEntry * last;
   /** The log this iterator traverses. */
   stasis_log_t* log;
 };
@@ -69,27 +71,33 @@ LogHandle* getLSNHandle(stasis_log_t * log, lsn_t lsn) {
   LogHandle* ret = malloc(sizeof(*ret));
   ret->next_offset = lsn;
   ret->prev_offset = lsn;
+  ret->last = 0;
   ret->log = log;
   return ret;
 }
 
 void freeLogHandle(LogHandle* lh) {
+  if(lh->last) { freeLogEntry(lh->log, lh->last); }
   free(lh);
 }
 const LogEntry * nextInLog(LogHandle * h) {
+  if(h->last) { freeLogEntry(h->log, h->last); }
   const LogEntry * ret = h->log->read_entry(h->log,h->next_offset);
   if(ret != NULL) {
     set_offsets(h, ret);
   }
+  h->last = ret;
   return ret;
 }
 
 const LogEntry * previousInTransaction(LogHandle * h) {
   const LogEntry * ret = NULL;
+  if(h->last) { freeLogEntry(h->log, h->last); }
   if(h->prev_offset > 0) {
     ret = h->log->read_entry(h->log, h->prev_offset);
     set_offsets(h, ret);
   }
+  h->last = ret;
   return ret;
 }
 

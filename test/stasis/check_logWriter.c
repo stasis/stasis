@@ -73,7 +73,7 @@ static stasis_log_t * setup_log() {
   int  first = 1;
   stasis_log_t * stasis_log_file = stasis_log();
   for(i = 0 ; i < 1000; i++) {
-    LogEntry * e = allocCommonLogEntry(prevLSN, xid, XBEGIN);
+    LogEntry * e = allocCommonLogEntry(stasis_log_file, prevLSN, xid, XBEGIN);
     const LogEntry * f;
     recordid rid;
     byte * args = (byte*)"Test 123.";
@@ -100,23 +100,23 @@ static stasis_log_t * setup_log() {
     fail_unless(sizeofLogEntry(0, e) == sizeofLogEntry(0, f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(0, e)), "Log entries did not agree!!");
 
-    freeLogEntry(e);
-    freeLogEntry(f);
+    freeLogEntry(stasis_log_file, e);
+    freeLogEntry(stasis_log_file, f);
 
-    e = allocUpdateLogEntry(prevLSN, xid, 1, rid.page, args_size);
+    e = allocUpdateLogEntry(stasis_log_file, prevLSN, xid, 1, rid.page, args_size);
     memcpy(stasis_log_entry_update_args_ptr(e), args, args_size);
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->prevLSN;
 
     //    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
-    LogEntry * g = allocCLRLogEntry(e); // XXX will probably break
+    LogEntry * g = allocCLRLogEntry(stasis_log_file, e); // XXX will probably break
     g->prevLSN = firstLSN;
     stasis_log_file->write_entry(stasis_log_file,g);
     assert (g->type == CLRLOG);
     prevLSN = g->LSN;
 
-    freeLogEntry (e);
-    freeLogEntry (g);
+    freeLogEntry (stasis_log_file, e);
+    freeLogEntry (stasis_log_file, g);
   }
   return stasis_log_file;
 }
@@ -148,7 +148,6 @@ static void loggerTest(int logType) {
   h = getLogHandle(stasis_log_file);
 
   while((e = nextInLog(h))) {
-    freeLogEntry(e);
     i++;
     assert(i < 4000);
   }
@@ -181,15 +180,17 @@ static void logHandleColdReverseIterator(int logType) {
 
 
   while(((e = nextInLog(lh)) && (i < 100)) ) {
-    freeLogEntry(e);
     i++;
   }
 
+  lsn_t lsn = e->LSN;
+
+  freeLogHandle(lh);
+
   i = 0;
-  lh = getLSNHandle(stasis_log_file, e->LSN);
+  lh = getLSNHandle(stasis_log_file, lsn);
   while((e = previousInTransaction(lh))) {
     i++;
-    freeLogEntry(e);
   }
   freeLogHandle(lh);
   assert(i <= 4); /* We should almost immediately hit a clr that goes to the beginning of the log... */
@@ -224,12 +225,25 @@ static void loggerTruncate(int logType) {
     le = nextInLog(lh);
   }
 
+  LogEntry * copy = malloc(sizeofLogEntry(stasis_log_file, le));
+  memcpy(copy, le, sizeofLogEntry(stasis_log_file, le));
+  le = copy;
+
   le2 = nextInLog(lh);
+
+  copy = malloc(sizeofLogEntry(stasis_log_file, le2));
+  memcpy(copy, le2, sizeofLogEntry(stasis_log_file, le2));
+  le2 = copy;
+
   i = 0;
   while(i < 23) {
     i++;
     le3 = nextInLog(lh);
   }
+
+  copy = malloc(sizeofLogEntry(stasis_log_file, le3));
+  memcpy(copy, le3, sizeofLogEntry(stasis_log_file, le3));
+  le3 = copy;
 
   stasis_log_file->truncate(stasis_log_file, le->LSN);
 
@@ -238,33 +252,32 @@ static void loggerTruncate(int logType) {
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le->LSN, NULL);
 
-  freeLogEntry(tmp);
+  freeLogEntry(stasis_log_file, tmp);
   tmp = stasis_log_file->read_entry(stasis_log_file, le2->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le2->LSN, NULL);
 
-  freeLogEntry(tmp);
+  freeLogEntry(stasis_log_file, tmp);
   tmp = stasis_log_file->read_entry(stasis_log_file, le3->LSN);
 
   fail_unless(NULL != tmp, NULL);
   fail_unless(tmp->LSN == le3->LSN, NULL);
 
-  freeLogEntry(tmp);
+  freeLogEntry(stasis_log_file, tmp);
   freeLogHandle(lh);
   lh = getLogHandle(stasis_log_file);
 
   i = 0;
 
-  freeLogEntry(le);
-  freeLogEntry(le2);
-  freeLogEntry(le3);
+  free((void*)le);
+  free((void*)le2);
+  free((void*)le3);
 
   while((le = nextInLog(lh))) {
     if(le->type != INTERNALLOG) {
       i++;
     }
-    freeLogEntry(le);
   }
   assert(i == (3000 - 234 + 1));
   freeLogHandle(lh);
@@ -300,7 +313,7 @@ static void* worker_thread(void * arg) {
   stasis_log_t * stasis_log_file = stasis_log();
 
   while(i < ENTRIES_PER_THREAD) {
-    LogEntry * le = allocCommonLogEntry(-1, -1, XBEGIN);
+    LogEntry * le = allocCommonLogEntry(stasis_log_file, -1, -1, XBEGIN);
     int threshold;
     long entry;
     int needToTruncate = 0;
@@ -361,7 +374,7 @@ static void* worker_thread(void * arg) {
         pthread_mutex_unlock(&random_mutex);
       } else {
         assert(e->xid == entry+key);
-        freeLogEntry(e);
+        freeLogEntry(stasis_log_file, e);
       }
     } else {
       pthread_mutex_unlock(&random_mutex);
@@ -372,7 +385,7 @@ static void* worker_thread(void * arg) {
 
     /* Try to interleave requests as much as possible */
     sched_yield();
-    freeLogEntry(le);
+    freeLogEntry(stasis_log_file, le);
   }
 
 
@@ -535,6 +548,11 @@ void reopenLogWorkload(int truncating) {
 
   freeLogHandle(h);
   assert(i == (ENTRY_COUNT * 2));
+
+  for(int i = 0; i < ENTRY_COUNT; i++) {
+    freeLogEntry(stasis_log_file, entries[i]);
+    freeLogEntry(stasis_log_file, entries2[i]);
+  }
 
   stasis_truncation_automatic = 1;
   stasis_log_file->close(stasis_log_file);

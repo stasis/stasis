@@ -49,13 +49,16 @@ terms specified in this license.
 
 START_TEST(rawLogEntryAlloc)
 {
-  LogEntry * log = allocCommonLogEntry(200, 1, XABORT);
+  Tinit();
+  stasis_log_t *l = stasis_log();
+  LogEntry * log = allocCommonLogEntry(log, 200, 1, XABORT);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == XABORT);
   assert(sizeofLogEntry(0, log) == sizeof(struct __raw_log_entry));
-  free(log);
+  freeLogEntry(l, log);
+  Tdeinit();
 }
 END_TEST
 
@@ -74,8 +77,9 @@ START_TEST(updateLogEntryAlloc)
   LogEntry * log;
 
   Tinit();  /* Needed because it sets up the operations table. */
+  stasis_log_t *l = stasis_log();
 
-  log = allocUpdateLogEntry(200, 1, OPERATION_SET,
+  log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                             rid.page, 3*sizeof(char));
   memcpy(stasis_log_entry_update_args_ptr(log), args, 3*sizeof(char));
   assert(log->LSN == -1);
@@ -103,9 +107,12 @@ END_TEST
 
 START_TEST(updateLogEntryAllocNoExtras)
 {
+  Tinit();
+
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
-  LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_SET,
+  stasis_log_t *l = stasis_log();
+  LogEntry * log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                                        rid.page, 0);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
@@ -120,6 +127,8 @@ START_TEST(updateLogEntryAllocNoExtras)
 
   assert(sizeofLogEntry(0, log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))));
   free(log);
+
+  Tdeinit();
 }
 END_TEST
 

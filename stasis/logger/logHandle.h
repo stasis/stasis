@@ -58,6 +58,9 @@ typedef struct LogHandle LogHandle;
    in a particular transaction.  They follow the prevLSN field,
    skipping any undo entries that have been marked complete.
 
+   The memory that contains the logEntry objects is managed by the LogHandle.
+   Callers should not free() or otherwise dispose of memory returned by a LogHandle.
+
    @see logWriter.h For write access to the log.
    @see logger.h For the api provided by log implementations.
 */

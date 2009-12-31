@@ -26,7 +26,7 @@ typedef struct boundary_tag {
 #define REGION_OCCUPIED  (REGION_BASE + 2)
 #define REGION_CONDEMNED (REGION_BASE + 3)
 
-void regionsInit();
+void regionsInit(stasis_log_t *log);
 
 pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocaionManager);
 void TregionDealloc(int xid, pageid_t firstPage);

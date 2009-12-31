@@ -134,7 +134,7 @@ static void TdeallocBoundaryTag(int xid, pageid_t page) {
 
 }
 
-void regionsInit() {
+void regionsInit(stasis_log_t *log) {
   Page * p = loadPage(-1, 0);
 
   holding_mutex = pthread_self();
@@ -155,13 +155,13 @@ void regionsInit() {
     //    recordid rid = {0,0,sizeof(boundary_tag)};
 
     // hack; allocate a fake log entry; pass it into ourselves.
-    LogEntry * e = allocUpdateLogEntry(0,0,OPERATION_ALLOC_BOUNDARY_TAG,
+    LogEntry * e = allocUpdateLogEntry(log, 0,0,OPERATION_ALLOC_BOUNDARY_TAG,
                                        p->id, sizeof(boundary_tag));
     memcpy(stasis_log_entry_update_args_ptr(e), &t, sizeof(boundary_tag));
     writelock(p->rwlatch,0);
     op_alloc_boundary_tag(e,p);
     unlock(p->rwlatch);
-    freeLogEntry(e);
+    freeLogEntry(log, e);
   }
   holding_mutex = 0;
   releasePage(p);

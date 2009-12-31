@@ -94,7 +94,7 @@ int Tinit() {
   stasis_buffer_manager = stasis_buffer_manager_factory(stasis_log_file, stasis_dirty_page_table);
 
   stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table, stasis_buffer_manager); // xxx circular dependency.
-  pageOperationsInit();
+  pageOperationsInit(stasis_log_file);
   stasis_allocation_policy = stasis_allocation_policy_init();
   stasis_alloc = stasis_alloc_init(stasis_transaction_table, stasis_allocation_policy);
 
@@ -160,7 +160,7 @@ compensated_function void Tupdate(int xid, pageid_t page,
   assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   stasis_operation_do(e, p);
-  freeLogEntry(e);
+  freeLogEntry(stasis_log_file, e);
 
   if(p) unlock(p->rwlatch);
   if(p) releasePage(p);
@@ -180,7 +180,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 
   pthread_mutex_lock(&h->mut);
 
-  LogEntry * e = allocUpdateLogEntry(-1, h->l->xid, op,
+  LogEntry * e = allocUpdateLogEntry(h->log, -1, h->l->xid, op,
                                      p->id, datlen);
 
   memcpy(stasis_log_entry_update_args_ptr(e), dat, datlen);
@@ -193,11 +193,11 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   unlock(p->rwlatch);
   pthread_mutex_unlock(&h->mut);
   // page will be released by the log handle...
-  freeLogEntry(e);
+  freeLogEntry(stasis_log_file, e);
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,
                       const void *dat, size_t datlen, int op) {
-  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, datlen);
+  LogEntry * e = allocUpdateLogEntry(stasis_log_file, -1, xid, op, page, datlen);
   memcpy(stasis_log_entry_update_args_ptr(e), dat, datlen);
 
   stasis_transaction_table_entry_t* l = stasis_transaction_table_get(stasis_transaction_table, xid);
@@ -206,7 +206,7 @@ lsn_t TwritebackUpdate(int xid, pageid_t page,
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
 
-  freeLogEntry(e);
+  freeLogEntry(stasis_log_file, e);
   return l->prevLSN;
 }
 /** DANGER: you need to set the LSN's on the pages that you want to write back,
@@ -218,7 +218,7 @@ void TreorderableWritebackUpdate(int xid, void* hp,
   stasis_log_reordering_handle_t* h = hp;
   assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   pthread_mutex_lock(&h->mut);
-  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, datlen);
+  LogEntry * e = allocUpdateLogEntry(stasis_log_file, -1, xid, op, page, datlen);
   memcpy(stasis_log_entry_update_args_ptr(e), dat, datlen);
   stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(0, e));
   pthread_mutex_unlock(&h->mut);

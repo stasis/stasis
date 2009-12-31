@@ -95,10 +95,11 @@ int main(int argc, char ** argv) {
   if(log_mode) {
     lsn_t prevLSN = -1;
     byte * arg = calloc(PAGE_SIZE, 1);
-    LogEntry * e = allocUpdateLogEntry(prevLSN, -1, OPERATION_NOOP,
+    stasis_log_t * l = stasis_log();
+
+    LogEntry * e = allocUpdateLogEntry(l, prevLSN, -1, OPERATION_NOOP,
                                        0, PAGE_SIZE);
     memcpy(stasis_log_entry_update_args_ptr(e), arg, PAGE_SIZE);
-    stasis_log_t * l = stasis_log();
     for(long i = 0; i < page_count; i++) {
       void * h;
       LogEntry * e2 = l->reserve_entry(l, sizeofLogEntry(l, e), &h);
@@ -107,7 +108,7 @@ int main(int argc, char ** argv) {
       memcpy(e2, e, sizeofLogEntry(l, e));
       l->entry_done(l, e2, h);
     }
-    freeLogEntry(e);
+    freeLogEntry(l, e);
     free(arg);
   } else {
     if(stake) {

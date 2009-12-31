@@ -133,7 +133,6 @@ static void stasis_recovery_analysis(stasis_log_t* log, stasis_transaction_table
     default:
       abort();
     }
-    freeLogEntry(e);
   }
   freeLogHandle(lh);
 }
@@ -228,7 +227,6 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
       abort();
     }
     } // end switch
-    freeLogEntry(e);
   } // end loop
   freeLogHandle(lh);
 }
@@ -329,7 +327,6 @@ static void stasis_recovery_undo(stasis_log_t* log, stasis_transaction_table_t *
         abort();
       }
       }
-      freeLogEntry(e);
     }
     if(!prepared) {
       // Log an XEND, remove transaction from stasis_transaction_table.
