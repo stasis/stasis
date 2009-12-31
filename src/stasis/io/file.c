@@ -405,7 +405,7 @@ static int file_release_read_buffer(stasis_read_buffer_t * r) {
 static int file_force(stasis_handle_t * h) {
   file_impl * impl = h->impl;
 
-  if(!impl->file_flags & O_SYNC) {
+  if(!(impl->file_flags & O_SYNC)) {
     pthread_mutex_lock(&impl->mut);  // must latch because of truncate... :(
     int fd = impl->fd;
     pthread_mutex_unlock(&impl->mut);
@@ -435,7 +435,7 @@ static int file_force(stasis_handle_t * h) {
 static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   file_impl * impl = h->impl;
   int ret = 0;
-  if(!impl->file_flags & O_SYNC) {
+  if(!(impl->file_flags & O_SYNC)) {
     // not opened synchronously; we need to explicitly sync.
     pthread_mutex_lock(&impl->mut);
     int fd = impl->fd;
