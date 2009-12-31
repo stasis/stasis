@@ -101,8 +101,8 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
 		     const byte * arg, size_t arg_size) {
 
   LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op,
-                                     page,
-                                     arg, arg_size);
+                                     page, arg_size);
+  memcpy(getUpdateArgs(e), arg, arg_size);
   log->write_entry(log, e);
   DEBUG("Log Update %d, LSN: %ld type: %ld (prevLSN %ld) (arg_size %ld)\n", e->xid,
 	 (long int)e->LSN, (long int)e->type, (long int)e->prevLSN, (long int) arg_size);
@@ -115,7 +115,8 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
 
 LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size) {
-  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op, INVALID_PAGE, arg, arg_size);
+  LogEntry * e = allocUpdateLogEntry(l->prevLSN, l->xid, op, INVALID_PAGE, arg_size);
+  memcpy(getUpdateArgs(e), arg, arg_size);
   return e;
 }
 lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e) {
@@ -143,7 +144,7 @@ lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
 lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN) {
   // XXX waste of log bandwidth.
   const LogEntry * e = allocUpdateLogEntry(prevLSN, xid, OPERATION_NOOP,
-              INVALID_PAGE, NULL, 0);
+              INVALID_PAGE, 0);
   lsn_t ret = stasis_log_write_clr(log, e);
   freeLogEntry(e);
   return ret;

@@ -105,8 +105,7 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN);
 
 */
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
-			       unsigned int op, pageid_t page,
-			       const byte * arg, unsigned int arg_size);
+			       unsigned int op, pageid_t page, unsigned int arg_size);
 
 /**
    Allocate a CLR entry.  These are written during recovery as log
@@ -131,7 +130,7 @@ lsn_t sizeofLogEntry(stasis_log_t * lh, const LogEntry * e);
    @todo Remove explicit casts from getUpdateArgs calls (so we don't accidentally strip the const).
    @return the operation's arguments.
 */
-const void * getUpdateArgs(const LogEntry * e);
+void * getUpdateArgs(LogEntry * e);
 
 /**
 	@return a copy of the log entry that this CLR compensated.

@@ -96,8 +96,8 @@ int main(int argc, char ** argv) {
     lsn_t prevLSN = -1;
     byte * arg = calloc(PAGE_SIZE, 1);
     LogEntry * e = allocUpdateLogEntry(prevLSN, -1, OPERATION_NOOP,
-                                       0,
-                                       arg, PAGE_SIZE);
+                                       0, PAGE_SIZE);
+    memcpy(getUpdateArgs(e), arg, PAGE_SIZE);
     stasis_log_t * l = stasis_log();
     for(long i = 0; i < page_count; i++) {
       void * h;

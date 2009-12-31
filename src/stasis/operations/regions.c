@@ -156,7 +156,8 @@ void regionsInit() {
 
     // hack; allocate a fake log entry; pass it into ourselves.
     LogEntry * e = allocUpdateLogEntry(0,0,OPERATION_ALLOC_BOUNDARY_TAG,
-                                       p->id, (const byte*)&t, sizeof(boundary_tag));
+                                       p->id, sizeof(boundary_tag));
+    memcpy(getUpdateArgs(e), &t, sizeof(boundary_tag));
     writelock(p->rwlatch,0);
     op_alloc_boundary_tag(e,p);
     unlock(p->rwlatch);

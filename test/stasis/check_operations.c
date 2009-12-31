@@ -89,9 +89,8 @@ START_TEST(operation_physical_do_undo) {
 
   // XXX fails; set log format has changed
   setToTwo = allocUpdateLogEntry(-1, xid, OPERATION_SET, rid.page,
-                                 (void*)arg, sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
-
-
+                                 sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
+  memcpy(getUpdateArgs(setToTwo), arg, sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
 
   /* Do, undo and redo operation without updating the LSN field of the page. */
 

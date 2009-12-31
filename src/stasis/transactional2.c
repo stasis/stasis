@@ -181,8 +181,9 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   pthread_mutex_lock(&h->mut);
 
   LogEntry * e = allocUpdateLogEntry(-1, h->l->xid, op,
-                                     p->id,
-                                     dat, datlen);
+                                     p->id, datlen);
+
+  memcpy(getUpdateArgs(e), dat, datlen);
 
   stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(0, e));
 
@@ -196,7 +197,9 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,
                       const void *dat, size_t datlen, int op) {
-  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
+  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, datlen);
+  memcpy(getUpdateArgs(e), dat, datlen);
+
   stasis_transaction_table_entry_t* l = stasis_transaction_table_get(stasis_transaction_table, xid);
   stasis_log_file->write_entry(stasis_log_file, e);
 
@@ -215,7 +218,8 @@ void TreorderableWritebackUpdate(int xid, void* hp,
   stasis_log_reordering_handle_t* h = hp;
   assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   pthread_mutex_lock(&h->mut);
-  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, dat, datlen);
+  LogEntry * e = allocUpdateLogEntry(-1, xid, op, page, datlen);
+  memcpy(getUpdateArgs(e), dat, datlen);
   stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(0, e));
   pthread_mutex_unlock(&h->mut);
 }

@@ -63,7 +63,7 @@ LogEntry * allocPrepareLogEntry(lsn_t prevLSN, int xid, lsn_t recLSN) {
   *(lsn_t*)(((struct __raw_log_entry*)ret)+1)=recLSN;
   return ret;
 }
-const void * getUpdateArgs(const LogEntry * ret) {
+void * getUpdateArgs(LogEntry * ret) {
   assert(ret->type == UPDATELOG ||
 	 ret->type == CLRLOG);
   if(ret->update.arg_size == 0) {
@@ -84,7 +84,7 @@ lsn_t getPrepareRecLSN(const LogEntry *e) {
 
 LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
 			       unsigned int op, pageid_t page,
-			       const byte * args, unsigned int arg_size) {
+			       unsigned int arg_size) {
   /** Use calloc since the struct might not be packed in memory;
       otherwise, we'd leak uninitialized bytes to the log. */
 
@@ -99,10 +99,6 @@ LogEntry * allocUpdateLogEntry(lsn_t prevLSN, int xid,
   ret->update.funcID = op;
   ret->update.page    = page;
   ret->update.arg_size = arg_size;
-
-  if(arg_size) {
-    memcpy((void*)getUpdateArgs(ret), args, arg_size);
-  }
 
   return ret;
 }

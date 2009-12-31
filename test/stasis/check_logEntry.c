@@ -76,8 +76,8 @@ START_TEST(updateLogEntryAlloc)
   Tinit();  /* Needed because it sets up the operations table. */
 
   log = allocUpdateLogEntry(200, 1, OPERATION_SET,
-                            rid.page,
-                            (const byte*)args, 3*sizeof(char));
+                            rid.page, 3*sizeof(char));
+  memcpy(getUpdateArgs(log), args, 3*sizeof(char));
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
@@ -107,8 +107,7 @@ START_TEST(updateLogEntryAllocNoExtras)
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
   LogEntry * log = allocUpdateLogEntry(200, 1, OPERATION_SET,
-				       rid.page,
-				       (byte*)args, 0);
+                                       rid.page, 0);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
