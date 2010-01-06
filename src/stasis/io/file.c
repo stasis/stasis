@@ -454,7 +454,7 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     //#ifdef HAVE_F_SYNC_RANGE
 #ifdef HAVE_SYNC_FILE_RANGE
     if(!stop) stop = impl->end_pos;
-    printf("Calling sync_file_range\n");
+    DEBUG("Calling sync_file_range\n");
     ret = sync_file_range(fd, start-off, (stop-start),
 			      SYNC_FILE_RANGE_WAIT_BEFORE |
 			      SYNC_FILE_RANGE_WRITE |
@@ -469,10 +469,10 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     }
 #else
 #ifdef HAVE_FDATASYNC
-    printf("file_force_range() is calling fdatasync()\n");
+    DEBUG("file_force_range() is calling fdatasync()\n");
     fdatasync(fd);
 #else
-    printf("file_force_range() is calling fsync()\n");
+    DEBUG("file_force_range() is calling fsync()\n");
     fsync(fd);
 #endif
     ret = 0;
