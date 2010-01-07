@@ -19,20 +19,23 @@ static int  readBoundaryTag(int xid, pageid_t page, boundary_tag* tag);
 static void TsetBoundaryTag(int xid, pageid_t page, boundary_tag* tag);
 static void TdeallocBoundaryTag(int xid, pageid_t page);
 
+static int alloc_boundary_tag(int xid, Page *p, const boundary_tag *arg) {
+ stasis_page_slotted_initialize_page(p);
+ recordid rid = {p->id, 0, sizeof(boundary_tag)};
+ p->pageType = BOUNDARY_TAG_PAGE;
+ stasis_record_alloc_done(xid, p, rid);
+ byte *buf = stasis_record_write_begin(xid, p, rid);
+ memcpy(buf, arg, sizeof(boundary_tag));
+ stasis_record_write_done(xid, p, rid, buf);
+ return 0;
+}
+
 /** This doesn't need a latch since it is only initiated within nested
     top actions (and is local to this file.  During abort(), the nested
     top action's logical undo grabs the necessary latches.
 */
 static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
-  stasis_page_slotted_initialize_page(p);
-  recordid rid = {p->id, 0, sizeof(boundary_tag)};
-  assert(e->update.arg_size == sizeof(boundary_tag));
-  p->pageType = BOUNDARY_TAG_PAGE;
-  stasis_record_alloc_done(e->xid, p, rid);
-  byte * buf = stasis_record_write_begin(e->xid, p, rid);
-  memcpy(buf, stasis_log_entry_update_args_cptr(e), stasis_record_length_read(e->xid, p, rid));
-  stasis_record_write_done(e->xid, p, rid, buf);
-  return 0;
+  return alloc_boundary_tag(e->xid, p, stasis_log_entry_update_args_cptr(e));
 }
 
 static int op_alloc_region(const LogEntry *e, Page* p) {
@@ -152,16 +155,9 @@ void regionsInit(stasis_log_t *log) {
     // flush the page, since this code is deterministic, and will be
     // re-run before recovery if this update doesn't make it to disk
     // after a crash.
-    //    recordid rid = {0,0,sizeof(boundary_tag)};
-
-    // hack; allocate a fake log entry; pass it into ourselves.
-    LogEntry * e = allocUpdateLogEntry(log, 0,0,OPERATION_ALLOC_BOUNDARY_TAG,
-                                       p->id, sizeof(boundary_tag));
-    memcpy(stasis_log_entry_update_args_ptr(e), &t, sizeof(boundary_tag));
     writelock(p->rwlatch,0);
-    op_alloc_boundary_tag(e,p);
+    alloc_boundary_tag(-1, p, &t);
     unlock(p->rwlatch);
-    freeLogEntry(log, e);
   }
   holding_mutex = 0;
   releasePage(p);
