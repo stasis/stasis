@@ -114,7 +114,7 @@ terms specified in this license.
 
 /** Operation types */
 
-#define OPERATION_INVALID     (-1)
+#define OPERATION_INVALID     (UCHAR_MAX)
 
 #define OPERATION_SET          0
 #define OPERATION_SET_INVERSE  1
