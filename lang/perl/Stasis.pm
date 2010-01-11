@@ -12,7 +12,7 @@ BEGIN {
 }
 use Inline C => Config => (LIBS =>
 			   "-L$STASIS_DIR/build/src/stasis/ " .
-			   "-lstasis ",
+			   "-lstasis -lpthread",
 			   CCFLAGS => "-Wall -pedantic -Werror -std=c99  -DPERL_GCC_PEDANTIC"
 			   ),
   ENABLE => AUTOWRAP,
