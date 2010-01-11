@@ -102,7 +102,7 @@ LogEntry * allocUpdateLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid,
 }
 
 LogEntry * allocCLRLogEntry(stasis_log_t* log, const LogEntry * old_e) {
-  CLRLogEntry * ret = log->reserve_entry(log,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
+  CLRLogEntry * ret = (CLRLogEntry*)log->reserve_entry(log,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
 
   ret->prevLSN = old_e->prevLSN;
   ret->xid = old_e->xid;
