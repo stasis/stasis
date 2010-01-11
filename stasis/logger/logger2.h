@@ -121,9 +121,9 @@ struct stasis_log_t {
   */
   int (*write_entry)(struct stasis_log_t* log, LogEntry * e);
 
-  LogEntry* (*reserve_entry)(struct stasis_log_t* log, size_t sz, void **handle);
+  LogEntry* (*reserve_entry)(struct stasis_log_t* log, size_t sz);
 
-  int (*write_entry_done)(struct stasis_log_t* log, LogEntry* e, void * handle);
+  int (*write_entry_done)(struct stasis_log_t* log, LogEntry* e);
 
   /**
      Read a log entry, given its LSN.

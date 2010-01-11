@@ -177,6 +177,8 @@ START_TEST(multiplexTest) {
 
   array = (lsn_t*)calloc(NUM_INSERTS, sizeof(lsn_t));
 
+  stasis_log_t * log = stasis_log();
+
   for(i = 0; i < NUM_INSERTS; i++) {
 
     (*(lsn_t*)(arg+1)) = i;
@@ -186,8 +188,7 @@ START_TEST(multiplexTest) {
 
     ThashInsert(xid, hash, (byte*)&i, sizeof(lsn_t), (byte*)e, sizeofLogEntry(0, e));
 
-
-    freeLogEntry(stasis_log(), e);
+    log->write_entry_done(log, e);
 
   }
 

@@ -160,7 +160,7 @@ compensated_function void Tupdate(int xid, pageid_t page,
   assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
   stasis_operation_do(e, p);
-  freeLogEntry(stasis_log_file, e);
+  stasis_log_file->write_entry_done(stasis_log_file, e);
 
   if(p) unlock(p->rwlatch);
   if(p) releasePage(p);
@@ -193,7 +193,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   unlock(p->rwlatch);
   pthread_mutex_unlock(&h->mut);
   // page will be released by the log handle...
-  freeLogEntry(stasis_log_file, e);
+  stasis_log_file->write_entry_done(stasis_log_file, e);
 }
 lsn_t TwritebackUpdate(int xid, pageid_t page,
                       const void *dat, size_t datlen, int op) {
@@ -206,7 +206,7 @@ lsn_t TwritebackUpdate(int xid, pageid_t page,
   if(l->prevLSN == -1) { l->recLSN = e->LSN; }
   l->prevLSN = e->LSN;
 
-  freeLogEntry(stasis_log_file, e);
+  stasis_log_file->write_entry_done(stasis_log_file, e);
   return l->prevLSN;
 }
 /** DANGER: you need to set the LSN's on the pages that you want to write back,

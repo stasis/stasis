@@ -100,7 +100,7 @@ static stasis_log_t * setup_log() {
     fail_unless(sizeofLogEntry(0, e) == sizeofLogEntry(0, f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(0, e)), "Log entries did not agree!!");
 
-    freeLogEntry(stasis_log_file, e);
+    stasis_log_file->write_entry_done(stasis_log_file, e);
     stasis_log_file->read_entry_done(stasis_log_file, f);
 
     e = allocUpdateLogEntry(stasis_log_file, prevLSN, xid, 1, rid.page, args_size);
@@ -115,8 +115,8 @@ static stasis_log_t * setup_log() {
     assert (g->type == CLRLOG);
     prevLSN = g->LSN;
 
-    freeLogEntry (stasis_log_file, e);
-    freeLogEntry (stasis_log_file, g);
+    stasis_log_file->write_entry_done(stasis_log_file, e);
+    stasis_log_file->write_entry_done(stasis_log_file, g);
   }
   return stasis_log_file;
 }
@@ -385,7 +385,7 @@ static void* worker_thread(void * arg) {
 
     /* Try to interleave requests as much as possible */
     sched_yield();
-    freeLogEntry(stasis_log_file, le);
+    stasis_log_file->write_entry_done(stasis_log_file, le);
   }
 
 
@@ -550,8 +550,8 @@ void reopenLogWorkload(int truncating) {
   assert(i == (ENTRY_COUNT * 2));
 
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    freeLogEntry(stasis_log_file, entries[i]);
-    freeLogEntry(stasis_log_file, entries2[i]);
+    stasis_log_file->write_entry_done(stasis_log_file, entries[i]);
+    stasis_log_file->write_entry_done(stasis_log_file, entries2[i]);
   }
 
   stasis_truncation_automatic = 1;

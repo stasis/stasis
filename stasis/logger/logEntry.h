@@ -115,11 +115,7 @@ LogEntry * allocUpdateLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid,
 */
 LogEntry * allocCLRLogEntry(stasis_log_t *log, const LogEntry * e);
 /**
-   @param e a log entry returned from one of the alloc???LogEntry functions.
- */
-void freeLogEntry(stasis_log_t *log, const LogEntry * e);
-/**
-   @param lh The log handle the entry will be stored in.  (Needed because some log entries are of type INTERNALLOG)  May be NULL if e is not of type INTERNALLOG.
+   @param log The log the entry will be stored in.  (Needed because some log entries are of type INTERNALLOG)  May be NULL if e is not of type INTERNALLOG.
    @param e A log entry of any type.
    @return the length, in bytes, of e.
 */

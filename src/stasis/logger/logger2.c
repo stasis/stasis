@@ -68,7 +68,7 @@ static lsn_t stasis_log_write_common(stasis_log_t* log, stasis_transaction_table
 
   ret = e->LSN;
 
-  freeLogEntry(log, e);
+  log->write_entry_done(log, e);
 
   return ret;
 }
@@ -90,7 +90,7 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, stasis_transaction_tabl
 
   ret = e->LSN;
 
-  freeLogEntry(log, e);
+  log->write_entry_done(log, e);
 
   return ret;
 
@@ -125,7 +125,7 @@ lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l
   if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
   lsn_t ret = l->prevLSN = e->LSN;
 //  pthread_mutex_unlock(&l->mut);
-  freeLogEntry(log, e);
+  log->write_entry_done(log, e);
   return ret;
 }
 
@@ -136,17 +136,17 @@ lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
   DEBUG("Log CLR %d, LSN: %ld (undoing: %ld, next to undo: %ld)\n", xid,
   	 e->LSN, LSN, prevLSN);
   lsn_t ret = e->LSN;
-  freeLogEntry(log, e);
+  log->write_entry_done(log, e);
 
   return ret;
 }
 
 lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN) {
   // XXX waste of log bandwidth.
-  const LogEntry * e = allocUpdateLogEntry(log, prevLSN, xid, OPERATION_NOOP,
+  LogEntry * e = allocUpdateLogEntry(log, prevLSN, xid, OPERATION_NOOP,
               INVALID_PAGE, 0);
   lsn_t ret = stasis_log_write_clr(log, e);
-  freeLogEntry(log, e);
+  log->write_entry_done(log, e);
   return ret;
 }
 

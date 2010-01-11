@@ -79,15 +79,15 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
   return 0;
 }
 
-LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz, void **handle) {
+LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz) {
   // XXX need to assign LSN here.
   return malloc(sz);
 }
 
-int stasis_log_impl_in_memory_entry_done(struct stasis_log_t* log, LogEntry* e, void * handle) {
-  int ret = stasis_log_impl_in_memory_write_entry(log, e);
+int stasis_log_impl_in_memory_entry_done(struct stasis_log_t* log, LogEntry* e) {
+//  int ret = stasis_log_impl_in_memory_write_entry(log, e);
   free(e);
-  return ret;
+  return 0;
 }
 
 static lsn_t stasis_log_impl_in_memory_first_unstable_lsn(stasis_log_t* log,

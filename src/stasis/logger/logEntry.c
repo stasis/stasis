@@ -119,10 +119,6 @@ LogEntry * allocCLRLogEntry(stasis_log_t* log, const LogEntry * old_e) {
 
   return (LogEntry*)ret;
 }
-void freeLogEntry(stasis_log_t* log, const LogEntry* e) {
-  free((void*)e);
-}
-
 
 lsn_t sizeofLogEntry(stasis_log_t * log, const LogEntry * e) {
   switch (e->type) {

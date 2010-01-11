@@ -279,13 +279,13 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
                (unsigned int) le->prevLSN, crc, le->LSN);
         // The log wasn't successfully forced to this point; discard
         // everything after the last CRC.
-        freeLogEntry(log, le);
+        free(le);
         break;
       }
     } else {
       log_crc_update(log, le, &crc);
     }
-    freeLogEntry(log, le);
+    free(le); // we bypassed the api in order to get this log entry.  readLogEntry() calls malloc.
   }
   return ret;
 }
@@ -367,15 +367,15 @@ static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
   return ret;
 }
 
-LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz, void **handle) {
+LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
   // XXX need to assign LSN here
   return malloc(sz);
 }
 
-int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e, void * handle) {
-  int ret = writeLogEntry_LogWriter(log, e);
+int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
+//  int ret = writeLogEntry_LogWriter(log, e);
   free(e);
-  return ret;
+  return 0;
 }
 
 static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,

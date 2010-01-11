@@ -51,13 +51,13 @@ START_TEST(rawLogEntryAlloc)
 {
   Tinit();
   stasis_log_t *l = stasis_log();
-  LogEntry * log = allocCommonLogEntry(log, 200, 1, XABORT);
+  LogEntry * log = allocCommonLogEntry(l, 200, 1, XABORT);
   assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == XABORT);
   assert(sizeofLogEntry(0, log) == sizeof(struct __raw_log_entry));
-  freeLogEntry(l, log);
+  l->write_entry_done(l, log);
   Tdeinit();
 }
 END_TEST
