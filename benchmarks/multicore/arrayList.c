@@ -52,10 +52,10 @@ int main(int argc, char* argv[]) {
   arrayList = TarrayListAlloc(xid, 100, 10, recsize);
   TarrayListExtend(xid, arrayList, threadcount * threadops);
   Tcommit(xid);
-  for(int i = 0; i < threadcount; i++) {
+  for(intptr_t i = 0; i < threadcount; i++) {
     pthread_create(&thread[i],0,worker,(void*)i);
   }
-  for(int i = 0; i < threadcount; i++) {
+  for(intptr_t i = 0; i < threadcount; i++) {
     pthread_join(thread[i],0);
   }
   
