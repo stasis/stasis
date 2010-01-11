@@ -36,6 +36,8 @@ static void* stasis_log_reordering_handle_worker(void * a) {
         h->phys_size -= sizeofLogEntry(h->log, e);
         h->cur_off = (h->cur_off+1)%h->max_len;
 
+        h->log->write_entry_done(h->log, e);
+
       }
       if(chunk_len > 0) {
         lsn_t to_force = h->l->prevLSN;
