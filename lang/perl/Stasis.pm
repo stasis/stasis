@@ -26,7 +26,14 @@ sub version {
    return "Stasis 0.1";
 }
 
+sub ThashCreate {
+    my $xid = shift;
+    my $rid = ThashCreateHelper($xid);
+    return bless $rid, 'Stasis::HashHeader';
+}
+
 package Stasis::Hash;
+require Scalar::Util;
 
 require Tie::Hash;
 
@@ -43,23 +50,59 @@ sub TIEHASH {
 	xid => $xid,
 	rid => $rid,
     };
-
     return bless $this, $class;
 }
 sub FETCH {
     my $this = shift;
     my $key = shift;
-    return Stasis::ThashLookup($$this{xid}, $$this{rid}, $key);
+    my $sv = Stasis::ThashLookup($$this{xid}, $$this{rid}, $key);
+    if(Scalar::Util::blessed($sv)) {
+	if($sv->isa('Stasis::HashHeader')) {
+	    my %h;
+	    tie(%h, 'Stasis::Hash', $$this{xid}, $sv);
+	    return \%h;
+	} else {
+	    die 'ThashLookup returned an object of unknown type';
+	}
+    } else {
+	return $sv;
+    }
 }
 sub STORE {
     my $this = shift;
     my $key = shift;
     my $val = shift;
-    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $val);
+    if('HASH' eq ref($val)) {
+	if(Scalar::Util::blessed($val) && $sv->isa('Stasis::Hash')) {
+	    my $obj = tied ($val);  # tied returns the object backing the hash.
+	    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $obj{rid});
+	} else {
+	    # Copy the hash into scratch space
+	    my %h;
+	    foreach my $k (keys %$val) {
+		$h{$k} = $val{$k};
+	    }	   
+
+	    # Tie the hash that was passed to us
+	    my $rid = Stasis::ThashCreate($$this{xid});
+	    tie %$val, 'Stasis::Hash', $$this{xid}, $rid;
+	    # Copy the scratch space into the tied hash.
+	    foreach my $k (keys %h) {
+		$val{$k} = $h{$k}
+	    }
+
+	    # Insert the populated hashtable
+	    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $rid);
+	}
+    } else {
+	# XXX assumes the value is a scalar.
+	Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $val);
+    }
 }
 sub DELETE {
     my $this = shift;
     my $key = shift;
+    # This will leak hashes that were automatically created.  Refcounts?
     return Stasis::ThashRemove($$this{xid}, $$this{rid}, $key);
 }
 sub FIRSTKEY {
@@ -75,7 +118,6 @@ sub FIRSTKEY {
 sub NEXTKEY {
     my $this = shift;
     my $lastkey = shift;
-    print("."); $|=1;
     Stasis::Titerator_tupleDone($$this{xid}, $$this{it});
     if(Stasis::Titerator_next($$this{xid}, $$this{it})) {
 	return Stasis::Titerator_key($$this{xid}, $$this{it});
@@ -91,6 +133,9 @@ sub EXISTS {
 sub CLEAR { 
     my $this = shift;
 }
+
+package Stasis::HashHeader;
+@ISA = qw(Stasis::Recordid);
 
 package Stasis;
 
@@ -111,13 +156,16 @@ int TrecordSize(int xid, recordid rid);
 
 static recordid recordid_SV(SV* sv) {
    if(!(SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV)) {
+     printf("recordid_SV fail 1\n");
      abort();
    }
    if (!(sv_isobject(sv) && sv_derived_from(sv, "Stasis::Recordid"))) {
+     printf("recordid_SV fail 2\n");
      abort();
    }
    AV * av = (AV*)SvRV(sv);
    if(av_len(av)+1 != 2) {
+     printf("recordid_SV fail 3\n");
      abort();
    }
    SV ** pageSV = av_fetch(av, 0, 0);
@@ -125,6 +173,7 @@ static recordid recordid_SV(SV* sv) {
    if(!(pageSV  &&  slotSV &&
         *pageSV && *slotSV &&
         SvIOK(*pageSV) && SvIOK(*slotSV))) {
+     printf("recordid_SV fail 4\n");
      abort();
    }
    recordid rid = {
@@ -148,6 +197,7 @@ static SV* SV_recordid(recordid rid) {
 }
 
 static byte * bytes_SV(SV* sv, STRLEN * sz) {
+    // XXX check for hashes, arrays?
   byte * ret = 0;
   IV valI;
   NV valN;
@@ -170,17 +220,21 @@ static byte * bytes_SV(SV* sv, STRLEN * sz) {
     valP = (byte*)SvPV(sv,*sz); // string
     tmp = valP;
     code = 'P';
-  } else if (sv_isobject(sv) && sv_derived_from(sv, "Stasis::Recordid")) {
-    valR = recordid_SV(sv);
-    *sz = sizeof(recordid);
-    tmp = (byte*)&valR;
-    code = 'R';
-  } else if (sv_isobject(sv) && sv_derived_from(sv, "Stasis::Hash")) {
+  } else if (sv_isobject(sv) && sv_isa(sv, "Stasis::HashHeader")) {
     valR = recordid_SV(sv);
     *sz = sizeof(recordid);
     tmp = (byte*)&valR;
     code = 'H';
+  } else if (sv_isobject(sv) && sv_isa(sv, "Stasis::Recordid")) {
+    valR = recordid_SV(sv);
+    *sz = sizeof(recordid);
+    tmp = (byte*)&valR;
+    code = 'R';
+  } else if (sv_isobject(sv)) {
+    printf("Stasis.pm: Encountered unsupported object\n");
+    abort();
   } else {
+    printf("Stasis.pm: Encountered unsupported SV\n");
     abort();
   }
   // make room for code byte
@@ -221,7 +275,7 @@ static SV * SV_bytes(byte* bytes, STRLEN sz) {
   case 'H': {
     assert(sz-1 == sizeof(recordid));
     ret = SV_recordid(*(recordid*)bytes);
-    ret = sv_bless(ret, gv_stashpv("Stasis::Hash", GV_ADD));
+    ret = sv_bless(ret, gv_stashpv("Stasis::HashHeader", GV_ADD));
   } break;
   default: {
     abort();
@@ -269,7 +323,7 @@ recordid stasis_perl_TreadRecordid(int xid, recordid rid) {
 
 /** Hash table */
 
-recordid stasis_perl_ThashCreate(int xid) {
+recordid stasis_perl_ThashCreateHelper(int xid) {
   return ThashCreate(xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
 }
 
