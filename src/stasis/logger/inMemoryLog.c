@@ -35,6 +35,19 @@ static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
 
 static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e) {
   stasis_log_impl_in_memory * impl = log->impl;
+  // XXX release these earlier?
+  unlock(impl->globalOffset_lock);
+  unlock(impl->flushedLSN_lock);
+  return 0;
+}
+
+LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz) {
+  stasis_log_impl_in_memory * impl = log->impl;
+  /** Use calloc since the entry might not be packed in memory;
+      otherwise, we'd leak uninitialized bytes to the log. */
+
+  LogEntry * e = calloc(1,sz);
+
   lsn_t bufferOffset;
   int done = 0;
   int blockCount = 0;
@@ -65,28 +78,16 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
 
   e->LSN = impl->nextAvailableLSN;
 
-  LogEntry * cpy = malloc(sizeofLogEntry(log, e));
-  memcpy(cpy, e, sizeofLogEntry(log, e));
-
   DEBUG("lsn: %ld\n", e->LSN);
-  impl->buffer[bufferOffset] = cpy;
+  impl->buffer[bufferOffset] = e;
 
   DEBUG("lsn: %ld type: %d\n", e->LSN, e->type);
   impl->nextAvailableLSN++;
 
-  unlock(impl->globalOffset_lock);
-  unlock(impl->flushedLSN_lock);
-  return 0;
-}
-
-LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz) {
-  // XXX need to assign LSN here.
-  return malloc(sz);
+  return e;
 }
 
 int stasis_log_impl_in_memory_entry_done(struct stasis_log_t* log, LogEntry* e) {
-//  int ret = stasis_log_impl_in_memory_write_entry(log, e);
-  free(e);
   return 0;
 }
 

@@ -73,6 +73,8 @@ static stasis_log_t * setup_log() {
   int  first = 1;
   stasis_log_t * stasis_log_file = stasis_log();
   for(i = 0 ; i < 1000; i++) {
+    lsn_t test = stasis_log_file->next_available_lsn(stasis_log_file);
+
     LogEntry * e = allocCommonLogEntry(stasis_log_file, prevLSN, xid, XBEGIN);
     const LogEntry * f;
     recordid rid;
@@ -82,8 +84,6 @@ static stasis_log_t * setup_log() {
     rid.page = 0;
     rid.slot = 0;
     rid.size = sizeof(unsigned long);
-
-    lsn_t test = stasis_log_file->next_available_lsn(stasis_log_file);
 
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->LSN;

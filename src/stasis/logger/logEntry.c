@@ -47,16 +47,14 @@ terms specified in this license.
 #include <assert.h>
 
 LogEntry * allocCommonLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid, unsigned int type) {
-  LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry));
-  ret->LSN     = -1;
+  LogEntry * ret = log->reserve_entry(log,sizeof(struct __raw_log_entry));
   ret->prevLSN = prevLSN;
   ret->xid     = xid;
   ret->type    = type;
   return ret;
 }
 LogEntry * allocPrepareLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid, lsn_t recLSN) {
-  LogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeof(lsn_t));
-  ret->LSN = -1;
+  LogEntry * ret = log->reserve_entry(log,sizeof(struct __raw_log_entry)+sizeof(lsn_t));
   ret->prevLSN = prevLSN;
   ret->xid = xid;
   ret->type = XPREPARE;
@@ -89,14 +87,10 @@ lsn_t getPrepareRecLSN(const LogEntry *e) {
 LogEntry * allocUpdateLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid,
 			       unsigned int op, pageid_t page,
 			       unsigned int arg_size) {
-  /** Use calloc since the struct might not be packed in memory;
-      otherwise, we'd leak uninitialized bytes to the log. */
-
   size_t logentrysize =
     sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + arg_size;
 
-  LogEntry * ret = calloc(1,logentrysize);
-  ret->LSN = -1;
+  LogEntry * ret = log->reserve_entry(log,logentrysize);
   ret->prevLSN = prevLSN;
   ret->xid = xid;
   ret->type = UPDATELOG;
@@ -108,9 +102,8 @@ LogEntry * allocUpdateLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid,
 }
 
 LogEntry * allocCLRLogEntry(stasis_log_t* log, const LogEntry * old_e) {
-  CLRLogEntry * ret = calloc(1,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
+  CLRLogEntry * ret = log->reserve_entry(log,sizeof(struct __raw_log_entry)+sizeofLogEntry(0, old_e));
 
-  ret->LSN = -1;
   ret->prevLSN = old_e->prevLSN;
   ret->xid = old_e->xid;
   ret->type = CLRLOG;

@@ -52,7 +52,6 @@ START_TEST(rawLogEntryAlloc)
   Tinit();
   stasis_log_t *l = stasis_log();
   LogEntry * log = allocCommonLogEntry(l, 200, 1, XABORT);
-  assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == XABORT);
@@ -82,7 +81,6 @@ START_TEST(updateLogEntryAlloc)
   log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                             rid.page, 3*sizeof(char));
   memcpy(stasis_log_entry_update_args_ptr(log), args, 3*sizeof(char));
-  assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == UPDATELOG);
@@ -114,7 +112,6 @@ START_TEST(updateLogEntryAllocNoExtras)
   stasis_log_t *l = stasis_log();
   LogEntry * log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                                        rid.page, 0);
-  assert(log->LSN == -1);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
   assert(log->type == UPDATELOG);
