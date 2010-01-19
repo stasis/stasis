@@ -1,0 +1,22 @@
+This should go in a sites-enabled file, inside a VirtualHost:
+
+        ScriptAlias /stasis-cgi/ /home/sears/stasis/lang/perl/cgi-bin/
+        <Directory "/home/sears/stasis/lang/perl/cgi-bin">
+                AllowOverride None
+                Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+                Order allow,deny
+                Allow from all
+        </Directory>
+
+
+
+This is the contents of my /etc/apache2/mods-enabled/fastcgi.conf
+
+  <IfModule mod_fastcgi.c>
+    AddHandler fastcgi-script .fcgi
+    #FastCgiWrapper /usr/lib/apache2/suexec
+    FastCgiIpcDir /var/lib/apache2/fastcgi
+    FastCgiConfig -maxClassProcesses 1 -maxProcesses 1 -processSlack 1
+  </IfModule>
+
+Note that the fastcgi scripts are currently hardcoded to run in ~sears/stasis/www-data2 

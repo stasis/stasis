@@ -1,0 +1,25 @@
+This goes in apache.conf:
+
+<IfModule mpm_worker_module>
+    StartServers          1
+# Only want 1 server; this is a correctness constraint for stasis.
+    ServerLimit           1
+    MinSpareThreads      25
+    MaxSpareThreads      75 
+    ThreadLimit         150
+    ThreadsPerChild     150
+    MaxClients          150
+    MaxRequestsPerChild   0
+</IfModule>
+
+
+This goes in the sites-enabled/???:
+
+  PerlRequire /home/sears/stasis/lang/perl/apache/inc/startup.pl
+
+  <Location /stasis>
+      SetHandler perl-script
+      PerlResponseHandler  StasisWeb::Web
+  </Location>
+
+Note that the modapache scripts are currently hardcoded to look in ~sears/stasis/www-data
