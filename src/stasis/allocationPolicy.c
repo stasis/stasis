@@ -286,7 +286,9 @@ static int update_views_for_page(stasis_allocation_policy_t *ap, pageid_t pageid
   int * deallocXids;
   size_t freespace;
   int inAllPages = allPages_lookup_by_pageid(ap, pageid, &freespace);
-  assert(inAllPages);
+  if(!inAllPages) {
+    stasis_allocation_policy_register_new_page(ap, pageid, 0);
+  }
   int inXidAlloced = xidAlloced_lookup_by_pageid(ap, pageid, &allocXids, &xidAllocCount);
   int inXidDealloced = xidDealloced_lookup_by_pageid(ap, pageid, &deallocXids, &xidDeallocCount);
   if(! inXidAlloced) { xidAllocCount = 0; allocXids = 0;}
@@ -473,7 +475,10 @@ void stasis_allocation_policy_deinit(stasis_allocation_policy_t * ap) {
 }
 void stasis_allocation_policy_register_new_page(stasis_allocation_policy_t * ap, pageid_t pageid, size_t freespace) {
   int existed = allPages_add(ap,pageid,freespace);
-  assert(!existed);
+  if(existed) {
+    // it may already exist if it was registered during recovery.
+    stasis_allocation_policy_update_freespace(ap, pageid, freespace);
+  }
 }
 pageid_t stasis_allocation_policy_pick_suitable_page(stasis_allocation_policy_t * ap, int xid, size_t freespace) {
   // does the xid have a suitable page?
