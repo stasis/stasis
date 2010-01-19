@@ -51,6 +51,9 @@ void stasis_log_group_force(stasis_log_group_force_t* lh, lsn_t lsn) {
 //  static int pendingCommits;
 
   pthread_mutex_lock(&lh->check_commit);
+  if(lsn == INVALID_LSN) {
+    lsn = lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT);
+  }
   if(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn) {
     pthread_mutex_unlock(&lh->check_commit);
     return;
