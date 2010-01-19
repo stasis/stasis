@@ -3,12 +3,13 @@ require Inline;
 
 my $STASIS_DIR;
 BEGIN {
- $STASIS_DIR = $ENV{STASIS_DIR};
- if(!defined($STASIS_DIR)) {
-  $STASIS_DIR = $INC{"Stasis.pm"};
-  $STASIS_DIR =~ s~/lang/perl/Stasis.pm~~g;
- }
- 1;
+    $STASIS_DIR = $ENV{STASIS_DIR};
+    if(!defined($STASIS_DIR)) {
+	$STASIS_DIR = $INC{"Stasis.pm"};
+	$STASIS_DIR =~ s~/lang/perl/Stasis.pm~~g;
+	
+    }
+    1;
 }
 use Inline C => Config => (LIBS =>
 			   "-L$STASIS_DIR/build/src/stasis/ " .
@@ -17,10 +18,15 @@ use Inline C => Config => (LIBS =>
 			   ),
   ENABLE => AUTOWRAP,
   TYPEMAPS => "$STASIS_DIR/lang/perl/typemap",
-  PREFIX => 'stasis_perl_';
+  PREFIX => 'stasis_perl_',
+  DIRECTORY => $ENV{STASIS_INLINE_DIRECTORY};
+
 use Inline ( C => 'DATA',
-             INC  => "-I $STASIS_DIR"
+             INC  => "-I $STASIS_DIR -I $STASIS_DIR/build/"
     );
+#warn "running inline init from dir: " . `pwd`;
+Inline->init;
+#warn "ran inline init\n";
 
 sub version {
    return "Stasis 0.1";
@@ -138,7 +144,7 @@ package Stasis::HashHeader;
 @ISA = qw(Stasis::Recordid);
 
 package Stasis;
-
+1;
 __DATA__
 __C__
 #include "stasis/transactional.h"
@@ -147,6 +153,8 @@ int Tinit();
 int Tdeinit();
 int Tbegin();
 int Tcommit(int xid);
+int TsoftCommit(int xid);
+void TforceCommits();
 int Tabort(int xid);
 int Tprepare(int xid);
 recordid Talloc(int xid, unsigned long size);
