@@ -90,6 +90,8 @@ START_TEST(operation_physical_do_undo) {
   // XXX fails; set log format has changed
   setToTwo = allocUpdateLogEntry(stasis_log(), -1, xid, OPERATION_SET, rid.page,
                                  sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
+  lsn_t setToTwo_lsn = setToTwo->LSN;
+
   memcpy(stasis_log_entry_update_args_ptr(setToTwo), arg, sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
 
   /* Do, undo and redo operation without updating the LSN field of the page. */
@@ -179,10 +181,18 @@ START_TEST(operation_physical_do_undo) {
   */
 
   // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
-  for(int i = 0; i < 10; i++)
-    ((stasis_log_t*)stasis_log())->write_entry(stasis_log(),
-                                 allocCommonLogEntry(stasis_log(), -1, -1, -1));
+  stasis_log_t * log = stasis_log();
 
+  setToTwo->LSN = setToTwo_lsn; // XXX hack...
+
+  log->write_entry(log, setToTwo);
+  log->write_entry_done(log, setToTwo);
+
+  for(int i = 0; i < 10; i++) {
+    LogEntry *e = allocCommonLogEntry(log, -1, -1, -1);
+    log->write_entry(log, e);
+    log->write_entry_done(log, e);
+  }
   /** @todo need to re-think check_operations.  The test is pretty broken. */
   Tcommit(xid);
   Tdeinit();

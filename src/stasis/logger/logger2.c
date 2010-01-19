@@ -112,20 +112,26 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
 //  pthread_mutex_unlock(&l->mut);
   return e;
 }
-
+// XXX change nta interface so that arg gets passed into end_nta, not begin_nta.
 LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size) {
-  LogEntry * e = allocUpdateLogEntry(log, l->prevLSN, l->xid, op, INVALID_PAGE, arg_size);
+  LogEntry * e = mallocScratchUpdateLogEntry(INVALID_LSN, l->prevLSN, l->xid, op, INVALID_PAGE, arg_size);
   memcpy(stasis_log_entry_update_args_ptr(e), arg, arg_size);
   return e;
 }
+
 lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e) {
-  log->write_entry(log, e);
+  LogEntry * realEntry = allocUpdateLogEntry(log, e->prevLSN, e->xid, e->update.funcID, e->update.page, e->update.arg_size);
+  memcpy(stasis_log_entry_update_args_ptr(realEntry), stasis_log_entry_update_args_cptr(e), e->update.arg_size);
+
+  log->write_entry(log, realEntry);
 //  pthread_mutex_lock(&l->mut);
-  if(l->prevLSN == INVALID_LSN) { l->recLSN = e->LSN; }
-  lsn_t ret = l->prevLSN = e->LSN;
+  if(l->prevLSN == INVALID_LSN) { l->recLSN = realEntry->LSN; }
+  lsn_t ret = l->prevLSN = realEntry->LSN;
 //  pthread_mutex_unlock(&l->mut);
-  log->write_entry_done(log, e);
+  log->write_entry_done(log, realEntry);
+
+  free(e);
   return ret;
 }
 
@@ -143,10 +149,10 @@ lsn_t stasis_log_write_clr(stasis_log_t* log, const LogEntry * old_e) {
 
 lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prevLSN) {
   // XXX waste of log bandwidth.
-  LogEntry * e = allocUpdateLogEntry(log, prevLSN, xid, OPERATION_NOOP,
+  LogEntry * e = mallocScratchUpdateLogEntry(INVALID_LSN, prevLSN, xid, OPERATION_NOOP,
               INVALID_PAGE, 0);
   lsn_t ret = stasis_log_write_clr(log, e);
-  log->write_entry_done(log, e);
+  free(e);
   return ret;
 }
 

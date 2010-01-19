@@ -88,6 +88,7 @@ struct LogEntry {
   UpdateLogEntry update;
 };
 
+LogEntry * mallocScratchCommonLogEntry(lsn_t lsn, lsn_t prevLSN, int xid, unsigned int type);
 /**
    Allocate a log entry that does not contain any extra payload
    information.  (Eg: Tbegin, Tcommit, etc.)
@@ -106,6 +107,8 @@ LogEntry * allocPrepareLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid, lsn_t
 */
 LogEntry * allocUpdateLogEntry(stasis_log_t *log, lsn_t prevLSN, int xid,
 			       unsigned int op, pageid_t page, unsigned int arg_size);
+LogEntry * mallocScratchUpdateLogEntry(lsn_t LSN, lsn_t prevLSN, int xid,
+                   unsigned int op, pageid_t page, unsigned int arg_size);
 
 /**
    Allocate a CLR entry.  These are written during recovery as log

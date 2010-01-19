@@ -56,6 +56,8 @@ START_TEST(rawLogEntryAlloc)
   assert(log->xid == 1);
   assert(log->type == XABORT);
   assert(sizeofLogEntry(0, log) == sizeof(struct __raw_log_entry));
+
+  l->write_entry(l, log);
   l->write_entry_done(l, log);
   Tdeinit();
 }
@@ -97,7 +99,9 @@ START_TEST(updateLogEntryAlloc)
   //  printf("sizes %d %d\n",sizeofLogEntry(log),(sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + (sizeof(char))));
 
   assert(sizeofLogEntry(0, log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 3 * (sizeof(char))));
-  free(log);
+
+  l->write_entry(l, log);
+  l->write_entry_done(l, log);
   Tdeinit();
 }
 END_TEST
@@ -123,7 +127,9 @@ START_TEST(updateLogEntryAllocNoExtras)
   assert(stasis_log_entry_update_args_ptr(log) == NULL);
 
   assert(sizeofLogEntry(0, log) == (sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + 0 * (sizeof(int)+sizeof(char))));
-  free(log);
+
+  l->write_entry(l, log);
+  l->write_entry_done(l, log);
 
   Tdeinit();
 }

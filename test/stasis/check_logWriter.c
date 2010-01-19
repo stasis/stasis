@@ -62,6 +62,12 @@ terms specified in this license.
 
 #define LOG_NAME   "check_logWriter.log"
 
+LogEntry * dupLogEntry(stasis_log_t * log, const LogEntry *e) {
+  LogEntry * ret = malloc(sizeofLogEntry(log, e));
+  memcpy(ret,e,sizeofLogEntry(log, e));
+  return ret;
+}
+
 static stasis_log_t * setup_log() {
   int i;
   lsn_t prevLSN = -1;
@@ -88,6 +94,10 @@ static stasis_log_t * setup_log() {
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->LSN;
 
+    LogEntry * tmp = dupLogEntry(stasis_log_file,e);
+    stasis_log_file->write_entry_done(stasis_log_file, e);
+    e = tmp;
+
     assert(test <= e->LSN);
 
     if(first) {
@@ -99,14 +109,18 @@ static stasis_log_t * setup_log() {
 
     fail_unless(sizeofLogEntry(0, e) == sizeofLogEntry(0, f), "Log entry changed size!!");
     fail_unless(0 == memcmp(e,f,sizeofLogEntry(0, e)), "Log entries did not agree!!");
-
-    stasis_log_file->write_entry_done(stasis_log_file, e);
+    free(e);
+//    stasis_log_file->write_entry_done(stasis_log_file, e);
     stasis_log_file->read_entry_done(stasis_log_file, f);
 
     e = allocUpdateLogEntry(stasis_log_file, prevLSN, xid, 1, rid.page, args_size);
     memcpy(stasis_log_entry_update_args_ptr(e), args, args_size);
     stasis_log_file->write_entry(stasis_log_file,e);
     prevLSN = e->prevLSN;
+
+    tmp = dupLogEntry(stasis_log_file,e);
+    stasis_log_file->write_entry_done(stasis_log_file, e);
+    e = tmp;
 
     //    LogEntry * g = allocCLRLogEntry(100, 1, 200, rid, 0); //prevLSN);
     LogEntry * g = allocCLRLogEntry(stasis_log_file, e); // XXX will probably break
@@ -115,7 +129,7 @@ static stasis_log_t * setup_log() {
     assert (g->type == CLRLOG);
     prevLSN = g->LSN;
 
-    stasis_log_file->write_entry_done(stasis_log_file, e);
+    free(e);
     stasis_log_file->write_entry_done(stasis_log_file, g);
   }
   return stasis_log_file;
@@ -313,7 +327,6 @@ static void* worker_thread(void * arg) {
   stasis_log_t * stasis_log_file = stasis_log();
 
   while(i < ENTRIES_PER_THREAD) {
-    LogEntry * le = allocCommonLogEntry(stasis_log_file, -1, -1, XBEGIN);
     int threshold;
     long entry;
     int needToTruncate = 0;
@@ -348,6 +361,7 @@ static void* worker_thread(void * arg) {
 
     if(threshold < 3) {
     } else {
+      LogEntry * le = allocCommonLogEntry(stasis_log_file, -1, -1, XBEGIN);
       le->xid = i+key;
 #ifdef NO_CONCURRENCY
       pthread_mutex_lock(&big);
@@ -358,6 +372,7 @@ static void* worker_thread(void * arg) {
 #endif
       lsns[i] = le->LSN;
       i++;
+      stasis_log_file->write_entry_done(stasis_log_file,le);
     }
     pthread_mutex_lock(&random_mutex);
 #ifdef NO_CONCURRENCY
@@ -385,7 +400,7 @@ static void* worker_thread(void * arg) {
 
     /* Try to interleave requests as much as possible */
     sched_yield();
-    stasis_log_file->write_entry_done(stasis_log_file, le);
+//    stasis_log_file->write_entry_done(stasis_log_file, le);
   }
 
 
@@ -469,6 +484,10 @@ void reopenLogWorkload(int truncating) {
     entries[i] = stasis_log_write_update(stasis_log_file,
                            &l, 0, OPERATION_NOOP, NULL, 0);
 
+    LogEntry * e = dupLogEntry(stasis_log_file, entries[i]);
+    stasis_log_file->write_entry_done(stasis_log_file, entries[i]);
+    entries[i] = e;
+
     if(i == SYNC_POINT) {
       if(truncating) {
 	stasis_log_file->truncate(stasis_log_file,entries[i]->LSN);
@@ -517,6 +536,10 @@ void reopenLogWorkload(int truncating) {
   for(int i = 0; i < ENTRY_COUNT; i++) {
     entries2[i] = stasis_log_write_update(stasis_log_file, &l, 0, OPERATION_NOOP,
                             NULL, 0);
+    LogEntry * e = dupLogEntry(stasis_log_file, entries2[i]);
+    stasis_log_file->write_entry_done(stasis_log_file, entries2[i]);
+    entries2[i] = e;
+
     if(i == SYNC_POINT) {
       stasis_log_file->force_tail(stasis_log_file, LOG_FORCE_COMMIT);
     }
@@ -550,8 +573,8 @@ void reopenLogWorkload(int truncating) {
   assert(i == (ENTRY_COUNT * 2));
 
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    stasis_log_file->write_entry_done(stasis_log_file, entries[i]);
-    stasis_log_file->write_entry_done(stasis_log_file, entries2[i]);
+    free(entries[i]);
+    free(entries2[i]);
   }
 
   stasis_truncation_automatic = 1;

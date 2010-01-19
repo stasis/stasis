@@ -46,6 +46,14 @@ terms specified in this license.
 
 #include <assert.h>
 
+LogEntry * mallocScratchCommonLogEntry(lsn_t LSN, lsn_t prevLSN, int xid, unsigned int type) {
+  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry));
+  ret->LSN = LSN;
+  ret->prevLSN = prevLSN;
+  ret->xid = xid;
+  ret->type = type;
+  return ret;
+}
 LogEntry * allocCommonLogEntry(stasis_log_t* log, lsn_t prevLSN, int xid, unsigned int type) {
   LogEntry * ret = log->reserve_entry(log,sizeof(struct __raw_log_entry));
   ret->prevLSN = prevLSN;
@@ -81,6 +89,25 @@ void * stasis_log_entry_update_args_ptr(LogEntry * ret) {
 lsn_t getPrepareRecLSN(const LogEntry *e) {
   lsn_t ret = *(lsn_t*)(((struct __raw_log_entry*)e)+1);
   if(ret == -1) { ret = e->LSN; }
+  return ret;
+}
+
+// XXX get rid of the mallocScratch* functions.
+LogEntry * mallocScratchUpdateLogEntry(lsn_t LSN, lsn_t prevLSN, int xid,
+                   unsigned int op, pageid_t page,
+                   unsigned int arg_size) {
+  size_t logentrysize =
+    sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + arg_size;
+
+  LogEntry * ret = calloc(1, logentrysize);
+  ret->LSN = LSN;
+  ret->prevLSN = prevLSN;
+  ret->xid = xid;
+  ret->type = UPDATELOG;
+  ret->update.funcID = op;
+  ret->update.page    = page;
+  ret->update.arg_size = arg_size;
+
   return ret;
 }
 

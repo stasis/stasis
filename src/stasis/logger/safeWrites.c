@@ -236,21 +236,20 @@ static inline lsn_t nextEntry_LogWriter(stasis_log_t* log,
   return e->LSN + sizeofLogEntry(log, e) + sizeof(lsn_t);
 }
 
-// crc handling
-
-static inline void log_crc_reset(stasis_log_safe_writes_state* sw) {
-  sw->crc = 0;
-}
-static inline void log_crc_update(stasis_log_t* log, const LogEntry * e, unsigned int * crc) {
+static inline void log_crc_update(stasis_log_t* log, const LogEntry * e, uint32_t * crc) {
   *crc = stasis_crc32(e, sizeofLogEntry(log, e), *crc);
 }
-static LogEntry* log_crc_dummy_entry(stasis_log_t *log) {
-  LogEntry* ret = allocCommonLogEntry(log, 0, -1, INTERNALLOG);
-  assert(ret->prevLSN == 0);
+static LogEntry* log_crc_dummy_entry(lsn_t lsn) {
+  LogEntry* ret = mallocScratchCommonLogEntry(lsn, 0, -1, INTERNALLOG);
   return ret;
 }
-static LogEntry* log_crc_entry(stasis_log_t *log, unsigned int crc) {
-  LogEntry* ret = allocCommonLogEntry(log, crc, -1, INTERNALLOG);
+static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc);
+
+static lsn_t log_crc_entry(stasis_log_t *log) {
+  LogEntry* e= allocCommonLogEntry(log, -1, -1, INTERNALLOG);
+  writeLogEntryUnlocked(log, e, 1); // 1-> reset crc.
+  lsn_t ret = e->LSN;
+  log->write_entry_done(log, e); // XXX  depends on implementation of write_entry_done, which will change.
   return ret;
 }
 
@@ -267,11 +266,12 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
   // Using readLogEntry() bypasses checks to see if we're past the end
   // of the log.
   LogEntry * le;
-  unsigned int crc = 0;
+  uint32_t crc = 0;
 
   while((le = readLogEntry(sw))) {
     if(le->type == INTERNALLOG) {
-      if (!(le->prevLSN) || (crc == (unsigned int) le->prevLSN)) {
+      if ((!le->prevLSN) || (crc == (uint32_t) le->prevLSN)) {
+        DEBUG("read matching crc entry %x\n", crc);
         ret = nextEntry_LogWriter(log, le);
         crc = 0;
       } else {
@@ -307,7 +307,7 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
     LSN encountered so far to the end of the log.
 
 */
-static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
+static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) {
 
   stasis_log_safe_writes_state* sw = log->impl;
 
@@ -317,8 +317,16 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   e->LSN = sw->nextAvailableLSN;
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
+  assert(clearcrc == (e->type == INTERNALLOG));
 
-  log_crc_update(log, e, &sw->crc);
+  if(clearcrc) {
+    // Reset log_crc to zero each time a crc entry is written.
+    e->prevLSN = sw->crc;
+    DEBUG("wrote crc entry %x\n", sw->crc);
+    sw->crc = 0;
+  } else {
+    log_crc_update(log, e, &sw->crc);
+  }
 
   DEBUG("Writing Log entry type = %d lsn = %ld, size = %ld\n",
         e->type, e->LSN, size);
@@ -330,6 +338,8 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
     if(ferror(sw->fp)) {
       fprintf(stderr, "writeLog couldn't write next log entry: %d\n",
               ferror(sw->fp));
+      errno = ferror(sw->fp);
+      perror("error was:");
       abort();
     }
     abort();
@@ -344,6 +354,8 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
     if(ferror(sw->fp)) {
       fprintf(stderr, "writeLog couldn't write next log entry: %d\n",
               ferror(sw->fp));
+      errno = ferror(sw->fp);
+      perror("error was:");
       abort();
     }
     abort();
@@ -361,18 +373,22 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e) {
 
 static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
   stasis_log_safe_writes_state* sw = log->impl;
-  pthread_mutex_lock(&sw->write_mutex);
-  int ret = writeLogEntryUnlocked(log, e);
-  pthread_mutex_unlock(&sw->write_mutex);
+  // Make sure that our caller holds write_mutex.
+  assert(pthread_mutex_trylock(&sw->write_mutex));
+  int ret = writeLogEntryUnlocked(log, e, 0);
   return ret;
 }
 
 LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
+  stasis_log_safe_writes_state* sw = log->impl;
+  pthread_mutex_lock(&sw->write_mutex);
   // XXX need to assign LSN here
-  return malloc(sz);
+  return calloc(1, sz);
 }
 
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
+  stasis_log_safe_writes_state* sw = log->impl;
+  pthread_mutex_unlock(&sw->write_mutex);
 //  int ret = writeLogEntry_LogWriter(log, e);
   free(e);
   return 0;
@@ -405,19 +421,7 @@ static void syncLog_LogWriter(stasis_log_t * log,
   stasis_log_safe_writes_state* sw = log->impl;
   lsn_t newFlushedLSN;
 
-  pthread_mutex_lock(&sw->write_mutex);
-
-  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
-  newFlushedLSN = sw->nextAvailableLSN;
-  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
-
-  LogEntry* crc_entry = log_crc_entry(log, sw->crc);
-  writeLogEntryUnlocked(log, crc_entry);
-  free(crc_entry);
-  // Reset log_crc to zero each time a crc entry is written.
-  log_crc_reset(sw);
-
-  pthread_mutex_unlock(&sw->write_mutex);
+  newFlushedLSN = log_crc_entry(log);
 
   fflush(sw->fp);
 
@@ -596,7 +600,7 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     pthread_mutex_unlock(&sw->truncate_mutex);
     return 0;
   }
-
+  DEBUG("truncating\n");  fflush(stdout);
   /* w+ = truncate, and open for writing. */
   tmpLog = fopen(sw->scratch_filename, "w+");
 
@@ -652,10 +656,9 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     if(firstCRC) { free(firstCRC); }
   }
   freeLogHandle(lh);
-  LogEntry * crc_entry = log_crc_dummy_entry(log);
-
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
-  crc_entry->LSN = sw->nextAvailableLSN;
+  LogEntry * crc_entry = log_crc_dummy_entry(sw->nextAvailableLSN);
+
   DEBUG("Crc entry: lsn = %ld, crc = %x\n", crc_entry->LSN,
         crc_entry->prevLSN);
 
@@ -665,7 +668,7 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
 
   sw->nextAvailableLSN = nextEntry_LogWriter(log, crc_entry);
 
-  log_crc_reset(sw);
+  sw->crc = 0;
 
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
 
@@ -729,15 +732,14 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
 
   sw->global_offset = LSN - sizeof(lsn_t);
 
-  lsn_t logPos;
-  if((logPos = myFseek(sw->fp, 0, SEEK_END))
-     != sw->nextAvailableLSN - sw->global_offset) {
+  lsn_t logPos = myFseek(sw->fp, 0, SEEK_END);
+  if(logPos != sw->nextAvailableLSN - sw->global_offset) {
     if(logPos == -1) {
       perror("Truncation couldn't seek");
     } else {
       printf("logfile was wrong length after truncation.  "
-             "Expected %lld, found %lld\n",
-             sw->nextAvailableLSN - sw->global_offset, logPos);
+             "Expected %lld, copied %lld, found %lld\n",
+             sw->nextAvailableLSN - sw->global_offset, lengthOfCopiedLog, logPos);
       fflush(stdout);
       abort();
     }
@@ -915,7 +917,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   }
 
   // Reset log_crc to zero (nextAvailableLSN immediately follows a crc entry).
-  log_crc_reset(sw);
+  sw->crc = 0;
 
   sw->flushedLSN_wal      = sw->nextAvailableLSN;
   sw->flushedLSN_commit   = sw->nextAvailableLSN;
