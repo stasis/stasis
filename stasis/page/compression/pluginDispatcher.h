@@ -43,6 +43,8 @@ namespace rose {
 
 class PluginDispatcher{
  public:
+// Silence GCC variadic macro warnings...
+#pragma GCC system_header
 
 #define dispatchSwitch(col,cases,...) \
     static const int base = USER_DEFINED_PAGE(0) + 3 * 2 * 4;\

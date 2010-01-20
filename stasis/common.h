@@ -122,6 +122,10 @@ typedef int16_t pagetype_t;
 /*#define PROFILE_LATCHES*/
 /*#define NO_LATCHES */
 
+
+// ICK: Only way to portably shut up GCC warnings about variadic macros
+#pragma GCC system_header
+
 #ifdef DEBUGGING
 /** @todo Files that use DEBUG have to pull in stdio.h, which is a pain! */
 #define DEBUG(...) \
