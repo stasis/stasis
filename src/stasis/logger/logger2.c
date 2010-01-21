@@ -113,7 +113,7 @@ LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_e
   return e;
 }
 // XXX change nta interface so that arg gets passed into end_nta, not begin_nta.
-LogEntry * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
+void * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size) {
   LogEntry * e = mallocScratchUpdateLogEntry(INVALID_LSN, l->prevLSN, l->xid, op, INVALID_PAGE, arg_size);
   memcpy(stasis_log_entry_update_args_ptr(e), arg, arg_size);

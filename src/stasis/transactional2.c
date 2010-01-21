@@ -418,10 +418,7 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
 void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
   assert(xid >= 0);
 
-  LogEntry * e = stasis_log_begin_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), op, dat, datSize);
-  LogEntry * ret = malloc(sizeofLogEntry(stasis_log_file, e));
-  memcpy(ret, e, sizeofLogEntry(stasis_log_file, e));
-  stasis_log_file->write_entry_done(stasis_log_file, e);
+  void * ret = stasis_log_begin_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), op, dat, datSize);
   DEBUG("Begin Nested Top Action e->LSN: %ld\n", e->LSN);
   return ret;
 }
