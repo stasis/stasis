@@ -51,9 +51,15 @@ void stasis_log_group_force(stasis_log_group_force_t* lh, lsn_t lsn) {
 //  static int pendingCommits;
 
   pthread_mutex_lock(&lh->check_commit);
+  lsn_t first_unstable = lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT);
+  lsn_t next_available = lh->log->next_available_lsn(lh->log);
+  DEBUG(stderr, "state: lsn=%lld first_unstable=%lld next_available=%lld\n",
+	  lsn, first_unstable, next_available);
   if(lsn == INVALID_LSN) {
-    lsn = lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT);
-  } else if(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn) {
+    lsn = next_available - 1;
+  }
+  if(first_unstable > lsn || first_unstable == next_available) {
+    DEBUG(stderr, "skipped group force\n");
     pthread_mutex_unlock(&lh->check_commit);
     return;
   }
