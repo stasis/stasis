@@ -594,12 +594,27 @@ START_TEST(loggerTruncateReopenTest) {
   reopenLogWorkload(1);
 } END_TEST
 
+static void loggerEmptyForce_helper() {
+  Tinit();
+  int xid = Tbegin();
+  TsoftCommit(xid);
+  TforceCommits();
+  Tdeinit();
+}
+START_TEST(loggerEmptyFileForceTest) {
+  stasis_log_type = LOG_TO_FILE;
+} END_TEST
+START_TEST(loggerEmptyMemForceTest) {
+  stasis_log_type = LOG_TO_MEMORY;
+} END_TEST
 Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
   /* Begin a new test */
   TCase *tc = tcase_create("writeNew");
   tcase_set_timeout(tc, 0);
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, loggerEmptyFileForceTest);
+  tcase_add_test(tc, loggerEmptyMemForceTest);
   tcase_add_test(tc, loggerFileTest);
   tcase_add_test(tc, loggerMemTest);
   tcase_add_test(tc, logHandleFileColdReverseIterator);

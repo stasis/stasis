@@ -53,11 +53,11 @@ void stasis_log_group_force(stasis_log_group_force_t* lh, lsn_t lsn) {
   pthread_mutex_lock(&lh->check_commit);
   if(lsn == INVALID_LSN) {
     lsn = lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT);
-  }
-  if(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn) {
+  } else if(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn) {
     pthread_mutex_unlock(&lh->check_commit);
     return;
   }
+
   if(lh->log->is_durable(lh->log)) {
     struct timeval now;
     struct timespec timeout;
@@ -97,7 +97,6 @@ void stasis_log_group_force(stasis_log_group_force_t* lh, lsn_t lsn) {
   if(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) <= lsn) {
     lh->log->force_tail(lh->log, LOG_FORCE_COMMIT);
     lh->minNumActive = 0;
-    assert(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn);
     pthread_cond_broadcast(&lh->tooFewXacts);
   }
   assert(lh->log->first_unstable_lsn(lh->log,LOG_FORCE_COMMIT) > lsn);

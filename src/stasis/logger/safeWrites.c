@@ -421,7 +421,7 @@ static void syncLog_LogWriter(stasis_log_t * log,
   stasis_log_safe_writes_state* sw = log->impl;
   lsn_t newFlushedLSN;
 
-  newFlushedLSN = log_crc_entry(log);
+  newFlushedLSN = log_crc_entry(log) + sizeofInternalLogEntry_LogWriter(log, 0);
 
   fflush(sw->fp);
 
