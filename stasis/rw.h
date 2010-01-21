@@ -15,14 +15,16 @@
  *                Found the code at this url:
  *                http://www.cs.nmsu.edu/~jcook/Tools/pthreads/rw.c
  */
-#include <pthread.h>
-#include <stasis/common.h>
-#include <stdio.h>
-
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
 
+#include <stasis/common.h>
+#include <pthread.h>
+#include <stdio.h>
+
 BEGIN_C_DECLS
+
+
 #define HAVE_PTHREAD_RWLOCK
 #ifdef HAVE_PTHREAD_RWLOCK
 typedef pthread_rwlock_t rwl;

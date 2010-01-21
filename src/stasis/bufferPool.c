@@ -48,10 +48,10 @@ terms specified in this license.
  * $Id$
  *
  */
-#include <assert.h>
-
+#include <stasis/common.h>
 #include <stasis/bufferPool.h>
 #include <stasis/page.h>
+#include <assert.h>
 
 struct stasis_buffer_pool_t {
 	pageid_t nextPage;

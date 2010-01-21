@@ -1,8 +1,9 @@
+#include <stasis/transactional.h>
+#include <pobj/pobj.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <stasis/transactional.h>
-#include <pobj/pobj.h>
 #include "common.h"
 #include "debug.h"
 #include "hash.h"

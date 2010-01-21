@@ -60,7 +60,7 @@ terms specified in this license.
 
 #ifndef __stasis_common_h
 #define __stasis_common_h
-
+#define _XOPEN_SOURCE 600
 #include <sys/types.h> // for size_t
 
 #ifdef __cplusplus

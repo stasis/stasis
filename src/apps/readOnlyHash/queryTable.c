@@ -1,9 +1,10 @@
+#include <stasis/transactional.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
-#include <stasis/transactional.h>
 
 int main(int argc, char** argv) {
   Tinit();

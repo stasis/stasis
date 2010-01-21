@@ -11,6 +11,7 @@
 #define PBL_H
 #ifdef PBL_COMPAT
 
+#include <stasis/common.h>
 #include <stdio.h>
 
 struct  pblHashTable_t;

@@ -44,6 +44,7 @@ terms specified in this license.
 #ifndef FI_TEST_H
 #define FI_TEST_H
 
+#include <stasis/transactional.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +52,6 @@ terms specified in this license.
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stasis/transactional.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <time.h>

@@ -5,6 +5,7 @@
    Implements three phase recovery
 
 */
+#include <stasis/common.h>
 #include <pbl/pbl.h>
 
 #include <stasis/recovery.h>

@@ -1,8 +1,8 @@
+#include <stasis/transactional.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
 #include <stasis/bufferManager/legacy/legacyBufferManager.h>
 #include <stasis/truncation.h>

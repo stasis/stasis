@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include <stasis/operations/lsmTree.h>
 #include <stasis/truncation.h>
 #include <stasis/constants.h>
@@ -8,7 +6,7 @@
 //  XXX including fixed.h breaks page api encapsulation; we need a "last slot"
 // call.
 #include <stasis/page/fixed.h>
-#include <pthread.h>
+#include <string.h>
 
 static lsm_comparator_t comparators[MAX_LSM_COMPARATORS];
 static lsm_page_initializer_t initializers[MAX_LSM_PAGE_INITIALIZERS];

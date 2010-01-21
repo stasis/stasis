@@ -4,12 +4,12 @@
  *  Created on: Jul 15, 2009
  *      Author: sears
  */
+#include <stasis/transactional.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
 #include <stasis/page/slotted.h>
 

@@ -1,8 +1,10 @@
-#include <assert.h>
+#include <stasis/common.h>
 #include <stasis/page.h>
 #include <stasis/page/fixed.h>
 /** @todo should page implementations provide readLSN / writeLSN??? */
 #include <stasis/truncation.h>
+
+#include <assert.h>
 
 
 

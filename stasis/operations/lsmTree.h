@@ -15,8 +15,9 @@
    For now, LSM-trees only support fixed length keys; this restriction
    will be lifted in the future.
 */
-#include <assert.h>
+#include <stasis/common.h>
 #include <stasis/iterator.h>
+#include <assert.h>
 typedef struct {
   recordid treeRoot;
   recordid pos;

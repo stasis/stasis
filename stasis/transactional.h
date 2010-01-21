@@ -551,7 +551,7 @@ terms specified in this license.
 #ifndef __TRANSACTIONAL_H__
 #define __TRANSACTIONAL_H__
 
-#include "common.h"
+#include <stasis/common.h>
 #include "flags.h"
 BEGIN_C_DECLS
 /**

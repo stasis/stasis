@@ -1,10 +1,11 @@
+#include <stasis/transactional.h>
+#include <stasis/truncation.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
-#include <stasis/transactional.h>
-#include <stasis/truncation.h>
 #include <sys/time.h>
 #include <time.h>
 
