@@ -13,7 +13,8 @@ static void* stasis_log_reordering_handle_worker(void * a) {
     while(h->cur_len) {
       size_t chunk_len = 0;
       while(chunk_len < h->chunk_len && h->cur_len) {
-        LogEntry * e = stasis_log_write_update(h->log,
+
+	LogEntry * e = stasis_log_write_update(h->log,
                                  h->l,
                                  h->queue[h->cur_off].p->id,
                                  h->queue[h->cur_off].op,
@@ -22,22 +23,24 @@ static void* stasis_log_reordering_handle_worker(void * a) {
         assert(e->xid != INVALID_XID);
         chunk_len += sizeofLogEntry(h->log, e);
 
-        if(h->queue[h->cur_off].p) {
-          Page * p = h->queue[h->cur_off].p;
-          writelock(p->rwlatch,0);
-          stasis_page_lsn_write(e->xid, p, e->LSN);
-          unlock(p->rwlatch);
-          releasePage(p);
-        } /*
-            else it's the caller's problem; flush(), and checking the
-            xaction table for prevLSN is their friend. */
+	Page * p = h->queue[h->cur_off].p;
+	lsn_t lsn = e->LSN;
 
         h->cur_len--;
         h->phys_size -= sizeofLogEntry(h->log, e);
         h->cur_off = (h->cur_off+1)%h->max_len;
 
+
         h->log->write_entry_done(h->log, e);
 
+        if(p) {
+	  writelock(p->rwlatch,0);
+          stasis_page_lsn_write(e->xid, p, lsn);
+          unlock(p->rwlatch);
+          releasePage(p);
+        } /*
+	    else it's the caller's problem; flush(), and checking the
+	    xaction table for prevLSN is their friend. */
       }
       if(chunk_len > 0) {
         lsn_t to_force = h->l->prevLSN;
