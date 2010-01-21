@@ -603,9 +603,11 @@ static void loggerEmptyForce_helper() {
 }
 START_TEST(loggerEmptyFileForceTest) {
   stasis_log_type = LOG_TO_FILE;
+  loggerEmptyForce_helper();
 } END_TEST
 START_TEST(loggerEmptyMemForceTest) {
   stasis_log_type = LOG_TO_MEMORY;
+  loggerEmptyForce_helper();
 } END_TEST
 Suite * check_suite(void) {
   Suite *s = suite_create("logWriter");
