@@ -11,7 +11,7 @@
 BEGIN_C_DECLS
 
 typedef struct rbtree rbtree;
-rbtree * stl_rbinit(int (*cmp)(const void *, const void *, const void*), int ignored);
+rbtree * stl_rbinit(int (*cmp)(const void *, const void *, const void*), const void *ignored);
 const void * stl_rbdelete(const void * key, rbtree * tp);
 const void * stl_rbfind(const void * key, rbtree * tp);
 const void * stl_rbsearch(const void * key, rbtree * tp);
@@ -20,7 +20,6 @@ const void * stl_rbmin(rbtree *tp);
 void stl_rbdestroy(rbtree * tp);
 
 #ifdef STLSEARCH
-#include <stasis/stlredblack.h>
 #define rbinit stl_rbinit
 #define rbdestroy stl_rbdestroy
 #define rbdelete stl_rbdelete

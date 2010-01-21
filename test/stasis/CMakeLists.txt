@@ -1,4 +1,5 @@
 SUBDIRS(fault_injection)
+CREATE_CHECK(check_redblack)
 CREATE_CHECK(check_concurrentHash)
 CREATE_CHECK(check_lhtable)
 CREATE_CHECK(check_logEntry)

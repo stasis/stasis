@@ -30,7 +30,7 @@ typedef std::set<const void*,MyCompare> rb;
 
 extern "C" {
 
-rbtree * stl_rbinit(int(*cmp)(const void*,const void*,const void*), int ignored) {
+rbtree * stl_rbinit(int(*cmp)(const void*,const void*,const void*), const void* ignored) {
   return reinterpret_cast<rbtree*>(new rb(MyCompare(cmp, 0)));
 }
 const void * stl_rbdelete(const void * key, rbtree * tp) {
