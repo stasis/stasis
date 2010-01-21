@@ -389,7 +389,6 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
   stasis_log_safe_writes_state* sw = log->impl;
   pthread_mutex_unlock(&sw->write_mutex);
-//  int ret = writeLogEntry_LogWriter(log, e);
   free(e);
   return 0;
 }
