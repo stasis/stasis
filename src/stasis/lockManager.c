@@ -8,7 +8,28 @@
 #include <time.h>
 
 #include <assert.h>
+#include <pthread.h>
 
+static pthread_mutex_t stasis_lock_manager_ht_mut = PTHREAD_MUTEX_INITIALIZER;
+
+static int pblHtInsert_r(pblHashTable_t * h, void * key, size_t keylen, void * val) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  int ret = pblHtInsert(h, key, keylen, val);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
+static void * pblHtLookup_r(pblHashTable_t * h, void * key, size_t keylen) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  void * ret = pblHtLookup(h, key, keylen);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
+static int pblHtRemove_r(pblHashTable_t * h, void * key, size_t keylen) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  int ret = pblHtRemove(h, key, keylen);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
 
 #define MUTEX_COUNT 32
 // These next two correspond to MUTEX count, and are the appropriate values to pass into hash().
@@ -45,7 +66,7 @@ void lockManagerInitHashed() {
 }
 pblHashTable_t * lockManagerBeginTransactionUnlocked(int xid) {
   pblHashTable_t * xidLocks = pblHtCreate();
-  pblHtInsert(xidLockTable, &xid, sizeof(int), xidLocks);
+  pblHtInsert_r(xidLockTable, &xid, sizeof(int), xidLocks);
   return xidLocks;
 }
 int lockManagerBeginTransaction(int xid) {
@@ -68,7 +89,7 @@ lock* createLock(byte * dat, int datLen) {
   ret->writers = 0;
   ret->waiting = 0;
 
-  pblHtInsert(ridLockTable, dat, datLen, ret);
+  pblHtInsert_r(ridLockTable, dat, datLen, ret);
   return ret;
 }
 
@@ -76,7 +97,7 @@ void destroyLock(byte * dat, int datLen, lock * l) {
   pthread_cond_destroy(&l->writeOK);
   pthread_cond_destroy(&l->readOK);
   free (l);
-  pblHtRemove(ridLockTable, dat, datLen);
+  pblHtRemove_r(ridLockTable, dat, datLen);
 }
 
 #define LM_READLOCK 1
@@ -85,11 +106,11 @@ void destroyLock(byte * dat, int datLen, lock * l) {
 int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
   if(xid == -1) { return 0; }
   pthread_mutex_lock(&xid_table_mutex);
-  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
+  pblHashTable_t * xidLocks = pblHtLookup_r(xidLockTable, &xid, sizeof(int));
   if(!xidLocks) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
-  long currentLockLevel = (long)pblHtLookup(xidLocks, dat, datLen);
+  long currentLockLevel = (long)pblHtLookup_r(xidLocks, dat, datLen);
   //  printf("xid %d read lock (%d)\n", xid, currentLockLevel);
   if(currentLockLevel >= LM_READLOCK) {
     pthread_mutex_unlock(&xid_table_mutex);
@@ -100,7 +121,7 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
   pthread_mutex_t * mut = getMutex(dat, datLen);
 
   pthread_mutex_lock(mut);
-  lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
+  lock * ridLock = pblHtLookup_r(ridLockTable, dat, datLen);
 
   if(!ridLock) {
     ridLock = createLock(dat, datLen);
@@ -130,8 +151,8 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
   }
   if(currentLockLevel < LM_READLOCK) {
     ridLock->readers++;
-    pblHtRemove(xidLocks, dat, datLen);
-    pblHtInsert(xidLocks, dat, datLen, (void*)LM_READLOCK);
+    pblHtRemove_r(xidLocks, dat, datLen);
+    pblHtInsert_r(xidLocks, dat, datLen, (void*)LM_READLOCK);
   }
   ridLock->active--;
   pthread_mutex_unlock(mut);
@@ -141,13 +162,13 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
 
   if(xid == -1) { return 0; }
   pthread_mutex_lock(&xid_table_mutex);
-  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
+  pblHashTable_t * xidLocks = pblHtLookup_r(xidLockTable, &xid, sizeof(int));
 
   if(!xidLocks) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
 
-  long currentLockLevel = (long)pblHtLookup(xidLocks, dat, datLen);
+  long currentLockLevel = (long)pblHtLookup_r(xidLocks, dat, datLen);
 
   //  printf("xid %d write lock (%d)\n", xid, currentLockLevel);
 
@@ -163,7 +184,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     pthread_mutex_t * mut = getMutex(dat, datLen);
 
   pthread_mutex_lock(mut);
-  lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
+  lock * ridLock = pblHtLookup_r(ridLockTable, dat, datLen);
   if(!ridLock) {
     ridLock = createLock(dat, datLen);
   }
@@ -199,10 +220,10 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     ridLock->writers++;
   } else if (currentLockLevel == LM_READLOCK) {
     ridLock->writers++;
-    pblHtRemove(xidLocks, dat, datLen);
+    pblHtRemove_r(xidLocks, dat, datLen);
   }
   if(currentLockLevel != LM_WRITELOCK) {
-    pblHtInsert(xidLocks, dat, datLen, (void*)LM_WRITELOCK);
+    pblHtInsert_r(xidLocks, dat, datLen, (void*)LM_WRITELOCK);
   }
 
   ridLock->active--;
@@ -214,7 +235,7 @@ static int decrementLock(void * dat, int datLen, int currentLevel) {
   //  pthread_mutex_unlock(&xid_table_mutex);
   pthread_mutex_t * mut = getMutex(dat, datLen);
   pthread_mutex_lock(mut);
-  lock * ridLock = pblHtLookup(ridLockTable, dat, datLen);
+  lock * ridLock = pblHtLookup_r(ridLockTable, dat, datLen);
   assert(ridLock);
   ridLock->active++;
   if(currentLevel == LM_WRITELOCK) {
@@ -251,7 +272,7 @@ int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
 
   pthread_mutex_lock(&xid_table_mutex);
 
-  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
+  pblHashTable_t * xidLocks = pblHtLookup_r(xidLockTable, &xid, sizeof(int));
 
   if(!xidLocks) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
@@ -259,10 +280,10 @@ int lockManagerUnlockHashed(int xid, byte * dat, int datLen) {
 
   pthread_mutex_unlock(&xid_table_mutex);
 
-  long currentLevel = (long)pblHtLookup(xidLocks, dat, datLen);
+  long currentLevel = (long)pblHtLookup_r(xidLocks, dat, datLen);
 
   assert(currentLevel);
-  pblHtRemove(xidLocks, dat, datLen);
+  pblHtRemove_r(xidLocks, dat, datLen);
   decrementLock(dat, datLen, currentLevel);
 
   return 0;
@@ -272,8 +293,8 @@ int lockManagerCommitHashed(int xid, int datLen) {
   if(xid == -1) { return 0; }
   pthread_mutex_lock(&xid_table_mutex);
 
-  pblHashTable_t * xidLocks = pblHtLookup(xidLockTable, &xid, sizeof(int));
-  pblHtRemove(xidLockTable, &xid, sizeof(int));
+  pblHashTable_t * xidLocks = pblHtLookup_r(xidLockTable, &xid, sizeof(int));
+  pblHtRemove_r(xidLockTable, &xid, sizeof(int));
   if(!xidLocks) {
     xidLocks = lockManagerBeginTransactionUnlocked(xid);
   }
