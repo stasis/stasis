@@ -265,6 +265,40 @@ START_TEST (recovery_exactlyOnceAbort) {
 }
 END_TEST
 
+START_TEST(recovery_softCommit) {
+  Tinit();
+  int val;
+  const int one = 1;
+  const int two = 2;
+  const int three = 3;
+  int xid = Tbegin();
+  recordid rid = Talloc(xid, sizeof(int));
+  Tset(xid, rid, &one);
+  Tcommit(xid);
+  Tdeinit();
+  Tinit();
+  xid = Tbegin();
+  Tread(xid, rid, &val);
+  assert(val == 1);
+  Tset(xid, rid, &two);
+  TsoftCommit(xid);
+  TforceCommits();
+  TuncleanShutdown();
+  Tinit();
+  xid = Tbegin();
+  Tread(xid, rid, &val);
+  assert(val == 2);
+  Tset(xid, rid, &three);
+  TsoftCommit(xid);
+  Tdeinit();
+  Tinit();
+  xid = Tbegin();
+  Tread(xid, rid, &val);
+  assert(val == 3);
+  Tabort(xid);
+  Tdeinit();
+} END_TEST
+
 /**
    @test
    Check the CLR mechanism with an aborted logical operation, and multipl Tinit()/Tdeinit() cycles.
@@ -495,6 +529,8 @@ Suite * check_suite(void) {
     tcase_add_test(tc, recovery_clr);
     tcase_add_test(tc, recovery_crash);
     tcase_add_test(tc, recovery_multiple_xacts);
+
+    tcase_add_test(tc, recovery_softCommit);
   }
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
