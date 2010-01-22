@@ -361,6 +361,14 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) 
     // XXX nextAvailableLSN not set...
     return LLADD_IO_ERROR;
   }
+
+  // XXX Works around bug in API; the unit test needs to know where the end of the log is, so it calls
+  // next available LSN.  If we set this in reserve_entry (where it should be set), then this would
+  // lead to reads off the end of the log during testing.
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  sw->nextAvailableLSN = e->LSN + (sizeofLogEntry(log, e) + sizeof(lsn_t));
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
+
   return 0;
 }
 
@@ -380,9 +388,7 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
   /* Set the log entry's LSN. */
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   e->LSN = sw->nextAvailableLSN;
-  sw->nextAvailableLSN += (sz + sizeof(lsn_t));
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
-
 
   return e;
 }
@@ -390,6 +396,7 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
   stasis_log_safe_writes_state* sw = log->impl;
   int ret = writeLogEntryUnlocked(log, e, 0);
+
   pthread_mutex_unlock(&sw->write_mutex);
   free(e);
   return ret;
