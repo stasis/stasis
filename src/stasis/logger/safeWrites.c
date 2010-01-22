@@ -246,10 +246,13 @@ static LogEntry* log_crc_dummy_entry(lsn_t lsn) {
 static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc);
 
 static lsn_t log_crc_entry(stasis_log_t *log) {
+  stasis_log_safe_writes_state* sw = log->impl;
   LogEntry* e= allocCommonLogEntry(log, -1, -1, INTERNALLOG);
-  writeLogEntryUnlocked(log, e, 1); // 1-> reset crc.
+  // TODO Clean this up; it repeats the implementation of entry_done.
   lsn_t ret = e->LSN;
-  log->write_entry_done(log, e); // XXX  depends on implementation of write_entry_done, which will change.
+  writeLogEntryUnlocked(log, e, 1); // 1-> reset crc.
+  pthread_mutex_unlock(&sw->write_mutex);
+  free(e);
   return ret;
 }
 
@@ -313,10 +316,6 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) 
 
   const lsn_t size = sizeofLogEntry(log, e);
 
-  /* Set the log entry's LSN. */
-  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
-  e->LSN = sw->nextAvailableLSN;
-  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
   assert(clearcrc == (e->type == INTERNALLOG));
 
   if(clearcrc) {
@@ -362,12 +361,6 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) 
     // XXX nextAvailableLSN not set...
     return LLADD_IO_ERROR;
   }
-
-  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
-  assert(sw->nextAvailableLSN == e->LSN);
-  sw->nextAvailableLSN = nextEntry_LogWriter(log, e);
-  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
-
   return 0;
 }
 
@@ -375,22 +368,31 @@ static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
   stasis_log_safe_writes_state* sw = log->impl;
   // Make sure that our caller holds write_mutex.
   assert(pthread_mutex_trylock(&sw->write_mutex));
-  int ret = writeLogEntryUnlocked(log, e, 0);
-  return ret;
+  return 0;
 }
 
 LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
   stasis_log_safe_writes_state* sw = log->impl;
   pthread_mutex_lock(&sw->write_mutex);
-  // XXX need to assign LSN here
-  return calloc(1, sz);
+
+  LogEntry * e = calloc(1, sz);
+
+  /* Set the log entry's LSN. */
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  e->LSN = sw->nextAvailableLSN;
+  sw->nextAvailableLSN += (sz + sizeof(lsn_t));
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
+
+
+  return e;
 }
 
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
   stasis_log_safe_writes_state* sw = log->impl;
+  int ret = writeLogEntryUnlocked(log, e, 0);
   pthread_mutex_unlock(&sw->write_mutex);
   free(e);
-  return 0;
+  return ret;
 }
 
 static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,
@@ -514,6 +516,7 @@ static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t L
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
 
   if(LSN >= sw->nextAvailableLSN) {
+    DEBUG(stderr, "Log entry is after end of log!");
     pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
     return NULL;
   }
@@ -530,6 +533,7 @@ static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t L
 
   if(sw->global_offset > LSN) {
     // Return NULL; the caller read before the beginning of the log.
+    DEBUG(stderr, "Log entry is before beginning of log!");
     pthread_mutex_unlock(&sw->read_mutex);
     return NULL;
   }
