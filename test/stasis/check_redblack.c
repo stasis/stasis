@@ -80,7 +80,7 @@ START_TEST(rbRandTest) {
   uint64_t NUM_B = myrandom(50000);
 
   printf("NUM_OPERATIONS = %lld NUM_ENTRIES = %lld NUM_A = %lld NUM_B = %lld\n",
-         NUM_OPERATIONS, NUM_ENTRIES, NUM_A, NUM_B);
+         (long long int)NUM_OPERATIONS, (long long int)NUM_ENTRIES, (long long int)NUM_A, (long long int)NUM_B);
 
   tup * entries = malloc(sizeof(tup) * NUM_ENTRIES);
 
@@ -130,8 +130,8 @@ START_TEST(rbRandTest) {
 
   free(entries);
 
-  printf("Num found: %lld (of %lld)\n", num_found, NUM_OPERATIONS);
-  printf("Num collide: %lld\n", num_collide);
+  printf("Num found: %lld (of %lld)\n", (long long int)num_found, (long long int)NUM_OPERATIONS);
+  printf("Num collide: %lld\n", (long long int)num_collide);
 
 } END_TEST
 
