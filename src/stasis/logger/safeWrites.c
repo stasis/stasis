@@ -697,13 +697,12 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
   close(sw->ro_fd);
 
   lsn_t tmpLen = myFseek(tmpLog, 0, SEEK_END);
-  if(tmpLen != sw->nextAvailableLSN - sw->global_offset) {
+  if(tmpLen != lengthOfCopiedLog+sizeof(lsn_t)) {
     if(tmpLen == -1) {
       perror("Truncation couldn't seek");
     } else {
       printf("Temporary logfile was wrong length after copying, but before truncation.  No data has been lost.  Aborting.  "
-             "Expected %lld, copied %lld, found %lld\n",
-             sw->nextAvailableLSN - sw->global_offset, lengthOfCopiedLog+sizeof(lsn_t), tmpLen);
+             "Copied %lld, found %lld\n", lengthOfCopiedLog+sizeof(lsn_t), tmpLen);
       fflush(stdout);
       abort();
     }
