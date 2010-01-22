@@ -65,8 +65,13 @@ terms specified in this license.
 */
 
 #define NUM_WORKERS 100
+#ifdef LONG_TEST
 #define NUM_STEPS 10000000
 #define NUM_PAGES 1000
+#else
+#define NUM_STEPS 100000
+#define NUM_PAGES 100
+#endif
 void * worker(void*arg) {
   stasis_dirty_page_table_t * dpt = stasis_runtime_dirty_page_table();
   for(int i = 0; i < NUM_STEPS; i++) {
