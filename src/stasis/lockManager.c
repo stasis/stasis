@@ -30,6 +30,24 @@ static int pblHtRemove_r(pblHashTable_t * h, void * key, size_t keylen) {
   pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
   return ret;
 }
+static void * pblHtFirst_r(pblHashTable_t *h) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  void * ret = pblHtFirst(h);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
+static void * pblHtNext_r(pblHashTable_t *h) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  void * ret = pblHtNext(h);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
+static void * pblHtCurrentKey_r(pblHashTable_t *h) {
+  pthread_mutex_lock(&stasis_lock_manager_ht_mut);
+  void * ret = pblHtCurrentKey(h);
+  pthread_mutex_unlock(&stasis_lock_manager_ht_mut);
+  return ret;
+}
 
 #define MUTEX_COUNT 32
 // These next two correspond to MUTEX count, and are the appropriate values to pass into hash().
@@ -302,8 +320,8 @@ int lockManagerCommitHashed(int xid, int datLen) {
   pthread_mutex_unlock(&xid_table_mutex);
   long currentLevel;
   int ret = 0;
-  for(currentLevel = (long)pblHtFirst(xidLocks); currentLevel; currentLevel  = (long)pblHtNext(xidLocks)) {
-    void * currentKey = pblHtCurrentKey(xidLocks);
+  for(currentLevel = (long)pblHtFirst_r(xidLocks); currentLevel; currentLevel  = (long)pblHtNext_r(xidLocks)) {
+    void * currentKey = pblHtCurrentKey_r(xidLocks);
     int tmpret = decrementLock(currentKey, datLen, currentLevel);
     // Pass any error(s) up to the user.
     // (This logic relies on the fact that currently it only returns 0 and LLADD_INTERNAL_ERROR)
