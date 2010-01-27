@@ -1,33 +1,36 @@
 package Stasis;
 require Inline;
 
+use strict;
+use warnings;
+
 my $STASIS_DIR;
 BEGIN {
-    $STASIS_DIR = $ENV{STASIS_DIR};
-    if(!defined($STASIS_DIR)) {
-	$STASIS_DIR = $INC{"Stasis.pm"};
-	$STASIS_DIR =~ s~/lang/perl/Stasis.pm~~g;
-	
-    }
+    $STASIS_DIR = $INC{"Stasis.pm"};
+    $STASIS_DIR =~ s~/+lang/+perl/+Stasis.pm~~g;
+    $STASIS_DIR =~ s~/+lang/+perl/+apache/+Stasis.pm~~g;
     1;
 }
-use Inline C => Config => (LIBS =>
-			   "-L$STASIS_DIR/build/src/stasis/ " .
-			   "-lstasis -lpthread",
-			   CCFLAGS => "-Wall -pedantic -Werror -std=c99  -DPERL_GCC_PEDANTIC"
-			   ),
-  ENABLE => AUTOWRAP,
-  TYPEMAPS => "$STASIS_DIR/lang/perl/typemap",
-  PREFIX => 'stasis_perl_',
-  DIRECTORY => $ENV{STASIS_INLINE_DIRECTORY};
 
-use Inline ( C => 'DATA',
-             INC  => "-I $STASIS_DIR -I $STASIS_DIR/build/"
-    );
-#warn "running inline init from dir: " . `pwd`;
-Inline->init;
-#warn "ran inline init\n";
+sub import {
+    my $inline_dir = shift;
+    require Inline;
+    Inline->import (C => Config => (LIBS =>
+				   "-L$STASIS_DIR/build/src/stasis/ " .
+				   "-lstasis -lpthread",
+				   CCFLAGS => "-Wall -pedantic -Werror -std=c99  -DPERL_GCC_PEDANTIC"
+	                          ),
+			ENABLE => 'AUTOWRAP',
+			TYPEMAPS => "$STASIS_DIR/lang/perl/typemap",
+			PREFIX => 'stasis_perl_',
+			DIRECTORY => $ENV{STASIS_INLINE_DIRECTORY});
 
+    Inline->import (C => 'DATA',
+             INC  => "-I $STASIS_DIR -I $STASIS_DIR/build/");
+
+    Inline->init;
+
+}
 sub version {
    return "Stasis 0.1";
 }
@@ -43,7 +46,7 @@ require Scalar::Util;
 
 require Tie::Hash;
 
-@ISA = qw(Tie::Hash);
+our @ISA = qw(Tie::Hash);
 
 sub TIEHASH {
     my $class = shift;
@@ -79,22 +82,25 @@ sub STORE {
     my $key = shift;
     my $val = shift;
     if('HASH' eq ref($val)) {
-	if(Scalar::Util::blessed($val) && $sv->isa('Stasis::Hash')) {
+	if(Scalar::Util::blessed($val) && $val->isa('Stasis::Hash')) {
+	    die "untested?";
 	    my $obj = tied ($val);  # tied returns the object backing the hash.
-	    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $obj{rid});
+	    Stasis::ThashInsert($$this{xid}, $$this{rid}, $key, $$obj{rid});
+	    die "untested?";
 	} else {
-	    # Copy the hash into scratch space
+	    # Copy the hash into scratch space	
 	    my %h;
 	    foreach my $k (keys %$val) {
-		$h{$k} = $val{$k};
+		$h{$k} = $$val{$k};
 	    }	   
 
 	    # Tie the hash that was passed to us
 	    my $rid = Stasis::ThashCreate($$this{xid});
 	    tie %$val, 'Stasis::Hash', $$this{xid}, $rid;
+
 	    # Copy the scratch space into the tied hash.
 	    foreach my $k (keys %h) {
-		$val{$k} = $h{$k}
+		$$val{$k} = $h{$k}
 	    }
 
 	    # Insert the populated hashtable
@@ -141,7 +147,7 @@ sub CLEAR {
 }
 
 package Stasis::HashHeader;
-@ISA = qw(Stasis::Recordid);
+our @ISA = qw(Stasis::Recordid);
 
 package Stasis;
 1;
@@ -168,7 +174,7 @@ static recordid recordid_SV(SV* sv) {
      abort();
    }
    if (!(sv_isobject(sv) && sv_derived_from(sv, "Stasis::Recordid"))) {
-     printf("recordid_SV fail 2\n");
+     printf("SV is not a recordid\n");
      abort();
    }
    AV * av = (AV*)SvRV(sv);
