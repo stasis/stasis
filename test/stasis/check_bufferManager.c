@@ -4,7 +4,9 @@
 #include <stasis/latches.h>
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
-
+#include <stasis/bufferManager/bufferHash.h>
+#include <stasis/bufferManager/concurrentBufferManager.h>
+#include <stasis/bufferManager/legacy/legacyBufferManager.h>
 #include <sched.h>
 #include <assert.h>
 
@@ -324,17 +326,53 @@ START_TEST(pageBlindThreadTest) {
   Tdeinit();
 } END_TEST
 
+static void stalePinTestImpl(stasis_buffer_manager_t * (*fact)(stasis_log_t*, stasis_dirty_page_table_t*)) {
+  stasis_buffer_manager_t * (*old_fact)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_factory;
+  stasis_buffer_manager_factory = fact;
+
+  Tinit();
+
+  Page * p[MAX_BUFFER_SIZE-1];
+  for(int i = 0; i < MAX_BUFFER_SIZE-1; i++) {
+    p[i] = loadUninitializedPage(-1, i);
+  }
+  for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
+    Page * foo = loadUninitializedPage(-1, i+MAX_BUFFER_SIZE);
+    releasePage(foo);
+  }
+  for(int i = 0; i < MAX_BUFFER_SIZE-1; i++) {
+    releasePage(p[i]);
+  }
+  Tdeinit();
+
+  stasis_buffer_manager_factory = old_fact;
+}
+START_TEST(stalePinTest) {
+  stalePinTestImpl(stasis_buffer_manager_hash_factory);
+} END_TEST
+START_TEST(stalePinTestConcurrentBufferManager) {
+  printf("Fail: Bug 22");
+  abort();
+  stalePinTestImpl(stasis_buffer_manager_concurrent_hash_factory);
+} END_TEST
+//START_TEST(stalePinTestDeprecatedBufferManager) {
+//  stalePinTestImpl(stasis_buffer_manager_deprecated_factory);
+//} END_TEST
+
 Suite * check_suite(void) {
   Suite *s = suite_create("bufferManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 3*3600); // three hour timeout
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, stalePinTest);
+  // tcase_add_test(tc, stalePinTestDeprecatedBufferManager); // Fails; do not intend to fix.
   tcase_add_test(tc, pageSingleThreadTest);
   tcase_add_test(tc, pageSingleThreadWriterTest);
   tcase_add_test(tc, pageLoadTest);
   tcase_add_test(tc, pageThreadedWritersTest);
   tcase_add_test(tc, pageBlindRandomTest);
+  tcase_add_test(tc, stalePinTestConcurrentBufferManager);
 //  tcase_add_test(tc, pageBlindThreadTest);
 
   /* --------------------------------------------- */
