@@ -285,6 +285,11 @@ void stasis_record_compact_slotids(int xid, Page * p) {
 void stasis_page_loaded(Page * p, pagetype_t type){
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
   assert(page_impls[p->pageType].page_type == p->pageType);
+  if(page_impls[type].has_header) {
+    p->LSN = *stasis_page_lsn_cptr(p);
+  } else {
+    p->LSN = 0; // TODO is this the right thing to do?
+  }
   if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
 }
 void stasis_page_flushed(Page * p){
