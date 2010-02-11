@@ -150,8 +150,6 @@ void stasis_operation_redo(const LogEntry * e, Page * p) {
     // is for this log type.
 
     // contrast with stasis_operation_do(), which doesn't check the .redo field
-    assert(e->update.funcID != OPERATION_INVALID);
-    assert(stasis_operation_table[e->update.funcID].redo != OPERATION_INVALID);
     stasis_operation_table[stasis_operation_table[e->update.funcID].redo]
       .run(e,p);
     if(p) stasis_page_lsn_write(e->xid, p, e->LSN);

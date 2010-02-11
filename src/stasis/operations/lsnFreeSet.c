@@ -97,7 +97,7 @@ int TsetWriteBack(int xid, pageid_t page, pageoff_t off, pageoff_t len, const vo
 stasis_operation_impl stasis_op_impl_lsn_free_set() {
   stasis_operation_impl o = {
     OPERATION_SET_LSN_FREE,
-    SEGMENT_PAGE,
+    SLOTTED_LSN_FREE_PAGE,
     OPERATION_SET_LSN_FREE,
     OPERATION_SET_LSN_FREE_INVERSE,
     op_lsn_free_set
@@ -108,7 +108,7 @@ stasis_operation_impl stasis_op_impl_lsn_free_set() {
 stasis_operation_impl stasis_op_impl_lsn_free_set_inverse() {
   stasis_operation_impl o = {
     OPERATION_SET_LSN_FREE_INVERSE,
-    SEGMENT_PAGE,
+    SLOTTED_LSN_FREE_PAGE,
     OPERATION_SET_LSN_FREE_INVERSE,
     OPERATION_SET_LSN_FREE,
     op_lsn_free_unset

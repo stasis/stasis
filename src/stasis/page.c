@@ -284,11 +284,12 @@ void stasis_record_compact_slotids(int xid, Page * p) {
 }
 void stasis_page_loaded(Page * p, pagetype_t type){
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
-  assert(page_impls[p->pageType].page_type == p->pageType);
-  if(page_impls[type].has_header) {
+  assert(page_impls[p->pageType].page_type == p->pageType);  // XXX unsafe; what if the page has no header?
+  if(page_impls[p->pageType].has_header) {
     p->LSN = *stasis_page_lsn_cptr(p);
   } else {
-    p->LSN = 0; // TODO is this the right thing to do?
+    // XXX Need to distinguish between lsn free and header free, then assert(type != UNKNOWN_TYPE_PAGE);
+    p->LSN = 0;
   }
   if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
 }
@@ -300,6 +301,9 @@ void stasis_page_flushed(Page * p){
   if(page_impls[type].has_header) {
     *stasis_page_type_ptr(p)= type;
     *stasis_page_lsn_ptr(p) = p->LSN;
+  } else {
+    *stasis_page_type_ptr(p)= type; // XXX 'has_header' is a misnomer.
+
   }
   if(page_impls[type].pageFlushed) page_impls[type].pageFlushed(p);
 }

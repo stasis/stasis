@@ -157,7 +157,8 @@ Page * loadPage(int xid, pageid_t pageid) {
 Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
-  return bm->loadPageImpl(bm, xid, pageid, type);
+  Page *p = bm->loadPageImpl(bm, xid, pageid, type);
+  return p;
 }
 Page * loadUninitializedPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
