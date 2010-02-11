@@ -68,6 +68,8 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
   pthread_mutex_init(&(ret->mut), NULL);
 
+#ifndef VALGRIND_MODE
+
   byte * bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
   assert(bufferSpace);
   ret->addr_to_free = bufferSpace;
@@ -75,6 +77,9 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
   bufferSpace = (byte*)(((long)bufferSpace) +
 			PAGE_SIZE -
 			(((long)bufferSpace) % PAGE_SIZE));
+#else
+  fprintf(stderr, "WARNING: VALGRIND_MODE #defined; Using memory allocation strategy designed to catch bugs under valgrind\n");
+#endif // VALGRIND_MODE
 
   // We need one dummy page for locking purposes,
   //  so this array has one extra page in it.
@@ -83,7 +88,11 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
   for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     ret->pool[i].rwlatch = initlock();
     ret->pool[i].loadlatch = initlock();
+#ifndef VALGRIND_MODE
     ret->pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
+#else
+    ret->pool[i].memAddr = calloc(1, PAGE_SIZE);
+#endif
     ret->pool[i].dirty = 0;
   }
   return ret;
@@ -93,8 +102,13 @@ void stasis_buffer_pool_deinit(stasis_buffer_pool_t * ret) {
   for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
     deletelock(ret->pool[i].rwlatch);
     deletelock(ret->pool[i].loadlatch);
+#ifdef VALGRIND_MODE
+    free(ret->pool[i].memAddr);
+#endif
   }
+#ifndef VALGRIND_MODE
   free(ret->addr_to_free); // breaks efence
+#endif
   pthread_mutex_destroy(&ret->mut);
 }
 
