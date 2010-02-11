@@ -266,7 +266,7 @@ static size_t slottedFreespaceForSlot(Page * page, int slot) {
 static inline void slottedSanityCheck(Page * p, recordid rid) {
 #ifdef SLOTTED_PAGE_OLD_CHECKS
   assert(p->id == rid.page);
-  assert(rid.size < BLOB_THRESHOLD_SIZE); // Caller deals with this now!
+  assert(rid.size == INVALID_SIZE || rid.size < BLOB_THRESHOLD_SIZE); // Caller deals with this now!
   slottedFsck(p);
 #endif
 }
@@ -534,8 +534,10 @@ static void slottedSpliceSlot(int xid, Page *p, slotid_t a, slotid_t b) {
 static void slottedFree(int xid, Page * p, recordid rid) {
   slottedSanityCheck(p, rid);
 
-  if(*stasis_page_slotted_freespace_ptr(p) == *stasis_page_slotted_slot_ptr(p, rid.slot) + stasis_record_type_to_size(rid.size)) {
-    (*stasis_page_slotted_freespace_ptr(p)) -= stasis_record_type_to_size(rid.size);
+  ssize_t rec_size = stasis_record_type_to_size(*stasis_page_slotted_slot_length_ptr(p, rid.slot));
+
+  if(*stasis_page_slotted_freespace_ptr(p) == *stasis_page_slotted_slot_ptr(p, rid.slot) + rec_size) {
+    (*stasis_page_slotted_freespace_ptr(p)) -= rec_size;
   }
 
   assert(rid.slot < *stasis_page_slotted_numslots_ptr(p));
