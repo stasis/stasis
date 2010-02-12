@@ -487,6 +487,24 @@ pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocationManager) {
   return pageid+1;
 }
 
+pageid_t TregionSize(int xid, pageid_t firstPage) {
+  boundary_tag tag;
+  int ret = TregionReadBoundaryTag(xid, firstPage, &tag);
+  if(ret) {
+    return tag.size;
+  } else {
+    assert(ret);
+    return INVALID_SIZE;
+  }
+}
+void TregionForce(int xid, pageid_t firstPage) {
+  pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
+  stasis_dirty_page_table_flush_range(
+      stasis_runtime_dirty_page_table(),
+      firstPage, endOfRange);
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  bm->forcePageRange(bm, firstPage, endOfRange);
+}
 
 stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
   stasis_operation_impl o = {

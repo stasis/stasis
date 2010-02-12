@@ -57,6 +57,7 @@ START_TEST(regions_smokeTest) {
 
   pageid_t max_page = 0;
   pageid_t page = TregionAlloc(xid, 100, 0);
+  assert(TregionSize(xid, page) == 100);
   pageid_t new_page = page;
   if(new_page + 1 + 100 > max_page) {
     max_page = new_page + 1 + 100;
@@ -66,12 +67,14 @@ START_TEST(regions_smokeTest) {
   if(new_page + 2 > max_page) {
     max_page = new_page + 2;
   }
+  assert(TregionSize(xid, new_page) == 1);
   TregionDealloc(xid, page);
 
   pageid_t pages[50];
 
   for(int i = 0; i < 50; i++) {
     new_page = TregionAlloc(xid, 1, 0);
+    assert(TregionSize(xid, new_page) == 1);
     pages[i] = new_page;
     if(new_page + 2 > max_page) {
       max_page = new_page + 2;
@@ -79,6 +82,7 @@ START_TEST(regions_smokeTest) {
   }
 
   for(int i = 0; i < 50; i+=2) {
+    assert(TregionSize(xid, pages[i]) == 1);
     TregionDealloc(xid, pages[i]);
   }
 
