@@ -15,19 +15,27 @@ sub handler {
     my $r = shift;
     $r->content_type('text/html');
     print "<html><head></head><body><h1>Stasis</h1>" . `pwd`;
-    my $xid = Stasis::Tbegin();
-    warn "a\n";
-    my %h;
-    tie %h, 'Stasis::Hash', $xid, Stasis::ROOT_RID();
 
-    $h{foo}++;
+    my $output;
 
-    print ("$xid $h{foo}\n");
+    ## XXX This lock acts like a no-op; modapache seems to break perl
+    ## threads.
+    { lock($thelock);
+      my $xid = Stasis::Tbegin();
+      warn "a\n";
+      my %h;
+      tie %h, 'Stasis::Hash', $xid, Stasis::ROOT_RID();
 
-    Stasis::Tcommit($xid);
-    warn "b\n"; $| = 1;
-
-    print "</body></html>\n";
+      $h{foo}++;
+      
+      $output = "$xid $h{foo}\n";
+      Stasis::TsoftCommit($xid);
+      warn "b\n"; $| = 1;
+    }  # Release lock before commit happens.  This is safe, since the output is 
+       # deferred, and the commit order safes us from xacts that read uncommitted
+       # data.
+    Stasis::TforceCommits();
+    print "$output</body></html>\n";
   
     return Apache2::Const::OK;
 }

@@ -25,7 +25,7 @@ my $count = 0;
 my $tot :shared = 0;
 my $concurrent :shared = 0;
 
-my $num_procs = 500; #25;
+my $num_procs = 25;
 
 
 Stasis::Tinit();

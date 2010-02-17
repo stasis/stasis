@@ -1,21 +1,14 @@
-use threads;
-use threads::shared;
-
 use strict;
 BEGIN {
-    my $thelock :shared;
-
     $ENV{STASIS_DIR} = '/home/sears/stasis';
-
-    $ENV{STASIS_LOCK} = $thelock;
 }
-use lib ($ENV{STASIS_DIR}."/lang/perl/apache/");
-push @INC, "$ENV{STASIS_DIR}/lang/perl/";
+use lib ($ENV{STASIS_DIR}."/lang/perl/");  # For Stasis.pm
+push @INC, "$ENV{STASIS_DIR}/lang/perl/apache/";  # For StasisWeb::Web.pm
 
-use Inline (Config =>
-	    DIRECTORY => "$ENV{STASIS_DIR}/www-data/",
-    );
-use Stasis;
+#use Inline (Config =>
+#	    DIRECTORY => "$ENV{STASIS_DIR}/www-data/",
+#    );
+use Stasis "$ENV{STASIS_DIR}/www-data/";
 
 # XXX Ideally, the rest of this would go in a post_config handler, but
 # I can't get that to work...
