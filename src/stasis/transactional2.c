@@ -332,8 +332,11 @@ int Tdeinit() {
   int * active = stasis_transaction_table_list_active(stasis_transaction_table, &count);
 
   for(int i = 0; i < count; i++) {
-    if(!stasis_suppress_unclean_shutdown_warnings) {
-      fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", active[i]);
+    if(stasis_transaction_table_get(stasis_transaction_table,
+				    active[i])->prevLSN != INVALID_LSN) {
+      if(!stasis_suppress_unclean_shutdown_warnings) {
+	fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", active[i]);
+      }
     }
     Tabort(active[i]);
   }
