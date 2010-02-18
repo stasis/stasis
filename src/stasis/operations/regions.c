@@ -59,7 +59,8 @@ static int operate_dealloc_region_unlocked(int xid, const regionAllocArg *dat) {
   assert(ret);
 
   t.status = REGION_VACANT;
-  t.region_xid = xid;
+  int err = TgetTransactionFingerprint(xid, &t.region_xid_fp);
+  assert(!err);
 
   TsetBoundaryTag(xid, firstPage -1, &t);
 
@@ -132,7 +133,8 @@ static void TdeallocBoundaryTag(int xid, pageid_t page) {
   int ret = readBoundaryTag(xid, page, &t);
   assert(ret);
   t.status = REGION_CONDEMNED;
-  t.region_xid = xid;
+  int err = TgetTransactionFingerprint(xid, &t.region_xid_fp);
+  assert(!err);
   TsetBoundaryTag(xid, page, &t);
 
 }
@@ -146,7 +148,7 @@ void regionsInit(stasis_log_t *log) {
     t.size = PAGEID_T_MAX;
     t.prev_size = PAGEID_T_MAX;
     t.status = REGION_VACANT;
-    t.region_xid = INVALID_XID;
+    TgetTransactionFingerprint(INVALID_XID, &t.region_xid_fp);
     t.allocation_manager = 0;
 
     // This does what TallocBoundaryTag(-1, 0, &t); would do, but it
@@ -285,7 +287,7 @@ static void TregionAllocHelper(int xid, pageid_t page, pageid_t pageCount, int a
     //  - It could cause some fragmentation if interleaved transactions are allocating, and some abort.
     //  - Multiple transactions can allocate space at the end of the page file without blocking each other.
     new_tag.status = REGION_VACANT;
-    new_tag.region_xid = INVALID_XID;
+    TgetTransactionFingerprint(INVALID_XID, &new_tag.region_xid_fp);
     new_tag.allocation_manager = 0;
 
     TallocBoundaryTag(xid, newPageid, &new_tag);
@@ -293,7 +295,8 @@ static void TregionAllocHelper(int xid, pageid_t page, pageid_t pageCount, int a
   }
 
   t.status = REGION_ZONED;
-  t.region_xid = xid;
+  int err = TgetTransactionFingerprint(xid, &t.region_xid_fp);
+  assert(!err);
   t.allocation_manager = allocationManager;
   t.size = pageCount;
 
@@ -303,7 +306,7 @@ static void TregionAllocHelper(int xid, pageid_t page, pageid_t pageCount, int a
 
 static void consolidateRegions(int xid, pageid_t * firstPage, boundary_tag  *t) {
 
-  if(t->status != REGION_VACANT || TisActiveTransaction(t->region_xid)) { return; }
+  if(t->status != REGION_VACANT || TisActiveTransaction(&t->region_xid_fp)) { return; }
 
   //  (*firstPage)++;
 
@@ -324,7 +327,7 @@ static void consolidateRegions(int xid, pageid_t * firstPage, boundary_tag  *t) 
       // TODO: Truncate page file.
       TdeallocBoundaryTag(xid, succ_page);
       mustWriteOriginalTag = 1;
-    } else if(succ_tag.status == REGION_VACANT && (!TisActiveTransaction(succ_tag.region_xid))) {
+    } else if(succ_tag.status == REGION_VACANT && (!TisActiveTransaction(&succ_tag.region_xid_fp))) {
 
       t->size = t->size + succ_tag.size + 1;
       pageid_t succ_succ_page = succ_page + succ_tag.size + 1;
@@ -357,7 +360,7 @@ static void consolidateRegions(int xid, pageid_t * firstPage, boundary_tag  *t) 
     int ret = readBoundaryTag(xid, pred_page, &pred_tag);
     assert(ret);
 
-    if(pred_tag.status == REGION_VACANT && (!TisActiveTransaction(pred_tag.region_xid))) {
+    if(pred_tag.status == REGION_VACANT && (!TisActiveTransaction(&pred_tag.region_xid_fp))) {
 
       TdeallocBoundaryTag(xid, *firstPage);
 
@@ -452,7 +455,7 @@ pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocationManager) {
 
   //  printf(" %d, {%d, %d, %d}\tpageCount=%d\n", pageid, t.size, t.prev_size, t.status, pageCount);
 
-  while(t.status != REGION_VACANT || t.size < pageCount || TisActiveTransaction(t.region_xid)) {
+  while(t.status != REGION_VACANT || t.size < pageCount || TisActiveTransaction(&t.region_xid_fp)) {
     // TODO: This while loop and the boundary tag manipulation below should be factored into two submodules.
 
     //    printf("t.status = %d, REGION_VACANT = %d, t.size = %d, pageCount = %d\n", t.status, REGION_VACANT, t.size, pageCount);

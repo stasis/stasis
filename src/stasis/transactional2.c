@@ -444,8 +444,27 @@ int TactiveThreadCount(void) {
 int* TlistActiveTransactions(int *count) {
   return stasis_transaction_table_list_active(stasis_transaction_table, count);
 }
-int TisActiveTransaction(int xid) {
-  return stasis_transaction_table_is_active(stasis_transaction_table, xid);
+int TgetTransactionFingerprint(int xid, stasis_transaction_fingerprint_t * fp) {
+  if(stasis_transaction_table_is_active(stasis_transaction_table, xid)) {
+    lsn_t rec_lsn = stasis_transaction_table_get(stasis_transaction_table, xid)->recLSN;
+    if(rec_lsn == INVALID_LSN) {  // Generate a dummy entry.
+      Tupdate(xid,0,0,0,OPERATION_NOOP);
+    }
+    fp->xid = xid;
+    rec_lsn = stasis_transaction_table_get(stasis_transaction_table, xid)->recLSN;
+    fp->rec_lsn = rec_lsn;
+    return 0;
+  } else if(xid == INVALID_XID) {
+    fp->xid = INVALID_XID;
+    fp->rec_lsn = INVALID_LSN;
+  } else {
+    return ENOENT;
+  }
+}
+int TisActiveTransaction(stasis_transaction_fingerprint_t * fp) {
+  // stasis_transaction_table_is_active returns false for INVALID_XID, which is what we want.
+  return stasis_transaction_table_is_active(stasis_transaction_table, fp->xid)
+         && stasis_transaction_table_get(stasis_transaction_table, fp->xid)->recLSN == fp->rec_lsn;
 }
 
 

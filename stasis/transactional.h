@@ -728,12 +728,24 @@ lsn_t TendNestedTopAction(int xid, void * handle);
 int* TlistActiveTransactions(int *count);
 
 /**
+ * A unique (for all time) transaction descriptor.
+ *
+ * Unlike xids, fingerprints are not reused.
+ *
+ */
+typedef struct stasis_transaction_fingerprint_t {
+  lsn_t rec_lsn;  // The lsn of the first entry in the transaction
+  int xid; // The transaction id.  Lets us look up the rec_lsn in the transaction table.
+} stasis_transaction_fingerprint_t;
+
+int TgetTransactionFingerprint(int xid, stasis_transaction_fingerprint_t * fp);
+/**
  * Checks to see if a transaction is still active.
  *
  * @param xid The transaction id to be tested.
  * @return true if the transaction is still running, false otherwise.
  */
-int TisActiveTransaction(int xid);
+int TisActiveTransaction(stasis_transaction_fingerprint_t* fp);
 /*
  * @return the number of currently active transactions.
  */

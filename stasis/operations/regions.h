@@ -16,7 +16,7 @@ typedef struct boundary_tag {
   pageid_t size;
   pageid_t prev_size;
   int status;
-  int region_xid;
+  stasis_transaction_fingerprint_t region_xid_fp;
   int allocation_manager;
 } boundary_tag;
 

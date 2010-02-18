@@ -186,12 +186,6 @@ START_TEST(regions_randomizedTest) {
   Tcommit(xid);
 
   Tdeinit();
-  if((double)max_size/(double)max_ideal_size > 5) {
-    // max_blowup isn't what we want here; it measures the peak
-    // percentage of the file that is unused.  Instead, we want to
-    // measure the actual and ideal page file sizes for this run.
-    printf("WARNING: Excessive blowup ");
-  }
   printf("Max # of regions = %lld, page file size = %5.2fM, ideal page file size = %5.2fM, (blowup = %5.2f)\n",
 	 //peak bytes wasted = %5.2fM, blowup = %3.2f\n",
 	 max_region_count,
@@ -200,6 +194,13 @@ START_TEST(regions_randomizedTest) {
 	 (double)max_size/(double)max_ideal_size);
   //	 ((double)max_waste * PAGE_SIZE)/(1024.0*1024.0),
   //	 max_blowup);
+  if((double)max_size/(double)max_ideal_size > 5) {
+    // max_blowup isn't what we want here; it measures the peak
+    // percentage of the file that is unused.  Instead, we want to
+    // measure the actual and ideal page file sizes for this run.
+    printf("ERROR: Excessive blowup (max allowable is 5)\n");
+    abort();
+  }
 
 } END_TEST
 
