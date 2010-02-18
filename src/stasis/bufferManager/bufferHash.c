@@ -309,7 +309,12 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     stasis_page_loaded(ret, type);
     *stasis_page_type_ptr(ret) = UNINITIALIZED_PAGE;
     // XXX revisit LSN handling in loadUnititializedPage().
-    lsn_t xid_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
+    lsn_t xid_lsn;
+    if(xid == INVALID_XID) {
+      xid_lsn = INVALID_LSN;
+    } else {
+      xid_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
+    }
     lsn_t log_lsn = ((stasis_log_t*)stasis_log())->next_available_lsn(stasis_log());
     // If this transaction has a prevLSN, prefer it.  Otherwise, set the LSN to nextAvailableLSN - 1
     ret->LSN = *stasis_page_lsn_ptr(ret) = xid_lsn == INVALID_LSN ? (log_lsn - 1) : xid_lsn;
