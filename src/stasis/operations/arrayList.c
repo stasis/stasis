@@ -162,8 +162,9 @@ recordid TarrayListAlloc(int xid, pageid_t count, int multiplier, int recordSize
   rid.slot = 0; /* number of slots in array (maxOffset + 1) */
   rid.size = recordSize;
   Tupdate(xid, firstPage, &alp, sizeof(alp), OPERATION_ARRAY_LIST_HEADER_INIT);
-  TinitializeFixedPage(xid, firstPage+1, alp.size);
-
+  for(pageid_t i = 0; i < count; i++) {
+    TinitializeFixedPage(xid, firstPage+1+i, alp.size);
+  }
   return rid;
 }
 
@@ -171,6 +172,8 @@ void TarrayListDealloc(int xid, recordid rid) {
   Page * p = loadPage(xid, rid.page);
   array_list_parameter_t alp = array_list_read_parameter(xid, p);
   slotid_t n = array_list_get_block_containing_offset(alp, alp.maxOffset, NULL) + 1;
+  rid.size = sizeof(pageid_t); // The rid we pass to callers has its size set to the size of the user data
+                               // We want the size of internal records.
   for(slotid_t i = 1; i < n; i++) {  // block 0 points to p->id + 1.
     pageid_t pid;
     rid.slot = i + FIRST_DATA_PAGE_OFFSET;
@@ -227,7 +230,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
       pageid_t blockSize = alp.initialSize * powf(alp.multiplier, i);
 #endif
       pageid_t newFirstPage = TpageAllocMany(xid, blockSize);
-      DEBUG("block %d\n", i);
+      DEBUG("block %lld %lld %lld\n", (long long)i, (long long)newFirstPage, (long long)blockSize);
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
       /* Iterate over the (large number) of new blocks, clearing their contents */
       /* @todo XXX arraylist generates N log entries initing pages.
