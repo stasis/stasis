@@ -216,6 +216,8 @@ static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
 static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
   stasis_buffer_hash_t * bh = bm->impl;
 
+  DEBUG("load %lld (%d)\n", pageid, uninitialized);
+
   // Note:  Calls to loadlatch in this function violate lock order, but
   // should be safe, since we make sure no one can have a writelock
   // before we grab the readlock.
@@ -305,6 +307,12 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     type = UNINITIALIZED_PAGE;
     assert(!ret->dirty);
     stasis_page_loaded(ret, type);
+    *stasis_page_type_ptr(ret) = UNINITIALIZED_PAGE;
+    // XXX revisit LSN handling in loadUnititializedPage().
+    lsn_t xid_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
+    lsn_t log_lsn = ((stasis_log_t*)stasis_log())->next_available_lsn(stasis_log());
+    // If this transaction has a prevLSN, prefer it.  Otherwise, set the LSN to nextAvailableLSN - 1
+    ret->LSN = *stasis_page_lsn_ptr(ret) = xid_lsn == INVALID_LSN ? (log_lsn - 1) : xid_lsn;
   }
   *pagePendingPtr(ret) = 0;
   // Would remove from lru, but getFreePage() guarantees that it isn't
