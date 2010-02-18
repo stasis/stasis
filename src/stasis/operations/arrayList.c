@@ -141,12 +141,13 @@ recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset) {
 
 /*----------------------------------------------------------------------------*/
 
-compensated_function recordid TarrayListAlloc(int xid, pageid_t count, int multiplier, int recordSize) {
+recordid TarrayListAlloc(int xid, pageid_t count, int multiplier, int recordSize) {
 
   pageid_t firstPage;
-  try_ret(NULLRID) {
-    firstPage = TpageAllocMany(xid, count+1);
-  } end_ret(NULLRID);
+  firstPage = TpageAllocMany(xid, count+1);
+
+  if(firstPage == INVALID_PAGE) { return NULLRID; }
+
   array_list_parameter_t alp;
 
   alp.firstPage = firstPage;
@@ -160,11 +161,24 @@ compensated_function recordid TarrayListAlloc(int xid, pageid_t count, int multi
   rid.page = firstPage;
   rid.slot = 0; /* number of slots in array (maxOffset + 1) */
   rid.size = recordSize;
-  try_ret(NULLRID) {
-    Tupdate(xid, firstPage, &alp, sizeof(alp), OPERATION_ARRAY_LIST_HEADER_INIT);
-  } end_ret(NULLRID);
+  Tupdate(xid, firstPage, &alp, sizeof(alp), OPERATION_ARRAY_LIST_HEADER_INIT);
+  TinitializeFixedPage(xid, firstPage+1, alp.size);
 
   return rid;
+}
+
+void TarrayListDealloc(int xid, recordid rid) {
+  Page * p = loadPage(xid, rid.page);
+  array_list_parameter_t alp = array_list_read_parameter(xid, p);
+  slotid_t n = array_list_get_block_containing_offset(alp, alp.maxOffset, NULL) + 1;
+  for(slotid_t i = 1; i < n; i++) {  // block 0 points to p->id + 1.
+    pageid_t pid;
+    rid.slot = i + FIRST_DATA_PAGE_OFFSET;
+    stasis_record_read(xid, p, rid, (byte*)&pid);
+    TpageDeallocMany(xid, pid);
+  }
+  releasePage(p);
+  TpageDeallocMany(xid, rid.page);
 }
 
 /** @todo locking for arrayList... this isn't pressing since currently
@@ -188,7 +202,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
 
   int lastCurrentBlock; // just a slot on a page
   if(alp.maxOffset == -1) {
-    lastCurrentBlock = -1;
+    lastCurrentBlock = 0;
   } else{
     lastCurrentBlock = array_list_get_block_containing_offset(alp, alp.maxOffset, NULL);
   }
@@ -237,7 +251,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
 
 }
 
-compensated_function int TarrayListLength(int xid, recordid rid) {
+int TarrayListLength(int xid, recordid rid) {
  Page * p = loadPage(xid, rid.page);
  readlock(p->rwlatch, 0);
  array_list_parameter_t alp

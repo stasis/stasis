@@ -138,7 +138,7 @@ int Tbegin() {
   }
 }
 
-compensated_function void Tupdate(int xid, pageid_t page,
+void Tupdate(int xid, pageid_t page,
 					       const void * dat, size_t datlen, int op) {
   assert(stasis_initted);
   assert(page != INVALID_PAGE);
@@ -147,11 +147,9 @@ compensated_function void Tupdate(int xid, pageid_t page,
   assert(xact);
   Page * p = loadPageForOperation(xid, page, op);
 
-  try {
-    if(globalLockManager.writeLockPage && p) {
-      globalLockManager.writeLockPage(xid, page);
-    }
-  } end;
+  if(globalLockManager.writeLockPage && p) {
+    globalLockManager.writeLockPage(xid, page);
+  }
 
   if(p) writelock(p->rwlatch,0);
 
@@ -225,12 +223,12 @@ void TreorderableWritebackUpdate(int xid, void* hp,
   pthread_mutex_unlock(&h->mut);
   free(e);
 }
-compensated_function void TupdateStr(int xid, pageid_t page,
+void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op) {
   Tupdate(xid, page, dat, datlen, op);
 }
 
-compensated_function void TreadStr(int xid, recordid rid, char * dat) {
+void TreadStr(int xid, recordid rid, char * dat) {
   Tread(xid, rid, dat);
 }
 

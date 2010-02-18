@@ -59,16 +59,17 @@ terms specified in this license.
 #define __PAGE_OPERATIONS_H__
 #include <stasis/operations.h>
 
-compensated_function pageid_t TpageAlloc(int xid);
-compensated_function pageid_t TfixedPageAlloc(int xid, int size);
-compensated_function pageid_t TpageAllocMany(int xid, int count);
-compensated_function int TpageDealloc(int xid, pageid_t page);
-compensated_function int TpageSet(int xid, pageid_t page, const void* dat);
-compensated_function int TpageSetRange(int xid, pageid_t page, int offset, const void* dat, int len);
-compensated_function int TpageGet(int xid, pageid_t page, void* buf);
+pageid_t TpageAlloc(int xid);
+pageid_t TfixedPageAlloc(int xid, int size);
+pageid_t TpageAllocMany(int xid, int count);
+int TpageDealloc(int xid, pageid_t page);
+void TpageDeallocMany(int xid, pageid_t page);
+int TpageSet(int xid, pageid_t page, const void* dat);
+int TpageSetRange(int xid, pageid_t page, int offset, const void* dat, int len);
+int TpageGet(int xid, pageid_t page, void* buf);
 
-compensated_function void TinitializeSlottedPage(int xid, pageid_t page);
-compensated_function void TinitializeFixedPage(int xid, pageid_t page,
+void TinitializeSlottedPage(int xid, pageid_t page);
+void TinitializeFixedPage(int xid, pageid_t page,
 					       int slotLength);
 
 int TpageGetType(int xid, pageid_t page);

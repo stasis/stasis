@@ -162,7 +162,6 @@ void regionsInit(stasis_log_t *log) {
   holding_mutex = 0;
   releasePage(p);
 }
-const static int FIRST_TAG = 0;
 int TregionNextBoundaryTag(int xid, pageid_t* pid, boundary_tag * tag, int type) {
   pthread_mutex_lock(&region_mutex);
   assert(0 == holding_mutex);
@@ -173,19 +172,17 @@ int TregionNextBoundaryTag(int xid, pageid_t* pid, boundary_tag * tag, int type)
   if(ret) {
     while(1) {
       if(tag->size == PAGEID_T_MAX) {
-	ret = 0;
-	break;
+        ret = 0;
+        break;
       }
       *pid += tag->size+1;
       int succ = readBoundaryTag(xid,*pid-1, tag);
       assert(succ); // detect missing boundary tags
       DEBUG("tag status = %d\n",tag->status);
       if(tag->status == REGION_ZONED && ((!type) || (tag->allocation_manager == type))) {
-	break;
+        break;
       }
     }
-  } else {
-    ret = 0;
   }
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);

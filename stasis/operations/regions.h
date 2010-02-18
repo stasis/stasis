@@ -35,8 +35,24 @@ void TregionForce(int xid, pageid_t pid);
 
 /** Currently, this function is O(n) in the number of regions, so be careful! */
 void TregionFindNthActive(int xid, pageid_t n, pageid_t * firstPage, pageid_t * size);
-
+/**
+ * Read the active boundary tag that follows the given region.
+ * Inactive boundary tags (ones that are locked by ongoing transactions, or that point
+ * to free space) will be skipped.
+ *
+ * @param xid The transaction reading the boundary tag
+ * @param pid A pointer to the current pageid.
+ * @param tag A pointer to a buffer that will hold the next boundary tag.
+ * @param allocationManager The allocation manager whose tags should be returned, or 0 if all active tags should be returned.
+ * @return 0 on failure, true on success
+ */
 int TregionNextBoundaryTag(int xid, pageid_t*pid, boundary_tag *tag, int allocationManager);
+/** Read the boundary tag marking the first page of some region.  If pid = ROOT_RECORD.page, this will return the first boundary tag.
+ *
+ * @param xid The transaction examining the boundary tag
+ * @param pid The first page in the region (ie: the one returned by TregionAlloc().  In the current implementation, the boundary tag lives on the page before this one.
+ * @param tag A buffer that the tag will be read into.
+ */
 int TregionReadBoundaryTag(int xid, pageid_t pid, boundary_tag *tag);
 
 stasis_operation_impl stasis_op_impl_boundary_tag_alloc();

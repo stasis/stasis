@@ -543,6 +543,8 @@ START_TEST(operation_array_list) {
     Tread(xid, rid2, &j);
     assert(i == j);
   }
+
+  TarrayListDealloc(xid, rid);
   Tcommit(xid);
 
   Tdeinit();

@@ -581,12 +581,12 @@ int Tbegin(void);
  *
  * @see operations.h For an overview of the operations API
  */
-compensated_function void Tupdate(int xid, pageid_t page,
+void Tupdate(int xid, pageid_t page,
 				  const void *dat, size_t datlen, int op);
 /**
    @deprecated Only exists to work around swig/python limitations.
  */
-compensated_function void TupdateStr(int xid, pageid_t page,
+void TupdateStr(int xid, pageid_t page,
                                      const char *dat, size_t datlen, int op);
 
 void TreorderableUpdate(int xid, void * h, pageid_t page,

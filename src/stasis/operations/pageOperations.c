@@ -110,10 +110,12 @@ pageid_t TfixedPageAlloc(int xid, int size) {
   return page;
 }
 
-compensated_function pageid_t TpageAllocMany(int xid, int count) {
+pageid_t TpageAllocMany(int xid, int count) {
   return TregionAlloc(xid, count, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
-
+void TpageDeallocMany(int xid, pageid_t pid) {
+  TregionDealloc(xid, pid);
+}
 int TpageGetType(int xid, pageid_t page) {
   Page * p = loadPage(xid, page);
   int ret = p->pageType;
