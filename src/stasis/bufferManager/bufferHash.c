@@ -1,4 +1,3 @@
-
 // Multiple include trick.
 #define HASH_ENTRY(x) bh_hash##x
 #define HASH_FCN(val,y,z) (*(pageid_t*)val)

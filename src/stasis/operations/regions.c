@@ -168,8 +168,7 @@ int TregionNextBoundaryTag(int xid, pageid_t* pid, boundary_tag * tag, int type)
   pthread_mutex_lock(&region_mutex);
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
-
-
+  // XXX can't distinguish between EOF and error (error could happen if the boundary tag is consolidated in race with our caller)
   int ret = readBoundaryTag(xid, *pid-1, tag);
   if(ret) {
     while(1) {

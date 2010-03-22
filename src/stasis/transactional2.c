@@ -145,7 +145,7 @@ void Tupdate(int xid, pageid_t page,
   LogEntry * e;
   stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(xact);
-  Page * p = loadPageForOperation(xid, page, op);
+  Page * p = loadPageForOperation(xid, page, op, 0);
 
   if(globalLockManager.writeLockPage && p) {
     globalLockManager.writeLockPage(xid, page);

@@ -352,6 +352,7 @@ static recordid slottedFirst(int xid, Page *p) {
 static recordid slottedLast(int xid, Page *p) {
   recordid rid = {p->id, -1, 0 };
   rid.slot = (*stasis_page_slotted_numslots_cptr(p)) - 1;
+  rid.size = *stasis_page_slotted_slot_length_cptr(p, rid.slot);
   return rid;
 }
 

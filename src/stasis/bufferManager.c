@@ -168,9 +168,12 @@ Page * loadUninitializedPage(int xid, pageid_t pageid) {
   return bm->loadUninitPageImpl(bm, xid, pageid);
 }
 
-Page * loadPageForOperation(int xid, pageid_t pageid, int op) {
+Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery) {
   pagetype_t type = stasis_operation_type(op);
   Page * p;
+  if(is_recovery && type == UNINITIALIZED_PAGE) {
+    type = UNKNOWN_TYPE_PAGE; // XXX what about segment pages?  Presumably, the thing that initializes a segment passes in UNKNOWN.
+  }
   if(pageid == SEGMENT_PAGEID) {
     assert(type = SEGMENT_PAGE);
     p = 0;

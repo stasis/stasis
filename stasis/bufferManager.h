@@ -96,7 +96,7 @@ Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type);
 
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
-Page * loadPageForOperation(int xid, pageid_t pageid, int op);
+Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery);
 
 /**
     Get a page from cache.  This function should never block on I/O.
