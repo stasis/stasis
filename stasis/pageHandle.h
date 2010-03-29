@@ -51,6 +51,12 @@ struct stasis_page_handle_t {
   */
   void (*read)(struct stasis_page_handle_t* ph, Page * ret, pagetype_t type);
   /**
+     This function is a performance hint.  It tells the page handle to
+     bring the page range into cache.  The hope is that this hint can be passed
+     directly to the OS.
+   */
+  void  (*prefetch_range)(struct stasis_page_handle_t* ph, pageid_t pageid, pageid_t count);
+  /**
      Force the page file to disk.  Pages that have had pageWrite()
      called on them are guaranteed to be on disk after this returns.
 

@@ -347,6 +347,11 @@ static void stalePinTestImpl(stasis_buffer_manager_t * (*fact)(stasis_log_t*, st
 
   stasis_buffer_manager_factory = old_fact;
 }
+START_TEST(prefetchTest) {
+  Tinit();
+  prefetchPages(100, 100);
+  Tdeinit();
+} END_TEST
 START_TEST(stalePinTest) {
   stalePinTestImpl(stasis_buffer_manager_hash_factory);
 } END_TEST
@@ -366,6 +371,7 @@ Suite * check_suite(void) {
   tcase_set_timeout(tc, 3*3600); // three hour timeout
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, stalePinTest);
+  tcase_add_test(tc, prefetchTest);
   // tcase_add_test(tc, stalePinTestDeprecatedBufferManager); // Fails; do not intend to fix.
   tcase_add_test(tc, pageSingleThreadTest);
   tcase_add_test(tc, pageSingleThreadWriterTest);

@@ -38,6 +38,14 @@ typedef struct {
   stasis_log_t *log;
   int flushing;
   int running;
+  // State for prefetching
+  int prefetch_thread_count;
+  pthread_t * prefetch_workers;
+  pthread_mutex_t prefetch_mut;
+  pthread_cond_t prefetcher_available;
+  pthread_cond_t prefetch_waiting;
+  pageid_t prefetch_next_pageid;
+  pageid_t prefetch_next_count;
 } stasis_buffer_hash_t;
 
 typedef struct LL_ENTRY(node_t) node_t;
@@ -350,6 +358,49 @@ static Page * bhLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const p
   return bhLoadPageImpl_helper(bm, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 
+static void* prefetch_worker(void * arg) {
+  stasis_buffer_hash_t * bh = arg; //bm->impl;
+  pthread_mutex_lock(&bh->prefetch_mut);
+  int done = 0;
+  while(1) {
+    while(bh->prefetch_next_count == 0) {
+      // nothing to do.
+      pthread_cond_broadcast(&bh->prefetcher_available);
+      if(!bh->running) done = 1; break; // shutdown
+      pthread_cond_wait(&bh->prefetch_waiting, &bh->prefetch_mut);
+    }
+    if(done) break;
+    // we have some work.
+    pageid_t pageid = bh->prefetch_next_pageid;
+    pageid_t count = bh->prefetch_next_count;
+    bh->prefetch_next_pageid = 0;
+    bh->prefetch_next_count = 0;
+    pthread_mutex_unlock(&bh->prefetch_mut);
+    bh->page_handle->prefetch_range(bh->page_handle, pageid, count);
+    pthread_mutex_lock(&bh->prefetch_mut);
+  }
+  pthread_mutex_unlock(&bh->prefetch_mut);
+  return 0;
+}
+
+void bhPrefetchPagesImpl(stasis_buffer_manager_t *bm, pageid_t pageid, pageid_t count) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  if(bh->prefetch_thread_count > 0) {
+    pthread_mutex_lock(&bh->prefetch_mut);
+    while(bh->prefetch_next_count != 0) {
+      pthread_cond_broadcast(&bh->prefetch_waiting);
+      pthread_cond_wait(&bh->prefetcher_available, &bh->prefetch_mut);
+    }
+    // fire and forget.
+    bh->prefetch_next_pageid = pageid;
+    bh->prefetch_next_count = count;
+
+    pthread_mutex_unlock(&bh->prefetch_mut);
+  } else {  // synchronously prefetch in this thread
+    bh->page_handle->prefetch_range(bh->page_handle, pageid, count);
+  }
+
+}
 
 static void bhReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   stasis_buffer_hash_t * bh = bm->impl;
@@ -387,8 +438,14 @@ static void bhBufDeinit(stasis_buffer_manager_t * bm) {
   pthread_mutex_unlock(&bh->mut);
 
   pthread_cond_signal(&bh->needFree); // Wake up the writeback thread so it will exit.
+  pthread_cond_broadcast(&bh->prefetch_waiting);
   pthread_join(bh->worker, 0);
 
+  for(int i = 0; i < bh->prefetch_thread_count; i++) {
+    pthread_join(bh->prefetch_workers[i], 0);
+  }
+
+  free(bh->prefetch_workers);
   // XXX flush range should return an error number, which we would check.  (Right now, it aborts...)
   int ret = stasis_dirty_page_table_flush(bh->dpt);
   assert(!ret); // currently the only return value that we'll see is EAGAIN, which means a concurrent thread is in writeback... That should never be the case!
@@ -412,6 +469,9 @@ static void bhBufDeinit(stasis_buffer_manager_t * bm) {
   stasis_buffer_pool_deinit(bh->buffer_pool);
   bh->page_handle->close(bh->page_handle);
 
+  pthread_mutex_destroy(&bh->prefetch_mut);
+  pthread_cond_destroy(&bh->prefetch_waiting);
+  pthread_cond_destroy(&bh->prefetcher_available);
   pthread_mutex_destroy(&bh->mut);
   pthread_cond_destroy(&bh->needFree);
   pthread_cond_destroy(&bh->readComplete);
@@ -425,6 +485,11 @@ static void bhSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
 
   pthread_cond_signal(&bh->needFree);
   pthread_join(bh->worker, 0);
+
+  for(int i = 0; i < bh->prefetch_thread_count; i++) {
+    pthread_join(bh->prefetch_workers[i], 0);
+  }
+
 
   struct LH_ENTRY(list) iter;
   const struct LH_ENTRY(pair_t) * next;
@@ -455,6 +520,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
 
   bm->loadPageImpl = bhLoadPageImpl;
   bm->loadUninitPageImpl = bhLoadUninitPageImpl;
+  bm->prefetchPages = bhPrefetchPagesImpl;
   bm->getCachedPageImpl = bhGetCachedPage;
   bm->releasePageImpl = bhReleasePage;
   bm->writeBackPage = bhWriteBackPage;
@@ -493,6 +559,19 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   pthread_cond_init(&bh->readComplete,0);
 
   pthread_create(&bh->worker, 0, writeBackWorker, bm);
+
+  bh->prefetch_thread_count = stasis_buffer_manager_hash_prefetch_count;
+
+  pthread_mutex_init(&bh->prefetch_mut, 0);
+  pthread_cond_init(&bh->prefetch_waiting, 0);
+  pthread_cond_init(&bh->prefetcher_available, 0);
+  bh->prefetch_next_count = 0;
+  bh->prefetch_next_pageid = 0;
+
+  bh->prefetch_workers = malloc(sizeof(pthread_t) * bh->prefetch_thread_count);
+  for(int i = 0; i < bh->prefetch_thread_count; i++) {
+    pthread_create(&bh->prefetch_workers[i], 0, prefetch_worker, bh);
+  }
 
   return bm;
 }

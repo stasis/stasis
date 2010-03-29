@@ -45,6 +45,17 @@ static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
   stasis_page_loaded(ret, type);
   unlock(ret->rwlatch);
 }
+static void phPrefetchRange(stasis_page_handle_t *ph, pageid_t pageid, pageid_t count) {
+  // TODO RTFM and see if Linux provides a decent API for prefetch hints.
+  lsn_t off = pageid * PAGE_SIZE;
+  lsn_t len = count * PAGE_SIZE;
+
+  byte * buf = malloc(len);
+
+  ((stasis_handle_t*)ph->impl)->read(ph->impl, off, buf, len);
+
+  free(buf);
+}
 static void phForce(stasis_page_handle_t * ph) {
   int err = ((stasis_handle_t*)ph->impl)->force(ph->impl);
   assert(!err);
@@ -69,6 +80,7 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   ret->write = phWrite;
   ret->read  = phRead;
+  ret->prefetch_range = phPrefetchRange;
   ret->force_file = phForce;
   ret->force_range = phForceRange;
   ret->close = phClose;

@@ -247,6 +247,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 
   bm->loadPageImpl = chLoadPageImpl;
   bm->loadUninitPageImpl = chLoadUninitPageImpl;
+  bm->prefetchPages = NULL;
   bm->getCachedPageImpl = chGetCachedPage;
   bm->releasePageImpl = chReleasePage;
   bm->writeBackPage = chWriteBackPage;

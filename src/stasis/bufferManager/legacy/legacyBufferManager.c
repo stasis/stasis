@@ -50,6 +50,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handl
     bm->releasePageImpl = bufManReleasePage;
     bm->loadPageImpl = bufManLoadPage;
     bm->loadUninitPageImpl = bufManLoadUninitPage;
+    bm->prefetchPages = NULL;
     bm->getCachedPageImpl = bufManGetCachedPage;
     bm->writeBackPage = pageWrite_legacyWrapper;
     bm->forcePages = forcePageFile_legacyWrapper;

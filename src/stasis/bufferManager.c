@@ -187,6 +187,12 @@ Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery) {
   return p;
 }
 
+void   prefetchPages(pageid_t pageid, pageid_t count) {
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  // This is just a performance hint; and is an optional method.
+  if(bm->prefetchPages != NULL) { bm->prefetchPages(bm, pageid, count); }
+}
+
 Page * getCachedPage(int xid, pageid_t pageid) {
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
   return bm->getCachedPageImpl(bm, xid, pageid);

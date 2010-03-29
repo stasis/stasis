@@ -98,6 +98,8 @@ Page * loadUninitializedPage(int xid, pageid_t pageid);
 
 Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery);
 
+void   prefetchPages(pageid_t pageid, pageid_t count);
+
 /**
     Get a page from cache.  This function should never block on I/O.
 
@@ -116,6 +118,7 @@ typedef struct stasis_buffer_manager_t stasis_buffer_manager_t;
 struct stasis_buffer_manager_t {
   Page * (*loadPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid, pagetype_t type);
   Page * (*loadUninitPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid);
+  void   (*prefetchPages)(stasis_buffer_manager_t*, pageid_t pageid, pageid_t count);
   Page * (*getCachedPageImpl)(stasis_buffer_manager_t*, int xid, const pageid_t pageid);
   void   (*releasePageImpl)(stasis_buffer_manager_t*, Page * p);
   /**

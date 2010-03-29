@@ -86,6 +86,12 @@ extern int    stasis_log_softcommit;
 
 extern char * stasis_store_file_name;
 
+/**
+ * Number of prefetch threads to create at startup.  Zero disables the threads,
+ * which currently causes the pages to be read synchronously.
+ */
+extern int stasis_buffer_manager_hash_prefetch_count;
+
 extern const char * stasis_log_dir_name;
 /**
    Maximum number of log chunks that will be created by file pool.
