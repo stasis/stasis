@@ -457,6 +457,7 @@ int TgetTransactionFingerprint(int xid, stasis_transaction_fingerprint_t * fp) {
   } else if(xid == INVALID_XID) {
     fp->xid = INVALID_XID;
     fp->rec_lsn = INVALID_LSN;
+    return 0;
   } else {
     return ENOENT;
   }
