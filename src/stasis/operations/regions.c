@@ -504,7 +504,11 @@ void TregionForce(int xid, pageid_t firstPage) {
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
   bm->forcePageRange(bm, firstPage, endOfRange);
 }
-
+void TregionPrefetch(int xid, pageid_t firstPage) {
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
+  bm->prefetchPages(bm, firstPage, endOfRange);
+}
 stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
   stasis_operation_impl o = {
     OPERATION_ALLOC_BOUNDARY_TAG,

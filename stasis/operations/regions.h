@@ -32,6 +32,7 @@ pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocaionManager);
 void TregionDealloc(int xid, pageid_t firstPage);
 pageid_t TregionSize(int xid, pageid_t firstPage);
 void TregionForce(int xid, pageid_t pid);
+void TregionPrefetch(int xid, pageid_t firstPage);
 
 /** Currently, this function is O(n) in the number of regions, so be careful! */
 void TregionFindNthActive(int xid, pageid_t n, pageid_t * firstPage, pageid_t * size);
