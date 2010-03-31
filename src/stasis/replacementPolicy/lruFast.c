@@ -45,6 +45,7 @@ static void* getStaleAndRemove(struct replacementPolicy* r) {
 static void  insert(struct replacementPolicy* r,
 		    void * p) {
   lruFast * l = r->impl;
+  assert(0 == l->getNode(p, l->conf));
   node_t * n = LL_ENTRY(push)(l->lru, p);
   l->setNode(p, n, l->conf);
 }
