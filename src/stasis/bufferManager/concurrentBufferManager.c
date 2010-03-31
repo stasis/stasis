@@ -41,12 +41,6 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
   p->prev = (Page *) n;
 }
 
-//static inline struct Page_s ** pagePendingPtr(Page * p) {
-//  return ((struct Page_s **)(&((p)->next)));
-//}
-//static inline intptr_t* pagePinCountPtr(Page * p) {
-//  return ((intptr_t*)(&((p)->queue)));
-//}
 static inline int needFlush(stasis_buffer_manager_t * bm) {
   stasis_buffer_concurrent_hash_t *bh = bm->impl;
   pageid_t count = stasis_dirty_page_table_dirty_count(bh->dpt);
@@ -144,13 +138,6 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       assert(!tls->p->dirty);
       unlock(tls->p->loadlatch);
       break;
-//    } else if(tls->p) {
-//      // page is pinned or something.  Oh well.  Throw this one back (atomically).
-//      hashtable_remove_cancel(ch->ht, &h);
-//      // hit the page.  This is safe because lru latches it.  (We might be hitting some arbitrary page here, but don't care)
-//      ch->lru->hit(ch->lru, tmp);
-//      // Go around the loop again.
-//      tls->p = NULL;
     } else {
       // page is not in hashtable, but it is in LRU.  getStale and hashtable remove are not atomic.
       // However, we cannot observe this; the lru remove happens before the hashtable remove,
@@ -179,12 +166,15 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
 
     int succ = trywritelock(p->loadlatch, 0);
     assert(succ);
+
+    // this has to happen before the page enters LRU; concurrentWrapper (and perhaps future implementations) hash on pageid.
+    p->id = pageid;
+
     // this has to happen after the hashtable insertion succeeds, otherwise above, we could get a page from lru that isn't in the cache.
     ch->lru->insert(ch->lru, p);
 
     hashtable_unlock(&h);
 
-    p->id = pageid;
     if(uninitialized) {
       type = UNINITIALIZED_PAGE;
       stasis_page_loaded(p, UNINITIALIZED_PAGE);
