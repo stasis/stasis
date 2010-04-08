@@ -6,17 +6,27 @@ typedef struct mem_impl {
   lsn_t start_pos;
   lsn_t end_pos;
   byte * buf;
+  int refcount;
 } mem_impl;
 
 static int mem_num_copies(stasis_handle_t * h) { return 1; }
 static int mem_num_copies_buffer(stasis_handle_t * h) { return 0; }
 
 static int mem_close(stasis_handle_t * h) {
-  free(((mem_impl*)h->impl)->buf);
-  pthread_mutex_destroy(&(((mem_impl*)h->impl)->mut));
+  mem_impl *impl = h->impl;
+  (impl->refcount)--;
+  if(impl->refcount) { return 0; }
+
+  free(impl->buf);
+  pthread_mutex_destroy(&(impl->mut));
   free(h->impl);
   free(h);
   return 0;
+}
+static stasis_handle_t * mem_dup(stasis_handle_t *h) {
+  mem_impl *impl = h->impl;
+  (impl->refcount)++;
+  return h;
 }
 static lsn_t mem_start_position(stasis_handle_t *h) {
   lsn_t ret;
@@ -243,6 +253,7 @@ struct stasis_handle_t mem_func = {
   .num_copies = mem_num_copies,
   .num_copies_buffer = mem_num_copies_buffer,
   .close = mem_close,
+  .dup = mem_dup,
   .start_position = mem_start_position,
   .end_position = mem_end_position,
   .write = mem_write,
@@ -270,6 +281,7 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset) {
   impl->start_pos = start_offset;
   impl->end_pos = start_offset;
   impl->buf = malloc(0);
+  impl->refcount = 1;
 
   return ret;
 }

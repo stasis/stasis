@@ -35,6 +35,15 @@ static int debug_close(stasis_handle_t * h) {
   free(h);
   return ret;
 }
+static stasis_handle_t * debug_dup(stasis_handle_t * h) {
+  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
+  printf("tid=%9ld call dup(%lx)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh); fflush(stdout);
+  stasis_handle_t * ret = hh->dup(hh);
+  printf("tid=%9ld retn dup(%lx) = %lx\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, (unsigned long)ret); fflush(stdout);
+  free(h->impl);
+  free(h);
+  return ret;
+}
 static lsn_t debug_start_position(stasis_handle_t *h) {
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
   printf("tid=%9ld call start_position(%lx)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh); fflush(stdout);
@@ -170,6 +179,7 @@ struct stasis_handle_t debug_func = {
   .num_copies = debug_num_copies,
   .num_copies_buffer = debug_num_copies_buffer,
   .close = debug_close,
+  .dup = debug_dup,
   .start_position = debug_start_position,
   .end_position = debug_end_position,
   .write = debug_write,

@@ -129,10 +129,15 @@ void load_handle(thread_arg* t) {
 
   stasis_handle_t * h = t->h;
 
-  for(int i = 0; i < t->count; i++) {
-    offsets[i] = -1;
+  if(handle_truncate_is_supported) {
+    for(int i = 0; i < t->count; i++) {
+      offsets[i] = -1;
+    }
+  } else {
+    for(int i = 0; i < t->count; i++) {
+      offsets[i] = i * sizeof(int);
+    }
   }
-
   for(int i = 0; i < OPS_PER_THREAD; i++) {
     int val = myrandom(t->count);
 
@@ -178,21 +183,25 @@ void load_handle(thread_arg* t) {
 	}
       } break;
       case 2: {	  // append
-	lsn_t oldend = h->end_position(h);
-	int ret = h->append(h, &(offsets[val]), (const byte*)&(t->values[val]), sizeof(int));
-	assert(!ret || oldend < h->start_position(h));
+        if(handle_truncate_is_supported) {
+          lsn_t oldend = h->end_position(h);
+          int ret = h->append(h, &(offsets[val]), (const byte*)&(t->values[val]), sizeof(int));
+          assert(!ret || oldend < h->start_position(h));
+        }
       } break;
       case 3: {	  // append_buffer
-	lsn_t oldend = h->end_position(h);
-	stasis_write_buffer_t * w = h->append_buffer(h, sizeof(int));
-	if(!w->error) {
-	  *((int*)w->buf) = t->values[val];
-	  assert(w->len == sizeof(int));
-	  offsets[val] = w->off;
-	} else {
-	  assert(oldend < h->start_position(h));
-	}
-	w->h->release_write_buffer(w);
+        if(handle_truncate_is_supported) {
+          lsn_t oldend = h->end_position(h);
+          stasis_write_buffer_t * w = h->append_buffer(h, sizeof(int));
+          if(!w->error) {
+            *((int*)w->buf) = t->values[val];
+            assert(w->len == sizeof(int));
+            offsets[val] = w->off;
+          } else {
+            assert(oldend < h->start_position(h));
+          }
+          w->h->release_write_buffer(w);
+        }
       } break;
       default: {
 	abort();
@@ -202,7 +211,7 @@ void load_handle(thread_arg* t) {
       int check;
       int ret = h->read(h, offsets[val], (byte*)&check, sizeof(int));
       if(!ret) {
-	assert(check == t->values[val]);
+        assert(check == t->values[val]);
       }
 
 
@@ -219,7 +228,8 @@ void load_handle(thread_arg* t) {
 	  assert(j == t->values[val]);
 	} else {
 	  assert(ret == EDOM);
-	  assert(h->start_position(h) > offsets[val]);
+	  if(handle_truncate_is_supported)
+	    assert(h->start_position(h) > offsets[val]);
 	}
       } break;
       case 1: {   // read_buffer
@@ -231,7 +241,8 @@ void load_handle(thread_arg* t) {
 	} else {
 	  assert(r->error == EDOM);
 	  r->h->release_read_buffer(r);
-	  assert(h->start_position(h) > offsets[val]);
+      if(handle_truncate_is_supported)
+        assert(h->start_position(h) > offsets[val]);
 	}
       } break;
       default:
@@ -287,7 +298,7 @@ void handle_sequentialtest(stasis_handle_t * h) {
 void handle_concurrencytest(stasis_handle_t * h) {
   int vc = myrandom(VALUE_COUNT) + 10;
 
-  printf("Running concurrency test with %d values", vc); fflush(stdout);
+  printf("Running concurrency test with %d values\n", vc); fflush(stdout);
 
   int * values = malloc(vc * sizeof(int));
 
@@ -297,12 +308,17 @@ void handle_concurrencytest(stasis_handle_t * h) {
 
   thread_arg * args = malloc(THREAD_COUNT * sizeof(thread_arg));
   pthread_t * threads = malloc(THREAD_COUNT * sizeof(pthread_t));
+  stasis_handle_t ** handles = malloc(THREAD_COUNT / 2 * sizeof(*handles));
 
   int val_per_thread = vc / THREAD_COUNT;
   trunc_val = 0;
   for(int i = 0; i < THREAD_COUNT; i++) {
     args[i].values = &(values[i * val_per_thread]);
     args[i].count  = val_per_thread;
+    if(!(i % 2)) {
+      handles[i/2] = h->dup(h);
+      h = handles[i/2];
+    }
     args[i].h = h;
     pthread_create(&threads[i], 0, (void*(*)(void*))load_handle, &args[i]);
   }
@@ -310,9 +326,13 @@ void handle_concurrencytest(stasis_handle_t * h) {
   for(int i = 0; i < THREAD_COUNT; i++) {
     pthread_join(threads[i], 0);
   }
+  for(int i = 0; i < THREAD_COUNT / 2; i++) {
+    handles[i]->close(handles[i]);
+  }
   free(values);
   free(args);
   free(threads);
+  free(handles);
 }
 /**
    @test
@@ -353,7 +373,7 @@ START_TEST(io_fileTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  //handle_concurrencytest(h);
+//  handle_concurrencytest(h);  // fails by design
   h->close(h);
 
   unlink("logfile.txt");
@@ -390,7 +410,7 @@ START_TEST(io_pfileTest) {
   unlink("logfile.txt");
 
   h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
-  //handle_concurrencytest(h);
+  handle_concurrencytest(h);
   h->close(h);
 
   unlink("logfile.txt");

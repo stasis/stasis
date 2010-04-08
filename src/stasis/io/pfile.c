@@ -74,6 +74,11 @@ static int pfile_close(stasis_handle_t *h) {
   else     return errno;
 }
 
+static stasis_handle_t * pfile_dup(stasis_handle_t *h) {
+  pfile_impl *impl = h->impl;
+  return stasis_handle_open_pfile(impl->start_pos, impl->filename, impl->file_flags, impl->file_mode);
+}
+
 static lsn_t pfile_start_position(stasis_handle_t *h) {
   pfile_impl *impl = (pfile_impl*)h->impl;
   return impl->start_pos;
@@ -415,6 +420,7 @@ struct stasis_handle_t pfile_func = {
   .num_copies = pfile_num_copies,
   .num_copies_buffer = pfile_num_copies_buffer,
   .close = pfile_close,
+  .dup = pfile_dup,
   .start_position = pfile_start_position,
   .end_position = pfile_end_position,
   .write = pfile_write,

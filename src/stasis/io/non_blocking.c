@@ -179,6 +179,7 @@ typedef struct nbw_impl {
   pthread_cond_t force_completed_cond;
   pthread_cond_t pending_writes_cond;
   int still_open;
+  int refcount;
 } nbw_impl;
 
 static inline void freeFastHandle(nbw_impl * impl, const tree_node * n);
@@ -332,6 +333,12 @@ static int nbw_close(stasis_handle_t * h) {
   nbw_impl * impl = h->impl;
 
   pthread_mutex_lock(&impl->mut);
+
+  (impl->refcount)--;
+  if(impl->refcount) {
+    pthread_mutex_unlock(&impl->mut);
+    return 0;
+  }
   impl->still_open = 0;
   pthread_mutex_unlock(&impl->mut);
   pthread_cond_broadcast(&impl->pending_writes_cond);
@@ -373,6 +380,11 @@ static int nbw_close(stasis_handle_t * h) {
   free(h->impl);
   free(h);
   return ret;
+}
+static stasis_handle_t * nbw_dup(stasis_handle_t *h) {
+  nbw_impl * impl = h->impl;
+  (impl->refcount)++;
+  return h;
 }
 static lsn_t nbw_start_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
@@ -614,6 +626,7 @@ struct stasis_handle_t nbw_func = {
   .num_copies = nbw_num_copies,
   .num_copies_buffer = nbw_num_copies_buffer,
   .close = nbw_close,
+  .dup = nbw_dup,
   .start_position = nbw_start_position,
   .end_position = nbw_end_position,
   .write = nbw_write,
@@ -830,6 +843,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   pthread_cond_init(&impl->force_completed_cond, 0);
 
   impl->still_open = 1;
+  impl->refcount++;
 
   stasis_handle_t *h = malloc(sizeof(stasis_handle_t));
   *h = nbw_func;

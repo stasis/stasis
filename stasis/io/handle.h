@@ -104,6 +104,15 @@ typedef struct stasis_handle_t {
   /** Close this handle, and release any associated resources. */
   int (*close)(struct stasis_handle_t *);
 
+  /** Duplicate this handle.  This is useful for performance hinting;
+   *  sending sequential disk operations to different handles than random
+   *  operations allows the kernel's prefetch algorithm to kick in.
+   *
+   *  XXX calling dup on a handle, then calling truncate or append on the resulting handles has undefined semantics.
+   *
+   *  @return a stasis_handle_t that should eventually have close() called on it.
+   */
+  struct stasis_handle_t * (*dup)(struct stasis_handle_t *h);
   /** The offset of the handle's first byte */
   lsn_t (*start_position)(struct stasis_handle_t * h);
 
