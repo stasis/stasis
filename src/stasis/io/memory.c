@@ -28,6 +28,10 @@ static stasis_handle_t * mem_dup(stasis_handle_t *h) {
   (impl->refcount)++;
   return h;
 }
+static void mem_enable_sequential_optimizations(stasis_handle_t * h) {
+  // No-op
+}
+
 static lsn_t mem_start_position(stasis_handle_t *h) {
   lsn_t ret;
   mem_impl* impl = (mem_impl*)(h->impl);
@@ -254,6 +258,7 @@ struct stasis_handle_t mem_func = {
   .num_copies_buffer = mem_num_copies_buffer,
   .close = mem_close,
   .dup = mem_dup,
+  .enable_sequential_optimizations = mem_enable_sequential_optimizations,
   .start_position = mem_start_position,
   .end_position = mem_end_position,
   .write = mem_write,

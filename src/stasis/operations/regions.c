@@ -496,13 +496,13 @@ pageid_t TregionSize(int xid, pageid_t firstPage) {
     return INVALID_SIZE;
   }
 }
-void TregionForce(int xid, pageid_t firstPage) {
+void TregionForce(int xid, stasis_buffer_manager_t * bm, stasis_buffer_manager_handle_t * h, pageid_t firstPage) {
   pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
   stasis_dirty_page_table_flush_range(
       stasis_runtime_dirty_page_table(),
       firstPage, endOfRange);
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
-  bm->forcePageRange(bm, firstPage, endOfRange);
+  bm = bm ? bm : stasis_runtime_buffer_manager();
+  bm->forcePageRange(bm, h, firstPage, endOfRange);
 }
 void TregionPrefetch(int xid, pageid_t firstPage) {
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();

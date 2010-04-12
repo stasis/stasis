@@ -107,7 +107,7 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
     if((rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
       //      fprintf(stderr, "Truncating now. rec_lsn = %ld, log_trunc = %ld\n", rec_lsn, log_trunc);
       //      fprintf(stderr, "Truncating to rec_lsn = %ld\n", rec_lsn);
-      trunc->buffer_manager->forcePages(trunc->buffer_manager);
+      trunc->buffer_manager->forcePages(trunc->buffer_manager, 0);
       trunc->log->truncate(trunc->log, rec_lsn);
       return 1;
     } else {
@@ -124,7 +124,7 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
 
         //fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 
-        trunc->buffer_manager->forcePages(trunc->buffer_manager);
+        trunc->buffer_manager->forcePages(trunc->buffer_manager, 0);
         trunc->log->truncate(trunc->log, rec_lsn);
         return 1;
       } else {

@@ -114,9 +114,12 @@ Page * getCachedPage(int xid, const pageid_t pageid);
 void releasePage(Page *p);
 
 typedef struct stasis_buffer_manager_t stasis_buffer_manager_t;
-
+typedef void* stasis_buffer_manager_handle_t;
 struct stasis_buffer_manager_t {
-  Page * (*loadPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid, pagetype_t type);
+  /** Open a 'handle' to this buffer manager.  Returns NULL on failure, non-zero otherwise */
+  stasis_buffer_manager_handle_t* (*openHandleImpl)(stasis_buffer_manager_t*, int is_sequential);
+  int    (*closeHandleImpl)(stasis_buffer_manager_t*, stasis_buffer_manager_handle_t*);
+  Page * (*loadPageImpl)(stasis_buffer_manager_t*, stasis_buffer_manager_handle_t* h, int xid, pageid_t pageid, pagetype_t type);
   Page * (*loadUninitPageImpl)(stasis_buffer_manager_t*, int xid, pageid_t pageid);
   void   (*prefetchPages)(stasis_buffer_manager_t*, pageid_t pageid, pageid_t count);
   Page * (*getCachedPageImpl)(stasis_buffer_manager_t*, int xid, const pageid_t pageid);
@@ -142,7 +145,7 @@ struct stasis_buffer_manager_t {
       If the buffer manager doesn't support stable storage, this call is
       a no-op.
   */
-  void   (*forcePages)(struct stasis_buffer_manager_t*);
+  void   (*forcePages)(struct stasis_buffer_manager_t*, stasis_buffer_manager_handle_t *h);
   /**
       Force written back pages that fall within a particular range to disk.
 
@@ -151,7 +154,7 @@ struct stasis_buffer_manager_t {
       @param start the first pageid to be forced to disk
       @param stop the page after the last page to be forced to disk.
   */
-  void   (*forcePageRange)(struct stasis_buffer_manager_t*, pageid_t start, pageid_t stop);
+  void   (*forcePageRange)(struct stasis_buffer_manager_t*, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop);
   void   (*stasis_buffer_manager_simulate_crash)(struct stasis_buffer_manager_t*);
   /**
    * Write out any dirty pages.  Assumes that there are no running transactions

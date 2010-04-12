@@ -50,6 +50,10 @@ typedef struct pfile_impl {
     The name of the underlying file.
   */
   char *filename;
+  /**
+   * If 1, then do some extra stuff (like fadvise(WONTNEED) on sync).
+   */
+  int sequential;
 } pfile_impl;
 
 /**
@@ -78,7 +82,12 @@ static stasis_handle_t * pfile_dup(stasis_handle_t *h) {
   pfile_impl *impl = h->impl;
   return stasis_handle_open_pfile(impl->start_pos, impl->filename, impl->file_flags, impl->file_mode);
 }
-
+static void pfile_enable_sequential_optimizations(stasis_handle_t *h) {
+  pfile_impl *impl = h->impl;
+  impl->sequential = 1;
+  int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+  if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL to kernel failed");
+}
 static lsn_t pfile_start_position(stasis_handle_t *h) {
   pfile_impl *impl = (pfile_impl*)h->impl;
   return impl->start_pos;
@@ -374,6 +383,11 @@ static int pfile_force(stasis_handle_t *h) {
   } else {
     DEBUG("File was opened with O_SYNC.  pfile_force() is a no-op\n");
   }
+  if(impl->sequential) {
+    int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_DONTNEED);
+    if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL to kernel failed");
+  }
+
   return 0;
 }
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
@@ -404,6 +418,10 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
 #endif
   int ret = 0;
 #endif
+  if(impl->sequential) {
+    int err = posix_fadvise(impl->fd, start-impl->start_pos, stop-start, POSIX_FADV_DONTNEED);
+    if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL (for a range of a file) to kernel failed");
+  }
   return ret;
 }
 static int pfile_truncate_start(stasis_handle_t *h, lsn_t new_start) {
@@ -421,6 +439,7 @@ struct stasis_handle_t pfile_func = {
   .num_copies_buffer = pfile_num_copies_buffer,
   .close = pfile_close,
   .dup = pfile_dup,
+  .enable_sequential_optimizations = pfile_enable_sequential_optimizations,
   .start_position = pfile_start_position,
   .end_position = pfile_end_position,
   .write = pfile_write,
@@ -468,6 +487,7 @@ stasis_handle_t *stasis_handle(open_pfile)(lsn_t start_offset,
   impl->filename = strdup(filename);
   impl->file_flags = flags;
   impl->file_mode = mode;
+  impl->sequential = 0;
   assert(!ret->error);
   return ret;
 }

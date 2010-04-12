@@ -220,7 +220,8 @@ static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
   return ret;
 }
 
-static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
+static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t* handle,
+				    int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
   stasis_buffer_hash_t * bh = bm->impl;
 
   DEBUG("load %lld (%d)\n", pageid, uninitialized);
@@ -351,11 +352,11 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
   return ret;
 }
 
-static Page * bhLoadPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid, pagetype_t type) {
-  return bhLoadPageImpl_helper(bm, xid, pageid, 0, type);
+static Page * bhLoadPageImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t * h, int xid, const pageid_t pageid, pagetype_t type) {
+  return bhLoadPageImpl_helper(bm, h, xid, pageid, 0, type);
 }
 static Page * bhLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid) {
-  return bhLoadPageImpl_helper(bm, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
+  return bhLoadPageImpl_helper(bm, 0, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 
 static void* prefetch_worker(void * arg) {
@@ -366,7 +367,7 @@ static void* prefetch_worker(void * arg) {
     while(bh->prefetch_next_count == 0) {
       // nothing to do.
       pthread_cond_broadcast(&bh->prefetcher_available);
-      if(!bh->running) done = 1; break; // shutdown
+      if(!bh->running) { done = 1; break; } // shutdown
       pthread_cond_wait(&bh->prefetch_waiting, &bh->prefetch_mut);
     }
     if(done) break;
@@ -423,11 +424,11 @@ static int bhWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
   pthread_mutex_unlock(&bh->mut);
   return ret;
 }
-static void bhForcePages(stasis_buffer_manager_t* bm) {
+static void bhForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
   stasis_buffer_hash_t * bh = bm->impl;
   bh->page_handle->force_file(bh->page_handle);
 }
-static void bhForcePageRange(stasis_buffer_manager_t *bm, pageid_t start, pageid_t stop) {
+static void bhForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) {
   stasis_buffer_hash_t * bh = bm->impl;
   bh->page_handle->force_range(bh->page_handle, start, stop);
 }
@@ -514,10 +515,21 @@ static void bhSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
   free(bh);
 }
 
+static stasis_buffer_manager_handle_t * bhOpenHandleImpl(stasis_buffer_manager_t *bm, int is_sequential) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  return (stasis_buffer_manager_handle_t*)bh->page_handle->dup(bh->page_handle, is_sequential);
+}
+static int bhCloseHandleImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
+  ((stasis_page_handle_t*)h)->close((stasis_page_handle_t*)h);
+  return 0;
+}
+
 stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   stasis_buffer_manager_t *bm = malloc(sizeof(*bm));
   stasis_buffer_hash_t *bh = malloc(sizeof(*bh));
 
+  bm->openHandleImpl = bhOpenHandleImpl;
+  bm->closeHandleImpl = bhCloseHandleImpl;
   bm->loadPageImpl = bhLoadPageImpl;
   bm->loadUninitPageImpl = bhLoadUninitPageImpl;
   bm->prefetchPages = bhPrefetchPagesImpl;

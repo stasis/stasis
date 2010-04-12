@@ -28,10 +28,23 @@ typedef struct boundary_tag {
 
 void regionsInit(stasis_log_t *log);
 
-pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocaionManager);
+pageid_t TregionAlloc(int xid, pageid_t pageCount, int allocationManager);
 void TregionDealloc(int xid, pageid_t firstPage);
 pageid_t TregionSize(int xid, pageid_t firstPage);
-void TregionForce(int xid, pageid_t pid);
+/**
+   @param xid The transaction forcing the region to disk.  Perhaps
+              some day, the force won't be guaranteed to finish until
+              Tcommit(). Not currently used (this call is currently
+              synchronous).
+   @param bm  NULL, or the buffer manager associated with h.
+   @param h   NULL, or a buffer manager handle that's recently been
+              used to perform I/O against this region.  (If the handle
+              is non-null, and has been set to optimize for sequential
+	      writes, this call will tell linux to drop the pages from
+	      cache once it's forced the data to disk.)
+   @param pid The first page of the region to be forced.
+ */
+void TregionForce(int xid, stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t* h, pageid_t pid);
 void TregionPrefetch(int xid, pageid_t firstPage);
 
 /** Currently, this function is O(n) in the number of regions, so be careful! */

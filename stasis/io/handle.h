@@ -113,6 +113,10 @@ typedef struct stasis_handle_t {
    *  @return a stasis_handle_t that should eventually have close() called on it.
    */
   struct stasis_handle_t * (*dup)(struct stasis_handle_t *h);
+  /**
+   * Optimize the handle for sequential reads and writes.
+   */
+  void (*enable_sequential_optimizations)(struct stasis_handle_t *h);
   /** The offset of the handle's first byte */
   lsn_t (*start_position)(struct stasis_handle_t * h);
 

@@ -192,7 +192,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
   assert(p->id == pageid);
   return p;
 }
-static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid, pagetype_t type) {
+static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, int xid, const pageid_t pageid, pagetype_t type) {
   return chLoadPageImpl_helper(bm, xid, pageid, 0, type);
 }
 static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid) {
@@ -201,11 +201,11 @@ static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const p
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   unlock(p->loadlatch);
 }
-static void chForcePages(stasis_buffer_manager_t* bm) {
+static void chForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   ch->page_handle->force_file(ch->page_handle);
 }
-static void chForcePageRange(stasis_buffer_manager_t *bm, pageid_t start, pageid_t stop) {
+static void chForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) {
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   ch->page_handle->force_range(ch->page_handle, start, stop);
 }
@@ -231,10 +231,19 @@ static void chSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
 static void chBufDeinit(stasis_buffer_manager_t * bm) {
   chBufDeinitHelper(bm, 0);
 }
+static stasis_buffer_manager_handle_t * chOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
+  // no-op
+  return (void*)1;
+}
+static int chCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
+  return 0; // no error
+}
+
 stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   stasis_buffer_manager_t *bm = malloc(sizeof(*bm));
   stasis_buffer_concurrent_hash_t *ch = malloc(sizeof(*ch));
-
+  bm->openHandleImpl = chOpenHandle;
+  bm->closeHandleImpl = chCloseHandle;
   bm->loadPageImpl = chLoadPageImpl;
   bm->loadUninitPageImpl = chLoadUninitPageImpl;
   bm->prefetchPages = NULL;

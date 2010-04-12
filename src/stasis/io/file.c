@@ -50,7 +50,9 @@ static stasis_handle_t* file_dup(stasis_handle_t * h) {
   file_impl * impl = h->impl;
   return stasis_handle_open_file(impl->start_pos, impl->filename, impl->file_flags, impl->file_mode);
 }
-
+static void file_enable_sequential_optimizations(stasis_handle_t * h) {
+  // TODO enable_sequential_optimizations is a no-op in file.c
+}
 static lsn_t file_start_position(stasis_handle_t *h) {
   file_impl * impl = (file_impl*)h->impl;
   pthread_mutex_lock(&(impl->mut));
@@ -554,6 +556,7 @@ struct stasis_handle_t file_func = {
   .num_copies_buffer = file_num_copies_buffer,
   .close = file_close,
   .dup = file_dup,
+  .enable_sequential_optimizations = file_enable_sequential_optimizations,
   .start_position = file_start_position,
   .end_position = file_end_position,
   .write = file_write,

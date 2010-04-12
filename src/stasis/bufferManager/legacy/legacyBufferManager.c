@@ -20,7 +20,7 @@ static pthread_key_t lastPage;
 #define RW 1
 
 static void bufManBufDeinit();
-static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid, pagetype_t type);
+static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t* h, int xid, pageid_t pageid, pagetype_t type);
 static compensated_function Page *bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
 static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
 static void bufManReleasePage (stasis_buffer_manager_t *ignored, Page * p);
@@ -37,17 +37,27 @@ static int pageWrite_legacyWrapper(stasis_buffer_manager_t *ignored, pageid_t pa
   releasePage(p);
   return 0;
 }
-static void forcePageFile_legacyWrapper(stasis_buffer_manager_t *ignored) {
+static void forcePageFile_legacyWrapper(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t *h) {
   page_handle->force_file(page_handle);
 }
-static void forceRangePageFile_legacyWrapper(stasis_buffer_manager_t *ignored, lsn_t start, lsn_t stop) {
+static void forceRangePageFile_legacyWrapper(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t *h, lsn_t start, lsn_t stop) {
   page_handle->force_range(page_handle, start, stop);
+}
+
+static stasis_buffer_manager_handle_t * bufManOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
+  // no-op
+  return (void*)1;
+}
+static int bufManCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
+  return 0; // no error.
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
     page_handle = ph;
     stasis_buffer_manager_t * bm = malloc(sizeof(*bm));
     bm->releasePageImpl = bufManReleasePage;
+    bm->openHandleImpl = bufManOpenHandle;
+    bm->closeHandleImpl = bufManCloseHandle;
     bm->loadPageImpl = bufManLoadPage;
     bm->loadUninitPageImpl = bufManLoadUninitPage;
     bm->prefetchPages = NULL;
@@ -342,7 +352,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pag
   return ret;
 }
 
-static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, int xid, const pageid_t pageid, pagetype_t type) {
+static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t * hignored, int xid, const pageid_t pageid, pagetype_t type) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -375,7 +385,7 @@ static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignore
 
 static Page* bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, const pageid_t pageid) {
   // XXX hack; but this code is deprecated
-  return bufManLoadPage(ignored, xid, pageid, UNKNOWN_TYPE_PAGE);
+  return bufManLoadPage(ignored, NULL, xid, pageid, UNKNOWN_TYPE_PAGE);
 }
 
 static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid) {

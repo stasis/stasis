@@ -51,15 +51,11 @@ void TlsmRegionForceRid(int xid, void *conf) {
   recordid rid = *(recordid*)conf;
   TlsmRegionAllocConf_t a;
   Tread(xid,rid,&a);
-  //  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
   for(int i = 0; i < a.regionCount; i++) {
     a.regionList.slot = i;
     pageid_t pid;
     Tread(xid,a.regionList,&pid);
-    stasis_dirty_page_table_flush_range(stasis_runtime_dirty_page_table(), pid, pid+a.regionSize);
-    stasis_buffer_manager_t *bm = stasis_runtime_buffer_manager();
-    bm->forcePageRange(bm, pid, pid+a.regionSize);
-    //    TregionDealloc(xid,pid);
+    TregionForce(xid, 0, 0, pid); // TODO use handle in lsmTree.c; this is a sequential write
   }
 }
 void TlsmRegionDeallocRid(int xid, void *conf) {
@@ -67,7 +63,6 @@ void TlsmRegionDeallocRid(int xid, void *conf) {
   TlsmRegionAllocConf_t a;
   Tread(xid,rid,&a);
   DEBUG("{%lld <- dealloc region arraylist}\n", a.regionList.page);
-  //  TlsmRegionAllocConf_t* a = (TlsmRegionAllocConf_t*)conf;
   for(int i = 0; i < a.regionCount; i++) {
     a.regionList.slot = i;
     pageid_t pid;

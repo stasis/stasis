@@ -386,6 +386,9 @@ static stasis_handle_t * nbw_dup(stasis_handle_t *h) {
   (impl->refcount)++;
   return h;
 }
+static void nbw_enable_sequential_optimizations(stasis_handle_t *h) {
+  // TODO non blocking should pass sequential optimizations down to underlying handles.
+}
 static lsn_t nbw_start_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
@@ -627,6 +630,7 @@ struct stasis_handle_t nbw_func = {
   .num_copies_buffer = nbw_num_copies_buffer,
   .close = nbw_close,
   .dup = nbw_dup,
+  .enable_sequential_optimizations = nbw_enable_sequential_optimizations,
   .start_position = nbw_start_position,
   .end_position = nbw_end_position,
   .write = nbw_write,

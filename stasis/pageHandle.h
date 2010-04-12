@@ -74,6 +74,7 @@ struct stasis_page_handle_t {
      Force the page file to disk, then close it.
   */
   void (*close)(struct stasis_page_handle_t* ph);
+  stasis_page_handle_t* (*dup)(struct stasis_page_handle_t* ph, int is_sequential);
   /**
      The write ahead log associated with this page handle.
 
