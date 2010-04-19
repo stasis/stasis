@@ -333,14 +333,14 @@ static void stalePinTestImpl(stasis_buffer_manager_t * (*fact)(stasis_log_t*, st
   Tinit();
 
   Page * p[MAX_BUFFER_SIZE-1];
-  for(int i = 0; i < MAX_BUFFER_SIZE-1; i++) {
+  for(int i = 0; i < MAX_BUFFER_SIZE-2; i++) {
     p[i] = loadUninitializedPage(-1, i);
   }
   for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
     Page * foo = loadUninitializedPage(-1, i+MAX_BUFFER_SIZE);
     releasePage(foo);
   }
-  for(int i = 0; i < MAX_BUFFER_SIZE-1; i++) {
+  for(int i = 0; i < MAX_BUFFER_SIZE-2; i++) {
     releasePage(p[i]);
   }
   Tdeinit();
