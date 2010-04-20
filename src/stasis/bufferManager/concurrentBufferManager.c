@@ -40,6 +40,10 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
   Page * p = page;
   p->prev = (Page *) n;
 }
+static inline intptr_t* pagePinCountPtr(void * page) {
+  Page * p = page;
+  return ((intptr_t*)(&((p)->queue)));
+}
 
 static inline int needFlush(stasis_buffer_manager_t * bm) {
   stasis_buffer_concurrent_hash_t *bh = bm->impl;
@@ -95,7 +99,7 @@ static Page * chGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
   hashtable_bucket_handle_t h;
   Page * p = hashtable_lookup_lock(ch->ht, pageid, &h);
   readlock(p->loadlatch, 0);
-  ch->lru->hit(ch->lru, p);
+  ch->lru->remove(ch->lru, p);
   hashtable_unlock(&h);
   return p;
 }
@@ -187,7 +191,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
     if(needFlush(bm)) { pthread_cond_signal(&ch->needFree); }
   }
   readlock(p->loadlatch, 0);
-  if(first) { ch->lru->hit(ch->lru, p); }
+  ch->lru->remove(ch->lru, p);
   hashtable_unlock(&h);
   assert(p->id == pageid);
   return p;
@@ -199,6 +203,8 @@ static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const p
   return chLoadPageImpl_helper(bm, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {
+  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  ch->lru->insert(ch->lru, p);
   unlock(p->loadlatch);
 }
 static void chForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
@@ -274,7 +280,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
   free(lrus);
 #else
-  ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit(pageGetNode, pageSetNode, 0));
+  ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0));
 #endif
   ch->ht = hashtable_init(MAX_BUFFER_SIZE * 4);
 
@@ -282,7 +288,8 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);
     stasis_buffer_pool_free_page(ch->buffer_pool, p,-1*i);
     pageSetNode(p,0,0);
-    ch->lru->insert(ch->lru, p);
+    (*pagePinCountPtr(p)) = 1;
+    ch->lru->insert(ch->lru, p);  // decrements pin count ptr (setting it to zero)
     hashtable_insert(ch->ht, p->id, p);
   }
 

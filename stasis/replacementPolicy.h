@@ -37,8 +37,9 @@ replacementPolicy * stasis_replacement_policy_lru_init();
 replacementPolicy * lruFastInit(
    struct LL_ENTRY(node_t) * (*getNode)(void * page, void * conf),
    void (*setNode)(void * page, 
-		   struct LL_ENTRY(node_t) * n,
-		   void * conf),
+                   struct LL_ENTRY(node_t) * n,
+                   void * conf),
+   intptr_t* (*derefCount)(void *page),
    void * conf);
 replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp);
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count);

@@ -10,8 +10,8 @@ typedef struct LL_ENTRY(list) list;
 typedef struct lruFast {
   struct LL_ENTRY(list)  * lru;
   node_t * (*getNode)(void * page, void * conf);
-  void     (*setNode)(void * page, node_t * n,
-		      void * conf);
+  void     (*setNode)(void * page, node_t * n, void * conf);
+  intptr_t*(*derefCount)(void* page);
   void * conf;
 } lruFast;
 
@@ -29,25 +29,36 @@ static void* getStale(struct replacementPolicy * r) {
 }
 static void* remove(struct replacementPolicy* r, void * p) {
   lruFast * l = r->impl;
-  node_t * n = l->getNode(p, l->conf);
-  assert(n);
-  value_t * v = n->v;
-  LL_ENTRY(remove)(l->lru, n);
-  l->setNode(p, 0, l->conf);
-  return v;
+  void *ret = NULL;
+
+  if(!*l->derefCount(p)) {
+    node_t * n = l->getNode(p, l->conf);
+    assert(n);
+    value_t * v = n->v;
+    LL_ENTRY(remove)(l->lru, n);
+    l->setNode(p, 0, l->conf);
+    ret = v;
+  }
+  (*l->derefCount(p))++;
+  return ret;
 }
 static void* getStaleAndRemove(struct replacementPolicy* r) {
   lruFast * l = r->impl;
   void * ret = LL_ENTRY(shift)(l->lru);
   l->setNode(ret, 0, l->conf);
+  assert(!(*l->derefCount(ret)));
+  (*l->derefCount(ret))++;
   return ret;
 }
-static void  insert(struct replacementPolicy* r,
-		    void * p) {
+static void  insert(struct replacementPolicy* r, void * p) {
   lruFast * l = r->impl;
-  assert(0 == l->getNode(p, l->conf));
-  node_t * n = LL_ENTRY(push)(l->lru, p);
-  l->setNode(p, n, l->conf);
+  (*l->derefCount(p))--;
+  assert(*l->derefCount(p) >= 0);
+  if(!*l->derefCount(p)) {
+    assert(0 == l->getNode(p, l->conf));
+    node_t * n = LL_ENTRY(push)(l->lru, p);
+    l->setNode(p, n, l->conf);
+  }
 }
 static void deinit(struct replacementPolicy * r) {
   lruFast * l = r->impl;
@@ -60,8 +71,9 @@ static void deinit(struct replacementPolicy * r) {
 replacementPolicy * lruFastInit(
    struct LL_ENTRY(node_t) * (*getNode)(void * page, void * conf),
    void (*setNode)(void * page,
-		   struct LL_ENTRY(node_t) * n,
-		   void * conf),
+                   struct LL_ENTRY(node_t) * n,
+                   void * conf),
+   intptr_t* (*derefCount)(void *page),
    void * conf) {
   struct replacementPolicy * ret = malloc(sizeof(struct replacementPolicy));
   ret->deinit = deinit;
@@ -74,6 +86,7 @@ replacementPolicy * lruFastInit(
   l->lru = LL_ENTRY(create)();
   l->getNode = getNode;
   l->setNode = setNode;
+  l->derefCount = derefCount;
   ret->impl = l;
   return ret;
 }

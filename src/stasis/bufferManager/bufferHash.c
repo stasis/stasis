@@ -62,7 +62,8 @@ static void pageSetNode(void * page, node_t * n, void * ignore) {
 static inline struct Page_s ** pagePendingPtr(Page * p) {
   return ((struct Page_s **)(&((p)->next)));
 }
-static inline intptr_t* pagePinCountPtr(Page * p) {
+static inline intptr_t* pagePinCountPtr(void * page) {
+  Page * p = page;
   return ((intptr_t*)(&((p)->queue)));
 }
 static inline int needFlush(stasis_buffer_manager_t * bm) {
@@ -134,9 +135,9 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
   if(bh->pageCount < MAX_BUFFER_SIZE) {
     ret = stasis_buffer_pool_malloc_page(bh->buffer_pool);
     stasis_buffer_pool_free_page(bh->buffer_pool, ret,-1);
-    (*pagePinCountPtr(ret)) = 0;
     (*pagePendingPtr(ret)) = 0;
     pageSetNode(ret,0,0);
+    (*pagePinCountPtr(ret)) = 1; // to match what happens after the next block calls lru->remove()
     bh->pageCount++;
   } else {
     while((ret = bh->lru->getStale(bh->lru))) {
@@ -163,9 +164,9 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
     Page * check = LH_ENTRY(remove)(bh->cachedPages, &ret->id, sizeof(ret->id));
     assert(check == ret);
   }
-  assert(!*pagePinCountPtr(ret));
   assert(!*pagePendingPtr(ret));
   assert(!pageGetNode(ret,0));
+  assert(1 == *pagePinCountPtr(ret)); // was zero before this call...
   assert(!ret->dirty);
   return ret;
 }
@@ -205,11 +206,8 @@ static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
     assert(locked);
 #endif
     if(!*pagePendingPtr(ret)) {
-      if(!*pagePinCountPtr(ret) ) {
-        // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
-        bh->lru->remove(bh->lru, ret);
-      }
-      (*pagePinCountPtr(ret))++;
+      bh->lru->remove(bh->lru, ret);
+
       checkPageState(ret);
       assert(ret->id == pageid);
     } else {
@@ -253,11 +251,8 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
         int locked = tryreadlock(ret->loadlatch,0);
         assert(locked);
 #endif
-        if(! *pagePinCountPtr(ret) ) {
-          // Then ret is in lru (otherwise it would be pending, or not cached); remove it.
-          bh->lru->remove(bh->lru, ret);
-        }
-        (*pagePinCountPtr(ret))++;
+        bh->lru->remove(bh->lru, ret);
+
         checkPageState(ret);
         pthread_mutex_unlock(&bh->mut);
         assert(ret->id == pageid);
@@ -328,12 +323,10 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
     ret->LSN = *stasis_page_lsn_ptr(ret) = xid_lsn == INVALID_LSN ? (log_lsn - 1) : xid_lsn;
   }
   *pagePendingPtr(ret) = 0;
+
   // Would remove from lru, but getFreePage() guarantees that it isn't
   // there.
   assert(!pageGetNode(ret, 0));
-
-  assert(!(*pagePinCountPtr(ret)));
-  (*pagePinCountPtr(ret))++;
 
 #ifdef LATCH_SANITY_CHECKING
   int locked = tryreadlock(ret->loadlatch, 0);
@@ -407,11 +400,8 @@ static void bhReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   stasis_buffer_hash_t * bh = bm->impl;
   pthread_mutex_lock(&bh->mut);
   checkPageState(p);
-  (*pagePinCountPtr(p))--;
-  if(!(*pagePinCountPtr(p))) {
-    assert(!pageGetNode(p, 0));
-    bh->lru->insert(bh->lru,p);
-  }
+  bh->lru->insert(bh->lru,p);
+
 #ifdef LATCH_SANITY_CHECKING
   unlock(p->loadlatch);
 #endif
@@ -556,7 +546,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
 
   bh->buffer_pool = stasis_buffer_pool_init();
 
-  bh->lru = lruFastInit(pageGetNode, pageSetNode, 0);
+  bh->lru = lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0);
 
   bh->cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
 

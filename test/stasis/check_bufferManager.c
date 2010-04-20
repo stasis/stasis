@@ -356,8 +356,6 @@ START_TEST(stalePinTest) {
   stalePinTestImpl(stasis_buffer_manager_hash_factory);
 } END_TEST
 START_TEST(stalePinTestConcurrentBufferManager) {
-  printf("Fail: Bug 22");
-  abort();
   stalePinTestImpl(stasis_buffer_manager_concurrent_hash_factory);
 } END_TEST
 //START_TEST(stalePinTestDeprecatedBufferManager) {
