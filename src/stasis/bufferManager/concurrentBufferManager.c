@@ -10,6 +10,12 @@
 #include <stasis/bufferPool.h>
 #include <stasis/pageHandle.h>
 
+#ifndef NO_CONCURRENT_LRU
+#ifndef CONCURRENT_LRU
+#define CONCURRENT_LRU
+#endif // CONCURRENT_LRU
+#endif // NO_CONCURRENT_LRU
+
 typedef struct {
   Page *p;
   stasis_buffer_manager_t *bm;
@@ -275,7 +281,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 #ifdef CONCURRENT_LRU
   replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
   for(int i = 0; i < 37; i++) {
-    lrus[i] = lruFastInit(pageGetNode, pageSetNode, 0);
+    lrus[i] = lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0);
   }
   ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
   free(lrus);
