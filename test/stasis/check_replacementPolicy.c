@@ -130,6 +130,29 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
     }
   }
 }
+
+void fillThenEmptyTest(replacementPolicy *lru) {
+  for(int i = 0; i < OBJECT_COUNT; i++) {
+    lru->insert(lru, &t[i]);
+  }
+  int j = 0;
+  while(lru->getStaleAndRemove(lru)) {
+    j++;
+  }
+  assert(0 == lru->getStaleAndRemove(lru));
+  assert(0 == lru->getStale(lru));
+  assert(j == OBJECT_COUNT);
+  for(int i = 0; i < OBJECT_COUNT; i++) {
+    lru->insert(lru, &t[i]);
+    lru->remove(lru, &t[i]);
+  }
+  j = 0;
+  while(lru->getStaleAndRemove(lru)) {
+    j++;
+  }
+  assert(j == 0);
+}
+
 START_TEST(replacementPolicyLRURandomTest) {
   replacementPolicy * lru = lruFastInit(getKey, setKey, pinCount, 0);
   threaded = 0;
@@ -216,6 +239,33 @@ START_TEST(replacementPolicyConcurrentThreadTest) {
   cwLru->deinit(cwLru);
   randomTeardown();
 } END_TEST
+START_TEST(replacementPolicyEmptyFastLRUTest) {
+  randomSetup();
+  replacementPolicy *rp = lruFastInit(getKey, setKey, pinCount, 0);
+  fillThenEmptyTest(rp);
+  rp->deinit(rp);
+  randomTeardown();
+} END_TEST
+START_TEST(replacementPolicyEmptyThreadsafeTest) {
+  randomSetup();
+  replacementPolicy *rpA = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy *rp  = replacementPolicyThreadsafeWrapperInit(rpA);
+  fillThenEmptyTest(rp);
+  rp->deinit(rp);
+  randomTeardown();
+} END_TEST
+START_TEST(replacementPolicyEmptyConcurrentTest) {
+  randomSetup();
+  replacementPolicy *rpA[THREAD_COUNT];
+  for(int i = 0; i < THREAD_COUNT; i++) {
+    rpA[i] = lruFastInit(getKey, setKey, pinCount, 0);
+  }
+  replacementPolicy *rp
+    = replacementPolicyConcurrentWrapperInit(rpA, THREAD_COUNT);
+  fillThenEmptyTest(rp);
+  rp->deinit(rp);
+  randomTeardown();
+} END_TEST
 
 Suite * check_suite(void) {
   Suite *s = suite_create("replacementPolicy");
@@ -223,6 +273,9 @@ Suite * check_suite(void) {
   TCase *tc = tcase_create("multithreaded");
   tcase_set_timeout(tc, 1200); // twenty minute timeout
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, replacementPolicyEmptyFastLRUTest);
+  tcase_add_test(tc, replacementPolicyEmptyThreadsafeTest);
+  tcase_add_test(tc, replacementPolicyEmptyConcurrentTest);
   tcase_add_test(tc, replacementPolicyLRURandomTest);
   tcase_add_test(tc, replacementPolicyLRUFastRandomTest);
   tcase_add_test(tc, replacementPolicyThreadsafeRandomTest);

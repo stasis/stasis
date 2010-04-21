@@ -45,9 +45,11 @@ static void* remove(struct replacementPolicy* r, void * p) {
 static void* getStaleAndRemove(struct replacementPolicy* r) {
   lruFast * l = r->impl;
   void * ret = LL_ENTRY(shift)(l->lru);
-  l->setNode(ret, 0, l->conf);
-  assert(!(*l->derefCount(ret)));
-  (*l->derefCount(ret))++;
+  if(ret) {
+    l->setNode(ret, 0, l->conf);
+    assert(!(*l->derefCount(ret)));
+    (*l->derefCount(ret))++;
+  }
   return ret;
 }
 static void  insert(struct replacementPolicy* r, void * p) {
