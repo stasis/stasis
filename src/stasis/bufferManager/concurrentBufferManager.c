@@ -87,7 +87,7 @@ static void * writeBackWorker(void * bmp) {
     while(ch->running && (!needFlush(bm))) {
       DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
       pthread_mutex_lock(&mut);
-      pthread_cond_wait(&ch->needFree, &mut);
+      pthread_cond_wait(&ch->needFree, &mut); // XXX Make sure it's OK to have many different mutexes waiting on the same cond.
       pthread_mutex_unlock(&mut);
       DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
     }
@@ -104,8 +104,16 @@ static Page * chGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   hashtable_bucket_handle_t h;
   Page * p = hashtable_lookup_lock(ch->ht, pageid, &h);
-  readlock(p->loadlatch, 0);
-  ch->lru->remove(ch->lru, p);
+  if(p) {
+    int succ = tryreadlock(p->loadlatch, 0);
+    if(!succ) {
+      // weird corner case: if we're writing back the page during the call, this returns NULL instead of blocking.
+      // Could go either way on what the correct behavior is.
+      p = NULL;
+    } else {
+      ch->lru->remove(ch->lru, p);
+    }
+  }
   hashtable_unlock(&h);
   return p;
 }
@@ -118,7 +126,7 @@ static void deinitTLS(void *tlsp) {
   while(hashtable_test_and_set(ch->ht,p->id, p)) {
     p->id --;
   }
-  ch->lru->insert(ch->lru, tls->p);
+  ch->lru->insert(ch->lru, tls->p); // TODO: put it into the LRU end instead of the MRU end, so the memory is treated as stale.
 }
 static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_manager_t* bm) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
@@ -135,19 +143,29 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
     hashtable_bucket_handle_t h;
     tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h);
     if(tls->p) {
-      // TODO: It would be nice to make this a trywritelock to avoid blocking here.
-      // However, this would cause subtle problems; page->id could change while we're in LRU.  LRU partitions its latches on page->id, and references state
-      // stored with the page...
-      writelock(tls->p->loadlatch,0);
-      // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
-      tmp = 0;
-      if(tls->p->id >= 0) {
-        ch->page_handle->write(ch->page_handle, tls->p);
+      // It used to be the case that we could get in trouble because page->id could change concurrently with us.  However, this is no longer a problem,
+      // since getStaleAndRemove is atomic, and the only code that changes page->id does so with pages that are in TLS (and therefore went through getStaleAndRemove)
+      int succ =
+	trywritelock(tls->p->loadlatch,0);  // if this blocks, it is because someone else has pinned the page (it can't be due to eviction because the lru is atomic)
+
+      if(succ) {
+	// The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
+	tmp = 0;
+	if(tls->p->id >= 0) {
+	  ch->page_handle->write(ch->page_handle, tls->p);
+	}
+	hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
+	tls->p->id = INVALID_PAGE; // in case loadPage has a pointer to it, and we did this in race with it; when loadPage reacquires loadlatch, it will notice the discrepency
+	assert(!tls->p->dirty);
+	unlock(tls->p->loadlatch);
+	break;
+      } else {
+	// put back in LRU before making it accessible (again) via the hash.
+	// otherwise, someone could try to pin it.
+	ch->lru->insert(ch->lru, tmp);  // OK because lru now does refcounting, and we know that tmp->id can't change (because we're the ones that got it from LRU)
+	hashtable_remove_cancel(ch->ht, &h);
+	tls->p = NULL; // This iteration of the loop failed, set this so the loop runs again.
       }
-      hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
-      assert(!tls->p->dirty);
-      unlock(tls->p->loadlatch);
-      break;
     } else {
       // page is not in hashtable, but it is in LRU.  getStale and hashtable remove are not atomic.
       // However, we cannot observe this; the lru remove happens before the hashtable remove,
@@ -162,44 +180,57 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
   return tls;
 }
 
+static void chReleasePage(stasis_buffer_manager_t * bm, Page * p);
+
 static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   stasis_buffer_concurrent_hash_tls_t *tls = populateTLS(bm);
   hashtable_bucket_handle_t h;
-  Page * p;
+  Page * p = 0;
   int first = 1;
-  while(NULL == (p = hashtable_test_and_set_lock(ch->ht, pageid, tls->p, &h))) {
-    first = 0;
-    // The page was not in the hash.  Now it is up to us.
-    p = tls->p;
-    tls->p = NULL;
 
-    int succ = trywritelock(p->loadlatch, 0);
-    assert(succ);
-
-    // this has to happen before the page enters LRU; concurrentWrapper (and perhaps future implementations) hash on pageid.
-    p->id = pageid;
-
-    // this has to happen after the hashtable insertion succeeds, otherwise above, we could get a page from lru that isn't in the cache.
-    ch->lru->insert(ch->lru, p);
-
-    hashtable_unlock(&h);
-
-    if(uninitialized) {
-      type = UNINITIALIZED_PAGE;
-      stasis_page_loaded(p, UNINITIALIZED_PAGE);
-    } else {
-      ch->page_handle->read(ch->page_handle, p, type);
+  do {
+    if(p) { // the last time around pinned the wrong page!
+      chReleasePage(bm, p);
+      // ch->lru->insert(ch->lru, p);
+      // unlock(p->loadlatch);
     }
-    unlock(p->loadlatch);
+    while(NULL == (p = hashtable_test_and_set_lock(ch->ht, pageid, tls->p, &h))) {
+      first = 0;
+      // The page was not in the hash.  Now it is up to us.
+      p = tls->p;
+      tls->p = NULL;
 
-    tls = populateTLS(bm);
-    if(needFlush(bm)) { pthread_cond_signal(&ch->needFree); }
-  }
-  readlock(p->loadlatch, 0);
-  ch->lru->remove(ch->lru, p);
-  hashtable_unlock(&h);
-  assert(p->id == pageid);
+      int succ = trywritelock(p->loadlatch, 0);
+      assert(succ);
+
+      // this has to happen before the page enters LRU; concurrentWrapper (and perhaps future implementations) hash on pageid.
+      p->id = pageid;
+
+      // this has to happen after the hashtable insertion succeeds, otherwise above, we could get a page from lru that isn't in the cache.
+      ch->lru->insert(ch->lru, p);
+
+      hashtable_unlock(&h);
+
+      if(uninitialized) {
+	type = UNINITIALIZED_PAGE;
+	stasis_page_loaded(p, UNINITIALIZED_PAGE);
+      } else {
+	ch->page_handle->read(ch->page_handle, p, type);
+      }
+      unlock(p->loadlatch);
+
+      tls = populateTLS(bm);
+      if(needFlush(bm)) { pthread_cond_signal(&ch->needFree); }
+    }
+    ch->lru->remove(ch->lru, p);  // this can happen before or after the the hashable unlock, since the invariant is that in lru -> in hashtable, and it's in the hash
+    hashtable_unlock(&h);
+    // spooky.  It's not in LRU, and it's not been load latched.  This
+    // is OK, but it's possible that popluateTLS has a pointer to the page
+    // already, regardless of which hash bucket it's in.
+    readlock(p->loadlatch, 0);
+    // Now, we know that populateTLS won't evict the page, since it gets a writelock before doing so.
+  } while(p->id != pageid); // On the off chance that the page got evicted, we'll need to try again.
   return p;
 }
 static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, int xid, const pageid_t pageid, pagetype_t type) {
