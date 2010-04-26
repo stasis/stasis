@@ -201,8 +201,10 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
       p = tls->p;
       tls->p = NULL;
 
-      int succ = trywritelock(p->loadlatch, 0);
-      assert(succ);
+      // Need to acquire lock because some loadPage (in race with us) could have a
+      // pointer to the page.  However, we must be the only thread
+      // that has the page in its TLS, or something is seriously wrong.
+      writelock(p->loadlatch, 0);
 
       // this has to happen before the page enters LRU; concurrentWrapper (and perhaps future implementations) hash on pageid.
       p->id = pageid;
