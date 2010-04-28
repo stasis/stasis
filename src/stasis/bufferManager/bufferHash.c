@@ -526,6 +526,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bm->getCachedPageImpl = bhGetCachedPage;
   bm->releasePageImpl = bhReleasePage;
   bm->writeBackPage = bhWriteBackPage;
+  bm->tryToWriteBackPage = bhWriteBackPage;
   bm->forcePages = bhForcePages;
   bm->forcePageRange = bhForcePageRange;
   bm->stasis_buffer_manager_close = bhBufDeinit;

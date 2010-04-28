@@ -134,9 +134,20 @@ struct stasis_buffer_manager_t {
        storage.  For compatibility, such buffer managers should ignore
        this call.)
 
+      This function may block instead of returning EBUSY.  Therefore, if the page
+      may be pinned by some other (or this thread), call tryToWriteBackPage instead.
+
        @return 0 on success, ENOENT if the page is not in cache, and EBUSY if the page is pinned.
   */
   int    (*writeBackPage)(stasis_buffer_manager_t*, pageid_t p);
+  /**
+   *  This function is like writeBackPage, except that it will never block due
+   *  because the page is pinned.  However, it may sometimes fail to write the page,
+   *  and instead return EBUSY, even if the page is not pinned. Therefore, this
+   *  method is appropriate for performance hints and log truncation, but not
+   *  FORCE mode transactions.
+   */
+  int    (*tryToWriteBackPage)(stasis_buffer_manager_t*, pageid_t p);
   /**
       Force any written back pages to disk.
 

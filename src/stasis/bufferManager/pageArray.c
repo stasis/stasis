@@ -92,6 +92,7 @@ stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
   bm->prefetchPages = NULL;
   bm->getCachedPageImpl = paGetCachedPage;
   bm->writeBackPage = paWriteBackPage;
+  bm->tryToWriteBackPage = paWriteBackPage;
   bm->forcePages = paForcePages;
   bm->forcePageRange = paForcePageRange;
   bm->stasis_buffer_manager_close = paBufDeinit;

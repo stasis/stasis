@@ -61,15 +61,25 @@ static inline int needFlush(stasis_buffer_manager_t * bm) {
   return  count > needed;
 }
 
-static int chWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, int is_hint) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   hashtable_bucket_handle_t h;
   Page * p = hashtable_lookup_lock(ch->ht, pageid, &h);
   int ret = 0;
   if(!p) {
     ret = ENOENT;
-  } else if(!trywritelock(p->loadlatch,0)) {
-    ret = EBUSY;
+  } else {
+    if(is_hint) {
+      if(!trywritelock(p->loadlatch,0)) {
+        ret = EBUSY;
+      }
+    } else {
+      // Uggh.  With the current design, it's possible that the trywritelock will block on the writeback thread.
+      // That leaves us with few options, so we expose two sets of semantics up to the caller.
+
+      // Since this isn't a hint, the page is not pinned.  Therefore, the following will only deadlock if the caller is buggy.
+      writelock(p->loadlatch,0);
+    }
   }
   hashtable_unlock(&h);
   if(ret) { return ret; }
@@ -77,6 +87,12 @@ static int chWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
   ch->page_handle->write(ch->page_handle, p);
   unlock(p->loadlatch);
   return 0;
+}
+static int chWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+  return chWriteBackPage_helper(bm,pageid,0); // not hint; for correctness.  Block (deadlock?) on contention.
+}
+static int chTryToWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+  return chWriteBackPage_helper(bm,pageid,1); // just a hint.  Return EBUSY on contention.
 }
 static void * writeBackWorker(void * bmp) {
   stasis_buffer_manager_t* bm = bmp;
@@ -295,6 +311,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   bm->getCachedPageImpl = chGetCachedPage;
   bm->releasePageImpl = chReleasePage;
   bm->writeBackPage = chWriteBackPage;
+  bm->tryToWriteBackPage = chTryToWriteBackPage;
   bm->forcePages = chForcePages;
   bm->forcePageRange = chForcePageRange;
   bm->stasis_buffer_manager_close = chBufDeinit;

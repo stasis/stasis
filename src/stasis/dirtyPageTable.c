@@ -131,7 +131,7 @@ int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
     if(off == stride) {
       pthread_mutex_unlock(&dirtyPages->mutex);
       for(pageid_t i = 0; i < off; i++) {
-        dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, vals[i]);
+        dirtyPages->bufferManager->tryToWriteBackPage(dirtyPages->bufferManager, vals[i]);
       }
       off = 0;
       strides++;
@@ -140,7 +140,7 @@ int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
   }
   pthread_mutex_unlock(&dirtyPages->mutex);
   for(int i = 0; i < off; i++) {
-    dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, vals[i]);
+    dirtyPages->bufferManager->tryToWriteBackPage(dirtyPages->bufferManager, vals[i]);
   }
   pthread_mutex_lock(&dirtyPages->mutex);
   dirtyPages->flushing = 0;
@@ -202,8 +202,12 @@ void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages,
   pthread_mutex_unlock(&dirtyPages->mutex);
 
   for(pageid_t i = 0; i < n; i++) {
+    if(stop) {
       int err = dirtyPages->bufferManager->writeBackPage(dirtyPages->bufferManager, staleDirtyPages[i]);
-      if(stop && (err == EBUSY)) { abort(); /*api violation!*/ }
+      if(err == EBUSY) { abort(); /*api violation!*/ }
+    } else {
+      dirtyPages->bufferManager->tryToWriteBackPage(dirtyPages->bufferManager, staleDirtyPages[i]);
+    }
   }
   free(staleDirtyPages);
 }
