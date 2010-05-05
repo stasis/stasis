@@ -117,16 +117,16 @@ terms specified in this license.
 
    Prerequisites:
 
-   - automake 1.8+: needed to build from CVS
-   - <a href="http://check.sourceforge.net">check</a>: A unit testing
-     framework (needed to run the self-tests)
+   - cmake (though old automake 1.8+ based builds still work)
 
    Optional:
 
    - libconfuse: Used by older networking code to parse configuration options.
    - BerkeleyDB: Used by the benchmarking code for purposes of comparison.
+   - Perl 5.10 with Inline.pm:  Stasis includes threadsafe perl bindings.  "perldoc lang/perl/Stasis.pm" for more information.
+   - Partial Java JNI bindings exist as well; contact me if you are interested.
 
-   Development is currently performed under Debian's Testing branch.
+   Development is currently performed under Debian, Ubuntu and Red Hat Enterprise Linux 4/5.
 
    To compile Stasis, first check out a copy with SVN.  If you have commit access:
 
@@ -141,6 +141,22 @@ terms specified in this license.
    @endverbatim
 
    then:
+
+   @code
+
+   cd stasis
+   mkdir build
+   cd build
+   cmake ..
+   make -j 4
+   cd test/stasis
+   make test
+
+   @endcode
+
+   @section compilingDeprecated Compiling with autotools
+
+   Stasis' automake files are deprecated, but are still supported:
 
    @code
 
@@ -172,7 +188,7 @@ terms specified in this license.
    warning messages.
 
    'make install' installs the Stasis library and python SWIG
-   bindings, but none of the extra programs that come with Stasis.
+   bindings (that haven't been tested recently), but none of the extra programs that come with Stasis.
    utilities/ contains a number of utility programs that are useful
    for debugging Stasis.  The examples/ directory contains a number of
    simple C examples.
