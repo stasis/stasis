@@ -268,6 +268,11 @@ terms specified in this license.
    concurrent calls within the same transaction are not supported.
    This restriction may be removed in the future.
 
+   @section moreInformation More information
+
+   This <a href='http://www.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-2.html'>dissertation</a>
+   contains more information about Stasis' architecture.
+
    @section selfTest The test suite
 
    Stasis includes an extensive unit test suite which may be invoked
