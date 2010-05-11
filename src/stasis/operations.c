@@ -167,7 +167,9 @@ void stasis_operation_undo(const LogEntry * e, lsn_t effective_lsn, Page * p) {
   int undo = stasis_operation_table[e->update.funcID].undo;
   assert(undo != OPERATION_INVALID);
 
-  if(e->update.page == INVALID_PAGE || e->update.page == SEGMENT_PAGEID) {
+  if(e->update.page == INVALID_PAGE ||
+     e->update.page == SEGMENT_PAGEID ||
+     e->update.page == MULTI_PAGEID) {
     // logical undos are executed unconditionally, as are segment-based undos
 
     DEBUG("OPERATION xid %d FuncID %d Undo, %d LSN %lld {logical}\n", e->xid,

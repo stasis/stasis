@@ -175,7 +175,10 @@ Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery) {
     type = UNKNOWN_TYPE_PAGE; // XXX what about segment pages?  Presumably, the thing that initializes a segment passes in UNKNOWN.
   }
   if(pageid == SEGMENT_PAGEID) {
-    assert(type = SEGMENT_PAGE);
+    assert(type == SEGMENT_PAGE);
+    p = 0;
+  } else if(pageid == MULTI_PAGEID) {
+    assert(type == MULTI_PAGE);
     p = 0;
   } else if(type == UNINITIALIZED_PAGE) {
     p = loadUninitializedPage(xid, pageid);

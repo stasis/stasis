@@ -193,6 +193,7 @@ terms specified in this license.
 
 #define INVALID_PAGE (-1)
 #define SEGMENT_PAGEID (-2)
+#define MULTI_PAGEID (-3)
 
 //   TODO unify naming convention for ROOT_RECORD, NULLRID
 static const recordid ROOT_RECORD = {1, 0, -1};
@@ -244,6 +245,7 @@ static const short SLOT_TYPE_LENGTHS[] = { -1, -1, sizeof(blob_record_t), -1};
 #define LSM_ROOT_PAGE       9
 #define SLOTTED_LSN_FREE_PAGE 10
 #define SEGMENT_PAGE 11
+#define MULTI_PAGE 12 // Not really a page type, but used to denote operations that touch many pages.
 #define USER_DEFINED_PAGE(n) (100+n)  // 0 <= n < 155
 #define MAX_PAGE_TYPE       255
 

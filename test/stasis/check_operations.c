@@ -749,6 +749,85 @@ START_TEST(operation_segment) {
 
 } END_TEST
 
+#define OPERATION_TEST_LOGICAL_REDO OPERATION_USER_DEFINED(1)
+#define OPERATION_TEST_LOGICAL_UNDO OPERATION_USER_DEFINED(2)
+
+typedef struct op_test_arg {
+  pageid_t start;
+  pageid_t count;
+} op_test_arg;
+
+static int op_test_redo_impl(const LogEntry * e, Page * p) {
+  const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
+  for(int i = 0; i < a->count; i++) {
+    Page * p = loadPage(e->xid, a->start + i);
+    if(stasis_page_lsn_read(p) < e->LSN) {
+      writelock(p->rwlatch, 0);
+      stasis_fixed_initialize_page(p, sizeof(i), 1);
+      recordid rid = { p->id, 0, sizeof(i) };
+      stasis_record_write(e->xid, p, rid, (byte*)&i);
+      stasis_page_lsn_write(e->xid, p, e->LSN);
+      unlock(p->rwlatch);
+    }
+    releasePage(p);
+  }
+  return 0;
+}
+static int op_test_undo_impl(const LogEntry * e, Page * p) {
+  const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
+  for(int i = 0; i < a->count; i++) {
+    Page * p = loadPage(e->xid, a->start + i);
+    if(stasis_page_lsn_read(p) < e->LSN) {
+      writelock(p->rwlatch, 0);
+      // basically a no-op, set the LSN for efficiency reasons.
+      stasis_page_lsn_write(e->xid, p, e->LSN);
+      unlock(p->rwlatch);
+    }
+    releasePage(p);
+  }
+  return 0;
+}
+
+static stasis_operation_impl op_test_logical_redo_impl() {
+  stasis_operation_impl o = {
+    OPERATION_TEST_LOGICAL_REDO,
+    MULTI_PAGE,
+    OPERATION_TEST_LOGICAL_REDO,
+    OPERATION_TEST_LOGICAL_UNDO,
+    op_test_redo_impl
+  };
+  return o;
+}
+static stasis_operation_impl op_test_logical_undo_impl() {
+  stasis_operation_impl o = {
+    OPERATION_TEST_LOGICAL_UNDO,
+    MULTI_PAGE,
+    OPERATION_TEST_LOGICAL_UNDO,
+    OPERATION_TEST_LOGICAL_REDO,
+    op_test_undo_impl
+  };
+  return o;
+}
+
+START_TEST(operation_logical_redo_many_pages) {
+  stasis_operation_impl_register(op_test_logical_redo_impl());
+  stasis_operation_impl_register(op_test_logical_undo_impl());
+
+  Tinit();
+
+  int xid = Tbegin();
+
+  op_test_arg a = {1, 100};
+  // XXX SEGMENT_PAGEID should be MULTI_PAGEID
+  Tupdate(xid, MULTI_PAGEID, &a, sizeof(a), OPERATION_TEST_LOGICAL_REDO);
+
+  Tabort(xid);
+
+  Tdeinit();
+
+
+} END_TEST
+
 /**
   Add suite declarations here
 */
@@ -771,6 +850,8 @@ Suite * check_suite(void) {
   tcase_add_test(tc, operation_lsn_free);
   tcase_add_test(tc, operation_reorderable);
   tcase_add_test(tc, operation_segment);
+
+  tcase_add_test(tc, operation_logical_redo_many_pages);
  /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
