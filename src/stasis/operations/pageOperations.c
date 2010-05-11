@@ -217,6 +217,52 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
   return 0;
 }
 
+typedef struct {
+  pageid_t firstPage;
+  pageid_t numPages;
+  pageid_t recordSize;      // *has* to be smaller than a page; passed into TinitializeFixedPage()
+} init_multipage_arg;
+
+static int op_init_multipage_impl(const LogEntry *e, Page *ignored) {
+  const init_multipage_arg* arg = stasis_log_entry_update_args_cptr(e);
+
+  for(pageid_t i = 0; i < arg->numPages; i++) {
+    Page * p = loadPage(e->xid, arg->firstPage + i);
+    if(stasis_operation_multi_should_apply(e, p)) {
+      writelock(p->rwlatch, 0);
+      if(arg->recordSize) {
+        stasis_fixed_initialize_page(p, arg->recordSize,
+                                     stasis_fixed_records_per_page
+                                     (stasis_record_type_to_size(arg->recordSize)));
+      } else {
+        stasis_page_slotted_initialize_page(p);
+      }
+      stasis_page_lsn_write(e->xid, p, e->LSN);
+      unlock(p->rwlatch);
+    }
+    releasePage(p);
+  }
+  return 0;
+}
+int TinitializeSlottedPageRange(int xid, pageid_t start, pageid_t count) {
+  init_multipage_arg arg;
+  arg.firstPage = start;
+  arg.numPages = count;
+  arg.recordSize = 0;
+
+  Tupdate(xid, MULTI_PAGEID, &arg, sizeof(arg), OPERATION_INITIALIZE_MULTIPAGE);
+  return 0;
+}
+int TinitializeFixedPageRange(int xid, pageid_t start, pageid_t count, size_t size) {
+  init_multipage_arg arg;
+  arg.firstPage = start;
+  arg.numPages = count;
+  arg.recordSize = size;
+
+  Tupdate(xid, MULTI_PAGEID, &arg, sizeof(arg), OPERATION_INITIALIZE_MULTIPAGE);
+  return 0;
+}
+
 stasis_operation_impl stasis_op_impl_page_initialize() {
   stasis_operation_impl o = {
     OPERATION_INITIALIZE_PAGE,
@@ -224,6 +270,16 @@ stasis_operation_impl stasis_op_impl_page_initialize() {
     OPERATION_INITIALIZE_PAGE,
     OPERATION_NOOP,
     op_initialize_page
+  };
+  return o;
+}
+stasis_operation_impl stasis_op_impl_multipage_initialize() {
+  stasis_operation_impl o = {
+      OPERATION_INITIALIZE_MULTIPAGE,
+      MULTI_PAGE,
+      OPERATION_INITIALIZE_MULTIPAGE,
+      OPERATION_NOOP,
+      op_init_multipage_impl
   };
   return o;
 }

@@ -90,7 +90,9 @@ void stasis_operation_table_init() {
   stasis_operation_impl_register(stasis_op_impl_noop());
 
   stasis_operation_impl_register(stasis_op_impl_array_list_header_init());
+
   stasis_operation_impl_register(stasis_op_impl_page_initialize());
+  stasis_operation_impl_register(stasis_op_impl_multipage_initialize());
 
   stasis_operation_impl_register(stasis_op_impl_set_range());
   stasis_operation_impl_register(stasis_op_impl_set_range_inverse());

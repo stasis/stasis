@@ -71,12 +71,27 @@ int TpageGet(int xid, pageid_t page, void* buf);
 void TinitializeSlottedPage(int xid, pageid_t page);
 void TinitializeFixedPage(int xid, pageid_t page,
 					       int slotLength);
+/**
+ *  Format a contiguous range of pages as slotted pages.  This method writes a single, constant
+ *  length log entry that does not contain the preimages of the pages in question.
+ *  Therefore, it is only safe to call this function against newly allocated pages
+ *  with uninteresting contents (such as those returned by TregionAlloc().
+ *
+ *  @see TinitializeFixedPageRange for an analogous function that initializes "fixed" pages.
+ */
+int TinitializeSlottedPageRange(int xid, pageid_t start, pageid_t count);
+/**
+ * @see TinitializeSlottedPageRange for an analogous function, and a description of
+ * this function's non-standard impacts upon recovery.
+ */
+int TinitializeFixedPageRange(int xid, pageid_t start, pageid_t count, size_t size);
 
 int TpageGetType(int xid, pageid_t page);
 
 stasis_operation_impl stasis_op_impl_page_set_range();
 stasis_operation_impl stasis_op_impl_page_set_range_inverse();
 stasis_operation_impl stasis_op_impl_page_initialize();
+stasis_operation_impl stasis_op_impl_multipage_initialize();
 
 stasis_operation_impl stasis_op_impl_fixed_page_alloc();
 

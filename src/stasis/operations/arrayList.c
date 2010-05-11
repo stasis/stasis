@@ -140,7 +140,6 @@ recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset) {
 }
 
 /*----------------------------------------------------------------------------*/
-
 recordid TarrayListAlloc(int xid, pageid_t count, int multiplier, int recordSize) {
 
   pageid_t firstPage;
@@ -162,9 +161,14 @@ recordid TarrayListAlloc(int xid, pageid_t count, int multiplier, int recordSize
   rid.slot = 0; /* number of slots in array (maxOffset + 1) */
   rid.size = recordSize;
   Tupdate(xid, firstPage, &alp, sizeof(alp), OPERATION_ARRAY_LIST_HEADER_INIT);
+#ifdef ARRAY_LIST_OLD_ALLOC
   for(pageid_t i = 0; i < count; i++) {
     TinitializeFixedPage(xid, firstPage+1+i, alp.size);
   }
+#else
+  TinitializeFixedPageRange(xid, firstPage+1, count, alp.size);
+#endif
+
   return rid;
 }
 
@@ -233,15 +237,17 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
       DEBUG("block %lld %lld %lld\n", (long long)i, (long long)newFirstPage, (long long)blockSize);
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
       /* Iterate over the (large number) of new blocks, clearing their contents */
-      /* @todo XXX arraylist generates N log entries initing pages.
-       It should generate 1 entry.  (Need better LSN handling first.)*/
+#ifdef ARRRAY_LIST_OLD_ALLOC
+      // old way
       {
         for(pageid_t i = newFirstPage; i < newFirstPage + blockSize; i++) {
           TinitializeFixedPage(xid, i, alp.size);
         }
       }
+#else
+      TinitializeFixedPageRange(xid, newFirstPage, blockSize, alp.size);
+#endif
       TsetRaw(xid,tmp,&newFirstPage);
-
       DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
     }
 
