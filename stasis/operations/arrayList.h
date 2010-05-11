@@ -96,7 +96,7 @@ recordid TarrayListAlloc(int xid, pageid_t numPages, int multiplier, int recordS
 void TarrayListDealloc(int xid, recordid rid);
 
 /**
-   Extend the ArrayList in place.
+   Extend the ArrayList in place and zero out the newly allocated records.
 
    @param xid the transaction performing the expansion
    @param rid the recordid pointing to the ArrayList.

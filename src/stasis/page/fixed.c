@@ -15,6 +15,9 @@ int stasis_fixed_records_per_page(size_t size) {
 void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
   assertlocked(page->rwlatch);
   stasis_page_cleanup(page);
+  // Zero out the page contents, since callers often do so anyway.
+  // blows away LSN, but the copy that's in p->LSN will be put back on page at flush.
+  memset(page->memAddr, 0, PAGE_SIZE);
   page->pageType = FIXED_PAGE;
   *recordsize_ptr(page) = size;
   assert(count <= stasis_fixed_records_per_page(size));
