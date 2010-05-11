@@ -217,6 +217,18 @@ void stasis_operation_undo(const LogEntry * e, lsn_t clr_lsn,
 */
 void stasis_operation_redo(const LogEntry * e, Page * p);
 
+/**
+ * Decides whether or not the entry e should be applied to p, assuming that
+ * e's operation is of type MULTI_PAGE.  One such entry applies to many pages, so the
+ * operation implementation's callback must perform the test.
+ *
+ * If segments are enabled, this function always returns true (under the assumption
+ * that the multi page operation is a allocation routine).  Otherwise, it compares
+ * the page header's LSN with the entry's LSN.
+ *
+ */
+int stasis_operation_multi_should_apply(const LogEntry *e, Page * p);
+
 pagetype_t stasis_operation_type(int op);
 
 END_C_DECLS

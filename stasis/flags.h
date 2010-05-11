@@ -111,4 +111,11 @@ extern const int    stasis_log_dir_name_lsn_chars;
    Number of bytes that stasis' log may buffer before writeback.
  */
 extern lsn_t stasis_log_file_write_buffer_size;
+/**
+   Set to 1 if segment based recovery is enabled.  This disables some
+   optimizations that assume all operations are page based.
+
+   @TODO Stasis' segment implementation is a work in progress; therefore this is set to zero by default.
+ */
+extern int stasis_segments_enabled;
 #endif

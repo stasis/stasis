@@ -190,6 +190,15 @@ void stasis_operation_undo(const LogEntry * e, lsn_t effective_lsn, Page * p) {
     }
   }
 }
+
+int stasis_operation_multi_should_apply(const LogEntry *e, Page * p) {
+  if(stasis_segments_enabled) {
+    return 1;
+  } else {
+    return stasis_page_lsn_read(p) < e->LSN;
+  }
+}
+
 pagetype_t stasis_operation_type(int op) {
   return stasis_operation_table[op].page_type;
 }

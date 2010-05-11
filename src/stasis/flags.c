@@ -112,3 +112,8 @@ lsn_t stasis_log_file_write_buffer_size = STASIS_LOG_FILE_WRITE_BUFFER_SIZE;
 #else
 lsn_t stasis_log_file_write_buffer_size = 1024 * 1024;
 #endif
+#ifdef STASIS_SEGMENTS_ENABLED
+int stasis_segments_enabled = STASIS_SEGMENTS_ENABLED;
+#else
+int stasis_segments_enabled = 0;
+#endif

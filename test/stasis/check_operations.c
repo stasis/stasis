@@ -761,7 +761,7 @@ static int op_test_redo_impl(const LogEntry * e, Page * p) {
   const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
   for(int i = 0; i < a->count; i++) {
     Page * p = loadPage(e->xid, a->start + i);
-    if(stasis_page_lsn_read(p) < e->LSN) {
+    if(stasis_operation_multi_should_apply(e, p)) {
       writelock(p->rwlatch, 0);
       stasis_fixed_initialize_page(p, sizeof(i), 1);
       recordid rid = { p->id, 0, sizeof(i) };
@@ -777,9 +777,9 @@ static int op_test_undo_impl(const LogEntry * e, Page * p) {
   const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
   for(int i = 0; i < a->count; i++) {
     Page * p = loadPage(e->xid, a->start + i);
-    if(stasis_page_lsn_read(p) < e->LSN) {
+    if(stasis_operation_multi_should_apply(e, p)) {
       writelock(p->rwlatch, 0);
-      // basically a no-op, set the LSN for efficiency reasons.
+      // basically a no-op; set the LSN.
       stasis_page_lsn_write(e->xid, p, e->LSN);
       unlock(p->rwlatch);
     }
