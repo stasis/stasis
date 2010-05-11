@@ -170,7 +170,7 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
     case UPDATELOG: {
       if(e->update.page == INVALID_PAGE) {
         // this entry specifies a logical undo operation; ignore it.
-      } else if(e->update.page == SEGMENT_PAGEID) {
+      } else if(e->update.page == SEGMENT_PAGEID || e->update.page == MULTI_PAGEID) {
         stasis_operation_redo(e,0);
       } else {
         Page * p = loadPageForOperation(e->xid, e->update.page, e->update.funcID, 1);
