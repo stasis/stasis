@@ -93,6 +93,7 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
     }
 
   } else {
+#ifdef ARRAY_LIST_OLD_ALLOC
     byte * entry = calloc(1, lhh.buckets.size);
     for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
       bucket.slot = i;
@@ -101,6 +102,7 @@ compensated_function recordid ThashCreate(int xid, int keySize, int valueSize) {
       } end_action_ret(NULLRID);
     }
     free (entry);
+#endif
   }
   lhh.keySize = keySize;
   lhh.valueSize = valueSize;
@@ -360,16 +362,19 @@ compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, 
     recordid new_bucket_rid = lhh->buckets;
     old_bucket_rid.slot = old_bucket;
     new_bucket_rid.slot = new_bucket;
-
-    TarrayListExtend(xid, lhh->buckets, 1);
+    if(!(new_bucket % HASH_INIT_ARRAY_LIST_COUNT)) {
+      TarrayListExtend(xid, lhh->buckets, HASH_INIT_ARRAY_LIST_COUNT);
+    }
     recordid new_bucket_list; // will be uninitialized if we have fixed length entries.
     if(lhh->keySize == VARIABLE_LENGTH || lhh->valueSize == VARIABLE_LENGTH) {
       new_bucket_list = TpagedListAlloc(xid);
       Tset(xid, new_bucket_rid, &new_bucket_list);
     } else {
+#ifdef ARRAY_LIST_OLD_ALLOC
       byte * entry = calloc(1, lhh->buckets.size);
       Tset(xid, new_bucket_rid, entry);
       free(entry);
+#endif
     }
     if(lhh->nextSplit < stasis_util_two_to_the(lhh->bits-1)-1) {
       lhh->nextSplit++;
