@@ -174,10 +174,12 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
         stasis_operation_redo(e,0);
       } else {
         Page * p = loadPageForOperation(e->xid, e->update.page, e->update.funcID, 1);
-        writelock(p->rwlatch,0);
+        if(p) writelock(p->rwlatch,0);
         stasis_operation_redo(e,p);
-        unlock(p->rwlatch);
-        releasePage(p);
+        if(p) {
+          unlock(p->rwlatch);
+          releasePage(p);
+        }
       }
     } break;
     case CLRLOG: {
@@ -193,10 +195,12 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
           // below...
 
           Page * p = loadPageForOperation(e->xid, ce->update.page, ce->update.funcID, 1);
-          writelock(p->rwlatch,0);
+          if(p) writelock(p->rwlatch,0);
           stasis_operation_undo(ce, e->LSN, p);
-          unlock(p->rwlatch);
-          releasePage(p);
+          if(p) {
+            unlock(p->rwlatch);
+            releasePage(p);
+          }
         }
       }
     } break;
@@ -279,7 +283,6 @@ static void stasis_recovery_undo(stasis_log_t* log, stasis_transaction_table_t *
             DEBUG("logged clr\n");
 
             stasis_transaction_table_roll_forward(tbl, e->xid, e->LSN, e->prevLSN);
-
             stasis_operation_undo(e, clr_lsn, p);
 
             if(p) {
