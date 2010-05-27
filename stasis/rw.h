@@ -12,8 +12,11 @@
  *	Date	: 18 September 1997
  *
  *	Revised	: 4-7-04  Shamelessly stolen and adapted by Rusty Sears.
- *                Found the code at this url:
+ *                Found the contents of rw.c at this url:
  *                http://www.cs.nmsu.edu/~jcook/Tools/pthreads/rw.c
+ *
+ *  Revised : (date?): Converted to thin wrapper over pthread_rwlock.
+ *  Revised : 5-26 Added rwlc locks, which can wait for condition variables (assuming they hold a write lock)
  */
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
@@ -97,4 +100,84 @@ void *writer (void *args);
 #endif
 END_C_DECLS
 
+/** A rwl with support for condition variables. */
+typedef struct rwlc {
+  rwl * rw;
+  pthread_mutex_t mut;
+  int is_writelocked;
+} rwlc;
+
+static inline rwlc* rwlc_initlock(void) {
+  rwlc* ret = (rwlc*)malloc(sizeof(*ret));
+  ret->rw = initlock();
+  int err = pthread_mutex_init(&ret->mut, 0);
+  ret->is_writelocked = 0;
+  if(err) { perror("couldn't init rwlclock's mutex"); abort(); }
+  return ret;
+}
+static inline void rwlc_readlock(rwlc *lock) {
+  readlock(lock->rw, 0);
+}
+static inline int rwlc_tryreadlock(rwlc *lock) {
+  return tryreadlock(lock->rw, 0);
+}
+static inline void rwlc_writelock(rwlc *lock) {
+  pthread_mutex_lock(&lock->mut); // need to get this here, since the lock order is dictated by pthread_cond_wait's API.
+  writelock(lock->rw, 0);
+  lock->is_writelocked = 1;
+}
+static inline int rwlc_trywritelock(rwlc *lock) {
+  int ret = pthread_mutex_trylock(&lock->mut);
+  if(ret == EBUSY) { return 0; }
+  ret = trywritelock(lock->rw, 0); // will fail if someone is holding a readlock.
+  if(!ret) {
+    pthread_mutex_unlock(&lock->mut);
+  } else {
+    lock->is_writelocked = 1;
+  }
+  return ret;
+}
+static inline void rwlc_assertlocked(rwlc * lock) {
+  assertlocked(lock->rw);
+}
+static inline void rwlc_assertunlocked(rwlc * lock) {
+  assertunlocked(lock->rw);
+}
+static inline void rwlc_readunlock(rwlc *lock) { readunlock(lock->rw); }
+static inline void rwlc_cond_wait(pthread_cond_t * cond, rwlc *lock) {
+  rwlc_assertlocked(lock);
+  lock->is_writelocked = 0;
+  writeunlock(lock->rw);
+  pthread_cond_wait(cond, &lock->mut);
+  // already have mutex; reacquire the writelock.
+  writelock(lock->rw, 0);
+  lock->is_writelocked = 1;
+}
+static inline int rwlc_cond_timedwait(pthread_cond_t * cond, rwlc *lock, struct timespec * ts) {
+  rwlc_assertlocked(lock);
+  lock->is_writelocked = 0;
+  writeunlock(lock->rw);
+  int ret = pthread_cond_timedwait(cond, &lock->mut, ts);
+  // already have mutex; reacquire the writelock.
+  writelock(lock->rw, 0);
+  lock->is_writelocked = 1;
+  return ret;
+}
+static inline void rwlc_writeunlock(rwlc *lock) {
+  lock->is_writelocked = 0;
+  writeunlock(lock->rw);
+  pthread_mutex_unlock(&lock->mut);
+}
+static inline void rwlc_unlock(rwlc *lock) {
+  if(lock->is_writelocked) {
+    rwlc_writeunlock(lock);
+  } else {
+    rwlc_readunlock(lock);
+  }
+}
+static inline void rwlc_deletelock(rwlc *lock) {
+  deletelock(lock->rw);
+  pthread_mutex_destroy(&lock->mut);
+  free(lock);
+}
 #endif /* rw.h */
