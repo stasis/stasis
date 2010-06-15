@@ -157,8 +157,25 @@ void Tupdate(int xid, pageid_t page,
 
   assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-  stasis_operation_do(e, p);
+  LogEntry * multiE = 0;
+  if(page == MULTI_PAGEID) {
+    size_t len = sizeofLogEntry(stasis_log_file, e);
+    multiE = malloc(len);
+    memcpy(multiE, e, len);
+  } else {
+    stasis_operation_do(e, p);
+  }
   stasis_log_file->write_entry_done(stasis_log_file, e);
+
+  if(page == MULTI_PAGEID) {
+    // Note: This is not atomic with the log entry.  MULTI operations are a special case of segments.
+    // We assume that any concurrent updates to the backing pages commute with this operation.
+    // For this to be true, either:
+    // (a) the pages must not have LSNs in their headers, or
+    // (b) we must have an implicit latch (which should be the case for allocation requests).
+    stasis_operation_do(multiE, 0);
+    free(multiE);
+  }
 
   if(p) unlock(p->rwlatch);
   if(p) releasePage(p);
