@@ -136,6 +136,7 @@ struct Page_s {
   lsn_t LSN;
   byte *memAddr;
   byte dirty;
+  byte needsFlush;
   /** The next item in the replacement policy's queue */
   struct Page_s *next;
   /** The previous item in the replacement policy's queue. */

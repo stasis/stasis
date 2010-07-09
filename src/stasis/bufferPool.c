@@ -94,6 +94,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
     ret->pool[i].memAddr = calloc(1, PAGE_SIZE);
 #endif
     ret->pool[i].dirty = 0;
+    ret->pool[i].needsFlush = 0;
   }
   return ret;
 }
