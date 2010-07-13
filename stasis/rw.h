@@ -145,7 +145,7 @@ static inline void rwlc_assertunlocked(rwlc * lock) {
 }
 static inline void rwlc_readunlock(rwlc *lock) { readunlock(lock->rw); }
 static inline void rwlc_cond_wait(pthread_cond_t * cond, rwlc *lock) {
-  rwlc_assertlocked(lock);
+  if(!lock->is_writelocked) { abort(); }
   lock->is_writelocked = 0;
   writeunlock(lock->rw);
   pthread_cond_wait(cond, &lock->mut);
@@ -154,7 +154,7 @@ static inline void rwlc_cond_wait(pthread_cond_t * cond, rwlc *lock) {
   lock->is_writelocked = 1;
 }
 static inline int rwlc_cond_timedwait(pthread_cond_t * cond, rwlc *lock, struct timespec * ts) {
-  rwlc_assertlocked(lock);
+  if(!lock->is_writelocked) { abort(); }
   lock->is_writelocked = 0;
   writeunlock(lock->rw);
   int ret = pthread_cond_timedwait(cond, &lock->mut, ts);
