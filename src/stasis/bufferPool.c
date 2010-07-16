@@ -49,6 +49,8 @@ terms specified in this license.
  *
  */
 #include <stasis/common.h>
+#include <stasis/flags.h>
+
 #include <stasis/bufferPool.h>
 #include <stasis/page.h>
 #include <assert.h>
@@ -70,7 +72,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
 #ifndef VALGRIND_MODE
 
-  byte * bufferSpace = calloc((MAX_BUFFER_SIZE + 2), PAGE_SIZE);
+  byte * bufferSpace = calloc((stasis_buffer_manager_size + 2), PAGE_SIZE);
   assert(bufferSpace);
   ret->addr_to_free = bufferSpace;
 
@@ -83,9 +85,9 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
   // We need one dummy page for locking purposes,
   //  so this array has one extra page in it.
-  ret->pool = malloc(sizeof(ret->pool[0])*(MAX_BUFFER_SIZE+1));
+  ret->pool = malloc(sizeof(ret->pool[0])*(stasis_buffer_manager_size+1));
 
-  for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+  for(pageid_t i = 0; i < stasis_buffer_manager_size+1; i++) {
     ret->pool[i].rwlatch = initlock();
     ret->pool[i].loadlatch = initlock();
 #ifndef VALGRIND_MODE
@@ -100,7 +102,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 }
 
 void stasis_buffer_pool_deinit(stasis_buffer_pool_t * ret) {
-  for(pageid_t i = 0; i < MAX_BUFFER_SIZE+1; i++) {
+  for(pageid_t i = 0; i < stasis_buffer_manager_size+1; i++) {
     deletelock(ret->pool[i].rwlatch);
     deletelock(ret->pool[i].loadlatch);
 #ifdef VALGRIND_MODE
@@ -122,7 +124,7 @@ Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t * ret) {
   assert(!page->dirty);
   (ret->nextPage)++;
   /* There's a dummy page that we need to keep around, thus the +1 */
-  assert(ret->nextPage <= MAX_BUFFER_SIZE + 1);
+  assert(ret->nextPage <= stasis_buffer_manager_size + 1);
 
   pthread_mutex_unlock(&ret->mut);
 

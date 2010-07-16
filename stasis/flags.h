@@ -17,6 +17,8 @@
 
  */
 extern stasis_buffer_manager_t* (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*);
+
+extern pageid_t stasis_buffer_manager_size;
 /**
    This determines which type of file handle the buffer manager will use.
 
@@ -115,7 +117,7 @@ extern lsn_t stasis_log_file_write_buffer_size;
    Set to 1 if segment based recovery is enabled.  This disables some
    optimizations that assume all operations are page based.
 
-   @TODO Stasis' segment implementation is a work in progress; therefore this is set to zero by default.
+   @todo Stasis' segment implementation is a work in progress; therefore this is set to zero by default.
  */
 extern int stasis_segments_enabled;
 #endif

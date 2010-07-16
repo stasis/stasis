@@ -9,6 +9,7 @@
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferPool.h>
 #include <stasis/pageHandle.h>
+#include <stasis/flags.h>
 
 #ifndef NO_CONCURRENT_LRU
 #ifndef CONCURRENT_LRU
@@ -356,9 +357,9 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 #else
   ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0));
 #endif
-  ch->ht = hashtable_init(MAX_BUFFER_SIZE * 4);
+  ch->ht = hashtable_init(stasis_buffer_manager_size * 4);
 
-  for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
+  for(pageid_t i = 0; i < stasis_buffer_manager_size; i++) {
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);
     stasis_buffer_pool_free_page(ch->buffer_pool, p,-1*i);
     pageSetNode(p,0,0);

@@ -14,7 +14,7 @@
 #ifdef LONG_TEST
 
 #define THREAD_COUNT 100
-#define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
+#define NUM_PAGES ((stasis_buffer_manager_size * 3)/2)  // Otherwise, we run out of disk cache, and it takes forever to complete...
 #define PAGE_MULT 10                     // This tells the system to only use every 10'th page, allowing us to quickly check >2 GB, >4 GB safeness.
 
 #define READS_PER_THREAD (NUM_PAGES * 5)
@@ -23,7 +23,7 @@
 
 #else
 #define THREAD_COUNT 25
-#define NUM_PAGES ((MAX_BUFFER_SIZE * 3)/2)
+#define NUM_PAGES ((stasis_buffer_manager_size * 3)/2)
 #define PAGE_MULT 1000
 
 #define READS_PER_THREAD (NUM_PAGES * 2)
@@ -73,7 +73,7 @@ void * workerThread(void * p) {
     int k = (int) (((double)NUM_PAGES)*rand()/(RAND_MAX+1.0));
     Page * p;
     if(! (i % (READS_PER_THREAD / 10)) ) {
-      printf("%d", i / (READS_PER_THREAD / 10)); fflush(NULL);
+      printf("%lld", i / ((unsigned long long)READS_PER_THREAD / 10)); fflush(NULL);
     }
 
     rid.page = PAGE_MULT * (k+1);
@@ -109,7 +109,7 @@ void * workerThreadWriting(void * q) {
     /*  fflush(NULL);  */
 
     if(! (i % (RECORDS_PER_THREAD/10)) ) {
-      printf("A%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
+      printf("A%lld", i / ((unsigned long long)RECORDS_PER_THREAD/10)); fflush(NULL);
 
     }
 
@@ -146,7 +146,7 @@ void * workerThreadWriting(void * q) {
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10)) ) {
-      printf("W%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
+      printf("W%lld", i / ((unsigned long long)RECORDS_PER_THREAD/10)); fflush(NULL);
     }
 
     /*    sched_yield(); */
@@ -166,7 +166,7 @@ void * workerThreadWriting(void * q) {
     releasePage(p);
 
     if(! (i % (RECORDS_PER_THREAD/10))) {
-      printf("R%d", i / (RECORDS_PER_THREAD/10)); fflush(NULL);
+      printf("R%lld", i / ((unsigned long long)RECORDS_PER_THREAD/10)); fflush(NULL);
     }
 
 
@@ -256,9 +256,9 @@ START_TEST(pageThreadedWritersTest) {
   Tdeinit();
 }END_TEST
 
- //#define PINNED_PAGE_COUNT (MAX_BUFFER_SIZE - 1)
-#define PINNED_PAGE_COUNT ((MAX_BUFFER_SIZE - 1) / THREAD_COUNT)
-#define MAX_PAGE_ID  (MAX_BUFFER_SIZE * 2)
+ //#define PINNED_PAGE_COUNT (stasis_buffer_manager_size - 1)
+#define PINNED_PAGE_COUNT ((stasis_buffer_manager_size - 1) / THREAD_COUNT)
+#define MAX_PAGE_ID  (stasis_buffer_manager_size * 2)
 #ifdef LONG_TEST
 #define BLIND_ITERS 100000
 #else
@@ -312,7 +312,7 @@ START_TEST(pageBlindThreadTest) {
 
   printf("Spawning threads now.\n"); fflush(stdout);
 
-  printf("each thread pins %d pages (total: %d)\n", PINNED_PAGE_COUNT, PINNED_PAGE_COUNT*THREAD_COUNT);
+  printf("each thread pins %lld pages (total: %lld)\n", (unsigned long long)PINNED_PAGE_COUNT, (unsigned long long)PINNED_PAGE_COUNT*THREAD_COUNT);
 
   pthread_t workers[THREAD_COUNT];
 
@@ -332,15 +332,15 @@ static void stalePinTestImpl(stasis_buffer_manager_t * (*fact)(stasis_log_t*, st
 
   Tinit();
 
-  Page * p[MAX_BUFFER_SIZE-1];
-  for(int i = 0; i < MAX_BUFFER_SIZE-2; i++) {
+  Page * p[stasis_buffer_manager_size-1];
+  for(int i = 0; i < stasis_buffer_manager_size-2; i++) {
     p[i] = loadUninitializedPage(-1, i);
   }
-  for(int i = 0; i < MAX_BUFFER_SIZE; i++) {
-    Page * foo = loadUninitializedPage(-1, i+MAX_BUFFER_SIZE);
+  for(int i = 0; i < stasis_buffer_manager_size; i++) {
+    Page * foo = loadUninitializedPage(-1, i+stasis_buffer_manager_size);
     releasePage(foo);
   }
-  for(int i = 0; i < MAX_BUFFER_SIZE-2; i++) {
+  for(int i = 0; i < stasis_buffer_manager_size-2; i++) {
     releasePage(p[i]);
   }
   Tdeinit();

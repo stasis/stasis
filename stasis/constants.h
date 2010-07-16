@@ -80,17 +80,6 @@ terms specified in this license.
 
 #define PAGE_SIZE 4096
 
-#ifndef MAX_BUFFER_SIZE
-//#define MAX_BUFFER_SIZE 100003
-#define MAX_BUFFER_SIZE 20029
-//#define MAX_BUFFER_SIZE 10007
-//#define MAX_BUFFER_SIZE 5003
-//#define MAX_BUFFER_SIZE 2003
-//#define MAX_BUFFER_SIZE 4006
-/* #define MAX_BUFFER_SIZE 71  */
-/*#define MAX_BUFFER_SIZE 7 */
-#endif
-
 #define BUFFER_MANAGER_HASH   1
 #define BUFFER_MANAGER_MEM_ARRAY 2
 #define BUFFER_MANAGER_DEPRECATED_HASH 3

@@ -17,6 +17,17 @@ stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis
 stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_concurrent_hash_factory;
 #endif
 
+#ifdef STASIS_BUFFER_MANAGER_SIZE
+pageid_t stasis_buffer_manager_size = STASIS_BUFFER_MANAGER_SIZE;
+#else // STASIS_BUFFER_MANAGER_SIZE
+#ifdef MAX_BUFFER_SIZE
+pageid_t stasis_buffer_manager_size = MAX_BUFFER_SIZE;
+#else // MAX_BUFFER_SIZE
+pageid_t stasis_buffer_manager_size = 20029; // ~ 82MB
+#endif // MAX_BUFFER_SIZE
+#endif // STASIS_BUFFER_MANAGER_SIZE
+
+
 #ifdef BUFFER_MANAGER_O_DIRECT
 int bufferManagerO_DIRECT = BUFFER_MANAGER_O_DIRECT;
 #else

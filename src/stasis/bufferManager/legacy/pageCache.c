@@ -6,6 +6,7 @@
    writes, and locking.
 */
 #include <stasis/common.h>
+#include <stasis/flags.h>
 
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
@@ -14,7 +15,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static unsigned int bufferSize; /* < MAX_BUFFER_SIZE */
+static pageid_t bufferSize;
 static Page *repHead, *repMiddle, *repTail; /* replacement policy */
 
 int cache_state;
@@ -106,8 +107,7 @@ void cacheInsertPage (Page * ret) {
   if(cache_state == FULL) {
     middleInsert(ret);
   } else {
-    if(bufferSize == MAX_BUFFER_SIZE/* - 1*/) {  /* Set up page kick mechanism. */
-      int i;
+    if(bufferSize == stasis_buffer_manager_size/* - 1*/) {  /* Set up page kick mechanism. */
       Page *iter;
 
       cache_state = FULL;
@@ -120,9 +120,9 @@ void cacheInsertPage (Page * ret) {
        * resulted in the best performance"
        */
       repMiddle = repHead;
-      for( i = 0; i < MAX_BUFFER_SIZE / 3; i++ ) {
-	repMiddle->queue = 1;
-	repMiddle = repMiddle->next;
+      for(pageid_t i = 0; i < stasis_buffer_manager_size / 3; i++ ) {
+        repMiddle->queue = 1;
+        repMiddle = repMiddle->next;
       }
 
       for( iter = repMiddle; iter; iter = iter->next ) {

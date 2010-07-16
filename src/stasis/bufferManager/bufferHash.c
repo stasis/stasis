@@ -132,7 +132,7 @@ inline static int tryToWriteBackPage(stasis_buffer_manager_t *bm, pageid_t page)
 inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
   stasis_buffer_hash_t * bh = bm->impl;
   Page * ret;
-  if(bh->pageCount < MAX_BUFFER_SIZE) {
+  if(bh->pageCount < stasis_buffer_manager_size) {
     ret = stasis_buffer_pool_malloc_page(bh->buffer_pool);
     stasis_buffer_pool_free_page(bh->buffer_pool, ret,-1);
     (*pagePendingPtr(ret)) = 0;
@@ -219,7 +219,7 @@ static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
 }
 
 static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t* handle,
-				    int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
+                                    int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
   stasis_buffer_hash_t * bh = bm->impl;
 
   DEBUG("load %lld (%d)\n", pageid, uninitialized);
@@ -549,7 +549,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
 
   bh->lru = lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0);
 
-  bh->cachedPages = LH_ENTRY(create)(MAX_BUFFER_SIZE);
+  bh->cachedPages = LH_ENTRY(create)(stasis_buffer_manager_size);
 
   bh->pageCount = 0;
 

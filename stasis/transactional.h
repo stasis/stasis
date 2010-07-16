@@ -763,8 +763,10 @@ int TgetTransactionFingerprint(int xid, stasis_transaction_fingerprint_t * fp);
 /**
  * Checks to see if a transaction is still active.
  *
- * @param xid The transaction id to be tested.
+ * @param fp The finger print of the transaction to be tested.
  * @return true if the transaction is still running, false otherwise.
+ *
+ * @see TgetTransactionFingerprint()
  */
 int TisActiveTransaction(stasis_transaction_fingerprint_t* fp);
 /*

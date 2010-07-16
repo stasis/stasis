@@ -37,8 +37,6 @@ Page * cacheStalePage();
 #define INITIAL 0
 #define FULL    1
 
-
-
 extern int cache_state;
 
 #endif
