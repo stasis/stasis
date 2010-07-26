@@ -110,20 +110,26 @@ inline static void checkPageState(Page * p) { }
 
 #endif
 
-inline static int tryToWriteBackPage(stasis_buffer_manager_t *bm, pageid_t page) {
+static int bhTryToWriteBackPage(stasis_buffer_manager_t *bm, pageid_t page) {
   stasis_buffer_hash_t * bh = bm->impl;
+  pthread_mutex_lock(&bh->mut);
   Page * p = LH_ENTRY(find)(bh->cachedPages, &page, sizeof(page));
 
-  if(!p) { return ENOENT; }
+  if(!p) {
+    pthread_mutex_unlock(&bh->mut);
+    return ENOENT;
+  }
 
   assert(p->id == page);
 
   if(*pagePendingPtr(p) || *pagePinCountPtr(p)) {
+    pthread_mutex_unlock(&bh->mut);
     return EBUSY;
   }
   DEBUG("Write(%ld)\n", (long)victim->id);
   bh->page_handle->write(bh->page_handle, p);  /// XXX pageCleanup and pageFlushed might be heavyweight.
 
+  pthread_mutex_unlock(&bh->mut);
   return 0;
 }
 
@@ -408,10 +414,14 @@ static void bhReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   pthread_mutex_unlock(&bh->mut);
 }
 static int bhWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
-  stasis_buffer_hash_t * bh = bm->impl;
-  pthread_mutex_lock(&bh->mut);
-  int ret = tryToWriteBackPage(bm, pageid);
-  pthread_mutex_unlock(&bh->mut);
+  int ret = EBUSY;
+  while(ret == EBUSY) {
+    ret = bhTryToWriteBackPage(bm, pageid); // XXX busy wait.  Super lame.
+    if(ret == EBUSY) {
+      struct timespec req = { 0, 1000000 }; // 1,000,000 nanoseconds
+      nanosleep(&req, 0);
+    }
+  }
   return ret;
 }
 static void bhForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
@@ -526,7 +536,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bm->getCachedPageImpl = bhGetCachedPage;
   bm->releasePageImpl = bhReleasePage;
   bm->writeBackPage = bhWriteBackPage;
-  bm->tryToWriteBackPage = bhWriteBackPage;
+  bm->tryToWriteBackPage = bhTryToWriteBackPage;
   bm->forcePages = bhForcePages;
   bm->forcePageRange = bhForcePageRange;
   bm->stasis_buffer_manager_close = bhBufDeinit;
