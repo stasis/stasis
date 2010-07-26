@@ -237,7 +237,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
       DEBUG("block %lld %lld %lld\n", (long long)i, (long long)newFirstPage, (long long)blockSize);
       tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
       /* Iterate over the (large number) of new blocks, clearing their contents */
-#ifdef ARRRAY_LIST_OLD_ALLOC
+#ifdef ARRAY_LIST_OLD_ALLOC
       // old way
       {
         for(pageid_t i = newFirstPage; i < newFirstPage + blockSize; i++) {
