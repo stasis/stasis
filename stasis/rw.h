@@ -36,29 +36,40 @@ static inline rwl* initlock(void) {
   rwl* ret = (rwl*)malloc(sizeof(*ret));
   int err = pthread_rwlock_init(ret, 0);
   if(err) { perror("couldn't init rwlock"); abort(); }
+  DEBUG("initlock(%llx)\n", (long long)ret);
   return ret;
 }
 static inline void readlock(rwl *lock, int d) {
+  DEBUG("readlock(%llx)\n", (long long)lock);
   pthread_rwlock_rdlock(lock);
 }
 static inline int tryreadlock(rwl *lock, int d) {
-  return 0 == pthread_rwlock_tryrdlock(lock);
+  DEBUG("? = tryreadlock(%llx)\n", (long long)lock);
+  int ret = (0 == pthread_rwlock_tryrdlock(lock));
+  DEBUG("%d = tryreadlock(%llx)\n", ret, (long long)lock);
+  return ret;
 }
 static inline void writelock(rwl *lock, int d) {
+  DEBUG("writelock(%llx)\n", (long long)lock);
   pthread_rwlock_wrlock(lock);
 }
 static inline int trywritelock(rwl *lock, int d) {
-  return 0 == pthread_rwlock_trywrlock(lock);
+  DEBUG("? = trywritelock(%llx)\n", (long long)lock);
+  int ret = (0 == pthread_rwlock_trywrlock(lock));
+  DEBUG("%d = trywritelock(%llx)\n", ret, (long long)lock);
+  return ret;
 }
 static inline void assertlocked(rwl * lock) { }
 static inline void assertunlocked(rwl * lock) { }
 static inline void unlock(rwl *lock) {
+  DEBUG("unlock(%llx)\n", (long long)lock);
   pthread_rwlock_unlock(lock);
 }
 static inline void readunlock(rwl *lock) { unlock(lock); }
 static inline void writeunlock(rwl *lock) { unlock(lock); }
 static inline void deletelock(rwl *lock) {
   pthread_rwlock_destroy(lock);
+  DEBUG("deletelock(%llx)\n", (long long)lock);
   free(lock);
 }
 #else
