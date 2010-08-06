@@ -87,8 +87,6 @@ static page_impl page_impls[MAX_PAGE_TYPE];
 static stasis_dirty_page_table_t * dirtyPages;
 
 void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
-  assertlocked(page->rwlatch);
-
   if(page->LSN < lsn) {
     page->LSN = lsn;
   }
@@ -99,7 +97,6 @@ void stasis_page_lsn_write(int xid, Page * page, lsn_t lsn) {
 }
 
 lsn_t stasis_page_lsn_read(const Page * page) {
-  assertlocked(page->rwlatch);
   return page->LSN;
 }
 
@@ -146,7 +143,6 @@ page_impl * stasis_page_impl_get(int id) {
   return & page_impls[id];
 }
 void stasis_record_write(int xid, Page * p, recordid rid, const byte *dat) {
-  assertlocked(p->rwlatch);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
   assert(rid.size <= BLOB_THRESHOLD_SIZE);
 
@@ -156,7 +152,6 @@ void stasis_record_write(int xid, Page * p, recordid rid, const byte *dat) {
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
 int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
-  assertlocked(p->rwlatch);
   assert(rid.page == p->id);
   assert(rid.size <= BLOB_THRESHOLD_SIZE);
 
@@ -170,7 +165,6 @@ int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
    @todo stasis_record_dereference should dispatch via page_impl...
  */
 recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
-  assertlocked(p->rwlatch);
 
   int page_type = p->pageType;
   if(page_type == ARRAY_LIST_PAGE) {
@@ -182,14 +176,12 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
 /// --------------  Dispatch functions
 
 const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
-  assertlocked(p->rwlatch);
 
   int page_type = p->pageType;
   assert(page_type);
   return page_impls[page_type].recordRead(xid, p, rid);
 }
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
-  assertlocked(p->rwlatch);
 
   int page_type = p->pageType;
   assert(page_type);
@@ -209,19 +201,16 @@ void stasis_record_write_done(int xid, Page *p, recordid rid, byte *b) {
   }
 }
 int stasis_record_type_read(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   if(page_impls[p->pageType].recordGetType)
     return page_impls[p->pageType].recordGetType(xid, p, rid);
   else
     return INVALID_SLOT;
 }
 void stasis_record_type_write(int xid, Page *p, recordid rid, int type) {
-  assertlocked(p->rwlatch);
   page_impls[p->pageType]
     .recordSetType(xid, p, rid, type);
 }
 int stasis_record_length_read(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   return page_impls[p->pageType]
     .recordGetLength(xid,p,rid);
 }

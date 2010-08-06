@@ -13,7 +13,6 @@ int stasis_fixed_records_per_page(size_t size) {
 }
 /** @todo CORRECTNESS  Locking for stasis_fixed_initialize_page? (should hold writelock)*/
 void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
-  assertlocked(page->rwlatch);
   stasis_page_cleanup(page);
   // Zero out the page contents, since callers often do so anyway.
   // blows away LSN, but the copy that's in p->LSN will be put back on page at flush.
@@ -25,7 +24,6 @@ void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
 }
 
 static void checkRid(Page * page, recordid rid) {
-  assertlocked(page->rwlatch);
   assert(page->pageType); // any more specific breaks pages based on this one
   assert(page->id == rid.page);
   assert(*recordsize_ptr(page) == rid.size);
@@ -35,21 +33,18 @@ static void checkRid(Page * page, recordid rid) {
 //-------------- New API below this line
 
 static const byte* fixedRead(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   checkRid(p, rid);
   assert(rid.slot < *recordcount_ptr(p));
   return fixed_record_ptr(p, rid.slot);
 }
 
 static byte* fixedWrite(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   checkRid(p, rid);
   assert(rid.slot < *recordcount_ptr(p));
   return fixed_record_ptr(p, rid.slot);
 }
 
 static int fixedGetType(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   //  checkRid(p, rid);
   if(rid.slot < *recordcount_ptr(p)) {
     int type = *recordsize_ptr(p);
@@ -62,14 +57,12 @@ static int fixedGetType(int xid, Page *p, recordid rid) {
   }
 }
 static void fixedSetType(int xid, Page *p, recordid rid, int type) {
-  assertlocked(p->rwlatch);
   checkRid(p,rid);
   assert(rid.slot < *recordcount_ptr(p));
   assert(stasis_record_type_to_size(type) == stasis_record_type_to_size(*recordsize_ptr(p)));
   *recordsize_ptr(p) = rid.size;
 }
 static int fixedGetLength(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   assert(p->pageType);
   return rid.slot > *recordcount_ptr(p) ?
       INVALID_SLOT : stasis_record_type_to_size(*recordsize_ptr(p));
@@ -78,7 +71,6 @@ static int fixedGetLength(int xid, Page *p, recordid rid) {
 static int notSupported(int xid, Page * p) { return 0; }
 
 static int fixedFreespace(int xid, Page * p) {
-  assertlocked(p->rwlatch);
   if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
     // Return the size of a slot; that's the biggest record we can take.
     return stasis_record_type_to_size(*recordsize_ptr(p));
@@ -94,7 +86,6 @@ static void fixedCompactSlotIds(int xid, Page * p) {
   abort();
 }
 static recordid fixedPreAlloc(int xid, Page *p, int size) {
-  assertlocked(p->rwlatch);
   if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
     recordid rid;
     rid.page = p->id;
@@ -106,7 +97,6 @@ static recordid fixedPreAlloc(int xid, Page *p, int size) {
   }
 }
 static void fixedPostAlloc(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   assert(*recordcount_ptr(p) == rid.slot);
   assert(*recordsize_ptr(p) == rid.size);
   (*recordcount_ptr(p))++;
@@ -115,7 +105,6 @@ static void fixedSplice(int xid, Page *p, slotid_t first, slotid_t second) {
   abort();
 }
 static void fixedFree(int xid, Page *p, recordid rid) {
-  assertlocked(p->rwlatch);
   if(*recordsize_ptr(p) == rid.slot+1) {
     (*recordsize_ptr(p))--;
   } else {

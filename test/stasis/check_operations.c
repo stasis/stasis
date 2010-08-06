@@ -70,11 +70,9 @@ START_TEST(operation_physical_do_undo) {
   long long pnum = TpageAlloc(xid);
   Page * p = loadPage(xid, pnum);
 
-  writelock(p->rwlatch, 0);
   stasis_page_slotted_initialize_page(p);
   rid = stasis_record_alloc_begin(xid, p, sizeof(int));
   stasis_record_alloc_done(xid, p, rid);
-  unlock(p->rwlatch);
   releasePage(p);
 
   DEBUG("A\n");
@@ -99,11 +97,9 @@ START_TEST(operation_physical_do_undo) {
   DEBUG("B\n");
 
   p = loadPage(xid, rid.page);
-  writelock(p->rwlatch,0);
   // manually fill in UNDO field
   stasis_record_write(xid, p, rid, (byte*)&buf);
   stasis_page_lsn_write(xid, p, lsn);
-  unlock(p->rwlatch);
   releasePage(p);
   setToTwo->LSN = 10;
 
@@ -115,9 +111,7 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
 
   p = loadPage(xid, rid.page);
-  writelock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
-  unlock(p->rwlatch);
   releasePage(p);
 
   assert(buf == 2);
@@ -137,6 +131,7 @@ START_TEST(operation_physical_do_undo) {
   releasePage(p);
 
   p = loadPage(xid, rid.page);
+
   readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, (byte*)&buf);
 
@@ -165,10 +160,8 @@ START_TEST(operation_physical_do_undo) {
   buf = 1;
 
   p = loadPage(xid, rid.page);
-  writelock(p->rwlatch,0);
   stasis_record_write(xid, p, rid, (byte*)&buf);
   stasis_page_lsn_write(xid, p, lsn);
-  unlock(p->rwlatch);
   releasePage(p);
   /* Trace of test:
 
@@ -558,7 +551,6 @@ START_TEST(operation_lsn_free) {
     int xid = Tbegin();
     pageid_t pid = TpageAlloc(xid);
     Page * p = loadPage(xid,pid);
-    writelock(p->rwlatch,0);
     stasis_slotted_lsn_free_initialize_page(p);
     // XXX hack!
     byte * old = malloc(PAGE_SIZE);
@@ -573,7 +565,6 @@ START_TEST(operation_lsn_free) {
     byte * new = malloc(PAGE_SIZE);
     memcpy(new, p->memAddr, PAGE_SIZE);
     memcpy(p->memAddr, old, PAGE_SIZE);
-    unlock(p->rwlatch);
     releasePage(p);
     TpageSet(xid, pid, new);
     free(old);
@@ -624,7 +615,6 @@ START_TEST(operation_reorderable) {
     int xid = Tbegin();
     pageid_t pid = TpageAlloc(xid);
     Page * p = loadPage(xid,pid);
-    writelock(p->rwlatch,0);
     stasis_slotted_lsn_free_initialize_page(p);
     // XXX hack!
     byte * old = malloc(PAGE_SIZE);
@@ -639,7 +629,6 @@ START_TEST(operation_reorderable) {
     byte * new = malloc(PAGE_SIZE);
     memcpy(new, p->memAddr, PAGE_SIZE);
     memcpy(p->memAddr, old, PAGE_SIZE);
-    unlock(p->rwlatch);
     releasePage(p);
     TpageSet(xid, pid, new);
     free(old);

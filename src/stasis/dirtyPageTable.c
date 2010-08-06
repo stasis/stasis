@@ -35,16 +35,17 @@ struct stasis_dirty_page_table_t {
 };
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
-  assert(!tryreadlock(p->rwlatch,0));
   if(!p->dirty) {
-    p->dirty = 1;
-    dpt_entry * e = malloc(sizeof(*e));
-    e->p = p->id;
-    e->lsn = p->LSN;
     pthread_mutex_lock(&dirtyPages->mutex);
-    const void * ret = rbsearch(e, dirtyPages->table);
-    assert(ret == e); // otherwise, the entry was already in the table.
-    dirtyPages->count++;
+    if(!p->dirty) {
+      p->dirty = 1;
+      dpt_entry * e = malloc(sizeof(*e));
+      e->p = p->id;
+      e->lsn = p->LSN;
+      const void * ret = rbsearch(e, dirtyPages->table);
+      assert(ret == e); // otherwise, the entry was already in the table.
+      dirtyPages->count++;
+    }
     pthread_mutex_unlock(&dirtyPages->mutex);
 #ifdef SANITY_CHECKS
   } else {
