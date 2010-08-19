@@ -165,7 +165,6 @@ int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
    @todo stasis_record_dereference should dispatch via page_impl...
  */
 recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
-
   int page_type = p->pageType;
   if(page_type == ARRAY_LIST_PAGE) {
     rid = stasis_array_list_dereference_recordid(xid, p, rid.slot);
@@ -176,13 +175,11 @@ recordid stasis_record_dereference(int xid, Page * p, recordid rid) {
 /// --------------  Dispatch functions
 
 const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
-
   int page_type = p->pageType;
   assert(page_type);
   return page_impls[page_type].recordRead(xid, p, rid);
 }
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
-
   int page_type = p->pageType;
   assert(page_type);
   assert(stasis_record_length_read(xid, p, rid) ==  stasis_record_type_to_size(rid.size));
