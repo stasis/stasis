@@ -70,8 +70,7 @@ static inline int needFlush(stasis_buffer_manager_t * bm) {
 
 static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, int is_hint) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
-  hashtable_bucket_handle_t h;
-  Page * p = hashtable_lookup_lock(ch->ht, pageid, &h);
+  Page * p = hashtable_lookup(ch->ht, pageid/*, &h*/);
   int ret = 0;
   if(!p) {
     ret = ENOENT;
@@ -81,15 +80,32 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
         ret = EBUSY;
         p->needsFlush = 1; // Not atomic.  Oh well.
       }
+      if(p->id != pageid) {  // it must have been written back...
+        unlock(p->loadlatch);
+        return 0;
+      }
     } else {
       // Uggh.  With the current design, it's possible that the trywritelock will block on the writeback thread.
       // That leaves us with few options, so we expose two sets of semantics up to the caller.
 
-      // Since this isn't a hint, the page is not pinned.  Therefore, the following will only deadlock if the caller is buggy.
+      // This used to call writelock while holding a hashtable bucket lock, risking deadlock if called when the page was pinned.
+
+      // We could assume that the caller knows what it's doing, and writeback regardless of whether the page is
+      // pinned.  This could allow torn pages to reach disk, and would risk calling page compaction, etc while the
+      // page is concurrently read.  However, it would prevent us from blocking on application pins.  Unfortunately,
+      // compacting under during application reads is a deal breaker.
+
+      // Instead, we release the hashtable lock, get the write latch, then double check the pageid.
+      // This is safe, since we know that page pointers are never freed, only reused.  However, it causes writeback
+      // to block waiting for application threads to unpin their pages.
       writelock(p->loadlatch,0);
+      if(p->id != pageid) {
+        // someone else wrote it back.  woohoo.
+        unlock(p->loadlatch);
+        return 0;
+      }
     }
   }
-  hashtable_unlock(&h);
   if(ret) { return ret; }
   // write calls stasis_page_flushed(p);
   ch->page_handle->write(ch->page_handle, p);
