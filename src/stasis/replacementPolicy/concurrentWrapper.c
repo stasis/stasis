@@ -72,6 +72,10 @@ static void* cwGetStaleHelper(struct replacementPolicy* impl, void*(*func)(struc
     }
   }
   if(bucket != oldbucket) {
+    // note that, even on success, we increment the bucket.  Otherwise, we could
+    // (would) eventually get unlucky, and some caller would do a getStaleAndRemove,
+    // fail to get a latch, insert it back, and the next getStaleAndRemove would
+    // deterministically return the same page again, leading to an infinite loop.
     pthread_setspecific(rp->next_bucket, (void*) bucket);
   }
   return ret;
