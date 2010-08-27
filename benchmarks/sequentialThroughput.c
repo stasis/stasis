@@ -5,6 +5,8 @@
 
 #include <stasis/bufferManager.h>
 #include <stasis/bufferManager/legacy/legacyBufferManager.h>
+#include <stasis/bufferManager/bufferHash.h>
+#include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/truncation.h>
 #include <stasis/logger/logger2.h>
 /*static stasis_handle_t * memory_factory(lsn_t off, lsn_t len, void * ignored) {
@@ -40,7 +42,6 @@ int main(int argc, char ** argv) {
   int stake = 0;
   int log_mode = 0;
   long page_count = mb_to_page(100);
-
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--direct")) {
       direct = 1;
@@ -113,7 +114,7 @@ int main(int argc, char ** argv) {
     }
 
     for(long i =0; i < page_count; i++) {
-      Page * p = loadPage(-1, i);
+      Page * p = loadUninitializedPage(-1, i);
       writelock(p->rwlatch,0);
       stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
       unlock(p->rwlatch);
