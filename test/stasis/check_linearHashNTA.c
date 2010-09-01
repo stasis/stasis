@@ -67,6 +67,55 @@ static int arryCmp(int * a, int * b, int len) {
   return memcmp(a,b,len);
 }
 
+START_TEST(linearHashNTAabortTest) {
+  Tinit();
+
+  int xid = Tbegin();
+  recordid rid = ThashCreate(xid, -1, -1);
+  assert(0 == ThashInsert(xid, rid, "foo", 4, "bar", 4));
+  char * ret;
+  int len = ThashLookup(xid, rid, "foo", 4, &ret);
+  assert(len == 4);
+  assert(!strcmp("bar", ret));
+  free(ret);
+  Tcommit(xid);
+	 
+  xid = Tbegin();
+
+  assert(1 == ThashInsert(xid, rid, "foo", 4, "baz", 4));
+  assert(0 == ThashInsert(xid, rid, "bar", 4, "bat", 4));
+  
+  len = ThashLookup(xid, rid, "foo", 4, &ret);
+  assert(len == 4);
+  assert(!strcmp("baz", ret));
+  free(ret);
+
+  len = ThashLookup(xid, rid, "bar", 4, &ret);
+  assert(len == 4);
+  assert(!strcmp("bat", ret));
+  free(ret);
+
+  Tabort(xid);
+
+  len = ThashLookup(xid, rid, "foo", 4, &ret);
+  assert(len == 4);
+  assert(!strcmp("bar", ret));
+  free(ret);
+
+  /*
+      assert_equal(nil,   Hash.lookup( -1, rid, "bar"))
+      assert_equal(0,     Tdeinit)
+      assert_equal(0,     Tinit)
+      assert_equal("bar", Hash.lookup( -1, rid, "foo"))
+      assert_equal(nil,   Hash.lookup( -1, rid, "bar"))
+      assert_equal(0,     Hash.insert(xid, rid, "bar", "bat"))
+      assert_equal("bat", Hash.lookup(xid,rid,"bar"))
+      assert_equal(0,     Raw.Tdeinit)
+  */
+
+  Tdeinit();
+} END_TEST
+
 /**
    @test
 */
@@ -621,6 +670,7 @@ Suite * check_suite(void) {
 
   tcase_set_timeout(tc, 1200); // 20 minute timeout
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, linearHashNTAabortTest);
   tcase_add_test(tc, lookupPrefix);
   tcase_add_test(tc, emptyHashIterator);
   tcase_add_test(tc, emptyHashIterator2);

@@ -185,6 +185,8 @@ stasis_operation_impl stasis_op_impl_linear_hash_remove() {
 }
 
 compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, const byte* value, int valueSize) {
+  /* XXX slow, but doesn't generate any log entries unless the key exists */
+  int ret = ThashRemove(xid, hashHeader, key, keySize);
   hashHeader.size = sizeof(lladd_hash_header);
   pthread_mutex_lock(&linear_hash_mutex);
   int argSize = sizeof(linearHash_insert_arg)+keySize;
@@ -193,14 +195,12 @@ compensated_function int ThashInsert(int xid, recordid hashHeader, const byte* k
   arg->keySize = keySize;
   memcpy(arg+1, key, keySize);
 
-  int ret;
-
   /** @todo MEMORY LEAK arg, handle on pthread_cancel.. */
   void * handle;
   begin_action_ret(pthread_mutex_unlock, &linear_hash_mutex, compensation_error()) {
     handle = TbeginNestedTopAction(xid, OPERATION_LINEAR_HASH_INSERT, (byte*)arg, argSize);
     free(arg);
-    ret = __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);
+    __ThashInsert(xid, hashHeader, key, keySize, value, valueSize);
   } end_action_ret(compensation_error());
 
   TendNestedTopAction(xid, handle);
