@@ -77,6 +77,7 @@ terms specified in this license.
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>
 #include <stasis/page/uninitialized.h>
+#include <stasis/page/latchFree/lfSlotted.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
@@ -120,6 +121,7 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   stasis_page_impl_register(lsmRootImpl());
   stasis_page_impl_register(slottedLsnFreeImpl());
   stasis_page_impl_register(segmentImpl());
+  stasis_page_impl_register(stasis_page_slotted_latch_free_impl());
 }
 
 void stasis_page_deinit() {
@@ -147,7 +149,7 @@ void stasis_record_write(int xid, Page * p, recordid rid, const byte *dat) {
   assert(rid.size <= BLOB_THRESHOLD_SIZE);
 
   byte * buf = stasis_record_write_begin(xid, p, rid);
-  memcpy(buf, dat, stasis_record_length_read(xid, p, rid));
+  memcpy(buf, dat, stasis_record_type_to_size(rid.size));
   stasis_record_write_done(xid,p,rid,buf);
   assert( (p->id == rid.page) && (p->memAddr != NULL) );
 }
@@ -157,6 +159,7 @@ int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
 
   const byte * dat = stasis_record_read_begin(xid,p,rid);
   memcpy(buf, dat, stasis_record_length_read(xid,p,rid));
+  stasis_record_read_done(xid,p,rid,dat);
 
   return 0;
 
@@ -182,7 +185,9 @@ const byte * stasis_record_read_begin(int xid, Page * p, recordid rid) {
 byte * stasis_record_write_begin(int xid, Page * p, recordid rid) {
   int page_type = p->pageType;
   assert(page_type);
-  assert(stasis_record_length_read(xid, p, rid) ==  stasis_record_type_to_size(rid.size));
+  if(p->pageType != SLOTTED_LATCH_FREE_PAGE) {
+    assert(stasis_record_length_read(xid, p, rid) ==  stasis_record_type_to_size(rid.size));
+  }
   return page_impls[page_type].recordWrite(xid, p, rid);
 }
 void stasis_record_read_done(int xid, Page *p, recordid rid, const byte *b) {

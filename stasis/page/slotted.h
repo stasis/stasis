@@ -59,7 +59,8 @@ Slotted page layout:
 		has been handled, except in slottedPostRalloc...
 
 ************************************************************************/
-
+#ifndef STASIS_PAGE_SLOTTED_H
+#define STASIS_PAGE_SLOTTED_H
 static inline int16_t* stasis_page_slotted_freespace_ptr(Page * p) { return stasis_page_int16_ptr_from_end((p), 1); }
 static inline int16_t* stasis_page_slotted_numslots_ptr(Page * p) { return stasis_page_int16_ptr_from_end(p, 2); }
 static inline int16_t* stasis_page_slotted_freelist_ptr(Page * p) { return stasis_page_int16_ptr_from_end(p, 3); }
@@ -78,3 +79,4 @@ void stasis_page_slotted_init();
 void stasis_page_slotted_deinit();
 page_impl stasis_page_slotted_impl();
 page_impl stasis_page_boundary_tag_impl();
+#endif //STASIS_PAGE_SLOTTED_H
