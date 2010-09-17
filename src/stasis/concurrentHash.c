@@ -146,20 +146,26 @@ void hashtable_end_op(hashtable_mode mode, hashtable_t *ht, void *val, hashtable
         b2->val = NULL;
         break;
       } else {
-        pageid_t newidx = hashtable_func(ht, b1->key);
         // Case 2: b1 belongs "after" b2
+
+        pageid_t newidx = hashtable_func(ht, b1->key);
+
         // Subcase 1: newidx is higher than idx2, so newidx should stay where it is.
         // Subcase 2: newidx wrapped, so it is less than idx2, but more than half way around the ring.
         if(idx2 < newidx || (idx2 > newidx + (ht->maxbucketid/2))) {
           // skip this b1.
   //        printf("s\n"); fflush(0);
           idx = hashtable_wrap(ht, idx+1);
+          bucket_t * b0 = &ht->buckets[idx];
+          // Here we have to hold three buckets momentarily.  If we released b1 before latching its successor, then
+          // b1 could be deleted by another thread, and the successor could be compacted before we latched it.
+          pthread_mutex_lock(&b0->mut);
           pthread_mutex_unlock(&b1->mut);
-          b1 = &ht->buckets[idx];
-          pthread_mutex_lock(&b1->mut);
-        // Case 3: we can compact b1 into b2's slot.
+          b1 = b0;
         } else {
-  //        printf("c %lld %lld %lld  %lld\n", startidx, idx2, newidx, ht->maxbucketid); fflush(0);
+          // Case 3: we can compact b1 into b2's slot.
+
+//        printf("c %lld %lld %lld  %lld\n", startidx, idx2, newidx, ht->maxbucketid); fflush(0);
           b2->key = b1->key;
           b2->val = b1->val;
           pthread_mutex_unlock(&b2->mut);
@@ -184,7 +190,10 @@ static inline void * hashtable_op(hashtable_mode mode, hashtable_t *ht, pageid_t
 }
 static inline void * hashtable_op_lock(hashtable_mode mode, hashtable_t *ht, pageid_t p, void *val, hashtable_bucket_handle_t *h) {
   void * ret = hashtable_begin_op(mode, ht, p, val, h);
-  pthread_mutex_lock(&h->b1->mut); // XXX evil
+  // Nasty for a few reasons.  This forces us to use (slow) recursive mutexes.
+  // Also, if someone tries to crab over this bucket in order to get to an
+  // unrelated key, then it will block.
+  pthread_mutex_lock(&h->b1->mut);
   hashtable_end_op(mode, ht, val, h);
   return ret;
 }
