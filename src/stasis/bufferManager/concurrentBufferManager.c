@@ -193,7 +193,13 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       int succ =
       trywritelock(tls->p->loadlatch,0);  // if this blocks, it is because someone else has pinned the page (it can't be due to eviction because the lru is atomic)
 
-      if(succ) {
+      if(succ && (
+          // Work-stealing heuristic: If we don't know that writes are sequential, then write back the page we just encountered.
+          (!stasis_buffer_manager_hint_writes_are_sequential)
+          // Otherwise, if writes are sequential, then we never want to steal work from the writeback thread,
+          // so, pass over pages that are dirty.
+          || (!tls->p->dirty)
+        )) {
         // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
         assert(tmp == tls->p);
         // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
@@ -207,11 +213,22 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         unlock(tls->p->loadlatch);
         break;
       } else {
+        if(succ) {
+          // can only reach this if writes are sequential, and the page is dirty.
+          unlock(tls->p->loadlatch);
+        }
         // put back in LRU before making it accessible (again) via the hash.
         // otherwise, someone could try to pin it.
         ch->lru->insert(ch->lru, tmp);  // OK because lru now does refcounting, and we know that tmp->id can't change (because we're the ones that got it from LRU)
         hashtable_remove_cancel(ch->ht, &h);
         tls->p = NULL; // This iteration of the loop failed, set this so the loop runs again.
+        if(succ) {
+          // writes are sequential, p is dirty, and there is a big backlog.  Go to sleep for 1 msec to let things calm down.
+          if(count > 10) {
+            struct timespec ts = { 0, 1000000 };
+            nanosleep(&ts, 0);
+          }
+        }
       }
     } else {
       // page is not in hashtable, but it is in LRU.  getStale and hashtable remove are not atomic.

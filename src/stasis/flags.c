@@ -27,6 +27,12 @@ pageid_t stasis_buffer_manager_size = 20029; // ~ 82MB
 #endif // MAX_BUFFER_SIZE
 #endif // STASIS_BUFFER_MANAGER_SIZE
 
+#ifdef STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL
+int stasis_buffer_manager_hint_writes_are_sequential = STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL;
+#else
+int stasis_buffer_manager_hint_writes_are_sequential = 0;
+#endif
+
 
 #ifdef BUFFER_MANAGER_O_DIRECT
 int bufferManagerO_DIRECT = BUFFER_MANAGER_O_DIRECT;

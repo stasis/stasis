@@ -20,6 +20,15 @@ extern stasis_buffer_manager_t* (*stasis_buffer_manager_factory)(stasis_log_t*, 
 
 extern pageid_t stasis_buffer_manager_size;
 /**
+   If this is true, then the only thread that will perform writeback is the
+   buffer manager writeback thread.  It turns out that splitting sequential
+   writes across many threads leads to a 90-95% reduction in write throughput.
+
+   Otherwise (the default) application threads will help write back dirty pages
+   so that we can get good concurrency on our writes.
+ */
+extern int stasis_buffer_manager_hint_writes_are_sequential;
+/**
    This determines which type of file handle the buffer manager will use.
 
    It defaults to BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING for a

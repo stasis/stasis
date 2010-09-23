@@ -73,6 +73,7 @@ int main(int argc, char * argv[]) {
   int threads = 1;
   unsigned long long num_ops = 0;
   double write_frac = 0.5;
+  stasis_buffer_manager_hint_writes_are_sequential = 1;
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--mem-size")) {
       i++;
@@ -98,6 +99,7 @@ int main(int argc, char * argv[]) {
       abort();
     }
    }
+
   printf("Calling Tinit().\n");
   Tinit();
   printf("Tinit() done.\n");
