@@ -79,10 +79,14 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
       if(!trywritelock(p->loadlatch,0)) {
         ret = EBUSY;
         p->needsFlush = 1; // Not atomic.  Oh well.
-      }
-      if(p->id != pageid) {  // it must have been written back...
-        unlock(p->loadlatch);
-        return 0;
+        if(p->id != pageid) {
+          fprintf(stderr, "BUG FIX: %s:%d would have corrupted a latch's state, but did not\n", __FILE__, __LINE__);
+        }
+      } else {
+        if(p->id != pageid) {  // it must have been written back...
+          unlock(p->loadlatch);
+          return 0;
+        }
       }
     } else {
       // Uggh.  With the current design, it's possible that the trywritelock will block on the writeback thread.
@@ -192,6 +196,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       if(succ) {
         // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
         assert(tmp == tls->p);
+        assert(tmp->queue == 1); // We pinned it, but no one else did...
         tmp = 0;
         if(tls->p->id >= 0) {
           ch->page_handle->write(ch->page_handle, tls->p);
@@ -199,6 +204,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
         tls->p->id = INVALID_PAGE; // in case loadPage has a pointer to it, and we did this in race with it; when loadPage reacquires loadlatch, it will notice the discrepancy
         assert(!tls->p->dirty);
+        assert(tls->p->queue == 1); // The pin status should not change
         unlock(tls->p->loadlatch);
         break;
       } else {
