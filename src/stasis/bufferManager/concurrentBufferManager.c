@@ -196,7 +196,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       if(succ) {
         // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
         assert(tmp == tls->p);
-        assert(tmp->queue == 1); // We pinned it, but no one else did...
+        // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
         tmp = 0;
         if(tls->p->id >= 0) {
           ch->page_handle->write(ch->page_handle, tls->p);
@@ -204,7 +204,6 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
         tls->p->id = INVALID_PAGE; // in case loadPage has a pointer to it, and we did this in race with it; when loadPage reacquires loadlatch, it will notice the discrepancy
         assert(!tls->p->dirty);
-        assert(tls->p->queue == 1); // The pin status should not change
         unlock(tls->p->loadlatch);
         break;
       } else {
