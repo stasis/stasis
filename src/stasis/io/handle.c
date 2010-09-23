@@ -74,7 +74,7 @@ stasis_handle_t * stasis_handle(open)(const char * path) {
 		slow_arg->filePerm = FILE_PERM;
 		// Allow 4MB of outstanding writes.
 		// @todo Where / how should we open storefile?
-		int worker_thread_count = 4;
+		int worker_thread_count = 1;
 		if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_PFILE) {
 		  //              printf("\nusing pread()/pwrite()\n");
 		  stasis_handle_t * slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
