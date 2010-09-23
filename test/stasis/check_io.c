@@ -428,9 +428,13 @@ static stasis_handle_t * slow_factory_file(void * argsP) {
   sf_args * args = (sf_args*) argsP;
   return stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
 }
-static stasis_handle_t * slow_factory_pfile(void * argsP) {
-  sf_args * args = (sf_args*) argsP;
-  return stasis_handle(open_pfile)(0, args->filename, args->openMode, args->filePerm);
+static stasis_handle_t * slow_pfile_factory(void * argsP) {
+  stasis_handle_t * h = argsP;
+  return h;
+}
+static int slow_pfile_close(void * argsP) {
+  stasis_handle_t * h = argsP;
+  return h->close(h);
 }
 
 START_TEST(io_nonBlockingTest_file) {
@@ -482,7 +486,9 @@ START_TEST(io_nonBlockingTest_pfile) {
     FILE_PERM
   };
 
-  h = stasis_handle(open_non_blocking)(slow_factory_pfile, 0, &slow_args, 0,
+  stasis_handle_t * pfile_singleton = slow_factory_file(&slow_args);
+
+  h = stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_close, pfile_singleton, 0,
 				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //  h = stasis_handle(open_debug)(h);
@@ -491,7 +497,8 @@ START_TEST(io_nonBlockingTest_pfile) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory_pfile, 0, &slow_args, 0,
+  pfile_singleton = slow_factory_file(&slow_args);
+  h = stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_close, pfile_singleton, 0,
 				       fast_factory, 0,
 				       5, 1024*1024, 100);
   //h = stasis_handle(open_debug)(h);
@@ -500,7 +507,8 @@ START_TEST(io_nonBlockingTest_pfile) {
 
   unlink("logfile.txt");
 
-  h = stasis_handle(open_non_blocking)(slow_factory_pfile, 0, &slow_args, 0,
+  pfile_singleton = slow_factory_file(&slow_args);
+  h = stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_close, pfile_singleton, 0,
 				       fast_factory, 0,
 				       5, 1024 * 1024, 100);
   handle_concurrencytest(h);
@@ -521,12 +529,11 @@ Suite * check_suite(void) {
 //  tcase_set_timeout(tc, 1800); // thirty minute timeout
 
   /* Sub tests are added, one per line, here */
+  tcase_add_test(tc, io_nonBlockingTest_pfile);
   tcase_add_test(tc, io_memoryTest);
   tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_pfileTest);
   tcase_add_test(tc, io_nonBlockingTest_file);
-  (void)io_nonBlockingTest_pfile;  // XXX fails due to bug in test (or in pfile?)
-//  tcase_add_test(tc, io_nonBlockingTest_pfile);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

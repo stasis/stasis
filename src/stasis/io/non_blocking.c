@@ -1,3 +1,4 @@
+
 #include <stasis/common.h>
 
 #undef STLSEARCH  // XXX
@@ -366,7 +367,7 @@ static int nbw_close(stasis_handle_t * h) {
   pthread_mutex_destroy(&impl->mut);
   stasis_handle_t * slow;
   while(-1 != (long)(slow = (stasis_handle_t*)popMaxVal(&impl->available_slow_handles))) {
-    slow->close(slow);
+    if(!impl->slow_factory_close) slow->close(slow);
     impl->available_slow_handle_count--;
   }
   destroyList(&impl->available_slow_handles);
@@ -847,7 +848,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   pthread_cond_init(&impl->force_completed_cond, 0);
 
   impl->still_open = 1;
-  impl->refcount++;
+  impl->refcount = 1;
 
   stasis_handle_t *h = malloc(sizeof(stasis_handle_t));
   *h = nbw_func;
