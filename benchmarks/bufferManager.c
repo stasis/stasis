@@ -4,8 +4,8 @@
    *  Created on: Sep 23, 2010
    *      Author: sears
    */
-#include <string.h>
 #include <stasis/transactional.h>
+#include <string.h>
 #include <assert.h>
 #include <pthread.h>
 #include <math.h>
