@@ -33,6 +33,7 @@ CREATE_EXECUTABLE(sequentialThroughput)
 CREATE_EXECUTABLE(qos)
 CREATE_EXECUTABLE(writeBack)
 CREATE_EXECUTABLE(distributedLsnFree)
+CREATE_EXECUTABLE(bufferManager)
 
 IF(CHECK_LIBRARY)
   ADD_TEST(rose rose)
