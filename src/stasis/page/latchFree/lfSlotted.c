@@ -11,7 +11,7 @@
 
 #define CAS(_a,_o,_n) __sync_bool_compare_and_swap(_a,_o,_n)
 #define BARRIER() __sync_synchronize()
-#define ATOMIC_ADD(_a, _i) __sync_add_and_fetch(_a, _i)
+#define FETCH_AND_ADD(_a, _i) __sync_fetch_and_add(_a, _i)
 
 static int notSupported(int xid, Page * p) { return 0; }
 
@@ -62,7 +62,7 @@ static recordid lfSlottedRecordLast(int xid, Page *p) {
 }
 
 static void lfSlottedPostAlloc(int xid, Page * page, recordid rid) {
-  int16_t off = __sync_fetch_and_add(stasis_page_slotted_freespace_ptr(page), stasis_record_type_to_size(rid.size));
+  int16_t off = FETCH_AND_ADD(stasis_page_slotted_freespace_ptr(page), stasis_record_type_to_size(rid.size));
   *stasis_page_slotted_slot_ptr(page, rid.slot) = off;
   *stasis_page_slotted_slot_length_ptr(page, rid.slot) = rid.size;
   // don't update numslots_ptr yet.  Note that we can only have one append at a time with this update protocol...
