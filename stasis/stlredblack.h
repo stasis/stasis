@@ -34,10 +34,10 @@ void stl_rbdestroy(rbtree * tp);
 //#define RB_NONE -1      /* None of those below */
 //#define RB_LUEQUAL 0    /* Only exact match */
 #define RB_LUGTEQ 1     /* Exact match or greater */
-//#define RB_LULTEQ 2     /* Exact match or less */
+#define RB_LULTEQ 2     /* Exact match or less */
 //#define RB_LULESS 3     /* Less than key (not equal to) */
 #define RB_LUGREAT 4    /* Greater than key (not equal to) */
-//#define RB_LUNEXT 5     /* Next key after current */
+#define RB_LUNEXT 5     /* Next key after current */
 //#define RB_LUPREV 6     /* Prev key before current */
 //#define RB_LUFIRST 7    /* First key in index */
 //#define RB_LULAST 8     /* Last key in index */

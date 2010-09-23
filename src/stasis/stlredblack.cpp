@@ -65,7 +65,14 @@ const void * stl_rblookup(int m, const void * key, rbtree *tp) {
 //      printf("lookup incremented\n");
       it++;
     }
-
+  } else if(m == RB_LULTEQ) {
+    if(t->find(key) != t->end()) {
+      it --;
+    }
+  } else if(m == RB_LUNEXT) {
+    if(t->find(key) != t->end()) {
+      it++;
+    }
   } else if(m == RB_LUGTEQ) {
 //    printf("greatequal\n");
     // nothing to do.
