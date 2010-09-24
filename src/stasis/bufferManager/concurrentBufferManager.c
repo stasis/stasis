@@ -214,6 +214,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         break;
       } else {
         if(succ) {
+          assert(tmp == tls->p);
           // can only reach this if writes are sequential, and the page is dirty.
           unlock(tls->p->loadlatch);
         }
