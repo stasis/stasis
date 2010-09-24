@@ -17,11 +17,11 @@ typedef struct lruFast {
 
 static void  hit(struct replacementPolicy * r, void * p) {
   lruFast * l = r->impl;
-  node_t * n = l->getNode(p, l->conf);
-  if(!n) { return; } // ignore attempts to hit pages not in lru
-  assert(n);
-  LL_ENTRY(removeNoFree)(l->lru, n);
-  LL_ENTRY(pushNode)(l->lru, n);
+  if(ENOENT == LL_ENTRY(remove)(l->lru, p)) {
+    // ignore attempts to hit pages not in lru
+    return;
+  }
+  LL_ENTRY(push)(l->lru, p);
 }
 static void* getStale(struct replacementPolicy * r) {
   lruFast * l = r->impl;
@@ -32,12 +32,9 @@ static void* remove(struct replacementPolicy* r, void * p) {
   void *ret = NULL;
 
   if(!*l->derefCount(p)) {
-    node_t * n = l->getNode(p, l->conf);
-    assert(n);
-    value_t * v = n->v;
-    LL_ENTRY(remove)(l->lru, n);
-    l->setNode(p, 0, l->conf);
-    ret = v;
+    int err = LL_ENTRY(remove)(l->lru, p);
+    assert(!err);
+    ret = p;
   }
   (*l->derefCount(p))++;
   return ret;
@@ -46,7 +43,6 @@ static void* getStaleAndRemove(struct replacementPolicy* r) {
   lruFast * l = r->impl;
   void * ret = LL_ENTRY(shift)(l->lru);
   if(ret) {
-    l->setNode(ret, 0, l->conf);
     assert(!(*l->derefCount(ret)));
     (*l->derefCount(ret))++;
   }
@@ -57,9 +53,8 @@ static void  insert(struct replacementPolicy* r, void * p) {
   (*l->derefCount(p))--;
   assert(*l->derefCount(p) >= 0);
   if(!*l->derefCount(p)) {
-    assert(0 == l->getNode(p, l->conf));
-    node_t * n = LL_ENTRY(push)(l->lru, p);
-    l->setNode(p, n, l->conf);
+    int err = LL_ENTRY(push)(l->lru, p);
+    assert(!err);
   }
 }
 static void deinit(struct replacementPolicy * r) {
@@ -85,7 +80,7 @@ replacementPolicy * lruFastInit(
   ret->getStaleAndRemove = getStaleAndRemove;
   ret->insert = insert;
   lruFast * l = malloc(sizeof(lruFast));
-  l->lru = LL_ENTRY(create)();
+  l->lru = LL_ENTRY(create)(getNode, setNode, conf);
   l->getNode = getNode;
   l->setNode = setNode;
   l->derefCount = derefCount;
