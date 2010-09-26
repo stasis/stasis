@@ -1,4 +1,5 @@
 #include <stasis/common.h>
+#include <stasis/flags.h>
 #include <stasis/replacementPolicy.h>
 #include <stasis/doubleLinkedList.h>
 #include <assert.h>
