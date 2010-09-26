@@ -2,6 +2,7 @@
 #include <stasis/replacementPolicy.h>
 #include <stasis/doubleLinkedList.h>
 #include <assert.h>
+#include <stasis/page.h>
 
 typedef LL_ENTRY(value_t) value_t;
 typedef struct LL_ENTRY(node_t) node_t;
@@ -15,7 +16,7 @@ typedef struct lruFast {
   void * conf;
 } lruFast;
 
-static void  hit(struct replacementPolicy * r, void * p) {
+static void  stasis_lru_fast_hit(struct replacementPolicy * r, void * p) {
   lruFast * l = r->impl;
   if(ENOENT == LL_ENTRY(remove)(l->lru, p)) {
     // ignore attempts to hit pages not in lru
@@ -23,23 +24,23 @@ static void  hit(struct replacementPolicy * r, void * p) {
   }
   LL_ENTRY(push)(l->lru, p);
 }
-static void* getStale(struct replacementPolicy * r) {
+static void* stasis_lru_fast_getStale(struct replacementPolicy * r) {
   lruFast * l = r->impl;
   return LL_ENTRY(head)(l->lru);
 }
-static void* remove(struct replacementPolicy* r, void * p) {
+static void* stasis_lru_fast_remove(struct replacementPolicy* r, void * p) {
   lruFast * l = r->impl;
   void *ret = NULL;
 
   if(!*l->derefCount(p)) {
     int err = LL_ENTRY(remove)(l->lru, p);
-    assert(!err);
+    assert(!err || ((Page*)p)->dirty);
     ret = p;
   }
   (*l->derefCount(p))++;
   return ret;
 }
-static void* getStaleAndRemove(struct replacementPolicy* r) {
+static void* stasis_lru_fast_getStaleAndRemove(struct replacementPolicy* r) {
   lruFast * l = r->impl;
   void * ret = LL_ENTRY(shift)(l->lru);
   if(ret) {
@@ -48,16 +49,28 @@ static void* getStaleAndRemove(struct replacementPolicy* r) {
   }
   return ret;
 }
-static void  insert(struct replacementPolicy* r, void * p) {
+static void  stasis_lru_fast_insert(struct replacementPolicy* r, void * p) {
   lruFast * l = r->impl;
   (*l->derefCount(p))--;
   assert(*l->derefCount(p) >= 0);
-  if(!*l->derefCount(p)) {
-    int err = LL_ENTRY(push)(l->lru, p);
-    assert(!err);
+  if(stasis_buffer_manager_hint_writes_are_sequential) {
+    // We are in sequential mode, and only want to evict pages from
+    // the writeback thread.  Therefore, it would be a waste of time
+    // to put this dirty page in the LRU.  (Also, we know that, when
+    // the page is evicted, it will be taken out of LRU, and put back in.
+
+    if(!*l->derefCount(p) && !((Page*)p)->dirty) {
+      int err = LL_ENTRY(push)(l->lru, p);
+      assert(!err);
+    }
+  } else {
+    if(!*l->derefCount(p)) {
+      int err = LL_ENTRY(push)(l->lru, p);
+      assert(!err);
+    }
   }
 }
-static void deinit(struct replacementPolicy * r) {
+static void stasis_lru_fast_deinit(struct replacementPolicy * r) {
   lruFast * l = r->impl;
   // the node_t's get freed by LL_ENTRY.  It's the caller's
   // responsibility to free the void *'s passed into us.
@@ -73,12 +86,12 @@ replacementPolicy * lruFastInit(
    intptr_t* (*derefCount)(void *page),
    void * conf) {
   struct replacementPolicy * ret = malloc(sizeof(struct replacementPolicy));
-  ret->deinit = deinit;
-  ret->hit = hit;
-  ret->getStale = getStale;
-  ret->remove = remove;
-  ret->getStaleAndRemove = getStaleAndRemove;
-  ret->insert = insert;
+  ret->deinit = stasis_lru_fast_deinit;
+  ret->hit = stasis_lru_fast_hit;
+  ret->getStale = stasis_lru_fast_getStale;
+  ret->remove = stasis_lru_fast_remove;
+  ret->getStaleAndRemove = stasis_lru_fast_getStaleAndRemove;
+  ret->insert = stasis_lru_fast_insert;
   lruFast * l = malloc(sizeof(lruFast));
   l->lru = LL_ENTRY(create)(getNode, setNode, conf);
   l->getNode = getNode;

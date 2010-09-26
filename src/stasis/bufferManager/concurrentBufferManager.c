@@ -111,8 +111,24 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
     }
   }
   if(ret) { return ret; }
+
+  // When we optimize for sequential writes, we try to make sure that
+  // write back only happens in a single thread.  Therefore, there is
+  // no reason to put dirty pages in the LRU, and lruFast will ignore
+  // dirty pages that are inserted into it.  Since we may be making a dirty
+  // page become clean here, we remove the page from LRU, and put it
+  // back in.  (There is no need to do this if the sequential
+  // optimizations are turned off...)
+  if(stasis_buffer_manager_hint_writes_are_sequential)
+    ch->lru->remove(ch->lru, p);
+
   // write calls stasis_page_flushed(p);
   ch->page_handle->write(ch->page_handle, p);
+
+  // Put the page back in LRU iff we just took it out.
+  if(stasis_buffer_manager_hint_writes_are_sequential)
+    ch->lru->insert(ch->lru, p);
+
   p->needsFlush = 0;
   unlock(p->loadlatch);
   return 0;
@@ -205,6 +221,8 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
         tmp = 0;
         if(tls->p->id >= 0) {
+	  // Page is not in LRU, so we don't have to worry about the case where we 
+	  // are in sequential mode, and have to remove/add the page from/to the LRU.
           ch->page_handle->write(ch->page_handle, tls->p);
         }
         hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
