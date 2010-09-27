@@ -5,18 +5,33 @@
  *      Author: sears
  */
 #include <stasis/common.h>
+#include <stasis/flags.h>
 #include <stasis/page.h>
 #include <stasis/replacementPolicy.h>
+
 
 typedef struct {
   replacementPolicy** impl;
   pthread_mutex_t* mut;
-  int num_buckets;
+  uint16_t num_buckets;
   pthread_key_t next_bucket;
 } stasis_replacement_policy_concurrent_wrapper_t;
 
+
+static inline uint16_t hash_mod_power_of_two(stasis_replacement_policy_concurrent_wrapper_t* rpw, uint16_t i) {
+  return i & (rpw->num_buckets-1);
+}
+static inline uint16_t hash_mod_general_purpose(stasis_replacement_policy_concurrent_wrapper_t* rpw, uint16_t i) {
+  return i % rpw->num_buckets;
+}
+
+static inline uint16_t hash_mod(stasis_replacement_policy_concurrent_wrapper_t* rpw, uint16_t i) {
+  return stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets ?
+    hash_mod_power_of_two(rpw, i) : hash_mod_general_purpose(rpw, i);
+}
+
 static inline unsigned int bucket_hash(stasis_replacement_policy_concurrent_wrapper_t * rpw, void * page) {
-  return ((unsigned long long)((Page*)page)->id) % rpw->num_buckets;
+  return hash_mod(rpw, ((unsigned long long)((Page*)page)->id));
 }
 
 static void  cwDeinit  (struct replacementPolicy* impl) {
@@ -46,18 +61,46 @@ static void* cwGetStaleHelper(struct replacementPolicy* impl, void*(*func)(struc
   int spin_count = 0;
   while(ret == 0 && spin_count < rp->num_buckets) {
     int err;
+    int lock_spin = 0;
     while((err = pthread_mutex_trylock(&rp->mut[bucket]))) {
       if(err != EBUSY) {
         fprintf(stderr, "error with trylock in replacement policy: %s", strerror(err)); abort();
       }
-      bucket = (bucket + 1) % rp->num_buckets;
+      bucket = hash_mod(rp, bucket + 1);
+      lock_spin++;
+      if(lock_spin > 4) {
+        static int warned = 0;
+        if(!warned) {
+          fprintf(stderr, "Warning: lots of thread contention in concurrent wrapper\n");
+          warned = 1;
+        }
+      }
     }
     ret = func(rp->impl[bucket]);
     pthread_mutex_unlock(&rp->mut[bucket]);
-    bucket = (bucket + 1) % rp->num_buckets;
+    bucket = hash_mod(rp, bucket + 1);
     spin_count++;
+    if(stasis_replacement_policy_concurrent_wrapper_exponential_backoff &&
+       spin_count > 1) {
+      // exponential backoff
+      // 3 -> we wait no more than 8msec
+      struct timespec ts = { 0, 1024 * 1024 << (spin_count > 3 ? 3 : spin_count) };
+      nanosleep(&ts,0);
+      if(spin_count > 9) {
+        static int warned = 0;
+        if(!warned) {
+          fprintf(stderr, "Warning: lots of spinning in concurrent wrapper\n");
+          warned = 1;
+        }
+      }
+    }
   }
   if(ret == 0) {  // should be extremely rare.
+    static int warned = 0;
+    if(!warned) {
+      fprintf(stderr, "Warning: concurrentWrapper is having difficulty finding a page to replace\n");
+      warned = 1;
+    }
     for(int i = 0; i < rp->num_buckets; i++) {
       pthread_mutex_lock(&rp->mut[i]);
     }
@@ -107,6 +150,14 @@ static void  cwInsert  (struct replacementPolicy* impl, void * page) {
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count) {
   replacementPolicy *ret = malloc(sizeof(*ret));
   stasis_replacement_policy_concurrent_wrapper_t * rpw = malloc(sizeof(*rpw));
+
+  if(stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets) {
+    // ensure that count is a power of two.
+    int bits = 1;
+    while(count /= 2) { bits++; }
+    count = 1; bits --;
+    while(bits > 0) { count *= 2; bits--; }
+  }
   rpw->mut = malloc(sizeof(rpw->mut[0]) * count);
   rpw->impl = malloc(sizeof(rpw->impl[0]) * count);
   for(int i = 0; i < count; i++) {

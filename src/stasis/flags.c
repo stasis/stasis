@@ -40,6 +40,18 @@ int bufferManagerO_DIRECT = BUFFER_MANAGER_O_DIRECT;
 int bufferManagerO_DIRECT = 0;
 #endif
 
+#ifdef STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF
+int stasis_replacement_policy_concurrent_wrapper_exponential_backoff = STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF;
+#else
+int stasis_replacement_policy_concurrent_wrapper_exponential_backoff = 0;
+#endif
+
+#ifdef STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_POWER_OF_TWO_BUCKETS
+int stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets = STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_POWER_OF_TWO_BUCKETS;
+#else
+int stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets = 0;
+#endif
+
 #ifdef BUFFER_MANAGER_FILE_HANDLE_TYPE
 int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_TYPE;
 #else

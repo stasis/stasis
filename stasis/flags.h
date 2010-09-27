@@ -53,6 +53,24 @@ extern int bufferManagerNonBlockingSlowHandleType;
 */
 extern int bufferManagerO_DIRECT;
 /**
+   If true, then concurrent LRU will use exponential backoff when it
+   has trouble finding a page to evict.  If false, it will perform a
+   busy wait.
+
+   This definitely should be set to true when
+   stasis_buffer_manager_hint_sequential_writes is true.  Otherwise
+   the only way that page writeback will be able to apply backpressure
+   to application threads will be to cause busy waits in concurrent
+   LRU.
+ */
+extern int stasis_replacement_policy_concurrent_wrapper_exponential_backoff;
+/**
+   If true, then concurrent LRU will round the number of buckets up to
+   the next power of two, and use bit masks instead of mod when
+   assigning pages to buckets.
+ */
+extern int stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets;
+/**
    If true, Stasis will suppress warnings regarding unclean shutdowns.
    This is use to prevent spurious warnings during unit testing, and
    must be set after Tinit() is called.  (Tinit() resets this value to
