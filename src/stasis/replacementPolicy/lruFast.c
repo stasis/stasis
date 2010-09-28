@@ -54,11 +54,16 @@ static void  stasis_lru_fast_insert(struct replacementPolicy* r, void * p) {
   lruFast * l = r->impl;
   (*l->derefCount(p))--;
   assert(*l->derefCount(p) >= 0);
-  if(stasis_buffer_manager_hint_writes_are_sequential) {
+  if(stasis_buffer_manager_hint_writes_are_sequential &&
+     !stasis_buffer_manager_debug_stress_latching) {
     // We are in sequential mode, and only want to evict pages from
     // the writeback thread.  Therefore, it would be a waste of time
     // to put this dirty page in the LRU.  (Also, we know that, when
     // the page is evicted, it will be taken out of LRU, and put back in.
+
+    // If we're *trying* to stress the buffer manager latches, etc, then
+    // insert the dirty page.  This will cause the buffer manager to perform
+    // all sorts of useless (and otherwise rare) latching operations.
 
     if(!*l->derefCount(p) && !((Page*)p)->dirty) {
       int err = LL_ENTRY(push)(l->lru, p);

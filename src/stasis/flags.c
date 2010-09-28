@@ -33,6 +33,11 @@ int stasis_buffer_manager_hint_writes_are_sequential = STASIS_BUFFER_MANAGER_HIN
 int stasis_buffer_manager_hint_writes_are_sequential = 0;
 #endif
 
+#ifdef STASIS_BUFFER_MANAGER_DEBUG_STRESS_LATCHING
+int stasis_buffer_manager_debug_stress_latching = STASIS_BUFFER_MANAGER_DEBUG_STRESS_LATCHING;
+#else
+int stasis_buffer_manager_debug_stress_latching = 0;
+#endif
 
 #ifdef BUFFER_MANAGER_O_DIRECT
 int bufferManagerO_DIRECT = BUFFER_MANAGER_O_DIRECT;

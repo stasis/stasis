@@ -200,7 +200,30 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
   }
   int count = 0;
   while(tls->p == NULL) {
-    Page * tmp = ch->lru->getStaleAndRemove(ch->lru);
+    Page * tmp;
+    int spin_count = 0;
+    while(!(tmp = ch->lru->getStaleAndRemove(ch->lru))) {
+      spin_count++;
+      if(needFlush(bm)) {
+        // exponential backoff -- don't test exponential backoff flag
+        // here.  LRU should only return null if we're in big trouble,
+        // or if the flag is set to true.
+
+        // wake writeback thread
+        pthread_cond_signal(&ch->needFree);
+
+        // sleep
+        struct timespec ts = { 0, (1024 * 1024) << (spin_count > 3 ? 3 : spin_count) };
+        nanosleep(&ts, 0);
+        if(spin_count > 9) {
+          static int warned = 0;
+          if(!warned) {
+            fprintf(stderr, "Warning: lots of spinning attempting to get page from LRU\n");
+            warned = 1;
+          }
+        }
+      }
+    }
     hashtable_bucket_handle_t h;
     tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h);
     if(tls->p) {
@@ -265,11 +288,13 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
 
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p);
 
-static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid, int uninitialized, pagetype_t type) {
+static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, stasis_page_handle_t *ph, const pageid_t pageid, int uninitialized, pagetype_t type) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   stasis_buffer_concurrent_hash_tls_t *tls = populateTLS(bm);
   hashtable_bucket_handle_t h;
   Page * p = 0;
+
+  ph = ph ? ph : ch->page_handle;
 
   do {
     if(p) { // the last time around pinned the wrong page!
@@ -304,7 +329,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
         type = UNINITIALIZED_PAGE;
         stasis_page_loaded(p, UNINITIALIZED_PAGE);
       } else {
-        ch->page_handle->read(ch->page_handle, p, type);
+        ph->read(ph, p, type);
       }
       unlock(p->loadlatch);
 
@@ -322,10 +347,10 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, const 
   return p;
 }
 static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, int xid, const pageid_t pageid, pagetype_t type) {
-  return chLoadPageImpl_helper(bm, xid, pageid, 0, type);
+  return chLoadPageImpl_helper(bm, xid, (stasis_page_handle_t*)h, pageid, 0, type);
 }
 static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid) {
-  return chLoadPageImpl_helper(bm, xid,pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
+  return chLoadPageImpl_helper(bm, xid, 0, pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
@@ -369,11 +394,12 @@ static void chBufDeinit(stasis_buffer_manager_t * bm) {
   chBufDeinitHelper(bm, 0);
 }
 static stasis_buffer_manager_handle_t * chOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
-  // no-op
-  return (void*)1;
+  stasis_buffer_concurrent_hash_t * bh = bm->impl;
+  return (stasis_buffer_manager_handle_t*)bh->page_handle->dup(bh->page_handle, is_sequential);
 }
 static int chCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
-  return 0; // no error
+  ((stasis_page_handle_t*)h)->close((stasis_page_handle_t*)h);
+  return 0;
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {

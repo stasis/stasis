@@ -29,6 +29,14 @@ extern pageid_t stasis_buffer_manager_size;
  */
 extern int stasis_buffer_manager_hint_writes_are_sequential;
 /**
+   If this is true, then disable some optimizations associated with sequential
+   write mode.  This will needlessly burn CPU by inserting dirty pages into
+   the LRU.  In sequential write mode, these dirty pages will cause populateTLS
+   to loop excessively, excercising all sorts of extremely rare thread
+   synchronization schedules.
+ */
+extern int stasis_buffer_manager_debug_stress_latching;
+/**
    This determines which type of file handle the buffer manager will use.
 
    It defaults to BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING for a

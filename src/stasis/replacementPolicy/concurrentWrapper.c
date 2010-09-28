@@ -80,19 +80,15 @@ static void* cwGetStaleHelper(struct replacementPolicy* impl, void*(*func)(struc
     pthread_mutex_unlock(&rp->mut[bucket]);
     bucket = hash_mod(rp, bucket + 1);
     spin_count++;
-    if(stasis_replacement_policy_concurrent_wrapper_exponential_backoff &&
+    if((!ret) &&
+       stasis_replacement_policy_concurrent_wrapper_exponential_backoff &&
        spin_count > 1) {
-      // exponential backoff
-      // 3 -> we wait no more than 8msec
-      struct timespec ts = { 0, 1024 * 1024 << (spin_count > 3 ? 3 : spin_count) };
-      nanosleep(&ts,0);
-      if(spin_count > 9) {
-        static int warned = 0;
-        if(!warned) {
-          fprintf(stderr, "Warning: lots of spinning in concurrent wrapper\n");
-          warned = 1;
-        }
+
+      if(bucket != oldbucket) {
+        pthread_setspecific(rp->next_bucket, (void*) bucket);
       }
+
+      return 0;
     }
   }
   if(ret == 0) {  // should be extremely rare.

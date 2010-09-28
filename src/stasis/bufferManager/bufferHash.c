@@ -308,7 +308,9 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
     // try to read this page from disk.
     pthread_mutex_unlock(&bh->mut);
 
-    bh->page_handle->read(bh->page_handle, ret, type);
+    stasis_page_handle_t * h = handle ? (stasis_page_handle_t*)handle : bh->page_handle;
+
+    h->read(h, ret, type);
 
     pthread_mutex_lock(&bh->mut);
 
