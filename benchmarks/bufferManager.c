@@ -5,14 +5,21 @@
    *      Author: sears
    */
 #include <stasis/transactional.h>
+#include <stasis/util/histogram.h>
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
 #include <math.h>
 #include <stdlib.h>
+
+DECLARE_HISTOGRAM_64(load_hist)
+DECLARE_HISTOGRAM_64(release_hist)
+
 struct thread_arg {
   unsigned int seed;
   unsigned long long num_ops;
+  stasis_histogram_64_t * load_hist;
+  stasis_histogram_64_t * release_hist;
   pageid_t page_count;
 };
 int do_load(pageid_t page_count) {
@@ -42,8 +49,17 @@ void * random_op_thread(void * argp) {
 
   for(int i = 0; i < a->num_ops; i++) {
     pageid_t pid = rand_r(&a->seed) % a->page_count;
+
+    struct timeval start, stop;
+    gettimeofday(&start,0);
     Page * p = loadPage(-1, pid);
+    gettimeofday(&stop,0);
+    stasis_histogram_insert_log_timeval(a->load_hist, stasis_subtract_timeval(stop, start));
+
+    gettimeofday(&start,0);
     releasePage(p);
+    gettimeofday(&stop,0);
+    stasis_histogram_insert_log_timeval(a->release_hist, stasis_subtract_timeval(stop, start));
   }
   free(argp);
   return 0;
@@ -52,11 +68,14 @@ int do_operations(pageid_t page_count, int num_threads, unsigned long long num_o
   unsigned long long ops_per_thread = ceil(((double)num_ops) / (double)num_threads);
   unsigned long long ops_remaining = num_ops;
   pthread_t * threads = malloc(sizeof(threads[0]) * num_threads);
+
   for(int i = 0; i < num_threads ; i++) {
     if(ops_remaining <= 0) { num_threads = i; break; }
     struct thread_arg *a = malloc(sizeof(*a));
     a->seed = i;
     a->num_ops = ops_remaining < ops_per_thread ? ops_remaining : ops_per_thread;
+    a->load_hist = &load_hist;
+    a->release_hist = &release_hist;
     a->page_count = page_count;
     pthread_create(&threads[i], 0, random_op_thread, a);
     ops_remaining -= ops_per_thread;
@@ -118,5 +137,6 @@ int main(int argc, char * argv[]) {
   printf("Calling Tdeinit().\n");
   Tdeinit();
   printf("Tdeinit() done\n");
+  stasis_histograms_auto_dump();
   return 0;
 }
