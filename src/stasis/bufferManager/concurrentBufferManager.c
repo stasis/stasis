@@ -183,7 +183,7 @@ static void deinitTLS(void *tlsp) {
   stasis_buffer_concurrent_hash_t *ch = tls->bm->impl;
 
   Page * p = tls->p;
-  p->id = -1;
+  p->id = -2;
   while(hashtable_test_and_set(ch->ht,p->id, p)) {
     p->id --;
   }
@@ -240,7 +240,12 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
           || (!tls->p->dirty)
         )) {
         // The getStaleAndRemove was not atomic with the hashtable remove, which is OK (but we can't trust tmp anymore...)
-        assert(tmp == tls->p);
+        if(tmp != tls->p) {
+          int copy_count = hashtable_debug_number_of_key_copies(ch->ht, tmp->id);
+          assert(copy_count == 1);
+          assert(tmp == tls->p);
+          abort();
+        }
         // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
         tmp = 0;
         if(tls->p->id >= 0) {
@@ -444,7 +449,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 
   for(pageid_t i = 0; i < stasis_buffer_manager_size; i++) {
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);
-    stasis_buffer_pool_free_page(ch->buffer_pool, p,-1*i);
+    stasis_buffer_pool_free_page(ch->buffer_pool, p,(-1*i)-2);
     pageSetNode(p,0,0);
     (*pagePinCountPtr(p)) = 1;
     ch->lru->insert(ch->lru, p);  // decrements pin count ptr (setting it to zero)

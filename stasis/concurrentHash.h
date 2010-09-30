@@ -36,6 +36,11 @@ void * hashtable_remove_begin(hashtable_t *ht, pageid_t p, hashtable_bucket_hand
 void   hashtable_remove_finish(hashtable_t *ht, hashtable_bucket_handle_t *h);
 void   hashtable_remove_cancel(hashtable_t *ht, hashtable_bucket_handle_t *h);
 
+/**
+ * @return -0 if key not found, 1 if the key exists, >1 if the hashtable is corrupt, and the key appears multiple times..
+ */
+int hashtable_debug_number_of_key_copies(hashtable_t *ht, pageid_t pageied);
+
 void hashtable_unlock(hashtable_bucket_handle_t *h);
 
 #endif /* CONCURRENTHASH_H_ */
