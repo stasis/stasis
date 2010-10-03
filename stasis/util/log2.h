@@ -52,4 +52,12 @@ static inline uint8_t stasis_log_2_64(uint64_t v) {
   return r;
 }
 
+static inline uint64_t stasis_round_up_to_power_of_two(uint64_t v) {
+  if(v) {
+    return 1 << (stasis_log_2_64(v)-1);
+  } else {
+    return 0;
+  }
+}
+
 #endif /* LOG2_H_ */
