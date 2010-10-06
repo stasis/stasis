@@ -1,8 +1,8 @@
 #include <stasis/pageHandle.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
-
 /**
     @todo Make sure this doesn't need to be atomic.  (It isn't!) Can
     we get in trouble by setting the page clean after it's written
@@ -78,6 +78,11 @@ static stasis_page_handle_t * phDup(stasis_page_handle_t * ph, int is_sequential
   stasis_page_handle_t * ret = malloc(sizeof(*ret));
   memcpy(ret, ph, sizeof(*ret));
   ret->impl = ((stasis_handle_t*)ret->impl)->dup(ret->impl);
+  if(((stasis_handle_t*)ret->impl)->error != 0) {
+    fprintf(stderr, "Could not dup file handle: %s\n", strerror(((stasis_handle_t*)ret->impl)->error));
+    ret->close(ret);
+    return 0;
+  }
   if(is_sequential) {
     ((stasis_handle_t*)ret->impl)->enable_sequential_optimizations(ret->impl);
   }
