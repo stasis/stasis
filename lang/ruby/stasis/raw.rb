@@ -20,7 +20,7 @@ module Stasis
     class RecordId < FFI::Struct
       layout :page, :pageid,
              :slot, :slotid,
-             :size, :int64,
+             :size, :int64
     end
 
     Stasis::ROOT_RID = RecordId.new
