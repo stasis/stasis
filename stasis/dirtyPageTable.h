@@ -20,11 +20,16 @@ void stasis_dirty_page_table_deinit(stasis_dirty_page_table_t * dirtyPages);
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p);
 void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, Page * p);
+/** Note: this has questionable semantics, since you don't have to
+    write latch the page to call it.  Of course, if this is called in
+    race with threads that are cleaning / dirtying the page, then the
+    return value could be stale by the time the caller examines it. */
 int  stasis_dirty_page_table_is_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p);
 
 pageid_t stasis_dirty_page_table_dirty_count(stasis_dirty_page_table_t * dirtyPages);
 
 int  stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages);
+int  stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyPages, lsn_t targetLsn);
 lsn_t stasis_dirty_page_table_minRecLSN(stasis_dirty_page_table_t* dirtyPages);
 
 /**
