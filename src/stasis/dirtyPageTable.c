@@ -41,7 +41,6 @@ struct stasis_dirty_page_table_t {
   int flushing;
 
   pthread_cond_t writebackCond;
-  lsn_t targetLsn;
 };
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
@@ -93,15 +92,7 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
       assert(p->dirty);
       p->dirty = 0;
 
-      lsn_t targetLsn = dirtyPages->targetLsn;
-      if (e->lsn < targetLsn) {
-        const dpt_entry * e2 = rbmin(dirtyPages->tableByLsnAndPage);
-
-        if (!e2 || e2->lsn >= targetLsn) {
-          dirtyPages->targetLsn = 0;
-          pthread_cond_broadcast( &dirtyPages->writebackCond );
-        }
-      }
+      pthread_cond_broadcast( &dirtyPages->writebackCond );
 
       dirtyPages->count--;
     }
@@ -147,6 +138,9 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
     if(dirtyPages->flushing) {
       pthread_cond_wait(&dirtyPages->flushDone, &dirtyPages->mutex);
       pthread_mutex_unlock(&dirtyPages->mutex);
+      // We return EAGAIN here because the other flush may have begun
+      // before some page that this flush is interested in was
+      // written.
       return EAGAIN;
     }
     dirtyPages->flushing = 1;
@@ -184,14 +178,15 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
     }
     pthread_mutex_lock(&dirtyPages->mutex);
 
+    dpt_entry * e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
+
     if (!all_flushed &&
         targetLsn < LSN_T_MAX &&
         dirtyPages->count > 0 &&
-        targetLsn > ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage))->lsn ) {
+        e && targetLsn > e->lsn ) {
       struct timespec ts;
       struct timeval tv;
 
-      dirtyPages->targetLsn = targetLsn;
       all_flushed = 1;
 
       int res = gettimeofday(&tv, 0);
@@ -211,11 +206,14 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
       ts.tv_sec = tv.tv_sec;
       ts.tv_nsec = 1000*tv.tv_usec;
 
-      while ( dirtyPages->targetLsn != 0 ) {
-          if (pthread_cond_timedwait(&dirtyPages->writebackCond, &dirtyPages->mutex, &ts) == ETIMEDOUT) {
-            all_flushed = 0;
-            break;
-          }
+      dpt_entry * e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
+
+      while( e && targetLsn > e->lsn ) {
+        if (pthread_cond_timedwait(&dirtyPages->writebackCond, &dirtyPages->mutex, &ts) == ETIMEDOUT) {
+          all_flushed = 0;
+          break;
+        }
+        e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
       }
     }
   } while(!all_flushed);
@@ -225,9 +223,6 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
   }
 
   pthread_mutex_unlock(&dirtyPages->mutex);
-
-
-//  if(strides < 5) { DEBUG("strides: %d dirtyCount = %lld\n", strides, stasis_dirty_page_table_dirty_count(dirtyPages)); }
 
   return 0;
 }
@@ -308,7 +303,6 @@ stasis_dirty_page_table_t * stasis_dirty_page_table_init() {
   pthread_mutex_init(&ret->mutex, 0);
   pthread_cond_init(&ret->flushDone, 0);
   ret->flushing = 0;
-  ret->targetLsn = 0;
   pthread_cond_init(&ret->writebackCond, 0);
   return ret;
 }
