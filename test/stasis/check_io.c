@@ -529,11 +529,11 @@ Suite * check_suite(void) {
 //  tcase_set_timeout(tc, 1800); // thirty minute timeout
 
   /* Sub tests are added, one per line, here */
-  tcase_add_test(tc, io_nonBlockingTest_pfile);
   tcase_add_test(tc, io_memoryTest);
   tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_pfileTest);
-  tcase_add_test(tc, io_nonBlockingTest_file);
+  //  tcase_add_test(tc, io_nonBlockingTest_file);
+  //  tcase_add_test(tc, io_nonBlockingTest_pfile);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);
