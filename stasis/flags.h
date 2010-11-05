@@ -4,6 +4,11 @@
 #include <stasis/logger/logger2.h>
 #include <stasis/dirtyPageTable.h>
 /**
+    This is the type of log that is being used.
+
+ */
+extern stasis_log_t* (*stasis_log_factory)(void);
+/**
     This is the type of buffer manager that is being used.
 
     Before Stasis is intialized it will be set to a default value.

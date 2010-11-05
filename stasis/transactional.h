@@ -801,6 +801,10 @@ int TdurabilityLevel(void);
  */
 void TtruncateLog(void);
 /**
+ * Default log factory.
+ */
+stasis_log_t* stasis_log_default_factory(void);
+/**
  * XXX hack: return a pointer to stasis' log handle.  This works around the fact
  * that stasis_log_file is no longer global.
  */
