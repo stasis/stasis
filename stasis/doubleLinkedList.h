@@ -4,55 +4,39 @@
 
 typedef void LL_ENTRY(value_t);
 
-struct LL_ENTRY(node_t) {
+typedef struct LL_ENTRY(node_t) {
   LL_ENTRY(value_t) * v;
   struct LL_ENTRY(node_t) * prev;
   struct LL_ENTRY(node_t) * next;
-};
+} LL_ENTRY(node_t);
 
-struct LL_ENTRY(list) { 
+typedef struct LL_ENTRY(list) {
+  LL_ENTRY(node_t) * (*getNode)(LL_ENTRY(value_t) * v, void * conf);
+  void (*setNode)(LL_ENTRY(value_t) * v, LL_ENTRY(node_t) * n,  void * conf);
+  void * conf;
   struct LL_ENTRY(node_t)* const head;
   struct LL_ENTRY(node_t)* const tail;
-};
+} LL_ENTRY(list) ;
 
-struct LL_ENTRY(list)* LL_ENTRY(create)();
-void LL_ENTRY(destroy)(struct LL_ENTRY(list) * l);
+LL_ENTRY(list)* LL_ENTRY(create)();
+void LL_ENTRY(destroy)(LL_ENTRY(list) * l);
 
-struct LL_ENTRY(node_t)* LL_ENTRY(push) (struct LL_ENTRY(list)* l,
-					 LL_ENTRY(value_t) * v);
-LL_ENTRY(value_t)* LL_ENTRY(pop) (struct LL_ENTRY(list)* l);
+/** @return 0 on success, error code on error (such as ENOMEM) */
+int LL_ENTRY(push) (LL_ENTRY(list)* l,
+                   LL_ENTRY(value_t) * v);
+LL_ENTRY(value_t)* LL_ENTRY(pop) (LL_ENTRY(list)* l);
+/** @return 0 on success, error code on error (such as ENOMEM) */
+int LL_ENTRY(unshift)(LL_ENTRY(list)* l,
+                      LL_ENTRY(value_t) * v);
 
-struct LL_ENTRY(node_t)* LL_ENTRY(unshift)(struct LL_ENTRY(list)* l, 
-					    LL_ENTRY(value_t) * v);
-LL_ENTRY(value_t)* LL_ENTRY(shift) (struct LL_ENTRY(list)* l);
+LL_ENTRY(value_t)* LL_ENTRY(shift) (LL_ENTRY(list)* l);
 
-void LL_ENTRY(remove)(struct LL_ENTRY(list)* l,
-		      struct LL_ENTRY(node_t)* n);
+/** @return 0 on success, ENOENT if the entry does not exist */
+int LL_ENTRY(remove)(LL_ENTRY(list)* l,
+                      LL_ENTRY(value_t)* n);
 
-void LL_ENTRY(pushNode) (struct LL_ENTRY(list)* l,
-			 struct LL_ENTRY(node_t) * v);
-struct LL_ENTRY(node_t)* LL_ENTRY(popNode) (struct LL_ENTRY(list)* l);
-
-void LL_ENTRY(unshiftNode)(struct LL_ENTRY(list)* l, 
-			   struct LL_ENTRY(node_t) * v);
-struct LL_ENTRY(node_t)* LL_ENTRY(shiftNode) (struct LL_ENTRY(list)* l);
-void LL_ENTRY(removeNoFree)(struct LL_ENTRY(list)* l,
-		      struct LL_ENTRY(node_t)* n);
-
-static inline LL_ENTRY(value_t*)LL_ENTRY(head)
-     (struct LL_ENTRY(list)* l) { 
-  if(l->head->next != l->tail) { 
-    return l->head->next->v;
-  } else { 
-    return 0;
-  } 
-}
-static inline LL_ENTRY(value_t*) LL_ENTRY(tail)
-     (struct LL_ENTRY(list)* l) { 
-  if(l->tail->prev != l->head) { 
-    return l->tail->prev->v;
-  } else { 
-    return 0;
-  } 
-}
+LL_ENTRY(value_t*) LL_ENTRY(head)
+     (LL_ENTRY(list)* l);
+LL_ENTRY(value_t*) LL_ENTRY(tail)
+     (struct LL_ENTRY(list)* l);
 #endif
