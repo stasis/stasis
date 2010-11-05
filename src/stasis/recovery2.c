@@ -353,6 +353,7 @@ void stasis_recovery_initiate(stasis_log_t* log, stasis_transaction_table_t * tb
   stasis_recovery_undo(log, tbl, 1);
   stasis_alloc_post_init(alloc);
   DEBUG("Recovery complete.\n");
+  stasis_transaction_post_recovery(tbl);
 
   for(void * it = pblHtFirst(transactionLSN); it; it = pblHtNext(transactionLSN)) {
     free(pblHtCurrent(transactionLSN));

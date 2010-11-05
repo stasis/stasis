@@ -22,9 +22,20 @@ typedef struct stasis_transaction_table_t stasis_transaction_table_t;
  */
 struct stasis_transaction_table_entry_t {
   int xid;
+  /**
+     Identifies where the entry was allocated from (and must be returned to):
+     - INVALID_XTABLE_XID:  global pool (used only during recovery)
+     - RESERVED_XTABLE_XID: local thread pool
+  */
+  int xidWhenFree;
   lsn_t prevLSN;
   lsn_t recLSN;
   void ** commitArgs[3];
+  /**
+     Thread id (as returned by gettid()) of the thread which owns this entry
+     or -1 if not owned by any thread
+  */
+  pid_t tid;
 #ifndef HAVE_GCC_ATOMICS
   pthread_mutex_t mut;
 #endif
@@ -36,6 +47,8 @@ struct stasis_transaction_table_entry_t {
 stasis_transaction_table_t* stasis_transaction_table_init();
 /** Free resources associated with the transaction table */
 void stasis_transaction_table_deinit(stasis_transaction_table_t*);
+
+void stasis_transaction_post_recovery(stasis_transaction_table_t *tbl);
 
 int stasis_transaction_table_roll_forward(stasis_transaction_table_t*,int xid, lsn_t lsn, lsn_t prevLSN);
 /**
