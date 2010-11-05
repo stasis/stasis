@@ -2,6 +2,7 @@
 #include <stasis/flags.h>
 #include <stasis/constants.h>
 
+#include <stasis/transactional.h>
 #include <stasis/bufferManager/bufferHash.h>
 #include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/bufferManager/pageArray.h>
@@ -10,6 +11,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifdef STASIS_LOG_FACTORY
+stasis_log_t * (*stasis_log_factory)(void) = STASIS_LOG_FACTORY;
+#else
+stasis_log_t * (*stasis_log_factory)(void) = stasis_log_default_factory;
+#endif
 
 #ifdef STASIS_BUFFER_MANAGER_FACTORY
 stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = STASIS_BUFFER_MANAGER_FACTORY;

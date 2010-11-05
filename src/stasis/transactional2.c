@@ -61,6 +61,22 @@ stasis_page_handle_t* stasis_page_handle_default_factory(stasis_log_t *log, stas
   return ret;
 }
 
+stasis_log_t* stasis_log_default_factory() {
+  stasis_log_t *log_file = 0;
+  if(LOG_TO_FILE == stasis_log_type) {
+    log_file = stasis_log_safe_writes_open(stasis_log_file_name,
+                                           stasis_log_file_mode,
+                                           stasis_log_file_permissions,
+                                           stasis_log_softcommit);
+    log_file->group_force =
+      stasis_log_group_force_init(log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
+  } else if(LOG_TO_MEMORY == stasis_log_type) {
+    log_file = stasis_log_impl_in_memory_open();
+    log_file->group_force = 0;
+  }
+  return log_file;
+}
+
 int Tinit() {
   stasis_initted = 1;
 
@@ -73,23 +89,8 @@ int Tinit() {
 
   stasis_page_init(stasis_dirty_page_table);
 
-  // XXX move into stasis_log_safe_writes_factory()
-
-  stasis_log_file = 0;
-
-  if(LOG_TO_FILE == stasis_log_type) {
-    stasis_log_file = stasis_log_safe_writes_open(stasis_log_file_name,
-                                                  stasis_log_file_mode,
-                                                  stasis_log_file_permissions,
-                                                  stasis_log_softcommit);
-    stasis_log_file->group_force =
-      stasis_log_group_force_init(stasis_log_file, 10 * 1000 * 1000); // timeout in nsec; want 10msec.
-  } else if(LOG_TO_MEMORY == stasis_log_type) {
-    stasis_log_file = stasis_log_impl_in_memory_open();
-    stasis_log_file->group_force = 0;
-  } else {
-    assert(stasis_log_file != NULL);
-  }
+  stasis_log_file = stasis_log_factory();
+  assert(stasis_log_file != NULL);
 
   stasis_buffer_manager = stasis_buffer_manager_factory(stasis_log_file, stasis_dirty_page_table);
 
