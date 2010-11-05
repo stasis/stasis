@@ -134,16 +134,14 @@ int stasis_transaction_table_register_callback(stasis_transaction_table_t *tbl,
   int *count = &tbl->commitCallbackCount[type];
 
   *list = realloc(*list, (1+*count) * sizeof(*list[0]));
-  *list[*count] = cb;
+  (*list)[*count] = cb;
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
     void *** args;
     args = &tbl->table[i].commitArgs[type];
     *args = realloc(*args, (1+*count) * sizeof(*args[0]));
-    *args[*count] = 0;
+    (*args)[*count] = 0;
   }
-  *count = 1 + *count;
-
-  return 0;
+  return (*count)++;
 }
 
 int stasis_transaction_table_invoke_callbacks(stasis_transaction_table_t *tbl,
