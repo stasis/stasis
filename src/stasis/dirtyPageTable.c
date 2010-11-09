@@ -5,8 +5,8 @@
  *      Author: sears
  */
 
-#include <stasis/redblack.h>
 #include <stasis/common.h>
+#include <stasis/redblack.h>
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/page.h>

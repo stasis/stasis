@@ -27,7 +27,7 @@ static char rcsid[]="$Id$";
 #include <stasis/common.h>
 #undef STLSEARCH
 #include <stasis/redblack.h>
-
+#include <stdio.h>
 #define assert(expr)
 
 /* Uncomment this if you would rather use a raw sbrk to get memory
@@ -138,6 +138,11 @@ rbinit(int (*cmp)(const void *, const void *, const void *), const void *config)
 RB_STATIC struct RB_ENTRY(tree) *RB_ENTRY(init)(void)
 #endif /* RB_CUSTOMIZE */
 {
+	static int warned = 0;
+	if(!warned) {
+		printf("Warning: initting redblack.c tree.  These are known to lead to crashes w/ stasis\n");
+		warned = 1;
+	}
 	struct RB_ENTRY(tree) *retval;
 	char c;
 
