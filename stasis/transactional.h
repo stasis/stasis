@@ -602,8 +602,8 @@ int Tbegin(void);
  *
  * @see operations.h For an overview of the operations API
  */
-void Tupdate(int xid, pageid_t page,
-				  const void *dat, size_t datlen, int op);
+void Tupdate(int xid, pageid_t page, const void *dat, size_t datlen, int op);
+void TupdateWithPage(int xid, pageid_t page, Page *p, const void *dat, size_t datlen, int op);
 /**
    @deprecated Only exists to work around swig/python limitations.
  */
@@ -633,6 +633,7 @@ void TreorderableWritebackUpdate(int xid, void* h,
  * @param dat buffer into which data goes
  */
 compensated_function void Tread(int xid, recordid rid, void *dat);
+Page * TreadWithPage(int xid, recordid rid, Page *p, void *dat);
 /**
  * Read a value of a record without first dereferencing the record.
  * Use Tread() unless you're implementing code that provides

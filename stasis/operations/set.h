@@ -61,6 +61,7 @@ terms specified in this license.
     @param dat the new value of the record.
 */ 
 int Tset(int xid, recordid rid, const void * dat);
+Page * TsetWithPage(int xid, recordid rid, Page *p, const void * dat);
 
 int TsetRaw(int xid, recordid rid, const void * dat);
 
