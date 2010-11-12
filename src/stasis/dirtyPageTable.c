@@ -216,7 +216,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
         e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
       }
     }
-  } while(!all_flushed);
+  } while(targetLsn != LSN_T_MAX && !all_flushed);
   if (targetLsn == LSN_T_MAX) {
     pthread_cond_broadcast(&dirtyPages->flushDone);
     dirtyPages->flushing = 0;
