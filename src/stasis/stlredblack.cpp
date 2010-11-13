@@ -11,6 +11,9 @@
 #include <stasis/redblack.h>
 #include <stdio.h>
 #undef end
+#undef try
+#undef catch
+#include <stasis/util/stlslab.h>
 
 extern "C" {
   typedef int (*c_cmp_t)(const void*, const void*, const void*);
@@ -26,7 +29,7 @@ class MyCompare {
   MyCompare(c_cmp_t cmp, int dummy) : cmp_(cmp), arg_(NULL) {}
 };
 
-typedef std::set<const void*,MyCompare> rb;
+typedef std::set<const void*,MyCompare, stlslab<const void *> > rb;
 
 extern "C" {
 

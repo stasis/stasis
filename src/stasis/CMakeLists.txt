@@ -47,7 +47,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c tsearchcompat.c lhtable.c concurrentHash.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
                    replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c
                    util/log2.c util/histogram.c util/hashFunctions.c
-                   util/multiset.c
-                   stlredblack.cpp)
+                   util/multiset.c util/slab.c
+                   stlredblack.cpp util/stlslab.cpp)
 
 INSTALL(TARGETS stasis LIBRARY DESTINATION lib)
