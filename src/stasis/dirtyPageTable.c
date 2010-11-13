@@ -7,6 +7,7 @@
 
 #include <stasis/common.h>
 #include <stasis/redblack.h>
+#include <stasis/util/multiset.h>
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/page.h>
@@ -39,7 +40,7 @@ struct stasis_dirty_page_table_t {
   pthread_mutex_t mutex;
   pthread_cond_t flushDone;
   int flushing;
-
+  stasis_util_multiset_t * outstanding_flush_lsns;
   pthread_cond_t writebackCond;
 };
 
@@ -92,7 +93,12 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
       assert(p->dirty);
       p->dirty = 0;
 
-      pthread_cond_broadcast( &dirtyPages->writebackCond );
+      lsn_t min_waiting = stasis_util_multiset_min(dirtyPages->outstanding_flush_lsns);
+      e = rbmin(dirtyPages->tableByLsnAndPage);
+      if(dummy.lsn >= min_waiting &&
+         (!e || e->lsn >= min_waiting)) {
+        pthread_cond_broadcast( &dirtyPages->writebackCond );
+      }
 
       dirtyPages->count--;
     }
@@ -196,7 +202,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
       // 100 milliseconds. If there aren't then  we had race condition and the
       // pinning thread sampled p->needFlush before we set it to 1. This
       // should be very rare.
-      
+
       tv.tv_usec += 100000;
       if (tv.tv_usec >= 1000000 ) {
         ++tv.tv_sec;
@@ -208,6 +214,8 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
 
       dpt_entry * e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
 
+      if(targetLsn != LSN_T_MAX) { stasis_util_multiset_insert(dirtyPages->outstanding_flush_lsns, targetLsn); }
+
       while( e && targetLsn > e->lsn ) {
         if (pthread_cond_timedwait(&dirtyPages->writebackCond, &dirtyPages->mutex, &ts) == ETIMEDOUT) {
           all_flushed = 0;
@@ -215,7 +223,14 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
         }
         e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
       }
+
+      if(targetLsn != LSN_T_MAX) {
+        int found = stasis_util_multiset_remove(dirtyPages->outstanding_flush_lsns, targetLsn);
+        assert(found);
+      }
+
     }
+
   } while(targetLsn != LSN_T_MAX && !all_flushed);
   if (targetLsn == LSN_T_MAX) {
     pthread_cond_broadcast(&dirtyPages->flushDone);
@@ -297,6 +312,8 @@ void stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table_t * dpt,
 
 stasis_dirty_page_table_t * stasis_dirty_page_table_init() {
   stasis_dirty_page_table_t * ret = malloc(sizeof(*ret));
+  ret->outstanding_flush_lsns = stasis_util_multiset_create();
+
   ret->tableByPage = rbinit(dpt_cmp_page, 0);
   ret->tableByLsnAndPage = rbinit(dpt_cmp_lsn_and_page, 0);
   ret->count = 0;
@@ -337,5 +354,6 @@ void stasis_dirty_page_table_deinit(stasis_dirty_page_table_t * dirtyPages) {
   rbdestroy(dirtyPages->tableByPage);
   rbdestroy(dirtyPages->tableByLsnAndPage);
   pthread_mutex_destroy(&dirtyPages->mutex);
+  stasis_util_multiset_destroy(dirtyPages->outstanding_flush_lsns);
   free(dirtyPages);
 }
