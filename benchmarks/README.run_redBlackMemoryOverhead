@@ -1,0 +1,10 @@
+README for red black tree memory benchmark
+------------------------------------------
+
+To run the benchmark, see redBlackMemoryOverhead.c and run_redBlackMemoryOverhead.pl.
+
+To post-process the output into tab-delimited file suitable for further analysis:
+
+grep -i results file*.out  | tr -s ' ' '\t' > results.txt
+
+

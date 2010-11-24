@@ -34,6 +34,7 @@ CREATE_EXECUTABLE(qos)
 CREATE_EXECUTABLE(writeBack)
 CREATE_EXECUTABLE(distributedLsnFree)
 CREATE_EXECUTABLE(bufferManager)
+CREATE_EXECUTABLE(redBlackMemoryOverhead)
 
 IF(CHECK_LIBRARY)
   ADD_TEST(rose rose)
