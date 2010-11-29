@@ -21,6 +21,7 @@ struct thread_arg {
   stasis_histogram_64_t * load_hist;
   stasis_histogram_64_t * release_hist;
   pageid_t page_count;
+  unsigned long long target_ops;
 };
 int do_load(pageid_t page_count) {
     for(int i = 1; i < page_count; i++) {
@@ -46,12 +47,23 @@ int do_scan(pageid_t page_count) {
 }
 void * random_op_thread(void * argp) {
   struct thread_arg * a = argp;
-
+  struct timeval start_time;
+  gettimeofday(&start_time,0);
   for(int i = 0; i < a->num_ops; i++) {
     pageid_t pid = rand_r(&a->seed) % a->page_count;
 
     struct timeval start, stop;
     gettimeofday(&start,0);
+
+    double elapsed = stasis_timeval_to_double(stasis_subtract_timeval(start, start_time));
+
+    while(a->target_ops &&
+       elapsed < ((double)i) / (double)a->target_ops) {
+      struct timespec ts = stasis_double_to_timespec(0.001);
+      nanosleep(&ts, 0);
+      gettimeofday(&start,0);
+      elapsed = stasis_timeval_to_double(stasis_subtract_timeval(start, start_time));
+    }
     Page * p = loadPage(-1, pid);
     gettimeofday(&stop,0);
     stasis_histogram_insert_log_timeval(a->load_hist, stasis_subtract_timeval(stop, start));
@@ -64,19 +76,27 @@ void * random_op_thread(void * argp) {
   free(argp);
   return 0;
 }
-int do_operations(pageid_t page_count, int num_threads, unsigned long long num_ops) {
+int do_operations(pageid_t page_count, int num_threads, unsigned long long num_ops, int target_ops) {
   unsigned long long ops_per_thread = ceil(((double)num_ops) / (double)num_threads);
   unsigned long long ops_remaining = num_ops;
   pthread_t * threads = malloc(sizeof(threads[0]) * num_threads);
 
+  struct timeval tv;
+  gettimeofday(&tv,0);
+  uint64_t base_seed = tv.tv_usec;
+
   for(int i = 0; i < num_threads ; i++) {
     if(ops_remaining <= 0) { num_threads = i; break; }
     struct thread_arg *a = malloc(sizeof(*a));
-    a->seed = i;
+    a->seed = base_seed + i;
     a->num_ops = ops_remaining < ops_per_thread ? ops_remaining : ops_per_thread;
     a->load_hist = &load_hist;
     a->release_hist = &release_hist;
     a->page_count = page_count;
+    a->target_ops = target_ops / num_threads;
+    if(i == num_threads - 1) {
+      a->target_ops = target_ops - (a->target_ops * (num_threads-1));
+    }
     pthread_create(&threads[i], 0, random_op_thread, a);
     ops_remaining -= ops_per_thread;
   }
@@ -91,6 +111,7 @@ int main(int argc, char * argv[]) {
   int scan = 0;
   int threads = 1;
   unsigned long long num_ops = 0;
+  int target_ops = 0;
   double write_frac = 0.5;
   stasis_buffer_manager_hint_writes_are_sequential = 1;
   for(int i = 1; i < argc; i++) {
@@ -113,8 +134,11 @@ int main(int argc, char * argv[]) {
     } else if(!strcmp(argv[i], "--write-frac")) {
       i++;
       write_frac = atof(argv[i]);
+    } else if(!strcmp(argv[i], "--target-ops")) {
+      i++;
+      target_ops = atoi(argv[i]);
     } else {
-      fprintf(stderr, "unknown argument: %s\n)", argv[i]);
+      fprintf(stderr, "unknown argument: %s\n", argv[i]);
       abort();
     }
    }
@@ -132,7 +156,7 @@ int main(int argc, char * argv[]) {
   }
   if(num_ops) {
     printf("Performing %lld uniform random operations\n", num_ops);
-    do_operations(file_size, threads, num_ops);
+    do_operations(file_size, threads, num_ops, target_ops);
   }
   printf("Calling Tdeinit().\n");
   Tdeinit();

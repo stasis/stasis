@@ -23,6 +23,15 @@ static inline struct timeval stasis_subtract_timeval(const struct timeval a, con
   if(ret.tv_usec < 0) { ret.tv_usec += 1000000; ret.tv_sec--; }
   return ret;
 }
+static inline double stasis_timeval_to_double(const struct timeval a) {
+  return ((double)a.tv_sec) + (((double)a.tv_usec) / 1000000.0);
+}
+static inline struct timespec stasis_double_to_timespec(double a) {
+  struct timespec ts;
+  ts.tv_sec = (time_t)a;
+  ts.tv_nsec = (long int)((a - (double)ts.tv_sec) * 1000000000.0);
+  return ts;
+}
 static uint8_t stasis_log_2_timeval(const struct timeval a) {
   return stasis_log_2_64(a.tv_sec * 1000000 + a.tv_usec);
 }
