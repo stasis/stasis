@@ -1,10 +1,25 @@
 #include <config.h>
 
 #include <stasis/io/handle.h>
+#include <stasis/util/histogram.h>
 
 #include <fcntl.h>
 #include <stdio.h>
 #include <assert.h>
+
+#define PFILE_LATENCY_PROF
+
+#ifdef PFILE_LATENCY_PROF
+DECLARE_HISTOGRAM_64(read_hist)
+DECLARE_HISTOGRAM_64(write_hist)
+DECLARE_HISTOGRAM_64(force_hist)
+DECLARE_HISTOGRAM_64(force_range_hist)
+#define TICK(hist) stasis_histogram_tick(&hist)
+#define TOCK(hist) stasis_histogram_tock(&hist)
+#else
+#define TICK(hist)
+#define TOCK(hist)
+#endif
 
 /**
    @file
@@ -105,7 +120,7 @@ inline static int pfile_write_unlocked(int fd, lsn_t off, const byte *dat,
                                        lsn_t len) {
   int error = 0;
   ssize_t bytes_written = 0;
-
+  TICK(write_hist);
   while (bytes_written < len) {
 
     ssize_t count = pwrite(fd,
@@ -132,6 +147,7 @@ inline static int pfile_write_unlocked(int fd, lsn_t off, const byte *dat,
       DEBUG("pwrite spinning\n");
     }
   }
+  TOCK(write_hist);
   return error;
 }
 
@@ -154,8 +170,8 @@ static int pfile_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
     error = EDOM;
   } else {
     ssize_t bytes_read = 0;
+    TICK(read_hist);
     while (bytes_read < len) {
-
       ssize_t count = pread(impl->fd,
                             buf + bytes_read,
                             len - bytes_read,
@@ -182,6 +198,7 @@ static int pfile_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
         DEBUG("pread spinning\n");
       }
     }
+    TOCK(read_hist);
     assert(bytes_read == len);
   }
   return error;
@@ -371,6 +388,7 @@ static int pfile_release_read_buffer(stasis_read_buffer_t *r) {
   return 0;
 }
 static int pfile_force(stasis_handle_t *h) {
+  TICK(force_hist);
   pfile_impl *impl = h->impl;
   if(!(impl->file_flags & O_SYNC)) {
 #ifdef HAVE_FDATASYNC
@@ -387,10 +405,11 @@ static int pfile_force(stasis_handle_t *h) {
     int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_DONTNEED);
     if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL to kernel failed");
   }
-
+  TOCK(force_hist);
   return 0;
 }
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
+  TICK(force_range_hist);
   pfile_impl * impl = h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
   if(!stop) stop = impl->end_pos;
@@ -422,6 +441,7 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     int err = posix_fadvise(impl->fd, start-impl->start_pos, stop-start, POSIX_FADV_DONTNEED);
     if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL (for a range of a file) to kernel failed");
   }
+  TOCK(force_range_hist);
   return ret;
 }
 static int pfile_truncate_start(stasis_handle_t *h, lsn_t new_start) {

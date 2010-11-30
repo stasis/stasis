@@ -8,15 +8,20 @@
 #define HISTOGRAM_H_
 
 #include <stasis/common.h>
+#include <assert.h>
 #include <stdio.h>
 
 #include <stasis/util/log2.h>
 #include <stasis/util/time.h>
 
+/** @todo move to a .c */
+static inline void stasis_histogram_thread_destroy(void * p) { free (p); }
+
 #define DECLARE_HISTOGRAM_64(x)                                                \
   stasis_histogram_64_t x;                                                     \
   extern void stasis_histogram_ctor_##x() __attribute__((constructor));        \
   void stasis_histogram_ctor_##x(void) { stasis_histogram_64_clear(&x);        \
+                                         pthread_key_create(&(x.tls), stasis_histogram_thread_destroy); \
                                          stasis_auto_histogram_count++;        \
                                          stasis_auto_histograms = realloc(stasis_auto_histograms, sizeof(void*)*stasis_auto_histogram_count); \
                                          stasis_auto_histogram_names = realloc(stasis_auto_histogram_names, sizeof(void*)*stasis_auto_histogram_count); \
@@ -30,6 +35,7 @@
 
 typedef struct {
   uint64_t buckets[64];
+  pthread_key_t tls;
 } stasis_histogram_64_t;
 
 extern stasis_histogram_64_t**stasis_auto_histograms;
@@ -38,6 +44,7 @@ extern int stasis_auto_histogram_count;
 
 typedef struct {
   uint64_t buckets[32];
+  pthread_key_t tls;
 } stasis_histogram_32_t;
 
 static inline void stasis_histogram_64_clear(stasis_histogram_64_t * hist) {
@@ -55,6 +62,19 @@ static inline void stasis_histogram_insert_log_uint32_t(stasis_histogram_32_t* h
 }
 static inline void stasis_histogram_insert_log_timeval(stasis_histogram_64_t* hist, const struct timeval val) {
   hist->buckets[stasis_log_2_timeval(val)]++;
+}
+
+static inline void stasis_histogram_tick(stasis_histogram_64_t* hist) {
+  struct timeval * val = pthread_getspecific(hist->tls);
+  if(!val) { val = malloc(sizeof(*val)); pthread_setspecific(hist->tls, val); }
+  gettimeofday(val,0);
+}
+static inline void stasis_histogram_tock(stasis_histogram_64_t* hist) {
+  struct timeval * val = pthread_getspecific(hist->tls);
+  assert(val);
+  struct timeval now;
+  gettimeofday(&now,0);
+  stasis_histogram_insert_log_timeval(hist, stasis_subtract_timeval(now, *val));
 }
 
 static inline uint64_t stasis_histogram_earth_movers_distance_64(stasis_histogram_64_t* a, stasis_histogram_64_t* b) {
@@ -88,11 +108,10 @@ static inline uint64_t stasis_histogram_earth_movers_distance_32(stasis_histogra
   }
   return moved_so_far / a_mass;
 }
-
-void stasis_histogram_pretty_print_64(stasis_histogram_64_t* a);
-void stasis_histogram_pretty_print_32(stasis_histogram_32_t* a);
+/** @todo move all of these to a .c */
+static inline void stasis_histogram_pretty_print_64(stasis_histogram_64_t* a);
+static inline void stasis_histogram_pretty_print_32(stasis_histogram_32_t* a);
 void stasis_histograms_auto_dump(void);
-#endif /* HISTOGRAM_H_ */
 
 void stasis_histogram_pretty_print_64(stasis_histogram_64_t* a) {
   uint8_t logs[64];
@@ -144,3 +163,4 @@ void stasis_histogram_pretty_print_32(stasis_histogram_32_t* a) {
   }
 }
 
+#endif /* HISTOGRAM_H_ */

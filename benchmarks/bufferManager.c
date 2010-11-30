@@ -18,6 +18,7 @@ DECLARE_HISTOGRAM_64(release_hist)
 struct thread_arg {
   unsigned int seed;
   unsigned long long num_ops;
+  double write_frac;
   stasis_histogram_64_t * load_hist;
   stasis_histogram_64_t * release_hist;
   pageid_t page_count;
@@ -49,34 +50,42 @@ void * random_op_thread(void * argp) {
   struct thread_arg * a = argp;
   struct timeval start_time;
   gettimeofday(&start_time,0);
+  int xid = Tbegin();
+
+  stasis_log_t * l = stasis_log();
+  lsn_t lsn = l->next_available_lsn(l);
+
   for(int i = 0; i < a->num_ops; i++) {
     pageid_t pid = rand_r(&a->seed) % a->page_count;
+    int op = (rand_r(&a->seed) < (int)(a->write_frac * (double)RAND_MAX));
 
-    struct timeval start, stop;
+    struct timeval start;
     gettimeofday(&start,0);
-
     double elapsed = stasis_timeval_to_double(stasis_subtract_timeval(start, start_time));
 
+
     while(a->target_ops &&
-       elapsed < ((double)i) / (double)a->target_ops) {
+	  elapsed < ((double)i) / (double)a->target_ops) {
       struct timespec ts = stasis_double_to_timespec(0.001);
       nanosleep(&ts, 0);
       gettimeofday(&start,0);
       elapsed = stasis_timeval_to_double(stasis_subtract_timeval(start, start_time));
     }
-    Page * p = loadPage(-1, pid);
-    gettimeofday(&stop,0);
-    stasis_histogram_insert_log_timeval(a->load_hist, stasis_subtract_timeval(stop, start));
-
-    gettimeofday(&start,0);
+    stasis_histogram_tick(a->load_hist);
+    Page * p = loadPage(xid, pid);
+    stasis_histogram_tock(a->load_hist);
+    if(op) { // Do write
+      stasis_page_lsn_write(xid, p, lsn);
+    }
+    stasis_histogram_tick(a->release_hist);
     releasePage(p);
-    gettimeofday(&stop,0);
-    stasis_histogram_insert_log_timeval(a->release_hist, stasis_subtract_timeval(stop, start));
+    stasis_histogram_tock(a->release_hist);
   }
+  Tcommit(xid);
   free(argp);
   return 0;
 }
-int do_operations(pageid_t page_count, int num_threads, unsigned long long num_ops, int target_ops) {
+int do_operations(pageid_t page_count, int num_threads, unsigned long long num_ops, double write_frac, int target_ops) {
   unsigned long long ops_per_thread = ceil(((double)num_ops) / (double)num_threads);
   unsigned long long ops_remaining = num_ops;
   pthread_t * threads = malloc(sizeof(threads[0]) * num_threads);
@@ -90,6 +99,7 @@ int do_operations(pageid_t page_count, int num_threads, unsigned long long num_o
     struct thread_arg *a = malloc(sizeof(*a));
     a->seed = base_seed + i;
     a->num_ops = ops_remaining < ops_per_thread ? ops_remaining : ops_per_thread;
+    a->write_frac = write_frac;
     a->load_hist = &load_hist;
     a->release_hist = &release_hist;
     a->page_count = page_count;
@@ -156,7 +166,7 @@ int main(int argc, char * argv[]) {
   }
   if(num_ops) {
     printf("Performing %lld uniform random operations\n", num_ops);
-    do_operations(file_size, threads, num_ops, target_ops);
+    do_operations(file_size, threads, num_ops, write_frac, target_ops);
   }
   printf("Calling Tdeinit().\n");
   Tdeinit();
