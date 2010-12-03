@@ -454,7 +454,7 @@ static int pfile_truncate_start(stasis_handle_t *h, lsn_t new_start) {
   return 0;
 }
 
-struct stasis_handle_t pfile_func = {
+static struct stasis_handle_t pfile_func = {
   .num_copies = pfile_num_copies,
   .num_copies_buffer = pfile_num_copies_buffer,
   .close = pfile_close,
