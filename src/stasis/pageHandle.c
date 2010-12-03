@@ -106,5 +106,5 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
   return ret;
 }
 stasis_page_handle_t* stasis_page_handle_default_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
-  return stasis_page_handle_open(stasis_handle_default_factory(), log, dpt);
+  return stasis_page_handle_open(stasis_handle_factory(), log, dpt);
 }
