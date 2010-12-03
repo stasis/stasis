@@ -881,3 +881,59 @@ stasis_handle_t * stasis_handle(open_non_blocking)
 
   return h;
 }
+
+
+#if 0 // XXX need to move this into a factory for slow handle
+// @todo this factory stuff doesn't really belong here...
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
+  stasis_handle_t * h = stasis_handle(open_memory)(off);
+  //h = stasis_handle(open_debug)(h);
+  stasis_write_buffer_t * w = h->append_buffer(h, len);
+  w->h->release_write_buffer(w);
+  return h;
+}
+typedef struct sf_args {
+  const char * filename;
+  int    openMode;
+  int    filePerm;
+} sf_args;
+static stasis_handle_t * slow_file_factory(void * argsP) {
+  sf_args * args = (sf_args*) argsP;
+  stasis_handle_t * h =  stasis_handle(open_file)(0, args->filename, args->openMode, args->filePerm);
+  //h = stasis_handle(open_debug)(h);
+  return h;
+}
+static stasis_handle_t * slow_pfile_factory(void * argsP) {
+  stasis_handle_t * h = argsP;
+  return h;
+}
+static int nop_close(stasis_handle_t*h) { return 0; }
+    struct sf_args * slow_arg = malloc(sizeof(sf_args));
+        slow_arg->filename = path;
+
+        slow_arg->openMode = openMode;
+
+        slow_arg->filePerm = FILE_PERM;
+        // Allow 4MB of outstanding writes.
+        // @todo Where / how should we open storefile?
+        int worker_thread_count = 1;
+        if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_PFILE) {
+          //              printf("\nusing pread()/pwrite()\n");
+          stasis_handle_t * slow_pfile = stasis_handle_open_pfile(0, slow_arg->filename, slow_arg->openMode, slow_arg->filePerm);
+          int (*slow_close)(struct stasis_handle_t *) = slow_pfile->close;
+          slow_pfile->close = nop_close;
+          ret =
+              stasis_handle(open_non_blocking)(slow_pfile_factory, (int(*)(void*))slow_close, slow_pfile, 1, fast_factory,
+                         NULL, worker_thread_count, PAGE_SIZE * 1024 , 1024);
+
+        } else if(bufferManagerNonBlockingSlowHandleType == IO_HANDLE_FILE) {
+          ret =
+              stasis_handle(open_non_blocking)(slow_file_factory, 0, slow_arg, 0, fast_factory,
+                         NULL, worker_thread_count, PAGE_SIZE * 1024, 1024);
+        } else {
+          printf("Unknown value for config option bufferManagerNonBlockingSlowHandleType\n");
+          abort();
+        }
+      } break;
+#endif
+

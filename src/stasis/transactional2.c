@@ -49,18 +49,6 @@ void * stasis_runtime_alloc_state() {
   return stasis_alloc;
 }
 
-stasis_page_handle_t* stasis_page_handle_default_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
-  stasis_page_handle_t * ret;
-  if(bufferManagerFileHandleType == BUFFER_MANAGER_FILE_HANDLE_DEPRECATED) {
-    printf("\nWarning: Using old I/O routines (with known bugs).\n");
-    ret = openPageFile(log, dpt);
-  } else {
-    stasis_handle_t * h = stasis_handle_open(stasis_store_file_name);
-    ret = stasis_page_handle_open(h, log, dpt);
-  }
-  return ret;
-}
-
 stasis_log_t* stasis_log_default_factory() {
   stasis_log_t *log_file = 0;
   if(LOG_TO_FILE == stasis_log_type) {

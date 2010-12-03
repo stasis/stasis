@@ -16,7 +16,7 @@
 namespace rose {
 
 #ifdef TESTING
-  template<class PAGELAYOUT> 
+  template<class PAGELAYOUT>
   void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
     typename PAGELAYOUT::FMT::TUP::TYP0 m = i;
     typename PAGELAYOUT::FMT::TUP::TYP1 j = i / 65536;
@@ -41,7 +41,7 @@ namespace rose {
     t.set9(&s);
   }
 #else
-  template<class PAGELAYOUT> 
+  template<class PAGELAYOUT>
   void getTuple(long int i, typename PAGELAYOUT::FMT::TUP & t) {
     static int64_t val = 0;
     double prob = 0.15;
@@ -87,7 +87,7 @@ namespace rose {
 
     //    PAGELAYOUT::initPageLayout();
 
-    bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
+ //   bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
     Tinit();
 
@@ -116,7 +116,7 @@ namespace rose {
     }
 
     //    int column[] = { 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    //               0   1  2  3   4  5  6  7  8   9 
+    //               0   1  2  3   4  5  6  7  8   9
     int column[] = { 3 , 4, 1, 11, 0, 5, 6, 9, 10, 14 };
     static long COUNT = INSERTS / 100;
     long int count = COUNT;

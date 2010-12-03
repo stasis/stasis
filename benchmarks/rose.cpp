@@ -348,7 +348,7 @@ void run_test(unsigned int inserts, column_number_t column_count,
   stasis_page_impl_register(Pstar<Rle<val_t>, val_t>::impl());
   stasis_page_impl_register(Multicolumn<Tuple<val_t> >::impl());
 
-  bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
+//  bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
   lsmTreeRegisterComparator(INT_CMP, intCmp<val_t>);
   lsmTreeRegisterComparator(TUP_CMP, tupCmp<val_t>);

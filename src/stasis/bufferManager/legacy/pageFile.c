@@ -217,3 +217,8 @@ static pageid_t myLseekNoLock(int f, pageid_t offset, int whence) {
   }
   return ret;
 }
+
+stasis_page_handle_t* stasis_page_handle_deprecated_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
+  printf("\nWarning: Using old I/O routines (with known bugs).\n");
+  return openPageFile(log, dpt);
+}

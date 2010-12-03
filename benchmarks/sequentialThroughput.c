@@ -1,10 +1,17 @@
+#include <config.h>
 #include <stasis/transactional.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
 #include <stasis/bufferManager.h>
 #include <stasis/bufferManager/legacy/legacyBufferManager.h>
+#include <stasis/bufferManager/legacy/pageFile.h>
 #include <stasis/bufferManager/bufferHash.h>
 #include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/truncation.h>
@@ -33,7 +40,7 @@ static inline long mb_to_page(long mb) {
   return (mb * 1024 * 1024) / PAGE_SIZE;
 }
 
-const char * usage = "./sequentialThroughput [--direct] [--page_count mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
+const char * usage = "./sequentialThroughput [--direct] [--mb mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
 
 int main(int argc, char ** argv) {
   int direct = 0;
@@ -45,7 +52,7 @@ int main(int argc, char ** argv) {
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--direct")) {
       direct = 1;
-      bufferManagerO_DIRECT = 1;
+      stasis_buffer_manager_io_handle_flags |= O_DIRECT;
     } else if(!strcmp(argv[i], "--log_safe_writes")) {
       stasis_log_type = LOG_TO_FILE;
       log_mode = 1;
@@ -56,24 +63,24 @@ int main(int argc, char ** argv) {
       stasis_buffer_manager_factory = stasis_buffer_manager_deprecated_factory;
       legacyBM = 1;
     } else if(!strcmp(argv[i], "--deprecatedFH")) {
-      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_DEPRECATED;
+      stasis_page_handle_factory = stasis_page_handle_deprecated_factory;
       legacyFH = 1;
     } else if(!strcmp(argv[i], "--nb")) {
-      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING;
+      printf("XXX unsupported at the moment!\n");
       legacyBM = 0;
       legacyFH = 0;
     } else if(!strcmp(argv[i], "--file")) {
-      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_FILE;
+      stasis_handle_file_factory = stasis_handle_open_file;
       legacyBM = 0;
       legacyFH = 0;
     } else if(!strcmp(argv[i], "--pfile")) {
-      bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_PFILE;
+      stasis_handle_file_factory = stasis_handle_open_pfile;
       legacyBM = 0;
       legacyFH = 0;
     } else if(!strcmp(argv[i], "--nb_pfile")) {
-      bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
+      stasis_non_blocking_handle_file_factory = stasis_handle_open_pfile;
     } else if(!strcmp(argv[i], "--nb_file")) {
-      bufferManagerNonBlockingSlowHandleType = IO_HANDLE_FILE;
+      stasis_non_blocking_handle_file_factory = stasis_handle_open_file;
     } else if(!strcmp(argv[i], "--mb")) {
       i++;
       page_count = mb_to_page(atoll(argv[i]));

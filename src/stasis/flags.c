@@ -3,6 +3,7 @@
 #include <stasis/constants.h>
 
 #include <stasis/transactional.h>
+#include <stasis/pageHandle.h>
 #include <stasis/bufferManager/bufferHash.h>
 #include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/bufferManager/pageArray.h>
@@ -24,6 +25,13 @@ stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis
 stasis_buffer_manager_t * (*stasis_buffer_manager_factory)(stasis_log_t*, stasis_dirty_page_table_t*) = stasis_buffer_manager_concurrent_hash_factory;
 #endif
 
+int stasis_buffer_manager_io_handle_flags =
+#ifdef STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS
+  STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS;
+#else
+  0;
+#endif
+
 #ifdef STASIS_BUFFER_MANAGER_SIZE
 pageid_t stasis_buffer_manager_size = STASIS_BUFFER_MANAGER_SIZE;
 #else // STASIS_BUFFER_MANAGER_SIZE
@@ -33,6 +41,32 @@ pageid_t stasis_buffer_manager_size = MAX_BUFFER_SIZE;
 pageid_t stasis_buffer_manager_size = 20029; // ~ 82MB
 #endif // MAX_BUFFER_SIZE
 #endif // STASIS_BUFFER_MANAGER_SIZE
+
+stasis_page_handle_t* (*stasis_page_handle_factory)(stasis_log_t*, stasis_dirty_page_table_t*) =
+#ifdef STASIS_PAGE_HANDLE_FACTORY
+  STASIS_PAGE_HANDLE_FACTORY;
+#else
+  stasis_page_handle_default_factory;
+#endif
+stasis_handle_t* (*stasis_handle_factory)() =
+#ifdef STASIS_HANDLE_FACTORY
+  STASIS_HANDLE_FACTORY;
+#else
+  stasis_handle_default_factory;
+#endif
+stasis_handle_t* (*stasis_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms) =
+#ifdef STASIS_FILE_HANDLE_FACTORY
+  STASIS_FILE_HANDLE_FACTORY
+#else
+  stasis_handle_open_pfile;
+#endif
+
+stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms) =
+#ifdef STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
+  STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
+#else
+  stasis_handle_open_pfile;
+#endif
 
 #ifdef STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL
 int stasis_buffer_manager_hint_writes_are_sequential = STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL;
@@ -46,12 +80,6 @@ int stasis_buffer_manager_debug_stress_latching = STASIS_BUFFER_MANAGER_DEBUG_ST
 int stasis_buffer_manager_debug_stress_latching = 0;
 #endif
 
-#ifdef BUFFER_MANAGER_O_DIRECT
-int bufferManagerO_DIRECT = BUFFER_MANAGER_O_DIRECT;
-#else
-int bufferManagerO_DIRECT = 0;
-#endif
-
 #ifdef STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF
 int stasis_replacement_policy_concurrent_wrapper_exponential_backoff = STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF;
 #else
@@ -62,19 +90,6 @@ int stasis_replacement_policy_concurrent_wrapper_exponential_backoff = 0;
 int stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets = STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_POWER_OF_TWO_BUCKETS;
 #else
 int stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets = 0;
-#endif
-
-#ifdef BUFFER_MANAGER_FILE_HANDLE_TYPE
-int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_TYPE;
-#else
-int bufferManagerFileHandleType = BUFFER_MANAGER_FILE_HANDLE_PFILE;
-#endif
-
-#ifdef BUFFER_MANAGER_SLOW_HANDLE_TYPE
-int bufferManagerNonBlockingSlowHandleType
-                              = BUFFER_MANAGER_NON_BLOCKING_SLOW_HANDLE_TYPE;
-#else
-int bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 #endif
 
 #ifdef STASIS_SUPPRESS_UNCLEAN_SHUTDOWN_WARNINGS

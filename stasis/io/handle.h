@@ -360,6 +360,6 @@ stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
 /**
  * Open a Stasis file handle using default arguments.
  */
-stasis_handle_t * stasis_handle(open)(const char * path);
+stasis_handle_t * stasis_handle_default_factory();
 
 #endif

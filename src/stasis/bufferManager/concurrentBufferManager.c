@@ -249,7 +249,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
         tmp = 0;
         if(tls->p->id >= 0) {
-	  // Page is not in LRU, so we don't have to worry about the case where we 
+	  // Page is not in LRU, so we don't have to worry about the case where we
 	  // are in sequential mode, and have to remove/add the page from/to the LRU.
           ch->page_handle->write(ch->page_handle, tls->p);
         }
@@ -468,6 +468,6 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
-  stasis_page_handle_t *ph = stasis_page_handle_default_factory(log, dpt);
+  stasis_page_handle_t *ph = stasis_page_handle_factory(log, dpt);
   return stasis_buffer_manager_concurrent_hash_open(ph, log, dpt);
 }

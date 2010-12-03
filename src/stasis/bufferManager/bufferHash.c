@@ -593,6 +593,6 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_hash_factory(stasis_log_t *log, stasis_dirty_page_table_t *dpt) {
-  stasis_page_handle_t *ph = stasis_page_handle_default_factory(log, dpt);
+  stasis_page_handle_t *ph = stasis_page_handle_factory(log, dpt);
   return stasis_buffer_manager_hash_open(ph, log, dpt);
 }

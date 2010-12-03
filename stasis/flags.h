@@ -3,6 +3,8 @@
 #include <stasis/bufferManager.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/dirtyPageTable.h>
+#include <stasis/io/handle.h>
+#include <stasis/pageHandle.h>
 /**
     This is the type of log that is being used.
 
@@ -42,29 +44,46 @@ extern int stasis_buffer_manager_hint_writes_are_sequential;
  */
 extern int stasis_buffer_manager_debug_stress_latching;
 /**
-   This determines which type of file handle the buffer manager will use.
+   This determines which page handle infrastructure buffer manager will use.
+   Page handles sit between the buffer manager and io handles.  Their main
+   purpose is to observe the buffer manager's I/O operations, and coordinate
+   with the dirty page table, log, and per-page state machines as necessary.
 
-   It defaults to BUFFER_MANAGER_FILE_HANDLE_NON_BLOCKING for a
-   non-blocking handle.  It can be overridden at compile time by defining
-   BUFFER_MANAGER_FILE_HANDLE_TYPE.
-
-   @see constants.h for potential values.  (The constants are named
-   BUFFER_MANAGER_FILE_HANDLE_*)
+   It defaults to stasis_page_handle_default_factory.  It can be overridden
+   at compile time by defining STASIS_PAGE_HANDLE_FACTORY.
 */
-extern int bufferManagerFileHandleType;
+extern stasis_page_handle_t* (*stasis_page_handle_factory)(stasis_log_t*, stasis_dirty_page_table_t*);
 /**
-   Determines which type of slow handle non_blocking will use for the
-   buffer manager.  Override at compile time by defining
-   BUFFER_MANAGER_NON_BLOCKING_SLOW_TYPE.
+   This determines which Stasis handle factory will be called by the default
+   page_handle_factory.  It defaults to a method that simply calls a standard
+   open method exported by the file-based handles, and passes in sane defaults
+   for file permissions, file names and so on.
 
-   @see constants.h: Constants named IO_HANDLE_* are potential values.
-*/
-extern int bufferManagerNonBlockingSlowHandleType;
+   @see stasis_handle_file_factory to change which underlying file API will
+        back the handle.
+ */
+extern stasis_handle_t* (*stasis_handle_factory)();
 /**
-   If true, the buffer manager will use O_DIRECT.  Set at compile time by
-   defining BUFFER_MANAGER_O_DIRECT.
+   This factory is invoked by the default stasis_handle_factory, and takes
+   additional file system parameters as arguments.
+
+   Valid options: stasis_handle_open_file(), stasis_handle_open_pfile(), and stasis_handle_non_blocking_factory.
+ */
+extern stasis_handle_t* (*stasis_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms);
+/**
+   The factory that non_blocking handles will use for slow handles.  (Only
+   used if stasis_buffer_manager_io_handle_default_factory is set to
+   stasis_non_blocking_factory.)
+
 */
-extern int bufferManagerO_DIRECT;
+extern stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms);
+
+/**
+   If true, the buffer manager will use O_DIRECT, O_SYNC and so on (Mandatory
+   flags such as O_RDWR will be set regardless).  Set at compile time by
+   defining STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS.
+*/
+extern int stasis_buffer_manager_io_handle_flags;
 /**
    If true, then concurrent LRU will use exponential backoff when it
    has trouble finding a page to evict.  If false, it will perform a
