@@ -127,6 +127,18 @@ char * stasis_store_file_name = STASIS_STORE_FILE_NAME;
 char * stasis_store_file_name = "storefile.txt";
 #endif
 
+#ifdef STASIS_STORE_FILE_1_NAME
+char * stasis_store_file_1_name = STASIS_STORE_FILE_1_NAME;
+#else
+char * stasis_store_file_1_name = "storefile1.txt";
+#endif
+
+#ifdef STASIS_STORE_FILE_2_NAME
+char * stasis_store_file_2_name = STASIS_STORE_FILE_2_NAME;
+#else
+char * stasis_store_file_2_name = "storefile2.txt";
+#endif
+
 #ifdef STASIS_BUFFER_MANAGER_HASH_PREFETCH_COUNT
 int stasis_buffer_manager_hash_prefetch_count = STASIS_BUFFER_MANAGER_HASH_PREFETCH_COUNT;
 #else

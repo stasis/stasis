@@ -41,7 +41,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c tsearchcompat.c lhtable.c concurrentHash.c
                    operations/pageOrientedListNTA.c
                    operations/regions.c operations/lsmTree.c
                    operations/bTree.c
-                   io/rangeTracker.c io/memory.c io/file.c io/pfile.c
+                   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/raid1.c
                    io/non_blocking.c io/debug.c io/handle.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c

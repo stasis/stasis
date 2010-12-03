@@ -4,6 +4,8 @@
    *  Created on: Sep 23, 2010
    *      Author: sears
    */
+#include <stasis/flags.h>
+#include <stasis/io/handle.h>
 #include <stasis/transactional.h>
 #include <stasis/util/histogram.h>
 #include <string.h>
@@ -116,7 +118,7 @@ int do_operations(pageid_t page_count, int num_threads, unsigned long long num_o
   return 0;
 }
 int main(int argc, char * argv[]) {
-  pageid_t file_size;
+  pageid_t file_size = 1024 * 128;
   int load = 0;
   int scan = 0;
   int threads = 1;
@@ -147,6 +149,8 @@ int main(int argc, char * argv[]) {
     } else if(!strcmp(argv[i], "--target-ops")) {
       i++;
       target_ops = atoi(argv[i]);
+    } else if(!strcmp(argv[i], "--raid1")) {
+      stasis_handle_factory = stasis_handle_raid1_factory;
     } else {
       fprintf(stderr, "unknown argument: %s\n", argv[i]);
       abort();

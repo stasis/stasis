@@ -363,20 +363,20 @@ START_TEST(io_fileTest) {
   handle_smoketest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   //h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_file)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
 //  handle_concurrencytest(h);  // fails by design
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
 } END_TEST
 
@@ -400,20 +400,68 @@ START_TEST(io_pfileTest) {
   handle_smoketest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   //h = stasis_handle(open_debug)(h);
   handle_sequentialtest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_pfile)(0, "logfile.txt", O_CREAT | O_RDWR, FILE_PERM);
   handle_concurrencytest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
+
+  handle_truncate_is_supported = 1;
+} END_TEST
+
+START_TEST(io_raid1pfileTest) {
+  printf("io_raid1pfileTest\n"); fflush(stdout);
+  handle_truncate_is_supported = 0;
+
+  const char * A = "vol1.txt";
+  const char * B = "vol2.txt";
+
+  remove(A);
+  remove(B);
+
+  stasis_handle_t *h, *a, *b;
+  a = stasis_handle(open_pfile)(0, A, O_CREAT | O_RDWR, FILE_PERM);
+  b = stasis_handle(open_pfile)(0, B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid1(a, b);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_smoketest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
+  a = stasis_handle(open_pfile)(0, A, O_CREAT | O_RDWR, FILE_PERM);
+  b = stasis_handle(open_pfile)(0, B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid1(a, b);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_sequentialtest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
+  a = stasis_handle(open_pfile)(0, A, O_CREAT | O_RDWR, FILE_PERM);
+  b = stasis_handle(open_pfile)(0, B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid1(a, b);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_concurrencytest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
 
   handle_truncate_is_supported = 1;
 } END_TEST
@@ -454,7 +502,7 @@ START_TEST(io_nonBlockingTest_file) {
   handle_smoketest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_non_blocking)(slow_factory_file, 0, &slow_args, 0,
 				       fast_factory, 0,
@@ -463,7 +511,7 @@ START_TEST(io_nonBlockingTest_file) {
   handle_sequentialtest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   h = stasis_handle(open_non_blocking)(slow_factory_file, 0, &slow_args, 0,
 				       fast_factory, 0,
@@ -471,7 +519,7 @@ START_TEST(io_nonBlockingTest_file) {
   handle_concurrencytest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
 } END_TEST
 
@@ -495,7 +543,7 @@ START_TEST(io_nonBlockingTest_pfile) {
   handle_smoketest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   pfile_singleton = slow_factory_file(&slow_args);
   h = stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_close, pfile_singleton, 0,
@@ -505,7 +553,7 @@ START_TEST(io_nonBlockingTest_pfile) {
   handle_sequentialtest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
   pfile_singleton = slow_factory_file(&slow_args);
   h = stasis_handle(open_non_blocking)(slow_pfile_factory, slow_pfile_close, pfile_singleton, 0,
@@ -514,7 +562,7 @@ START_TEST(io_nonBlockingTest_pfile) {
   handle_concurrencytest(h);
   h->close(h);
 
-  unlink("logfile.txt");
+  remove("logfile.txt");
 
 } END_TEST
 
@@ -532,8 +580,9 @@ Suite * check_suite(void) {
   tcase_add_test(tc, io_memoryTest);
   tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_pfileTest);
-  //  tcase_add_test(tc, io_nonBlockingTest_file);
-  //  tcase_add_test(tc, io_nonBlockingTest_pfile);
+  tcase_add_test(tc, io_raid1pfileTest);
+  //tcase_add_test(tc, io_nonBlockingTest_file);
+  //tcase_add_test(tc, io_nonBlockingTest_pfile);
   /* --------------------------------------------- */
   tcase_add_checked_fixture(tc, setup, teardown);
   suite_add_tcase(s, tc);

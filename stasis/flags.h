@@ -146,6 +146,9 @@ extern int    stasis_log_file_permissions;
 extern int    stasis_log_softcommit;
 
 extern char * stasis_store_file_name;
+extern char * stasis_store_file_1_name;
+extern char * stasis_store_file_2_name;
+
 
 /**
  * Number of prefetch threads to create at startup.  Zero disables the threads,

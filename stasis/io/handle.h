@@ -357,6 +357,9 @@ stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
    @param h All handle operations will be forwarded to h.
 */
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
+stasis_handle_t * stasis_handle(open_raid1)(stasis_handle_t *a, stasis_handle_t *b);
+stasis_handle_t * stasis_handle_raid1_factory();
+
 /**
  * Open a Stasis file handle using default arguments.
  */
