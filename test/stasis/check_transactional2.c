@@ -468,6 +468,47 @@ START_TEST(transactional_blobs_threads_abort) {
   Tdeinit();
 } END_TEST
 
+START_TEST(transactional_noop_xacts) {
+  Tinit();
+  int * xids = malloc(sizeof(xids[0]) * MAX_TRANSACTIONS);
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    xids[i] = Tbegin();
+  }
+  // Scramble the xids.
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    int xid = xids[i];
+    int off = myrandom(MAX_TRANSACTIONS);
+    xids[i] = xids[off];
+    xids[off] = xid;
+  }
+  // abort half, commit half.
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    if(i & 1) {
+      Tcommit(xids[i]);
+    } else {
+      Tabort(xids[i]);
+    }
+  }
+  // check for transaction table corruption with simple transaction smoke test
+  for(int i = 0; i < MAX_TRANSACTIONS; i++) {
+    xids[i] = Tbegin();
+  }
+  recordid rid = Talloc(xids[0], sizeof(int));
+  int zero = 0;
+  Tset(xids[0], rid, &zero);
+  Tcommit(xids[0]);
+
+  for(int i = 1; i < MAX_TRANSACTIONS; i++) {
+    Tset(xids[i], rid, &i);
+    if(i & 1) {
+      TsoftCommit(xids[i]);
+    } else {
+      Tabort(xids[i]);
+    }
+  }
+  Tdeinit();
+} END_TEST
+
 /**
   Add suite declarations here
 */
@@ -480,10 +521,11 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, transactional_blobSmokeTest);
   tcase_add_test(tc, transactional_smokeTest);
+  tcase_add_test(tc, transactional_noop_xacts);
   tcase_add_test(tc, transactional_nothreads_commit);
+  tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_commit);
   tcase_add_test(tc, transactional_threads_softcommit);
-  tcase_add_test(tc, transactional_nothreads_abort);
   tcase_add_test(tc, transactional_threads_abort);
   tcase_add_test(tc, transactional_blobs_nothreads_abort);
   tcase_add_test(tc, transactional_blobs_threads_abort);

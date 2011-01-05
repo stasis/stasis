@@ -323,11 +323,22 @@ int Tabort(int xid) {
   stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
 
-  lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
+  if( t->prevLSN != INVALID_LSN ) {
+      lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
 
-  /** @todo is the order of the next two calls important? */
-  undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
-  if(globalLockManager.abort) { globalLockManager.abort(xid); }
+      /** @todo is the order of the next two calls important? */
+      undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
+      if(globalLockManager.abort) { globalLockManager.abort(xid); }
+  } else {
+      // This would normally be called by stasis_recovery_undo inside of undoTrans.
+      // Since we skip the call to undoTrans, we call it here.  Note that this is
+      // different than the API usage in TcommitHelper().  The reason is that
+      // undoTrans needs to deal with Tprepare().
+
+      // @todo pull up all calls to stasis_transaction_table_forget(),
+      // and move this invocation outside of the if-then-else.
+      stasis_transaction_table_forget(stasis_transaction_table, xid);
+  }
 
   return 0;
 }
