@@ -1,3 +1,4 @@
+#include <config.h> //for O_NOATIME
 #include <stasis/common.h>
 #include <stasis/flags.h>
 #include <stasis/constants.h>
@@ -29,7 +30,7 @@ int stasis_buffer_manager_io_handle_flags =
 #ifdef STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS
   STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS;
 #else
-  0;
+  O_NOATIME;
 #endif
 
 #ifdef STASIS_BUFFER_MANAGER_SIZE
@@ -38,7 +39,7 @@ pageid_t stasis_buffer_manager_size = STASIS_BUFFER_MANAGER_SIZE;
 #ifdef MAX_BUFFER_SIZE
 pageid_t stasis_buffer_manager_size = MAX_BUFFER_SIZE;
 #else // MAX_BUFFER_SIZE
-pageid_t stasis_buffer_manager_size = 20029; // ~ 82MB
+pageid_t stasis_buffer_manager_size = 8310784 / PAGE_SIZE; // ~ 82MB
 #endif // MAX_BUFFER_SIZE
 #endif // STASIS_BUFFER_MANAGER_SIZE
 
