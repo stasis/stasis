@@ -35,6 +35,8 @@ ADD_LIBRARY(stasis crc32.c redblack.c tsearchcompat.c lhtable.c concurrentHash.c
                    operations/segmentFile.c
                    operations/group/logStructured.c
                    hash.c
+                   wrappers.c
+                   wrapper_gunk.c
                    operations/naiveLinearHash.c
                    operations/linearHashNTA.c
                    operations/linkedListNTA.c
