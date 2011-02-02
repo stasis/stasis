@@ -5,8 +5,6 @@
 #include <stasis/operations/regions.h>
 #include <assert.h>
 
-static pthread_mutex_t pageAllocMutex;
-
 static int op_page_set_range(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(int));
   assert(!((e->update.arg_size - sizeof(int)) % 2));
@@ -85,8 +83,6 @@ compensated_function void pageOperationsInit(stasis_log_t *log) {
   // Need to find a region with some free pages in it.
   Tread(-1, rid, &t);
 
-
-  pthread_mutex_init(&pageAllocMutex, NULL);
 }
 
 

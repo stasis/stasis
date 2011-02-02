@@ -45,8 +45,11 @@ void TlinkedListNTAInit() {
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&stasis_linked_list_mutex, &attr);
+  pthread_mutexattr_destroy(&attr);
 }
-
+void TlinkedListNTADeinit() {
+  pthread_mutex_destroy(&stasis_linked_list_mutex);
+}
 
 
 compensated_function static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);

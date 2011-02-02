@@ -355,5 +355,7 @@ void stasis_dirty_page_table_deinit(stasis_dirty_page_table_t * dirtyPages) {
   rbdestroy(dirtyPages->tableByLsnAndPage);
   pthread_mutex_destroy(&dirtyPages->mutex);
   stasis_util_multiset_destroy(dirtyPages->outstanding_flush_lsns);
+  pthread_cond_destroy(&dirtyPages->flushDone);
+  pthread_cond_destroy(&dirtyPages->writebackCond);
   free(dirtyPages);
 }

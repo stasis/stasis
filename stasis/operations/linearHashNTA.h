@@ -89,6 +89,7 @@ stasis_operation_impl stasis_op_impl_linear_hash_insert();
 stasis_operation_impl stasis_op_impl_linear_hash_remove();
 
 void LinearHashNTAInit();
+void LinearHashNTADeinit();
 /** @} */
 
 /**

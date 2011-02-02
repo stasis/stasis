@@ -370,6 +370,8 @@ int Tdeinit() {
 
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
+  LinearHashNTADeinit();
+  TlinkedListNTADeinit();
   stasis_alloc_deinit(stasis_alloc);
   stasis_allocation_policy_deinit(stasis_allocation_policy);
   stasis_buffer_manager->stasis_buffer_manager_close(stasis_buffer_manager);
@@ -392,6 +394,8 @@ int TuncleanShutdown() {
   stasis_suppress_unclean_shutdown_warnings = 1;
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
+  LinearHashNTADeinit();
+  TlinkedListNTADeinit();
   stasis_alloc_deinit(stasis_alloc);
   stasis_allocation_policy_deinit(stasis_allocation_policy);
 

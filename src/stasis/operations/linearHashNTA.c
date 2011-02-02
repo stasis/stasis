@@ -43,6 +43,7 @@ void LinearHashNTAInit() {
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&linear_hash_mutex, &attr);
+  pthread_mutexattr_destroy(&attr);
 
   lladdIterator_def_t linearHashNTA_def = {
    linearHashNTAIterator_close,
@@ -54,7 +55,9 @@ void LinearHashNTAInit() {
   };
   lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
 }
-
+void LinearHashNTADeinit() {
+  pthread_mutex_destroy(&linear_hash_mutex);
+}
 
 /* private methods... */
 compensated_function static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * lhh);
