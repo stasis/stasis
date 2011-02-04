@@ -27,6 +27,7 @@ static int alloc_boundary_tag(int xid, Page *p, const boundary_tag *arg) {
  byte *buf = stasis_record_write_begin(xid, p, rid);
  memcpy(buf, arg, sizeof(boundary_tag));
  stasis_record_write_done(xid, p, rid, buf);
+ stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
  return 0;
 }
 
