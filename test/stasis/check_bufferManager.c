@@ -11,6 +11,7 @@
 #include <assert.h>
 
 #define LOG_NAME   "check_bufferManager.log"
+//#define DBUG_TEST
 #ifdef LONG_TEST
 
 #define THREAD_COUNT 100
@@ -22,6 +23,16 @@
 
 
 #else
+#ifdef DBUG_TEST
+
+#define THREAD_COUNT 2
+#define NUM_PAGES 10
+#define PAGE_MULT 1
+
+#define READS_PER_THREAD (NUM_PAGES * 2)
+#define RECORDS_PER_THREAD (NUM_PAGES * 2)
+
+#else
 #define THREAD_COUNT 25
 #define NUM_PAGES ((stasis_buffer_manager_size * 3)/2)
 #define PAGE_MULT 1000
@@ -29,8 +40,8 @@
 #define READS_PER_THREAD (NUM_PAGES * 2)
 #define RECORDS_PER_THREAD (NUM_PAGES * 2)
 
-#endif
-
+#endif // DBUG_TEST
+#endif // LONG_TEST
 #define MAX_TRANS_LENGTH 100 // Number of writes per transaction.  Keeping this low allows truncation.
 
 void initializePages() {
@@ -366,6 +377,7 @@ Suite * check_suite(void) {
   Suite *s = suite_create("bufferManager");
   /* Begin a new test */
   TCase *tc = tcase_create("multithreaded");
+#ifndef DBUG_TEST
   tcase_set_timeout(tc, 3*3600); // three hour timeout
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, stalePinTest);
@@ -373,12 +385,17 @@ Suite * check_suite(void) {
   // tcase_add_test(tc, stalePinTestDeprecatedBufferManager); // Fails; do not intend to fix.
   tcase_add_test(tc, pageSingleThreadTest);
   tcase_add_test(tc, pageSingleThreadWriterTest);
+#else
+  stasis_buffer_manager_size = 20;
+  stasis_truncation_automatic = 0;
+#endif
   tcase_add_test(tc, pageLoadTest);
+#ifndef DBUG_TEST
   tcase_add_test(tc, pageThreadedWritersTest);
   tcase_add_test(tc, pageBlindRandomTest);
   tcase_add_test(tc, stalePinTestConcurrentBufferManager);
 //  tcase_add_test(tc, pageBlindThreadTest);
-
+#endif
   /* --------------------------------------------- */
 
   tcase_add_checked_fixture(tc, setup, teardown);
