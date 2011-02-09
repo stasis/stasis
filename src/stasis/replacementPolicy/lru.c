@@ -56,7 +56,7 @@ static void stasis_replacement_policy_lru_hit(replacementPolicy* r, void * p) {
 }
 static void * stasis_replacement_policy_lru_get_stale(replacementPolicy* r) {
   stasis_replacement_policy_lru_t * l = r->impl;
-  stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry * ) RB_ENTRY(min)(l->lru);
+  stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry * ) rbmin(l->lru);
   return  e ? e->value : 0;
 }
 static void* stasis_replacement_policy_lru_remove(replacementPolicy* r, void * p) {
