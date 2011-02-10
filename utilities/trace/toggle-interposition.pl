@@ -12,7 +12,17 @@ if($ARGV[0] eq '--disable') {
 } else {
     die "usage: $0 [--enable|--disable]\n";
 }
-my @funcs = qw ( loadPage releasePage );
+ #Tupdate TupdateWithPage TupdateStr TreorderableUpdate TwritebackUpdate TreorderableWritebackUpdate
+ #Tcommit TsoftCommit TforceCommits Tabort Tbegin  Tforget Tprepare  Trevive
+	#	 TnestedTopAction TbeginNestedTopAction TendNestedTopAction
+my @funcs = qw ( Tinit 
+		 Tread TreadWithpage TreadRaw TreadStr 
+		 Tdeinit TuncleanShutdown 
+		 loadPage loadPageOfType loadUninitializedPage loadPageForOperation releasePage getCachedPage
+		 stasis_log_force stasis_log_begin_transaction stasis_log_prepare_transaction stasis_log_commit_transaction 
+		 stasis_log_abort_transaction stasis_log_end_aborted_transaction stasis_log_write_update stasis_log_write_clr
+		 stasis_log_write_dummy_clr stasis_log_begin_nta stasis_log_end_nta
+		);
 
 my %opts;
 
