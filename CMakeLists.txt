@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 2.4) # For all I know, 2.0 works too...
 # The new behavior seems preferable, though it shouldn't affect us either way.
 
 if(COMMAND cmake_policy)
+  cmake_policy(SET CMP0014 OLD)
   cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
@@ -65,6 +66,14 @@ INCLUDE(CheckCSourceCompiles)
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
 CHECK_FUNCTION_EXISTS(tdestroy HAVE_TDESTROY)
+
+FIND_LIBRARY(DBUG_TEST dbug-stubs  /home/sears/local/dbug/lib/)
+if(NOT DBUG_TEST)
+  message(STATUS "dbug not found. proceeding with normal build")
+else(NOT DBUG_TEST)
+  message(STATUS "found dbug ${DBUG_TEST}")
+endif(NOT DBUG_TEST)
+
 SET(CMAKE_REQUIRED_FLAGS "-lm")
 CHECK_FUNCTION_EXISTS(powl HAVE_POWL)
 CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
@@ -124,7 +133,7 @@ ENDMACRO(CREATE_EXECUTABLE)
 
 # Output the config.h file
 #CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}
 		    ${CMAKE_CURRENT_SOURCE_DIR}
 		    ${CMAKE_CURRENT_SOURCE_DIR}/src
 		    /usr/include)
@@ -132,7 +141,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/build
 LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis)
 
 IF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
-  SET(COMMON_LIBRARIES stasis m pthread stdc++)
+  SET(COMMON_LIBRARIES stasis m pthread stdc++ ${DBUG_TEST})
   SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 ELSEIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "SunPro" )
@@ -142,7 +151,7 @@ ELSEIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "SunPro" )
 ELSE( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
   # TODO: how to detect compilers correctly on old cmake???  This is a huge hack; it uses old gcc 
   # options, since cmake is old...
-  SET(COMMON_LIBRARIES stasis m pthread stdc++)
+  SET(COMMON_LIBRARIES stasis m pthread stdc++ ${DBUG_TEST})
   SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 ENDIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )

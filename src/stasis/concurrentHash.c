@@ -54,8 +54,11 @@ static inline pageid_t hash6432shift(pageid_t key)
 //  return (key | 64) ^ ((key >> 15) | (key << 17));
 
 //    return stasis_crc32(&key, sizeof(key), 0);
+#ifdef DBUG_TEST
+  return key;
+#else
   return key * 13;
-
+#endif
 }
 static inline pageid_t hashtable_func(hashtable_t *ht, pageid_t key) {
   return hashtable_wrap(ht, hash6432shift(key));

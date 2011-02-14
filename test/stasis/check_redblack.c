@@ -3,6 +3,10 @@
 
 #undef STLSEARCH
 
+#ifdef DBUG_TEST
+extern int dbug_choice(int);
+#endif
+
 #include <stasis/redblack.h>
 #include <stasis/stlredblack.h>
 
@@ -63,37 +67,52 @@ static void assert_equal(const void * rb_ret_1, const void * rb_ret_2,
 /* Create two libredblack trees and two stl trees.  Use different orders with consistent == for each pair */
 START_TEST(rbRandTest) {
 
+  time_t seed = time(0);
+  printf("\nSeed = %ld\n", seed);
+  srandom(seed);
+
+#ifdef DBUG_TEST
+  uint64_t NUM_OPERATIONS = 6;
+  uint64_t NUM_ENTRIES = 3;
+  uint64_t NUM_A = 3;
+  uint64_t NUM_B = 1;
+# define myrandom(a) dbug_choice(a)
+#else
   uint64_t NUM_OPERATIONS = 1000 * 1000;
+  uint64_t NUM_ENTRIES = myrandom(100 * 1000);
+  uint64_t NUM_A = myrandom(200);
+  uint64_t NUM_B = myrandom(50000);
+#endif
+  printf("NUM_OPERATIONS = %lld NUM_ENTRIES = %lld NUM_A = %lld NUM_B = %lld\n",
+         (long long int)NUM_OPERATIONS, (long long int)NUM_ENTRIES, (long long int)NUM_A, (long long int)NUM_B);
 
   rbtree *rb_1 = rbinit(cmp_1, NULL);
   rbtree *rb_2 = rbinit(cmp_2, NULL);
   rbtree *stl_1 = stl_rbinit(cmp_1, NULL);
   rbtree *stl_2 = stl_rbinit(cmp_2, NULL);
 
-  time_t seed = time(0);
-  printf("\nSeed = %ld\n", seed);
-  srandom(seed);
-
-
-  uint64_t NUM_ENTRIES = myrandom(100 * 1000);
-  uint64_t NUM_A = myrandom(200);
-  uint64_t NUM_B = myrandom(50000);
-
-  printf("NUM_OPERATIONS = %lld NUM_ENTRIES = %lld NUM_A = %lld NUM_B = %lld\n",
-         (long long int)NUM_OPERATIONS, (long long int)NUM_ENTRIES, (long long int)NUM_A, (long long int)NUM_B);
-
   tup * entries = malloc(sizeof(tup) * NUM_ENTRIES);
-
+#ifdef DBUG_TEST
+  for(uint64_t i = 0; i < NUM_ENTRIES; i++) {
+    entries[i].a = i;
+    entries[i].b = 0;
+  }
+#else
   for(uint64_t i = 0; i < NUM_ENTRIES; i++) {
     entries[i].a = myrandom(NUM_A);
     entries[i].b = myrandom(NUM_B);
   }
+#endif
   uint64_t num_found = 0;
   uint64_t num_collide = 0;
   for(uint64_t i = 0; i < NUM_OPERATIONS; i++) {
     uint64_t off = myrandom(NUM_ENTRIES);
+#ifdef DBUG_TEST
+    switch(myrandom(3)+1) {
+#else
     switch(myrandom(4)) {
     case 0:
+#endif
     case 1: { // insert
       const void * rb_ret_1 = rbsearch(&entries[off], rb_1);
       const void * rb_ret_2 = rbsearch(&entries[off], rb_2);
