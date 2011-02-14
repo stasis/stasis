@@ -29,7 +29,8 @@ class MyCompare {
   MyCompare(c_cmp_t cmp, int dummy) : cmp_(cmp), arg_(NULL) {}
 };
 
-typedef std::set<const void*,MyCompare, stlslab<const void *> > rb;
+//typedef std::set<const void*,MyCompare, stlslab<const void *> > rb;
+typedef std::set<const void*,MyCompare > rb;
 
 extern "C" {
 
