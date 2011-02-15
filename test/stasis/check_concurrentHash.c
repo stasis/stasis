@@ -58,13 +58,11 @@ terms specified in this license.
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef DBUG_TEST
-extern int dbug_choice(int);
-#endif
-
 #define LOG_NAME   "check_lhtable.log"
 
+
 #ifdef DBUG_TEST
+extern int dbug_choice(int);
 #define NUM_OPS 4
 #define NUM_ENTRIES 4
 #define NUM_THREADS 2
@@ -73,28 +71,16 @@ extern int dbug_choice(int);
 #define myrandom(x) dbug_choice(x)
 #else
 #define NUM_OPS 10000000
-#define NUM_ENTRIES 10000
+#define NUM_ENTRIES 8192
 #define NUM_THREADS 100
 #define THREAD_ENTRIES ((NUM_ENTRIES/NUM_THREADS)-1)
 #endif
+
 hashtable_t * ht;
 
 void * worker(void * arg) {
-  int stride = *(int*) arg;
-
-  pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
-
-#ifdef DBUG_TEST
-  for(int i = 1; i <= THREAD_ENTRIES; i++) {
-    data[i-1] = -1 * (stride + (i * HT_ENTRIES));
-  }
-#else
-  for(int i = 1; i <= THREAD_ENTRIES; i++) {
-    data[i-1] = -1 * (stride + (i * NUM_THREADS));
-  }
-#endif
-  for(int j = 0; j < NUM_OPS/*/ NUM_THREADS*/; j++) {
-
+  pageid_t *data = (pageid_t *)arg;
+  for(int j = 0; j < NUM_OPS/ NUM_THREADS; j++) {
     int op = myrandom(2);
 
     int i = myrandom(THREAD_ENTRIES);
@@ -134,26 +120,53 @@ void * worker(void * arg) {
 
 START_TEST(singleThreadHashTest) {
 #ifdef DBUG_TEST
-  ht = hashtable_init((pageid_t)HT_ENTRIES);
+  ht = hashtable_init(HT_ENTRIES);
 #else
   ht = hashtable_init((pageid_t)((double)THREAD_ENTRIES * 1.1));
 #endif
-  int i = 0;
-  worker(&i);
+  pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+
+  for(int i = 1; i <= THREAD_ENTRIES; i++) {
+    data[i-1] = -1 * (i * NUM_THREADS);
+  }
+  worker(data);
+  hashtable_deinit(ht);
+} END_TEST
+
+START_TEST(wraparoundHashTest) {
+  unsigned numEntries = NUM_OPS/ NUM_THREADS * 4 + 3;
+  unsigned power = 1;
+  while ( (1ull << power ) < numEntries ) {
+    ++power;
+  }
+#ifdef DBUG_TEST
+  ht = hashtable_init(HT_ENTRIES);
+#else
+  ht = hashtable_init(numEntries);
+#endif
+  pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+
+  for(int i = 1; i <= THREAD_ENTRIES; i++) {
+    data[i-1] = -1 * (((i << power) - 6 + myrandom(13)) / 13);
+  }
+  worker(data);
   hashtable_deinit(ht);
 } END_TEST
 
 START_TEST(concurrentHashTest) {
 #ifdef DBUG_TEST
-  ht = hashtable_init((pageid_t)HT_ENTRIES);
+  ht = hashtable_init(HT_ENTRIES);
 #else
   ht = hashtable_init((pageid_t)((double)NUM_ENTRIES * 1.1));
 #endif
   pthread_t workers[NUM_THREADS];
   for(int i = 0 ; i < NUM_THREADS; i++) {
-    int * ip = malloc(sizeof(int));
-    *ip = i;
-    pthread_create(&workers[i], 0, worker, ip);
+    pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+
+    for(int j = 1; j <= THREAD_ENTRIES; j++) {
+      data[j-1] = -1 * (i + (j * NUM_THREADS));
+    }
+    pthread_create(&workers[i], 0, worker, data);
   }
   for(int i = 0 ; i < NUM_THREADS; i++) {
     pthread_join(workers[i],0);
@@ -173,8 +186,10 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, singleThreadHashTest);
 #ifndef DBUG_TEST // TODO should run exactly one of these two tests under dbug.  Need good way to choose which one.
+  tcase_add_test(tc, wraparoundHashTest);
   tcase_add_test(tc, concurrentHashTest);
 #endif
+
   /* --------------------------------------------- */
 
   tcase_add_checked_fixture(tc, setup, teardown);

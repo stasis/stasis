@@ -1,5 +1,23 @@
-/*
+/**
  * concurrentHash.h
+ *
+ * @file A concurrent, fixed-size hashtable that allows users to obtain latches
+ *       on its keys.
+ *
+ * Operations against this hashtable proceed in two phases.  In the first phase,
+ * the bucket that contains (or will contain) the requested key is located.  At
+ * this point, the implementation optionally returns control to the caller,
+ * which may examine the bucket, and decide to complete or cancel the operation.
+ *
+ * Of course, like any other mutex, bucket latches allow you to write code that
+ * will deadlock.  Initiating an operation against a hashtable while holding a
+ * latch on one of its buckets is unsafe, and will lead to deadlocks and other
+ * bad behavior.
+ *
+ * Notes:
+ *
+ * It would be trivial to implement an insert_begin, _finish, and _remove, but
+ * the need for such things has never come up.  (See hashtable_test_and_set instead)
  *
  *  Created on: Oct 15, 2009
  *      Author: sears
@@ -36,11 +54,13 @@ void * hashtable_remove_begin(hashtable_t *ht, pageid_t p, hashtable_bucket_hand
 void   hashtable_remove_finish(hashtable_t *ht, hashtable_bucket_handle_t *h);
 void   hashtable_remove_cancel(hashtable_t *ht, hashtable_bucket_handle_t *h);
 
+/** Be sure to call this immediately after calling an methods whose names end in "_lock()" */
+void hashtable_unlock(hashtable_bucket_handle_t *h);
+
 /**
  * @return -0 if key not found, 1 if the key exists, >1 if the hashtable is corrupt, and the key appears multiple times..
  */
 int hashtable_debug_number_of_key_copies(hashtable_t *ht, pageid_t pageied);
 
-void hashtable_unlock(hashtable_bucket_handle_t *h);
 
 #endif /* CONCURRENTHASH_H_ */
