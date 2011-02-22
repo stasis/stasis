@@ -1,12 +1,11 @@
 #include <config.h>
+#include <stasis/common.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
 #include "check_impl.h"
-
-#include <stasis/common.h>
 
 uint64_t myrandom(uint64_t x) {
   double xx = x;

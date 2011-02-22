@@ -1,6 +1,6 @@
 #include <config.h>
-#include <fcntl.h>
 #include <stasis/common.h>
+#include <fcntl.h>
 #include <stasis/io/handle.h>
 
 #include <stdio.h>

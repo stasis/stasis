@@ -1,10 +1,9 @@
-#define _SVID_SOURCE
-#define _BSD_SOURCE
+#include <config.h>
+#include <stasis/common.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <stasis/common.h>
 #include <stasis/flags.h>
 
 #include <stasis/latches.h>

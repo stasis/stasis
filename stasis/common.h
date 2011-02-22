@@ -63,6 +63,8 @@ terms specified in this license.
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
 #endif
+#include <stdint.h> // uint32, et. al.  (has to be before sys/types.h for mcpp atop some broken gcc headers)
+#include <fcntl.h>
 #include <sys/types.h> // for size_t
 
 #ifdef __cplusplus
@@ -72,8 +74,6 @@ terms specified in this license.
 #  define BEGIN_C_DECLS
 #  define END_C_DECLS
 #endif /* __cplusplus */
-
-#include <stdint.h> // uint32, et. al.
 
 #include <limits.h>
 
@@ -163,6 +163,8 @@ typedef struct {
    Include stasis/page.h for the complete definition.
 */
 typedef struct Page_s Page;
+
+extern long long *stasis_dbug_timestamp;
 
 #define STLSEARCH
 

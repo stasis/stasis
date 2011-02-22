@@ -43,7 +43,6 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/allocationPolicy.h>
-#include <stasis/common.h>
 #include <stasis/constants.h>
 
 #include <sys/time.h>
