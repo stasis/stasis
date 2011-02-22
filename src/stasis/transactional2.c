@@ -28,6 +28,9 @@
 
 static int stasis_initted = 0;
 
+static long long stasis_dummy_dbug_timestamp = 0;
+long long * stasis_dbug_timestamp = &stasis_dummy_dbug_timestamp;
+
 static stasis_log_t* stasis_log_file = 0;
 static stasis_dirty_page_table_t * stasis_dirty_page_table = 0;
 static stasis_transaction_table_t * stasis_transaction_table;

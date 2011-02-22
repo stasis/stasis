@@ -1,0 +1,41 @@
+# find . -type f -name *.c | grep -v \/pobj\/ | grep -v \/cht\/ | grep -v \/fuse\/ | grep -v \/libdfa\/ | grep -v \/cyrus\/ | grep -v \/lladd-old\/ |  xargs -iqq mcpp -m64 -K -DPBL_COMPAT -I. -I src -I /usr/include -I /usr/lib/gcc/x86_64-redhat-linux/4.1.1/include/ -I build qq > /dev/null 
+
+GCC_INC =  -I /usr/lib/gcc/i486-linux-gnu/4.1/include
+ #/usr/lib/gcc/x86_64-redhat-linux/4.1.1/include
+
+TRACE_DIR = ./utilities/trace
+
+OINK = ../oink-stack/oink/xform
+OINK_ARGS = -fx-wrap-fun-call -x-wrap-fun-call-config-file $(TRACE_DIR)/smoketest.ca
+STANDARD_INC = -I build -I . -I src -I /usr/include
+cfiles     = $(wildcard src/stasis/*.c) \
+	     $(wildcard src/stasis/*/*.c) \
+	     $(wildcard test/stasis/*.c)
+ifiles     = $(patsubst %.c,build-oink/%.i,$(cfiles))
+patches = $(patsubst %.c,build-oink/%.patch,$(cfiles))
+
+
+.PHONY : clean TREE
+
+all : wrap.patch
+
+wrap.patch : $(patches)
+	cat $^ > $@.tmp
+	$(TRACE_DIR)/dedup-patch.pl < $@.tmp > $@
+
+build-oink/% : %
+	mkdir -p $@
+
+TREE : $(dir $(ifiles))
+	@true
+	mkdir -p $^
+
+build-oink/%.i : %.c  TREE
+	mcpp -K -DPBL_COMPAT $(STANDARD_INC) $(GCC_INC) $< -o $@
+
+%.patch : %.i $(OINK)
+	$(OINK) $(OINK_ARGS) $< > $@
+
+
+clean :
+	rm -f $(ifiles) $(patches) wrap.patch
