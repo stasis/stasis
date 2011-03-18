@@ -113,7 +113,7 @@ static inline void stasis_histogram_pretty_print_64(stasis_histogram_64_t* a);
 static inline void stasis_histogram_pretty_print_32(stasis_histogram_32_t* a);
 void stasis_histograms_auto_dump(void);
 
-double stasis_histogram_nth_percentile_64(stasis_histogram_64_t* a, int pctile) {
+static inline double stasis_histogram_nth_percentile_64(stasis_histogram_64_t* a, int pctile) {
   long sum = 0;
   for(int i = 0; i < 64; i++) {
     sum += a->buckets[i];
