@@ -58,7 +58,7 @@ typedef struct stasis_log_t stasis_log_t;
 typedef struct stasis_log_group_force_t stasis_log_group_force_t;
 
 typedef enum {
-  LOG_FORCE_COMMIT, LOG_FORCE_WAL
+  LOG_FORCE_COMMIT = 0, LOG_FORCE_WAL = 1
 } stasis_log_force_mode_t;
 
 #include <stasis/logger/groupForce.h>
