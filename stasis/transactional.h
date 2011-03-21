@@ -699,7 +699,7 @@ int TuncleanShutdown(void);
  * @param prevlsn  The lsn of that xid's most recent PREPARE entry in the log.
  * @param reclsn The lsn of the transaction's BEGIN record.
  */
-void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
+//void Trevive(int xid, lsn_t prevlsn, lsn_t reclsn);
 /**
     Prepare transaction for commit.  Currently, a transaction may be
     prepared multiple times.  Once Tprepare() returns, the caller is
