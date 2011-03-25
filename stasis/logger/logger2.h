@@ -115,6 +115,16 @@ struct stasis_log_t {
 
      Append a log entry to the end of the log.
 
+     This function assigns an LSN to the entry that is written.  The choice of
+     LSN is up to the log implementation, with a few important restrictions.
+
+     First, LSN's must be strictly increasing (LSN stands for Log *sequence*
+     number, after all!).  Next, LSN's must be greater than zero.  LSN zero is
+     reserved for the version of the database before any log entries are
+     applied, so no valid log entry may have LSN = 0.  At the time of this
+     writing, LSN -1 is INVALID_LSN.  The other negative LSNs are reserved for
+     future use.  @see constants.h for information about hard-coded constants.
+
      @param log "this" log object
      @param e The entry to be written to log.  After the call returns, e->LSN will be the new entry's offset.
      @return 0 on success
