@@ -171,7 +171,7 @@ void TupdateWithPage(int xid, pageid_t page, Page *p, const void * dat, size_t d
 }
 
 void Tupdate(int xid, pageid_t page, const void * dat, size_t datlen, int op) {
-  Page * p = loadPageForOperation(xid, page, op, 0);
+  Page * p = loadPageForOperation(xid, page, op);
   TupdateWithPage(xid, page, p, dat, datlen, op);
   if(p) releasePage(p);
 }

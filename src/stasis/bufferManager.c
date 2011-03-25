@@ -148,6 +148,10 @@ compensated_function void  __profile_releasePage(Page * p) {
 
 #endif
 
+void stasis_buffer_manager_set_redo_mode(int in_redo) {
+  ((stasis_buffer_manager_t*)stasis_runtime_buffer_manager())->in_redo = in_redo;
+}
+
 Page * loadPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
@@ -165,15 +169,16 @@ Page * loadUninitializedPage(int xid, pageid_t pageid) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
 
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
-  return bm->loadUninitPageImpl(bm, xid, pageid);
+  if(bm->in_redo) {
+    return bm->loadPageImpl(bm, 0, xid, pageid, UNKNOWN_TYPE_PAGE);
+  } else {
+    return bm->loadUninitPageImpl(bm, xid, pageid);
+  }
 }
 
-Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery) {
+Page * loadPageForOperation(int xid, pageid_t pageid, int op) { //, int is_recovery) {
   pagetype_t type = stasis_operation_type(op);
   Page * p;
-  if(is_recovery && type == UNINITIALIZED_PAGE) {
-    type = UNKNOWN_TYPE_PAGE; // XXX what about segment pages?  Presumably, the thing that initializes a segment passes in UNKNOWN.
-  }
   if(pageid == SEGMENT_PAGEID) {
     assert(type == SEGMENT_PAGE);
     p = 0;

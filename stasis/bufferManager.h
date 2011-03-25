@@ -96,7 +96,7 @@ Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type);
 
 Page * loadUninitializedPage(int xid, pageid_t pageid);
 
-Page * loadPageForOperation(int xid, pageid_t pageid, int op, int is_recovery);
+Page * loadPageForOperation(int xid, pageid_t pageid, int op);
 
 void   prefetchPages(pageid_t pageid, pageid_t count);
 
@@ -112,6 +112,10 @@ Page * getCachedPage(int xid, const pageid_t pageid);
    in memory.  releasePage releases this lock.
 */
 void releasePage(Page *p);
+/**
+ * Switch the buffer manager into / out of redo mode.  Redo mode forces loadUnintializedPage() to behave like loadPage().
+ */
+void stasis_buffer_manager_set_redo_mode(int in_redo);
 
 typedef struct stasis_buffer_manager_t stasis_buffer_manager_t;
 typedef void* stasis_buffer_manager_handle_t;
@@ -171,6 +175,15 @@ struct stasis_buffer_manager_t {
    * Write out any dirty pages.  Assumes that there are no running transactions
    */
   void   (*stasis_buffer_manager_close)(struct stasis_buffer_manager_t*);
+
+  /**
+   *  If this is true, then the underlying implementation should read from disk
+   *  even if an uninitialized page was requested by the caller.  This is needed
+   *  because loadUninitializedPage sometimes has to set the LSN of the page in
+   *  question to the current tail of the log, which would prevent future redo
+   *  entries from being replayed.
+   */
+  int in_redo;
   void * impl;
 };
 

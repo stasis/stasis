@@ -173,7 +173,7 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
       } else if(e->update.page == SEGMENT_PAGEID || e->update.page == MULTI_PAGEID) {
         stasis_operation_redo(e,0);
       } else {
-        Page * p = loadPageForOperation(e->xid, e->update.page, e->update.funcID, 1);
+        Page * p = loadPageForOperation(e->xid, e->update.page, e->update.funcID);
         if(p) writelock(p->rwlatch,0);
         stasis_operation_redo(e,p);
         if(p) {
@@ -194,7 +194,7 @@ static void stasis_recovery_redo(stasis_log_t* log, stasis_transaction_table_t *
           // need to grab latch page here so that Tabort() can be atomic
           // below...
 
-          Page * p = loadPageForOperation(e->xid, ce->update.page, ce->update.funcID, 1);
+          Page * p = loadPageForOperation(e->xid, ce->update.page, ce->update.funcID);
           if(p) writelock(p->rwlatch,0);
           stasis_operation_undo(ce, e->LSN, p);
           if(p) {
@@ -275,7 +275,7 @@ static void stasis_recovery_undo(stasis_log_t* log, stasis_transaction_table_t *
             // atomically log (getting clr), and apply undo.
             // otherwise, there's a race where the page's LSN is
             // updated before we undo.
-            Page* p = loadPageForOperation(e->xid, e->update.page, e->update.funcID, 1);
+            Page* p = loadPageForOperation(e->xid, e->update.page, e->update.funcID);
             if(p) writelock(p->rwlatch,0);
 
             // Log a CLR for this entry
@@ -343,12 +343,13 @@ static void stasis_recovery_undo(stasis_log_t* log, stasis_transaction_table_t *
   }
 }
 void stasis_recovery_initiate(stasis_log_t* log, stasis_transaction_table_t * tbl, stasis_alloc_t * alloc) {
-
+  stasis_buffer_manager_set_redo_mode(1);
   transactionLSN = pblHtCreate();
   DEBUG("Analysis started\n");
   stasis_recovery_analysis(log, tbl);
   DEBUG("Redo started\n");
   stasis_recovery_redo(log, tbl);
+  stasis_buffer_manager_set_redo_mode(0);  // should be OK; any undo that calls loadUninitializedPage() will be generating entries at the end of the log.
   DEBUG("Undo started\n");
   stasis_recovery_undo(log, tbl, 1);
   stasis_alloc_post_init(alloc);

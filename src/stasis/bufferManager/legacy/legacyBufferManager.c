@@ -80,7 +80,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handl
 	first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
 	stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
 	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
-    page_handle->read(page_handle, first, UNKNOWN_TYPE_PAGE);
+	page_handle->read(page_handle, first, UNKNOWN_TYPE_PAGE);
 	pageCacheInit(first);
 
 	int err = pthread_key_create(&lastPage, 0);
@@ -148,7 +148,7 @@ static void bufManReleasePage (stasis_buffer_manager_t *ignored, Page * p) {
 
 }
 
-static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pagetype_t type) {
+static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitialized, pagetype_t type) {
   Page * ret;
   int spin  = 0;
 
@@ -297,12 +297,9 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pag
     if(!uninitialized) {
       page_handle->read(page_handle, ret, type);
     } else {
-      memset(ret->memAddr, 0, PAGE_SIZE);
       ret->dirty = 0;
-      *stasis_page_lsn_ptr(ret) = ret->LSN;
-
       // XXX need mutex for this call?
-      stasis_page_loaded(ret, type);
+      stasis_uninitialized_page_loaded(xid, ret);
     }
 
     writeunlock(ret->loadlatch);
@@ -345,7 +342,7 @@ static Page* bufManGetPage(pageid_t pageid, int locktype, int uninitialized, pag
       unlock(ret->loadlatch);
       printf("pageCache.c: Thrashing detected.  Strongly consider increasing LLADD's buffer pool size!\n");
       fflush(NULL);
-      return bufManGetPage(pageid, locktype, uninitialized, type);
+      return bufManGetPage(xid, pageid, locktype, uninitialized, type);
     }
 
   }
@@ -370,7 +367,7 @@ static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignore
     ret = 0;
   }
   if(!ret) {
-    ret = bufManGetPage(pageid, RO, 0, type);
+    ret = bufManGetPage(xid, pageid, RO, 0, type);
     pthread_setspecific(lastPage, ret);
   }
 
@@ -406,7 +403,7 @@ static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *
     ret = 0;
   }
   if(!ret) {
-    ret = bufManGetPage(pageid, RO, 1, UNKNOWN_TYPE_PAGE);
+    ret = bufManGetPage(xid, pageid, RO, 1, UNKNOWN_TYPE_PAGE);
     pthread_setspecific(lastPage, ret);
   }
 

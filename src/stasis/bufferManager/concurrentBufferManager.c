@@ -294,6 +294,8 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p);
 
 static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, stasis_page_handle_t *ph, const pageid_t pageid, int uninitialized, pagetype_t type) {
+  if(uninitialized) assert(!bm->in_redo);
+
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   stasis_buffer_concurrent_hash_tls_t *tls = populateTLS(bm);
   hashtable_bucket_handle_t h;
@@ -332,7 +334,8 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, stasis
 
       if(uninitialized) {
         type = UNINITIALIZED_PAGE;
-        stasis_page_loaded(p, UNINITIALIZED_PAGE);
+        assert(!p->dirty);
+        stasis_uninitialized_page_loaded(xid, p);
       } else {
         ph->read(ph, p, type);
       }
@@ -355,6 +358,7 @@ static Page * chLoadPageImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_
   return chLoadPageImpl_helper(bm, xid, (stasis_page_handle_t*)h, pageid, 0, type);
 }
 static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const pageid_t pageid) {
+  assert(!bm->in_redo);
   return chLoadPageImpl_helper(bm, xid, 0, pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {

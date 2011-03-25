@@ -72,7 +72,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
 #ifndef VALGRIND_MODE
 
-  byte * bufferSpace = calloc((stasis_buffer_manager_size + 2), PAGE_SIZE);
+  byte * bufferSpace = malloc((stasis_buffer_manager_size + 2) * PAGE_SIZE);
   assert(bufferSpace);
   ret->addr_to_free = bufferSpace;
 
@@ -93,7 +93,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 #ifndef VALGRIND_MODE
     ret->pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
 #else
-    ret->pool[i].memAddr = calloc(1, PAGE_SIZE);
+    ret->pool[i].memAddr = malloc(PAGE_SIZE);
 #endif
     ret->pool[i].dirty = 0;
     ret->pool[i].needsFlush = 0;

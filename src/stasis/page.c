@@ -273,14 +273,36 @@ void stasis_record_compact_slotids(int xid, Page * p) {
   page_impls[p->pageType]
     .pageCompactSlotIDs(xid, p);
 }
+
+void stasis_uninitialized_page_loaded(int xid, Page * p) {
+  /// XXX this should be pushed into the pageLoaded callback, but the
+  //  callback would need the xid, and currently is not given the xid.
+  lsn_t xid_lsn;
+  if(xid == INVALID_XID) {
+    xid_lsn = INVALID_LSN;
+  } else {
+    xid_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
+  }
+  lsn_t log_lsn = ((stasis_log_t*)stasis_log())->next_available_lsn(stasis_log());
+  // If this transaction has a prevLSN, prefer it.  Otherwise, set the LSN to nextAvailableLSN - 1
+  p->LSN = *stasis_page_lsn_ptr(p) = (xid_lsn == INVALID_LSN) ? (log_lsn - 1) : xid_lsn;
+  p->pageType = *stasis_page_type_ptr(p) = UNINITIALIZED_PAGE;
+  if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
+}
 void stasis_page_loaded(Page * p, pagetype_t type){
+  assert(type != UNINITIALIZED_PAGE);
   p->pageType = (type == UNKNOWN_TYPE_PAGE) ? *stasis_page_type_ptr(p) : type;
   assert(page_impls[p->pageType].page_type == p->pageType);  // XXX unsafe; what if the page has no header?
   if(page_impls[p->pageType].has_header) {
     p->LSN = *stasis_page_lsn_cptr(p);
   } else {
     // XXX Need to distinguish between lsn free and header free, then assert(type != UNKNOWN_TYPE_PAGE);
-    p->LSN = 0;
+    p->LSN = 0; //XXX estimate LSN.
+    static int dragons = 0;
+    if(!dragons) {
+      fprintf(stderr, "It looks like this program uses segments, which is not stable yet.  Beware of dragons!\n");
+      dragons = 1;
+    }
   }
   if (page_impls[p->pageType].pageLoaded) page_impls[p->pageType].pageLoaded(p);
 }

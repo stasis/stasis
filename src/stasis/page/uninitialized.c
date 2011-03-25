@@ -24,7 +24,7 @@ static void uninitializedCleanup(Page *p) {
 page_impl stasis_page_uninitialized_impl() {
   static page_impl pi = {
     UNINITIALIZED_PAGE,
-    0,
+    1, //has header
     0, //read,
     0, //write,
     0,// readDone

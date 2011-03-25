@@ -554,6 +554,7 @@ int stasis_block_supported(int xid, Page * p);
 int stasis_record_freespace(int xid, Page * p);
 void stasis_record_compact(Page * p);
 void stasis_record_compact_slotids(int xid, Page * p);
+void stasis_uninitialized_page_loaded(int xid, Page * p);
 void stasis_page_loaded(Page * p, pagetype_t type);
 void stasis_page_flushed(Page * p);
 void stasis_page_cleanup(Page * p);
