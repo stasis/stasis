@@ -226,12 +226,14 @@ static int op_init_multipage_impl(const LogEntry *e, Page *ignored) {
     Page * p = loadPage(e->xid, arg->firstPage + i);
     if(stasis_operation_multi_should_apply(e, p)) {
       writelock(p->rwlatch, 0);
-      if(arg->recordSize) {
+      if(arg->recordSize == 0) {
+        stasis_page_slotted_initialize_page(p);
+      } else if(arg->recordSize == BLOB_SLOT) {
+        stasis_page_blob_initialize_page(p);
+      } else {
         stasis_fixed_initialize_page(p, arg->recordSize,
                                      stasis_fixed_records_per_page
                                      (stasis_record_type_to_size(arg->recordSize)));
-      } else {
-        stasis_page_slotted_initialize_page(p);
       }
       stasis_page_lsn_write(e->xid, p, e->LSN);
       unlock(p->rwlatch);
@@ -258,7 +260,15 @@ int TinitializeFixedPageRange(int xid, pageid_t start, pageid_t count, size_t si
   Tupdate(xid, MULTI_PAGEID, &arg, sizeof(arg), OPERATION_INITIALIZE_MULTIPAGE);
   return 0;
 }
+int TinitializeBlobPageRange(int xid, pageid_t start, pageid_t count) {
+  init_multipage_arg arg;
+  arg.firstPage = start;
+  arg.numPages = count;
+  arg.recordSize = BLOB_SLOT;
 
+  Tupdate(xid, MULTI_PAGEID, &arg, sizeof(arg), OPERATION_INITIALIZE_MULTIPAGE);
+  return 0;
+}
 stasis_operation_impl stasis_op_impl_page_initialize() {
   stasis_operation_impl o = {
     OPERATION_INITIALIZE_PAGE,

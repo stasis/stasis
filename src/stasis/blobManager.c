@@ -17,6 +17,7 @@ void stasis_blob_alloc(int xid, recordid rid) {
   assert(rid.size>0);
   pageid_t pageCount = (rid.size / USABLE_SIZE_OF_PAGE) + ((rid.size % USABLE_SIZE_OF_PAGE) ? 1 : 0);
   long startPage = TpageAllocMany(xid, pageCount);
+  TinitializeBlobPageRange(xid, startPage, pageCount);
   blob_record_t rec;
   rec.offset = startPage;
   rec.size = rid.size;
@@ -57,28 +58,17 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
 
     assert(rec.offset);
     pageid_t chunk = 0;
+    // Don't need to do any latching on the page range, since writes in race
+    // have undefined semantics.
     for(; (chunk+1) * USABLE_SIZE_OF_PAGE < rid.size; chunk++) {
-      Page * cnk = loadPage(xid, rec.offset+chunk);
-      writelock(cnk->rwlatch,0);
-      if(cnk->pageType != BLOB_PAGE) {
-        stasis_page_blob_initialize(cnk);
-      }
-      unlock(cnk->rwlatch);
-      // Don't care about race; writes in race have undefined semantics...
+      // TODO: assert(page->pageType == BLOB_PAGE) in TpageSetRange?
       TpageSetRange(xid,rec.offset+chunk,0,((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE),USABLE_SIZE_OF_PAGE);
-      releasePage(cnk);
     }
-    Page * cnk = loadPage(xid, rec.offset+chunk);
-    writelock(cnk->rwlatch,0);
-    if(p->pageType != BLOB_PAGE) {
-      stasis_page_blob_initialize(cnk);
-    }
-    unlock(cnk->rwlatch);
+    // Painful; allocate buffer for zero padding. TODO: Remove zero padding?
     byte * buf = calloc(1,USABLE_SIZE_OF_PAGE);
     memcpy(buf, ((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE), rid.size % USABLE_SIZE_OF_PAGE);
     TpageSetRange(xid,rec.offset+chunk,0,buf,USABLE_SIZE_OF_PAGE);
     free(buf);
-    releasePage(cnk);
 }
 static int stasis_page_not_supported(int xid, Page * p) { return 0; }
 
@@ -124,7 +114,7 @@ page_impl stasis_page_blob_impl() {
   };
   return pi;
 }
-void stasis_page_blob_initialize(Page * p) {
+void stasis_page_blob_initialize_page(Page * p) {
   assertlocked(p->rwlatch);
   DEBUG("lsn: %lld\n",(long long)p->LSN);
   stasis_page_cleanup(p);

@@ -923,7 +923,7 @@ void stasis_slotted_lsn_free_initialize_page(Page * p);
 void stasis_fixed_initialize_page(Page * page, size_t size, int count);
 void stasis_indirect_initialize_page(Page * p, int height);
 int stasis_fixed_records_per_page(size_t size);
-void stasis_page_blob_initialize(Page * p);
+void stasis_page_blob_initialize_page(Page * p);
 
 page_impl slottedLsnFreeImpl();
 page_impl segmentImpl();

@@ -81,10 +81,20 @@ void TinitializeFixedPage(int xid, pageid_t page,
  */
 int TinitializeSlottedPageRange(int xid, pageid_t start, pageid_t count);
 /**
- * @see TinitializeSlottedPageRange for an analogous function, and a description of
- * this function's non-standard impacts upon recovery.
+ * Initialize a contiguous range of pages for storage of fixed size records.
+ *
+ * This method uses blind-writes to conserve log bandwidth.  It is only safe
+ * to call this function against newly allocated pages.
+ *
+ * @see fixed.c for more information about the page format.
  */
 int TinitializeFixedPageRange(int xid, pageid_t start, pageid_t count, size_t size);
+/**
+ * Initialize a contiguous range of pages for storage of a blob (large object).
+ *
+ * @see blobManager.c for more information about the page format.
+ */
+int TinitializeBlobPageRange(int xid, pageid_t start, pageid_t count);
 
 int TpageGetType(int xid, pageid_t page);
 
