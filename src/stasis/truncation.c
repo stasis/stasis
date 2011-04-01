@@ -94,12 +94,21 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
   //LSN_T_MAX if there are no outstanding transactions / no
   //dirty pages.
 
+  // applied_lsn has to be before dirty_page_table_minRecLSN(), since
+  // minRecLSN can miss anything above this value, and this value
+  // increases.
+
+  lsn_t applied_lsn  = trunc->log->first_pending_lsn(trunc->log);
   lsn_t page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
   lsn_t xact_rec_lsn = stasis_transaction_table_minRecLSN(trunc->transaction_table);
   lsn_t flushed_lsn  = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
 
+  //  printf("pending %lld page_rec %lld xact_rec %lld flushed %lld\n",
+  //         applied_lsn, page_rec_lsn, xact_rec_lsn, flushed_lsn);
+
   lsn_t rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
   rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
+  rec_lsn = (rec_lsn < applied_lsn) ? rec_lsn : applied_lsn;
 
   lsn_t log_trunc = trunc->log->truncation_point(trunc->log);
   if(force || (xact_rec_lsn - log_trunc) > MIN_INCREMENTAL_TRUNCATION) {
@@ -114,13 +123,17 @@ int stasis_truncation_truncate(stasis_truncation_t* trunc, int force) {
       lsn_t flushed = trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL);
       if(force || flushed - log_trunc > 2 * TARGET_LOG_SIZE) {
         DEBUG("Flushing dirty buffers: rec_lsn = %lld log_trunc = %lld flushed = %lld\n", rec_lsn, log_trunc, flushed);
+        applied_lsn  = trunc->log->first_pending_lsn(trunc->log);
         if(EAGAIN == stasis_dirty_page_table_flush(trunc->dirty_pages)) {
+          applied_lsn  = trunc->log->first_pending_lsn(trunc->log);
           stasis_dirty_page_table_flush(trunc->dirty_pages); // can ignore ret val, since some other thread successfully initiated + completed a flush since our first call.
         }
 
         page_rec_lsn = stasis_dirty_page_table_minRecLSN(trunc->dirty_pages);
-        rec_lsn = page_rec_lsn < xact_rec_lsn ? page_rec_lsn : xact_rec_lsn;
-        rec_lsn = (rec_lsn < flushed_lsn) ? rec_lsn : flushed_lsn;
+        rec_lsn = page_rec_lsn;
+        rec_lsn = (rec_lsn < xact_rec_lsn) ? rec_lsn : xact_rec_lsn;
+        rec_lsn = (rec_lsn < flushed_lsn ) ? rec_lsn : flushed_lsn;
+        rec_lsn = (rec_lsn < applied_lsn ) ? rec_lsn : applied_lsn;
 
         //fprintf(stderr, "Flushed Dirty Buffers.  Truncating to rec_lsn = %ld\n", rec_lsn);
 

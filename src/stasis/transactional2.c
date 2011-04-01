@@ -131,9 +131,12 @@ int Tbegin() {
 }
 
 void TupdateWithPage(int xid, pageid_t page, Page *p, const void * dat, size_t datlen, int op) {
+  // This has caught a surprising number of bugs. ;)
   assert(stasis_initted);
+
+  // Note that other special page id's such as MULTI_PAGEID are valid here.
   assert(page != INVALID_PAGE);
-  LogEntry * e;
+
   stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(xact);
 
@@ -141,31 +144,56 @@ void TupdateWithPage(int xid, pageid_t page, Page *p, const void * dat, size_t d
     globalLockManager.writeLockPage(xid, page);
   }
 
+  // TODO: Add support for finer-grained write latches?
   if(p) writelock(p->rwlatch,0);
 
-  e = stasis_log_write_update(stasis_log_file, xact, page, op, dat, datlen);
+  LogEntry * e = stasis_log_write_update(stasis_log_file, xact, page, p, op, dat, datlen);
 
   assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
-  LogEntry * multiE = 0;
-  if(page == MULTI_PAGEID) {
-    size_t len = sizeofLogEntry(stasis_log_file, e);
-    multiE = malloc(len);
-    memcpy(multiE, e, len);
-  } else {
-    stasis_operation_do(e, p);
-  }
+
+  // Note: The page update is not performed atomically with the
+  // assignment of the log entry's LSN.  Therefore, it is possible
+  // that log entries will be reordered as they are applied to the
+  // buffer manager.
+
+  // If p is non-null, then we hold a write latch on it.  Therefore,
+  // we will never reorder updates to the same page.  (This
+  // restriction may be lifed in the future, but would require
+  // additional latching logic in lower layers.)
+
+  // If p is null, then either:
+
+  //  (a) the operation is a MULTI_PAGEID operation over a set of
+  //      pages with headers.  Invoking such operations in race is unsafe
+  //      by design, so higher level code (such as the allocator) must be
+  //      holding an implict latch.
+
+  //  (b) or, the operation is against segments.  Segment redo is
+  //      based on blind writes, and the assumption that racy writes
+  //      are commutative.
+
+  // This covers all of the cases that can come up in the current
+  // design, so allowing more log entries to be generated before we
+  // call do() will not lead to illegal orderings of page updates.
+
+  stasis_operation_do(e, p);
+
+  // The next issue that comes up is that, because the log write and
+  // page update are not atomic, it is possible that this thread will
+  // be delayed, and the dirty page table will not hear about this log
+  // entry for a long time.  If this happens, truncation could
+  // truncate the log past the point that we are at -- after all, it
+  // has no way of knowing about this update.  To get around this
+  // problem, the underyling log implementation tracks the LSN's of
+  // any log entries that have not yet been applied to the buffer
+  // manager.  The following call tells the log that it may forget
+  // about this entry (and that it may free the memory that contains
+  // the entry).
+
   stasis_log_file->write_entry_done(stasis_log_file, e);
 
-  if(page == MULTI_PAGEID) {
-    // Note: This is not atomic with the log entry.  MULTI operations are a special case of segments.
-    // We assume that any concurrent updates to the backing pages commute with this operation.
-    // For this to be true, either:
-    // (a) the pages must not have LSNs in their headers, or
-    // (b) we must have an implicit latch (which should be the case for allocation requests).
-    stasis_operation_do(multiE, 0);
-    free(multiE);
-  }
+  // The entry has been applied.  We can now safely unlatch the page.
 
   if(p) unlock(p->rwlatch);
 }

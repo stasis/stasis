@@ -23,6 +23,9 @@ typedef struct {
 	stasis_truncation_t *trunc;
 } stasis_log_impl_in_memory;
 
+static lsn_t stasis_log_impl_in_memory_first_pending_lsn(stasis_log_t * log) {
+  return INVALID_LSN; // we're running with recovery disabled, so don't bother
+}
 static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
   stasis_log_impl_in_memory * impl = log->impl;
   writelock(impl->flushedLSN_lock,0);
@@ -210,6 +213,7 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
     stasis_log_impl_in_memory_read_entry_done,
     stasis_log_impl_in_memory_next_entry,
     stasis_log_impl_in_memory_first_unstable_lsn,
+    stasis_log_impl_in_memory_first_pending_lsn,
     stasis_log_impl_in_memory_next_available_lsn,
     stasis_log_impl_in_memory_force_tail,
     stasis_log_impl_in_memory_truncate,

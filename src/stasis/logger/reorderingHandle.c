@@ -17,7 +17,7 @@ static void* stasis_log_reordering_handle_worker(void * a) {
 	LogEntry * e = stasis_log_write_update(h->log,
                                  h->l,
                                  h->queue[h->cur_off].p->id,
-                                 h->queue[h->cur_off].op,
+                                 0, h->queue[h->cur_off].op,
                                  h->queue[h->cur_off].arg,
                                  h->queue[h->cur_off].arg_size);
         assert(e->xid != INVALID_XID);
@@ -35,6 +35,7 @@ static void* stasis_log_reordering_handle_worker(void * a) {
 
         if(p) {
 	  writelock(p->rwlatch,0);
+          // XXX truncation bug; dirty page table's reclsn may have been increased past this lsn in race with the log entry allocation.
           stasis_page_lsn_write(e->xid, p, lsn);
           unlock(p->rwlatch);
           releasePage(p);

@@ -482,7 +482,7 @@ void reopenLogWorkload(int truncating) {
   for(int i = 0; i < ENTRY_COUNT; i++) {
 
     entries[i] = stasis_log_write_update(stasis_log_file,
-                           &l, 0, OPERATION_NOOP, NULL, 0);
+                                         &l, 0, 0, OPERATION_NOOP, NULL, 0);
 
     LogEntry * e = dupLogEntry(stasis_log_file, entries[i]);
     stasis_log_file->write_entry_done(stasis_log_file, entries[i]);
@@ -534,7 +534,7 @@ void reopenLogWorkload(int truncating) {
 
   LogEntry * entries2[ENTRY_COUNT];
   for(int i = 0; i < ENTRY_COUNT; i++) {
-    entries2[i] = stasis_log_write_update(stasis_log_file, &l, 0, OPERATION_NOOP,
+    entries2[i] = stasis_log_write_update(stasis_log_file, &l, 0, 0, OPERATION_NOOP,
                             NULL, 0);
     LogEntry * e = dupLogEntry(stasis_log_file, entries2[i]);
     stasis_log_file->write_entry_done(stasis_log_file, entries2[i]);

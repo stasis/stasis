@@ -52,6 +52,7 @@ terms specified in this license.
 #define __LOGGER2_H__
 
 #include <stasis/common.h>
+BEGIN_C_DECLS
 
 typedef struct stasis_log_t stasis_log_t;
 
@@ -178,6 +179,13 @@ struct stasis_log_t {
   */
   lsn_t (*first_unstable_lsn)(struct stasis_log_t* log,
                               stasis_log_force_mode_t mode);
+  /**
+     Return the LSN of the earliest log entry for which a call to
+     write_entry_done() is pending.  Such entries must be explicitly
+     taken into account by log truncation and other code that flushes
+     the contents of the buffer manager up to some point in time.
+  */
+  lsn_t (*first_pending_lsn)(struct stasis_log_t* log);
   /**
      Return the LSN that will be assigned to the next entry written to this log.
 
@@ -315,14 +323,35 @@ lsn_t stasis_log_abort_transaction(stasis_log_t* log, stasis_transaction_table_t
 lsn_t stasis_log_end_aborted_transaction (stasis_log_t* log, stasis_transaction_table_t *tbl, stasis_transaction_table_entry_t * l);
 
 /**
-   stasis_log_write_update writes an UPDATELOG log record to the log tail.  It
-   also interprets its operation argument to the extent necessary for
-   allocating and laying out the log entry.  Finally, it updates the
-   state of the parameter l.
+   Write an UPDATELOG log record to the log tail.
+
+   This method interprets its operation argument to the extent
+   necessary for allocating and laying out the log entry, updates l
+   (the stasis_transaction_table_entry_t), and returns after calling
+   log->write_entry() but before calling log->write_entry_done().
+
+   Finally, this method atomically updates the page LSN of its
+   argument p by calling stasis_page_lsn_write().  In the current
+   implementation, this has to happen atomically because we have no
+   way of tracking the set of log entries that are "in flight" between
+   the log and the buffer pool.  Therefore, it is possible that some
+   thread would get an LSN for one of its log entries, and be delayed
+   arbitrarily long while other threads get LSNs and write to the log.
+   At this point, log truncation (or other code) could use the dirty
+   page table to flush the buffer manager to one of the later LSNs,
+   and neglect to write back the page that the delayed thread is about
+   to dirty.  Atomically updating page LSNs is expensive and
+   troublesome; it is subject to change, and should not be relied
+   upon.
+
+   @return A log entry that is memory-managed by the underlying log
+   implementation.  Callers must explicitly invoke
+   log->write_done(log, e) with this entry once an in-memory pointer
+   to the entry is no longer needed.
 */
 LogEntry * stasis_log_write_update(stasis_log_t* log,
-                     stasis_transaction_table_entry_t * l, pageid_t page, unsigned int operation,
-                     const byte * arg, size_t arg_size);
+                                   stasis_transaction_table_entry_t * l, pageid_t page, Page* p, unsigned int operation,
+                                   const byte * arg, size_t arg_size);
 
 /**
    Write a compensation log record.  These records are used to allow
@@ -340,4 +369,6 @@ lsn_t stasis_log_write_dummy_clr(stasis_log_t* log, int xid, lsn_t prev_lsn);
 void * stasis_log_begin_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, unsigned int op,
                                 const byte * arg, size_t arg_size);
 lsn_t stasis_log_end_nta(stasis_log_t* log, stasis_transaction_table_entry_t * l, LogEntry * e);
+
+END_C_DECLS
 #endif

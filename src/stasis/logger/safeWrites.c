@@ -47,6 +47,7 @@ terms specified in this license.
 
 #include <stasis/latches.h>
 #include <stasis/crc32.h>
+#include <stasis/util/min.h>
 
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/logWriterUtils.h>
@@ -101,6 +102,12 @@ typedef struct {
      The global offset for the current version of the log file.
   */
   lsn_t global_offset;
+  /**
+     A running min aggregate over the LSNs of log entries that are in
+     the process of being applied to the buffer pool.
+  */
+  stasis_aggregate_min_t * minPending;
+
   /**
      Invariant:  Hold while in truncateLog()
   */
@@ -252,6 +259,9 @@ static lsn_t log_crc_entry(stasis_log_t *log) {
   lsn_t ret = e->LSN;
   writeLogEntryUnlocked(log, e, 1); // 1-> reset crc.
   pthread_mutex_unlock(&sw->write_mutex);
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  stasis_aggregate_min_remove(sw->minPending, &e->LSN);
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
   free(e);
   return ret;
 }
@@ -374,9 +384,9 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) 
 
 static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
   stasis_log_safe_writes_state* sw = log->impl;
-  // Make sure that our caller holds write_mutex.
-  assert(pthread_mutex_trylock(&sw->write_mutex));
-  return 0;
+  int ret = writeLogEntryUnlocked(log, e, 0);
+  pthread_mutex_unlock(&sw->write_mutex);
+  return ret;
 }
 
 LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
@@ -388,6 +398,7 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
   /* Set the log entry's LSN. */
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   e->LSN = sw->nextAvailableLSN;
+  stasis_aggregate_min_add(sw->minPending, &(e->LSN));
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
 
   return e;
@@ -395,11 +406,11 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
 
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
   stasis_log_safe_writes_state* sw = log->impl;
-  int ret = writeLogEntryUnlocked(log, e, 0);
-
-  pthread_mutex_unlock(&sw->write_mutex);
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  stasis_aggregate_min_remove(sw->minPending, &e->LSN);
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
   free(e);
-  return ret;
+  return 0;
 }
 
 static lsn_t sizeofInternalLogEntry_LogWriter(stasis_log_t * log,
@@ -485,6 +496,15 @@ static lsn_t flushedLSN_LogWriter(stasis_log_t* log,
   readunlock(sw->flushedLSN_latch);
   return ret;
 }
+static lsn_t firstPendingLSN_LogWriter(stasis_log_t* log) {
+  stasis_log_safe_writes_state* sw = log->impl;
+  pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
+  lsn_t * retp = (lsn_t*)stasis_aggregate_min_compute(sw->minPending);
+  lsn_t ret = retp ? *retp : sw->nextAvailableLSN;
+  pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
+  return ret;
+}
+
 static lsn_t flushedLSNInternal(stasis_log_safe_writes_state* sw) {
   readlock(sw->flushedLSN_latch, 0);
   lsn_t ret = sw->flushedLSN_internal;
@@ -798,7 +818,12 @@ static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
 static void setTruncation_LogWriter(stasis_log_t* log, stasis_truncation_t *trunc) {
   // logwriter does not support hard limits on its size, so this is a no-op
 }
+static int lsn_cmp(const void *ap, const void *bp, const void * ignored) {
+  lsn_t a = *(lsn_t*)ap;
+  lsn_t b = *(lsn_t*)bp;
 
+  return (a < b) ? -1 : ((a == b) ? 0 : 1);
+}
 stasis_log_t* stasis_log_safe_writes_open(const char * filename,
                                           int filemode, int fileperm, int softcommit) {
 
@@ -812,6 +837,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     readEntryDone_LogWriter, // read_entry
     nextEntry_LogWriter,// next_entry
     flushedLSN_LogWriter, // first_unstable_lsn
+    firstPendingLSN_LogWriter, // first_pending_lsn
     nextAvailableLSN_LogWriter, // newt_available_lsn
     syncLog_LogWriter, // force_tail
     truncateLog_LogWriter, // truncate
@@ -884,6 +910,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   sw->flushedLSN_wal = 0;
   sw->flushedLSN_commit = 0;
   sw->flushedLSN_internal = 0;
+  sw->minPending = stasis_aggregate_min_init(lsn_cmp);
   /*
     Seek append only log to the end of the file.  This is unnecessary,
     since the file was opened in append only mode, but it returns the
