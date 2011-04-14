@@ -63,6 +63,10 @@ terms specified in this license.
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
 #endif
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+
 #include <stdint.h> // uint32, et. al.  (has to be before sys/types.h for mcpp atop some broken gcc headers)
 #include <fcntl.h>
 #include <sys/types.h> // for size_t

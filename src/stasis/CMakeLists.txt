@@ -48,7 +48,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c tsearchcompat.c lhtable.c concurrentHash.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
                    replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c
-                   util/log2.c util/histogram.c util/hashFunctions.c
+                   util/log2.c util/histogram.c util/hashFunctions.c util/min.c util/ringbuffer.c
                    util/multiset.c util/slab.c
                    stlredblack.cpp util/stlslab.cpp)
 
