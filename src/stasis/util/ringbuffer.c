@@ -47,14 +47,6 @@ struct stasis_ringbuffer_t {
   pthread_cond_t write_done;
 };
 
-static int cmp_int64_t(const void *ap, const void *bp, const void *ign) {
-  int64_t a = *(int64_t*)ap;
-  int64_t b = *(int64_t*)bp;
-
-  return (a < b) ? -1 :
-         (a > b) ?  1 : 0;
-}
-
 // Does not need synchronization (only called from nb function).
 static inline int64_t freespace(stasis_ringbuffer_t * ring) {
   int64_t ret =  ((ring->rt - ring->wf) - 1) & ring->mask;
@@ -235,8 +227,8 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
 
   ring->rt = ring->rf = ring->wt = ring->wf = 0;
 
-  ring->min_reader = stasis_aggregate_min_init(cmp_int64_t);
-  ring->min_writer = stasis_aggregate_min_init(cmp_int64_t);
+  ring->min_reader = stasis_aggregate_min_init(0);
+  ring->min_writer = stasis_aggregate_min_init(0);
 
   pthread_mutex_init(&ring->mut,0);
   pthread_cond_init(&ring->read_done,0);

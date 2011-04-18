@@ -818,12 +818,6 @@ static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
 static void setTruncation_LogWriter(stasis_log_t* log, stasis_truncation_t *trunc) {
   // logwriter does not support hard limits on its size, so this is a no-op
 }
-static int lsn_cmp(const void *ap, const void *bp, const void * ignored) {
-  lsn_t a = *(lsn_t*)ap;
-  lsn_t b = *(lsn_t*)bp;
-
-  return (a < b) ? -1 : ((a == b) ? 0 : 1);
-}
 stasis_log_t* stasis_log_safe_writes_open(const char * filename,
                                           int filemode, int fileperm, int softcommit) {
 
@@ -910,7 +904,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   sw->flushedLSN_wal = 0;
   sw->flushedLSN_commit = 0;
   sw->flushedLSN_internal = 0;
-  sw->minPending = stasis_aggregate_min_init(lsn_cmp);
+  sw->minPending = stasis_aggregate_min_init(0);
   /*
     Seek append only log to the end of the file.  This is unnecessary,
     since the file was opened in append only mode, but it returns the
