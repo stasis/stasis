@@ -85,7 +85,7 @@ static void * consumerWorker(void * arg) {
   while(cursor < PROD_CONS_SIZE) {
     int64_t rnd_size = myrandom(2048);
     if(rnd_size + cursor > PROD_CONS_SIZE) { rnd_size = PROD_CONS_SIZE - cursor; }
-    byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, RING_NEXT, &rnd_size);
+    byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, RING_NEXT, rnd_size);
     for(uint64_t i = 0; i < rnd_size; i++) {
   //    printf("R[%lld] (addr=%lld) val = %d (%d)\n", cursor+i, (long long)(rd_buf)+i, rd_buf[i], (cursor+i)%250);
       assert(rd_buf[i] == ((cursor + i)%250));
@@ -142,7 +142,7 @@ static void * concurrentReader(void * argp) {
     if(rnd_size + cursor > BYTES_PER_THREAD) { rnd_size = BYTES_PER_THREAD - cursor; }
     stasis_ringbuffer_consume_bytes(ring, &rnd_size, &rd_handle);
 
-    byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, rd_handle, &rnd_size);
+    byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, rd_handle, rnd_size);
 
     for(uint64_t i = 0; i < rnd_size; i++) {
   //    printf("R[%lld] (addr=%lld) val = %d (%d)\n", cursor+i, (long long)(rd_buf)+i, rd_buf[i], (cursor+i)%250);

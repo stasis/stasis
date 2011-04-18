@@ -45,6 +45,13 @@ struct stasis_ringbuffer_t {
   pthread_mutex_t mut;
   pthread_cond_t read_done;
   pthread_cond_t write_done;
+
+  // If non-zero, all read requests act as though size is
+  // RING_NEXT until the read frontier is greater than flush.
+  uint64_t flush;
+  // Once this is non-zero, no read will ever block.  Attempts to
+  // write data after shutdown is set will have undefined semantics.
+  int shutdown;
 };
 
 // Does not need synchronization (only called from nb function).
@@ -104,8 +111,24 @@ int64_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, int64_t o
 int64_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, int64_t* sz, int64_t * handle) {
   pthread_mutex_lock(&ring->mut);
   int64_t ret;
+  int64_t orig_sz = *sz;
+
+  *sz = (ring->flush > ring->rf) ? RING_NEXT : orig_sz;
+  if(ring->shutdown) {
+    if(ring->rt == ring->wf) {
+      fprintf(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");
+      pthread_cond_signal(&ring->read_done);
+      pthread_mutex_unlock(&ring->mut);
+      return RING_CLOSED;
+    } else {
+      *sz = RING_NEXT;
+    }
+  }
+
   while(RING_VOLATILE == (ret = stasis_ringbuffer_nb_consume_bytes(ring, RING_NEXT, sz))) {
     pthread_cond_wait(&ring->write_done, &ring->mut);
+    *sz = (ring->flush > ring->rf) ? RING_NEXT : orig_sz;
+    if(ring->shutdown) { *sz = RING_NEXT; }
   }
   if(handle) {
     *handle = ret;
@@ -117,15 +140,16 @@ int64_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, int64_t* sz,
 // Not threadsafe.
 const void * stasis_ringbuffer_nb_get_rd_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t sz) {
   int64_t off2 = stasis_ringbuffer_nb_consume_bytes(ring, off, &sz);
-  if(off2 != off) { if(off != RING_NEXT || (off2 < 0 && off2 > RING_MINERR)) { return (const void*) off2; } }
+  if(off2 != off) { if(off != RING_NEXT || (off2 < 0 && off2 > RING_MINERR)) { return (const void*) (intptr_t)off2; } }
   assert(! (off2 < 0 && off2 >= RING_MINERR));
   return ptr_off(ring, off2);
 }
 // Explicit synchronization (blocks).
-const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t* sz) {
+const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t sz) {
   pthread_mutex_lock(&ring->mut);
   const void * ret;
-  while(((const void*)RING_VOLATILE) == (ret = stasis_ringbuffer_nb_get_rd_buf(ring, off, *sz))) {
+  assert(sz != RING_NEXT);
+  while(((const void*)RING_VOLATILE) == (ret = stasis_ringbuffer_nb_get_rd_buf(ring, off, sz))) {
     pthread_cond_wait(&ring->write_done, &ring->mut);
   }
   pthread_mutex_unlock(&ring->mut);
@@ -140,7 +164,12 @@ void   stasis_ringbuffer_nb_advance_write_tail(stasis_ringbuffer_t * ring, int64
   ring->wt = off;
   assert(ring->wt <= ring->wf);
 }
-
+int64_t stasis_ringbuffer_current_write_tail(stasis_ringbuffer_t * ring) {
+  pthread_mutex_lock(&ring->mut);
+  int64_t ret = ring->wt;
+  pthread_mutex_unlock(&ring->mut);
+  return ret;
+}
 void stasis_ringbuffer_advance_write_tail(stasis_ringbuffer_t * ring, int64_t off) {
   pthread_mutex_lock(&ring->mut);
   stasis_ringbuffer_nb_advance_write_tail(ring, off);
@@ -225,7 +254,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
 
   // Done with the black magic.
 
-  ring->rt = ring->rf = ring->wt = ring->wf = 0;
+  ring->rt = ring->rf = ring->wt = ring->wf = initial_offset;
 
   ring->min_reader = stasis_aggregate_min_init(0);
   ring->min_writer = stasis_aggregate_min_init(0);
@@ -235,5 +264,25 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
   pthread_cond_init(&ring->write_done,0);
 
   return ring;
-
+}
+void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, int64_t off) {
+  pthread_mutex_lock(&ring->mut);
+  if(ring->flush < off) { ring->flush = off; }
+  while(ring->rt < off) {
+    pthread_cond_signal(&ring->write_done);
+    pthread_cond_wait(&ring->read_done, &ring->mut);
+  }
+  pthread_mutex_unlock(&ring->mut);
+}
+void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring) {
+  pthread_mutex_lock(&ring->mut);
+  ring->shutdown = 1;
+  while(ring->rt < ring->wf) {
+    fprintf(stderr, "%lld < %lld signaling readers for shutdown and sleeping\n", ring->rt, ring->wf);
+    pthread_cond_signal(&ring->write_done);
+    pthread_cond_wait(&ring->read_done,&ring->mut);
+    fprintf(stderr, "readers done\n");
+  }
+  pthread_mutex_unlock(&ring->mut);
+  // XXX free resources.
 }
