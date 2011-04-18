@@ -159,6 +159,15 @@ int stasis_log_file_permissions = (S_IRUSR | S_IWUSR | S_IRGRP|
                                    S_IWGRP | S_IROTH | S_IWOTH);
 #endif
 
+#ifdef STASIS_LOG_DIR_PERMISSSIONS
+int stasis_log_dir_permissions = STASIS_LOG_DIR_PERMISSIONS;
+
+#else
+int stasis_log_dir_permissions = (S_IRUSR | S_IWUSR | S_IXUSR |
+                                  S_IRGRP | S_IWGRP | S_IXGRP |
+                                  S_IROTH | S_IWOTH | S_IXOTH );
+#endif
+
 #ifdef STASIS_LOG_SOFTCOMMIT
 int stasis_log_softcommit = STASIS_LOG_SOFTCOMMIT;
 #else
@@ -171,10 +180,10 @@ const char* stasis_log_dir_name = STASIS_LOG_DIR;
 const char* stasis_log_dir_name = "stasis_log";
 #endif
 
-#ifdef STASIS_LOG_DIR_LSN_CHARS
-#error 2 ^ 64 is 20 chars in base ten, so there is no reason to redefine STASIS_LOG_DIR_LSN_CHARS
+#ifdef STASIS_LOG_FILE_POOL_LSN_CHARS
+#error 2 ^ 64 is 20 chars in base ten, so there is no reason to redefine STASIS_LOG_FILE_POOL_LSN_CHARS
 #endif //STASIS_LOG_DIR_LSN_CHARS
-const int stasis_log_dir_name_lsn_chars = 20;
+const int stasis_log_file_pool_lsn_chars = 20;
 
 #ifdef STASIS_LOG_FILE_WRITE_BUFFER_SIZE
 lsn_t stasis_log_file_write_buffer_size = STASIS_LOG_FILE_WRITE_BUFFER_SIZE;

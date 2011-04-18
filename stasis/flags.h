@@ -143,6 +143,7 @@ extern size_t stasis_log_in_memory_max_entries;
 extern char * stasis_log_file_name;
 extern int    stasis_log_file_mode;
 extern int    stasis_log_file_permissions;
+extern int    stasis_log_dir_permissions;
 extern int    stasis_log_softcommit;
 
 extern char * stasis_store_file_name;
@@ -170,7 +171,7 @@ extern lsn_t stasis_log_file_pool_chunk_min_size;
 /**
    Number of characters in log file names devoted to storing the LSN.
  */
-extern const int    stasis_log_dir_name_lsn_chars;
+extern const int    stasis_log_file_pool_lsn_chars;
 /**
    Number of bytes that stasis' log may buffer before writeback.
  */
