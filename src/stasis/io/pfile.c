@@ -75,7 +75,6 @@ static int pfile_num_copies_buffer(stasis_handle_t *h) { return 0; }
 
 static int pfile_close(stasis_handle_t *h) {
   pfile_impl *impl = (pfile_impl*)h->impl;
-  DEBUG("Closing pfile: end = %lld\n", impl->end_pos);
   int fd = impl->fd;
   free((void*)impl->filename);
   free(impl);
@@ -367,7 +366,7 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   TICK(force_range_hist);
   pfile_impl * impl = h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
-  if(!stop) stop = impl->end_pos;
+  // stop of zero syncs to eof.
   DEBUG("pfile_force_range calling sync_file_range %lld %lld\n",
 	 start-impl->start_pos, stop-start); fflush(stdout);
   int ret = sync_file_range(impl->fd, start-impl->start_pos, stop-start,
