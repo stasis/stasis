@@ -32,6 +32,12 @@ static inline struct timespec stasis_double_to_timespec(double a) {
   ts.tv_nsec = (long int)((a - (double)ts.tv_sec) * 1000000000.0);
   return ts;
 }
+static inline struct timeval stasis_double_to_timeval(double a) {
+  struct timeval ts;
+  ts.tv_sec = (time_t)a;
+  ts.tv_usec = (long int)((a - (double)ts.tv_sec) * 1000000.0);
+  return ts;
+}
 static inline uint8_t stasis_log_2_timeval(const struct timeval a) {
   return stasis_log_2_64((a.tv_sec * 1000000 + a.tv_usec));
 }
