@@ -18,6 +18,7 @@
 #include <stasis/logger/logger2.h>
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
+#include <stasis/logger/filePool.h>
 
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
@@ -54,7 +55,11 @@ void * stasis_runtime_alloc_state() {
 
 stasis_log_t* stasis_log_default_factory() {
   stasis_log_t *log_file = 0;
-  if(LOG_TO_FILE == stasis_log_type) {
+  if(LOG_TO_DIR  == stasis_log_type) {
+    log_file = stasis_log_file_pool_open(stasis_log_dir_name,
+                                         stasis_log_file_mode,
+                                         stasis_log_file_permissions);
+  } else if(LOG_TO_FILE == stasis_log_type) {
     log_file = stasis_log_safe_writes_open(stasis_log_file_name,
                                            stasis_log_file_mode,
                                            stasis_log_file_permissions,

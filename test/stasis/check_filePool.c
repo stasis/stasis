@@ -65,15 +65,17 @@ START_TEST(filePoolDirTest){
       stasis_log_file_mode,
       stasis_log_file_permissions);
 
-  const int log_len = 950;
+  const int rec_len = 950;
+  int rec_count = 100;
 
   lsn_t last_lsn = -1;
-  for(int i = 0; i < 100 * log_len; i++) {
-    LogEntry * e = log->reserve_entry(log, log_len);
+  for(int i = 0; i < rec_count * rec_len; i++) {
+    LogEntry * e = log->reserve_entry(log, rec_len);
     e->type = UPDATELOG;
-    e->update.arg_size = log_len- sizeof(struct __raw_log_entry) - sizeof(UpdateLogEntry);
+    e->update.arg_size = rec_len- sizeof(struct __raw_log_entry) - sizeof(UpdateLogEntry);
     last_lsn = e->LSN;
     log->write_entry_done(log, e);
+    if(!(i & 15)) { log->force_tail(log, 0); } // xxx
   }
 
   log->close(log);
@@ -86,13 +88,40 @@ START_TEST(filePoolDirTest){
 
   lsn_t eol = log->next_available_lsn(log);
 
-  assert(eol == last_lsn + log_len + 2 * sizeof(uint32_t));;
+  assert(eol == last_lsn + rec_len + 2 * sizeof(uint32_t));
 
-  lsn_t last_l = INVALID_LSN, l = 1;
+  lsn_t last_l = INVALID_LSN, l = log->truncation_point(log);
   const LogEntry * e;
-  while((e = log->read_entry(log, l))) { last_l = e->LSN; l = log->next_entry(log, e); log->read_entry_done(log, e); }
+  lsn_t truncated = 0;
+  int i = 0;
 
+  while((e = log->read_entry(log, l))) {
+    last_l = e->LSN;
+    l = log->next_entry(log, e);
+    i++;
+    if(!truncated && i > (rec_count * rec_len * 9) / 10) {
+      truncated = e->LSN;
+      printf("truncating to %lld\n", (long long)truncated);
+      log->truncate(log, truncated);
+      assert(log->truncation_point(log) > 0 && log->truncation_point(log) <= truncated);
+      i = 1;
+    }
+    log->read_entry_done(log, e);
+  }
   assert(last_l == last_lsn);
+
+  int j = 0;
+  last_l = INVALID_LSN;
+  l = truncated;
+  while((e = log->read_entry(log, l))) {
+    last_l = e->LSN;
+    l = log->next_entry(log, e);
+    j++;
+    log->read_entry_done(log, e);
+  }
+  assert(i == j);
+  assert(last_l == last_lsn);
+
   log->close(log);
 } END_TEST
 

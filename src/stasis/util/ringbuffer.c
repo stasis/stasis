@@ -188,6 +188,24 @@ void stasis_ringbuffer_write_done(stasis_ringbuffer_t * ring, int64_t * off) {
   pthread_mutex_unlock(&ring->mut);
 
 }
+int64_t stasis_ringbuffer_get_read_tail(stasis_ringbuffer_t * ring) {
+  pthread_mutex_lock(&ring->mut);
+  int64_t ret = ring->rt;
+  pthread_mutex_unlock(&ring->mut);
+  return ret;
+}
+int64_t stasis_ringbuffer_get_write_tail(stasis_ringbuffer_t * ring) {
+  pthread_mutex_lock(&ring->mut);
+  int64_t ret = ring->wt;
+  pthread_mutex_unlock(&ring->mut);
+  return ret;
+}
+int64_t stasis_ringbuffer_get_write_frontier(stasis_ringbuffer_t * ring) {
+  pthread_mutex_lock(&ring->mut);
+  int64_t ret = ring->wf;
+  pthread_mutex_unlock(&ring->mut);
+  return ret;
+}
 void   stasis_ringbuffer_nb_advance_read_tail(stasis_ringbuffer_t * ring, int64_t off) {
   assert(off >= ring->rt);
   assert(off <= ring->rf);
@@ -258,6 +276,8 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
 
   ring->min_reader = stasis_aggregate_min_init(0);
   ring->min_writer = stasis_aggregate_min_init(0);
+  ring->flush = 0;
+  ring->shutdown = 0;
 
   pthread_mutex_init(&ring->mut,0);
   pthread_cond_init(&ring->read_done,0);
@@ -270,19 +290,22 @@ void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, int64_t off) {
   if(ring->flush < off) { ring->flush = off; }
   while(ring->rt < off) {
     pthread_cond_signal(&ring->write_done);
+    DEBUG("sleeping for flush rt = %lld off = %lld\n", ring->rt, off);
     pthread_cond_wait(&ring->read_done, &ring->mut);
   }
+  DEBUG("flushed rt = %lld off = %lld\n", ring->rt, off);
   pthread_mutex_unlock(&ring->mut);
 }
 void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
   ring->shutdown = 1;
-  while(ring->rt < ring->wf) {
+  do {
     fprintf(stderr, "%lld < %lld signaling readers for shutdown and sleeping\n", ring->rt, ring->wf);
     pthread_cond_signal(&ring->write_done);
     pthread_cond_wait(&ring->read_done,&ring->mut);
     fprintf(stderr, "readers done\n");
-  }
+  } while (ring->rt < ring->wf);
+
   pthread_mutex_unlock(&ring->mut);
   // XXX free resources.
 }

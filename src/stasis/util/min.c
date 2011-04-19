@@ -46,7 +46,8 @@ void stasis_aggregate_min_deinit(stasis_aggregate_min_t * min) {
 }
 void stasis_aggregate_min_add(stasis_aggregate_min_t * min, int64_t * a) {
   if(min->tree) {
-    rbsearch(a, min->tree);
+    const void * ret = rbsearch(a, min->tree);
+    assert(ret == a);
   } else {
     if(min->memo) {
       if(*min->memo > *a) {
@@ -78,7 +79,9 @@ void stasis_aggregate_min_add(stasis_aggregate_min_t * min, int64_t * a) {
 }
 const int64_t * stasis_aggregate_min_remove(stasis_aggregate_min_t * min, int64_t * a) {
   if(min->tree) {
-    return rbdelete(a, min->tree);
+    const int64_t * ret = rbdelete(a, min->tree);
+    assert(ret == a);
+    return ret;
   } else {
     if(min->memo && *min->memo == *a) { min->memo = NULL; }
     int64_t * p = pthread_getspecific(min->key);
@@ -94,6 +97,7 @@ const int64_t * stasis_aggregate_min_remove(stasis_aggregate_min_t * min, int64_
     }
     for(int i = 0; i < min->num_entries; i++) {
       if(min->vals[i] && (*min->vals[i] == *a)) {
+	assert(min->vals[i] == a);
         int64_t * ret = min->vals[i];
         min->vals[i] = 0;
         return ret;

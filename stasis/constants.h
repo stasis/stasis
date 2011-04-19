@@ -75,6 +75,7 @@ terms specified in this license.
 
 #define LOG_TO_FILE   0
 #define LOG_TO_MEMORY 1
+#define LOG_TO_DIR    2
 
 #define VOLATILE   0
 #define PERSISTENT 1

@@ -5,6 +5,5 @@
 #include <stasis/logger/logger2.h>
 
 stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int fileperm);
-void stasis_log_file_pool_delete(const char* dirname);
 
 #endif

@@ -107,7 +107,7 @@ int stasis_truncation_automatic = 1;
 #ifdef STASIS_LOG_TYPE
 int stasis_log_type = STASIS_LOG_TYPE;
 #else
-int stasis_log_type = LOG_TO_FILE;
+int stasis_log_type = LOG_TO_DIR;
 #endif
 
 #ifdef STASIS_LOG_IN_MEMORY_MAX_ENTRIES
