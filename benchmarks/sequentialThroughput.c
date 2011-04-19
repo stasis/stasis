@@ -40,7 +40,7 @@ static inline long mb_to_page(long mb) {
   return (mb * 1024 * 1024) / PAGE_SIZE;
 }
 
-const char * usage = "./sequentialThroughput [--direct] [--mb mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
+const char * usage = "./sequentialThroughput [--direct] [--mb mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--log_file_pool|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
 
 int main(int argc, char ** argv) {
   int direct = 0;
@@ -58,6 +58,9 @@ int main(int argc, char ** argv) {
       log_mode = 1;
     } else if(!strcmp(argv[i], "--log_memory")) {
       stasis_log_type = LOG_TO_MEMORY;
+      log_mode = 1;
+    } else if(!strcmp(argv[i], "--log_file_pool")) {
+      stasis_log_type = LOG_TO_DIR;
       log_mode = 1;
     } else if(!strcmp(argv[i], "--deprecatedBM")) {
       stasis_buffer_manager_factory = stasis_buffer_manager_deprecated_factory;
@@ -108,6 +111,7 @@ int main(int argc, char ** argv) {
     for(long i = 0; i < page_count; i++) {
       LogEntry * e = allocUpdateLogEntry(l, prevLSN, -1, OPERATION_NOOP,
                                          0, PAGE_SIZE);
+      l->write_entry(l, e);
       l->write_entry_done(l, e);
     }
     free(arg);

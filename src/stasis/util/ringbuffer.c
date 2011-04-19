@@ -109,11 +109,20 @@ int64_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, int64_t o
   return off;
 }
 int64_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, int64_t* sz, int64_t * handle) {
+
   pthread_mutex_lock(&ring->mut);
   int64_t ret;
   int64_t orig_sz = *sz;
 
-  *sz = (ring->flush > ring->rf) ? RING_NEXT : orig_sz;
+  if(ring->flush > ring->rf) {
+    pthread_mutex_unlock(&ring->mut);
+    struct timespec tv;
+    tv.tv_sec = 0;
+    tv.tv_nsec = 100000;
+    nanosleep(&tv, 0);
+    pthread_mutex_lock(&ring->mut);
+    if(ring->flush > ring->rf) { *sz = RING_NEXT; }
+  }
   if(ring->shutdown) {
     if(ring->rt == ring->wf) {
       fprintf(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");

@@ -59,7 +59,7 @@ typedef struct {
   char softcommit;
 
   pthread_t write_thread;
-
+  pthread_t write_thread2;
   stasis_ringbuffer_t * ring;
   /** Need this because the min aggregate in the ringbuffer doesn't
    * want to malloc keys, but needs to maintain some sort of state
@@ -192,7 +192,7 @@ void stasis_log_file_pool_chunk_open(stasis_log_file_pool_state * fp, int chunk)
   strcat(full_name, "/");
   strcat(full_name, fp->live_filenames[chunk]);
 
-  fp->ro_fd[chunk] = open(full_name, fp->filemode | O_SYNC, fp->fileperm); /// XXX should not hard-code O_SYNC.
+  fp->ro_fd[chunk] = open(full_name, fp->filemode, fp->fileperm);
 }
 /**
  * Does no latching.  Relies on stability of fp->live_offsets and fp->live_count.
@@ -478,9 +478,12 @@ lsn_t stasis_log_file_pool_chunk_scrub_to_eof(stasis_log_t * log, int fd, lsn_t 
 int stasis_log_file_pool_close(stasis_log_t * log) {
   stasis_log_file_pool_state * fp = log->impl;
 
+  log->force_tail(log, 0); /// xxx use real constant for wal mode..
+
   stasis_ringbuffer_shutdown(fp->ring);
 
   pthread_join(fp->write_thread, 0);
+//  pthread_join(fp->write_thread2, 0);
 
   // XXX need to force log to disk here.
   for(int i = 0; i < fp->live_count; i++) {
@@ -507,7 +510,7 @@ void * stasis_log_file_pool_writeback_worker(void * arg) {
   int64_t handle;
   lsn_t off, next_chunk_off, chunk_len, remaining_len;
   while(1) {
-    lsn_t len = 4*1024*1024;
+    lsn_t len = 16*1024*1024;
     off = stasis_ringbuffer_consume_bytes(fp->ring, &len, &handle);
     if(off == RING_CLOSED) break;
     pthread_mutex_lock(&fp->mut);
@@ -658,9 +661,9 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
   fp->live_count = 0;
   fp->dead_count = 0;
 
-  fp->target_chunk_size = 16 * 1024 * 1024;
+  fp->target_chunk_size = 64 * 1024 * 1024;
 
-  fp->filemode = filemode;
+  fp->filemode = filemode | O_SYNC;  /// XXX should not hard-code O_SYNC.
   fp->fileperm = fileperm;
   fp->softcommit = !(filemode & O_SYNC);
 
@@ -722,10 +725,11 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
 
   // The previous segment must have been forced to disk before we created the current one, so we're good to go.
 
-  fp->ring = stasis_ringbuffer_init(24, next_lsn); // 16mb buffer
+  fp->ring = stasis_ringbuffer_init(26, next_lsn); // 64mb buffer
   pthread_key_create(&fp->handle_key, key_destr);
 
   pthread_create(&fp->write_thread, 0, stasis_log_file_pool_writeback_worker, ret);
+//  pthread_create(&fp->write_thread2, 0, stasis_log_file_pool_writeback_worker, ret);
 
   return ret;
 }
