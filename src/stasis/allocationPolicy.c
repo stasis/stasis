@@ -284,7 +284,7 @@ static int update_views_for_page(stasis_allocation_policy_t *ap, pageid_t pageid
   int ret = 0;
   int * allocXids;
   int * deallocXids;
-  size_t freespace;
+  size_t freespace = 0;
   int inAllPages = allPages_lookup_by_pageid(ap, pageid, &freespace);
   if(!inAllPages) {
     stasis_allocation_policy_register_new_page(ap, pageid, 0);
