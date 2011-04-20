@@ -58,10 +58,9 @@ START_TEST(minSmokeTest) {
   stasis_aggregate_min_t * small = stasis_aggregate_min_init(0);
   stasis_aggregate_min_t * large = stasis_aggregate_min_init(1);
 
-  int64_t i1 = 1;
-  int64_t i2 = 2;
-  int64_t i3 = 3;
-  int64_t i4 = 4;
+  lsn_t i1 = 1;
+  lsn_t i2 = 2;
+  lsn_t i3 = 3;
   stasis_aggregate_min_add(small, &i2);
   stasis_aggregate_min_add(large, &i2);
   assert(2 == * stasis_aggregate_min_compute(large));
@@ -115,8 +114,8 @@ START_TEST(minRandomTest) {
   stasis_aggregate_min_t * b = stasis_aggregate_min_init(0);
   const int COUNT = 10000;
 
-  int64_t * vals = malloc(sizeof(int64_t) * COUNT);
-  int64_t * bits = malloc(sizeof(int64_t) * COUNT);
+  lsn_t * vals = malloc(sizeof(lsn_t) * COUNT);
+  lsn_t * bits = malloc(sizeof(lsn_t) * COUNT);
   for(int i = 0; i < COUNT; i++) {
     vals[i] = i;
     bits[i] = 0;
@@ -160,8 +159,8 @@ START_TEST(minRandomTest) {
     } break;
     case 2:
     {
-      int64_t * ap = stasis_aggregate_min_compute(a);
-      int64_t * bp = stasis_aggregate_min_compute(b);
+      const lsn_t * ap = stasis_aggregate_min_compute(a);
+      const lsn_t * bp = stasis_aggregate_min_compute(b);
       assert(ap == bp);
     } break;
     }

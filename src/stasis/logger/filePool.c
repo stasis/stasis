@@ -247,8 +247,8 @@ int stasis_log_file_pool_append_chunk(stasis_log_t * log, off_t new_offset) {
 LogEntry * stasis_log_file_pool_reserve_entry(stasis_log_t * log, size_t szs) {
   uint32_t sz = szs;
   stasis_log_file_pool_state * fp = log->impl;
-  int64_t * handle = pthread_getspecific(fp->handle_key);
-  if(!handle) { handle = malloc(sizeof(int64_t)); pthread_setspecific(fp->handle_key, handle); }
+  lsn_t * handle = pthread_getspecific(fp->handle_key);
+  if(!handle) { handle = malloc(sizeof(*handle)); pthread_setspecific(fp->handle_key, handle); }
 
   uint64_t framed_size = sz+sizeof(uint32_t)+sizeof(uint32_t);
   lsn_t off  = stasis_ringbuffer_reserve_space(fp->ring, framed_size, handle);
@@ -507,7 +507,7 @@ void * stasis_log_file_pool_writeback_worker(void * arg) {
   stasis_log_t * log = arg;
   stasis_log_file_pool_state * fp = log->impl;
 
-  int64_t handle;
+  lsn_t handle;
   lsn_t off, next_chunk_off, chunk_len, remaining_len;
   while(1) {
     lsn_t len = 16*1024*1024;

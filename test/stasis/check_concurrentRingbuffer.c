@@ -59,11 +59,11 @@ terms specified in this license.
 START_TEST(ringBufferSmokeTest) {
   stasis_ringbuffer_t * ring = stasis_ringbuffer_init(12, 0);
   assert((void*)RING_VOLATILE == stasis_ringbuffer_nb_get_rd_buf(ring, 0, 1));
-  int64_t off = stasis_ringbuffer_nb_reserve_space(ring, 4*900);
+  lsn_t off = stasis_ringbuffer_nb_reserve_space(ring, 4*900);
   assert(off != RING_FULL && off != RING_TORN && off != RING_VOLATILE);
   void * buf = stasis_ringbuffer_get_wr_buf(ring, off, 4*900);
 
-  int64_t off2 = stasis_ringbuffer_nb_reserve_space(ring, 4*400);
+  lsn_t off2 = stasis_ringbuffer_nb_reserve_space(ring, 4*400);
   assert(off2 == RING_FULL);
 
   stasis_ringbuffer_advance_write_tail(ring, 4*300);
@@ -72,7 +72,7 @@ START_TEST(ringBufferSmokeTest) {
 
   stasis_ringbuffer_advance_read_tail(ring, 4*300);
 
-  int64_t off4 = stasis_ringbuffer_nb_reserve_space(ring, 4*400);
+  lsn_t off4 = stasis_ringbuffer_nb_reserve_space(ring, 4*400);
   assert(off4 != RING_FULL && off4 != RING_TORN && off4 != RING_VOLATILE);
 
   // XXX stasis_ringbuffer_deinit(ring);
@@ -81,12 +81,12 @@ START_TEST(ringBufferSmokeTest) {
 #define PROD_CONS_SIZE (100L * 1024L * 1024L)
 static void * consumerWorker(void * arg) {
   stasis_ringbuffer_t * ring = arg;
-  int64_t cursor = 0;
+  lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
-    int64_t rnd_size = myrandom(2048);
+    lsn_t rnd_size = myrandom(2048);
     if(rnd_size + cursor > PROD_CONS_SIZE) { rnd_size = PROD_CONS_SIZE - cursor; }
     byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, RING_NEXT, rnd_size);
-    for(uint64_t i = 0; i < rnd_size; i++) {
+    for(lsn_t i = 0; i < rnd_size; i++) {
   //    printf("R[%lld] (addr=%lld) val = %d (%d)\n", cursor+i, (long long)(rd_buf)+i, rd_buf[i], (cursor+i)%250);
       assert(rd_buf[i] == ((cursor + i)%250));
     }
@@ -97,14 +97,14 @@ static void * consumerWorker(void * arg) {
 }
 static void * producerWorker(void * arg) {
   stasis_ringbuffer_t * ring = arg;
-  int64_t cursor = 0;
+  lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
     int rnd_size = myrandom(2048);
     if(rnd_size + cursor > PROD_CONS_SIZE) { rnd_size = PROD_CONS_SIZE - cursor; }
-    int64_t wr_off = stasis_ringbuffer_reserve_space(ring, rnd_size, 0);
+    lsn_t wr_off = stasis_ringbuffer_reserve_space(ring, rnd_size, 0);
     assert(wr_off == cursor);
     byte * wr_buf = stasis_ringbuffer_get_wr_buf(ring, wr_off, rnd_size);
-    for(uint64_t i = 0; i < rnd_size; i++) {
+    for(lsn_t i = 0; i < rnd_size; i++) {
       wr_buf[i] = (cursor + i)%250;
 //      printf("W[%d] (addr=%lld) val = %d\n", cursor+i, (long long)(wr_buf)+i, wr_buf[i]);
     }
@@ -135,16 +135,16 @@ typedef struct {
 static void * concurrentReader(void * argp) {
   arg * a = argp;
   stasis_ringbuffer_t * ring = a->ring;
-  uint64_t cursor = 0;
-  int64_t rd_handle;
+  lsn_t cursor = 0;
+  lsn_t rd_handle;
   while(cursor < BYTES_PER_THREAD) {
-    int64_t rnd_size = 1+myrandom(2047/NUM_READERS);
+    lsn_t rnd_size = 1+myrandom(2047/NUM_READERS);
     if(rnd_size + cursor > BYTES_PER_THREAD) { rnd_size = BYTES_PER_THREAD - cursor; }
     stasis_ringbuffer_consume_bytes(ring, &rnd_size, &rd_handle);
 
     byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, rd_handle, rnd_size);
 
-    for(uint64_t i = 0; i < rnd_size; i++) {
+    for(lsn_t i = 0; i < rnd_size; i++) {
   //    printf("R[%lld] (addr=%lld) val = %d (%d)\n", cursor+i, (long long)(rd_buf)+i, rd_buf[i], (cursor+i)%250);
       assert(rd_buf[i] == ((rd_handle + i)%250));
     }
@@ -156,14 +156,14 @@ static void * concurrentReader(void * argp) {
 static void * concurrentWriter(void * argp) {
   arg * a = argp;
   stasis_ringbuffer_t * ring = a->ring;
-  uint64_t cursor = 0;
-  int64_t wr_handle;
+  lsn_t cursor = 0;
+  lsn_t wr_handle;
   while(cursor < BYTES_PER_THREAD) {
     int rnd_size = 1+myrandom(2047/NUM_WRITERS);
     if(rnd_size + cursor > BYTES_PER_THREAD) { rnd_size = BYTES_PER_THREAD- cursor; }
     stasis_ringbuffer_reserve_space(ring, rnd_size, &wr_handle);
     byte * wr_buf = stasis_ringbuffer_get_wr_buf(ring, wr_handle, rnd_size);
-    for(uint64_t i = 0; i < rnd_size; i++) {
+    for(lsn_t i = 0; i < rnd_size; i++) {
       wr_buf[i] = (wr_handle + i)%250;
 //      printf("W[%d] (addr=%lld) val = %d\n", cursor+i, (long long)(wr_buf)+i, wr_buf[i]);
     }

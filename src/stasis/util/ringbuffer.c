@@ -23,17 +23,17 @@
 
 struct stasis_ringbuffer_t {
   byte * mem;
-  int64_t mask;
+  lsn_t mask;
   // Track four regions:  write_frontier (wf), write_tail (wt), read_frontier (rf), read_tail (rt):
 
   // Logical buffer layout:
   // byte zero
   // ...
 
-  int64_t rt; // First byte that some thread might be reading.  Earlier bytes can be reclaimed.
-  int64_t rf; // First byte that will be returned by "read next".
-  int64_t wt; // First byte that some thread might be writing.  Earlier bytes are stable for readers.
-  int64_t wf; // First available byte
+  lsn_t rt; // First byte that some thread might be reading.  Earlier bytes can be reclaimed.
+  lsn_t rf; // First byte that will be returned by "read next".
+  lsn_t wt; // First byte that some thread might be writing.  Earlier bytes are stable for readers.
+  lsn_t wf; // First available byte
 
   // ...
   // byte 2^64
@@ -48,35 +48,35 @@ struct stasis_ringbuffer_t {
 
   // If non-zero, all read requests act as though size is
   // RING_NEXT until the read frontier is greater than flush.
-  uint64_t flush;
+  lsn_t flush;
   // Once this is non-zero, no read will ever block.  Attempts to
   // write data after shutdown is set will have undefined semantics.
   int shutdown;
 };
 
 // Does not need synchronization (only called from nb function).
-static inline int64_t freespace(stasis_ringbuffer_t * ring) {
-  int64_t ret =  ((ring->rt - ring->wf) - 1) & ring->mask;
+static inline lsn_t freespace(stasis_ringbuffer_t * ring) {
+  lsn_t ret =  ((ring->rt - ring->wf) - 1) & ring->mask;
 //  printf("freespace is %lld\n", (long long)ret);
   return ret;
 }
 
 // Does not need any synchronization (all fields are read only)
-static inline void* ptr_off(stasis_ringbuffer_t * ring, int64_t off) {
+static inline void* ptr_off(stasis_ringbuffer_t * ring, lsn_t off) {
   return ring->mem + (off & ring->mask);
 }
 
 // Not threadsafe.
-int64_t stasis_ringbuffer_nb_reserve_space(stasis_ringbuffer_t * ring, int64_t sz) {
+lsn_t stasis_ringbuffer_nb_reserve_space(stasis_ringbuffer_t * ring, lsn_t sz) {
   if(freespace(ring) < sz) { return RING_FULL; }
-  int64_t ret = ring->wf;
+  lsn_t ret = ring->wf;
   ring->wf += sz;
   return ret;
 }
 // Threadsafe (explicit synchronization).  Blocks.
-int64_t stasis_ringbuffer_reserve_space(stasis_ringbuffer_t * ring, int64_t sz, int64_t * handle) {
+lsn_t stasis_ringbuffer_reserve_space(stasis_ringbuffer_t * ring, lsn_t sz, lsn_t * handle) {
   pthread_mutex_lock(&ring->mut);
-  int64_t ret;
+  lsn_t ret;
   while(RING_FULL == (ret = stasis_ringbuffer_nb_reserve_space(ring, sz))) {
     pthread_cond_wait(&ring->read_done, &ring->mut);
   }
@@ -87,7 +87,7 @@ int64_t stasis_ringbuffer_reserve_space(stasis_ringbuffer_t * ring, int64_t sz, 
   pthread_mutex_unlock(&ring->mut);
   return ret;
 }
-int64_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, int64_t off, int64_t* sz) {
+lsn_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, lsn_t off, lsn_t* sz) {
   if(off == RING_NEXT) { off = ring->rf; }
   if(*sz == RING_NEXT)  { *sz  = ring->wt - off; }
 
@@ -108,11 +108,11 @@ int64_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, int64_t o
 
   return off;
 }
-int64_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, int64_t* sz, int64_t * handle) {
+lsn_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, lsn_t* sz, lsn_t * handle) {
 
   pthread_mutex_lock(&ring->mut);
-  int64_t ret;
-  int64_t orig_sz = *sz;
+  lsn_t ret;
+  lsn_t orig_sz = *sz;
 
   if(ring->flush > ring->rf) {
     pthread_mutex_unlock(&ring->mut);
@@ -147,14 +147,14 @@ int64_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, int64_t* sz,
   return ret;
 }
 // Not threadsafe.
-const void * stasis_ringbuffer_nb_get_rd_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t sz) {
-  int64_t off2 = stasis_ringbuffer_nb_consume_bytes(ring, off, &sz);
+const void * stasis_ringbuffer_nb_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
+  lsn_t off2 = stasis_ringbuffer_nb_consume_bytes(ring, off, &sz);
   if(off2 != off) { if(off != RING_NEXT || (off2 < 0 && off2 > RING_MINERR)) { return (const void*) (intptr_t)off2; } }
   assert(! (off2 < 0 && off2 >= RING_MINERR));
   return ptr_off(ring, off2);
 }
 // Explicit synchronization (blocks).
-const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t sz) {
+const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
   pthread_mutex_lock(&ring->mut);
   const void * ret;
   assert(sz != RING_NEXT);
@@ -165,31 +165,31 @@ const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, int64_t of
   return ret;
 }
 // No need for synchronization (only touches read-only-fields)
-void * stasis_ringbuffer_get_wr_buf(stasis_ringbuffer_t * ring, int64_t off, int64_t sz) {
+void * stasis_ringbuffer_get_wr_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
   return ptr_off(ring, off);
 }
-void   stasis_ringbuffer_nb_advance_write_tail(stasis_ringbuffer_t * ring, int64_t off) {
+void   stasis_ringbuffer_nb_advance_write_tail(stasis_ringbuffer_t * ring, lsn_t off) {
   assert(off >= ring->wt);
   ring->wt = off;
   assert(ring->wt <= ring->wf);
 }
-int64_t stasis_ringbuffer_current_write_tail(stasis_ringbuffer_t * ring) {
+lsn_t stasis_ringbuffer_current_write_tail(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
-  int64_t ret = ring->wt;
+  lsn_t ret = ring->wt;
   pthread_mutex_unlock(&ring->mut);
   return ret;
 }
-void stasis_ringbuffer_advance_write_tail(stasis_ringbuffer_t * ring, int64_t off) {
+void stasis_ringbuffer_advance_write_tail(stasis_ringbuffer_t * ring, lsn_t off) {
   pthread_mutex_lock(&ring->mut);
   stasis_ringbuffer_nb_advance_write_tail(ring, off);
   pthread_cond_broadcast(&ring->write_done);
   pthread_mutex_unlock(&ring->mut);
 }
-void stasis_ringbuffer_write_done(stasis_ringbuffer_t * ring, int64_t * off) {
+void stasis_ringbuffer_write_done(stasis_ringbuffer_t * ring, lsn_t * off) {
   pthread_mutex_lock(&ring->mut);
   stasis_aggregate_min_remove(ring->min_writer, off);
-  int64_t * new_wtp = (int64_t*)stasis_aggregate_min_compute(ring->min_writer);
-  int64_t new_wt = new_wtp ? *new_wtp : ring->wf;
+  lsn_t * new_wtp = (lsn_t*)stasis_aggregate_min_compute(ring->min_writer);
+  lsn_t new_wt = new_wtp ? *new_wtp : ring->wf;
   if(new_wt != ring->wt) {
     stasis_ringbuffer_nb_advance_write_tail(ring, new_wt);
     pthread_cond_broadcast(&ring->write_done);
@@ -197,40 +197,40 @@ void stasis_ringbuffer_write_done(stasis_ringbuffer_t * ring, int64_t * off) {
   pthread_mutex_unlock(&ring->mut);
 
 }
-int64_t stasis_ringbuffer_get_read_tail(stasis_ringbuffer_t * ring) {
+lsn_t stasis_ringbuffer_get_read_tail(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
-  int64_t ret = ring->rt;
+  lsn_t ret = ring->rt;
   pthread_mutex_unlock(&ring->mut);
   return ret;
 }
-int64_t stasis_ringbuffer_get_write_tail(stasis_ringbuffer_t * ring) {
+lsn_t stasis_ringbuffer_get_write_tail(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
-  int64_t ret = ring->wt;
+  lsn_t ret = ring->wt;
   pthread_mutex_unlock(&ring->mut);
   return ret;
 }
-int64_t stasis_ringbuffer_get_write_frontier(stasis_ringbuffer_t * ring) {
+lsn_t stasis_ringbuffer_get_write_frontier(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
-  int64_t ret = ring->wf;
+  lsn_t ret = ring->wf;
   pthread_mutex_unlock(&ring->mut);
   return ret;
 }
-void   stasis_ringbuffer_nb_advance_read_tail(stasis_ringbuffer_t * ring, int64_t off) {
+void   stasis_ringbuffer_nb_advance_read_tail(stasis_ringbuffer_t * ring, lsn_t off) {
   assert(off >= ring->rt);
   assert(off <= ring->rf);
   ring->rt = off;
 }
-void stasis_ringbuffer_advance_read_tail(stasis_ringbuffer_t * ring, int64_t off) {
+void stasis_ringbuffer_advance_read_tail(stasis_ringbuffer_t * ring, lsn_t off) {
   pthread_mutex_lock(&ring->mut);
   stasis_ringbuffer_nb_advance_read_tail(ring, off);
   pthread_cond_broadcast(&ring->read_done);
   pthread_mutex_unlock(&ring->mut);
 }
-void stasis_ringbuffer_read_done(stasis_ringbuffer_t * ring, int64_t * off) {
+void stasis_ringbuffer_read_done(stasis_ringbuffer_t * ring, lsn_t * off) {
   pthread_mutex_lock(&ring->mut);
   stasis_aggregate_min_remove(ring->min_reader, off);
-  int64_t * new_rtp = (int64_t*)stasis_aggregate_min_compute(ring->min_reader);
-  int64_t new_rt = new_rtp ? *new_rtp : ring->rf;
+  lsn_t * new_rtp = (lsn_t*)stasis_aggregate_min_compute(ring->min_reader);
+  lsn_t new_rt = new_rtp ? *new_rtp : ring->rf;
   if(new_rt != ring->rt) {
     stasis_ringbuffer_nb_advance_read_tail(ring, new_rt);
     pthread_cond_broadcast(&ring->read_done);
@@ -238,7 +238,7 @@ void stasis_ringbuffer_read_done(stasis_ringbuffer_t * ring, int64_t * off) {
   pthread_mutex_unlock(&ring->mut);
 }
 
-stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offset) {
+stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, lsn_t initial_offset) {
 
   if(base < 12) {
     fprintf(stderr, "can't allocate ringbuffer that is less than 4096 bytes.\n");
@@ -262,7 +262,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
   free(name);
 
   ring->mask = (1 << base) - 1;
-  int64_t size = ring->mask+1;
+  lsn_t size = ring->mask+1;
   err = ftruncate(fd, size);
 
   if(err == -1) { perror("Couldn't ftruncate file"); }
@@ -294,7 +294,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, int64_t initial_offs
 
   return ring;
 }
-void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, int64_t off) {
+void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, lsn_t off) {
   pthread_mutex_lock(&ring->mut);
   if(ring->flush < off) { ring->flush = off; }
   while(ring->rt < off) {
