@@ -380,16 +380,6 @@ START_TEST(io_fileTest) {
 
 } END_TEST
 
-static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
-  stasis_handle_t * h = stasis_handle(open_memory)(off);
-  //  h = stasis_handle(open_debug)(h);
-  stasis_write_buffer_t * w = h->append_buffer(h, len);
-  w->h->release_write_buffer(w);
-
-  return h;
-
-}
-
 START_TEST(io_pfileTest) {
   printf("io_pfileTest\n"); fflush(stdout);
   handle_truncate_is_supported = 0;
@@ -465,7 +455,16 @@ START_TEST(io_raid1pfileTest) {
 
   handle_truncate_is_supported = 1;
 } END_TEST
+  /*
+static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
+  stasis_handle_t * h = stasis_handle(open_memory)(off);
+  //  h = stasis_handle(open_debug)(h);
+  stasis_write_buffer_t * w = h->append_buffer(h, len);
+  w->h->release_write_buffer(w);
 
+  return h;
+
+}
 typedef struct sf_args {
   char * filename;
   int    openMode;
@@ -565,7 +564,7 @@ START_TEST(io_nonBlockingTest_pfile) {
   remove("logfile.txt");
 
 } END_TEST
-
+*/
 
 /**
   Add suite declarations here
