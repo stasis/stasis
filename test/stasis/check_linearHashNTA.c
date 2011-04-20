@@ -72,9 +72,9 @@ START_TEST(linearHashNTAabortTest) {
 
   int xid = Tbegin();
   recordid rid = ThashCreate(xid, -1, -1);
-  assert(0 == ThashInsert(xid, rid, "foo", 4, "bar", 4));
+  assert(0 == ThashInsert(xid, rid, (byte*)"foo", 4, (byte*)"bar", 4));
   char * ret;
-  int len = ThashLookup(xid, rid, "foo", 4, &ret);
+  int len = ThashLookup(xid, rid, (byte*)"foo", 4, (byte**)&ret);
   assert(len == 4);
   assert(!strcmp("bar", ret));
   free(ret);
@@ -82,36 +82,25 @@ START_TEST(linearHashNTAabortTest) {
 	 
   xid = Tbegin();
 
-  assert(1 == ThashInsert(xid, rid, "foo", 4, "baz", 4));
-  assert(0 == ThashInsert(xid, rid, "bar", 4, "bat", 4));
+  assert(1 == ThashInsert(xid, rid, (byte*)"foo", 4, (byte*)"baz", 4));
+  assert(0 == ThashInsert(xid, rid, (byte*)"bar", 4, (byte*)"bat", 4));
   
-  len = ThashLookup(xid, rid, "foo", 4, &ret);
+  len = ThashLookup(xid, rid, (byte*)"foo", 4, (byte**)&ret);
   assert(len == 4);
   assert(!strcmp("baz", ret));
   free(ret);
 
-  len = ThashLookup(xid, rid, "bar", 4, &ret);
+  len = ThashLookup(xid, rid, (byte*)"bar", 4, (byte**)&ret);
   assert(len == 4);
   assert(!strcmp("bat", ret));
   free(ret);
 
   Tabort(xid);
 
-  len = ThashLookup(xid, rid, "foo", 4, &ret);
+  len = ThashLookup(xid, rid, (byte*)"foo", 4, (byte**)&ret);
   assert(len == 4);
   assert(!strcmp("bar", ret));
   free(ret);
-
-  /*
-      assert_equal(nil,   Hash.lookup( -1, rid, "bar"))
-      assert_equal(0,     Tdeinit)
-      assert_equal(0,     Tinit)
-      assert_equal("bar", Hash.lookup( -1, rid, "foo"))
-      assert_equal(nil,   Hash.lookup( -1, rid, "bar"))
-      assert_equal(0,     Hash.insert(xid, rid, "bar", "bat"))
-      assert_equal("bat", Hash.lookup(xid,rid,"bar"))
-      assert_equal(0,     Raw.Tdeinit)
-  */
 
   Tdeinit();
 } END_TEST
