@@ -382,7 +382,7 @@ Suite * check_suite(void) {
   /* Sub tests are added, one per line, here */
   tcase_add_test(tc, stalePinTest);
   tcase_add_test(tc, prefetchTest);
-  // tcase_add_test(tc, stalePinTestDeprecatedBufferManager); // Fails; do not intend to fix.
+  //  tcase_add_test(tc, stalePinTestDeprecatedBufferManager); // Fails; do not intend to fix.
   tcase_add_test(tc, pageSingleThreadTest);
   tcase_add_test(tc, pageSingleThreadWriterTest);
 #else
@@ -394,7 +394,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, pageThreadedWritersTest);
   tcase_add_test(tc, pageBlindRandomTest);
   tcase_add_test(tc, stalePinTestConcurrentBufferManager);
-//  tcase_add_test(tc, pageBlindThreadTest);
+  tcase_add_test(tc, pageBlindThreadTest);
 #endif
   /* --------------------------------------------- */
 
