@@ -158,6 +158,7 @@ extern char * stasis_store_file_2_name;
 extern int stasis_buffer_manager_hash_prefetch_count;
 
 extern const char * stasis_log_dir_name;
+extern const char * stasis_log_chunk_name;
 /**
    Maximum number of log chunks that will be created by file pool.
    This number is treated as a hint.

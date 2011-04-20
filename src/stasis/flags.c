@@ -174,10 +174,16 @@ int stasis_log_softcommit = STASIS_LOG_SOFTCOMMIT;
 int stasis_log_softcommit = 0;
 #endif
 
-#ifdef STASIS_LOG_DIR
-const char* stasis_log_dir_name = STASIS_LOG_DIR;
+#ifdef STASIS_LOG_DIR_NAME
+const char* stasis_log_dir_name = STASIS_LOG_DIR_NAME;
 #else
 const char* stasis_log_dir_name = "stasis_log";
+#endif
+
+#ifdef STASIS_LOG_CHUNK_NAME
+const char* stasis_log_chunk_name = STASIS_LOG_CHUNK_NAME;
+#else
+const char* stasis_log_chunk_name = "log-chunk-";
 #endif
 
 #ifdef STASIS_LOG_FILE_POOL_LSN_CHARS

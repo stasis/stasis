@@ -92,8 +92,8 @@ enum file_type stasis_log_file_pool_file_type(const struct dirent* file, lsn_t *
      ||DT_UNKNOWN == file->d_type)) {
     return UNKNOWN;
   }
-  off_t base_len = strlen(stasis_log_dir_name);
-  if(strncmp(name, stasis_log_dir_name, base_len)) {
+  off_t base_len = strlen(stasis_log_chunk_name);
+  if(strncmp(name, stasis_log_chunk_name, base_len)) {
     return UNKNOWN;
   }
   name+=base_len;
@@ -127,13 +127,11 @@ int stasis_log_file_pool_file_filter(const struct dirent* file) {
  */
 char * stasis_log_file_pool_build_filename(stasis_log_file_pool_state * fp,
 					lsn_t start_lsn) {
-  int name_len = strlen(stasis_log_dir_name);
+  int name_len = strlen(stasis_log_chunk_name);
   char * first = malloc(name_len + stasis_log_file_pool_lsn_chars + 1);
-  strcpy(first, stasis_log_dir_name);
+  strcpy(first, stasis_log_chunk_name);
   sprintf(first+name_len, "%020lld", start_lsn);
   printf("Name is %s\n", first);
-  char * full_name = malloc(strlen(fp->dirname) + 1 + strlen(first) + 1);
-  full_name[0] = 0;
   return first;
 }
 
