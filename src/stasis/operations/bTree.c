@@ -178,7 +178,7 @@ int TbtreeInsert(int xid, recordid rid, void *cmp_arg, byte *key, size_t keySize
   recordid newrid = stasis_record_alloc_begin(xid, p, sz);
   if(newrid.size != sz) {
     // split leaf into two halves (based on slot count)
-    pageid_t leftpage = p->id;
+    //pageid_t leftpage = p->id;
     pageid_t rightpage = TpageAlloc(xid);
     TinitializeSlottedPage(xid, rightpage);
     Page * rightp = loadPage(xid, rightpage);
