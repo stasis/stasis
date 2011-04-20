@@ -258,8 +258,6 @@ static stasis_write_buffer_t *pfile_append_buffer(stasis_handle_t *h,
   stasis_write_buffer_t *ret = malloc(sizeof(stasis_write_buffer_t));
   if (!ret) { return NULL; }
 
-  pfile_impl *impl = (pfile_impl*)h->impl;
-
   // Obtain an appropriate offset
   off_t off; abort(); // XXX need O_APPEND handle.
 
