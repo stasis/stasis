@@ -46,18 +46,18 @@ static void  cwDeinit  (struct replacementPolicy* impl) {
   free(rp);
   free(impl);
 }
-static void  cwHit     (struct replacementPolicy* impl, void * page) {
+static void  cwHit     (struct replacementPolicy* impl, Page* page) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   unsigned int bucket = bucket_hash(rp, page);
   pthread_mutex_lock(&rp->mut[bucket]);
   rp->impl[bucket]->hit(rp->impl[bucket], page);
   pthread_mutex_unlock(&rp->mut[bucket]);
 }
-static void* cwGetStaleHelper(struct replacementPolicy* impl, void*(*func)(struct replacementPolicy*)) {
+static Page* cwGetStaleHelper(struct replacementPolicy* impl, Page*(*func)(struct replacementPolicy*)) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   intptr_t bucket = (intptr_t)pthread_getspecific(rp->next_bucket);
   intptr_t oldbucket = bucket;
-  void *ret = 0;
+  Page*ret = 0;
   int spin_count = 0;
   while(ret == 0 && spin_count < rp->num_buckets) {
     int err;
@@ -119,15 +119,15 @@ static void* cwGetStaleHelper(struct replacementPolicy* impl, void*(*func)(struc
   }
   return ret;
 }
-static void* cwGetStale(struct replacementPolicy* impl) {
+static Page* cwGetStale(struct replacementPolicy* impl) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   return cwGetStaleHelper(impl, rp->impl[0]->getStale);
 }
-static void* cwGetStaleAndRemove(struct replacementPolicy* impl) {
+static Page* cwGetStaleAndRemove(struct replacementPolicy* impl) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   return cwGetStaleHelper(impl, rp->impl[0]->getStaleAndRemove);
 }
-static void* cwRemove  (struct replacementPolicy* impl, void * page) {
+static Page* cwRemove  (struct replacementPolicy* impl, Page* page) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   unsigned int bucket = bucket_hash(rp, page);
   pthread_mutex_lock(&rp->mut[bucket]);
@@ -135,7 +135,7 @@ static void* cwRemove  (struct replacementPolicy* impl, void * page) {
   pthread_mutex_unlock(&rp->mut[bucket]);
   return ret;
 }
-static void  cwInsert  (struct replacementPolicy* impl, void * page) {
+static void  cwInsert  (struct replacementPolicy* impl, Page* page) {
   stasis_replacement_policy_concurrent_wrapper_t * rp = impl->impl;
   unsigned int bucket = bucket_hash(rp, page);
   pthread_mutex_lock(&rp->mut[bucket]);

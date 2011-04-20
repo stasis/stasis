@@ -20,26 +20,18 @@
 
 */
 
-#include <stasis/doubleLinkedList.h>
-
 typedef struct replacementPolicy {
   struct replacementPolicy* (*init)();
   void (*deinit)  (struct replacementPolicy* impl);
-  void (*hit)     (struct replacementPolicy* impl, void * page);
-  void*(*getStale)(struct replacementPolicy* impl);
-  void*(*remove)  (struct replacementPolicy* impl, void * page);
-  void*(*getStaleAndRemove)(struct replacementPolicy* impl);
-  void (*insert)  (struct replacementPolicy* impl, void * page);
+  void (*hit)     (struct replacementPolicy* impl, Page* page);
+  Page* (*getStale)(struct replacementPolicy* impl);
+  Page* (*remove)  (struct replacementPolicy* impl, Page* page);
+  Page* (*getStaleAndRemove)(struct replacementPolicy* impl);
+  void (*insert)  (struct replacementPolicy* impl, Page* page);
   void * impl;
 } replacementPolicy;
 
 replacementPolicy * stasis_replacement_policy_lru_init();
-replacementPolicy * lruFastInit(
-   struct LL_ENTRY(node_t) * (*getNode)(void * page, void * conf),
-   void (*setNode)(void * page, 
-                   struct LL_ENTRY(node_t) * n,
-                   void * conf),
-   intptr_t* (*derefCount)(void *page),
-   void * conf);
+replacementPolicy * lruFastInit();
 replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp);
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count);

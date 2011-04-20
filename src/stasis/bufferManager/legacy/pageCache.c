@@ -68,7 +68,7 @@ static void middleInsert(Page *ret) {
 	ret->next = repMiddle;
 	repMiddle->prev = ret;
 	ret->prev->next = ret;
-	ret->queue = 2;
+	ret->pinCount = 2;
 
 	repMiddle = ret;
 	assert(ret->next != ret && ret->prev != ret);
@@ -121,12 +121,12 @@ void cacheInsertPage (Page * ret) {
        */
       repMiddle = repHead;
       for(pageid_t i = 0; i < stasis_buffer_manager_size / 3; i++ ) {
-        repMiddle->queue = 1;
+        repMiddle->pinCount = 1;
         repMiddle = repMiddle->next;
       }
 
       for( iter = repMiddle; iter; iter = iter->next ) {
-	iter->queue = 2;
+	iter->pinCount = 2;
       }
     } else { /* Just insert it. */
       headInsert(ret);
@@ -152,12 +152,12 @@ void cacheHitOnPage(Page * ret) {
       headInsert(ret);
       assert(ret->next != ret && ret->prev != ret);
 
-      if( ret->queue == 2 ) {
+      if( ret->pinCount == 2 ) {
 	/* keep first queue same size */
 	repMiddle = repMiddle->prev;
-	repMiddle->queue = 2;
+	repMiddle->pinCount = 2;
 
-	ret->queue = 1;
+	ret->pinCount = 1;
       }
     }
   }

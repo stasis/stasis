@@ -141,8 +141,10 @@ struct Page_s {
   struct Page_s *next;
   /** The previous item in the replacement policy's queue. */
   struct Page_s *prev;
-  /** Which queue is the page in? */
-  int queue;
+  /** How many times has the page been pinned? */
+  int pinCount;
+  /** Is the page pending I/O? (Used by some buffer managers) */
+  int pending;
   /** Is the page in the cache at all? */
   int inCache;
 

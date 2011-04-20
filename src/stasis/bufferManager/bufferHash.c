@@ -12,7 +12,6 @@
 #include <stasis/bufferManager/bufferHash.h>
 
 #include <stasis/bufferPool.h>
-#include <stasis/doubleLinkedList.h>
 
 #include <stasis/dirtyPageTable.h>
 #include <stasis/transactional.h>
@@ -48,24 +47,6 @@ typedef struct {
   pageid_t prefetch_next_count;
 } stasis_buffer_hash_t;
 
-typedef struct LL_ENTRY(node_t) node_t;
-
-static node_t * pageGetNode(void * page, void * ignore) {
-  Page * p = page;
-  return (node_t*)p->prev;
-}
-static void pageSetNode(void * page, node_t * n, void * ignore) {
-  Page * p = page;
-  p->prev = (Page *) n;
-}
-
-static inline struct Page_s ** pagePendingPtr(Page * p) {
-  return ((struct Page_s **)(&((p)->next)));
-}
-static inline intptr_t* pagePinCountPtr(void * page) {
-  Page * p = page;
-  return ((intptr_t*)(&((p)->queue)));
-}
 static inline int needFlush(stasis_buffer_manager_t * bm) {
   stasis_buffer_hash_t *bh = bm->impl;
   pageid_t count = stasis_dirty_page_table_dirty_count(bh->dpt);
@@ -80,7 +61,7 @@ static inline int needFlush(stasis_buffer_manager_t * bm) {
 inline static void checkPageState(Page * p) {
   Page * check = LH_ENTRY(find)(cachedPages, &(p->id), sizeof(p->id));
   if(check) {
-    int pending = *pagePendingPtr(p);
+    int pending = p->pending;
     int pinned  = *pagePinCountPtr(p);
     if((!pinned) && (!pending)) {
       assert(pageGetNode(p, 0));
@@ -94,7 +75,7 @@ inline static void checkPageState(Page * p) {
     assert(notfound);
   } else {
     assert(!pageGetNode(p,0));
-    assert(!*pagePendingPtr(p));
+    assert(!p->pending);
     assert(!*pagePinCountPtr(p));
     int found = 0;
     for(pageid_t i = 0; i < freeCount; i++) {
@@ -122,7 +103,7 @@ static int bhTryToWriteBackPage(stasis_buffer_manager_t *bm, pageid_t page) {
 
   assert(p->id == page);
 
-  if(*pagePendingPtr(p) || *pagePinCountPtr(p)) {
+  if(p->pending || p->pinCount) {
     pthread_mutex_unlock(&bh->mut);
     return EBUSY;
   }
@@ -141,9 +122,9 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
   if(bh->pageCount < stasis_buffer_manager_size) {
     ret = stasis_buffer_pool_malloc_page(bh->buffer_pool);
     stasis_buffer_pool_free_page(bh->buffer_pool, ret,-1);
-    (*pagePendingPtr(ret)) = 0;
-    pageSetNode(ret,0,0);
-    (*pagePinCountPtr(ret)) = 1; // to match what happens after the next block calls lru->remove()
+    ret->pending = 0;
+    ret->next = ret->prev = NULL;
+    ret->pinCount = 1; // to match what happens after the next block calls lru->remove()
     bh->pageCount++;
   } else {
     while((ret = bh->lru->getStale(bh->lru))) {
@@ -152,8 +133,8 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
         printf("bufferHash.c: Cannot find free page for application request.\nbufferHash.c: This should not happen unless all pages have been pinned.\nbufferHash.c: Crashing.");
         abort();
       }
-      assert(!*pagePinCountPtr(ret));
-      assert(!*pagePendingPtr(ret));
+      assert(!ret->pinCount);
+      assert(!ret->pending);
       if(ret->dirty) {
         pthread_mutex_unlock(&bh->mut);
         DEBUG("Blocking app thread");
@@ -170,9 +151,9 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
     Page * check = LH_ENTRY(remove)(bh->cachedPages, &ret->id, sizeof(ret->id));
     assert(check == ret);
   }
-  assert(!*pagePendingPtr(ret));
-  assert(!pageGetNode(ret,0));
-  assert(1 == *pagePinCountPtr(ret)); // was zero before this call...
+  assert(!ret->pending);
+  assert(ret->next == NULL);
+  assert(1 == ret->pinCount); // was zero before this call...
   assert(!ret->dirty);
   return ret;
 }
@@ -211,7 +192,7 @@ static Page * bhGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
     int locked = tryreadlock(ret->loadlatch,0);
     assert(locked);
 #endif
-    if(!*pagePendingPtr(ret)) {
+    if(!ret->pending) {
       bh->lru->remove(bh->lru, ret);
 
       checkPageState(ret);
@@ -247,7 +228,7 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
     // (If ret == 0, then no...)
     while(ret) {
       checkPageState(ret);
-      if(*pagePendingPtr(ret)) {
+      if(ret->pending) {
         pthread_cond_wait(&bh->readComplete, &bh->mut);
         if(ret->id != pageid) {
           ret = LH_ENTRY(find)(bh->cachedPages, &pageid, sizeof(pageid));
@@ -295,7 +276,7 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
   } while(1);
 
   // Add a pending entry to cachedPages to block like-minded threads and writeback
-  (*pagePendingPtr(ret)) = (void*)1;
+  ret->pending = 1;
 
   check = LH_ENTRY(insert)(bh->cachedPages,&pageid,sizeof(pageid), ret);
   assert(!check);
@@ -319,11 +300,11 @@ static Page * bhLoadPageImpl_helper(stasis_buffer_manager_t* bm, stasis_buffer_m
     assert(!ret->dirty);
     stasis_uninitialized_page_loaded(xid, ret);
   }
-  *pagePendingPtr(ret) = 0;
+  ret->pending = 0;
 
   // Would remove from lru, but getFreePage() guarantees that it isn't
   // there.
-  assert(!pageGetNode(ret, 0));
+  assert(ret->next == 0);
 
 #ifdef LATCH_SANITY_CHECKING
   int locked = tryreadlock(ret->loadlatch, 0);
@@ -449,7 +430,7 @@ static void bhBufDeinit(stasis_buffer_manager_t * bm) {
   while((next = LH_ENTRY(readlist)(&iter))) {
     Page * p = next->value;
     assertunlocked(p->rwlatch);
-    assert(0 == *pagePinCountPtr(p));
+    assert(0 == p->pinCount);
     readlock(p->rwlatch,0);
     assert(!stasis_dirty_page_table_is_dirty(bh->dpt, p));
     unlock(p->rwlatch);
@@ -479,6 +460,7 @@ static void bhSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
   pthread_cond_signal(&bh->needFree);
   pthread_join(bh->worker, 0);
 
+  pthread_cond_broadcast(&bh->prefetch_waiting);
   for(int i = 0; i < bh->prefetch_thread_count; i++) {
     pthread_join(bh->prefetch_workers[i], 0);
   }
@@ -549,7 +531,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
 
   bh->buffer_pool = stasis_buffer_pool_init();
 
-  bh->lru = lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0);
+  bh->lru = lruFastInit();
 
   bh->cachedPages = LH_ENTRY(create)(stasis_buffer_manager_size);
 

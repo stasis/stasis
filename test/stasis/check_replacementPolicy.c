@@ -2,7 +2,6 @@
 
 #include <stasis/transactional.h>
 #include <stasis/replacementPolicy.h>
-#include <stasis/doubleLinkedList.h>
 
 #include <assert.h>
 
@@ -16,32 +15,19 @@
 
 #define THREAD_COUNT 10
 
-typedef struct LL_ENTRY(node_t) node_t;
-
 typedef struct tracker {
-  pageid_t val; // Must be pageid_t.  Otherwise, there will be mismatches inside of concurrentWrapper's hash.
-  intptr_t key;
-  intptr_t pinCount;
+  Page page;
   int inCache;
   pthread_mutex_t mut;
 } tracker;
+
+#define memberOffset(objType, memberName) ((char*)&((objType*)0)->memberName - (char*)0)
+#define memberToObj(objType, memberName, memberPtr) (objType*)((char*)memberPtr - memberOffset(objType,memberName))
+#define pageToTracker(p) memberToObj(tracker,page,p);
+
 static pthread_mutex_t cached_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int threaded = 0;
 static int cachedCount = 0;
-
-static node_t * getKey(void * page, void * ignore) {
-  tracker * p = page;
-  return (node_t*)p->key;
-}
-static void setKey(void * page, node_t * n, void * ignore) {
-  tracker * p = page;
-  p->key = (intptr_t) n;
-}
-static intptr_t * pinCount(void *page) {
-  tracker * p = page;
-  return &p->pinCount;
-}
-
 
 tracker * t;
 void randomSetup() {
@@ -53,8 +39,8 @@ void randomSetup() {
 
   t = calloc(OBJECT_COUNT, sizeof(tracker));
   for(int i = 0; i < OBJECT_COUNT; i++) {
-    t[i].val = i;
-    t[i].pinCount = 1;
+    t[i].page.id = i;
+    t[i].page.pinCount = 1;
   }
 
 }
@@ -75,14 +61,14 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
       // TOGGLE IN CACHE
       pthread_mutex_lock(&t[i].mut);
       if(!t[i].inCache) {
-        lru->insert(lru, &t[i]);
+        lru->insert(lru, &t[i].page);
         t[i].inCache = 1;
         pthread_mutex_lock(&cached_count_mutex);
         cachedCount ++;
         pthread_mutex_unlock(&cached_count_mutex);
       } else {
-        void * v = lru->remove(lru, &t[i]);
-        assert(v == &t[i]);
+        tracker* tr = pageToTracker( lru->remove(lru, &t[i].page) );
+        assert(tr == &t[i]);
         t[i].inCache = 0;
         pthread_mutex_lock(&cached_count_mutex);
         cachedCount --;
@@ -91,20 +77,20 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
       pthread_mutex_unlock(&t[i].mut);
     } else if(op < 30) {
       // Get stale + remove
-      tracker * tr = lru->getStale(lru);
+        tracker * tr = pageToTracker( lru->getStale(lru) );
       if( tr ) {
-        pthread_mutex_lock(&t[tr->val].mut);
+        pthread_mutex_lock(&t[tr->page.id].mut);
         if(tr->inCache) {
-          assert(tr == &t[tr->val]);
-          tr = lru->remove(lru, tr);
-          assert(tr == &t[tr->val]);
+          assert(tr == &t[tr->page.id]);
+          tr = pageToTracker( lru->remove(lru, &tr->page) );
+          assert(tr == &t[tr->page.id]);
           tr->inCache = 0;
           pthread_mutex_lock(&cached_count_mutex);
           if(!threaded) assert(cachedCount != 0);
           cachedCount --;
           pthread_mutex_unlock(&cached_count_mutex);
         }
-        pthread_mutex_unlock(&t[tr->val].mut);
+        pthread_mutex_unlock(&t[tr->page.id].mut);
       } else {
         if(!threaded) {
           assert(cachedCount == 0);
@@ -112,20 +98,20 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
       }
     } else if(op < 50) {
       // Get stale
-      tracker * tr = lru->getStale(lru);
+      tracker * tr = pageToTracker( lru->getStale(lru) );
       if(tr) {
-        pthread_mutex_lock(&t[tr->val].mut);
+        pthread_mutex_lock(&t[tr->page.id].mut);
         if(!threaded) assert(tr->inCache);
-        assert(tr == &t[tr->val]);
+        assert(tr == &t[tr->page.id]);
         if(!threaded) assert(cachedCount != 0);
-        pthread_mutex_unlock(&t[tr->val].mut);
+        pthread_mutex_unlock(&t[tr->page.id].mut);
       } else {
         if(!threaded) assert(cachedCount == 0);
       }
     } else {
       // Hit
       pthread_mutex_lock(&t[i].mut);
-      if(t[i].inCache) lru->hit(lru, &t[i]);
+      if(t[i].inCache) lru->hit(lru, &t[i].page);
       pthread_mutex_unlock(&t[i].mut);
     }
   }
@@ -133,7 +119,7 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
 
 void fillThenEmptyTest(replacementPolicy *lru) {
   for(int i = 0; i < OBJECT_COUNT; i++) {
-    lru->insert(lru, &t[i]);
+    lru->insert(lru, &t[i].page);
   }
   int j = 0;
   while(lru->getStaleAndRemove(lru)) {
@@ -143,8 +129,8 @@ void fillThenEmptyTest(replacementPolicy *lru) {
   assert(0 == lru->getStale(lru));
   assert(j == OBJECT_COUNT);
   for(int i = 0; i < OBJECT_COUNT; i++) {
-    lru->insert(lru, &t[i]);
-    lru->remove(lru, &t[i]);
+    lru->insert(lru, &t[i].page);
+    lru->remove(lru, &t[i].page);
   }
   j = 0;
   while(lru->getStaleAndRemove(lru)) {
@@ -154,7 +140,7 @@ void fillThenEmptyTest(replacementPolicy *lru) {
 }
 
 START_TEST(replacementPolicyLRURandomTest) {
-  replacementPolicy * lru = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy * lru = lruFastInit();
   threaded = 0;
   randomSetup();
   randomTest(lru, LONG_COUNT);
@@ -162,7 +148,7 @@ START_TEST(replacementPolicyLRURandomTest) {
   randomTeardown();
 } END_TEST
 START_TEST(replacementPolicyLRUFastRandomTest) {
-  replacementPolicy * lru = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy * lru = lruFastInit();
   threaded = 0;
   randomSetup();
   randomTest(lru, LONG_COUNT);
@@ -170,7 +156,7 @@ START_TEST(replacementPolicyLRUFastRandomTest) {
   randomTeardown();
 } END_TEST
 START_TEST(replacementPolicyThreadsafeRandomTest) {
-  replacementPolicy * lru = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy * lru = lruFastInit();
   replacementPolicy * tsLru = replacementPolicyThreadsafeWrapperInit(lru);
   threaded = 0;
   randomSetup();
@@ -183,7 +169,7 @@ START_TEST(replacementPolicyConcurrentRandomTest) {
   int LRU_COUNT = OBJECT_COUNT / 51;
   replacementPolicy * lru[LRU_COUNT];
   for(int i = 0; i < LRU_COUNT; i++) {
-    lru[i] = lruFastInit(getKey, setKey, pinCount, 0);
+    lru[i] = lruFastInit();
   }
   threaded = 0;
   replacementPolicy * cwLru = replacementPolicyConcurrentWrapperInit(lru, LRU_COUNT);
@@ -201,7 +187,7 @@ void * randomTestWorker(void * arg) {
 }
 
 START_TEST(replacementPolicyThreadsafeThreadTest) {
-  replacementPolicy * lru = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy * lru = lruFastInit();
   replacementPolicy * tsLru = replacementPolicyThreadsafeWrapperInit(lru);
   threaded = 1;
   worker_lru = tsLru;
@@ -221,7 +207,7 @@ START_TEST(replacementPolicyConcurrentThreadTest) {
   int LRU_COUNT = OBJECT_COUNT / 51;
   replacementPolicy * lru[LRU_COUNT];
   for(int i = 0; i < LRU_COUNT; i++) {
-    lru[i] = lruFastInit(getKey, setKey, pinCount, 0);
+    lru[i] = lruFastInit();
   }
   replacementPolicy * cwLru = replacementPolicyConcurrentWrapperInit(lru, THREAD_COUNT);
   threaded = 1;
@@ -241,14 +227,14 @@ START_TEST(replacementPolicyConcurrentThreadTest) {
 } END_TEST
 START_TEST(replacementPolicyEmptyFastLRUTest) {
   randomSetup();
-  replacementPolicy *rp = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy *rp = lruFastInit();
   fillThenEmptyTest(rp);
   rp->deinit(rp);
   randomTeardown();
 } END_TEST
 START_TEST(replacementPolicyEmptyThreadsafeTest) {
   randomSetup();
-  replacementPolicy *rpA = lruFastInit(getKey, setKey, pinCount, 0);
+  replacementPolicy *rpA = lruFastInit();
   replacementPolicy *rp  = replacementPolicyThreadsafeWrapperInit(rpA);
   fillThenEmptyTest(rp);
   rp->deinit(rp);
@@ -258,7 +244,7 @@ START_TEST(replacementPolicyEmptyConcurrentTest) {
   randomSetup();
   replacementPolicy *rpA[THREAD_COUNT];
   for(int i = 0; i < THREAD_COUNT; i++) {
-    rpA[i] = lruFastInit(getKey, setKey, pinCount, 0);
+    rpA[i] = lruFastInit();
   }
   replacementPolicy *rp
     = replacementPolicyConcurrentWrapperInit(rpA, THREAD_COUNT);

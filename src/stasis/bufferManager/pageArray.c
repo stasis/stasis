@@ -30,7 +30,7 @@ static Page * paLoadPage(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
     pa->pageMap[pageid]->dirty = 0;
     pa->pageMap[pageid]->next = 0;
     pa->pageMap[pageid]->prev = 0;
-    pa->pageMap[pageid]->queue = 0;
+    pa->pageMap[pageid]->pinCount = 0;
     pa->pageMap[pageid]->inCache = 1;
     pa->pageMap[pageid]->rwlatch = initlock();
     pa->pageMap[pageid]->loadlatch = initlock();

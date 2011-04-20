@@ -5,7 +5,6 @@
  *      Author: sears
  */
 #include <stasis/concurrentHash.h>
-#include <stasis/doubleLinkedList.h>
 #include <stasis/replacementPolicy.h>
 #include <stasis/bufferPool.h>
 #include <stasis/pageHandle.h>
@@ -38,21 +37,6 @@ typedef struct {
   pthread_key_t key;
   pthread_cond_t needFree;
 } stasis_buffer_concurrent_hash_t;
-
-typedef struct LL_ENTRY(node_t) node_t;
-
-static node_t * pageGetNode(void * page, void * ignore) {
-  Page * p = page;
-  return (node_t*)p->prev;
-}
-static void pageSetNode(void * page, node_t * n, void * ignore) {
-  Page * p = page;
-  p->prev = (Page *) n;
-}
-static inline intptr_t* pagePinCountPtr(void * page) {
-  Page * p = page;
-  return ((intptr_t*)(&((p)->queue)));
-}
 
 static inline int needFlush(stasis_buffer_manager_t * bm) {
   stasis_buffer_concurrent_hash_t *bh = bm->impl;
@@ -442,7 +426,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
 #ifdef CONCURRENT_LRU
   replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
   for(int i = 0; i < 37; i++) {
-    lrus[i] = lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0);
+    lrus[i] = lruFastInit();
   }
   ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
   free(lrus);
@@ -454,8 +438,8 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   for(pageid_t i = 0; i < stasis_buffer_manager_size; i++) {
     Page *p = stasis_buffer_pool_malloc_page(ch->buffer_pool);
     stasis_buffer_pool_free_page(ch->buffer_pool, p,(-1*i)-2);
-    pageSetNode(p,0,0);
-    (*pagePinCountPtr(p)) = 1;
+    p->prev = p->next = NULL;
+    p->pinCount = 1;
     ch->lru->insert(ch->lru, p);  // decrements pin count ptr (setting it to zero)
     hashtable_insert(ch->ht, p->id, p);
   }
