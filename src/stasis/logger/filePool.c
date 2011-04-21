@@ -483,11 +483,8 @@ int stasis_log_file_pool_close(stasis_log_t * log) {
   pthread_join(fp->write_thread, 0);
 //  pthread_join(fp->write_thread2, 0);
 
-  // XXX need to force log to disk here.
   for(int i = 0; i < fp->live_count; i++) {
-    if(fp->ro_fd[i] != -1) {
-      close(fp->ro_fd[i]);
-    }
+  close(fp->ro_fd[i]);
     free(fp->live_filenames[i]);
   }
   for(int i = 0; i < fp->dead_count; i++) {
@@ -712,7 +709,7 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
 
     free(namelist[i]);
   }
-
+  assert(fp->live_count);
   free(namelist);
 
   printf("Current log segment appears to be %s.  Scanning for next available LSN\n", fp->live_filenames[fp->live_count-1]);
