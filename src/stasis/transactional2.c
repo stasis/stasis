@@ -407,6 +407,7 @@ int Tdeinit() {
   stasis_truncation_deinit(stasis_truncation);
   TnaiveHashDeinit();
   LinearHashNTADeinit();
+  BtreeDeinit();
   TlinkedListNTADeinit();
   stasis_alloc_deinit(stasis_alloc);
   stasis_allocation_policy_deinit(stasis_allocation_policy);

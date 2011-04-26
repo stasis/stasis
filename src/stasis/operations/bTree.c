@@ -33,6 +33,9 @@ void BtreeInit() {
   btree_comparators[BYTE_ARRAY_COMPARATOR] = stasis_btree_byte_array_comparator;
 
 }
+void BtreeDeinit() {
+  free(btree_comparators);
+}
 typedef struct {
   int height;
   pageid_t root;
