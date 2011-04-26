@@ -89,7 +89,7 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
       assert(e);
       assert(e->p == p->id);
       assert(e->lsn == dummy.lsn);
-
+      free(e);
       assert(p->dirty);
       p->dirty = 0;
 
