@@ -172,6 +172,7 @@ static void deinitTLS(void *tlsp) {
     p->id --;
   }
   ch->lru->insert(ch->lru, tls->p); // TODO: put it into the LRU end instead of the MRU end, so the memory is treated as stale.
+  free(tls);
 }
 static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_manager_t* bm) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
@@ -378,7 +379,9 @@ static void chBufDeinitHelper(stasis_buffer_manager_t * bm, int crash) {
   hashtable_deinit(ch->ht);
   ch->lru->deinit(ch->lru);
   stasis_buffer_pool_deinit(ch->buffer_pool);
+  ch->page_handle->close(ch->page_handle);
   free(ch);
+  free(bm);
 }
 static void chSimulateBufferManagerCrash(stasis_buffer_manager_t *bm) {
   chBufDeinitHelper(bm, 1);
