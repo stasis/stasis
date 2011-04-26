@@ -42,6 +42,8 @@ void stasis_aggregate_min_deinit(stasis_aggregate_min_t * min) {
   } else {
 
   }
+  free(min->vals);
+  pthread_key_delete(min->key);
   free(min);
 }
 void stasis_aggregate_min_add(stasis_aggregate_min_t * min, lsn_t * a) {
