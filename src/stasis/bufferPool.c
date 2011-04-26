@@ -112,7 +112,9 @@ void stasis_buffer_pool_deinit(stasis_buffer_pool_t * ret) {
 #ifndef VALGRIND_MODE
   free(ret->addr_to_free); // breaks efence
 #endif
+  free(ret->pool);
   pthread_mutex_destroy(&ret->mut);
+  free(ret);
 }
 
 Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t * ret) {
