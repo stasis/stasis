@@ -191,6 +191,7 @@ void stasis_log_file_pool_chunk_open(stasis_log_file_pool_state * fp, int chunk)
   strcat(full_name, fp->live_filenames[chunk]);
 
   fp->ro_fd[chunk] = open(full_name, fp->filemode, fp->fileperm);
+  free(full_name);
 }
 /**
  * Does no latching.  Relies on stability of fp->live_offsets and fp->live_count.
@@ -490,7 +491,9 @@ int stasis_log_file_pool_close(stasis_log_t * log) {
   for(int i = 0; i < fp->dead_count; i++) {
     free(fp->dead_filenames[i]);
   }
+  free((void*)fp->dirname);
   free(fp->ro_fd);
+  free(fp->live_offsets);
   free(fp->live_filenames);
   free(fp->dead_filenames);
   free(fp);
