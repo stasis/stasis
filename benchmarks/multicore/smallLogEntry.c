@@ -27,6 +27,7 @@ static void* worker(void* arg) {
     LogEntry * e = allocUpdateLogEntry(l, -1, -1, OPERATION_NOOP, 0, 0);
     l->write_entry(l, e);
     l->write_entry_done(l, e);
+    l->force_tail(l, LOG_FORCE_COMMIT);
 //    if(! (i & 1023)) { l->force_tail(l, 0);}
   }
   return 0;

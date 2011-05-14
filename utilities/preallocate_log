@@ -1,0 +1,14 @@
+#!/usr/bin/perl -w
+use strict;
+
+my $count = shift || die "Usage: $0 count [dir] [chunk-size]\n";
+my $dir   = shift || "stasis_log/";
+my $sz    = shift || "64M";
+
+system("mkdir -p $dir");
+
+for(my $i = 0; $i < $count; $i++) {
+  my $file = sprintf("log-chunk-%020d~", $i);
+  print("Writing $file\n");
+  system("dd if=/dev/zero of=$dir/$file bs=$sz count=1\n");
+}

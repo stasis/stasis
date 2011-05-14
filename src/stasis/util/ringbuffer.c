@@ -91,7 +91,10 @@ lsn_t stasis_ringbuffer_reserve_space(stasis_ringbuffer_t * ring, lsn_t sz, lsn_
 }
 lsn_t stasis_ringbuffer_nb_consume_bytes(stasis_ringbuffer_t * ring, lsn_t off, lsn_t* sz) {
   if(off == RING_NEXT) { off = ring->rf; }
-  if(*sz == RING_NEXT)  { *sz  = ring->wt - off; }
+  if(*sz == RING_NEXT) {
+    *sz  = ring->wt - off;
+    if(*sz == 0) { return RING_VOLATILE; }
+  }
 
   // has the entire byte range been consumed?  (This is "normal".)
   if(off + *sz < ring->rt) { return RING_TRUNCATED; }
@@ -117,17 +120,10 @@ lsn_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, lsn_t* sz, lsn
   lsn_t orig_sz = *sz;
 
   if(ring->flush > ring->rf) {
-//    pthread_mutex_unlock(&ring->mut);
-//    struct timespec tv;
-//    tv.tv_sec = 0;
-//    tv.tv_nsec = 100000;
-//    nanosleep(&tv, 0);
-//    pthread_mutex_lock(&ring->mut);
     if(ring->flush > ring->rf) { *sz = RING_NEXT; }
   }
   if(ring->shutdown) {
     if(ring->rt == ring->wf) {
-      fprintf(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");
       pthread_cond_signal(&ring->read_done);
       pthread_mutex_unlock(&ring->mut);
       return RING_CLOSED;
@@ -260,7 +256,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, lsn_t initial_offset
 
   // Allocate the memory region using mmap black magic.
 
-  char* name = strdup("/dev/shm/stasis-ringbuffer-XXXXXX");
+  char* name = strdup("/tmp/stasis-ringbuffer-XXXXXX");
   ring->fd = mkstemp(name);
   if(ring->fd == -1) { perror("Couldn't mkstemp\n"); abort(); }
 
@@ -320,14 +316,15 @@ void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);
   ring->shutdown = 1;
   do {
-    fprintf(stderr, "%lld < %lld signaling readers for shutdown and sleeping\n", ring->rt, ring->wf);
+//    fprintf(stderr, "%lld < %lld signaling readers for shutdown and sleeping\n", ring->rt, ring->wf);
     pthread_cond_signal(&ring->write_done);
     pthread_cond_wait(&ring->read_done,&ring->mut);
-    fprintf(stderr, "readers done\n");
+//    fprintf(stderr, "readers done\n");
   } while (ring->rt < ring->wf);
 
   pthread_mutex_unlock(&ring->mut);
-
+}
+void stasis_ringbuffer_free(stasis_ringbuffer_t * ring) {
   lsn_t size = ring->mask+1;
   int err = munmap(((char*)ring->mem), size * 2);
   if(err == -1) { perror("could not munmap first half of ringbuffer"); }

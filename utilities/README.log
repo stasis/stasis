@@ -1,0 +1,26 @@
+Stasis' default log implementation ("filePool") creates a directory
+full of 64MB log "chunk" files.  Synchronously extending these files
+one entry at a time is extremely expensive, as the filesystem must
+repeatedly update its metadata.  The "preallocate_log" utility in this
+directory creates a Stasis log directory, and fills it with some
+number of empty log chunks.  It is safe to run this utility against an
+existing Stasis log directory, but Stasis will not use the new chunks
+until it is restarted.  Also, although it is safe to mix and match log
+chunk sizes, Stasis will continue to use its compiled-in size, wasting
+the end of overly large chunks, and incrementally extending undersized
+ones.
+
+preallocate_log usage:
+
+The first parameter is an integer, and specifies the number of log
+chunks to be created.  The second parameter is the name of the Stasis
+log directory, and defaults to "stasis_log", the current default name.
+The third parameter is the log chunk size, in the format extended by
+dd's "bs" option (eg: 64MB, 1GB, and so on).
+
+delete_log usage:
+
+This script renames all of the files in a log directory so that they
+end in "~".  This will cause Stasis to reuse the files, but ignore
+their contents (which avoids the cost of re-creating them).
+

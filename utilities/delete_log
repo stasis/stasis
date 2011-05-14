@@ -1,0 +1,11 @@
+#!/usr/bin/perl -w
+use strict;
+
+my $dir = shift || "stasis_log";
+
+my @files = `ls $dir/log-chunk-????????????????????`;
+foreach my $f (@files) {
+  chomp $f;
+  print "$f -> $f~\n";
+  system("mv $f $f~");
+}

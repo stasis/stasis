@@ -31,7 +31,10 @@ lsn_t stasis_ringbuffer_get_write_frontier(stasis_ringbuffer_t * ring);
 void   stasis_ringbuffer_advance_read_tail(stasis_ringbuffer_t * ring, lsn_t off);
 typedef enum { RING_TORN = -1, RING_VOLATILE = -2, RING_FULL = -3, RING_TRUNCATED = -4, RING_NEXT = -5, RING_CLOSED = -6, RING_MINERR = -7 } stasis_ringbuffer_error_t;
 void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, lsn_t off);
-void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring);
 
+// Causes ringbuffer requests to stop blocking, and return RING_CLOSED
+void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring);
+// Deallocates the ringbuffer (call after any threads using the ringbuffer have shutdown).
+void stasis_ringbuffer_free(stasis_ringbuffer_t * ring);
 END_C_DECLS
 #endif /* RINGBUFFER_H_ */
