@@ -195,11 +195,8 @@ void TarrayListDealloc(int xid, recordid rid) {
     @todo this function calls pow(), which is horribly inefficient.
 */
 
-compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
-  Page * p;
-  try_ret(compensation_error()) {
-    p = loadPage(xid, rid.page);
-  } end_ret(compensation_error());
+int TarrayListExtend(int xid, recordid rid, int slots) {
+  Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch, 0);
   array_list_parameter_t alp
     = array_list_read_parameter(xid, p);
@@ -225,37 +222,37 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots) {
   tmp2.slot = 0;
   tmp2.size = alp.size;
   /* Iterate over the (small number) of indirection blocks that need to be updated */
-  try_ret(compensation_error()) {
-    for(pageid_t i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
-      /* Alloc block i */
+
+  for(pageid_t i = lastCurrentBlock+1; i <= lastNewBlock; i++) {
+    /* Alloc block i */
 #ifdef HAVE_POWL
-      pageid_t blockSize = alp.initialSize * powl(alp.multiplier, i);
+    pageid_t blockSize = alp.initialSize * powl(alp.multiplier, i);
 #else
-      pageid_t blockSize = alp.initialSize * powf(alp.multiplier, i);
+    pageid_t blockSize = alp.initialSize * powf(alp.multiplier, i);
 #endif
-      pageid_t newFirstPage = TpageAllocMany(xid, blockSize);
-      DEBUG("block %lld %lld %lld\n", (long long)i, (long long)newFirstPage, (long long)blockSize);
-      tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
-      /* Iterate over the (large number) of new blocks, clearing their contents */
+    pageid_t newFirstPage = TpageAllocMany(xid, blockSize);
+    DEBUG("block %lld %lld %lld\n", (long long)i, (long long)newFirstPage, (long long)blockSize);
+    tmp.slot = i + FIRST_DATA_PAGE_OFFSET;
+    /* Iterate over the (large number) of new blocks, clearing their contents */
 #ifdef ARRAY_LIST_OLD_ALLOC
-      // old way
-      {
-        for(pageid_t i = newFirstPage; i < newFirstPage + blockSize; i++) {
-          TinitializeFixedPage(xid, i, alp.size);
-        }
+    // old way
+    {
+      for(pageid_t i = newFirstPage; i < newFirstPage + blockSize; i++) {
+        TinitializeFixedPage(xid, i, alp.size);
       }
-#else
-      TinitializeFixedPageRange(xid, newFirstPage, blockSize, alp.size);
-#endif
-      TsetRaw(xid,tmp,&newFirstPage);
-      DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
     }
+#else
+    TinitializeFixedPageRange(xid, newFirstPage, blockSize, alp.size);
+#endif
+    TsetRaw(xid,tmp,&newFirstPage);
+    DEBUG("Tset: {%d, %d, %d} = %d\n", tmp.page, tmp.slot, tmp.size, newFirstPage);
+  }
 
-    tmp.slot = MAX_OFFSET_POSITION;
+  tmp.slot = MAX_OFFSET_POSITION;
 
-    pageid_t newMaxOffset = alp.maxOffset+slots;
-    TsetRaw(xid, tmp, &newMaxOffset);
-  } end_ret(compensation_error());
+  pageid_t newMaxOffset = alp.maxOffset+slots;
+  TsetRaw(xid, tmp, &newMaxOffset);
+
   return 0;
 
 }

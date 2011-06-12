@@ -7,22 +7,20 @@ typedef struct {
   short keySize;
 } pagedListEntry;
 
-compensated_function recordid TpagedListAlloc(int xid) {
+recordid TpagedListAlloc(int xid) {
   recordid ret;
-  try_ret(NULLRID) {
-    ret = Talloc(xid, sizeof(pagedListHeader));
-    pagedListHeader header;
-    memset(&header,0,sizeof(header));
-    header.thisPage = 0;
-    header.nextPage = NULLRID;
-    Tset(xid, ret, &header);
-  } end_ret(NULLRID);
+  ret = Talloc(xid, sizeof(pagedListHeader));
+  pagedListHeader header;
+  memset(&header,0,sizeof(header));
+  header.thisPage = 0;
+  header.nextPage = NULLRID;
+  Tset(xid, ret, &header);
   return ret;
 }
 
-compensated_function int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   int ret;
-  try_ret(compensation_error()) {
+
     pagedListHeader header;
     Tread(xid, list, &header);
     recordid headerRid = list;
@@ -38,7 +36,6 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     // When the loop completes, header will contain the contents of the page header the entry will be inserted into,
     // headerrid will contain the rid of that header, and rid will contain the newly allocated recordid
     while(rid.size == -1) {
-      if(compensation_error()) { break; }
       if(header.nextPage.size == -1)  {
       // We're at the end of the list
 
@@ -76,12 +73,10 @@ compensated_function int TpagedListInsert(int xid, recordid list, const byte * k
     Tset(xid, headerRid, &header);
     free(dat);
 
-  } end_ret(compensation_error());
   return ret;
 }
 
-compensated_function int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
-  try_ret(compensation_error()) {
+int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
     pagedListHeader header;
     Tread(xid, list, &header);
 
@@ -91,12 +86,10 @@ compensated_function int TpagedListFind(int xid, recordid list, const byte * key
     rid.size = 0;
 
     while(rid.slot || header.nextPage.size != -1) {
-      if(compensation_error()) { break; }
 
       if(rid.slot) {
         rid.size = TrecordSize(xid, rid);
         pagedListEntry * dat;
-        if(compensation_error()) { break; }
         dat = malloc(rid.size);
         Tread(xid, rid, dat);
 
@@ -115,14 +108,12 @@ compensated_function int TpagedListFind(int xid, recordid list, const byte * key
         rid.slot = header.thisPage;
       }
     }
-  } end_ret(compensation_error());
   return -1;
 }
 
-compensated_function int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
+int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   pagedListHeader header;
   int ret = 0;
-  try_ret(compensation_error()) {
 
     Tread(xid, list, &header);
     recordid headerRid;
@@ -132,10 +123,8 @@ compensated_function int TpagedListRemove(int xid, recordid list, const byte * k
     short lastSlot = -1;
     headerRid = list;
     while(rid.slot || header.nextPage.size != -1) {
-      if(compensation_error()) { break; }
       if(rid.slot) {
         rid.size = TrecordSize(xid, rid);
-        if(compensation_error()) { break; };
         pagedListEntry * dat = malloc(rid.size);
         Tread(xid, rid, dat);
 
@@ -145,7 +134,6 @@ compensated_function int TpagedListRemove(int xid, recordid list, const byte * k
             recordid lastRid = rid;
             lastRid.slot = lastSlot;
             lastRid.size = TrecordSize(xid, lastRid);
-            if(compensation_error()) { free(dat); break; }
             pagedListEntry * lastRidBuf = malloc(lastRid.size);
             Tread(xid, lastRid, lastRidBuf);
             lastRidBuf->nextEntry = dat->nextEntry;
@@ -171,14 +159,12 @@ compensated_function int TpagedListRemove(int xid, recordid list, const byte * k
         rid.slot = header.thisPage;
       }
     }
-  } end_ret(compensation_error());
   return ret;
 }
 
-compensated_function int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
+int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
   byte * value = NULL;
   int ret;
-  try_ret(compensation_error()) {
     int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
     if(valueSize != -1) {
       ret = TpagedListRemove(xid, start_list, key, keySize);
@@ -190,16 +176,13 @@ compensated_function int TpagedListMove(int xid, recordid start_list, recordid e
     } else {
       ret = 0;
     }
-  } end_ret(compensation_error());
   return ret;
 }
 
-compensated_function lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) {
+lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) {
   pagedListHeader header;
   assert(list.size == sizeof(pagedListHeader));
-  try_ret(NULL) {
     Tread(xid, list, &header);
-  } end_ret(NULL);
 
   lladd_pagedList_iterator * it = malloc(sizeof(lladd_pagedList_iterator));
 
@@ -213,20 +196,16 @@ compensated_function lladd_pagedList_iterator * TpagedListIterator(int xid, reco
 void TpagedListClose(int xid, lladd_pagedList_iterator * it) {
   free(it);
 }
-compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it,
+int TpagedListNext(int xid, lladd_pagedList_iterator * it,
                                        byte ** key, int * keySize,
                                        byte ** value, int * valueSize) {
   while(it->entryRid.slot || it->headerRid.size != -1) {
     if(it->entryRid.slot) {
-      try_ret(compensation_error()) {
-        it->entryRid.size = TrecordSize(xid, it->entryRid);
-      } end_ret(compensation_error());
+      it->entryRid.size = TrecordSize(xid, it->entryRid);
       assert(it->entryRid.size != -1);
 
       pagedListEntry * entry = malloc(it->entryRid.size);
-      begin_action_ret(free, entry, compensation_error()) {
-        Tread(xid, it->entryRid, entry);
-      } end_action_ret(compensation_error());
+      Tread(xid, it->entryRid, entry);
 
       *keySize = entry->keySize;
       *valueSize = it->entryRid.size - *keySize - sizeof(pagedListEntry);
@@ -245,9 +224,7 @@ compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it,
 
     } else {  // move to next page.
       pagedListHeader header;
-      try_ret(compensation_error()) {
-        Tread(xid, it->headerRid, &header);
-      } end_ret(compensation_error());
+      Tread(xid, it->headerRid, &header);
       it->entryRid.page = it->headerRid.page;
       it->headerRid = header.nextPage;
       it->entryRid.slot = header.thisPage;

@@ -21,10 +21,10 @@ lsn_t __real_TwritebackUpdate(int xid, pageid_t page,
 void __real_TreorderableWritebackUpdate(int xid, void* h,
                                  pageid_t page, const void * dat,
                                  size_t datlen, int op);
-compensated_function void __real_Tread(int xid, recordid rid, void *dat);
+void __real_Tread(int xid, recordid rid, void *dat);
 Page * __real_TreadWithPage(int xid, recordid rid, Page *p, void *dat);
-compensated_function void __real_TreadRaw(int xid, recordid rid, void *dat);
-compensated_function void __real_TreadStr(int xid, recordid rid, char *dat);
+void __real_TreadRaw(int xid, recordid rid, void *dat);
+void __real_TreadStr(int xid, recordid rid, char *dat);
 int __real_Tcommit(int xid);
 int __real_TsoftCommit(int xid);
 void __real_TforceCommits(void);
@@ -87,7 +87,7 @@ void __wrap_TreorderableWritebackUpdate(int xid, void* h,
   __real_TreorderableWritebackUpdate(xid, h, page, dat, datlen, op);
   printf("ret_TreorderableWritebackUpdate(%lld)\n", (long long)stasis_timestamp);
 }
-compensated_function void __wrap_Tread(int xid, recordid rid, void *dat) {
+void __wrap_Tread(int xid, recordid rid, void *dat) {
   printf("call_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);
   __real_Tread(xid, rid, dat);
   printf("ret_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);
@@ -98,12 +98,12 @@ Page * __wrap_TreadWithPage(int xid, recordid rid, Page *p, void *dat) {
   printf("ret_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);
   return ret;
 }
-compensated_function void __wrap_TreadRaw(int xid, recordid rid, void *dat) {
+void __wrap_TreadRaw(int xid, recordid rid, void *dat) {
   printf("call_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);  // XXX due to interposition artifacts, this printf will rarely be called.
   __real_TreadRaw(xid, rid, dat);
   printf("ret_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);
 }
-compensated_function void __wrap_TreadStr(int xid, recordid rid, char *dat) {
+void __wrap_TreadStr(int xid, recordid rid, char *dat) {
   printf("call_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);
   __real_TreadStr(xid, rid, dat);
   printf("ret_Tread(%lld, %d, %lld, %d, %lld)\n", (long long)stasis_timestamp, xid, rid.page, rid.slot, (long long)rid.size);

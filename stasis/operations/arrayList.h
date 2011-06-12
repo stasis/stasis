@@ -102,7 +102,7 @@ void TarrayListDealloc(int xid, recordid rid);
    @param rid the recordid pointing to the ArrayList.
    @param slots the number of slots to end to the end of the ArrayList.
  */
-compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
+int TarrayListExtend(int xid, recordid rid, int slots);
 /**
    Get the length of an ArrayList.
 
@@ -110,7 +110,7 @@ compensated_function int TarrayListExtend(int xid, recordid rid, int slots);
    @param rid the recordid pointing to the ArrayList.
    @return The number of items stored in the ArrayList.
  */
-compensated_function int TarrayListLength(int xid, recordid rid);
+int TarrayListLength(int xid, recordid rid);
 
 /** Used by Tread() and Tset() to map from arrayList index to recordid. */
 recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset);

@@ -29,10 +29,10 @@ lsn_t __real_TwritebackUpdate(int xid, pageid_t page,
 void __real_TreorderableWritebackUpdate(int xid, void* h,
                                  pageid_t page, const void * dat,
                                  size_t datlen, int op)LINKER_STUB
-compensated_function void __real_Tread(int xid, recordid rid, void *dat)LINKER_STUB
+void __real_Tread(int xid, recordid rid, void *dat)LINKER_STUB
 Page * __real_TreadWithPage(int xid, recordid rid, Page *p, void *dat)LINKER_STUB
-compensated_function void __real_TreadRaw(int xid, recordid rid, void *dat)LINKER_STUB
-compensated_function void __real_TreadStr(int xid, recordid rid, char *dat)LINKER_STUB
+void __real_TreadRaw(int xid, recordid rid, void *dat)LINKER_STUB
+void __real_TreadStr(int xid, recordid rid, char *dat)LINKER_STUB
 int __real_Tcommit(int xid)LINKER_STUB
 int __real_TsoftCommit(int xid)LINKER_STUB
 void __real_TforceCommits(void)LINKER_STUB

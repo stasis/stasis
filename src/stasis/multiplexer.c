@@ -72,7 +72,7 @@ void * lladdMultiplexer_flush(lladdMultiplexer_t * m) {
     Tconsumer_close(m->xid, m->fifoPool->dirtyPoolFifo->consumer);
   }
   */
-  return (void*)compensation_error();
+  return (void*)0;
 }
 
 
@@ -112,7 +112,7 @@ void * multiplexer_worker(void * arg) {
     Tconsumer_close(m->xid, m->fifoPool->dirtyPoolFifo->consumer);
   }
 
-  return (void*)compensation_error();
+  return (void*)0;
 }
 
 /* ******************  END OF MULTIXPLEXER IMPLEMENTATION **************

@@ -60,8 +60,8 @@ void stasis_blob_read(int xid, Page * p,  recordid rid, void * buf);
 */
 void stasis_blob_write(int xid, Page * p, recordid rid, const void * buf);
 
-compensated_function recordid preAllocBlob(int xid, long blobsize);
-compensated_function recordid preAllocBlobFromPage(int xid, long page, long blobsize);
+recordid preAllocBlob(int xid, long blobsize);
+recordid preAllocBlobFromPage(int xid, long page, long blobsize);
 
 /**
    Allocate a blob of size blobSize. 

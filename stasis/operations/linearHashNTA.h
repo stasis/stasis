@@ -41,9 +41,8 @@
 /** Aim to keep 0.7 items in each bucket */
 #define HASH_FILL_FACTOR 0.7
 
-
-compensated_function recordid ThashCreate(int xid, int keySize, int valSize);
-compensated_function void ThashDelete(int xid, recordid hash);
+recordid ThashCreate(int xid, int keySize, int valSize);
+void ThashDelete(int xid, recordid hash);
 /**
    Insert key, value pair into hash, overwriting the existing value,
    if any.
@@ -56,7 +55,7 @@ compensated_function void ThashDelete(int xid, recordid hash);
    @param valueSize length of key in bytes
    @return          1 if the key was defined, 0 otherwise
 */
-compensated_function int ThashInsert(int xid, recordid hash,
+int ThashInsert(int xid, recordid hash,
                                      const byte* key, int keySize,
                                      const byte* value, int valueSize);
 /**
@@ -68,13 +67,13 @@ compensated_function int ThashInsert(int xid, recordid hash,
    @param keySize   length of key in bytes
    @return          1 if the key was defined, 0 otherwise
 */
-compensated_function int ThashRemove(int xid, recordid hash,
+int ThashRemove(int xid, recordid hash,
                                      const byte* key, int keySize);
 
 /** @return size of the value associated with key, or -1 if key not found.
             (a return value of zero means the key is associated with an
             empty value.) */
-compensated_function int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
+int ThashLookup(int xid, recordid hash, const byte* key, int keySize, byte ** value);
 
 /**
    Iterator that complies with the standard Stasis iterator interface.

@@ -1,6 +1,5 @@
 #include <pbl/pbl.h>
 #include <stasis/lockManager.h>
-#include <stasis/compensations.h>
 #include <stasis/latches.h>
 #include <stasis/hash.h>
 
@@ -162,7 +161,6 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
       if(wait_ret == ETIMEDOUT) {
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
-	compensation_set_error(LLADD_DEADLOCK);
 	return LLADD_DEADLOCK;
       }
     } while(ridLock->writers);
@@ -218,7 +216,6 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     ts.tv_nsec = tv.tv_usec * 1000;
     if(tod_ret != 0) {
       perror("Could not get time of day");
-      compensation_set_error(LLADD_INTERNAL_ERROR);
       return LLADD_INTERNAL_ERROR;
     }
     while(ridLock->writers || (ridLock->readers - me)) {
@@ -227,7 +224,6 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
 	ridLock->waiting--;
 	ridLock->active--;
 	pthread_mutex_unlock(mut);
-	compensation_set_error(LLADD_DEADLOCK);
 	return LLADD_DEADLOCK;
       }
     }
@@ -333,10 +329,10 @@ int lockManagerCommitHashed(int xid, int datLen) {
   return ret;
 }
 
-compensated_function int lockManagerReadLockRecord(int xid, recordid rid) {
+int lockManagerReadLockRecord(int xid, recordid rid) {
   return lockManagerReadLockHashed(xid, (byte*)&rid, sizeof(recordid));
 }
-compensated_function int lockManagerWriteLockRecord(int xid, recordid rid) {
+int lockManagerWriteLockRecord(int xid, recordid rid) {
   return lockManagerWriteLockHashed(xid, (byte*)&rid, sizeof(recordid));
 }
 int lockManagerUnlockRecord(int xid, recordid rid) {
@@ -346,10 +342,10 @@ int lockManagerCommitRecords(int xid) {
   return lockManagerCommitHashed(xid, sizeof(recordid));
 }
 
-compensated_function int lockManagerReadLockPage(int xid, pageid_t p) {
+int lockManagerReadLockPage(int xid, pageid_t p) {
   return lockManagerReadLockHashed(xid, (byte*)&p, sizeof(p));
 }
-compensated_function int lockManagerWriteLockPage(int xid, pageid_t p) {
+int lockManagerWriteLockPage(int xid, pageid_t p) {
   return lockManagerWriteLockHashed(xid, (byte*)&p, sizeof(p));
 }
 int lockManagerUnlockPage(int xid, pageid_t p) {

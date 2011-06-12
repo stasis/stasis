@@ -73,7 +73,6 @@ terms specified in this license.
 #include <stasis/constants.h>
 #include <stasis/blobManager.h>
 #include <stasis/lockManager.h>
-#include <stasis/compensations.h>
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>
 #include <stasis/page/uninitialized.h>

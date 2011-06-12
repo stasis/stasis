@@ -43,29 +43,27 @@ static int findInBucket(int xid, recordid hashRid, int bucket_number, const void
 
 static int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
   int found;
-  try_ret(compensation_error()) {
-    hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
 
-    recordid nextEntry;
+  hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
 
-    hashRid.slot = bucket_number;
-    nextEntry = hashRid;
+  recordid nextEntry;
 
-    found = 0;
+  hashRid.slot = bucket_number;
+  nextEntry = hashRid;
 
-    while(nextEntry.size != -1 && nextEntry.size != 0) {
-      if(compensation_error()) { break; }
-      assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
-      Tread(xid, nextEntry, e);
-      if(!memcmp(key, e+1, keySize) && e->next.size != 0) {
-	memcpy(val, ((byte*)(e+1))+keySize, valSize);
-	found = 1;
-	break;
-      }
-      nextEntry = e->next;
+  found = 0;
+
+  while(nextEntry.size != -1 && nextEntry.size != 0) {
+    assert(nextEntry.size == sizeof(hashEntry) + keySize + valSize);
+    Tread(xid, nextEntry, e);
+    if(!memcmp(key, e+1, keySize) && e->next.size != 0) {
+      memcpy(val, ((byte*)(e+1))+keySize, valSize);
+      found = 1;
+      break;
     }
-    free(e);
-  } end_ret(compensation_error());
+    nextEntry = e->next;
+  }
+  free(e);
 
   return found;
 }
@@ -79,44 +77,38 @@ static void expand(int xid, recordid hash, int next_split, int i, int keySize, i
 #define AMORTIZE 1000
 #define FF_AM    750
   if(count <= 0 && !(count * -1) % FF_AM) {
-    try {
-      recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
-      int j;
-      TarrayListExtend(xid, hash, AMORTIZE);
-      for(j = 0; j < AMORTIZE; j++) {
-	if(compensation_error()) { break; }
-	if(next_split >= stasis_util_two_to_the(i-1)+2) {
-	  i++;
-	  next_split = 2;
-	}
-	rehash(xid, hash, next_split, i, keySize, valSize);
-	next_split++;
-	headerNextSplit = next_split;
-	headerHashBits = i;
+    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
+    int j;
+    TarrayListExtend(xid, hash, AMORTIZE);
+    for(j = 0; j < AMORTIZE; j++) {
+      if(next_split >= stasis_util_two_to_the(i-1)+2) {
+        i++;
+        next_split = 2;
       }
-      update_hash_header(xid, hash, i, next_split);
-    } end;
+      rehash(xid, hash, next_split, i, keySize, valSize);
+      next_split++;
+      headerNextSplit = next_split;
+      headerHashBits = i;
+    }
+    update_hash_header(xid, hash, i, next_split);
   }
 }
 
 static void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split) {
-  try {
-    hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
-    assert(he);
-    recordid  * headerRidB = &he->next;
+  hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
+  assert(he);
+  recordid  * headerRidB = &he->next;
 
-    assert(headerRidB);
+  assert(headerRidB);
 
-    headerHashBits = i;
-    headerNextSplit = next_split;
-    hash.slot = 1;
+  headerHashBits = i;
+  headerNextSplit = next_split;
+  hash.slot = 1;
 
-    Tset(xid, hash, headerRidB);
-  } end;
+  Tset(xid, hash, headerRidB);
 }
 
 static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize) {
-  try {
     int firstA = 1;  // Is 'A' the recordid of a bucket?
     int firstD = 1;  // What about 'D'?
 
@@ -250,7 +242,6 @@ static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, u
     free(D_contents);
     free(A_contents);
     free(B_contents);
-  } end;
 }
 static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents,
 		      hashEntry * e, int keySize, int valSize, int skipDelete) {
@@ -326,7 +317,6 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
   memcpy(B, bucket_contents, sizeof(hashEntry) + keySize + valSize);
   Baddr = this;
   while(B->next.size != -1) {
-    if(compensation_error()) { break; } // guard the asserts below.
     hashEntry * tmp = A;
     A = B;
     Aaddr = Baddr;
@@ -340,7 +330,7 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
       assert(Aaddr.size == sizeof(hashEntry) + keySize + valSize);
       Tset(xid, Aaddr, A);
       if(deletedEntry) {
-	*deletedEntry = Baddr;
+        *deletedEntry = Baddr;
       }
       found = 1;
       break;

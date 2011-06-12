@@ -79,7 +79,6 @@ stasis_operation_impl stasis_op_impl_set_range_inverse();
   efficiently, it performs a number of extra memcpy() calls over the
   entire record.
 */
-compensated_function void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
-
+void TsetRange(int xid, recordid rid, int offset, int length, const void * dat);
 
 #endif

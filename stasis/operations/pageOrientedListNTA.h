@@ -89,10 +89,10 @@ typedef struct {
 
 //recordid dereferencePagedListRID(int xid, recordid rid);
 /** @return 1 if the key was already in the list. */
-compensated_function int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
-compensated_function int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
-compensated_function int TpagedListRemove(int xid, recordid list, const byte * key, int keySize);
-compensated_function int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
+int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
+int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
+int TpagedListRemove(int xid, recordid list, const byte * key, int keySize);
+int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
 /** The linked list iterator can tolerate the concurrent removal of values that 
     it has already returned.  In the presence of such removals, the iterator 
     will return the keys and values present in the list as it existed when next()
@@ -104,10 +104,10 @@ void TpagedListClose(int xid, lladd_pagedList_iterator *it);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/
-compensated_function int TpagedListNext(int xid, lladd_pagedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
-compensated_function recordid TpagedListAlloc(int xid);
-compensated_function void TpagedListDelete(int xid, recordid list);
-compensated_function int TpagedListSpansPages(int xid, recordid list);
+int TpagedListNext(int xid, lladd_pagedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
+recordid TpagedListAlloc(int xid);
+void TpagedListDelete(int xid, recordid list);
+int TpagedListSpansPages(int xid, recordid list);
 stasis_operation_impl getPagedListInsert();
 stasis_operation_impl getPagedListRemove();
 #endif

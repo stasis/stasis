@@ -3,8 +3,6 @@
 */
 
 #include <stasis/logger/logMemory.h>
-#include <stasis/compensations.h>
-
 #include <assert.h>
 
 typedef struct {
@@ -66,7 +64,7 @@ void logMemory_Iterator_close(int xid, void * impl) {
   free(impl);
 }
 
-compensated_function int logMemory_Iterator_next (int xid, void * impl) {
+int logMemory_Iterator_next (int xid, void * impl) {
   logMemory_fifo_t *fifo = (logMemory_fifo_t *) impl;
   pthread_mutex_lock(&(fifo->readerMutex));
   pthread_mutex_lock(&(fifo->mutex));
@@ -91,7 +89,6 @@ compensated_function int logMemory_Iterator_next (int xid, void * impl) {
     }
   }
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -103,7 +100,6 @@ compensated_function int logMemory_Iterator_next (int xid, void * impl) {
 
   tmp = realloc(fifo->cached_value, size);
   if(tmp == NULL) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -116,7 +112,6 @@ compensated_function int logMemory_Iterator_next (int xid, void * impl) {
     pthread_cond_wait(&(fifo->readReady), &(fifo->mutex));
   }
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -137,7 +132,7 @@ compensated_function int logMemory_Iterator_next (int xid, void * impl) {
     .._next.  The functionality should be broken into modules and
     reused... */
 
-compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
+int logMemory_Iterator_tryNext (int xid, void * impl) {
   logMemory_fifo_t *fifo = (logMemory_fifo_t *) impl;
   if(EBUSY == pthread_mutex_trylock(&(fifo->readerMutex))) {
     return 0;
@@ -163,7 +158,6 @@ compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
   }
 
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -175,7 +169,6 @@ compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
 
   tmp = realloc(fifo->cached_value, size);
   if(tmp == NULL) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -188,7 +181,6 @@ compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
     pthread_cond_wait(&(fifo->readReady), &(fifo->mutex));
   }
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -205,7 +197,7 @@ compensated_function int logMemory_Iterator_tryNext (int xid, void * impl) {
 
 }
 
-compensated_function void logMemory_Iterator_releaseLock (int xid, void * impl) {
+void logMemory_Iterator_releaseLock (int xid, void * impl) {
   logMemory_fifo_t * fifo = (logMemory_fifo_t *) impl;
 
   pthread_mutex_unlock(&(fifo->mutex));
@@ -227,7 +219,7 @@ compensated_function void logMemory_Iterator_releaseLock (int xid, void * impl) 
     .._next.  The functionality should be broken into modules and
     reused... */
 
-compensated_function int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
+int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
   logMemory_fifo_t *fifo = (logMemory_fifo_t *) impl;
   pthread_mutex_lock(&(fifo->readerMutex));
   pthread_mutex_lock(&(fifo->mutex));
@@ -255,7 +247,6 @@ compensated_function int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
   }
 
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -267,7 +258,6 @@ compensated_function int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
 
   tmp = realloc(fifo->cached_value, size);
   if(tmp == NULL) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -280,7 +270,6 @@ compensated_function int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
     pthread_cond_wait(&(fifo->readReady), &(fifo->mutex));
   }
   if (ret == -1) {
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
@@ -342,7 +331,6 @@ int logMemory_consumer_push(int xid, /*lladdConsumer_t * cons*/ void * it, byte 
     pthread_cond_wait(&(fifo->writeReady), &(fifo->mutex));
   }
   if(ret == -1) {   // asked to append something longer than the buffer!
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     return LLADD_INTERNAL_ERROR;
   }
   while(-2 == ringBufferAppend( (fifo)->ringBuffer, val, valSize)) {
@@ -350,7 +338,6 @@ int logMemory_consumer_push(int xid, /*lladdConsumer_t * cons*/ void * it, byte 
   }
 
   if(ret == -1) {   // asked to append something longer than the buffer!
-    compensation_set_error(LLADD_INTERNAL_ERROR);
     return LLADD_INTERNAL_ERROR;
   }
 

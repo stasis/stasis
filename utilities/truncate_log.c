@@ -5,5 +5,5 @@ int main(void) {
   TtruncateLog();
   Tdeinit();
 
-  return compensation_error();
+  return 0;
 }

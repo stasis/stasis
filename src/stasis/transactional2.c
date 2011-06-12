@@ -4,7 +4,6 @@
 #include <stasis/bufferManager.h>
 #include <stasis/consumer.h>
 #include <stasis/lockManager.h>
-#include <stasis/compensations.h>
 #include <stasis/pageHandle.h>
 #include <stasis/page.h>
 #include <stasis/transactionTable.h>
@@ -75,8 +74,6 @@ stasis_log_t* stasis_log_default_factory() {
 
 int Tinit() {
   stasis_initted = 1;
-
-  compensations_init();
 
   stasis_operation_table_init();
 
@@ -215,11 +212,10 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
   assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   Page * p = loadPage(xid, page);
   assert(p);
-  try {
-    if(globalLockManager.writeLockPage) {
-      globalLockManager.writeLockPage(xid, p->id);
-    }
-  } end;
+
+  if(globalLockManager.writeLockPage) {
+    globalLockManager.writeLockPage(xid, p->id);
+  }
 
   pthread_mutex_lock(&h->mut);
 
@@ -299,20 +295,15 @@ Page * TreadWithPage(int xid, recordid rid, Page *p, void * dat) {
   return p;
 }
 
-compensated_function void Tread(int xid, recordid rid, void * dat) {
+void Tread(int xid, recordid rid, void * dat) {
   Page * p;
-  try {
-    p = loadPage(xid, rid.page);
-  } end;
+  p = loadPage(xid, rid.page);
 
   releasePage( TreadWithPage(xid, rid, p, dat) );
 }
 
-compensated_function void TreadRaw(int xid, recordid rid, void * dat) {
-  Page * p;
-  try {
-    p = loadPage(xid, rid.page);
-  } end;
+void TreadRaw(int xid, recordid rid, void * dat) {
+  Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
   stasis_record_read(xid, p, rid, dat);
   unlock(p->rwlatch);

@@ -29,24 +29,24 @@ typedef struct {
   recordid listRoot;
 } stasis_linkedList_iterator;
 
-compensated_function int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
-compensated_function int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
-compensated_function int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
-compensated_function int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
+int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
+int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);
+int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize);
+int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize);
 /** The linked list iterator can tolerate the concurrent removal of values that 
     it has already returned.  In the presence of such removals, the iterator 
     will return the keys and values present in the list as it existed when next()
     was first called.
 
     @return a new iterator initialized to the head of the list.  */
-compensated_function stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize);
+stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize);
 void TlinkedListClose(int xid, stasis_linkedList_iterator * it);
 /** @return 1 if there was another entry to be iterated over. 0 otherwise.  
      If this function returns 1, the caller must free() the malloced memory 
      returned via the key and value arguments.*/
-compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
-compensated_function recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
-compensated_function void TlinkedListDelete(int xid, recordid list);
+int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int * keySize, byte ** value, int * valueSize);
+recordid TlinkedListCreate(int xid, int keySize, int ValueSize);
+void TlinkedListDelete(int xid, recordid list);
 
 void TlinkedListNTAInit();
 void TlinkedListNTADeinit();

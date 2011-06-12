@@ -23,9 +23,9 @@ void consumer_init() {
 
 }
 
-compensated_function int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key, size_t keySize, byte *val, size_t valSize) {
+int Tconsumer_push(int xid, lladdConsumer_t *it, byte *key, size_t keySize, byte *val, size_t valSize) {
   return consumers[it->type].push(xid, it->impl, key, keySize, val, valSize);
 }
-compensated_function void Tconsumer_close(int xid, lladdConsumer_t *it) {
+void Tconsumer_close(int xid, lladdConsumer_t *it) {
   consumers[it->type].close(xid, it->impl);
 }

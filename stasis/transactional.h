@@ -632,7 +632,7 @@ void TreorderableWritebackUpdate(int xid, void* h,
  * @param rid reference to page/slot
  * @param dat buffer into which data goes
  */
-compensated_function void Tread(int xid, recordid rid, void *dat);
+void Tread(int xid, recordid rid, void *dat);
 Page * TreadWithPage(int xid, recordid rid, Page *p, void *dat);
 /**
  * Read a value of a record without first dereferencing the record.
@@ -642,8 +642,8 @@ Page * TreadWithPage(int xid, recordid rid, Page *p, void *dat);
  * @see arrayList for a data structure that uses recordid
  *      dereferencing to transparently provide records to its callers.
  */
-compensated_function void TreadRaw(int xid, recordid rid, void *dat);
-compensated_function void TreadStr(int xid, recordid rid, char *dat);
+void TreadRaw(int xid, recordid rid, void *dat);
+void TreadStr(int xid, recordid rid, char *dat);
 
 /**
  * Commit an active transaction.  Each transaction should be completed

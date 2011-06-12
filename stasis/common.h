@@ -172,6 +172,6 @@ extern long long *stasis_dbug_timestamp;
 
 #define STLSEARCH
 
-#include "compensations.h"
+#include <pthread.h>
 
 #endif /* __stasis_common_h */

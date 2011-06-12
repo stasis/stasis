@@ -52,8 +52,8 @@ void TlinkedListNTADeinit() {
 }
 
 
-compensated_function static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
-compensated_function static int  stasis_linked_list_remove_helper(int xid, recordid list, const byte * key, int keySize);
+static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
+static int  stasis_linked_list_remove_helper(int xid, recordid list, const byte * key, int keySize);
 typedef struct {
   recordid list;
   int keySize;
@@ -64,7 +64,7 @@ typedef struct {
   int valueSize;
 } stasis_linked_list_remove_log;
 
-compensated_function static int op_linked_list_nta_insert(const LogEntry* e, Page* p) {
+static int op_linked_list_nta_insert(const LogEntry* e, Page* p) {
   assert(!p);
   const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);;
 
@@ -76,18 +76,17 @@ compensated_function static int op_linked_list_nta_insert(const LogEntry* e, Pag
   valueSize = log->valueSize;
   key = (byte*)(log+1);
   value = ((byte*)(log+1))+keySize;
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    pthread_mutex_lock(&stasis_linked_list_mutex);
+
+  pthread_mutex_lock(&stasis_linked_list_mutex);
 //  printf("Operate insert called: rid.page = %d keysize = %d valuesize = %d %d {%d %d %d}\n", rid.page, log->keySize, log->valueSize, *(int*)key, value->page, value->slot, value->size);
   // Skip writing the undo!  Recovery will write a CLR after we're done, effectively
   // wrapping this in a nested top action, so we needn't worry about that either.
-    stasis_linked_list_insert_helper(e->xid, log->list, key, keySize, value, valueSize);
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+  stasis_linked_list_insert_helper(e->xid, log->list, key, keySize, value, valueSize);
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return 0;
 }
-compensated_function static int op_linked_list_nta_remove(const LogEntry *e, Page* p) {
+static int op_linked_list_nta_remove(const LogEntry *e, Page* p) {
   assert(!p);
   const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);
 
@@ -96,17 +95,16 @@ compensated_function static int op_linked_list_nta_remove(const LogEntry *e, Pag
 
   keySize = log->keySize;
   key = (byte*)(log+1);
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    pthread_mutex_lock(&stasis_linked_list_mutex);
-    //  printf("Operate remove called: %d\n", *(int*)key);
-    // Don't call the version that writes an undo entry!
-    stasis_linked_list_remove_helper(e->xid, log->list, key, keySize);
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+
+  pthread_mutex_lock(&stasis_linked_list_mutex);
+  //  printf("Operate remove called: %d\n", *(int*)key);
+  // Don't call the version that writes an undo entry!
+  stasis_linked_list_remove_helper(e->xid, log->list, key, keySize);
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
   return 0;
 }
 
-compensated_function int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   int ret = 0;
   /*  try_ret(compensation_error()) {
     ret = TlinkedListRemove(xid, list, key, keySize);
@@ -117,16 +115,16 @@ compensated_function int TlinkedListInsert(int xid, recordid list, const byte * 
   undoLog->list = list;
   undoLog->keySize = keySize;
   memcpy(undoLog+1, key, keySize);
-  pthread_mutex_lock(&stasis_linked_list_mutex);
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT,
-					  (byte*)undoLog, sizeof(stasis_linked_list_insert_log) + keySize);
-    free(undoLog);
-    stasis_linked_list_insert_helper(xid, list, key, keySize, value, valueSize);
-    TendNestedTopAction(xid, handle);
 
-  } compensate_ret(compensation_error());
-  //  pthread_mutex_unlock(&linked_list_mutex);
+  pthread_mutex_lock(&stasis_linked_list_mutex);
+
+  void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_INSERT,
+                    (byte*)undoLog, sizeof(stasis_linked_list_insert_log) + keySize);
+  free(undoLog);
+  stasis_linked_list_insert_helper(xid, list, key, keySize, value, valueSize);
+  TendNestedTopAction(xid, handle);
+
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
 }
@@ -151,10 +149,8 @@ stasis_operation_impl stasis_op_impl_linked_list_remove() {
   };
   return o;
 }
-compensated_function static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
+static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   //int ret = Tli nkedListRemove(xid, list, key, keySize);
-
-  try {
 
     stasis_linkedList_entry * entry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
 
@@ -178,17 +174,14 @@ compensated_function static void stasis_linked_list_insert_helper(int xid, recor
       free(newEntry);
     }
     free(entry);
-  } end;
 }
 
-compensated_function int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
+int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
 
   stasis_linkedList_entry * entry = malloc(list.size);
 
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, -2) {
     pthread_mutex_lock(&stasis_linked_list_mutex);
     Tread(xid, list, entry);
-  } end_action_ret(-2);
 
   if(!entry->next.size) {
     free(entry);
@@ -198,26 +191,27 @@ compensated_function int TlinkedListFind(int xid, recordid list, const byte * ke
 
   int done = 0;
   int ret = -1;
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, -2) {
-    while(!done) {
 
-      if(!memcmp(entry + 1, key, keySize)) {
-	// Bucket contains the entry of interest.
-	int valueSize = list.size - (sizeof(stasis_linkedList_entry) + keySize);
-	*value  = malloc(valueSize);
-	memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
-	done = 1;
-	ret = valueSize;
-      }
-      if(entry->next.size != -1) {
-	assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
-	Tread(xid, entry->next, entry);
-      } else {
-	done = 1;
-      }
+  while(!done) {
+
+    if(!memcmp(entry + 1, key, keySize)) {
+  // Bucket contains the entry of interest.
+  int valueSize = list.size - (sizeof(stasis_linkedList_entry) + keySize);
+  *value  = malloc(valueSize);
+  memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
+  done = 1;
+  ret = valueSize;
     }
-    free(entry);
-  } compensate_ret(-2);
+    if(entry->next.size != -1) {
+  assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
+  Tread(xid, entry->next, entry);
+    } else {
+  done = 1;
+    }
+  }
+  free(entry);
+
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
 }
@@ -225,51 +219,49 @@ compensated_function int TlinkedListFind(int xid, recordid list, const byte * ke
 
 
 
-compensated_function int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
+int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   byte * value;
   int valueSize;
   pthread_mutex_lock(&stasis_linked_list_mutex);
   int ret;
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    ret = TlinkedListFind(xid, list, key, keySize, &value);
-  } end_action_ret(compensation_error());
+
+  ret = TlinkedListFind(xid, list, key, keySize, &value);
+
   if(ret != -1) {
     valueSize = ret;
   } else {
     pthread_mutex_unlock(&stasis_linked_list_mutex);
     return 0;
   }
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    int entrySize = sizeof(stasis_linked_list_remove_log) + keySize + valueSize;
-    stasis_linked_list_remove_log * undoLog = malloc(entrySize);
 
-    undoLog->list = list;
-    undoLog->keySize = keySize;
-    undoLog->valueSize = valueSize;
+  int entrySize = sizeof(stasis_linked_list_remove_log) + keySize + valueSize;
+  stasis_linked_list_remove_log * undoLog = malloc(entrySize);
 
-    memcpy(undoLog+1, key, keySize);
-    memcpy(((byte*)(undoLog+1))+keySize, value, valueSize);
-    // printf("entry size %d sizeof(remove_log)%d keysize %d valuesize %d sizeof(rid) %d key %d value {%d %d %ld}\n",
-    //       entrySize, sizeof(stasis_linked_list_remove_log), keySize, valueSize, sizeof(recordid), key, value->page, value->slot, value->size);
-    void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_REMOVE,
-					  (byte*)undoLog, entrySize);
-    free(value);
-    free(undoLog);
-    stasis_linked_list_remove_helper(xid, list, key, keySize);
+  undoLog->list = list;
+  undoLog->keySize = keySize;
+  undoLog->valueSize = valueSize;
 
-    TendNestedTopAction(xid, handle);
-  } compensate_ret(compensation_error());
+  memcpy(undoLog+1, key, keySize);
+  memcpy(((byte*)(undoLog+1))+keySize, value, valueSize);
+  // printf("entry size %d sizeof(remove_log)%d keysize %d valuesize %d sizeof(rid) %d key %d value {%d %d %ld}\n",
+  //       entrySize, sizeof(stasis_linked_list_remove_log), keySize, valueSize, sizeof(recordid), key, value->page, value->slot, value->size);
+  void * handle = TbeginNestedTopAction(xid, OPERATION_LINKED_LIST_REMOVE,
+                    (byte*)undoLog, entrySize);
+  free(value);
+  free(undoLog);
+  stasis_linked_list_remove_helper(xid, list, key, keySize);
+
+  TendNestedTopAction(xid, handle);
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return 1;
 }
 
-compensated_function static int stasis_linked_list_remove_helper(int xid, recordid list, const byte * key, int keySize) {
+static int stasis_linked_list_remove_helper(int xid, recordid list, const byte * key, int keySize) {
   stasis_linkedList_entry * entry = malloc(list.size);
   pthread_mutex_lock(&stasis_linked_list_mutex);
 
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    Tread(xid, list, entry);
-  } end_action_ret(compensation_error());
+  Tread(xid, list, entry);
 
   if(entry->next.size == 0) {
     //Empty List.
@@ -283,10 +275,7 @@ compensated_function static int stasis_linked_list_remove_helper(int xid, record
   oldLastRead.size = -2;
   int ret = 0;
 
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-
     while(1) {
-      if(compensation_error()) { break; }
       if(!memcmp(entry + 1, key, keySize)) {
 	// Bucket contains the entry of interest.
 	if(listRoot) {
@@ -328,15 +317,14 @@ compensated_function static int stasis_linked_list_remove_helper(int xid, record
       }
     }
     free(entry);
-  } compensate_ret(compensation_error());
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
 }
 /*** @todo TlinkedListMove could be much faster, but this is good enough for a first pass */
-compensated_function int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
+int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
   byte * value = 0;
   int ret;
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
     pthread_mutex_lock(&stasis_linked_list_mutex);
     int valueSize = TlinkedListFind(xid, start_list, key, keySize, &value);
     if(valueSize != -1) {
@@ -351,22 +339,21 @@ compensated_function int TlinkedListMove(int xid, recordid start_list, recordid 
       ret = 1;
     }
     if(value) { free(value); }
-  } compensate_ret(compensation_error());
+  pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
 }
-compensated_function recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
+recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
   recordid ret;
-  try_ret(NULLRID) {
-    ret = Talloc(xid, sizeof(stasis_linkedList_entry) + keySize + valueSize);
-    byte * cleared = calloc(sizeof(stasis_linkedList_entry) + keySize + valueSize, sizeof(byte));
-    Tset(xid, ret, cleared);
-    free(cleared);
-  } end_ret(NULLRID);
+
+  ret = Talloc(xid, sizeof(stasis_linkedList_entry) + keySize + valueSize);
+  byte * cleared = calloc(sizeof(stasis_linkedList_entry) + keySize + valueSize, sizeof(byte));
+  Tset(xid, ret, cleared);
+  free(cleared);
+
   return ret;
 }
-compensated_function void TlinkedListDelete(int xid, recordid list) {
-  try {
+void TlinkedListDelete(int xid, recordid list) {
     stasis_linkedList_entry * entry = malloc(list.size);
 
     Tread(xid, list, entry);
@@ -377,7 +364,6 @@ compensated_function void TlinkedListDelete(int xid, recordid list) {
     }
 
     while(entry->next.size != -1) {
-      if(compensation_error()) { break; }
       recordid nextEntry;
       Tread(xid, nextEntry, entry);
       assert(!memcmp(&nextEntry, &(entry->next), sizeof(recordid)));
@@ -385,10 +371,9 @@ compensated_function void TlinkedListDelete(int xid, recordid list) {
     }
 
     free(entry);
-  } end;
 }
 
-compensated_function stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize) {
+stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize) {
   stasis_linkedList_iterator * it = malloc(sizeof(stasis_linkedList_iterator));
   it->keySize = keySize;
   it->valueSize = valueSize;
@@ -400,7 +385,7 @@ compensated_function stasis_linkedList_iterator * TlinkedListIterator(int xid, r
 void TlinkedListClose(int xid, stasis_linkedList_iterator * it) {
   free(it);
 }
-compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int * keySize, byte **value, int * valueSize) {
+int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int * keySize, byte **value, int * valueSize) {
 
   if(it->next.size == -1)  {
     return 0;
@@ -409,8 +394,8 @@ compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * i
   int done = 0;
   int ret = 0;
   stasis_linkedList_entry * entry;
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
-    pthread_mutex_lock(&stasis_linked_list_mutex);
+
+  pthread_mutex_lock(&stasis_linked_list_mutex);
 
     if(it->first == -1) {
       it->first = 1;
@@ -433,19 +418,15 @@ compensated_function int TlinkedListNext(int xid, stasis_linkedList_iterator * i
 	it->first = 0;
       }
     }
-  } end_action_ret(compensation_error());
 
   if(done) {
     pthread_mutex_unlock(&stasis_linked_list_mutex);
     return ret;
   }
 
-  begin_action_ret(pthread_mutex_unlock, &stasis_linked_list_mutex, compensation_error()) {
     assert(it->keySize + it->valueSize + sizeof(stasis_linkedList_entry) == it->next.size);
     entry = malloc(it->next.size);
     Tread(xid, it->next, entry);
-
-  } end_action_ret(compensation_error());
 
   if(entry->next.size) {
     *keySize = it->keySize;

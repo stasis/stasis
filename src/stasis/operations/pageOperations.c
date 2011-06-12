@@ -31,19 +31,14 @@ static int op_page_set_range_inverse(const LogEntry* e, Page* p) {
   return 0;
 }
 
-compensated_function int TpageGet(int xid, pageid_t page, void *memAddr) {
-  Page * q = 0;
-  try_ret(compensation_error()) {
-    q = loadPage(xid, page);
-    memcpy(memAddr, q->memAddr, PAGE_SIZE);
-  } end_ret(compensation_error());
-  try_ret(compensation_error()) {
-    releasePage(q);
-  } end_ret(compensation_error());
+int TpageGet(int xid, pageid_t page, void *memAddr) {
+  Page * q = loadPage(xid, page);
+  memcpy(memAddr, q->memAddr, PAGE_SIZE);
+  releasePage(q);
   return 0;
 }
 
-compensated_function int TpageSet(int xid, pageid_t page, const void * memAddr) {
+int TpageSet(int xid, pageid_t page, const void * memAddr) {
   return TpageSetRange(xid, page, 0, memAddr, PAGE_SIZE);
 }
 
@@ -59,9 +54,7 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
 
   releasePage(p);
 
-  try_ret(compensation_error()) {
-    Tupdate(xid,page,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
-  } end_ret(compensation_error());
+  Tupdate(xid,page,logArg,sizeof(int)+len*2,OPERATION_PAGE_SET_RANGE);
 
   free(logArg);
   return 0;
@@ -74,7 +67,7 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
     This calls loadPage and releasePage directly, and bypasses the
     logger.
 */
-compensated_function void pageOperationsInit(stasis_log_t *log) {
+void pageOperationsInit(stasis_log_t *log) {
 
   regionsInit(log);
 
@@ -85,13 +78,12 @@ compensated_function void pageOperationsInit(stasis_log_t *log) {
 
 }
 
-
-compensated_function int TpageDealloc(int xid, pageid_t page) {
+int TpageDealloc(int xid, pageid_t page) {
   TregionDealloc(xid, page); // @todo inefficient hack!
   return 0;
 }
 
-compensated_function pageid_t TpageAlloc(int xid) {
+pageid_t TpageAlloc(int xid) {
   return TregionAlloc(xid, 1, STORAGE_MANAGER_NAIVE_PAGE_ALLOC);
 }
 

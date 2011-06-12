@@ -20,9 +20,9 @@ static pthread_key_t lastPage;
 #define RW 1
 
 static void bufManBufDeinit();
-static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t* h, int xid, pageid_t pageid, pagetype_t type);
-static compensated_function Page *bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
-static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
+static Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t* h, int xid, pageid_t pageid, pagetype_t type);
+static Page *bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
+static Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
 static void bufManReleasePage (stasis_buffer_manager_t *ignored, Page * p);
 static void bufManSimulateBufferManagerCrash();
 
@@ -349,7 +349,7 @@ static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitial
   return ret;
 }
 
-static compensated_function Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t * hignored, int xid, const pageid_t pageid, pagetype_t type) {
+static Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t * hignored, int xid, const pageid_t pageid, pagetype_t type) {
 
   Page * ret = pthread_getspecific(lastPage);
 
@@ -385,7 +385,7 @@ static Page* bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, cons
   return bufManLoadPage(ignored, NULL, xid, pageid, UNKNOWN_TYPE_PAGE);
 }
 
-static compensated_function Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid) {
+static Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid) {
 
   Page * ret = pthread_getspecific(lastPage);
 

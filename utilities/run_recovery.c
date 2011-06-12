@@ -3,5 +3,5 @@
 int main(void) {
   Tinit();
   Tdeinit();
-  return compensation_error();
+  return 0;
 }
