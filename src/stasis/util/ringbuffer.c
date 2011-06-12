@@ -301,8 +301,12 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, lsn_t initial_offset
 
   return ring;
 }
-void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, lsn_t off) {
+static int stasis_ringbuffer_flush_impl(stasis_ringbuffer_t * ring, lsn_t off, int past_end) {
   pthread_mutex_lock(&ring->mut);
+  if(ring->wt < off && !past_end) {
+    pthread_mutex_unlock(&ring->mut);
+    return RING_VOLATILE;
+  }
   if(ring->flush < off) { ring->flush = off; }
   while(ring->rt < off) {
     pthread_cond_signal(&ring->write_done);
@@ -311,6 +315,13 @@ void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, lsn_t off) {
   }
   DEBUG("flushed rt = %lld off = %lld\n", ring->rt, off);
   pthread_mutex_unlock(&ring->mut);
+  return 0;
+}
+int stasis_ringbuffer_tryflush(stasis_ringbuffer_t * ring, lsn_t off) {
+  return stasis_ringbuffer_flush_impl(ring, off, 0);
+}
+void stasis_ringbuffer_flush(stasis_ringbuffer_t * ring, lsn_t off) {
+  stasis_ringbuffer_flush_impl(ring, off, 1);
 }
 void stasis_ringbuffer_shutdown(stasis_ringbuffer_t * ring) {
   pthread_mutex_lock(&ring->mut);

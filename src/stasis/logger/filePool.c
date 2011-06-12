@@ -305,13 +305,26 @@ int stasis_log_file_pool_write_entry(stasis_log_t * log, LogEntry * e) {
  * Does no latching.  No shared state, except for fd, which is
  * protected from being closed by truncation.
  */
-const LogEntry* stasis_log_file_pool_chunk_read_entry(int fd, lsn_t file_offset, lsn_t lsn, uint32_t * len) {
+const LogEntry* stasis_log_file_pool_chunk_read_entry(stasis_log_file_pool_state * fp, int fd, lsn_t file_offset, lsn_t lsn, uint32_t * len) {
   int err;
   if(sizeof(*len) != (err = mypread(fd, (byte*)len, sizeof(*len), lsn-file_offset))) {
     if(err == 0) { DEBUG(stderr, "EOF reading len from log\n"); return 0; }
     abort();
   }
   if(*len == 0) { DEBUG(stderr, "Reached end of log\n"); return 0; }
+
+  // Force bytes containing body of log entry to disk.
+  if(fp->ring) {  // if not, then we're in startup, and don't need to flush.
+    if(stasis_ringbuffer_get_write_frontier(fp->ring) > lsn) {
+      stasis_ringbuffer_flush(fp->ring, lsn+sizeof(uint32_t)+*len);
+    } else {
+      // there is a ringbuffer, and the read is past the eof.
+      // this should only happen at the end of recovery's forward
+      // scans.
+      return 0;
+    }
+  }
+
   byte * buf = malloc(*len + sizeof(uint32_t));
   if(!buf) {
     fprintf(stderr, "Couldn't alloc memory for log entry of size %lld.  "
@@ -353,8 +366,15 @@ int stasis_log_file_pool_chunk_write_buffer(int fd, const byte * buf, size_t sz,
 }
 const LogEntry* stasis_log_file_pool_read_entry(struct stasis_log_t* log, lsn_t lsn) {
   stasis_log_file_pool_state * fp = log->impl;
-  // expedient hack; force to disk before issuing read.
-  log->force_tail(log, 0); /// xxx use real constant for wal mode..
+  if(fp->ring) {
+    // Force bytes containing length of log entry to disk.
+    if(stasis_ringbuffer_get_write_frontier(fp->ring) > lsn) {
+      stasis_ringbuffer_flush(fp->ring, lsn+sizeof(uint32_t));
+    } else {
+      // end of log
+      return 0;
+    }
+  } // else, we haven't finished initialization, so there are no bytes to flush.
   const LogEntry * e;
   pthread_mutex_lock(&fp->mut);
   int chunk = get_chunk_from_offset(log, lsn);
@@ -372,7 +392,7 @@ const LogEntry* stasis_log_file_pool_read_entry(struct stasis_log_t* log, lsn_t 
     pthread_mutex_unlock(&fp->mut);
     // Be sure not to hold a mutex while hitting disk.
     uint32_t len;
-    e = stasis_log_file_pool_chunk_read_entry(fd, off, lsn, &len);
+    e = stasis_log_file_pool_chunk_read_entry(fp, fd, off, lsn, &len);
     if(e) { assert(sizeofLogEntry(log, e) == len); }
   }
   return e;
@@ -473,7 +493,7 @@ lsn_t stasis_log_file_pool_chunk_scrub_to_eof(stasis_log_t * log, int fd, lsn_t 
   lsn_t cur_off = file_off;
   const LogEntry * e;
   uint32_t len;
-  while((e = stasis_log_file_pool_chunk_read_entry(fd, file_off, cur_off, &len))) {
+  while((e = stasis_log_file_pool_chunk_read_entry(log->impl, fd, file_off, cur_off, &len))) {
     cur_off = log->next_entry(log, e);
     log->read_entry_done(log, e);
   }
@@ -713,6 +733,8 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
   } else {
 
     printf("Current log segment appears to be %s.  Scanning for next available LSN\n", fp->live_filenames[fp->live_count-1]);
+
+    fp->ring = 0; // scrub calls read, which tries to flush the ringbuffer.  passing null disables the flush.
 
     next_lsn = stasis_log_file_pool_chunk_scrub_to_eof(ret, fp->ro_fd[fp->live_count-1], fp->live_offsets[fp->live_count-1]);
 
