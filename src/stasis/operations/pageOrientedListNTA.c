@@ -21,93 +21,93 @@ recordid TpagedListAlloc(int xid) {
 int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
   int ret;
 
-    pagedListHeader header;
-    Tread(xid, list, &header);
-    recordid headerRid = list;
+  pagedListHeader header;
+  Tread(xid, list, &header);
+  recordid headerRid = list;
 
-    pagedListHeader firstHeader = header;
+  pagedListHeader firstHeader = header;
 
-    ret = 0;
-    int entrySize = sizeof(pagedListEntry) + keySize + valueSize;
+  ret = 0;
+  int entrySize = sizeof(pagedListEntry) + keySize + valueSize;
 
-    recordid rid = TallocFromPage(xid, headerRid.page, entrySize);
-    DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
+  recordid rid = TallocFromPage(xid, headerRid.page, entrySize);
+  DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
 
-    // When the loop completes, header will contain the contents of the page header the entry will be inserted into,
-    // headerrid will contain the rid of that header, and rid will contain the newly allocated recordid
-    while(rid.size == -1) {
-      if(header.nextPage.size == -1)  {
-      // We're at the end of the list
+  // When the loop completes, header will contain the contents of the page header the entry will be inserted into,
+  // headerrid will contain the rid of that header, and rid will contain the newly allocated recordid
+  while(rid.size == -1) {
+    if(header.nextPage.size == -1)  {
+    // We're at the end of the list
 
-        recordid newHeadRid = Talloc(xid, sizeof(pagedListHeader));
-        pagedListHeader newHead;
-        memset(&newHead,0,sizeof(newHead));
-        newHead.thisPage = 0;
-        newHead.nextPage = firstHeader.nextPage;
+      recordid newHeadRid = Talloc(xid, sizeof(pagedListHeader));
+      pagedListHeader newHead;
+      memset(&newHead,0,sizeof(newHead));
+      newHead.thisPage = 0;
+      newHead.nextPage = firstHeader.nextPage;
 
-        firstHeader.nextPage = newHeadRid;
+      firstHeader.nextPage = newHeadRid;
 
-        Tset(xid, newHeadRid, &newHead);
-        Tset(xid, list, &firstHeader);
+      Tset(xid, newHeadRid, &newHead);
+      Tset(xid, list, &firstHeader);
 
-        header = newHead;
-        headerRid = newHeadRid;
-      } else {
-        headerRid = header.nextPage;
-        Tread(xid, header.nextPage, &header);
-      }
-      rid = TallocFromPage(xid, headerRid.page, entrySize);
-      DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
+      header = newHead;
+      headerRid = newHeadRid;
+    } else {
+      headerRid = header.nextPage;
+      Tread(xid, header.nextPage, &header);
     }
+    rid = TallocFromPage(xid, headerRid.page, entrySize);
+    DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
+  }
 
-    pagedListEntry * dat = malloc(entrySize);
+  pagedListEntry * dat = malloc(entrySize);
 
-    dat->keySize   = keySize;
-    dat->nextEntry = header.thisPage;
-    memcpy(dat+1, key, keySize);
-    memcpy(((byte*)(dat+1))+keySize, value, valueSize);
-    Tset(xid, rid, dat);
+  dat->keySize   = keySize;
+  dat->nextEntry = header.thisPage;
+  memcpy(dat+1, key, keySize);
+  memcpy(((byte*)(dat+1))+keySize, value, valueSize);
+  Tset(xid, rid, dat);
 
-    header.thisPage = rid.slot;
-    DEBUG("Header.thisPage = %d\n", rid.slot);
-    Tset(xid, headerRid, &header);
-    free(dat);
+  header.thisPage = rid.slot;
+  DEBUG("Header.thisPage = %d\n", rid.slot);
+  Tset(xid, headerRid, &header);
+  free(dat);
 
   return ret;
 }
 
 int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
-    pagedListHeader header;
-    Tread(xid, list, &header);
+  pagedListHeader header;
+  Tread(xid, list, &header);
 
-    recordid rid;
-    rid.page = list.page;
-    rid.slot = header.thisPage;
-    rid.size = 0;
+  recordid rid;
+  rid.page = list.page;
+  rid.slot = header.thisPage;
+  rid.size = 0;
 
-    while(rid.slot || header.nextPage.size != -1) {
+  while(rid.slot || header.nextPage.size != -1) {
 
-      if(rid.slot) {
-        rid.size = TrecordSize(xid, rid);
-        pagedListEntry * dat;
-        dat = malloc(rid.size);
-        Tread(xid, rid, dat);
+    if(rid.slot) {
+      rid.size = TrecordSize(xid, rid);
+      pagedListEntry * dat;
+      dat = malloc(rid.size);
+      Tread(xid, rid, dat);
 
-        if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
-          int valueSize = rid.size - keySize - sizeof(pagedListEntry);
-          *value = malloc(valueSize);
-          memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
-          free(dat);
-          return valueSize;
-        }
-        rid.slot = dat->nextEntry;  // rid.slot will be zero if this is the last entry
+      if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
+        int valueSize = rid.size - keySize - sizeof(pagedListEntry);
+        *value = malloc(valueSize);
+        memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
         free(dat);
-      } else if (header.nextPage.size != -1) {  // another page
-        rid.page = header.nextPage.page;
-        Tread(xid, header.nextPage, &header);
-        rid.slot = header.thisPage;
+        return valueSize;
       }
+      rid.slot = dat->nextEntry;  // rid.slot will be zero if this is the last entry
+      free(dat);
+    } else if (header.nextPage.size != -1) {  // another page
+      rid.page = header.nextPage.page;
+      Tread(xid, header.nextPage, &header);
+      rid.slot = header.thisPage;
     }
+  }
   return -1;
 }
 
@@ -115,67 +115,66 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   pagedListHeader header;
   int ret = 0;
 
-    Tread(xid, list, &header);
-    recordid headerRid;
-    recordid rid;
-    rid.page = list.page;
-    rid.slot = header.thisPage;
-    short lastSlot = -1;
-    headerRid = list;
-    while(rid.slot || header.nextPage.size != -1) {
-      if(rid.slot) {
-        rid.size = TrecordSize(xid, rid);
-        pagedListEntry * dat = malloc(rid.size);
-        Tread(xid, rid, dat);
+  Tread(xid, list, &header);
+  recordid headerRid;
+  recordid rid;
+  rid.page = list.page;
+  rid.slot = header.thisPage;
+  short lastSlot = -1;
+  headerRid = list;
+  while(rid.slot || header.nextPage.size != -1) {
+    if(rid.slot) {
+      rid.size = TrecordSize(xid, rid);
+      pagedListEntry * dat = malloc(rid.size);
+      Tread(xid, rid, dat);
 
-        if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
+      if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
 
-          if(lastSlot != -1) {
-            recordid lastRid = rid;
-            lastRid.slot = lastSlot;
-            lastRid.size = TrecordSize(xid, lastRid);
-            pagedListEntry * lastRidBuf = malloc(lastRid.size);
-            Tread(xid, lastRid, lastRidBuf);
-            lastRidBuf->nextEntry = dat->nextEntry;
-            Tset(xid, lastRid, lastRidBuf);
-            free(lastRidBuf);
-          } else {
-          header.thisPage = dat->nextEntry;
-          Tset(xid, headerRid, &header);
-          }
-          Tdealloc(xid, rid);
-          free(dat);
-          ret = 1;
-          break;
+        if(lastSlot != -1) {
+          recordid lastRid = rid;
+          lastRid.slot = lastSlot;
+          lastRid.size = TrecordSize(xid, lastRid);
+          pagedListEntry * lastRidBuf = malloc(lastRid.size);
+          Tread(xid, lastRid, lastRidBuf);
+          lastRidBuf->nextEntry = dat->nextEntry;
+          Tset(xid, lastRid, lastRidBuf);
+          free(lastRidBuf);
+        } else {
+        header.thisPage = dat->nextEntry;
+        Tset(xid, headerRid, &header);
         }
-        lastSlot = rid.slot;
-        rid.slot = dat->nextEntry;
+        Tdealloc(xid, rid);
         free(dat);
-      } else if (header.nextPage.size != -1) {  // another page
-        lastSlot = -1;
-        rid.page = header.nextPage.page;
-        headerRid = header.nextPage;
-        Tread(xid, header.nextPage, &header);
-        rid.slot = header.thisPage;
+        ret = 1;
+        break;
       }
+      lastSlot = rid.slot;
+      rid.slot = dat->nextEntry;
+      free(dat);
+    } else if (header.nextPage.size != -1) {  // another page
+      lastSlot = -1;
+      rid.page = header.nextPage.page;
+      headerRid = header.nextPage;
+      Tread(xid, header.nextPage, &header);
+      rid.slot = header.thisPage;
     }
+  }
   return ret;
 }
 
 int TpagedListMove(int xid, recordid start_list, recordid end_list, const byte * key, int keySize) {
   byte * value = NULL;
   int ret;
-    int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
-    if(valueSize != -1) {
-      ret = TpagedListRemove(xid, start_list, key, keySize);
-      assert(ret);
-      ret = TpagedListInsert(xid, end_list, key, keySize, value, valueSize);
-      assert(!ret);
-      if(value) { free(value); }
-      //      ret = 1;
-    } else {
-      ret = 0;
-    }
+  int valueSize = TpagedListFind(xid, start_list, key, keySize, &value);
+  if(valueSize != -1) {
+    ret = TpagedListRemove(xid, start_list, key, keySize);
+    assert(ret);
+    ret = TpagedListInsert(xid, end_list, key, keySize, value, valueSize);
+    assert(!ret);
+    if(value) { free(value); }
+  } else {
+    ret = 0;
+  }
   return ret;
 }
 

@@ -53,83 +53,81 @@ static int bufManCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
-    page_handle = ph;
-    stasis_buffer_manager_t * bm = malloc(sizeof(*bm));
-    bm->releasePageImpl = bufManReleasePage;
-    bm->openHandleImpl = bufManOpenHandle;
-    bm->closeHandleImpl = bufManCloseHandle;
-    bm->loadPageImpl = bufManLoadPage;
-    bm->loadUninitPageImpl = bufManLoadUninitPage;
-    bm->prefetchPages = NULL;
-    bm->getCachedPageImpl = bufManGetCachedPage;
-    bm->writeBackPage = pageWrite_legacyWrapper;
-    bm->forcePages = forcePageFile_legacyWrapper;
-    bm->forcePageRange = forceRangePageFile_legacyWrapper;
-    bm->stasis_buffer_manager_close = bufManBufDeinit;
-    bm->stasis_buffer_manager_simulate_crash = bufManSimulateBufferManagerCrash;
+  page_handle = ph;
+  stasis_buffer_manager_t * bm = malloc(sizeof(*bm));
+  bm->releasePageImpl = bufManReleasePage;
+  bm->openHandleImpl = bufManOpenHandle;
+  bm->closeHandleImpl = bufManCloseHandle;
+  bm->loadPageImpl = bufManLoadPage;
+  bm->loadUninitPageImpl = bufManLoadUninitPage;
+  bm->prefetchPages = NULL;
+  bm->getCachedPageImpl = bufManGetCachedPage;
+  bm->writeBackPage = pageWrite_legacyWrapper;
+  bm->forcePages = forcePageFile_legacyWrapper;
+  bm->forcePageRange = forceRangePageFile_legacyWrapper;
+  bm->stasis_buffer_manager_close = bufManBufDeinit;
+  bm->stasis_buffer_manager_simulate_crash = bufManSimulateBufferManagerCrash;
 
-    stasis_buffer_pool = stasis_buffer_pool_init();
+  stasis_buffer_pool = stasis_buffer_pool_init();
 
-	pthread_mutex_init(&loadPagePtr_mutex, NULL);
+  pthread_mutex_init(&loadPagePtr_mutex, NULL);
 
-	activePages = LH_ENTRY(create)(16);
+  activePages = LH_ENTRY(create)(16);
 
-	dummy_page = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
-	stasis_buffer_pool_free_page(stasis_buffer_pool, dummy_page, -1);
-	Page *first;
-	first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
-	stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
-	LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
-	page_handle->read(page_handle, first, UNKNOWN_TYPE_PAGE);
-	pageCacheInit(first);
+  dummy_page = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
+  stasis_buffer_pool_free_page(stasis_buffer_pool, dummy_page, -1);
+  Page *first;
+  first = stasis_buffer_pool_malloc_page(stasis_buffer_pool);
+  stasis_buffer_pool_free_page(stasis_buffer_pool, first, 0);
+  LH_ENTRY(insert)(activePages, &first->id, sizeof(first->id), first);
+  page_handle->read(page_handle, first, UNKNOWN_TYPE_PAGE);
+  pageCacheInit(first);
 
-	int err = pthread_key_create(&lastPage, 0);
-	assert(!err);
+  int err = pthread_key_create(&lastPage, 0);
+  assert(!err);
 
-	assert(activePages);
+  assert(activePages);
 #ifdef PROFILE_LATCHES_WRITE_ONLY
-    profile_load_hash = LH_ENTRY(create)(10);
-    profile_load_pins_hash = LH_ENTRY(create)(10);
+  profile_load_hash = LH_ENTRY(create)(10);
+  profile_load_pins_hash = LH_ENTRY(create)(10);
 #endif
-    bm->impl = 0;  // XXX hack, but this module is deprecated
-    return bm;
+  bm->impl = 0;  // XXX hack, but this module is deprecated
+  return bm;
 }
 
 static void bufManBufDeinit() {
 
-	DEBUG("pageCacheDeinit()");
+  DEBUG("pageCacheDeinit()");
 
-	struct LH_ENTRY(list) iter;
-	const struct LH_ENTRY(pair_t) * next;
-	LH_ENTRY(openlist(activePages, &iter));
+  struct LH_ENTRY(list) iter;
+  const struct LH_ENTRY(pair_t) * next;
+  LH_ENTRY(openlist(activePages, &iter));
 
-	while((next = LH_ENTRY(readlist)(&iter))) {
-	  page_handle->write(page_handle, (Page*)next->value);
-	  DEBUG("+");
-	}
+  while((next = LH_ENTRY(readlist)(&iter))) {
+    page_handle->write(page_handle, (Page*)next->value);
+    DEBUG("+");
+  }
 
-	LH_ENTRY(destroy)(activePages);
+  LH_ENTRY(destroy)(activePages);
 
-	pthread_mutex_destroy(&loadPagePtr_mutex);
+  pthread_mutex_destroy(&loadPagePtr_mutex);
 
-	pageCacheDeinit();
+  pageCacheDeinit();
 
-	stasis_buffer_pool_deinit(stasis_buffer_pool);
+  stasis_buffer_pool_deinit(stasis_buffer_pool);
 
-    page_handle->close(page_handle);
+  page_handle->close(page_handle);
 
 #ifdef PIN_COUNT
-	if(pinCount != 0) {
-	  printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
-	}
+  if(pinCount != 0) {
+    printf("WARNING:  At exit, %d pages were still pinned!\n", pinCount);
+  }
 #endif
-	return;
+  return;
 }
 /**
-    Just close file descriptors, don't do any other clean up. (For
-    testing.)
-
-    @todo buffer manager should never call close_(); it not longer manages pageFile handles
+  Just close file descriptors, don't do any other clean up. (For
+  testing.)
 */
 static void bufManSimulateBufferManagerCrash() {
   page_handle->close(page_handle);
@@ -202,18 +200,18 @@ static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitial
       char * holderD = 0;
       int pinsD = 0;
       if(holder) {
-	holderD = strdup(holder);
-	pinsD = *pins;
+        holderD = strdup(holder);
+        pinsD = *pins;
       }
 #endif
       if(locktype == RW) {
-	writelock(ret->loadlatch, 217);
+        writelock(ret->loadlatch, 217);
       } else {
-	readlock(ret->loadlatch, 217);
+        readlock(ret->loadlatch, 217);
       }
 #ifdef PROFILE_LATCHES_WRITE_ONLY
       if(holderD)
-	free(holderD);
+        free(holderD);
 #endif
     }
     spin++;

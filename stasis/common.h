@@ -162,9 +162,9 @@ typedef struct {
 #pragma pack(pop)
 
 /*
-   Define Page as an incomplete type to hide its implementation from clients.
+  Define Page as an incomplete type to hide its implementation from clients.
 
-   Include stasis/page.h for the complete definition.
+  Include stasis/page.h for the complete definition.
 */
 typedef struct Page_s Page;
 

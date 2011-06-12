@@ -15,7 +15,6 @@ typedef struct {
   pageid_t maxOffset;
 } array_list_parameter_t;
 
-
 static array_list_parameter_t array_list_read_parameter(int xid, Page * p) {
 
   array_list_parameter_t alp;
@@ -60,9 +59,10 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
     = stasis_log_entry_update_args_cptr(e);
 
   stasis_fixed_initialize_page(p, sizeof(pageid_t),
-			       stasis_fixed_records_per_page(sizeof(pageid_t)));
+                               stasis_fixed_records_per_page(sizeof(pageid_t)));
 
   recordid initialSizeRid, multiplierRid, slotSizeRid, maxOffsetRid, firstDataPageRid;
+
   initialSizeRid.page
     = multiplierRid.page = slotSizeRid.page
     = maxOffsetRid.page = firstDataPageRid.page = p->id;
@@ -190,11 +190,10 @@ void TarrayListDealloc(int xid, recordid rid) {
 
 /** @todo locking for arrayList... this isn't pressing since currently
     the only thing that calls arraylist (the hashtable
-    implementations) serialize bucket list operations anyway...
+    implementations) serializes bucket list operations anyway...
 
     @todo this function calls pow(), which is horribly inefficient.
 */
-
 int TarrayListExtend(int xid, recordid rid, int slots) {
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch, 0);

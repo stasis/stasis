@@ -99,7 +99,6 @@ int Tinit() {
   iterator_init();
   consumer_init();
   setupLockManagerCallbacksNil();
-  //setupLockManagerCallbacksPage();
 
   stasis_recovery_initiate(stasis_log_file, stasis_transaction_table, stasis_alloc);
   stasis_truncation = stasis_truncation_init(stasis_dirty_page_table, stasis_transaction_table,
@@ -111,7 +110,6 @@ int Tinit() {
   stasis_log_file->set_truncation(stasis_log_file, stasis_truncation);
   return 0;
 }
-
 
 int Tbegin() {
 
@@ -351,20 +349,20 @@ int Tabort(int xid) {
   assert(t->xid == xid);
 
   if( t->prevLSN != INVALID_LSN ) {
-      lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
+    lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
 
-      /** @todo is the order of the next two calls important? */
-      undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
-      if(globalLockManager.abort) { globalLockManager.abort(xid); }
+    /** @todo is the order of the next two calls important? */
+    undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
+    if(globalLockManager.abort) { globalLockManager.abort(xid); }
   } else {
-      // This would normally be called by stasis_recovery_undo inside of undoTrans.
-      // Since we skip the call to undoTrans, we call it here.  Note that this is
-      // different than the API usage in TcommitHelper().  The reason is that
-      // undoTrans needs to deal with Tprepare().
+    // This would normally be called by stasis_recovery_undo inside of undoTrans.
+    // Since we skip the call to undoTrans, we call it here.  Note that this is
+    // different than the API usage in TcommitHelper().  The reason is that
+    // undoTrans needs to deal with Tprepare().
 
-      // @todo pull up all calls to stasis_transaction_table_forget(),
-      // and move this invocation outside of the if-then-else.
-      stasis_transaction_table_forget(stasis_transaction_table, xid);
+    // @todo pull up all calls to stasis_transaction_table_forget(),
+    // and move this invocation outside of the if-then-else.
+    stasis_transaction_table_forget(stasis_transaction_table, xid);
   }
 
   return 0;
@@ -382,9 +380,9 @@ int Tdeinit() {
 
   for(int i = 0; i < count; i++) {
     if(stasis_transaction_table_get(stasis_transaction_table,
-				    active[i])->prevLSN != INVALID_LSN) {
+                                    active[i])->prevLSN != INVALID_LSN) {
       if(!stasis_suppress_unclean_shutdown_warnings) {
-	fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", active[i]);
+        fprintf(stderr, "WARNING: Tdeinit() is aborting transaction %d\n", active[i]);
       }
     }
     Tabort(active[i]);
@@ -461,10 +459,8 @@ typedef struct {
 int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
   stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(xid >= 0);
-  void * e = stasis_log_begin_nta(stasis_log_file,
-			   xact,
-			   op, dat, datSize);
-  // HACK: breaks encapsulation.
+  void * e = stasis_log_begin_nta(stasis_log_file, xact, op, dat, datSize);
+  // XXX HACK: breaks encapsulation.
   stasis_operation_do(e, NULL);
 
   stasis_log_end_nta(stasis_log_file, xact, e);
@@ -489,7 +485,7 @@ lsn_t TendNestedTopAction(int xid, void * handle) {
   lsn_t ret = stasis_log_end_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), handle);
 
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
-	 clrLSN, undoneLSN, *prevLSN);
+        clrLSN, undoneLSN, *prevLSN);
 
   return ret;
 }
@@ -523,7 +519,6 @@ int TisActiveTransaction(stasis_transaction_fingerprint_t * fp) {
   return stasis_transaction_table_is_active(stasis_transaction_table, fp->xid)
          && stasis_transaction_table_get(stasis_transaction_table, fp->xid)->recLSN == fp->rec_lsn;
 }
-
 
 void * stasis_log() {
   return stasis_log_file;

@@ -17,40 +17,35 @@ typedef struct {
   lsn_t eof;
 } logMemory_fifo_t;
 
-
-
 void logMemory_init() {
-/* NO-OP */
+  /* NO-OP */
 }
 
 lladdFifo_t * logMemoryFifo(size_t size, lsn_t initialOffset) {
 
- lladdFifo_t * fifo = (lladdFifo_t *) malloc(sizeof(lladdFifo_t));
+  lladdFifo_t * fifo = (lladdFifo_t *) malloc(sizeof(lladdFifo_t));
 
- lladdIterator_t * iterator = (lladdIterator_t *) malloc(sizeof(lladdIterator_t));
- iterator->type = LOG_MEMORY_ITERATOR;
- iterator->impl = malloc(sizeof(logMemory_fifo_t));
- ((logMemory_fifo_t *)iterator->impl)->ringBuffer = openLogRingBuffer(size, initialOffset);
- pthread_mutex_init(&(((logMemory_fifo_t *)iterator->impl)->mutex), NULL);
- pthread_mutex_init(&(((logMemory_fifo_t *)iterator->impl)->readerMutex), NULL);
- pthread_cond_init (&(((logMemory_fifo_t *)iterator->impl)->readReady), NULL);
- pthread_cond_init (&(((logMemory_fifo_t *)iterator->impl)->writeReady), NULL);
- ((logMemory_fifo_t *)iterator->impl)->cached_value = NULL;
- ((logMemory_fifo_t *)iterator->impl)->eof = -1;
+  lladdIterator_t * iterator = (lladdIterator_t *) malloc(sizeof(lladdIterator_t));
+  iterator->type = LOG_MEMORY_ITERATOR;
+  iterator->impl = malloc(sizeof(logMemory_fifo_t));
+  ((logMemory_fifo_t *)iterator->impl)->ringBuffer = openLogRingBuffer(size, initialOffset);
+  pthread_mutex_init(&(((logMemory_fifo_t *)iterator->impl)->mutex), NULL);
+  pthread_mutex_init(&(((logMemory_fifo_t *)iterator->impl)->readerMutex), NULL);
+  pthread_cond_init (&(((logMemory_fifo_t *)iterator->impl)->readReady), NULL);
+  pthread_cond_init (&(((logMemory_fifo_t *)iterator->impl)->writeReady), NULL);
+  ((logMemory_fifo_t *)iterator->impl)->cached_value = NULL;
+  ((logMemory_fifo_t *)iterator->impl)->eof = -1;
 
- lladdConsumer_t * consumer = (lladdConsumer_t *) malloc(sizeof(lladdConsumer_t));
- consumer->type = LOG_MEMORY_CONSUMER;
- consumer->impl = iterator->impl;
+  lladdConsumer_t * consumer = (lladdConsumer_t *) malloc(sizeof(lladdConsumer_t));
+  consumer->type = LOG_MEMORY_CONSUMER;
+  consumer->impl = iterator->impl;
 
- fifo->iterator = iterator;
- fifo->consumer = consumer;
+  fifo->iterator = iterator;
+  fifo->consumer = consumer;
 
 
- return fifo;
+  return fifo;
 }
-
-
-
 
 /*------------- iterator interface implementation --------------------*/
 
@@ -92,7 +87,6 @@ int logMemory_Iterator_next (int xid, void * impl) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
-
   }
   assert(!ret);
 
@@ -115,7 +109,6 @@ int logMemory_Iterator_next (int xid, void * impl) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
-
   }
 
   assert(!ret);
@@ -124,8 +117,8 @@ int logMemory_Iterator_next (int xid, void * impl) {
 
   pthread_cond_broadcast(&(fifo->writeReady));
   pthread_mutex_unlock(&(fifo->mutex));
-  return 1;
 
+  return 1;
 }
 
 /** @todo logMemory_Iterator_tryNext is a cut and pasted version of
@@ -161,7 +154,6 @@ int logMemory_Iterator_tryNext (int xid, void * impl) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
-
   }
   assert(!ret);
 
@@ -184,9 +176,7 @@ int logMemory_Iterator_tryNext (int xid, void * impl) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
     return LLADD_INTERNAL_ERROR;
-
   }
-
   assert(!ret);
 
   fifo->cached_lsn = (lsn_t)lsn;
@@ -316,10 +306,6 @@ void logMemory_consumer_close(int xid, void *it){
   pthread_mutex_unlock(&(fifo->mutex));
 }
 
-/*compensated_function void Tconsumer_close(int xid, lladdConsumer_t * cons) {
-  logMemory_consumer_close(xid, cons);
-  }*/
-
 int logMemory_consumer_push(int xid, /*lladdConsumer_t * cons*/ void * it, byte * key, size_t keySize, byte * val, size_t valSize) {
   int ret;
   logMemory_fifo_t * fifo = (logMemory_fifo_t *) (it);
@@ -347,12 +333,3 @@ int logMemory_consumer_push(int xid, /*lladdConsumer_t * cons*/ void * it, byte 
   return ret;
 
 }
-/*  if(it->type == LOG_MEMORY_CONSUMER) {
-    return logMemory_consumer_push(xid, it, key, keySize, val, valSize);
-  }
-  if(it->type == POINTER_CONSUMER) {
-    return pointer_consumer_push(xid, it, key, keySize, val, valSize);
-  }
-
-  // always succeeds.
-  }*/

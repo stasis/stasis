@@ -69,13 +69,6 @@ terms specified in this license.
 #ifndef __pageOrientedListNTA_H
 #define __pageOrientedListNTA_H
 
-
-//typedef struct {
-//  long page;
-  /* The slot of the next record to be returned. */
-//  int slot;
-//} lladd_pagedList_iterator;
-
 typedef struct {
   recordid headerRid;
   recordid entryRid;
@@ -87,7 +80,6 @@ typedef struct {
 } pagedListHeader;
 
 
-//recordid dereferencePagedListRID(int xid, recordid rid);
 /** @return 1 if the key was already in the list. */
 int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize);
 int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value);

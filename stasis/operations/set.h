@@ -55,11 +55,11 @@ terms specified in this license.
 #define __SET_H__
 
 /**
-    Changes the value of a record.
-    @param xid the transaction id
-    @param rid the recordid of the record to be changed.
-    @param dat the new value of the record.
-*/ 
+  Changes the value of a record.
+  @param xid the transaction id
+  @param rid the recordid of the record to be changed.
+  @param dat the new value of the record.
+*/
 int Tset(int xid, recordid rid, const void * dat);
 Page * TsetWithPage(int xid, recordid rid, Page *p, const void * dat);
 

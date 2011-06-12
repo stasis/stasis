@@ -35,11 +35,10 @@ static pblHashTable_t * openHashes = NULL;
 static void rehash(int xid, recordid hash, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize);
 static void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split);
 static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
-		     void * key, int keySize, int valSize, recordid * deletedEntry);
+                            void * key, int keySize, int valSize, recordid * deletedEntry);
 static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents,
-		      hashEntry * e, int keySize, int valSize, int skipDelete);
+                             hashEntry * e, int keySize, int valSize, int skipDelete);
 static int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize);
-
 
 static int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
   int found;
@@ -109,142 +108,142 @@ static void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next
 }
 
 static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, unsigned int keySize, unsigned int valSize) {
-    int firstA = 1;  // Is 'A' the recordid of a bucket?
-    int firstD = 1;  // What about 'D'?
+  int firstA = 1;  // Is 'A' the recordid of a bucket?
+  int firstD = 1;  // What about 'D'?
 
-    assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
-    recordid ba = hashRid; ba.slot = next_split;
-    recordid bb = hashRid; bb.slot = next_split + stasis_util_two_to_the(i-1);
+  assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
+  recordid ba = hashRid; ba.slot = next_split;
+  recordid bb = hashRid; bb.slot = next_split + stasis_util_two_to_the(i-1);
 
-    hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-    hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-    hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
 
-    Tread(xid, ba, A_contents);
-    Tread(xid, bb, D_contents);
-    recordid A = ba; //ba_contents;
-    recordid D = bb; //bb_contents;
-    recordid B = A_contents->next;
-    recordid C;
+  Tread(xid, ba, A_contents);
+  Tread(xid, bb, D_contents);
+  recordid A = ba; //ba_contents;
+  recordid D = bb; //bb_contents;
+  recordid B = A_contents->next;
+  recordid C;
 
-    if(!A_contents->next.size) {
-      /* Bucket A is empty, so we're done. */
+  if(!A_contents->next.size) {
+    /* Bucket A is empty, so we're done. */
+    free(D_contents);
+    free(A_contents);
+    free(B_contents);
+    return;
+  }
+
+  uint64_t old_hash;
+  uint64_t new_hash =
+    2 + stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX);
+
+  while(new_hash != next_split) {
+    // Need a record in A that belongs in the first bucket...
+
+    recordid oldANext = A_contents->next;
+
+    A_contents->next = NULLRID;
+
+    if(firstD) {
+      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+      Tset(xid, D, A_contents);
+      firstD = 0;
+        } else {
+      /* D at end of list => can overwrite next. */
+      D_contents->next = Talloc(xid, sizeof(hashEntry) + keySize + valSize); /* @todo
+                                            unfortunate
+                                            to
+                                            dealloc
+                                            A's
+                                            successor,
+                                            then
+                                            alloc.. */
+      //      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
+      Tset(xid, D_contents->next, A_contents);
+      //      assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
+      Tset(xid, D, D_contents);
+      D = A;
+    }
+    hashEntry * swap = D_contents;
+    D_contents = A_contents;
+    A_contents = swap;
+
+    /* A_contents is now garbage. */
+
+    assert(A.size == sizeof(hashEntry) + keySize + valSize);
+    if(oldANext.size == -1) {
+      memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
+      //      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+      Tset(xid, A, A_contents);
       free(D_contents);
       free(A_contents);
       free(B_contents);
       return;
     }
+    assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
+    Tread(xid, oldANext, A_contents);
+    //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+    Tset(xid, A, A_contents);
+    Tdealloc(xid, oldANext);
 
-    uint64_t old_hash;
-    uint64_t new_hash =
-      2 + stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX);
+    new_hash = stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX) + 2;
+  }
 
-    while(new_hash != next_split) {
-      // Need a record in A that belongs in the first bucket...
+  B = A_contents->next;
 
-      recordid oldANext = A_contents->next;
+  while(B.size != -1) {
+    assert(B.size == sizeof(hashEntry) + keySize + valSize);
+    Tread(xid, B, B_contents);
+    C = B_contents->next;
 
-      A_contents->next = NULLRID;
+    old_hash = stasis_linear_hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
+    new_hash = stasis_linear_hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
 
-      if(firstD) {
-	//      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
-	Tset(xid, D, A_contents);
-	firstD = 0;
-      } else {
-	/* D at end of list => can overwrite next. */
-	D_contents->next = Talloc(xid, sizeof(hashEntry) + keySize + valSize); /* @todo
-										  unfortunate
-										  to
-										  dealloc
-										  A's
-										  successor,
-										  then
-										  alloc.. */
-	//      assert(memcmp(&A_contents->next, &D_contents->next, sizeof(recordid)));
-	Tset(xid, D_contents->next, A_contents);
-	//      assert(memcmp(&D, &D_contents->next, sizeof(recordid)));
-	Tset(xid, D, D_contents);
-	D = A;
-      }
-      hashEntry * swap = D_contents;
-      D_contents = A_contents;
-      A_contents = swap;
+    assert(next_split == old_hash);
+    assert(new_hash   == old_hash || new_hash == old_hash + stasis_util_two_to_the(i-1));
 
-      /* A_contents is now garbage. */
+    if(new_hash == old_hash) {
+      A = B;
+      B = C;
+      C.size = -1;
+      firstA = 0;
+    } else {
+      assert(D.size == sizeof(hashEntry) + keySize + valSize);
+      assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
+      Tread(xid, D, D_contents);
+      D_contents->next = B;
+      assert(B.size != 0);
+      Tset(xid, D, D_contents);
 
+      // A is somewhere in the first list.
       assert(A.size == sizeof(hashEntry) + keySize + valSize);
-      if(oldANext.size == -1) {
-	memset(A_contents, 0, sizeof(hashEntry) + keySize + valSize);
-	//      assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
-	Tset(xid, A, A_contents);
-	free(D_contents);
-	free(A_contents);
-	free(B_contents);
-	return;
-      }
-      assert(oldANext.size == sizeof(hashEntry) + keySize + valSize);
-      Tread(xid, oldANext, A_contents);
-      //    assert(memcmp(&A_contents->next, &A, sizeof(recordid)));
+      assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
+      Tread(xid, A, A_contents);
+      A_contents->next = C;
+      assert(C.size != 0);
+
       Tset(xid, A, A_contents);
-      Tdealloc(xid, oldANext);
 
-      new_hash = stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX) + 2;
-    }
-
-    B = A_contents->next;
-
-    while(B.size != -1) {
+      // B _can't_ be a bucket.
       assert(B.size == sizeof(hashEntry) + keySize + valSize);
       Tread(xid, B, B_contents);
-      C = B_contents->next;
+      B_contents->next = NULLRID;
+      Tset(xid, B, B_contents);
 
-      old_hash = stasis_linear_hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
-      new_hash = stasis_linear_hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
-
-      assert(next_split == old_hash);
-      assert(new_hash   == old_hash || new_hash == old_hash + stasis_util_two_to_the(i-1));
-
-      if(new_hash == old_hash) {
-	A = B;
-	B = C;
-	C.size = -1;
-	firstA = 0;
-      } else {
-	assert(D.size == sizeof(hashEntry) + keySize + valSize);
-	assert(B.size == -1 || B.size == sizeof(hashEntry) + keySize + valSize);
-	Tread(xid, D, D_contents);
-	D_contents->next = B;
-	assert(B.size != 0);
-	Tset(xid, D, D_contents);
-
-	// A is somewhere in the first list.
-	assert(A.size == sizeof(hashEntry) + keySize + valSize);
-	assert(C.size == -1 || C.size == sizeof(hashEntry) + keySize + valSize);
-	Tread(xid, A, A_contents);
-	A_contents->next = C;
-	assert(C.size != 0);
-
-	Tset(xid, A, A_contents);
-
-	// B _can't_ be a bucket.
-	assert(B.size == sizeof(hashEntry) + keySize + valSize);
-	Tread(xid, B, B_contents);
-	B_contents->next = NULLRID;
-	Tset(xid, B, B_contents);
-
-	// Update Loop State
-	D = B;
-	B = C;
-	C.size = -1;
-	firstD = 0;
-      }
+      // Update Loop State
+      D = B;
+      B = C;
+      C.size = -1;
+      firstD = 0;
     }
-    free(D_contents);
-    free(A_contents);
-    free(B_contents);
+  }
+  free(D_contents);
+  free(A_contents);
+  free(B_contents);
 }
 static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashEntry * bucket_contents,
-		      hashEntry * e, int keySize, int valSize, int skipDelete) {
+                             hashEntry * e, int keySize, int valSize, int skipDelete) {
   recordid deleteMe;
   if(!skipDelete) {
     if(deleteFromBucket(xid, hashRid, bucket_number, bucket_contents, e+1, keySize, valSize, &deleteMe)) {
@@ -259,9 +258,6 @@ static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashE
   /*@todo consider recovery for insertIntoBucket. */
 
   hashRid.slot = bucket_number;
-  //  Page * p = loadPage(xid, hashRid.page);
-  //  assert(stasis_record_type_to_size(stasis_record_dereference(xid, p, hashRid).size) == sizeof(hashEntry) + valSize + keySize);
-  //  releasePage(p);
 
   Tread(xid, hashRid, bucket_contents);
 
@@ -284,7 +280,7 @@ static void insertIntoBucket(int xid, recordid hashRid, int bucket_number, hashE
 }
 
 static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry * bucket_contents,
-		     void * key, int keySize, int valSize, recordid * deletedEntry) {
+                            void * key, int keySize, int valSize, recordid * deletedEntry) {
   if(bucket_contents->next.size == 0) { return 0; }
 
   recordid this = hash;
@@ -335,7 +331,6 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
       found = 1;
       break;
     }
-
   }
 
   free(A);
@@ -403,8 +398,8 @@ void TnaiveHashDeinit() {
 }
 
 void TnaiveHashInsert(int xid, recordid hashRid,
-	    void * key, int keySize,
-	    void * val, int valSize) {
+                      void * key, int keySize,
+                      void * val, int valSize) {
 
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
@@ -429,7 +424,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
 /** @todo hash hable probably should track the number of items in it,
     so that expand can be selectively called. */
 int TnaiveHashDelete(int xid, recordid hashRid,
-	    void * key, int keySize, int valSize) {
+                     void * key, int keySize, int valSize) {
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
@@ -464,7 +459,6 @@ int TnaiveHashOpen(int xid, recordid hashRid, int keySize, int valSize) {
 void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void * val, int valSize) {
   TnaiveHashDelete(xid, hashRid, key, keySize, valSize);
   TnaiveHashInsert(xid, hashRid, key, keySize, val, valSize);
-
 }
 
 
@@ -476,7 +470,6 @@ int TnaiveHashClose(int xid, recordid hashRid) {
 }
 
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
-
   recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
   int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);

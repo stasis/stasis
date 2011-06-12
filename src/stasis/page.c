@@ -161,7 +161,6 @@ int stasis_record_read(int xid, Page * p, recordid rid, byte *buf) {
   stasis_record_read_done(xid,p,rid,dat);
 
   return 0;
-
 }
 /**
    @todo stasis_record_dereference should dispatch via page_impl...

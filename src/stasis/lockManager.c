@@ -159,9 +159,9 @@ int lockManagerReadLockHashed(int xid, byte * dat, int datLen) {
     do {
       int wait_ret = pthread_cond_timedwait(&ridLock->readOK, mut, &ts);
       if(wait_ret == ETIMEDOUT) {
-	ridLock->active--;
-	pthread_mutex_unlock(mut);
-	return LLADD_DEADLOCK;
+        ridLock->active--;
+        pthread_mutex_unlock(mut);
+        return LLADD_DEADLOCK;
       }
     } while(ridLock->writers);
   }
@@ -197,7 +197,7 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     me = 1;
   }
 
-    pthread_mutex_t * mut = getMutex(dat, datLen);
+  pthread_mutex_t * mut = getMutex(dat, datLen);
 
   pthread_mutex_lock(mut);
   lock * ridLock = pblHtLookup_r(ridLockTable, dat, datLen);
@@ -221,10 +221,10 @@ int lockManagerWriteLockHashed(int xid, byte * dat, int datLen) {
     while(ridLock->writers || (ridLock->readers - me)) {
       int lockret = pthread_cond_timedwait(&ridLock->writeOK, mut, &ts);
       if(lockret == ETIMEDOUT) {
-	ridLock->waiting--;
-	ridLock->active--;
-	pthread_mutex_unlock(mut);
-	return LLADD_DEADLOCK;
+        ridLock->waiting--;
+        ridLock->active--;
+        pthread_mutex_unlock(mut);
+        return LLADD_DEADLOCK;
       }
     }
   }

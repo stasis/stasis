@@ -4,22 +4,19 @@
 
 #include <stasis/logger/logMemory.h>
 
-lladdMultiplexer_t * lladdMultiplexer_alloc(int xid, lladdIterator_t * it,
-					    void (*multiplexer)(byte * key,
-							      size_t keySize,
-							      byte * value,
-							      size_t valueSize,
-							      byte ** multiplexKey,
-							      size_t * multiplexKeySize),
-					    /*		    lladdConsumer_t * getConsumer(struct lladdFifoPool_t* fifoPool,
-									  byte* multiplexKey,
-									  size_t multiplexKeySize), */
-					    lladdFifoPool_t * fifoPool) {
+lladdMultiplexer_t * lladdMultiplexer_alloc(
+    int xid, lladdIterator_t * it,
+    void (*multiplexer)(byte * key,
+                        size_t keySize,
+                        byte * value,
+                        size_t valueSize,
+                        byte ** multiplexKey,
+                        size_t * multiplexKeySize),
+    lladdFifoPool_t * fifoPool) {
   lladdMultiplexer_t * ret = malloc(sizeof(lladdMultiplexer_t));
   ret->it = it;
   ret->multiplexer = multiplexer;
   ret->consumerHash = pblHtCreate();
-  //  ret->getConsumer  = getConsumer;
   ret->fifoPool = fifoPool;
   ret->xid = xid;
   return ret;
@@ -121,11 +118,11 @@ void * multiplexer_worker(void * arg) {
 
 */
 void multiplexHashLogByKey(byte * key,
-			   size_t keySize,
-			   byte * value,
-			   size_t valueSize,
-			   byte ** multiplexKey,
-			   size_t * multiplexKeySize) {
+                           size_t keySize,
+                           byte * value,
+                           size_t valueSize,
+                           byte ** multiplexKey,
+                           size_t * multiplexKeySize) {
   // We don't care what the key is.  It's probably an LSN.
   const LogEntry * log = (const LogEntry*) value;
   const byte * updateArgs = stasis_log_entry_update_args_cptr(log);  // assume the log is a logical update entry.
@@ -157,7 +154,6 @@ void multiplexHashLogByKey(byte * key,
     abort();
   }
 }
-
 
 void multiplexByValue(byte * key, size_t keySize, byte * value, size_t valueSize, byte **multiplexKey, size_t * multiplexSize) {
   *multiplexKey = value;

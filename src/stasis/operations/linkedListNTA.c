@@ -7,10 +7,6 @@
 
 #include <assert.h>
 
-/*#ifndef PTHREAD_MUTEX_RECURSIVE
-#define PTHREAD_MUTEX_RECURSIVE  PTHREAD_MUTEX_RECURSIVE_NP
-#endif*/
-
 /** A quick note on the format of linked lists.  Each entry consists
      of a struct with some variable length data appended to it.
 
@@ -32,9 +28,7 @@
 
   stasis_linkedList_entry next = entry->next;
 
-
-
-	@file
+  @file
 */
 
 static pthread_mutex_t stasis_linked_list_mutex;
@@ -150,38 +144,36 @@ stasis_operation_impl stasis_op_impl_linked_list_remove() {
   return o;
 }
 static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
-  //int ret = Tli nkedListRemove(xid, list, key, keySize);
+  stasis_linkedList_entry * entry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
 
-    stasis_linkedList_entry * entry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
-
-    Tread(xid, list, entry);
-    if(!entry->next.size) {
-      memcpy(entry+1, key, keySize);
-      memcpy(((byte*)(entry+1))+keySize, value, valueSize);
-      entry->next.page = 0;
-      entry->next.slot = 0;
-      entry->next.size = -1;
-      Tset(xid, list, entry);
-    } else {
-      stasis_linkedList_entry * newEntry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
-      memcpy(newEntry + 1, key, keySize);
-      memcpy(((byte*)(newEntry+1))+keySize, value, valueSize);
-      newEntry->next = entry->next;
-      recordid newRid = Talloc(xid, sizeof(stasis_linkedList_entry) + keySize + valueSize);
-      Tset(xid, newRid, newEntry);
-      entry->next = newRid;
-      Tset(xid, list, entry);
-      free(newEntry);
-    }
-    free(entry);
+  Tread(xid, list, entry);
+  if(!entry->next.size) {
+    memcpy(entry+1, key, keySize);
+    memcpy(((byte*)(entry+1))+keySize, value, valueSize);
+    entry->next.page = 0;
+    entry->next.slot = 0;
+    entry->next.size = -1;
+    Tset(xid, list, entry);
+  } else {
+    stasis_linkedList_entry * newEntry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
+    memcpy(newEntry + 1, key, keySize);
+    memcpy(((byte*)(newEntry+1))+keySize, value, valueSize);
+    newEntry->next = entry->next;
+    recordid newRid = Talloc(xid, sizeof(stasis_linkedList_entry) + keySize + valueSize);
+    Tset(xid, newRid, newEntry);
+    entry->next = newRid;
+    Tset(xid, list, entry);
+    free(newEntry);
+  }
+  free(entry);
 }
 
 int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
 
   stasis_linkedList_entry * entry = malloc(list.size);
 
-    pthread_mutex_lock(&stasis_linked_list_mutex);
-    Tread(xid, list, entry);
+  pthread_mutex_lock(&stasis_linked_list_mutex);
+  Tread(xid, list, entry);
 
   if(!entry->next.size) {
     free(entry);
@@ -195,18 +187,18 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
   while(!done) {
 
     if(!memcmp(entry + 1, key, keySize)) {
-  // Bucket contains the entry of interest.
-  int valueSize = list.size - (sizeof(stasis_linkedList_entry) + keySize);
-  *value  = malloc(valueSize);
-  memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
-  done = 1;
-  ret = valueSize;
+      // Bucket contains the entry of interest.
+      int valueSize = list.size - (sizeof(stasis_linkedList_entry) + keySize);
+      *value  = malloc(valueSize);
+      memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
+      done = 1;
+      ret = valueSize;
     }
     if(entry->next.size != -1) {
-  assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
-  Tread(xid, entry->next, entry);
+      assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
+      Tread(xid, entry->next, entry);
     } else {
-  done = 1;
+      done = 1;
     }
   }
   free(entry);
@@ -215,9 +207,6 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
 
   return ret;
 }
-
-
-
 
 int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   byte * value;
@@ -275,48 +264,45 @@ static int stasis_linked_list_remove_helper(int xid, recordid list, const byte *
   oldLastRead.size = -2;
   int ret = 0;
 
-    while(1) {
-      if(!memcmp(entry + 1, key, keySize)) {
-	// Bucket contains the entry of interest.
-	if(listRoot) {
-	  if(entry->next.size == -1) {
-	    memset(entry, 0, list.size);
-	    Tset(xid, lastRead, entry);
-	  } else {
-	    assert(entry->next.size == list.size);  // Otherwise, something strange is happening, or the list contains entries with variable sizes.
-	    stasis_linkedList_entry * entry2 = malloc(list.size);
-	    Tread(xid, entry->next, entry2);
-	    Tdealloc(xid, entry->next); // could break iterator, since it writes one entry ahead.
-	    Tset(xid, lastRead, entry2);
-	    free(entry2);
-	  }
-	} else {
-	  stasis_linkedList_entry * entry2 = malloc(list.size);
-	  assert(oldLastRead.size != -2);
-	  Tread(xid, oldLastRead, entry2);
-	  memcpy(&(entry2->next), &(entry->next), sizeof(recordid));
-	  Tset(xid, oldLastRead, entry2);
-	  Tdealloc(xid, lastRead);
-	  free (entry2);
-	}
-	//      free(entry);
-	//      pthread_mutex_unlock(&linked_list_mutex);
-	//      return 1;
-	ret = 1;
-	break;
-      } else { // Entry doesn't match the key we're looking for.
-	if(entry->next.size != -1) {
-	  assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
-	  oldLastRead = lastRead;
-	  lastRead = entry->next;
-	  Tread(xid, entry->next, entry);
-	  listRoot = 0;
-	} else {
-	  break;
-	}
+  while(1) {
+    if(!memcmp(entry + 1, key, keySize)) {
+      // Bucket contains the entry of interest.
+      if(listRoot) {
+        if(entry->next.size == -1) {
+          memset(entry, 0, list.size);
+          Tset(xid, lastRead, entry);
+        } else {
+          assert(entry->next.size == list.size);  // Otherwise, something strange is happening, or the list contains entries with variable sizes.
+          stasis_linkedList_entry * entry2 = malloc(list.size);
+          Tread(xid, entry->next, entry2);
+          Tdealloc(xid, entry->next); // could break iterator, since it writes one entry ahead.
+          Tset(xid, lastRead, entry2);
+          free(entry2);
+        }
+      } else {
+        stasis_linkedList_entry * entry2 = malloc(list.size);
+        assert(oldLastRead.size != -2);
+        Tread(xid, oldLastRead, entry2);
+        memcpy(&(entry2->next), &(entry->next), sizeof(recordid));
+        Tset(xid, oldLastRead, entry2);
+        Tdealloc(xid, lastRead);
+        free (entry2);
+      }
+      ret = 1;
+      break;
+    } else { // Entry doesn't match the key we're looking for.
+      if(entry->next.size != -1) {
+        assert(entry->next.size == list.size);  // Don't handle lists with variable length records for now
+        oldLastRead = lastRead;
+        lastRead = entry->next;
+        Tread(xid, entry->next, entry);
+        listRoot = 0;
+      } else {
+        break;
       }
     }
-    free(entry);
+  }
+  free(entry);
   pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
@@ -325,20 +311,16 @@ static int stasis_linked_list_remove_helper(int xid, recordid list, const byte *
 int TlinkedListMove(int xid, recordid start_list, recordid end_list, const byte *key, int keySize) {
   byte * value = 0;
   int ret;
-    pthread_mutex_lock(&stasis_linked_list_mutex);
-    int valueSize = TlinkedListFind(xid, start_list, key, keySize, &value);
-    if(valueSize != -1) {
-      //      pthread_mutex_unlock(&linked_list_mutex);
-      //      return 0;
-      ret = 0;
-    } else {
-      TlinkedListRemove(xid, start_list, key, keySize);
-      TlinkedListInsert(xid, end_list, key, keySize, value, valueSize);
-      //    pthread_mutex_unlock(&linked_list_mutex);
-      //    return 1;
-      ret = 1;
-    }
-    if(value) { free(value); }
+  pthread_mutex_lock(&stasis_linked_list_mutex);
+  int valueSize = TlinkedListFind(xid, start_list, key, keySize, &value);
+  if(valueSize != -1) {
+    ret = 0;
+  } else {
+    TlinkedListRemove(xid, start_list, key, keySize);
+    TlinkedListInsert(xid, end_list, key, keySize, value, valueSize);
+    ret = 1;
+  }
+  if(value) { free(value); }
   pthread_mutex_unlock(&stasis_linked_list_mutex);
 
   return ret;
@@ -354,23 +336,23 @@ recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
   return ret;
 }
 void TlinkedListDelete(int xid, recordid list) {
-    stasis_linkedList_entry * entry = malloc(list.size);
+  stasis_linkedList_entry * entry = malloc(list.size);
 
-    Tread(xid, list, entry);
-    Tdealloc(xid, list);
+  Tread(xid, list, entry);
+  Tdealloc(xid, list);
 
-    if(entry->next.size == 0) {
-      return;
-    }
+  if(entry->next.size == 0) {
+    return;
+  }
 
-    while(entry->next.size != -1) {
-      recordid nextEntry;
-      Tread(xid, nextEntry, entry);
-      assert(!memcmp(&nextEntry, &(entry->next), sizeof(recordid)));
-      Tdealloc(xid, nextEntry);
-    }
+  while(entry->next.size != -1) {
+    recordid nextEntry;
+    Tread(xid, nextEntry, entry);
+    assert(!memcmp(&nextEntry, &(entry->next), sizeof(recordid)));
+    Tdealloc(xid, nextEntry);
+  }
 
-    free(entry);
+  free(entry);
 }
 
 stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize) {
@@ -397,36 +379,34 @@ int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int *
 
   pthread_mutex_lock(&stasis_linked_list_mutex);
 
-    if(it->first == -1) {
-      it->first = 1;
-    } else if(it->first) {
-      entry = malloc(it->next.size);
-      Tread(xid, it->listRoot, entry);
-      int listTouched;
-      listTouched = memcmp(&(entry->next), &(it->next), sizeof(recordid));
-      free(entry);
-      if(listTouched) {
-	//The root entry was removed.  Reset the iterator.
-	it->first = -1;
-	it->next = it->listRoot;
-	ret = TlinkedListNext(xid, it, key, keySize, value, valueSize);
-	//      pthread_mutex_unlock(&linked_list_mutex);
-	done = 1;
-	//      return ret;
-      } else {
-	//continue as normal.
-	it->first = 0;
-      }
+  if(it->first == -1) {
+    it->first = 1;
+  } else if(it->first) {
+    entry = malloc(it->next.size);
+    Tread(xid, it->listRoot, entry);
+    int listTouched;
+    listTouched = memcmp(&(entry->next), &(it->next), sizeof(recordid));
+    free(entry);
+    if(listTouched) {
+      //The root entry was removed.  Reset the iterator.
+      it->first = -1;
+      it->next = it->listRoot;
+      ret = TlinkedListNext(xid, it, key, keySize, value, valueSize);
+      done = 1;
+    } else {
+      //continue as normal.
+      it->first = 0;
     }
+  }
 
   if(done) {
     pthread_mutex_unlock(&stasis_linked_list_mutex);
     return ret;
   }
 
-    assert(it->keySize + it->valueSize + sizeof(stasis_linkedList_entry) == it->next.size);
-    entry = malloc(it->next.size);
-    Tread(xid, it->next, entry);
+  assert(it->keySize + it->valueSize + sizeof(stasis_linkedList_entry) == it->next.size);
+  entry = malloc(it->next.size);
+  Tread(xid, it->next, entry);
 
   if(entry->next.size) {
     *keySize = it->keySize;
