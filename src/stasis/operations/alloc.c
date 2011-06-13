@@ -2,7 +2,6 @@
 #include <stasis/transactional.h>
 #include <stasis/bufferManager.h>
 #include <stasis/allocationPolicy.h>
-#include <stasis/blobManager.h>
 #include <stasis/page.h>
 
 #include <string.h>

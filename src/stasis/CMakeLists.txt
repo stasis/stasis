@@ -15,13 +15,13 @@ ADD_LIBRARY(stasis util/crc32.c
                    util/slab.c
                    util/stlredblack.cpp
                    util/stlslab.cpp
-                   common.c flags.c stats.c bufferManager.c
+                   common.c flags.c util/latchStats.c bufferManager.c
                    operations.c pageHandle.c 
                    bufferManager/concurrentBufferManager.c
                    bufferManager/legacy/pageFile.c
                    bufferManager/legacy/pageCache.c
                    bufferManager/legacy/legacyBufferManager.c
-                   page.c bufferPool.c blobManager.c
+                   page.c bufferPool.c
                    recovery2.c truncation.c transactional2.c
                    dirtyPageTable.c transactionTable.c
                    allocationPolicy.c iterator.c
@@ -53,6 +53,7 @@ ADD_LIBRARY(stasis util/crc32.c
                    operations/pageOrientedListNTA.c
                    operations/regions.c
                    operations/bTree.c
+                   operations/blobs.c
                    io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/raid1.c
                    io/non_blocking.c io/debug.c io/handle.c
                    bufferManager/pageArray.c

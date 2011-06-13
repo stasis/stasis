@@ -1,7 +1,7 @@
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
 #include <stasis/bufferManager/bufferHash.h>

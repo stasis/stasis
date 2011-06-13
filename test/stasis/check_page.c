@@ -49,10 +49,10 @@ terms specified in this license.
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
 #include <stasis/experimental/latchFree/lfSlotted.h>
-#include <stasis/blobManager.h>
+#include <stasis/operations/blobs.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 
 #include <sched.h>
 #include <assert.h>

@@ -157,7 +157,7 @@ typedef struct {
 #include "operations/regions.h"
 #include "operations/lsnFreeSet.h"
 #include "operations/segmentFile.h"
-
+#include "operations/blobs.h"
 /**
    Initialize stasis' operation table.
  */

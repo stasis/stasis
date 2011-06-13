@@ -50,7 +50,7 @@ void stasis_blob_read(int xid, Page * p, recordid rid, byte * buf) {
   DEBUG("Chunk = %d->%lld\n", chunk, (long long)rec.offset+chunk);
 }
 
-void stasis_blob_write(int xid, Page * p, recordid rid, const void* dat) {
+void stasis_blob_write(int xid, Page * p, recordid rid, const byte* dat) {
     blob_record_t rec;
     recordid r = rid;
     r.size = sizeof(blob_record_t);

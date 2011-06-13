@@ -1,6 +1,6 @@
 #include <stasis/logger/inMemoryLog.h>
 #include <stasis/flags.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>

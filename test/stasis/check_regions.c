@@ -40,7 +40,7 @@ terms specified in this license.
 ---*/
 #include "../check_includes.h"
 
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/transactional.h>
 
 #include <assert.h>

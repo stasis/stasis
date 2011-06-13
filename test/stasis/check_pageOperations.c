@@ -47,7 +47,7 @@ terms specified in this license.
 #include <stasis/transactional.h>
 #include <stasis/truncation.h>
 #include <stasis/logger/logger2.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 
 #include <sched.h>
 #include <assert.h>

@@ -1,5 +1,5 @@
 #include <stasis/common.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 
 #include <math.h>
 #include <stdio.h>

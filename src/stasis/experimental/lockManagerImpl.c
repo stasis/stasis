@@ -1,6 +1,6 @@
 #include <pbl/pbl.h>
 #include <stasis/lockManager.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/util/hash.h>
 
 #include <sys/time.h>

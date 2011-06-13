@@ -46,7 +46,6 @@ terms specified in this license.
  **********************************************/
 
 #include <stasis/operations.h>
-#include <stasis/blobManager.h>
 #include <stasis/bufferManager.h>
 #include <stasis/page.h>
 #include <string.h>

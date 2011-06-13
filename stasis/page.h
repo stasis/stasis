@@ -103,7 +103,7 @@ terms specified in this license.
 
 #include <stasis/common.h>
 #include <stasis/constants.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/dirtyPageTable.h>
 
 #include <assert.h>

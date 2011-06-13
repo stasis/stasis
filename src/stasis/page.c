@@ -68,10 +68,10 @@ terms specified in this license.
 */
 
 #include <stasis/common.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/page.h>
 #include <stasis/constants.h>
-#include <stasis/blobManager.h>
+#include <stasis/operations/blobs.h>
 #include <stasis/lockManager.h>
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>

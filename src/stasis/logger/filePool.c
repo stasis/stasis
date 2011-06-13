@@ -8,7 +8,7 @@
 
 #include <stasis/util/ringbuffer.h>
 #include <stasis/util/crc32.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/logger/filePool.h>
 
 #include <stdio.h>

@@ -2,7 +2,7 @@
 
 #include <stasis/common.h>
 
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 
 #include <pbl/pbl.h>
 #include <assert.h>

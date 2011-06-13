@@ -55,7 +55,7 @@ terms specified in this license.
 #include <stasis/logger/safeWrites.h>
 #include <stasis/logger/inMemoryLog.h>
 #include <stasis/truncation.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 
 #include <sched.h>
 #include <assert.h>

@@ -45,7 +45,7 @@ terms specified in this license.
 #include <stasis/common.h>
 #include <stasis/flags.h>
 
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/util/crc32.h>
 #include <stasis/util/min.h>
 

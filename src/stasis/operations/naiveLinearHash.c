@@ -1,7 +1,7 @@
 #include <stasis/bufferManager.h>
 #include <stasis/operations.h>
 #include <stasis/util/hash.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/page.h>
 
 /**

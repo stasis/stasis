@@ -52,13 +52,13 @@ BEGIN_C_DECLS
 /** 
     Read the blob from the recordid rid into buf.
 */
-void stasis_blob_read(int xid, Page * p,  recordid rid, void * buf);
+void stasis_blob_read(int xid, Page * p,  recordid rid, byte * buf);
 
 
 /** 
     Write the contents of buf to the blob in recordid rid.
 */
-void stasis_blob_write(int xid, Page * p, recordid rid, const void * buf);
+void stasis_blob_write(int xid, Page * p, recordid rid, const byte * buf);
 
 recordid preAllocBlob(int xid, long blobsize);
 recordid preAllocBlobFromPage(int xid, long page, long blobsize);

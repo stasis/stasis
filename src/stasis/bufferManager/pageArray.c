@@ -1,7 +1,7 @@
 #include <stasis/transactional.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/bufferManager/pageArray.h>
 #include <stasis/page.h>
 

@@ -1,6 +1,5 @@
 #include <stasis/common.h>
-#include <pthread.h>
-#include <stasis/stats.h>
+#include <stasis/util/latchStats.h>
 
 #ifndef __LATCHES_H
 #define __LATCHES_H
@@ -20,7 +19,7 @@ typedef struct {
   void * lockpoints;
 } lladd_pthread_mutex_t;
 
-#include "util/rw.h"
+#include "rw.h"
 
 /**
    Keeps some profiling information along with a read/write lock.

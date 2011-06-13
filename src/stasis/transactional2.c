@@ -1,4 +1,4 @@
-#include <stasis/latches.h>
+#include <stasis/util/latches.h>
 #include <stasis/transactional.h>
 #include <stasis/recovery.h>
 #include <stasis/bufferManager.h>
@@ -20,7 +20,7 @@
 
 #include <stasis/truncation.h>
 #include <stasis/io/handle.h>
-#include <stasis/blobManager.h> // XXX remove this, move Tread() to set.c
+#include <stasis/operations/blobs.h> // XXX remove this, move Tread() to set.c
 
 #include <assert.h>
 #include <stdio.h>
