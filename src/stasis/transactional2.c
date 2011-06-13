@@ -2,7 +2,6 @@
 #include <stasis/transactional.h>
 #include <stasis/recovery.h>
 #include <stasis/bufferManager.h>
-#include <stasis/consumer.h>
 #include <stasis/lockManager.h>
 #include <stasis/pageHandle.h>
 #include <stasis/page.h>
@@ -97,7 +96,6 @@ int Tinit() {
   BtreeInit();
   TlinkedListNTAInit();
   iterator_init();
-  consumer_init();
   setupLockManagerCallbacksNil();
 
   stasis_recovery_initiate(stasis_log_file, stasis_transaction_table, stasis_alloc);

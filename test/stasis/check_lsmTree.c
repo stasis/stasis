@@ -2,6 +2,8 @@
 
 #include <stasis/transactional.h>
 
+#include <stasis/experimental/lsmTree.h>
+
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
@@ -31,6 +33,7 @@ void insertProbeIter(lsmkey_t NUM_ENTRIES) {
   lsmTreeRegisterComparator(intcmp,cmp);
   TlsmRegionAllocConf_t alloc_conf = LSM_REGION_ALLOC_STATIC_INITIALIZER;
 
+  stasis_page_impl_register(lsmRootImpl());
   Tinit();
   int xid = Tbegin();
   recordid tree = TlsmCreate(xid, intcmp,

@@ -1,6 +1,6 @@
-#include <stasis/fifo.h>
+#include <stasis/experimental/fifo.h>
 #include <stasis/crc32.h>
-#include <stasis/logger/logMemory.h>
+#include <stasis/experimental/logMemory.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -239,4 +239,16 @@ lladdFifoPool_t * lladdFifoPool_pointerPoolInit (int consumerCount, int pointerC
   pool->dirtyPoolFifo = dirtyPoolFifo;
 
   return pool;
+}
+
+void stasis_fifo_init() {
+  lladdIterator_def_t pointer_def = {
+    lladdFifoPool_iterator_close,
+    lladdFifoPool_iterator_next,
+    lladdFifoPool_iterator_tryNext,
+    lladdFifoPool_iterator_key,
+    lladdFifoPool_iterator_value,
+    lladdFifoPool_iterator_tupleDone,
+  };
+  lladdIterator_register(POINTER_ITERATOR, pointer_def);
 }

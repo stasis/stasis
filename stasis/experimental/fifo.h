@@ -1,6 +1,6 @@
 
 #include <stasis/iterator.h>
-#include <stasis/consumer.h>
+#include <stasis/experimental/consumer.h>
 #ifndef __FIFO_H
 #define __FIFO_H
 
@@ -41,4 +41,7 @@ int lladdFifoPool_iterator_key (int xid, void * it, byte ** key);
 int lladdFifoPool_iterator_value (int xid, void * it, byte ** val);
 void lladdFifoPool_iterator_tupleDone(int xid, void * it);
 void lladdFifoPool_iterator_releaseLock(int xid, void * it);
+
+void stasis_fifo_init();
+
 #endif // __FIFO_H

@@ -42,8 +42,10 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
-#include <stasis/multiplexer.h>
-#include <stasis/logger/logMemory.h>
+#include <stasis/experimental/multiplexer.h>
+#include <stasis/experimental/logMemory.h>
+#include <stasis/experimental/group.h>
+#include <stasis/experimental/arrayCollection.h>
 #include <pbl/pbl.h>
 
 #include <sys/time.h>
@@ -165,6 +167,11 @@ static void * go2( void * arg) {
 
 START_TEST(multiplexTest) {
   Tinit();
+  stasis_fifo_init();
+  stasis_log_structured_group_init();
+  stasis_arrayCollection_init();
+  stasis_logMemory_init();
+  consumer_init();
   int xid = Tbegin();
 
   recordid hash = ThashCreate(xid, sizeof(lsn_t), VARIABLE_LENGTH);

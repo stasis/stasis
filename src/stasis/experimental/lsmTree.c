@@ -1,4 +1,4 @@
-#include <stasis/operations/lsmTree.h>
+#include <stasis/experimental/lsmTree.h>
 #include <stasis/truncation.h>
 #include <stasis/constants.h>
 #include <stasis/bufferManager.h>

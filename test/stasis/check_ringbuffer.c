@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 #include "../check_includes.h"
 
-#include <stasis/ringbuffer.h>
+#include <stasis/experimental/ringbuffer.h>
 
 #include <assert.h>
 #include <sys/time.h>

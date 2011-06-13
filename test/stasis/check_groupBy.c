@@ -43,6 +43,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/experimental/group.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -55,8 +56,10 @@ terms specified in this license.
 
 START_TEST(groupBySmokeTest) {
   Tinit();
+  stasis_log_structured_group_init();
   int xid = Tbegin();
-  stasis_group_t * handle = TlogStructuredGroup(xid, 1024*1024*40);
+  
+stasis_group_t * handle = TlogStructuredGroup(xid, 1024*1024*40);
   for(int i =0; i < 10000; i++) {
     for(int j = 0; j < 100; j++) {
       int val = i * 100 + j;

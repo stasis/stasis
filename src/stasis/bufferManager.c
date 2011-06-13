@@ -53,6 +53,7 @@ terms specified in this license.
 #endif
 
 #include <stasis/common.h>
+#include <stasis/constants.h>
 
 #include <assert.h>
 

@@ -1,11 +1,13 @@
 #ifndef _LSMITERATORS_H__
 #define _LSMITERATORS_H__
 
-#include "stasis/page.h"
-#include "stasis/bufferManager.h"
-#include "stasis/page/compression/compression.h"
-#include "stasis/page/compression/tuple.h"
-#include "stasis/operations.h"
+#include <stasis/page.h>
+#include <stasis/bufferManager.h>
+#include <stasis/page/compression/compression.h>
+#include <stasis/page/compression/tuple.h>
+#include <stasis/operations.h>
+
+#include "lsmTree.h"
 /**
    @file
 

@@ -61,7 +61,16 @@ typedef struct {
   int elementCount;
 } pointer_array_iterator_t;
 
+static void noopTupDone(int xid, void * foo) { }
 
-/*lladdIterator_t * ptrArray_iterator(byte * array, int elementCount) {
-
-}*/
+void stasis_arrayCollection_init() {
+  lladdIterator_def_t array_def = {
+    arrayIterator_close,
+    arrayIterator_next,
+    arrayIterator_next,
+    arrayIterator_key,
+    arrayIterator_value,
+    noopTupDone,
+  };
+  lladdIterator_register(ARRAY_ITERATOR, array_def);
+}

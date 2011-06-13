@@ -18,6 +18,9 @@
 #include <stasis/common.h>
 #include <stasis/iterator.h>
 #include <assert.h>
+
+BEGIN_C_DECLS
+
 typedef struct {
   recordid treeRoot;
   recordid pos;
@@ -153,4 +156,8 @@ static inline int lsmTreeIterator_value(int xid, lladdIterator_t *it,
 }
 static inline void lsmTreeIterator_tupleDone(int xid, void *it) { }
 static inline void lsmTreeIterator_releaseLock(int xid, void *it) { }
+page_impl lsmRootImpl();
+
+END_C_DECLS
+
 #endif  // _LSMTREE_H__

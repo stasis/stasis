@@ -1,4 +1,4 @@
-#include "iterator.h"
+#include <stasis/iterator.h>
 #include "consumer.h"
 #include "fifo.h"
 

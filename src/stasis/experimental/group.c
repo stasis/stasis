@@ -6,6 +6,7 @@
  */
 #include<stasis/transactional.h>
 #include<stasis/lhtable.h>
+#include<stasis/experimental/group.h>
 #include<string.h>
 typedef struct {
   struct LH_ENTRY(table) * table;

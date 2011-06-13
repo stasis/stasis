@@ -1,8 +1,8 @@
 #include <stasis/transactional.h>
-#include <stasis/ringbuffer.h>
-#include <stasis/consumer.h>
+#include <stasis/experimental/ringbuffer.h>
+#include <stasis/experimental/consumer.h>
 #include <stasis/iterator.h>
-#include <stasis/fifo.h>
+#include <stasis/experimental/fifo.h>
 
 #ifndef __LOGMEMORY_H
 #define __LOGMEMORY_H
@@ -28,4 +28,6 @@ int logMemory_Iterator_key (int xid, void * impl, byte ** key);
 int logMemory_Iterator_value (int xid, void * impl, byte ** value);
 void logMemory_Iterator_releaseTuple(int xid, void *it);
 void logMemory_Iterator_releaseLock (int xid, void * impl);
+
+void stasis_logMemory_init();
 #endif

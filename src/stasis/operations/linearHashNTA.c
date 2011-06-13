@@ -6,9 +6,9 @@
 #include <assert.h>
 #include <string.h>
 // The next two #includes are for deprecated code.
-#include <stasis/fifo.h>
-#include <stasis/multiplexer.h>
-#include <stasis/logger/logMemory.h>
+//#include <stasis/fifo.h>
+//#include <stasis/multiplexer.h>
+//#include <stasis/logger/logMemory.h>
 /**
    re-entrant implementation of a linear hash hable, using nested top actions.
 
@@ -515,7 +515,8 @@ static int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
 
 //---------------------------------  async hash operations happen below here
 
-typedef struct {
+/*
+ typedef struct {
   int value_len;
   int key_len;
 } asyncHashInsert_t;
@@ -594,3 +595,4 @@ lladdConsumer_t *  TasyncHashInit(int xid, recordid rid, int numWorkerThreads,
 
   return mainFifo->consumer;
 }
+*/

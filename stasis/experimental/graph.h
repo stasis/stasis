@@ -1,5 +1,5 @@
 #include <stasis/transactional.h>
-#include <stasis/fifo.h>
+#include <stasis/experimental/fifo.h>
 
 #ifndef __LLADD_GRAPH_H
 #define __LLADD_GRAPH_H

@@ -1,8 +1,7 @@
 #include <stasis/iterator.h>
 #include <stasis/operations.h>
-#include <stasis/arrayCollection.h>
-#include <stasis/logger/logMemory.h>
-#include <stasis/operations/group.h>
+//#include <stasis/arrayCollection.h>
+#include <stasis/experimental/group.h>
 
 #include <assert.h>
 
@@ -12,38 +11,9 @@ void lladdIterator_register(int type, lladdIterator_def_t info) {
   assert(type < MAX_ITERATOR_TYPES);
   iterators[type] = info;
 }
-static void noopTupDone(int xid, void * foo) { }
 
 void iterator_init() {
-  lladdIterator_def_t array_def = {
-    arrayIterator_close,
-    arrayIterator_next,
-    arrayIterator_next,
-    arrayIterator_key,
-    arrayIterator_value,
-    noopTupDone,
-  };
-  lladdIterator_register(ARRAY_ITERATOR, array_def);
-  lladdIterator_def_t logMemory_def = {
-    logMemory_Iterator_close,
-    logMemory_Iterator_next,
-    logMemory_Iterator_tryNext,
-    logMemory_Iterator_key,
-    logMemory_Iterator_value,
-    logMemory_Iterator_releaseTuple,
-  };
-  lladdIterator_register(LOG_MEMORY_ITERATOR, logMemory_def);
-  lladdIterator_def_t pointer_def = {
-    lladdFifoPool_iterator_close,
-    lladdFifoPool_iterator_next,
-    lladdFifoPool_iterator_tryNext,
-    lladdFifoPool_iterator_key,
-    lladdFifoPool_iterator_value,
-    lladdFifoPool_iterator_tupleDone,
-  };
-  lladdIterator_register(POINTER_ITERATOR, pointer_def);
-
-  stasis_log_structured_group_init();
+  /* no-op */
 }
 
 

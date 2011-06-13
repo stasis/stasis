@@ -8,16 +8,15 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    page.c bufferPool.c blobManager.c
                    recovery2.c truncation.c transactional2.c
                    dirtyPageTable.c transactionTable.c
-                   allocationPolicy.c lockManager.c iterator.c
-                   consumer.c arrayCollection.c ringbuffer.c fifo.c
-                   multiplexer.c graph.c logger/logEntry.c
+                   allocationPolicy.c iterator.c
+                   logger/logEntry.c
                    logger/safeWrites.c logger/logWriterUtils.c
                    logger/filePool.c
                    logger/inMemoryLog.c
                    logger/logHandle.c logger/logger2.c
-                   logger/logMemory.c
                    logger/reorderingHandle.c
                    logger/groupForce.c
+                   lockManager.c
                    page/uninitialized.c
                    page/slotted.c
                    page/fixed.c 
@@ -32,13 +31,12 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    operations/arrayList.c
                    operations/lsnFreeSet.c
                    operations/segmentFile.c
-                   operations/group/logStructured.c
                    hash.c
                    operations/naiveLinearHash.c
                    operations/linearHashNTA.c
                    operations/linkedListNTA.c
                    operations/pageOrientedListNTA.c
-                   operations/regions.c operations/lsmTree.c
+                   operations/regions.c
                    operations/bTree.c
                    io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/raid1.c
                    io/non_blocking.c io/debug.c io/handle.c
@@ -48,5 +46,17 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    util/log2.c util/histogram.c util/hashFunctions.c util/min.c util/ringbuffer.c
                    util/multiset.c util/slab.c
                    stlredblack.cpp util/stlslab.cpp)
+ADD_LIBRARY(stasis_experimental
+  experimental/consumer.c
+  experimental/fifo.c
+  experimental/graph.c
+  experimental/logMemory.c
+  experimental/multiplexer.c
+  experimental/ringbuffer.c
+  experimental/arrayCollection.c
+  experimental/lockManagerImpl.c
+  experimental/group.c
+  experimental/lsmTree.c
+  )
 
 INSTALL(TARGETS stasis LIBRARY DESTINATION lib)

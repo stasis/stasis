@@ -2,7 +2,7 @@
   NOTE: Person who's using the consumer interface calls close first, (for now).
 */
 
-#include <stasis/logger/logMemory.h>
+#include <stasis/experimental/logMemory.h>
 #include <assert.h>
 
 typedef struct {
@@ -17,8 +17,16 @@ typedef struct {
   lsn_t eof;
 } logMemory_fifo_t;
 
-void logMemory_init() {
-  /* NO-OP */
+void stasis_logMemory_init() {
+  lladdIterator_def_t logMemory_def = {
+    logMemory_Iterator_close,
+    logMemory_Iterator_next,
+    logMemory_Iterator_tryNext,
+    logMemory_Iterator_key,
+    logMemory_Iterator_value,
+    logMemory_Iterator_releaseTuple,
+  };
+  lladdIterator_register(LOG_MEMORY_ITERATOR, logMemory_def);
 }
 
 lladdFifo_t * logMemoryFifo(size_t size, lsn_t initialOffset) {

@@ -42,7 +42,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
-#include <stasis/arrayCollection.h>
+#include <stasis/experimental/arrayCollection.h>
 #include <pbl/pbl.h>
 
 #include <stdlib.h>
@@ -111,6 +111,7 @@ static void iterator_test(int xid,
 START_TEST(iteratorTest)
 {
   Tinit();
+  stasis_arrayCollection_init();
   int xid = Tbegin();
   unsigned int keyArray[NUM_ENTRIES];
   byte valueArray[NUM_ENTRIES];

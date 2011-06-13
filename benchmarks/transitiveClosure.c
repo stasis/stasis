@@ -1,7 +1,7 @@
 #include <stasis/transactional.h>
-#include <stasis/multiplexer.h>
-#include <stasis/graph.h>
-#include <stasis/logger/logMemory.h>
+#include <stasis/experimental/multiplexer.h>
+#include <stasis/experimental/graph.h>
+#include <stasis/experimental/logMemory.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

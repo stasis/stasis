@@ -14,7 +14,7 @@
 
 struct stasis_transaction_table_t {
   int active_count;
-#ifndef HAVE_GCC_ATMOICS
+#ifndef HAVE_GCC_ATOMICS
   /**
       This mutex protects the rest of the struct
       xidCount.

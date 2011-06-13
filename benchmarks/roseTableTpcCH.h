@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "stasis/operations/lsmTable.h"
+#include "stasis/experimental/lsmTable.h"
 
 #include "stasis/transactional.h"
 
@@ -50,6 +50,7 @@ namespace rose {
 
 //    bufferManagerNonBlockingSlowHandleType = IO_HANDLE_PFILE;
 
+    stasis_page_impl_register(lsmRootImpl());
     Tinit();
 
     int xid = Tbegin();
