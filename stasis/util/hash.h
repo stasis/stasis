@@ -1,5 +1,5 @@
 
-#include <stasis/crc32.h>
+#include <stasis/util/crc32.h>
 #include <stasis/common.h>
 
 #ifndef __HASH_H

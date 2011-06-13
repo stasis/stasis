@@ -43,7 +43,7 @@ terms specified in this license.
 #define _GNU_SOURCE
 #include "../check_includes.h"
 
-#include <stasis/lhtable.h>
+#include <stasis/util/lhtable.h>
 
 #include <stdio.h>
 #include <time.h>

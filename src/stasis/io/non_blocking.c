@@ -3,8 +3,8 @@
 
 #include <stasis/constants.h>
 #include <stasis/io/handle.h>
-#include <stasis/linkedlist.h>
-#include <stasis/redblack.h>
+#include <stasis/util/linkedlist.h>
+#include <stasis/util/redblack.h>
 
 #include <stdio.h>
 #include <assert.h>

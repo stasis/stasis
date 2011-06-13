@@ -1,6 +1,22 @@
-ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLinkedList.c
+ADD_LIBRARY(stasis util/crc32.c
+                   util/redblack.c
+                   util/lhtable.c
+                   util/concurrentHash.c
+                   util/rw.c
+                   util/doubleLinkedList.c
+                   util/linkedlist.c
+                   util/hash.c
+                   util/log2.c
+                   util/histogram.c
+                   util/hashFunctions.c
+                   util/min.c
+                   util/ringbuffer.c
+                   util/multiset.c
+                   util/slab.c
+                   util/stlredblack.cpp
+                   util/stlslab.cpp
                    common.c flags.c stats.c bufferManager.c
-                   linkedlist.c operations.c pageHandle.c 
+                   operations.c pageHandle.c 
                    bufferManager/concurrentBufferManager.c
                    bufferManager/legacy/pageFile.c
                    bufferManager/legacy/pageCache.c
@@ -31,7 +47,6 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    operations/arrayList.c
                    operations/lsnFreeSet.c
                    operations/segmentFile.c
-                   hash.c
                    operations/naiveLinearHash.c
                    operations/linearHashNTA.c
                    operations/linkedListNTA.c
@@ -43,9 +58,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c replacementPolicy/lru.c
                    replacementPolicy/lruFast.c replacementPolicy/threadsafeWrapper.c replacementPolicy/concurrentWrapper.c
-                   util/log2.c util/histogram.c util/hashFunctions.c util/min.c util/ringbuffer.c
-                   util/multiset.c util/slab.c
-                   stlredblack.cpp util/stlslab.cpp)
+		   )
 ADD_LIBRARY(stasis_experimental
   experimental/consumer.c
   experimental/fifo.c

@@ -7,8 +7,8 @@
 extern int dbug_choice(int);
 #endif
 
-#include <stasis/redblack.h>
-#include <stasis/stlredblack.h>
+#include <stasis/util/redblack.h>
+#include <stasis/util/stlredblack.h>
 
 #include <stdio.h>
 #include <time.h>

@@ -1,5 +1,5 @@
 #include <stasis/common.h>
-#include <stasis/doubleLinkedList.h>
+#include <stasis/util/doubleLinkedList.h>
 #include <assert.h>
 
 typedef LL_ENTRY(value_t) value_t;

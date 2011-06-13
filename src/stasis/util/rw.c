@@ -1,4 +1,4 @@
-#include <stasis/rw.h>
+#include <stasis/util/rw.h>
 #include <assert.h>
 
 //#undef pthread_cond_wait

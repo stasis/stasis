@@ -6,7 +6,7 @@
  */
 
 #include <stasis/common.h>
-#include <stasis/redblack.h>
+#include <stasis/util/redblack.h>
 #include <stasis/util/multiset.h>
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>

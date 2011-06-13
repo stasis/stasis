@@ -2,8 +2,8 @@
 
 #undef STLSEARCH  // XXX
 
-#include <stasis/lhtable.h>
-#include <stasis/redblack.h>
+#include <stasis/util/lhtable.h>
+#include <stasis/util/redblack.h>
 #include <stasis/replacementPolicy.h>
 
 #include <assert.h>

@@ -20,7 +20,7 @@ typedef struct {
   void * lockpoints;
 } lladd_pthread_mutex_t;
 
-#include "rw.h"
+#include "util/rw.h"
 
 /**
    Keeps some profiling information along with a read/write lock.

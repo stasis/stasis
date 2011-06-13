@@ -7,7 +7,7 @@
 
 #include <config.h>
 #include <stasis/common.h>
-#include <stasis/redblack.h>
+#include <stasis/util/redblack.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>

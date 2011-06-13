@@ -42,7 +42,7 @@ terms specified in this license.
 #include <stasis/page.h> // For stasis_record_type_to_size()
 #include <stasis/logger/logger2.h> // needed for LoggerSizeOfInternalLogEntry()
 #include <stasis/logger/logEntry.h>
-#include <stasis/crc32.h>
+#include <stasis/util/crc32.h>
 
 #include <assert.h>
 

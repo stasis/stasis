@@ -1,6 +1,6 @@
 #include <stasis/common.h>
 #include <stasis/util/min.h>
-#include <stasis/redblack.h>
+#include <stasis/util/redblack.h>
 #include <assert.h>
 
 static int cmp_lsn_t(const void *ap, const void *bp, const void *ign) {

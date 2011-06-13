@@ -1,7 +1,7 @@
 #include <config.h>
 #include <stasis/common.h>
 #undef STLSEARCH // XXX
-#include <stasis/redblack.h>
+#include <stasis/util/redblack.h>
 
 
 #include <stasis/io/rangeTracker.h>

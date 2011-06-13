@@ -3,7 +3,7 @@
 
 #include <stasis/latches.h>
 #include <stasis/transactional.h>
-#include <stasis/hash.h>
+#include <stasis/util/hash.h>
 
 #include <assert.h>
 

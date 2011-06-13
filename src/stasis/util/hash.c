@@ -1,4 +1,4 @@
-#include <stasis/hash.h>
+#include <stasis/util/hash.h>
 #include <assert.h>
 //#include <stdio.h>
 /**

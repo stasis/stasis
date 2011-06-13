@@ -4,7 +4,7 @@
  *  Created on: Oct 19, 2009
  *      Author: sears
  */
-#include <stasis/concurrentHash.h>
+#include <stasis/util/concurrentHash.h>
 #include <stasis/transactional.h>
 #include <pthread.h>
 #include <stdio.h>

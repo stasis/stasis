@@ -4,7 +4,7 @@
  *  Created on: Oct 12, 2009
  *      Author: sears
  */
-#include <stasis/rw.h>
+#include <stasis/util/rw.h>
 
 #include <pthread.h>
 #include <stdio.h>

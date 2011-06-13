@@ -5,7 +5,7 @@
  *      Author: sears
  */
 #include<stasis/transactional.h>
-#include<stasis/lhtable.h>
+#include<stasis/util/lhtable.h>
 #include<stasis/experimental/group.h>
 #include<string.h>
 typedef struct {

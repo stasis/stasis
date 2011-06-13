@@ -1,5 +1,5 @@
 #include <stasis/experimental/fifo.h>
-#include <stasis/crc32.h>
+#include <stasis/util/crc32.h>
 #include <stasis/experimental/logMemory.h>
 
 #include <assert.h>

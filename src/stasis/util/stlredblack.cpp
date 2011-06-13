@@ -7,8 +7,8 @@
 #include <set>
 #include <stasis/common.h>
 #undef STLSEARCH
-#include <stasis/stlredblack.h>
-#include <stasis/redblack.h>
+#include <stasis/util/stlredblack.h>
+#include <stasis/util/redblack.h>
 #include <stdio.h>
 #undef end
 #undef try

@@ -29,8 +29,8 @@
 
 #include <stasis/common.h>
 #include <stasis/allocationPolicy.h>
-#include <stasis/lhtable.h>
-#include <stasis/redblack.h>
+#include <stasis/util/lhtable.h>
+#include <stasis/util/redblack.h>
 #include <stasis/transactional.h>
 
 

@@ -6,7 +6,7 @@
 
 */
 #include <stasis/common.h>
-#include <stasis/lhtable.h>
+#include <stasis/util/lhtable.h>
 #include <stasis/recovery.h>
 
 #include <stasis/transactionTable.h>
@@ -19,7 +19,7 @@
 
 #include <stasis/logger/logHandle.h>
 /** @todo Get rid of linkedlist */
-#include <stasis/linkedlist.h>
+#include <stasis/util/linkedlist.h>
 #include <stasis/page.h> // Needed for pageReadLSN.
 
 #include <stdio.h>

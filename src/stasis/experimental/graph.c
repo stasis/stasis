@@ -9,7 +9,7 @@
 #include <stasis/bufferManager.h>
 #include <stasis/experimental/graph.h>
 #include <stasis/page.h>
-#include <stasis/crc32.h>
+#include <stasis/util/crc32.h>
 #include <assert.h>
 
 int numOut = 0;

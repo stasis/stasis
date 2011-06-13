@@ -1,7 +1,7 @@
 #include <pbl/pbl.h>
 #include <stasis/lockManager.h>
 #include <stasis/latches.h>
-#include <stasis/hash.h>
+#include <stasis/util/hash.h>
 
 #include <sys/time.h>
 #include <time.h>

@@ -26,7 +26,7 @@ static char rcsid[]="$Id$";
 
 #include <stasis/common.h>
 #undef STLSEARCH
-#include <stasis/redblack.h>
+#include <stasis/util/redblack.h>
 #include <stdio.h>
 #define assert(expr)
 

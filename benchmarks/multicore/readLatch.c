@@ -1,4 +1,4 @@
-#include <stasis/rw.h>
+#include <stasis/util/rw.h>
 
 #include <pthread.h>
 #include <stdio.h>

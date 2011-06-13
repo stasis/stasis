@@ -7,7 +7,7 @@
 
 #include <stasis/page.h>
 
-#include <stasis/lhtable.h>
+#include <stasis/util/lhtable.h>
 
 #include <stdio.h>
 

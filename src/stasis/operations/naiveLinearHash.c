@@ -1,6 +1,6 @@
 #include <stasis/bufferManager.h>
 #include <stasis/operations.h>
-#include <stasis/hash.h>
+#include <stasis/util/hash.h>
 #include <stasis/latches.h>
 #include <stasis/page.h>
 

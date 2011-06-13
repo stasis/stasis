@@ -354,7 +354,7 @@ History:
  */
 #define _XOPEN_SOURCE 600
 #include <config.h>
-#include <stasis/concurrentHash.h>
+#include <stasis/util/concurrentHash.h>
 #include <assert.h>
 #include <stdio.h>
 

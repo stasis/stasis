@@ -44,7 +44,7 @@ terms specified in this license.
  *
  * simple linked list
  *****************************/
-#include <stasis/linkedlist.h>
+#include <stasis/util/linkedlist.h>
 #include <stdio.h>
 void printList(LinkedList **l) {
 	LinkedList * tmp = *l;

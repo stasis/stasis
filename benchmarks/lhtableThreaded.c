@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <stasis/lhtable.h>
+#include <stasis/util/lhtable.h>
 #include <assert.h>
 
 int entries;

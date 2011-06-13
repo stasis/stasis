@@ -1,5 +1,5 @@
-#include <stasis/lhtable.h>
-#include <stasis/hash.h>
+#include <stasis/util/lhtable.h>
+#include <stasis/util/hash.h>
 #include <pbl/pbl.h>
 #include <stasis/latches.h>
 

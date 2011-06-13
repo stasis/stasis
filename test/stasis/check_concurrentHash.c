@@ -49,7 +49,7 @@ terms specified in this license.
 #define _GNU_SOURCE
 #include "../check_includes.h"
 
-#include <stasis/concurrentHash.h>
+#include <stasis/util/concurrentHash.h>
 
 #include <stdio.h>
 #include <time.h>

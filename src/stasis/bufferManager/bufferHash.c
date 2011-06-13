@@ -5,8 +5,8 @@
 #define LH_HASH(val,len,x,y) bh_hash(val,len,x,y)
 #undef PBL_COMPAT
 #define PBL_COMPAT 0
-#include <stasis/hash.h>
-#include "../lhtable.c"
+#include <stasis/util/hash.h>
+#include "../util/lhtable.c"
 // End multiple include trick.
 
 #include <stasis/bufferManager/bufferHash.h>
