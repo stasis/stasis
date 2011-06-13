@@ -11,11 +11,11 @@
 //typedef int32_t val_t; // rose executable's input contains 32 bit values
 typedef int64_t val_t;   // rose executable's input contains 64 bit values
 #include "stasis/experimental/lsmTree.h"
-#include "stasis/page/compression/for-impl.h"
-#include "stasis/page/compression/pstar-impl.h"
-#include "stasis/page/compression/rle-impl.h"
-#include "stasis/page/compression/multicolumn-impl.h"
-#include "stasis/page/compression/tuple.h"
+#include "stasis/experimental/compression/for-impl.h"
+#include "stasis/experimental/compression/pstar-impl.h"
+#include "stasis/experimental/compression/rle-impl.h"
+#include "stasis/experimental/compression/multicolumn-impl.h"
+#include "stasis/experimental/compression/tuple.h"
 
 #include "stasis/experimental/lsmIterators.h"
 

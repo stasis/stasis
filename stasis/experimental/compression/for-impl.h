@@ -1,7 +1,7 @@
 #ifndef _ROSE_COMPRESSION_FOR_IMPL_H__
 #define _ROSE_COMPRESSION_FOR_IMPL_H__
 
-#include <stasis/page/compression/binary_search.h>
+#include <stasis/experimental/compression/binary_search.h>
 
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: sears@google.com (Rusty Sears)

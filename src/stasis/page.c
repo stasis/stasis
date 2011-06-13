@@ -76,7 +76,7 @@ terms specified in this license.
 #include <stasis/page/slotted.h>
 #include <stasis/page/fixed.h>
 #include <stasis/page/uninitialized.h>
-#include <stasis/page/latchFree/lfSlotted.h>
+#include <stasis/experimental/latchFree/lfSlotted.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferPool.h>
 #include <stasis/truncation.h>

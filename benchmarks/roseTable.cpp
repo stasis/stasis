@@ -1,7 +1,7 @@
 //#define LEAK_TEST
 
 #include "roseTable.h"
-#include "stasis/page/compression/compression.h"
+#include "stasis/experimental/compression/compression.h"
 
 int main(int argc, char **argv) {
 

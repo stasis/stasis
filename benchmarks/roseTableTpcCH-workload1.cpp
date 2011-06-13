@@ -5,7 +5,7 @@
 #define XID_COL 4
 
 #include "roseTableTpcCH.h"
-#include "stasis/page/compression/compression.h"
+#include "stasis/experimental/compression/compression.h"
 
 int main(int argc, char **argv) {
 

@@ -5,13 +5,13 @@
 
 #include "stasis/transactional.h"
 
-#include "stasis/page/compression/nop.h"
-#include "stasis/page/compression/multicolumn-impl.h"
-#include "stasis/page/compression/staticMulticolumn.h"
-#include "stasis/page/compression/for-impl.h"
-#include "stasis/page/compression/rle-impl.h"
-#include "stasis/page/compression/staticTuple.h"
-#include "stasis/page/compression/pageLayout.h"
+#include "stasis/experimental/compression/nop.h"
+#include "stasis/experimental/compression/multicolumn-impl.h"
+#include "stasis/experimental/compression/staticMulticolumn.h"
+#include "stasis/experimental/compression/for-impl.h"
+#include "stasis/experimental/compression/rle-impl.h"
+#include "stasis/experimental/compression/staticTuple.h"
+#include "stasis/experimental/compression/pageLayout.h"
 
 namespace rose {
 

@@ -23,7 +23,7 @@ ADD_LIBRARY(stasis crc32.c redblack.c lhtable.c concurrentHash.c rw.c doubleLink
                    page/raw.c
                    page/lsnFree.c
                    page/segment.c
-                   page/latchFree/lfSlotted.c
+                   experimental/latchFree/lfSlotted.c
                    operations/pageOperations.c
                    operations/decrement.c operations/increment.c
                    operations/prepare.c operations/set.c

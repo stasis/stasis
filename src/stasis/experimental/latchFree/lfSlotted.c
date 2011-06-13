@@ -8,7 +8,7 @@
 #include <config.h>
 #include <stasis/common.h>
 #include <stasis/page.h>
-#include <stasis/page/latchFree/lfSlotted.h>
+#include <stasis/experimental/latchFree/lfSlotted.h>
 
 #ifdef HAVE_GCC_ATOMICS
 #define CAS(_a,_o,_n) __sync_bool_compare_and_swap(_a,_o,_n)

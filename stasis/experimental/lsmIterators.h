@@ -3,8 +3,8 @@
 
 #include <stasis/page.h>
 #include <stasis/bufferManager.h>
-#include <stasis/page/compression/compression.h>
-#include <stasis/page/compression/tuple.h>
+#include <stasis/experimental/compression/compression.h>
+#include <stasis/experimental/compression/tuple.h>
 #include <stasis/operations.h>
 
 #include "lsmTree.h"
