@@ -355,6 +355,7 @@ History:
 #define _XOPEN_SOURCE 600
 #include <config.h>
 #include <stasis/util/concurrentHash.h>
+#include <stasis/util/hashFunctions.h>
 #include <assert.h>
 #include <stdio.h>
 
@@ -391,21 +392,20 @@ static inline pageid_t hash6432shift(pageid_t key)
 //  key = key + (key << 31);
 //  return key;
 
-  //  key = (~key) + (key << 18); // key = (key << 18) - key - 1;
-  //  key = key ^ (key >> 31);
-  //  key = key * 21; // key = (key + (key << 2)) + (key << 4);
-  //  key = key ^ (key >> 11);
-  //  key = key + (key << 6);
-  //  key = key ^ (key >> 22);
-
-
+//    key = (~key) + (key << 18); // key = (key << 18) - key - 1;
+//    key = key ^ (key >> 31);
+//    key = key * 21; // key = (key + (key << 2)) + (key << 4);
+//    key = key ^ (key >> 11);
+//    key = key + (key << 6);
+//    key = key ^ (key >> 22);
 //  return (key | 64) ^ ((key >> 15) | (key << 17));
 
-//    return stasis_crc32(&key, sizeof(key), 0);
 #ifdef DBUG_TEST
   return key;
 #else
-  return key * 13;
+  //return stasis_util_hash_fnv_1_uint32_t((const byte*)&key, sizeof(key));
+  return stasis_crc32(&key, sizeof(key), 0);
+  //return key * 13;
 #endif
 }
 static inline pageid_t hashtable_func(hashtable_t *ht, pageid_t key) {

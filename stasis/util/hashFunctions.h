@@ -29,7 +29,7 @@
  */
 
 #include <stasis/common.h>
-
+#include <stasis/util/crc32.h>
 #define stasis_hash_util_define_fnv_1(TYPE, FNV_prime, offset_basis)          \
 static inline TYPE stasis_util_hash_fnv_1_##TYPE(const byte* octets, int len){\
   TYPE hash = offset_basis;                                                   \
