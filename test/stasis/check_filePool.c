@@ -74,6 +74,7 @@ START_TEST(filePoolDirTest){
     e->type = UPDATELOG;
     e->update.arg_size = rec_len- sizeof(struct __raw_log_entry) - sizeof(UpdateLogEntry);
     last_lsn = e->LSN;
+    log->write_entry(log, e);
     log->write_entry_done(log, e);
     if(!(i & 15)) { log->force_tail(log, 0); } // xxx
   }
