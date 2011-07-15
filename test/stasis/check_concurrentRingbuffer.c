@@ -169,6 +169,7 @@ static void * concurrentWriter(void * argp) {
     }
     cursor += rnd_size;
     stasis_ringbuffer_write_done(ring, &wr_handle);
+    stasis_ringbuffer_reading_writer_done(ring, &wr_handle);
   }
   return 0;
 }

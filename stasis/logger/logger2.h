@@ -201,7 +201,7 @@ struct stasis_log_t {
   /**
      Force any enqueued, unwritten entries to disk.
 
-     Once this method returns, any log entries written before the call began
+     Once this method returns, any log entries produced before the call began
      should survive subsequent crashes.  If the underlying log implementation
      is not durable, then this method has no effect.
 

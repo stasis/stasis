@@ -275,12 +275,25 @@ LogEntry * stasis_log_file_pool_reserve_entry(stasis_log_t * log, size_t szs) {
   return e;
 }
 /**
- * Does no latching, but does call ringbuffer.
+ * Does no latching.  Everything is thread local, except the call to ringbuffer.
  */
 int stasis_log_file_pool_write_entry_done(stasis_log_t * log, LogEntry * e) {
   stasis_log_file_pool_state * fp = log->impl;
   lsn_t * handle = pthread_getspecific(fp->handle_key);
   assert(handle);
+
+  stasis_ringbuffer_reading_writer_done(fp->ring, handle);
+  return 0;
+}
+/**
+ * Does no latching.  Other than the CRC computation (which is protected by
+ * ringbuffer), and the call to ringbuffer, everything is thread local.
+ */
+int stasis_log_file_pool_write_entry(stasis_log_t * log, LogEntry * e) {
+  stasis_log_file_pool_state * fp = log->impl;
+  lsn_t * handle = pthread_getspecific(fp->handle_key);
+  assert(handle);
+
   byte * buf = (byte*)e;
   lsn_t sz = sizeofLogEntry(log, e);
 
@@ -292,13 +305,6 @@ int stasis_log_file_pool_write_entry_done(stasis_log_t * log, LogEntry * e) {
   // the extra synchronization overhead...
   *(((uint32_t*)buf)-1) = stasis_crc32(buf, sz, (uint32_t)-1);
   stasis_ringbuffer_write_done(fp->ring, handle);
-  return 0;
-}
-/**
- * Does no latching.  (no-op)
- */
-int stasis_log_file_pool_write_entry(stasis_log_t * log, LogEntry * e) {
-  // no-op; the entry is written into the ringbuffer in place.
   return 0;
 }
 /**
