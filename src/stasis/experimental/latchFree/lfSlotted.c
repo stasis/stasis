@@ -10,15 +10,6 @@
 #include <stasis/page.h>
 #include <stasis/experimental/latchFree/lfSlotted.h>
 
-#ifdef HAVE_GCC_ATOMICS
-#define CAS(_a,_o,_n) __sync_bool_compare_and_swap(_a,_o,_n)
-#define BARRIER() __sync_synchronize()
-#define FETCH_AND_ADD(_a, _i) __sync_fetch_and_add(_a, _i)
-#else
-#define CAS(_a,_o,_n) 1
-#define BARRIER() abort()
-#define FETCH_AND_ADD(_a, _i) 1
-#endif
 static int notSupported(int xid, Page * p) { return 0; }
 
 static const byte* lfSlottedRead (int xid, Page *p, recordid rid) {
@@ -31,7 +22,7 @@ static byte* lfSlottedWrite(int xid, Page *p, recordid rid) {
 }
 static void lfSlottedWriteDone(int xid, Page *p, recordid rid, byte *buf) {
   BARRIER();
-  int succ = CAS(stasis_page_slotted_numslots_ptr(p), rid.slot, rid.slot+1);
+  int succ = CAS(XXX,stasis_page_slotted_numslots_ptr(p), rid.slot, rid.slot+1);
   DEBUG("write done %d\n", rid.slot+1);
   assert(succ);
 }
