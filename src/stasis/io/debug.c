@@ -48,14 +48,6 @@ static void debug_enable_sequential_optimizations(struct stasis_handle_t *h) {
   hh->enable_sequential_optimizations(hh);
   printf("tid=%9ld retn enable_sequential_optimizations(%lx)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh); fflush(stdout);
 }
-
-static lsn_t debug_start_position(stasis_handle_t *h) {
-  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call start_position(%lx)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh); fflush(stdout);
-  int ret = hh->start_position(hh);
-  printf("tid=%9ld retn start_position(%lx) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, ret); fflush(stdout);
-  return ret;
-}
 static lsn_t debug_end_position(stasis_handle_t *h) {
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
   printf("tid=%9ld call end_position(%lx)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh); fflush(stdout);
@@ -76,21 +68,6 @@ static stasis_write_buffer_t * debug_write_buffer(stasis_handle_t * h,
   printf("tid=%9ld retn write_buffer(%lx, %lld, %lld) = %lx\n",
          (long)(intptr_t)pthread_self(), (unsigned long)hh, off, len, (unsigned long)retWrap); fflush(stdout);
   return retWrap;
-}
-static stasis_write_buffer_t * debug_append_buffer(stasis_handle_t * h,
-						   lsn_t len) {
-  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call append_buffer(%lx, %lld)\n",
-         (long)(intptr_t)pthread_self(), (unsigned long)hh, len); fflush(stdout);
-  stasis_write_buffer_t * ret = hh->append_buffer(hh,len);
-  stasis_write_buffer_t * retWrap = malloc(sizeof(stasis_write_buffer_t));
-  *retWrap = *ret;
-  retWrap->h = h;
-  retWrap->impl = ret;
-  printf("tid=%9ld retn append_buffer(%lx, %lld) = %lx (off=%lld)\n",
-         (long)(intptr_t)pthread_self(), (unsigned long)hh, len, (unsigned long)retWrap, ret->off); fflush(stdout);
-  return retWrap;
-
 }
 static int debug_release_write_buffer(stasis_write_buffer_t * w_wrap) {
   stasis_write_buffer_t * w = (stasis_write_buffer_t*)w_wrap->impl;
@@ -137,19 +114,6 @@ static int debug_write(stasis_handle_t * h, lsn_t off,
   printf("tid=%9ld retn write(%lx) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
 }
-static int debug_append(stasis_handle_t * h, lsn_t * off,
-		      const byte * dat, lsn_t len) {
-  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call append(%lx, ??, %lx, %lld)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, (unsigned long)dat, len); fflush(stdout);
-  lsn_t tmpOff;
-  if(!off) {
-    off = &tmpOff;
-  }
-  int ret = hh->append(hh, off, dat, len);
-  printf("tid=%9ld retn append(%lx, %lld, %lx, %lld) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, *off, (unsigned long) dat, len, ret); fflush(stdout);
-  return ret;
-
-}
 static int debug_read(stasis_handle_t * h,
 		    lsn_t off, byte * buf, lsn_t len) {
   stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
@@ -172,33 +136,21 @@ static int debug_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   printf("tid=%9ld retn force(%lx) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
 }
-static int debug_truncate_start(stasis_handle_t * h, lsn_t new_start) {
-  stasis_handle_t * hh = ((debug_impl*)h->impl)->h;
-  printf("tid=%9ld call truncate_start(%lx, %lld)\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, new_start); fflush(stdout);
-  int ret = hh->truncate_start(hh, new_start);
-  printf("tid=%9ld retn truncate_start(%lx) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, ret); fflush(stdout);
-  return ret;
-}
-
 struct stasis_handle_t debug_func = {
   .num_copies = debug_num_copies,
   .num_copies_buffer = debug_num_copies_buffer,
   .close = debug_close,
   .dup = debug_dup,
   .enable_sequential_optimizations = debug_enable_sequential_optimizations,
-  .start_position = debug_start_position,
   .end_position = debug_end_position,
   .write = debug_write,
-  .append = debug_append,
   .write_buffer = debug_write_buffer,
-  .append_buffer = debug_append_buffer,
   .release_write_buffer = debug_release_write_buffer,
   .read = debug_read,
   .read_buffer = debug_read_buffer,
   .release_read_buffer = debug_release_read_buffer,
   .force = debug_force,
   .force_range = debug_force_range,
-  .truncate_start = debug_truncate_start,
   .error = 0
 };
 

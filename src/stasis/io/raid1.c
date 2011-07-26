@@ -52,10 +52,6 @@ static void raid1_enable_sequential_optimizations(stasis_handle_t *h) {
   i->a->enable_sequential_optimizations(i->a);
   i->b->enable_sequential_optimizations(i->b);
 }
-static lsn_t raid1_start_position(stasis_handle_t *h) {
-  raid1_impl *i = h->impl;
-  return i->a->start_position(i->a);
-}
 static lsn_t raid1_end_position(stasis_handle_t *h) {
   raid1_impl *i = h->impl;
   return i->a->end_position(i->a);
@@ -77,22 +73,9 @@ static int raid1_write(stasis_handle_t *h, lsn_t off, const byte *dat, lsn_t len
   int retB = i->b->write(i->b, off, dat, len);
   return retA ? retA : retB;
 }
-static int raid1_append(stasis_handle_t *h, lsn_t *off, const byte *dat, lsn_t len) {
-  raid1_impl *i = h->impl;
-  int retA = i->a->append(i->a, off, dat, len);
-  int retB = i->b->write (i->b, *off, dat, len);
-  assert((retA && retB) || !(retA || retB));
-  return retA ? retA : retB;
-}
 static stasis_write_buffer_t * raid1_write_buffer(stasis_handle_t *h, lsn_t off, lsn_t len) {
   raid1_impl *i = h->impl;
   stasis_write_buffer_t * ret = i->a->write_buffer(i->a, off, len);
-  ret->h = h;
-  return ret;
-}
-static stasis_write_buffer_t * raid1_append_buffer(stasis_handle_t *h, lsn_t len) {
-  raid1_impl *i = h->impl;
-  stasis_write_buffer_t * ret = i->a->append_buffer(i->a, len);
   ret->h = h;
   return ret;
 }
@@ -132,31 +115,21 @@ static int raid1_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   int retB = i->b->force_range(i->b, start, stop);
   return retA ? retA : retB;
 }
-static int raid1_truncate_start(stasis_handle_t *h, lsn_t new_start) {
-  raid1_impl *i = h->impl;
-  int retA = i->a->truncate_start(i->a, new_start);
-  int retB = i->b->truncate_start(i->b, new_start);
-  return retA ? retA : retB;
-}
 struct stasis_handle_t raid1_func = {
   .num_copies = raid1_num_copies,
   .num_copies_buffer = raid1_num_copies_buffer,
   .close = raid1_close,
   .dup = raid1_dup,
   .enable_sequential_optimizations = raid1_enable_sequential_optimizations,
-  .start_position = raid1_start_position,
   .end_position = raid1_end_position,
   .write = raid1_write,
-  .append = raid1_append,
   .write_buffer = raid1_write_buffer,
-  .append_buffer = raid1_append_buffer,
   .release_write_buffer = raid1_release_write_buffer,
   .read = raid1_read,
   .read_buffer = raid1_read_buffer,
   .release_read_buffer = raid1_release_read_buffer,
   .force = raid1_force,
   .force_range = raid1_force_range,
-  .truncate_start = raid1_truncate_start,
   .error = 0
 };
 
@@ -170,8 +143,8 @@ stasis_handle_t * stasis_handle_open_raid1(stasis_handle_t* a, stasis_handle_t* 
 }
 
 stasis_handle_t * stasis_handle_raid1_factory() {
-  stasis_handle_t * a = stasis_handle_file_factory(0, stasis_store_file_1_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
-  stasis_handle_t * b = stasis_handle_file_factory(0, stasis_store_file_2_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
+  stasis_handle_t * a = stasis_handle_file_factory(stasis_store_file_1_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
+  stasis_handle_t * b = stasis_handle_file_factory(stasis_store_file_2_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
   return stasis_handle_open_raid1(a, b);
 }
 #endif

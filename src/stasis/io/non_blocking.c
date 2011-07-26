@@ -142,7 +142,6 @@ typedef struct nbw_impl {
   pthread_mutex_t mut;
 
   // Handle state
-  lsn_t start_pos;
   lsn_t end_pos;
 
   // Fields to manage slow handles
@@ -396,13 +395,6 @@ static stasis_handle_t * nbw_dup(stasis_handle_t *h) {
 static void nbw_enable_sequential_optimizations(stasis_handle_t *h) {
   // TODO non blocking should pass sequential optimizations down to underlying handles.
 }
-static lsn_t nbw_start_position(stasis_handle_t *h) {
-  nbw_impl * impl = h->impl;
-  pthread_mutex_lock(&impl->mut);
-  lsn_t ret = impl->start_pos;
-  pthread_mutex_unlock(&impl->mut);
-  return ret;
-}
 static lsn_t nbw_end_position(stasis_handle_t *h) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
@@ -430,8 +422,8 @@ static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
 
   if(!ret->error) {
     pthread_mutex_lock(&impl->mut);
-    assert(impl->start_pos <= impl->end_pos);
-    if(off < impl->start_pos) {
+    assert(0 <= impl->end_pos);
+    if(off < 0) {
       // Note: We're returning a valid write buffer to space before
       // the handle's truncation point.  Spooky.
       ret->error = EDOM;
@@ -443,18 +435,6 @@ static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
   }
 
   return ret;
-}
-static stasis_write_buffer_t * nbw_append_buffer(stasis_handle_t * h,
-                                                 lsn_t len) {
-  nbw_impl * impl = h->impl;
-
-  pthread_mutex_lock(&impl->mut);
-  lsn_t off = impl->end_pos;
-  impl->end_pos += len;
-  impl->requested_bytes_written += len;
-  pthread_mutex_unlock(&impl->mut);
-
-  return nbw_write_buffer(h, off, len);
 }
 static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
   nbw_impl * impl = w->h->impl;
@@ -514,8 +494,8 @@ static int nbw_write(stasis_handle_t * h, lsn_t off,
   releaseFastHandle(impl, n, DIRTY);
   if(!ret) {
     pthread_mutex_lock(&impl->mut);
-    assert(impl->start_pos <= impl->end_pos);
-    if(off < impl->start_pos) {
+    assert(0 <= impl->end_pos);
+    if(off < 0) {
       ret = EDOM;
     } else if(off + len > impl->end_pos) {
       impl->end_pos = off+len;
@@ -523,19 +503,6 @@ static int nbw_write(stasis_handle_t * h, lsn_t off,
     impl->requested_bytes_written += len;
     pthread_mutex_unlock(&impl->mut);
   }
-  return ret;
-}
-static int nbw_append(stasis_handle_t * h, lsn_t * off,
-                      const byte * dat, lsn_t len) {
-  nbw_impl * impl = h->impl;
-
-  pthread_mutex_lock(&impl->mut);
-  *off = impl->end_pos;
-  impl->end_pos+= len;
-  impl->requested_bytes_written += len;
-  pthread_mutex_unlock(&impl->mut);
-
-  int ret = nbw_write(h, *off, dat, len);
   return ret;
 }
 static int nbw_read(stasis_handle_t * h,
@@ -603,7 +570,7 @@ static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
 static int nbw_force(stasis_handle_t * h) {
   nbw_impl * impl = h->impl;
   pthread_mutex_lock(&impl->mut);
-  int ret = nbw_force_range_impl(h, impl->start_pos, impl->end_pos);
+  int ret = nbw_force_range_impl(h, 0, impl->end_pos);
   pthread_mutex_unlock(&impl->mut);
   return ret;
 }
@@ -616,21 +583,6 @@ static int nbw_force_range(stasis_handle_t * h,
   pthread_mutex_unlock(&impl->mut);
   return ret;
 }
-static int nbw_truncate_start(stasis_handle_t * h, lsn_t new_start) {
-  nbw_impl * impl = h->impl;
-  int error = 0;
-  pthread_mutex_lock(&impl->mut);
-  if(new_start <= impl->end_pos && new_start > impl->start_pos) {
-    impl->start_pos = new_start;
-  } else {
-    error = EDOM;
-  }
-  pthread_mutex_unlock(&impl->mut);
-  if(!error) {
-    // @todo close all slow handles; truncate them. (ie: implement truncate)
-  }
-  return error;
-}
 
 struct stasis_handle_t nbw_func = {
   .num_copies = nbw_num_copies,
@@ -638,19 +590,15 @@ struct stasis_handle_t nbw_func = {
   .close = nbw_close,
   .dup = nbw_dup,
   .enable_sequential_optimizations = nbw_enable_sequential_optimizations,
-  .start_position = nbw_start_position,
   .end_position = nbw_end_position,
   .write = nbw_write,
-  .append = nbw_append,
   .write_buffer = nbw_write_buffer,
-  .append_buffer = nbw_append_buffer,
   .release_write_buffer = nbw_release_write_buffer,
   .read = nbw_read,
   .read_buffer = nbw_read_buffer,
   .release_read_buffer = nbw_release_read_buffer,
   .force = nbw_force,
   .force_range = nbw_force_range,
-  .truncate_start = nbw_truncate_start,
   .error = 0
 };
 
@@ -691,7 +639,7 @@ static void * nbw_worker(void * handle) {
         writes++;
 
         stasis_handle_t * fast = node->h;
-        lsn_t off = fast->start_position(fast);
+        lsn_t off = 0;
         lsn_t len = fast->end_position(fast) - off;
         stasis_read_buffer_t * r = fast->read_buffer(fast, off, len);
 
@@ -829,7 +777,6 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   nbw_impl * impl = malloc(sizeof(nbw_impl));
   pthread_mutex_init(&impl->mut, 0);
 
-  impl->start_pos = 0;
   impl->end_pos = 0;
 
   impl->slow_factory = slow_factory;

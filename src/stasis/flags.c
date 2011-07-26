@@ -55,14 +55,14 @@ stasis_handle_t* (*stasis_handle_factory)() =
 #else
   stasis_handle_default_factory;
 #endif
-stasis_handle_t* (*stasis_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms) =
+stasis_handle_t* (*stasis_handle_file_factory)(const char* filename, int open_mode, int creat_perms) =
 #ifdef STASIS_FILE_HANDLE_FACTORY
   STASIS_FILE_HANDLE_FACTORY
 #else
   stasis_handle_open_pfile;
 #endif
 
-stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms) =
+stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(const char* filename, int open_mode, int creat_perms) =
 #ifdef STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
   STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
 #else

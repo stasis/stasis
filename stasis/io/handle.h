@@ -117,8 +117,6 @@ typedef struct stasis_handle_t {
    * Optimize the handle for sequential reads and writes.
    */
   void (*enable_sequential_optimizations)(struct stasis_handle_t *h);
-  /** The offset of the handle's first byte */
-  lsn_t (*start_position)(struct stasis_handle_t * h);
 
   /** The offset of the byte after the end of the handle's data. */
   lsn_t (*end_position)(struct stasis_handle_t * h);
@@ -134,20 +132,20 @@ typedef struct stasis_handle_t {
   */
   struct stasis_write_buffer_t * (*write_buffer)(struct stasis_handle_t * h,
 					  lsn_t off, lsn_t len);
-  /**
-     Increase the size of the file, and obtain a write buffer at the
-     beginning of the new space.
-
-     The behavior of calls that attempt to access this region before
-     release_write_buffer() returns is undefined.  Calls to append
-     that are made before the buffer is released are legal, and will
-     append data starting at the new end of file.
-
-     @param h   The handle
-     @param len The length, in bytes, of the write buffer.
-  */
-  struct stasis_write_buffer_t * (*append_buffer)(struct stasis_handle_t * h,
-					   lsn_t len);
+//  /**
+//     Increase the size of the file, and obtain a write buffer at the
+//     beginning of the new space.
+//
+//     The behavior of calls that attempt to access this region before
+//     release_write_buffer() returns is undefined.  Calls to append
+//     that are made before the buffer is released are legal, and will
+//     append data starting at the new end of file.
+//
+//     @param h   The handle
+//     @param len The length, in bytes, of the write buffer.
+//  */
+//  struct stasis_write_buffer_t * (*append_buffer)(struct stasis_handle_t * h,
+//					   lsn_t len);
   /**
      Release a write buffer and associated resources.
   */
@@ -182,17 +180,17 @@ typedef struct stasis_handle_t {
   */
   int (*write)(struct stasis_handle_t * h, lsn_t off,
 	       const byte * dat, lsn_t len);
-  /**
-     Append data to the end of the file.  Once append returns, future
-     calls to the handle will reflect the update.
-
-     @param h The handle
-     @param off The position of the first byte to be written
-     @param dat A buffer containin the data to be written
-     @param len The number of bytes to be written
-  */
-  int (*append)(struct stasis_handle_t * h, lsn_t * off, const byte * dat,
-                lsn_t len);
+//  /**
+//     Append data to the end of the file.  Once append returns, future
+//     calls to the handle will reflect the update.
+//
+//     @param h The handle
+//     @param off The position of the first byte to be written
+//     @param dat A buffer containin the data to be written
+//     @param len The number of bytes to be written
+//  */
+//  int (*append)(struct stasis_handle_t * h, lsn_t * off, const byte * dat,
+//                lsn_t len);
   /**
      Read data from the file.  The region may be safely written to
      once read returns.
@@ -211,17 +209,6 @@ typedef struct stasis_handle_t {
   */
   int (*force)(struct stasis_handle_t * h);
   int (*force_range)(struct stasis_handle_t * h, lsn_t start, lsn_t stop);
-  /**
-     Truncate bytes from the beginning of the file.  This is needed by
-     the log manager.
-
-     @param h The handle
-
-     @param new_start The offest of the first byte in the handle that
-            must be preserved.  Bytes before this point may or may not
-            be retained after this function returns.
-  */
-  int (*truncate_start)(struct stasis_handle_t * h, lsn_t new_start);
   /**
      The handle's error flag; this passes errors to the caller when
      they can't be returned directly.
@@ -257,7 +244,7 @@ typedef struct stasis_read_buffer_t {
 
    @param start_offset The logical offset of the first byte in the handle
 */
-stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
+stasis_handle_t * stasis_handle(open_memory)(void);
 /**
    Open a handle that is backed by a file.  This handle uses the unix
    read(),write() I/O interfaces.  Due to limitations in read() and
@@ -274,7 +261,7 @@ stasis_handle_t * stasis_handle(open_memory)(lsn_t start_offset);
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_file)
-    (lsn_t start_offset, const char * path, int flags, int perm);
+    (const char * path, int flags, int perm);
 /**
    Open a handle that is backed by a file.  This handle uses pread()
    and pwrite().  It never holds a mutex while perfoming I/O.
@@ -289,7 +276,7 @@ stasis_handle_t * stasis_handle(open_file)
    @param perm The file permissions to be passed to open()
 */
 stasis_handle_t * stasis_handle(open_pfile)
-     (lsn_t start_offset, const char * path, int flags, int perm);
+     (const char * path, int flags, int perm);
 /**
    Given a factory for creating "fast" and "slow" handles, provide a
    handle that never makes callers wait for write requests to

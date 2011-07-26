@@ -19,5 +19,5 @@
 #include <stdio.h>
 
 stasis_handle_t* stasis_handle_default_factory() {
-  return stasis_handle_file_factory(0, stasis_store_file_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
+  return stasis_handle_file_factory(stasis_store_file_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
 }

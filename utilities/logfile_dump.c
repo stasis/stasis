@@ -11,7 +11,7 @@
 
 static char * logEntryToString(const LogEntry * le) {
   char * ret = NULL;
-  int err;
+  int err = -1;
   switch(le->type) {
   case UPDATELOG:
     {

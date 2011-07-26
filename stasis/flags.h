@@ -69,14 +69,14 @@ extern stasis_handle_t* (*stasis_handle_factory)();
 
    Valid options: stasis_handle_open_file(), stasis_handle_open_pfile(), and stasis_handle_non_blocking_factory.
  */
-extern stasis_handle_t* (*stasis_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms);
+extern stasis_handle_t* (*stasis_handle_file_factory)(const char* filename, int open_mode, int creat_perms);
 /**
    The factory that non_blocking handles will use for slow handles.  (Only
    used if stasis_buffer_manager_io_handle_default_factory is set to
    stasis_non_blocking_factory.)
 
 */
-extern stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(lsn_t logical_offset, const char* filename, int open_mode, int creat_perms);
+extern stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(const char* filename, int open_mode, int creat_perms);
 
 /**
    If true, the buffer manager will use O_DIRECT, O_SYNC and so on (Mandatory

@@ -10,7 +10,6 @@
 
 typedef struct file_impl {
   pthread_mutex_t mut;
-  lsn_t start_pos;
   lsn_t end_pos;
   int fd;
   int file_flags;
@@ -24,7 +23,7 @@ static int updateEOF(stasis_handle_t * h) {
   if(pos == (off_t)-1) {
     return errno;
   } else {
-    impl->end_pos = impl->start_pos + pos;
+    impl->end_pos = pos;
     return 0;
   }
 }
@@ -48,19 +47,11 @@ static int file_close(stasis_handle_t * h) {
 }
 static stasis_handle_t* file_dup(stasis_handle_t * h) {
   file_impl * impl = h->impl;
-  return stasis_handle_open_file(impl->start_pos, impl->filename, impl->file_flags, impl->file_mode);
+  return stasis_handle_open_file(impl->filename, impl->file_flags, impl->file_mode);
 }
 static void file_enable_sequential_optimizations(stasis_handle_t * h) {
   // TODO enable_sequential_optimizations is a no-op in file.c
 }
-static lsn_t file_start_position(stasis_handle_t *h) {
-  file_impl * impl = (file_impl*)h->impl;
-  pthread_mutex_lock(&(impl->mut));
-  lsn_t ret = impl->start_pos;
-  pthread_mutex_unlock(&(impl->mut));
-  return ret;
-}
-
 static lsn_t file_end_position(stasis_handle_t *h) {
   file_impl * impl = (file_impl*)h->impl;
   pthread_mutex_lock(&(impl->mut));
@@ -82,12 +73,12 @@ inline static int file_write_unlocked(stasis_handle_t * h, lsn_t off,
   int error = 0;
 
   // These should have been checked by the caller.
-  assert(impl->start_pos <= off);
+  assert(0 <= off);
   assert(impl->end_pos >= off+len);
 
   // @todo need a test harness that gets read(), write() and lseek() to misbehave.
 
-  off_t lseek_offset = lseek(impl->fd, off - impl->start_pos, SEEK_SET);
+  off_t lseek_offset = lseek(impl->fd, off, SEEK_SET);
 
   if(lseek_offset == (off_t)-1) {
     error = errno;
@@ -114,7 +105,7 @@ inline static int file_write_unlocked(stasis_handle_t * h, lsn_t off,
 
 	  // Try again.
 
-	  lseek_offset = lseek(impl->fd, off + bytes_written - impl->start_pos, SEEK_SET);
+	  lseek_offset = lseek(impl->fd, off + bytes_written, SEEK_SET);
 	  if(lseek_offset == (off_t)-1) {
 	    error = errno;
 	    if(error == EBADF || error == ESPIPE) {
@@ -155,7 +146,7 @@ static int file_read(stasis_handle_t * h,
   file_impl * impl = (file_impl*)(h->impl);
   pthread_mutex_lock(&(impl->mut));
   int error = 0;
-  if(off < impl->start_pos) {
+  if(off < 0) {
     error = EDOM;
   } else if(off + len > impl->end_pos) {
     error = updateEOF(h);
@@ -165,7 +156,7 @@ static int file_read(stasis_handle_t * h,
   }
 
   if(!error) {
-    off_t lseek_offset = lseek(impl->fd, off - impl->start_pos, SEEK_SET);
+    off_t lseek_offset = lseek(impl->fd, off, SEEK_SET);
 
     if(lseek_offset == (off_t)-1) {
       error = errno;
@@ -193,7 +184,7 @@ static int file_read(stasis_handle_t * h,
 
 	    // Try again.
 
-	    lseek_offset = lseek(impl->fd, off + bytes_written - impl->start_pos, SEEK_SET);
+	    lseek_offset = lseek(impl->fd, off + bytes_written, SEEK_SET);
 	    if(lseek_offset == (off_t)-1) {
 	      error = errno;
 	      if(error == EBADF || error == ESPIPE) {
@@ -237,7 +228,7 @@ static int file_write(stasis_handle_t *h, lsn_t off, const byte * dat, lsn_t len
   file_impl * impl = (file_impl*)(h->impl);
   pthread_mutex_lock(&(impl->mut));
   int error = 0;
-  if(impl->start_pos > off) {
+  if(off < 0) {
     error = EDOM;
   }
 
@@ -251,19 +242,6 @@ static int file_write(stasis_handle_t *h, lsn_t off, const byte * dat, lsn_t len
   return error;
 }
 
-static int file_append(stasis_handle_t * h, lsn_t * off, const byte * dat, lsn_t len) {
-  file_impl * impl = (file_impl*)(h->impl);
-  pthread_mutex_lock(&impl->mut);
-  updateEOF(h);
-  *off = impl->end_pos;
-  impl->end_pos += len;
-  int error = file_write_unlocked(h, *off, dat, len);
-  pthread_mutex_unlock(&impl->mut);
-  return error;
-}
-
-
-
 static stasis_write_buffer_t * file_write_buffer(stasis_handle_t * h,
 						lsn_t off, lsn_t len) {
   // Allocate the handle
@@ -275,7 +253,7 @@ static stasis_write_buffer_t * file_write_buffer(stasis_handle_t * h,
 
   pthread_mutex_lock(&(impl->mut));
 
-  if(impl->start_pos > off) {
+  if(off < 0) {
     error = EDOM;
   }
   if(off + len > impl->end_pos) {
@@ -311,46 +289,6 @@ static stasis_write_buffer_t * file_write_buffer(stasis_handle_t * h,
   return ret;
 }
 
-static stasis_write_buffer_t * file_append_buffer(stasis_handle_t * h,
-						 lsn_t len) {
-  // Allocate the handle
-  stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
-  if(!ret) { return NULL; }
-
-  file_impl * impl = (file_impl*)h->impl;
-
-  // Obtain an appropriate offset
-  pthread_mutex_lock(&(impl->mut));
-  updateEOF(h);
-  off_t off = impl->end_pos;
-  impl->end_pos += len;
-  pthread_mutex_unlock(&(impl->mut));
-
-  // Allocate the buffer
-  byte * buf = malloc(len);
-  int error = 0;
-  if(!buf) {
-    error = ENOMEM;
-  }
-
-  if(error) {
-    ret->h = h;
-    ret->off = 0;
-    ret->buf = 0;
-    ret->len = 0;
-    ret->impl = 0;
-    ret->error = error;
-  } else {
-    ret->h = h;
-    ret->off = off;
-    ret->buf = buf;
-    ret->len = len;
-    ret->impl = 0;
-    ret->error = 0;
-  }
-  return ret;
-
-}
 static int file_release_write_buffer(stasis_write_buffer_t * w) {
 
   file_impl * impl = (file_impl*)(w->h->impl);
@@ -358,7 +296,7 @@ static int file_release_write_buffer(stasis_write_buffer_t * w) {
   pthread_mutex_lock(&(impl->mut));
   int error = 0;
   if(impl->end_pos < w->off + w->len ||
-     impl->start_pos > w->off) {
+     0 > w->off) {
     error = EDOM;
   }
 
@@ -413,20 +351,7 @@ static int file_force(stasis_handle_t * h) {
   file_impl * impl = h->impl;
 
   if(!(impl->file_flags & O_SYNC)) {
-    pthread_mutex_lock(&impl->mut);  // must latch because of truncate... :(
     int fd = impl->fd;
-    pthread_mutex_unlock(&impl->mut);
-    {
-      static int warned = 0;
-      if(!warned) {
-	printf("Warning: There is a race condition between force() and "
-	       " truncate() in file.c (This shouldn't matter in practice, "
-	       "as the logger hasn't moved over to use file.c yet.\n");
-	warned = 1;
-      }
-    }
-    // XXX there is a race here; the file handle could have been invalidated
-    // by truncate.
 #ifdef HAVE_FDATASYNC
     DEBUG("file_force() is calling fdatasync()\n");
     fdatasync(fd);
@@ -446,8 +371,6 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     // not opened synchronously; we need to explicitly sync.
     pthread_mutex_lock(&impl->mut);
     int fd = impl->fd;
-    lsn_t off = impl->start_pos;
-    (void)off;
     pthread_mutex_unlock(&impl->mut);
     {
       static int warned = 0;
@@ -487,69 +410,6 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   }
   return ret;
 }
-static int file_truncate_start(stasis_handle_t * h, lsn_t new_start) {
-  file_impl * impl = h->impl;
-  pthread_mutex_lock(&impl->mut);
-  int error = 0;
-
-  if(new_start > impl->end_pos) {
-    updateEOF(h);
-    if(!error && new_start > impl->end_pos) {
-      error = EDOM;
-    }
-  }
-
-  if(!error && new_start > impl->start_pos) {
-    char * tmpfile = malloc(strlen(impl->filename)+2);
-    strcpy(tmpfile, impl->filename);
-    tmpfile[strlen(tmpfile)+1] = '\0';
-    tmpfile[strlen(tmpfile)]   = '~';
-
-    int fd = open(tmpfile, impl->file_flags, impl->file_mode);
-
-    lseek(fd, 0, SEEK_SET);
-    lseek(impl->fd, new_start-impl->start_pos, SEEK_SET);
-    int count;
-    int buf_size = 1024 * 1024;
-    char * buf = malloc(buf_size);
-    while((count = read(impl->fd, buf, buf_size))) {
-      if(count == -1) {
-	error = errno;
-	perror("truncate failed to read");
-      }
-      ssize_t bytes_written = 0;
-      while(bytes_written < count) {
-	ssize_t write_ret = write(fd, buf+bytes_written, count-bytes_written);
-	if(write_ret == -1) {
-	  error = errno;
-	  perror("truncate failed to write");
-	  break;
-	}
-	bytes_written += write_ret;
-      }
-      if(error) break;
-    }
-    free(buf);
-    if(!error) {
-      if(-1 == close(impl->fd)) {
-	error = errno;
-      }
-      impl->fd = fd;
-      impl->start_pos = new_start;
-      fsync(impl->fd);
-      int rename_ret = rename(tmpfile, impl->filename);
-      if(rename_ret) {
-	error = errno;
-      }
-      free(tmpfile);
-    } else {
-      close(fd);
-    }
-  }
-
-  pthread_mutex_unlock(&impl->mut);
-  return error;
-}
 
 struct stasis_handle_t file_func = {
   .num_copies = file_num_copies,
@@ -557,23 +417,19 @@ struct stasis_handle_t file_func = {
   .close = file_close,
   .dup = file_dup,
   .enable_sequential_optimizations = file_enable_sequential_optimizations,
-  .start_position = file_start_position,
   .end_position = file_end_position,
   .write = file_write,
-  .append = file_append,
   .write_buffer = file_write_buffer,
-  .append_buffer = file_append_buffer,
   .release_write_buffer = file_release_write_buffer,
   .read = file_read,
   .read_buffer = file_read_buffer,
   .release_read_buffer = file_release_read_buffer,
   .force = file_force,
   .force_range = file_force_range,
-  .truncate_start = file_truncate_start,
   .error = 0
 };
 
-stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, const char * filename, int flags, int mode) {
+stasis_handle_t * stasis_handle(open_file)(const char * filename, int flags, int mode) {
   stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
   if(!ret) { return NULL; }
   *ret = file_func;
@@ -581,8 +437,6 @@ stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, const char * file
   file_impl * impl = malloc(sizeof(file_impl));
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
-  impl->start_pos = start_offset;
-  impl->end_pos = start_offset;
   assert(sizeof(off_t) >= (64/8));
   impl->fd = open(filename, flags, mode);
   if(impl->fd == -1) {
@@ -591,5 +445,6 @@ stasis_handle_t * stasis_handle(open_file)(lsn_t start_offset, const char * file
   impl->filename = strdup(filename);
   impl->file_flags = flags;
   impl->file_mode = mode;
+  updateEOF(ret);
   return ret;
 }
