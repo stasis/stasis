@@ -132,20 +132,6 @@ typedef struct stasis_handle_t {
   */
   struct stasis_write_buffer_t * (*write_buffer)(struct stasis_handle_t * h,
 					  lsn_t off, lsn_t len);
-//  /**
-//     Increase the size of the file, and obtain a write buffer at the
-//     beginning of the new space.
-//
-//     The behavior of calls that attempt to access this region before
-//     release_write_buffer() returns is undefined.  Calls to append
-//     that are made before the buffer is released are legal, and will
-//     append data starting at the new end of file.
-//
-//     @param h   The handle
-//     @param len The length, in bytes, of the write buffer.
-//  */
-//  struct stasis_write_buffer_t * (*append_buffer)(struct stasis_handle_t * h,
-//					   lsn_t len);
   /**
      Release a write buffer and associated resources.
   */
@@ -180,17 +166,6 @@ typedef struct stasis_handle_t {
   */
   int (*write)(struct stasis_handle_t * h, lsn_t off,
 	       const byte * dat, lsn_t len);
-//  /**
-//     Append data to the end of the file.  Once append returns, future
-//     calls to the handle will reflect the update.
-//
-//     @param h The handle
-//     @param off The position of the first byte to be written
-//     @param dat A buffer containin the data to be written
-//     @param len The number of bytes to be written
-//  */
-//  int (*append)(struct stasis_handle_t * h, lsn_t * off, const byte * dat,
-//                lsn_t len);
   /**
      Read data from the file.  The region may be safely written to
      once read returns.
