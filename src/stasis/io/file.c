@@ -385,7 +385,7 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
 #ifdef HAVE_SYNC_FILE_RANGE
     if(!stop) stop = impl->end_pos;
     DEBUG("Calling sync_file_range\n");
-    ret = sync_file_range(fd, start-off, (stop-start),
+    ret = sync_file_range(fd, start, (stop-start),
 			      SYNC_FILE_RANGE_WAIT_BEFORE |
 			      SYNC_FILE_RANGE_WRITE |
 			      SYNC_FILE_RANGE_WAIT_AFTER);

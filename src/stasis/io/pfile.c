@@ -312,8 +312,8 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
 #ifdef HAVE_SYNC_FILE_RANGE
   // stop of zero syncs to eof.
   DEBUG("pfile_force_range calling sync_file_range %lld %lld\n",
-	 start-impl->start_pos, stop-start); fflush(stdout);
-  int ret = sync_file_range(impl->fd, start-impl->start_pos, stop-start,
+	 start, stop-start); fflush(stdout);
+  int ret = sync_file_range(impl->fd, start, stop-start,
 			      SYNC_FILE_RANGE_WAIT_BEFORE |
 			      SYNC_FILE_RANGE_WRITE |
 			      SYNC_FILE_RANGE_WAIT_AFTER);
