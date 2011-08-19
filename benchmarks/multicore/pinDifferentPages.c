@@ -18,7 +18,7 @@ unsigned long numops;
 static void* worker(void* arg) {
   pageid_t pid = *(pageid_t*)arg;
   for(unsigned long i = 0; i < numops; i++) {
-    Page * p = loadPage(-1, pid);
+    Page * p = loadPage(-1, pid+i);
     releasePage(p);
   }
 
@@ -39,7 +39,7 @@ int main(int argc, char * argv[]) {
   Tinit();
 
   for(int i = 0; i < numthreads; i++) {
-    pids[i] = i;
+    pids[i] = i * numops;
     pthread_create(&workers[i], 0, worker, &pids[i]);
   }
   for(int i = 0; i < numthreads; i++) {
