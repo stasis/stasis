@@ -1,5 +1,6 @@
 #include <config.h>
 #include <stasis/transactional.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,10 @@
 #include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/truncation.h>
 #include <stasis/logger/logger2.h>
+
+#include <stasis/util/time.h>
+#include <stasis/flags.h>
+
 /*static stasis_handle_t * memory_factory(lsn_t off, lsn_t len, void * ignored) {
   stasis_handle_t * h = stasis_handle(open_memory)(off);
   //h = stasis_handle(open_debug)(h);
@@ -39,8 +44,10 @@ static stasis_handle_t * traditional_file_factory(void * argsP) {
 static inline long mb_to_page(long mb) {
   return (mb * 1024 * 1024) / PAGE_SIZE;
 }
-
-const char * usage = "./sequentialThroughput [--direct] [--mb mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--log_file_pool|--nb|--file|--pfile|--nb_pfile|--nb_file]\n";
+static inline long page_to_mb(long page) {
+  return (page * PAGE_SIZE) / (1024 * 1024);
+}
+const char * usage = "./sequentialThroughput [--direct] [--mb mb] [--stake mb]\n  [--deprecatedBM|--deprecatedFH|--log_safe_writes|--log_memory|--log_file_pool|--nb|--file|--pfile|--nb_pfile|--nb_file] [--read]\n";
 
 int main(int argc, char ** argv) {
   int direct = 0;
@@ -48,6 +55,7 @@ int main(int argc, char ** argv) {
   int legacyFH = 0;
   int stake = 0;
   int log_mode = 0;
+  int read_mode = 0;
   long page_count = mb_to_page(100);
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--direct")) {
@@ -90,6 +98,11 @@ int main(int argc, char ** argv) {
     } else if(!strcmp(argv[i], "--stake")) {
       i++;
       stake = mb_to_page(atoll(argv[i]));
+    } else if(!strcmp(argv[i], "--read")) {
+      read_mode = 1;
+    } else if(!strcmp(argv[i], "--hint-sequential-writes")) {
+      stasis_buffer_manager_hint_writes_are_sequential = 1;
+      stasis_replacement_policy_concurrent_wrapper_exponential_backoff = 1;
     } else {
       printf("Unknown argument: %s\nUsage: %s\n", argv[i], usage);
       return 1;
@@ -101,35 +114,63 @@ int main(int argc, char ** argv) {
     return 1;
   }
 
+  struct timeval start;
+
+  gettimeofday(&start,0);
+
   Tinit();
 
-  if(log_mode) {
-    lsn_t prevLSN = -1;
-    byte * arg = calloc(PAGE_SIZE, 1);
-    stasis_log_t * l = stasis_log();
-
-    for(long i = 0; i < page_count; i++) {
-      LogEntry * e = allocUpdateLogEntry(l, prevLSN, -1, OPERATION_NOOP,
-                                         0, PAGE_SIZE);
-      l->write_entry(l, e);
-      l->write_entry_done(l, e);
+  if(read_mode) {
+    if(log_mode) {
+      printf("read mode for the log is unimplemented\n");
+      abort();
+    } else {
+      for(long i = 0; i < page_count; i++) { 
+	Page * p = loadPage(-1, i);
+	releasePage(p);
+      }
     }
-    free(arg);
   } else {
-    if(stake) {
-      Page * p = loadPage(-1, stake);
-      writelock(p->rwlatch,0);
-      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
-      unlock(p->rwlatch);
-      releasePage(p);
-    }
+    if(log_mode) {
+      lsn_t prevLSN = -1;
+      byte * arg = calloc(PAGE_SIZE, 1);
+      stasis_log_t * l = stasis_log();
 
-    for(long i =0; i < page_count; i++) {
-      Page * p = loadUninitializedPage(-1, i);
-      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
-      releasePage(p);
+      for(long i = 0; i < page_count; i++) {
+	LogEntry * e = allocUpdateLogEntry(l, prevLSN, -1, OPERATION_NOOP,
+					   0, PAGE_SIZE);
+	l->write_entry(l, e);
+	l->write_entry_done(l, e);
+      }
+      free(arg);
+    } else {
+      if(stake) {
+	Page * p = loadPage(-1, stake);
+	writelock(p->rwlatch,0);
+	stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+	unlock(p->rwlatch);
+	releasePage(p);
+      }
+
+      for(long i =0; i < page_count; i++) {
+	Page * p = loadUninitializedPage(-1, i);
+	stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+	releasePage(p);
+      }
     }
   }
   Tdeinit();
+
+  struct timeval stop;
+  gettimeofday(&stop, 0);
+
+  double elapsed = stasis_timeval_to_double(
+                     stasis_subtract_timeval(stop,start));
+
+  printf("Elasped = %f seconds, %s %ld mb, throughput %f MB/sec\n",
+	 elapsed,
+	 read_mode ? "read": "wrote",
+	 page_to_mb(page_count),
+	 ((double)page_to_mb(page_count)) / elapsed);
   return 0;
 }
