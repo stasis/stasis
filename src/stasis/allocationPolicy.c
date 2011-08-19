@@ -48,8 +48,15 @@
  *
  * And the following views:
  *
- *   AvailablePages: (_pageid_, freespace)  The rows of AllPages with no entries in xidAllloced or xidDealloced.  key1: pageid, key2: freespace, pageid
- *   PageOwners: (xid, freespace, _pageid_) The rows of AllPages with an entry in xidAlloced, and at most one entry in xidDealloced, key1: pageid, key2 = xid, freespace, pageid
+ *   AvailablePages: (_pageid_, freespace)
+ *
+ *   The rows of AllPages with no entries in xidAllloced or xidDealloced.
+ *     key1: pageid, key2: freespace, pageid
+ *
+ *   PageOwners: (xid, freespace, _pageid_)
+ *
+ *   The rows of AllPages with an entry in xidAlloced, and at most one
+ *   entry in xidDealloced, key1: pageid, key2 = xid, freespace, pageid
  */
 // Tables:
 typedef struct {
