@@ -99,18 +99,22 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
   // When we optimize for sequential writes, we try to make sure that
   // write back only happens in a single thread.  Therefore, there is
   // no reason to put dirty pages in the LRU, and lruFast will ignore
-  // dirty pages that are inserted into it.  Since we may be making a dirty
-  // page become clean here, we remove the page from LRU, and put it
-  // back in.  (There is no need to do this if the sequential
-  // optimizations are turned off...)
+  // dirty pages that are inserted into it.
+
+  // Since we may be making a dirty page become clean here, we remove
+  // the page from LRU, and put it back in.
+
   if(stasis_buffer_manager_hint_writes_are_sequential)
+    // The removal sets the page's ref count.  It does nothing else if
+    // the page is dirty.
     ch->lru->remove(ch->lru, p);
 
   // write calls stasis_page_flushed(p);
   ch->page_handle->write(ch->page_handle, p);
 
-  // Put the page back in LRU iff we just took it out.
   if(stasis_buffer_manager_hint_writes_are_sequential)
+    // Put the page back in LRU iff we just took it out / changed its
+    // ref count.
     ch->lru->insert(ch->lru, p);
 
   p->needsFlush = 0;
