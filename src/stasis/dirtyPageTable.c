@@ -4,10 +4,11 @@
  *  Created on: May 18, 2009
  *      Author: sears
  */
-
+#include <config.h>
 #include <stasis/common.h>
 #include <stasis/util/redblack.h>
 #include <stasis/util/multiset.h>
+#include <stasis/util/latches.h>
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/page.h>
@@ -36,7 +37,7 @@ struct stasis_dirty_page_table_t {
   struct rbtree * tableByPage;
   struct rbtree * tableByLsnAndPage;
   stasis_buffer_manager_t * bufferManager;
-  pageid_t count;
+  uint32_t count; // NOTE: this is 32 bit so that it is cheap to atomically manipulate it on 32 bit intels.
   pthread_mutex_t mutex;
   pthread_cond_t flushDone;
   int flushing;
@@ -60,7 +61,7 @@ void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, P
       e->lsn = p->LSN;
       ret = rbsearch(e, dirtyPages->tableByLsnAndPage);
       assert(ret == e); // otherwise, the entry was already in the table.
-      dirtyPages->count++;
+      FETCH_AND_ADD(&dirtyPages->count,1);
     }
     pthread_mutex_unlock(&dirtyPages->mutex);
 #ifdef SANITY_CHECKS
@@ -100,7 +101,8 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
         pthread_cond_broadcast( &dirtyPages->writebackCond );
       }
 
-      dirtyPages->count--;
+      //dirtyPages->count--;
+      FETCH_AND_ADD(&dirtyPages->count, -1);
     }
     pthread_mutex_unlock(&dirtyPages->mutex);
   }
@@ -129,11 +131,7 @@ lsn_t stasis_dirty_page_table_minRecLSN(stasis_dirty_page_table_t * dirtyPages) 
 }
 
 pageid_t stasis_dirty_page_table_dirty_count(stasis_dirty_page_table_t * dirtyPages) {
-  pthread_mutex_lock(&dirtyPages->mutex);
-  pageid_t ret = dirtyPages->count;
-  assert(dirtyPages->count >= 0);
-  pthread_mutex_unlock(&dirtyPages->mutex);
-  return ret;
+  return ATOMIC_READ_32(&dirtyPages->mutex, &dirtyPages->count);
 }
 
 int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyPages, lsn_t targetLsn ) {
@@ -188,7 +186,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
 
     if (!all_flushed &&
         targetLsn < LSN_T_MAX &&
-        dirtyPages->count > 0 &&
+        ATOMIC_READ_32(0, &dirtyPages->count) > 0 &&
         e && targetLsn > e->lsn ) {
       struct timespec ts;
       struct timeval tv;
@@ -255,7 +253,7 @@ int stasis_dirty_page_table_get_flush_candidates(stasis_dirty_page_table_t * dir
   dummy.p = start;
 
   for(const dpt_entry *e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
-      e && (stop == 0 || e->p < stop) && n < count;
+      e && (stop == 0 || e->p < stop) && n < ATOMIC_READ_32(0, &count);
       e = rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
     if(n == 0 || range_ends[b] != e->p) {
       b++;

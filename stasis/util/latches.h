@@ -120,6 +120,8 @@ void __profile_deletelock (rwl *lock);
 #define ATOMIC_READ_64(mutex,_a)    *_a
 #define ATOMIC_WRITE_64(mutex,_a,_n) do {*_a=_n; } while (0)
 #endif
+#define ATOMIC_READ_32(mutex,_a)    *_a
+#define ATOMIC_WRITE_32(mutex,_a,_n) do {*_a=_n; } while (0)
 #else
 #define CAS(mutex,_a,_o,_n)       GCC_ATOMICS_REQUIRED
 #define BARRIER()                 GCC_ATOMICS_REQUIRED
