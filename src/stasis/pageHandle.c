@@ -11,12 +11,9 @@
 */
 static void phWrite(stasis_page_handle_t * ph, Page * ret) {
   DEBUG("\nPAGEWRITE %lld\n", ret->id);
-  // This lock is only held to make the page implementation happy.  We should
-  // implicitly have exclusive access to the page before this function is called,
-  // or we'll deadlock.
-  int locked = trywritelock(ret->rwlatch,0);
-  assert(locked);
-  if(!ret->dirty) { unlock(ret->rwlatch); return; }
+  // The caller guarantees that we have exclusive access to the page, so
+  // no further latching is necessary.
+  if(!ret->dirty) { return; }
   stasis_page_flushed(ret);
   if(ph->log) { stasis_log_force(ph->log, ret->LSN, LOG_FORCE_WAL); }
   int err = ((stasis_handle_t*)ph->impl)->write(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
@@ -26,11 +23,10 @@ static void phWrite(stasis_page_handle_t * ph, Page * ret) {
     abort();
   }
   stasis_dirty_page_table_set_clean(ph->dirtyPages, ret);
-  unlock(ret->rwlatch);
 }
 static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
-  int locked = trywritelock(ret->rwlatch,0);
-  assert(locked);
+  // The caller guarantees that we have exclusive access to the page, so
+  // no further latching is necessary.
   int err = ((stasis_handle_t*)ph->impl)->read(ph->impl, PAGE_SIZE * ret->id, ret->memAddr, PAGE_SIZE);
   if(err) {
     if(err == EDOM) {
@@ -44,7 +40,6 @@ static void phRead(stasis_page_handle_t * ph, Page * ret, pagetype_t type) {
   }
   assert(!ret->dirty);
   stasis_page_loaded(ret, type);
-  unlock(ret->rwlatch);
 }
 static void phPrefetchRange(stasis_page_handle_t *ph, pageid_t pageid, pageid_t count) {
   // TODO RTFM and see if Linux provides a decent API for prefetch hints.
