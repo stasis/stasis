@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define PFILE_LATENCY_PROF
+//#define PFILE_LATENCY_PROF
 
 #ifdef PFILE_LATENCY_PROF
 DECLARE_HISTOGRAM_64(read_hist)
