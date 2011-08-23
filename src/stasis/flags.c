@@ -81,6 +81,12 @@ int stasis_buffer_manager_debug_stress_latching = STASIS_BUFFER_MANAGER_DEBUG_ST
 int stasis_buffer_manager_debug_stress_latching = 0;
 #endif
 
+#ifdef STASIS_REPLACEMENT_POLICY
+int stasis_replacement_policy = STASIS_REPLACEMENT_POLICY;
+#else
+int stasis_replacement_policy = STASIS_REPLACEMENT_POLICY_CLOCK;
+#endif
+
 #ifdef STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF
 int stasis_replacement_policy_concurrent_wrapper_exponential_backoff = STASIS_REPLACEMENT_POLICY_CONCURRENT_WRAPPER_EXPONENTIAL_BACKOFF;
 #else

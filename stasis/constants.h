@@ -81,6 +81,10 @@ terms specified in this license.
 #define PERSISTENT 1
 #define DURABLE    2
 
+#define STASIS_REPLACEMENT_POLICY_THREADSAFE_LRU 1
+#define STASIS_REPLACEMENT_POLICY_CONCURRENT_LRU 2
+#define STASIS_REPLACEMENT_POLICY_CLOCK 3
+
 #define MAX_TRANSACTIONS 1000
 
 /** Operation types */

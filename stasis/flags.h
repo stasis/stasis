@@ -85,6 +85,13 @@ extern stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(const char* f
 */
 extern int stasis_buffer_manager_io_handle_flags;
 /**
+   The default replacement policy.
+
+   Valid values are STASIS_REPLACEMENT_POLICY_THREADSAFE_LRU,
+   STASIS_REPLACEMENT_POLICY_CONCURRENT_LRU and STASIS_REPLACEMENT_POLICY_CLOCK
+ */
+extern int stasis_replacement_policy;
+/**
    If true, then concurrent LRU will use exponential backoff when it
    has trouble finding a page to evict.  If false, it will perform a
    busy wait.

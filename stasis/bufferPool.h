@@ -65,4 +65,6 @@ Page* stasis_buffer_pool_malloc_page(stasis_buffer_pool_t* pool);
     @see stasis_buffer_pool_malloc_page()
 */
 void  stasis_buffer_pool_free_page(stasis_buffer_pool_t* pool, Page * p, pageid_t id);
+Page * stasis_buffer_pool_get_underlying_array(stasis_buffer_pool_t *ret);
 #endif // STASIS_BUFFER_POOL_H
+

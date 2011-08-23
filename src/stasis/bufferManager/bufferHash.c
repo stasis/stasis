@@ -129,10 +129,6 @@ inline static Page * getFreePage(stasis_buffer_manager_t *bm) {
   } else {
     while((ret = bh->lru->getStale(bh->lru))) {
       // Make sure we have an exclusive lock on victim.
-      if(!ret) {
-        printf("bufferHash.c: Cannot find free page for application request.\nbufferHash.c: This should not happen unless all pages have been pinned.\nbufferHash.c: Crashing.");
-        abort();
-      }
       assert(!ret->pinCount);
       assert(!ret->pending);
       if(ret->dirty) {
@@ -530,8 +526,12 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bh->flushing = 0;
 
   bh->buffer_pool = stasis_buffer_pool_init();
-
-  bh->lru = lruFastInit();
+  if(stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_CONCURRENT_LRU ||
+     stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_THREADSAFE_LRU) {
+    bh->lru = lruFastInit();
+  } else if(stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_CLOCK) {
+    bh->lru = replacementPolicyClockInit(stasis_buffer_pool_get_underlying_array(bh->buffer_pool), stasis_buffer_manager_size);
+  }
 
   bh->cachedPages = LH_ENTRY(create)(stasis_buffer_manager_size);
 

@@ -10,11 +10,12 @@
 #include <stasis/pageHandle.h>
 #include <stasis/flags.h>
 
-#ifndef NO_CONCURRENT_LRU
-#ifndef CONCURRENT_LRU
-#define CONCURRENT_LRU
-#endif // CONCURRENT_LRU
-#endif // NO_CONCURRENT_LRU
+#define CLOCK
+//#ifndef NO_CONCURRENT_LRU
+//#ifndef CONCURRENT_LRU
+//#define CONCURRENT_LRU
+//#endif // CONCURRENT_LRU
+//#endif // NO_CONCURRENT_LRU
 
 //#define STRESS_TEST_WRITEBACK 1 // if defined, writeback as much as possible, as fast as possible.
 
@@ -430,16 +431,20 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   printf("Using expensive bufferHash sanity checking.\n");
 #endif
   ch->buffer_pool = stasis_buffer_pool_init();
-#ifdef CONCURRENT_LRU
-  replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
-  for(int i = 0; i < 37; i++) {
-    lrus[i] = lruFastInit();
+
+  if(stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_CONCURRENT_LRU) {
+
+    replacementPolicy ** lrus = malloc(sizeof(lrus[0]) * 37);
+    for(int i = 0; i < 37; i++) {
+      lrus[i] = lruFastInit();
+    }
+    ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
+    free(lrus);
+  } else if(stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_THREADSAFE_LRU) {
+    ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit());
+  } else if(stasis_replacement_policy == STASIS_REPLACEMENT_POLICY_CLOCK) {
+    ch->lru = replacementPolicyClockInit(stasis_buffer_pool_get_underlying_array(ch->buffer_pool), stasis_buffer_manager_size);
   }
-  ch->lru = replacementPolicyConcurrentWrapperInit(lrus, 37);
-  free(lrus);
-#else
-  ch->lru = replacementPolicyThreadsafeWrapperInit(lruFastInit(pageGetNode, pageSetNode, pagePinCountPtr, 0));
-#endif
   ch->ht = hashtable_init(stasis_buffer_manager_size * 4);
 
   for(pageid_t i = 0; i < stasis_buffer_manager_size; i++) {

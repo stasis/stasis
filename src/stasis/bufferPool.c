@@ -143,3 +143,7 @@ void stasis_buffer_pool_free_page(stasis_buffer_pool_t * ret, Page *p, pageid_t 
 //  p->dirty = 0;
   writeunlock(p->rwlatch);
 }
+
+Page * stasis_buffer_pool_get_underlying_array(stasis_buffer_pool_t *ret) {
+  return ret->pool;
+}
