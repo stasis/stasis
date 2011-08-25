@@ -270,16 +270,18 @@ static void TregionAllocHelper(int xid, pageid_t page, pageid_t pageCount, int a
 
       new_tag.size = PAGEID_T_MAX;
 
-      // We're extending the page file, so pre-fill the stasis buffer manager with dirty zeros.  This
-      // prevents the file from becoming sparse.
-      for(pageid_t i = page+1; i < newPageid; i++) {
-        Page * p = loadUninitializedPage(xid, i);
-        writelock(p->rwlatch, 0);
-        stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
-        unlock(p->rwlatch);
-        releasePage(p);
-      }
+      // We're extending the page file, and need to prevent it from
+      // becoming sparse.
 
+      int preallocation_error
+	= preallocatePages(page+1, newPageid - page);
+      if(preallocation_error) {
+	if(preallocation_error == -1) {
+	  fprintf(stderr, "Note, errno is -1, which usually means that there was a build problem.\n");
+	}
+	perror("Could not preallocate after end of file.\n");
+	abort();
+      }
     }
     new_tag.prev_size = pageCount;
     // Create the new region, and disassociate it from this transaction immediately.

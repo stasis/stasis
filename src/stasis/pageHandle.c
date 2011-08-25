@@ -52,6 +52,12 @@ static void phPrefetchRange(stasis_page_handle_t *ph, pageid_t pageid, pageid_t 
 
   free(buf);
 }
+static int phPreallocateRange(stasis_page_handle_t * ph, pageid_t pageid, pageid_t count) {
+  lsn_t off = pageid * PAGE_SIZE;
+  lsn_t len = count * PAGE_SIZE;
+
+ return ((stasis_handle_t*)ph->impl)->fallocate(ph->impl, off, len);
+}
 static void phForce(stasis_page_handle_t * ph) {
   int err = ((stasis_handle_t*)ph->impl)->force(ph->impl);
   assert(!err);
@@ -91,6 +97,7 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
   ret->write = phWrite;
   ret->read  = phRead;
   ret->prefetch_range = phPrefetchRange;
+  ret->preallocate_range = phPreallocateRange;
   ret->force_file = phForce;
   ret->force_range = phForceRange;
   ret->close = phClose;

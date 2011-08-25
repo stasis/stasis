@@ -370,6 +370,10 @@ static void chForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   ch->page_handle->force_range(ch->page_handle, start, stop);
 }
+static int chPreallocatePages(stasis_buffer_manager_t * bm, pageid_t start, pageid_t count) {
+  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  return ch->page_handle->preallocate_range(ch->page_handle, start, count);
+}
 static void chBufDeinitHelper(stasis_buffer_manager_t * bm, int crash) {
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   ch->running = 0;
@@ -411,6 +415,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   bm->loadPageImpl = chLoadPageImpl;
   bm->loadUninitPageImpl = chLoadUninitPageImpl;
   bm->prefetchPages = NULL;
+  bm->preallocatePages = chPreallocatePages;
   bm->getCachedPageImpl = chGetCachedPage;
   bm->releasePageImpl = chReleasePage;
   bm->writeBackPage = chWriteBackPage;

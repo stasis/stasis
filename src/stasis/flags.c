@@ -33,6 +33,17 @@ int stasis_buffer_manager_io_handle_flags =
   O_NOATIME;
 #endif
 
+int stasis_buffer_manager_preallocate_mode =
+#ifdef STASIS_BUFFER_MANAGER_PREALLOCATE_MODE
+  STASIS_BUFFER_MANAGER_PREALLOCATE_MODE;
+#else
+#ifdef HAVE_POSIX_FALLOCATE
+  STASIS_BUFFER_MANAGER_PREALLOCATE_DEFAULT;
+#else
+  STASIS_BUFFER_MANAGER_PREALLOCATE_LEGACY;
+#endif
+#endif
+
 #ifdef STASIS_BUFFER_MANAGER_SIZE
 pageid_t stasis_buffer_manager_size = STASIS_BUFFER_MANAGER_SIZE;
 #else // STASIS_BUFFER_MANAGER_SIZE

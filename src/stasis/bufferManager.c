@@ -202,6 +202,27 @@ void   prefetchPages(pageid_t pageid, pageid_t count) {
   if(bm->prefetchPages != NULL) { bm->prefetchPages(bm, pageid, count); }
 }
 
+int    preallocatePages(pageid_t pageid, pageid_t count) {
+  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  // This is just a performance hint; and is an optional method.
+  if(stasis_buffer_manager_preallocate_mode == STASIS_BUFFER_MANAGER_PREALLOCATE_LEGACY) {
+    // Legacy option (ext3): pre-fill the stasis buffer manager with dirty zeros.
+    for(pageid_t i = 0; i < count; i++) {
+      Page * p = loadUninitializedPage(-1, pageid+i);
+      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+      releasePage(p);
+    }
+  } else if(stasis_buffer_manager_preallocate_mode == STASIS_BUFFER_MANAGER_PREALLOCATE_DEFAULT) {
+    if(bm->preallocatePages != NULL) { return bm->preallocatePages(bm, pageid, count); }
+  } else if(stasis_buffer_manager_preallocate_mode == STASIS_BUFFER_MANAGER_PREALLOCATE_DISABLED) {
+  } else {
+    fprintf(stderr, "Configuration error.  Unknown preallocation mode: %d\n",
+	    stasis_buffer_manager_preallocate_mode);
+    abort();
+  }
+  return 0;
+}
+
 Page * getCachedPage(int xid, pageid_t pageid) {
   stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
   return bm->getCachedPageImpl(bm, xid, pageid);

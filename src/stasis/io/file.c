@@ -410,6 +410,16 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   }
   return ret;
 }
+static int file_fallocate(struct stasis_handle_t* h, lsn_t off, lsn_t len) {
+  file_impl * impl = h->impl;
+#ifdef HAVE_POSIX_FALLOCATE
+  return posix_fallocate(impl->fd, off, len);
+#else
+  (void)impl;
+  fprintf(stderr, "file.c: fallocate called, but not supported by this build.\n");
+  return -1;
+#endif
+}
 
 struct stasis_handle_t file_func = {
   .num_copies = file_num_copies,
@@ -426,6 +436,7 @@ struct stasis_handle_t file_func = {
   .release_read_buffer = file_release_read_buffer,
   .force = file_force,
   .force_range = file_force_range,
+  .fallocate = file_fallocate,
   .error = 0
 };
 

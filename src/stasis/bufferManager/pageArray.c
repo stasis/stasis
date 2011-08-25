@@ -90,6 +90,7 @@ stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
   bm->loadPageImpl = paLoadPage;
   bm->loadUninitPageImpl = paLoadUninitPage;
   bm->prefetchPages = NULL;
+  bm->preallocatePages = NULL;
   bm->getCachedPageImpl = paGetCachedPage;
   bm->writeBackPage = paWriteBackPage;
   bm->tryToWriteBackPage = paWriteBackPage;

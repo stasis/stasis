@@ -184,6 +184,7 @@ typedef struct stasis_handle_t {
   */
   int (*force)(struct stasis_handle_t * h);
   int (*force_range)(struct stasis_handle_t * h, lsn_t start, lsn_t stop);
+  int (*fallocate)(struct stasis_handle_t * h, lsn_t off, lsn_t len);
   /**
      The handle's error flag; this passes errors to the caller when
      they can't be returned directly.

@@ -370,6 +370,12 @@ void bhPrefetchPagesImpl(stasis_buffer_manager_t *bm, pageid_t pageid, pageid_t 
 
 }
 
+static int bhPreallocatePages(stasis_buffer_manager_t * bm, pageid_t start, pageid_t count) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  return bh->page_handle->preallocate_range(bh->page_handle, start, count);
+}
+
+
 static void bhReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   DEBUG("releasePage(%lld) (rwlatch = %llx)\n", p->id, (long long)p->rwlatch);
   stasis_buffer_hash_t * bh = bm->impl;
@@ -503,6 +509,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bm->loadPageImpl = bhLoadPageImpl;
   bm->loadUninitPageImpl = bhLoadUninitPageImpl;
   bm->prefetchPages = bhPrefetchPagesImpl;
+  bm->preallocatePages = bhPreallocatePages;
   bm->getCachedPageImpl = bhGetCachedPage;
   bm->releasePageImpl = bhReleasePage;
   bm->writeBackPage = bhWriteBackPage;

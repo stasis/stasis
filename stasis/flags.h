@@ -85,6 +85,15 @@ extern stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(const char* f
 */
 extern int stasis_buffer_manager_io_handle_flags;
 /**
+   How should stasis grow the page file?  Valid options are:
+
+   * STASIS_BUFFER_MANAGER_PREALLOCATE_DISABLED, which avoids any explicit preallocation.  (This can cause terrible fragmentation on filesystems that support large files.), 
+   * STASIS_BUFFER_MANAGER_PREALLCOATE_LEGACY, which placed dirty zero filled pages in the buffer cache.  (This can cause double writes if the extended region does not fit in RAM, and unnecessarily evicts stuff.)
+   * STASIS_BUFFER_MANAGER_PREALLOCATE_DEFAULT, the recommended mode, which currently calls posix_fallocate().  This is not supported by old versions of Linux, so we attempt to fallback on the legacy mode at compile time.
+*/
+extern int stasis_buffer_manager_preallocate_mode;
+
+/**
    The default replacement policy.
 
    Valid values are STASIS_REPLACEMENT_POLICY_THREADSAFE_LRU,
