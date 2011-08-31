@@ -100,13 +100,13 @@ int main(int argc, char * argv[]) {
   gettimeofday(&stop,0);
   for(int i = 0; i < num_threads; i++) {
     if(arg[i].elapsed < (sum_elapsed / (1.5 * (double)num_threads))) {
-      printf("Warning: skew detected.  Thread %d took %f seconds, mean was %f\n",
+      fprintf(stderr, "Warning: skew detected.  Thread %d took %f seconds, mean was %f\n",
              i, arg[i].elapsed, sum_elapsed/num_threads);
     }
   }
   double wallclock_elapsed = stasis_timeval_to_double(
                               stasis_subtract_timeval(stop, start));
-  printf("%d threads %lld mb %lld ops / %f seconds = %f IOPS.", num_threads, end_off / MB, (long long)op_count, wallclock_elapsed, ((double)op_count) / wallclock_elapsed);
+  printf("%d threads %lld mb %lld ops / %f seconds = %f IOPS.\n", num_threads, (long long)(end_off / MB), (long long)op_count, wallclock_elapsed, ((double)op_count) / wallclock_elapsed);
 
   close(fd);
 
