@@ -50,6 +50,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/util/concurrentHash.h>
+#include <stasis/util/random.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -81,9 +82,9 @@ hashtable_t * ht;
 void * worker(void * arg) {
   pageid_t *data = (pageid_t *)arg;
   for(int j = 0; j < NUM_OPS/ NUM_THREADS; j++) {
-    int op = myrandom(2);
+    int op = stasis_util_random64(2);
 
-    int i = myrandom(THREAD_ENTRIES);
+    int i = stasis_util_random64(THREAD_ENTRIES);
 
     pageid_t scratch = data[i];
     if(data[i] < 0) {
@@ -147,7 +148,7 @@ START_TEST(wraparoundHashTest) {
   pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
 
   for(int i = 1; i <= THREAD_ENTRIES; i++) {
-    data[i-1] = -1 * (((i << power) - 6 + myrandom(13)) / 13);
+    data[i-1] = -1 * (((i << power) - 6 + stasis_util_random64(13)) / 13);
   }
   worker(data);
   hashtable_deinit(ht);

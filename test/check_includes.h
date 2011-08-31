@@ -9,15 +9,6 @@
 
 #include "check_impl.h"
 
-uint64_t myrandom(uint64_t x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (uint64_t)((r/max));
-}
-
-
 void setup (void) {
   remove("logfile.txt");
   remove("storefile.txt");

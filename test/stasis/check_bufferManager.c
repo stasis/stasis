@@ -7,6 +7,7 @@
 #include <stasis/bufferManager/bufferHash.h>
 #include <stasis/bufferManager/concurrentBufferManager.h>
 #include <stasis/bufferManager/legacy/legacyBufferManager.h>
+#include <stasis/util/random.h>
 #include <sched.h>
 #include <assert.h>
 
@@ -286,9 +287,9 @@ void * blindRandomWorker(void * v) {
   }
 
   for(int i = 0; i < BLIND_ITERS; i ++) {
-    int j = myrandom(PINNED_PAGE_COUNT);
+    int j = stasis_util_random64(PINNED_PAGE_COUNT);
     if(pageids[j] == -1) {
-      pageids[j] = myrandom(MAX_PAGE_ID);
+      pageids[j] = stasis_util_random64(MAX_PAGE_ID);
       pages[j] = loadPage(-1, pageids[j]);
       assert(pages[j]->id == pageids[j]);
     } else {

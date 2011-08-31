@@ -53,6 +53,7 @@ terms specified in this license.
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
 #include <stasis/util/latches.h>
+#include <stasis/util/random.h>
 
 #include <sched.h>
 #include <assert.h>
@@ -164,7 +165,7 @@ static void* latchFree_worker_thread(void * arg_ptr) {
 
   int alloced_count = 0;
   while(1) {
-    int off = myrandom(arg->num_pages);
+    int off = stasis_util_random64(arg->num_pages);
     Page * p = arg->pages[off];
     if(off == arg->my_page) {
       recordid rid = stasis_record_alloc_begin(-1, p, sizeof(char));
@@ -180,7 +181,7 @@ static void* latchFree_worker_thread(void * arg_ptr) {
       }
     } else if(*stasis_page_slotted_numslots_cptr(p)) { // if the page is empty, try another.
       // read a random record
-      int slot = myrandom(stasis_record_last(-1, p).slot+1);
+      int slot = stasis_util_random64(stasis_record_last(-1, p).slot+1);
       recordid rid;
       rid.page = p->id;
       rid.slot = slot;

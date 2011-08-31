@@ -42,6 +42,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/util/min.h>
+#include <stasis/util/random.h>
 
 #include <assert.h>
 #include <sys/time.h>
@@ -122,12 +123,12 @@ START_TEST(minRandomTest) {
   }
   for(int i = 0; i < COUNT; i++) {
     if(! (i & 1023)) { printf("%d\n", i); }
-    switch(myrandom(3)) {
+    switch(stasis_util_random64(3)) {
     case 0:
     {
       int j;
       int tries = 0;
-      while((j = myrandom(i))) {
+      while((j = stasis_util_random64(i))) {
         if(!bits[j]) {
           bits[j] = 1;
 
@@ -144,7 +145,7 @@ START_TEST(minRandomTest) {
     {
       int j;
       int tries = 0;
-      while((j = myrandom(i))) {
+      while((j = stasis_util_random64(i))) {
         if(bits[j]) {
           bits[j] = 0;
 

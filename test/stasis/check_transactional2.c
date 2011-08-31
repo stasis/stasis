@@ -42,6 +42,7 @@ terms specified in this license.
 
 #include <stasis/common.h>
 #include <stasis/util/latches.h>
+#include <stasis/util/random.h>
 #include <stasis/transactional.h>
 
 #include <assert.h>
@@ -477,7 +478,7 @@ START_TEST(transactional_noop_xacts) {
   // Scramble the xids.
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
     int xid = xids[i];
-    int off = myrandom(MAX_TRANSACTIONS);
+    int off = stasis_util_random64(MAX_TRANSACTIONS);
     xids[i] = xids[off];
     xids[off] = xid;
   }

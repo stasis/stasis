@@ -2,6 +2,7 @@
 
 #include <stasis/transactional.h>
 #include <stasis/io/rangeTracker.h>
+#include <stasis/util/random.h>
 
 #include <assert.h>
 #include <sys/time.h>
@@ -245,8 +246,8 @@ END_TEST
 #define ITERATIONS 10000 //1000
 #define RANGE_COUNT 1000 // 100
 void randomRange(range * r) {
-  long start = myrandom(RANGE_SIZE-1);
-  long len = 1+myrandom(RANGE_SIZE - start - 1);
+  long start = stasis_util_random64(RANGE_SIZE-1);
+  long len = 1+stasis_util_random64(RANGE_SIZE - start - 1);
 
   r->start = start;
   r->stop = start + len;
@@ -304,8 +305,8 @@ START_TEST (rangeTracker_randomTest) {
 
   for(long i = 0; i < ITERATIONS; i++) {
 
-    int range = myrandom(RANGE_COUNT);
-    switch(myrandom(3)) {
+    int range = stasis_util_random64(RANGE_COUNT);
+    switch(stasis_util_random64(3)) {
     case 0: { // add range
       s = rangeToString(&ranges[range]);
       //      printf("pin   %s\n", s);
@@ -371,7 +372,7 @@ START_TEST (rangeTracker_randomTest) {
       break;
     }
     case 2: { // change range
-      if(!myrandom(100)) {
+      if(!stasis_util_random64(100)) {
 	for(long i = 0; i < RANGE_COUNT; i++) {
 	  if(!pins[i]) {
 	    randomRange(&ranges[i]);

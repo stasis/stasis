@@ -53,6 +53,7 @@ terms specified in this license.
 #include <stasis/bufferManager/pageArray.h>
 
 #include <stasis/dirtyPageTable.h>
+#include <stasis/util/random.h>
 
 #include <sys/time.h>
 #include <time.h>
@@ -75,11 +76,11 @@ terms specified in this license.
 void * worker(void*arg) {
   stasis_dirty_page_table_t * dpt = stasis_runtime_dirty_page_table();
   for(int i = 0; i < NUM_STEPS; i++) {
-    pageid_t page = myrandom(NUM_PAGES);
+    pageid_t page = stasis_util_random64(NUM_PAGES);
     Page * p = loadPage(-1, page);
     writelock(p->rwlatch, 0);
     if(! (i % 100000)) { printf("."); fflush(stdout); }
-    switch(myrandom(6)) {
+    switch(stasis_util_random64(6)) {
     case 0: {
       stasis_dirty_page_table_set_dirty(dpt, p);
     } break;
@@ -98,8 +99,8 @@ void * worker(void*arg) {
     case 5: {
       unlock(p->rwlatch);
       releasePage(p);
-      pageid_t start = myrandom(NUM_PAGES);
-      pageid_t stop = myrandom(NUM_PAGES);
+      pageid_t start = stasis_util_random64(NUM_PAGES);
+      pageid_t stop = stasis_util_random64(NUM_PAGES);
       if(start > stop) {
         page = start;
         start = stop;

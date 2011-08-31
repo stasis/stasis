@@ -44,6 +44,7 @@ terms specified in this license.
 #include <stasis/transactional.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/truncation.h>
+#include <stasis/util/random.h>
 
 #include <assert.h>
 
@@ -90,11 +91,11 @@ START_TEST(recoverBlob__randomized) {
   int xid = Tbegin();
   for(int i = 0; i < NUM_OPS; i++) {
     if(!(i % 100)) { printf("."); fflush(stdout); }
-    int blobid = myrandom(NUM_BLOBS);
+    int blobid = stasis_util_random64(NUM_BLOBS);
     if(blobs[blobid].size == -1) {
       blobs[blobid] = Talloc(xid, BLOB_SIZE);
       Tset(xid, blobs[blobid], gen_blob(blobid));
-    } else if (myrandom(2)) {
+    } else if (stasis_util_random64(2)) {
       Tread(xid, blobs[blobid], buf);
       assert(!memcmp(buf, gen_blob(blobid),BLOB_SIZE));
     } else {

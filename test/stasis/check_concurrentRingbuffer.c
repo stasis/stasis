@@ -42,6 +42,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/util/ringbuffer.h>
+#include <stasis/util/random.h>
 
 #include <assert.h>
 #include <sys/time.h>
@@ -83,7 +84,7 @@ static void * consumerWorker(void * arg) {
   stasis_ringbuffer_t * ring = arg;
   lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
-    lsn_t rnd_size = myrandom(2048);
+    lsn_t rnd_size = stasis_util_random64(2048);
     if(rnd_size + cursor > PROD_CONS_SIZE) { rnd_size = PROD_CONS_SIZE - cursor; }
     byte const * rd_buf = stasis_ringbuffer_get_rd_buf(ring, RING_NEXT, rnd_size);
     for(lsn_t i = 0; i < rnd_size; i++) {
@@ -99,7 +100,7 @@ static void * producerWorker(void * arg) {
   stasis_ringbuffer_t * ring = arg;
   lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
-    int rnd_size = myrandom(2048);
+    int rnd_size = stasis_util_random64(2048);
     if(rnd_size + cursor > PROD_CONS_SIZE) { rnd_size = PROD_CONS_SIZE - cursor; }
     lsn_t wr_off = stasis_ringbuffer_reserve_space(ring, rnd_size, 0);
     assert(wr_off == cursor);
@@ -138,7 +139,7 @@ static void * concurrentReader(void * argp) {
   lsn_t cursor = 0;
   lsn_t rd_handle;
   while(cursor < BYTES_PER_THREAD) {
-    lsn_t rnd_size = 1+myrandom(2047/NUM_READERS);
+    lsn_t rnd_size = 1+stasis_util_random64(2047/NUM_READERS);
     if(rnd_size + cursor > BYTES_PER_THREAD) { rnd_size = BYTES_PER_THREAD - cursor; }
     stasis_ringbuffer_consume_bytes(ring, &rnd_size, &rd_handle);
 
@@ -159,7 +160,7 @@ static void * concurrentWriter(void * argp) {
   lsn_t cursor = 0;
   lsn_t wr_handle;
   while(cursor < BYTES_PER_THREAD) {
-    int rnd_size = 1+myrandom(2047/NUM_WRITERS);
+    int rnd_size = 1+stasis_util_random64(2047/NUM_WRITERS);
     if(rnd_size + cursor > BYTES_PER_THREAD) { rnd_size = BYTES_PER_THREAD- cursor; }
     stasis_ringbuffer_reserve_space(ring, rnd_size, &wr_handle);
     byte * wr_buf = stasis_ringbuffer_get_wr_buf(ring, wr_handle, rnd_size);

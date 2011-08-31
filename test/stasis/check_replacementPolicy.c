@@ -2,6 +2,7 @@
 
 #include <stasis/transactional.h>
 #include <stasis/replacementPolicy.h>
+#include <stasis/util/random.h>
 
 #include <assert.h>
 
@@ -53,9 +54,9 @@ void randomTest(replacementPolicy * lru, unsigned long count) {
 
   for(unsigned long j = 0; j < count /*100000000UL*/; j++) {
     if(0 == (j % progress_indicator)) { printf("."); fflush(stdout); }
-    int op = myrandom(100);
+    int op = stasis_util_random64(100);
 
-    int i = myrandom(OBJECT_COUNT);
+    int i = stasis_util_random64(OBJECT_COUNT);
     if(op < 10) {
       // TOGGLE IN CACHE
       pthread_mutex_lock(&t[i].mut);

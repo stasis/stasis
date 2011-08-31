@@ -44,6 +44,7 @@ terms specified in this license.
 #include <stasis/io/handle.h>
 #include <stasis/constants.h>
 #include <stasis/flags.h>
+#include <stasis/util/random.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -101,16 +102,16 @@ void load_handle(thread_arg* t) {
     offsets[i] = i * sizeof(int);
   }
   for(int i = 0; i < OPS_PER_THREAD; i++) {
-    int val = myrandom(t->count);
+    int val = stasis_util_random64(t->count);
 
     if(offsets[val] == -1) {
       // Need to write it somewhere.
 
-      long choice = myrandom(2);
+      long choice = stasis_util_random64(2);
 
       switch(choice) {
       case 0: {	  // overwrite old entry with write()
-        long val2 = myrandom(t->count);
+        long val2 = stasis_util_random64(t->count);
         offsets[val] = offsets[val2];
         offsets[val2] = -1;
         if(offsets[val] != -1) {
@@ -125,7 +126,7 @@ void load_handle(thread_arg* t) {
         }
       } break;
       case 1: {	  // overwrite old entry with write_buffer()
-        long val2 = myrandom(t->count);
+        long val2 = stasis_util_random64(t->count);
         offsets[val] = offsets[val2];
         offsets[val2] = -1;
         if(offsets[val] != -1) {
@@ -159,7 +160,7 @@ void load_handle(thread_arg* t) {
     } else {
       // Read the value.
 
-      long choice = myrandom(2);
+      long choice = stasis_util_random64(2);
 
       switch(choice) {
       case 0: {   // read
@@ -188,7 +189,7 @@ void load_handle(thread_arg* t) {
 
     }
     // Force 1% of the time.
-    if(!myrandom(100)) {
+    if(!stasis_util_random64(100)) {
       h->force(h);
     }
   }
@@ -213,7 +214,7 @@ void handle_sequentialtest(stasis_handle_t * h) {
 }
 
 void handle_concurrencytest(stasis_handle_t * h) {
-  int vc = myrandom(VALUE_COUNT) + 10;
+  int vc = stasis_util_random64(VALUE_COUNT) + 10;
 
   printf("Running concurrency test with %d values\n", vc); fflush(stdout);
 

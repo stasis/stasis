@@ -9,6 +9,7 @@ extern int dbug_choice(int);
 
 #include <stasis/util/redblack.h>
 #include <stasis/util/stlredblack.h>
+#include <stasis/util/random.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -79,9 +80,9 @@ START_TEST(rbRandTest) {
 # define myrandom(a) dbug_choice(a)
 #else
   uint64_t NUM_OPERATIONS = 1000 * 1000;
-  uint64_t NUM_ENTRIES = myrandom(100 * 1000);
-  uint64_t NUM_A = myrandom(200);
-  uint64_t NUM_B = myrandom(50000);
+  uint64_t NUM_ENTRIES = stasis_util_random64(100 * 1000);
+  uint64_t NUM_A = stasis_util_random64(200);
+  uint64_t NUM_B = stasis_util_random64(50000);
 #endif
   printf("NUM_OPERATIONS = %lld NUM_ENTRIES = %lld NUM_A = %lld NUM_B = %lld\n",
          (long long int)NUM_OPERATIONS, (long long int)NUM_ENTRIES, (long long int)NUM_A, (long long int)NUM_B);
@@ -99,18 +100,18 @@ START_TEST(rbRandTest) {
   }
 #else
   for(uint64_t i = 0; i < NUM_ENTRIES; i++) {
-    entries[i].a = myrandom(NUM_A);
-    entries[i].b = myrandom(NUM_B);
+    entries[i].a = stasis_util_random64(NUM_A);
+    entries[i].b = stasis_util_random64(NUM_B);
   }
 #endif
   uint64_t num_found = 0;
   uint64_t num_collide = 0;
   for(uint64_t i = 0; i < NUM_OPERATIONS; i++) {
-    uint64_t off = myrandom(NUM_ENTRIES);
+    uint64_t off = stasis_util_random64(NUM_ENTRIES);
 #ifdef DBUG_TEST
-    switch(myrandom(3)+1) {
+    switch(stasis_util_random64(3)+1) {
 #else
-    switch(myrandom(4)) {
+    switch(stasis_util_random64(4)) {
     case 0:
 #endif
     case 1: { // insert

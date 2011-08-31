@@ -44,6 +44,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/util/lhtable.h>
+#include <stasis/util/random.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -132,8 +133,8 @@ START_TEST(lhtableRandomized) {
   srandom(seed);
 #endif
 
-  struct LH_ENTRY(table) * t = LH_ENTRY(create)(myrandom(10000));
-  int numSets = myrandom(MAXSETS);
+  struct LH_ENTRY(table) * t = LH_ENTRY(create)(stasis_util_random64(10000));
+  int numSets = stasis_util_random64(MAXSETS);
   int* setLength = malloc(numSets * sizeof(int));
   long** sets = malloc(numSets * sizeof(long*));
   int64_t nextVal = 1;
@@ -144,7 +145,7 @@ START_TEST(lhtableRandomized) {
   int* setNextRead  = calloc(numSets, sizeof(int));
 
   for(int i =0; i < numSets; i++) {
-    setLength[i] = myrandom(MAXSETLEN);
+    setLength[i] = stasis_util_random64(MAXSETLEN);
     sets[i] = malloc(setLength[i] * sizeof(long));
     eventCount += setLength[i];
     for(int j =0; j < setLength[i]; j++) {
@@ -153,12 +154,12 @@ START_TEST(lhtableRandomized) {
     }
   }
 
-  eventCount = myrandom(eventCount * 4);
+  eventCount = stasis_util_random64(eventCount * 4);
   printf("Running %lld events.\n", (long long) eventCount);
 
   for(int iii = 0; iii < eventCount; iii++) {
-    int eventType = myrandom(3);  // 0 = insert; 1 = read; 2 = delete.
-    int set = myrandom(numSets);
+    int eventType = stasis_util_random64(3);  // 0 = insert; 1 = read; 2 = delete.
+    int set = stasis_util_random64(numSets);
     switch(eventType) {
     case 0: // insert
       if(setNextAlloc[set] != setLength[set]) {

@@ -41,6 +41,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/util/latches.h>
+#include <stasis/util/random.h>
 #include <stasis/transactional.h>
 
 #include <assert.h>
@@ -136,14 +137,14 @@ START_TEST(regions_randomizedTest) {
       fsckRegions(xid);
     }
 
-    if(myrandom(2)) {
-      unsigned int size = myrandom(100);
+    if(stasis_util_random64(2)) {
+      unsigned int size = stasis_util_random64(100);
       TregionAlloc(xid, size, 0);
       pagesAlloced += size;
       regionsAlloced ++;
     } else {
       if(regionsAlloced) {
-	pageid_t victim = myrandom(regionsAlloced);
+	pageid_t victim = stasis_util_random64(regionsAlloced);
 	pageid_t victimSize;
 	pageid_t victimPage;
 	TregionFindNthActive(xid, victim, &victimPage, &victimSize);
@@ -258,9 +259,9 @@ START_TEST(regions_lockRandomizedTest) {
     if(!(i % (NUM_OPS/NUM_XACTS))) {
       // abort or commit one transaction randomly.
       activeXacts --;
-      j = myrandom(activeXacts);
+      j = stasis_util_random64(activeXacts);
 
-      if(myrandom(2)) {
+      if(stasis_util_random64(2)) {
 	Tcommit(xids[j]);
       } else {
 	Tabort(xids[j]);
@@ -275,16 +276,16 @@ START_TEST(regions_lockRandomizedTest) {
       fsckRegions(longXid);
     }
 
-    j = myrandom(activeXacts);
+    j = stasis_util_random64(activeXacts);
 
-    if(myrandom(2)) {
+    if(stasis_util_random64(2)) {
       // alloc
-      xidRegions[xids[j]][xidRegionCounts[xids[j]]] = TregionAlloc(xids[j], myrandom(100), 0);
+      xidRegions[xids[j]][xidRegionCounts[xids[j]]] = TregionAlloc(xids[j], stasis_util_random64(100), 0);
 	xidRegionCounts[xids[j]]++;
     } else {
       // free
       if(xidRegionCounts[xids[j]]) {
-	pageid_t k = myrandom(xidRegionCounts[xids[j]]);
+	pageid_t k = stasis_util_random64(xidRegionCounts[xids[j]]);
 
 	TregionDealloc(xids[j], xidRegions[xids[j]][k]);
 
@@ -315,8 +316,8 @@ START_TEST(regions_recoveryTest) {
   int xid1 = Tbegin();
   int xid2 = Tbegin();
   for(int i = 0; i < 50; i+=2) {
-    pages[i] = TregionAlloc(xid1, myrandom(4)+1, 0);
-    pages[i+1] = TregionAlloc(xid2, myrandom(2)+1, 0);
+    pages[i] = TregionAlloc(xid1, stasis_util_random64(4)+1, 0);
+    pages[i+1] = TregionAlloc(xid2, stasis_util_random64(2)+1, 0);
   }
 
   fsckRegions(xid1);

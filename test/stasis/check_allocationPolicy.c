@@ -44,6 +44,7 @@ terms specified in this license.
 
 #include <stasis/allocationPolicy.h>
 #include <stasis/constants.h>
+#include <stasis/util/random.h>
 
 #include <sys/time.h>
 #include <time.h>
@@ -128,16 +129,16 @@ static int nextxid = 0;
 int activexidcount = 0;
 static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
 			     pageid_t * pages1, pageid_t * pages2) {
-  switch(myrandom(5)) {
+  switch(stasis_util_random64(5)) {
   case 0 : {   // find page
-    int thexid = myrandom(XACT_COUNT);
+    int thexid = stasis_util_random64(XACT_COUNT);
     if(xids[thexid] == -1) {
       xids[thexid] = nextxid;
       nextxid++;
       activexidcount++;
       DEBUG("xid begins\n");
     }
-    int thefreespace = myrandom(MAX_DESIRED_FREESPACE);
+    int thefreespace = stasis_util_random64(MAX_DESIRED_FREESPACE);
     pageid_t p =
       stasis_allocation_policy_pick_suitable_page(ap, xids[thexid], thefreespace);
     if(p != INVALID_PAGE) {
@@ -150,17 +151,17 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
   case 1 : {   // xact completed
     if(!activexidcount) { break; }
     int thexid;
-    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
+    while(xids[thexid = stasis_util_random64(XACT_COUNT)] == -1) { }
     stasis_allocation_policy_transaction_completed(ap, xids[thexid]);
     xids[thexid] = -1;
     activexidcount--;
     DEBUG("complete");
   } break;
   case 2 : {   // update freespace unlocked
-    int thespacediff = myrandom(MAX_DESIRED_FREESPACE) - (MAX_DESIRED_FREESPACE/2);
+    int thespacediff = stasis_util_random64(MAX_DESIRED_FREESPACE) - (MAX_DESIRED_FREESPACE/2);
     int thexid;
     if(!activexidcount) { break; }
-    while(xids[thexid = myrandom(XACT_COUNT)] == -1) { }
+    while(xids[thexid = stasis_util_random64(XACT_COUNT)] == -1) { }
     int minfreespace;
     if(thespacediff < 0) {
       minfreespace = 0-thespacediff;
@@ -170,7 +171,7 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
     pageid_t p = stasis_allocation_policy_pick_suitable_page(ap, xids[thexid],
                                                  minfreespace);
     if(p != INVALID_PAGE) {
-      int thenewfreespace = myrandom(MAX_DESIRED_FREESPACE/2)+thespacediff;
+      int thenewfreespace = stasis_util_random64(MAX_DESIRED_FREESPACE/2)+thespacediff;
       stasis_allocation_policy_update_freespace(ap, p, thenewfreespace);
       //      printf("updated freespace unlocked");
     }
@@ -178,15 +179,15 @@ static void takeRandomAction(stasis_allocation_policy_t * ap, int * xids,
   case 3 : {   // dealloc from page
     int thexid;
     if(!activexidcount) { break; }
-    while(xids[thexid = myrandom(XACT_COUNT)] == -1) {}
-    pageid_t p = pages1[myrandom(AVAILABLE_PAGE_COUNT_A)];
+    while(xids[thexid = stasis_util_random64(XACT_COUNT)] == -1) {}
+    pageid_t p = pages1[stasis_util_random64(AVAILABLE_PAGE_COUNT_A)];
     stasis_allocation_policy_dealloced_from_page(ap, xids[thexid], p);
   } break;
   case 4 : {   // alloced from page
     int thexid;
     if(!activexidcount) { break; }
-    while(xids[thexid = myrandom(XACT_COUNT)] == -1) {}
-    pageid_t p = pages1[myrandom(AVAILABLE_PAGE_COUNT_A)];
+    while(xids[thexid = stasis_util_random64(XACT_COUNT)] == -1) {}
+    pageid_t p = pages1[stasis_util_random64(AVAILABLE_PAGE_COUNT_A)];
     if(stasis_allocation_policy_can_xid_alloc_from_page(ap, xids[thexid], p)) {
       stasis_allocation_policy_alloced_from_page(ap, xids[thexid], p);
     }

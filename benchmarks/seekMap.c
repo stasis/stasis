@@ -1,18 +1,11 @@
 #include <config.h>
 #include <stasis/common.h>
 #include <stasis/util/time.h>
+#include <stasis/util/random.h>
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
 
-
-uint64_t myrandom(uint64_t x) {
-  double xx = x;
-  double r = random();
-  double max = ((uint64_t)RAND_MAX)+1;
-  max /= xx;
-  return (uint64_t)((r/max));
-}
 
 void * buf;
 static void my_pread_help(int fd, long long off) {
@@ -82,7 +75,7 @@ int main(int argc, char * argv[]) {
 
           // position head (do not count the time this takes)
           if(random_mode) {
-            my_pread(start_off, xstep * stride + myrandom(stride));
+            my_pread(start_off, xstep * stride + stasis_util_random64(stride));
           } else {
             my_pread(start_off, xstep * stride);
 
@@ -91,7 +84,7 @@ int main(int argc, char * argv[]) {
           struct timeval start, stop;
           gettimeofday(&start, 0);
           if(random_mode) {
-            my_pread(start_off, ystep * stride + myrandom(stride));
+            my_pread(start_off, ystep * stride + stasis_util_random64(stride));
           } else {
             my_pread(start_off, ystep * stride);
           }
@@ -106,8 +99,8 @@ int main(int argc, char * argv[]) {
       }
     } else {
       for(long x = 0; x < steps * steps; x++) {
-        long long start_pos = myrandom(length);
-        long long stop_pos = myrandom(length);
+        long long start_pos = stasis_util_random64(length);
+        long long stop_pos = stasis_util_random64(length);
 
         int xstep = start_pos / stride;
         int ystep = stop_pos / stride;

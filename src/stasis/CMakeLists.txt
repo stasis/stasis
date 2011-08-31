@@ -11,6 +11,7 @@ ADD_LIBRARY(stasis util/crc32.c
                    util/hashFunctions.c
                    util/min.c
                    util/ringbuffer.c
+                   util/random.c
                    util/multiset.c
                    util/slab.c
                    util/stlredblack.cpp

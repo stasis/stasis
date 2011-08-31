@@ -30,7 +30,7 @@
 
 #include <stasis/common.h>
 #include <stasis/util/crc32.h>
-#define stasis_hash_util_define_fnv_1(TYPE, FNV_prime, offset_basis)          \
+#define stasis_util_hash_define_fnv_1(TYPE, FNV_prime, offset_basis)          \
 static inline TYPE stasis_util_hash_fnv_1_##TYPE(const byte* octets, int len){\
   TYPE hash = offset_basis;                                                   \
                                                                               \
@@ -43,11 +43,11 @@ static inline TYPE stasis_util_hash_fnv_1_##TYPE(const byte* octets, int len){\
 /**
  * Implementation of FNV-1 (32-bit).  Function is called stasis_util_hash_fnv_uint32_t().
  */
-stasis_hash_util_define_fnv_1(uint32_t, 16777619U, 2166136261U)
+stasis_util_hash_define_fnv_1(uint32_t, 16777619U, 2166136261U)
 /**
  * Implementation of FNV-1 (64-bit).  Function is called stasis_util_hash_fnv_uint64_t().
  */
-stasis_hash_util_define_fnv_1(uint64_t, 1099511628211ULL, 14695981039346656037ULL)
+stasis_util_hash_define_fnv_1(uint64_t, 1099511628211ULL, 14695981039346656037ULL)
 
 /**
  * Macro to define xor folding for dynamically set of bits.  This is static inline,
