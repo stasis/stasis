@@ -4,7 +4,7 @@ use strict;
 
 ## Driver program for rawIOPS.c
 
-my $usage = "$0 filename {fix_threads|fix_size} slice_number [op_count] [start_off] [page_size]\n";
+my $usage = "$0 filename {fix_threads|fix_size} slice_number [page_size] [op_count] [start_off]\n";
 
 my @thread_counts;
 my @partition_sizes;
@@ -28,10 +28,11 @@ print ("Partition sizes: " . join("GB\t", @partition_sizes) . "GB\n");
 my $exe          = './rawIOPS';
 my $device       = $ARGV[0] || die $usage;
 my $mode         = $ARGV[1] || die $usage;
-my $slice_number = $ARGV[2] || die $usage;
-my $opcount      = $ARGV[3] || 5000;
-my $start_off    = $ARGV[4] || 0;
-my $page_size    = $ARGV[5] || 512;
+my $slice_number = $ARGV[2];
+defined($slice_number) || die $usage;
+my $page_size    = $ARGV[3] || 512;
+my $opcount      = $ARGV[4] || 5000;
+my $start_off    = $ARGV[5] || 0;
 
 sub run_cmd {
     my $num_threads = shift || die;
