@@ -21,10 +21,14 @@ int main(int argc, char * argv[]) {
   double elapsed = stasis_timeval_to_double(stasis_subtract_timeval(stop, start));
   printf("Took %f seconds to write to 1GB (%f mb/sec)\n", elapsed, (1024.0)/elapsed);
 
-  gettimeofday(&start, 0);
-  stasis_crc32(foo, 1024*1024*1024, 0);
-  gettimeofday(&stop, 0);
+  long len = 1;
+  for(long i = 0; i < 31; i++) {
+    gettimeofday(&start, 0);
+    stasis_crc32(foo, len, 0);
+    gettimeofday(&stop, 0);
 
-  elapsed = stasis_timeval_to_double(stasis_subtract_timeval(stop, start));
-  printf("Took %f seconds to checksum 1GB (%f mb/sec)\n", elapsed, (1024.0)/elapsed);
+    elapsed = stasis_timeval_to_double(stasis_subtract_timeval(stop, start));
+    printf("Took %f seconds to checksum %ld bytes (%f mb/sec)\n", elapsed, len, ((double)len)/((1024.0*1024.0)*elapsed));
+    len *=2;
+  }
 }
