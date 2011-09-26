@@ -1,1 +1,2 @@
 SUBDIRS(perl)
+SUBDIRS(ruby)
