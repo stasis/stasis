@@ -1,0 +1,8 @@
+MACRO(CREATE_CHECK_RUBY NAME)
+  ADD_TEST(${NAME} bash -c "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/stasis ruby1.9.1 -I ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
+ENDMACRO(CREATE_CHECK_RUBY)
+
+CREATE_CHECK_RUBY(stasis/test/tc_string.rb)
+CREATE_CHECK_RUBY(stasis/test/tc_iterator.rb)
+CREATE_CHECK_RUBY(stasis/test/tc_hash.rb)
+
