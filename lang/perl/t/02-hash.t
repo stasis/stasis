@@ -33,7 +33,7 @@ sub myprint {
 
 if($ARGV[0] eq "--automated-test") {
   shift @ARGV;
-  system ("rm storefile.txt logfile.txt");
+  system ("rm -rf storefile.txt logfile.txt stasis_log");
   $checking = 1;
 }
 Stasis::Tinit();
