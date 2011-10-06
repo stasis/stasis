@@ -21,6 +21,15 @@
 
 extern const uint8_t LogTable256[256];
 
+/*Taken from
+  http://graphics.stanford.edu/~seander/bithacks.html
+
+  @todo extend to handle unsigned long (this will mean 64bit on 64bit
+  platforms; need compiler macro to test for sizeof(long), test
+  harness to compare logBase2Slow's output with logBase2's output,
+  etc...)
+*/
+
 /**
  * @param v 32-bit word to find the log of
  * @return lg_2(v)
@@ -31,11 +40,11 @@ static inline uint8_t stasis_log_2_32(uint32_t v) {
 
   if ((tt = v >> 16))
   {
-    r = (t = tt >> 8) ? 24 + LogTable256[t] : 16 + LogTable256[tt];
+    r = ((t = tt >> 8)) ? 24 + LogTable256[t] : 16 + LogTable256[tt];
   }
   else
   {
-    r = (t = v >> 8) ? 8 + LogTable256[t] : LogTable256[v];
+    r = ((t = v >> 8)) ? 8 + LogTable256[t] : LogTable256[v];
   }
   return r;
 }

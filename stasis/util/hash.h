@@ -1,5 +1,6 @@
 
 #include <stasis/util/crc32.h>
+#include <stasis/util/log2.h>
 #include <stasis/common.h>
 
 #ifndef __HASH_H
@@ -13,7 +14,6 @@
 static inline unsigned long stasis_util_two_to_the (char x) {
   return (1 << ((long)x));
 }
-uint32_t logBase2(uint64_t value);
 
 /**
    This function maps from the length of the bucket list to a appropriate set
@@ -21,7 +21,7 @@ uint32_t logBase2(uint64_t value);
 */
 static inline void HASH_ENTRY(_get_size_params)(uint64_t desiredSize,
 		      unsigned char * tableBits, uint64_t* nextExtension) {
-  *tableBits = logBase2(desiredSize)+1;
+  *tableBits = stasis_log_2_64(desiredSize)+1;
   *nextExtension = ((desiredSize) - stasis_util_two_to_the(*tableBits-1));
 }
 

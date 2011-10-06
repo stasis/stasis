@@ -5,7 +5,6 @@ ADD_LIBRARY(stasis util/crc32.c
                    util/rw.c
                    util/doubleLinkedList.c
                    util/linkedlist.c
-                   util/hash.c
                    util/log2.c
                    util/histogram.c
                    util/hashFunctions.c
