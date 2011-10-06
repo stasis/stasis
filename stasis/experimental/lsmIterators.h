@@ -128,7 +128,7 @@ class gcIterator {
 	  }
 	}
 	// is it a tombstone we can forget?
-	if (newest_time & 0x1 && newest_time < beginning_of_time_) {
+	if ((newest_time & 0x1) && newest_time < beginning_of_time_) {
 	  have_newest_ = 0;
 	}
       } else {
@@ -541,7 +541,7 @@ class mergeIterator {
     aend_ = i.aend_;
     bend_ = i.bend_;
     curr_ = i.curr_;
-    before_eof_ = i.before_eof;
+    before_eof_ = i.before_eof_;
   }
   inline unsigned int offset() { return off_; }
  private:
