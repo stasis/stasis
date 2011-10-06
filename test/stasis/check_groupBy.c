@@ -90,7 +90,7 @@ stasis_group_t * handle = TlogStructuredGroup(xid, 1024*1024*40);
     numTups++;
   }
   assert(numGroups == 10000);
-  assert(numTups = numGroups * 100);
+  assert(numTups == numGroups * 100);
 } END_TEST
 
 Suite * check_suite(void) {
