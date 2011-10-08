@@ -163,6 +163,20 @@ struct stasis_buffer_manager_t {
   */
   void   (*forcePages)(struct stasis_buffer_manager_t*, stasis_buffer_manager_handle_t *h);
   /**
+      Asynchronously force pages to disk.
+
+      More concretely, this call blocks until the last call to asyncForcePages
+      has finished writing blocks to disk, schedules pages for writeback, and
+      (usually) immediately returns.
+
+      For various reasons, this is not useful for data integrity, but is
+      instead useful as a performance hint.
+
+      This function is currently implemented using sync_file_range(2).  See its
+      manpage for a discussion of the limitations of this primitive.
+   */
+  void   (*asyncForcePages)(struct stasis_buffer_manager_t*, stasis_buffer_manager_handle_t *h);
+  /**
       Force written back pages that fall within a particular range to disk.
 
       This does not force page that have not been written to with pageWrite().

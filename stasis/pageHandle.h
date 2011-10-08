@@ -65,6 +65,7 @@ struct stasis_page_handle_t {
      as well...)
   */
   void (*force_file)(struct stasis_page_handle_t* ph);
+  void (*async_force_file)(struct stasis_page_handle_t* ph);
   /**
    * @param start the pageid of the first page to be forced to disk.
    * @param stop the pageid of the page after the last page to be forced to disk.

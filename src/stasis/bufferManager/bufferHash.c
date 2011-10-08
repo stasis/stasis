@@ -403,6 +403,11 @@ static void bhForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_hand
   stasis_buffer_hash_t * bh = bm->impl;
   bh->page_handle->force_file(bh->page_handle);
 }
+static void bhAsyncForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
+  stasis_buffer_hash_t * bh = bm->impl;
+  bh->page_handle->async_force_file(bh->page_handle);
+}
+
 static void bhForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) {
   stasis_buffer_hash_t * bh = bm->impl;
   bh->page_handle->force_range(bh->page_handle, start, stop);
@@ -515,6 +520,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bm->writeBackPage = bhWriteBackPage;
   bm->tryToWriteBackPage = bhTryToWriteBackPage;
   bm->forcePages = bhForcePages;
+  bm->asyncForcePages = bhAsyncForcePages;
   bm->forcePageRange = bhForcePageRange;
   bm->stasis_buffer_manager_close = bhBufDeinit;
   bm->stasis_buffer_manager_simulate_crash = bhSimulateBufferManagerCrash;

@@ -55,6 +55,7 @@ static void paReleasePage(stasis_buffer_manager_t *bm, Page * p) {
 
 static int paWriteBackPage(stasis_buffer_manager_t *bm, pageid_t p) { return 0;  /* no-op */ }
 static void paForcePages(stasis_buffer_manager_t * bm, stasis_buffer_manager_handle_t *h) { /* no-op */ }
+static void paAsyncForcePages(stasis_buffer_manager_t * bm, stasis_buffer_manager_handle_t *h) { /* no-op */ }
 static void paForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) { /* no-op */ }
 
 static void paBufDeinit(stasis_buffer_manager_t * bm) {
@@ -95,6 +96,7 @@ stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
   bm->writeBackPage = paWriteBackPage;
   bm->tryToWriteBackPage = paWriteBackPage;
   bm->forcePages = paForcePages;
+  bm->asyncForcePages = paAsyncForcePages;
   bm->forcePageRange = paForcePageRange;
   bm->stasis_buffer_manager_close = paBufDeinit;
   bm->stasis_buffer_manager_simulate_crash = paBufDeinit;

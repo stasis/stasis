@@ -306,6 +306,41 @@ static int pfile_force(stasis_handle_t *h) {
   TOCK(force_hist);
   return 0;
 }
+static int pfile_async_force(stasis_handle_t *h) {
+  TICK(force_range_hist);
+  pfile_impl * impl = h->impl;
+#ifdef HAVE_SYNC_FILE_RANGE
+  // stop of zero syncs to eof.
+  DEBUG("pfile_force_range calling sync_file_range %lld %lld\n",
+                 start, stop-start); fflush(stdout);
+  int ret = sync_file_range(impl->fd, 0, 0, SYNC_FILE_RANGE_WAIT_BEFORE);
+  ret |= sync_file_range(impl->fd, 0, 0, SYNC_FILE_RANGE_WRITE);
+                                                     
+  if(ret) {
+    int error = errno;
+    assert(ret == -1);
+    // With the possible exceptions of ENOMEM and ENOSPACE, all of the sync
+    // errors are unrecoverable.
+    h->error = EBADF;
+    ret = error;
+  }
+#else
+#ifdef HAVE_FDATASYNC
+  DEBUG("pfile_force_range() is calling fdatasync()\n");
+  fdatasync(impl->fd);
+#else
+  DEBUG("pfile_force_range() is calling fsync()\n");
+  fsync(impl->fd);
+#endif
+  int ret = 0;
+#endif
+  if(impl->sequential) {
+    int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_DONTNEED);
+    if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL (for a range of a file) to kernel failed");
+  }
+  TOCK(force_range_hist);
+  return ret;
+}
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   TICK(force_range_hist);
   pfile_impl * impl = h->impl;
@@ -366,6 +401,7 @@ static struct stasis_handle_t pfile_func = {
   .read_buffer = pfile_read_buffer,
   .release_read_buffer = pfile_release_read_buffer,
   .force = pfile_force,
+  .async_force = pfile_async_force,
   .force_range = pfile_force_range,
   .fallocate = pfile_fallocate,
   .error = 0

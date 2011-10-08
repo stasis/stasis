@@ -183,6 +183,18 @@ typedef struct stasis_handle_t {
      returned) may or may not be forced to disk.
   */
   int (*force)(struct stasis_handle_t * h);
+  /**
+   * Force any writes that were outstanding the last time this was called to
+   * disk.  This does not force things like block allocation information, or
+   * issue a hardware write barrier, making it essentially useless for
+   * durability.  However, it is useful as a performance hint, as it allows us
+   * to bound the number of data pages that are outstanding in Linux's I/O
+   * request queue, which means that we can use it to bound the latency of
+   * future force() and force_range() operations.
+   *
+   * This call is based on sync_file_range(2).
+   */
+  int (*async_force)(struct stasis_handle_t * h);
   int (*force_range)(struct stasis_handle_t * h, lsn_t start, lsn_t stop);
   int (*fallocate)(struct stasis_handle_t * h, lsn_t off, lsn_t len);
   /**

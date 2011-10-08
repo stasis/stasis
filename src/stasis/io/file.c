@@ -364,6 +364,48 @@ static int file_force(stasis_handle_t * h) {
   }
   return 0;
 }
+static int file_async_force(stasis_handle_t *h) {
+  file_impl * impl = h->impl;
+  int ret = 0;
+  if(!(impl->file_flags & O_SYNC)) {
+    // not opened synchronously; we need to explicitly sync.
+    pthread_mutex_lock(&impl->mut);
+    int fd = impl->fd;
+    pthread_mutex_unlock(&impl->mut);
+    {
+      static int warned = 0;
+      if(!warned) {
+                printf("Warning: There is a race condition between force_range() and "
+                       " truncate() in file.c (This shouldn't matter in practice, "
+                       "as the logger hasn't moved over to use file.c yet.\n");
+                warned = 1;
+      }
+    }
+    //#ifdef HAVE_F_SYNC_RANGE
+#ifdef HAVE_SYNC_FILE_RANGE
+    DEBUG("Calling sync_file_range\n");
+    ret = sync_file_range(fd, 0, 0, SYNC_FILE_RANGE_WRITE);
+    if(ret) {
+      int error = errno;
+      assert(ret == -1);
+      // With the possible exceptions of ENOMEM and ENOSPACE, all of the sync
+      // errors are unrecoverable.
+      h->error = EBADF;
+      ret = error;
+    }
+#else
+#ifdef HAVE_FDATASYNC
+    DEBUG("file_force_range() is calling fdatasync()\n");
+    fdatasync(fd);
+#else
+    DEBUG("file_force_range() is calling fsync()\n");
+    fsync(fd);
+#endif
+    ret = 0;
+#endif
+  }
+  return ret;
+}
 static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   file_impl * impl = h->impl;
   int ret = 0;
@@ -375,10 +417,10 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
     {
       static int warned = 0;
       if(!warned) {
-	printf("Warning: There is a race condition between force_range() and "
-	       " truncate() in file.c (This shouldn't matter in practice, "
-	       "as the logger hasn't moved over to use file.c yet.\n");
-	warned = 1;
+        printf("Warning: There is a race condition between force_range() and "
+               " truncate() in file.c (This shouldn't matter in practice, "
+               "as the logger hasn't moved over to use file.c yet.\n");
+        warned = 1;
       }
     }
     //#ifdef HAVE_F_SYNC_RANGE
@@ -435,6 +477,7 @@ struct stasis_handle_t file_func = {
   .read_buffer = file_read_buffer,
   .release_read_buffer = file_release_read_buffer,
   .force = file_force,
+  .async_force = file_async_force,
   .force_range = file_force_range,
   .fallocate = file_fallocate,
   .error = 0

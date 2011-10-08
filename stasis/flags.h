@@ -27,6 +27,31 @@ extern stasis_buffer_manager_t* (*stasis_buffer_manager_factory)(stasis_log_t*, 
 
 extern pageid_t stasis_buffer_manager_size;
 /**
+ * The number of pages that must be dirty for the writeback thread to
+ * initiate writeback.
+ */
+extern pageid_t stasis_dirty_page_count_soft_limit;
+/**
+ * If there are fewer than this many dirty pages, then the writeback thread
+ * will go to sleep.
+ */
+extern pageid_t stasis_dirty_page_low_water_mark;
+/**
+ * The number of pages that must be dirty for application threads to block on
+ * (or initiate) writeback.  Since this number causes backpressure on the
+ * threads that are dirtying pages, dirty pages will never occupy more than
+ * this number of pages.
+ */
+extern pageid_t stasis_dirty_page_count_hard_limit;
+/**
+ * The number of pages that should be written back to Linux's file cache
+ * at a time.  We do not force after each quantum, but instead may hint to
+ * Linux that it should treat the set as a group.  Also, any latchesh held
+ * by writeback are released at least this often.
+ */
+extern pageid_t stasis_dirty_page_table_flush_quantum;
+
+/**
    If this is true, then the only thread that will perform writeback is the
    buffer manager writeback thread.  It turns out that splitting sequential
    writes across many threads leads to a 90-95% reduction in write throughput.

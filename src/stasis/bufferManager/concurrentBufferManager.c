@@ -10,13 +10,6 @@
 #include <stasis/pageHandle.h>
 #include <stasis/flags.h>
 
-#define CLOCK
-//#ifndef NO_CONCURRENT_LRU
-//#ifndef CONCURRENT_LRU
-//#define CONCURRENT_LRU
-//#endif // CONCURRENT_LRU
-//#endif // NO_CONCURRENT_LRU
-
 //#define STRESS_TEST_WRITEBACK 1 // if defined, writeback as much as possible, as fast as possible.
 
 typedef struct {
@@ -42,7 +35,7 @@ typedef struct {
 static inline int needFlush(stasis_buffer_manager_t * bm) {
   stasis_buffer_concurrent_hash_t *bh = bm->impl;
   pageid_t count = stasis_dirty_page_table_dirty_count(bh->dpt);
-  const pageid_t needed = 1000; //MAX_BUFFER_SIZE / 5;
+  pageid_t needed = stasis_dirty_page_count_soft_limit;
   if(count > needed) {
     DEBUG("Need flush?  Dirty: %lld Total: %lld ret = %d\n", count, needed, count > needed);
   }
@@ -64,9 +57,6 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
       if(!trywritelock(p->loadlatch,0)) {
         ret = EBUSY;
         p->needsFlush = 1; // Not atomic.  Oh well.
-        if(p->id != pageid) {
-          fprintf(stderr, "BUG FIX: %s:%d would have corrupted a latch's state, but did not\n", __FILE__, __LINE__);
-        }
       } else {
         if(p->id != pageid) {  // it must have been written back...
           unlock(p->loadlatch);
@@ -123,9 +113,11 @@ static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, 
   return 0;
 }
 static int chWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+  DEBUG("chWriteBackPage called");
   return chWriteBackPage_helper(bm,pageid,0); // not hint; for correctness.  Block (deadlock?) on contention.
 }
 static int chTryToWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
+  DEBUG("chTryToWriteBackPage called");
   return chWriteBackPage_helper(bm,pageid,1); // just a hint.  Return EBUSY on contention.
 }
 static void * writeBackWorker(void * bmp) {
@@ -134,12 +126,14 @@ static void * writeBackWorker(void * bmp) {
   pthread_mutex_t mut;
   pthread_mutex_init(&mut,0);
   while(1) {
-    while(ch->running && (!needFlush(bm))) {
-      DEBUG("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
-      pthread_mutex_lock(&mut);
-      pthread_cond_wait(&ch->needFree, &mut); // XXX Make sure it's OK to have many different mutexes waiting on the same cond.
-      pthread_mutex_unlock(&mut);
-      DEBUG("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(bh->dpt));
+    while(ch->running && stasis_dirty_page_table_dirty_count(ch->dpt) < stasis_dirty_page_low_water_mark) {
+      if(!needFlush(bm)) {
+        printf("Sleeping in write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(ch->dpt));
+        pthread_mutex_lock(&mut);
+        pthread_cond_wait(&ch->needFree, &mut); // XXX Make sure it's OK to have many different mutexes waiting on the same cond.
+        pthread_mutex_unlock(&mut);
+        printf("Woke write back worker (count = %lld)\n", stasis_dirty_page_table_dirty_count(ch->dpt));
+      }
     }
     if(!ch->running) { break; }
     DEBUG("Calling flush\n");
@@ -222,6 +216,8 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       int succ =
       trywritelock(tls->p->loadlatch,0);  // if this blocks, it is because someone else has pinned the page (it can't be due to eviction because the lru is atomic)
 
+      if(tls->p->dirty) pthread_cond_signal(&ch->needFree);
+
       if(succ && (
           // Work-stealing heuristic: If we don't know that writes are sequential, then write back the page we just encountered.
           (!stasis_buffer_manager_hint_writes_are_sequential)
@@ -239,8 +235,9 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
         // note that we'd like to assert that the page is unpinned here.  However, we can't simply look at p->queue, since another thread could be inside the "spooky" quote below.
         tmp = 0;
         if(tls->p->id >= 0) {
-	  // Page is not in LRU, so we don't have to worry about the case where we
-	  // are in sequential mode, and have to remove/add the page from/to the LRU.
+          DEBUG("App thread stole work from write back.\n");
+          // Page is not in LRU, so we don't have to worry about the case where we
+          // are in sequential mode, and have to remove/add the page from/to the LRU.
           ch->page_handle->write(ch->page_handle, tls->p);
         }
         hashtable_remove_finish(ch->ht, &h);  // need to hold bucket lock until page is flushed.  Otherwise, another thread could read stale data from the filehandle.
@@ -366,6 +363,10 @@ static void chForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_hand
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   ch->page_handle->force_file(ch->page_handle);
 }
+static void chAsyncForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
+  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  ch->page_handle->async_force_file(ch->page_handle);
+}
 static void chForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) {
   stasis_buffer_concurrent_hash_t * ch = bm->impl;
   ch->page_handle->force_range(ch->page_handle, start, stop);
@@ -421,6 +422,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_
   bm->writeBackPage = chWriteBackPage;
   bm->tryToWriteBackPage = chTryToWriteBackPage;
   bm->forcePages = chForcePages;
+  bm->asyncForcePages = chAsyncForcePages;
   bm->forcePageRange = chForcePageRange;
   bm->stasis_buffer_manager_close = chBufDeinit;
   bm->stasis_buffer_manager_simulate_crash = chSimulateBufferManagerCrash;

@@ -9,10 +9,10 @@
 #include <stasis/util/redblack.h>
 #include <stasis/util/multiset.h>
 #include <stasis/util/latches.h>
+#include <stasis/util/time.h>
 #include <stasis/flags.h>
 #include <stasis/dirtyPageTable.h>
 #include <stasis/page.h>
-
 #include <stdio.h>
 
 typedef struct {
@@ -47,6 +47,11 @@ struct stasis_dirty_page_table_t {
 
 void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, Page * p) {
   if(!p->dirty) {
+    while(stasis_dirty_page_table_dirty_count(dirtyPages)
+          > stasis_dirty_page_count_hard_limit) {
+      struct timespec ts = stasis_double_to_timespec(0.01);
+      nanosleep(&ts,0);
+    }
     pthread_mutex_lock(&dirtyPages->mutex);
     if(!p->dirty) {
       p->dirty = 1;
@@ -134,8 +139,9 @@ pageid_t stasis_dirty_page_table_dirty_count(stasis_dirty_page_table_t * dirtyPa
   return ATOMIC_READ_32(&dirtyPages->mutex, &dirtyPages->count);
 }
 
-int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyPages, lsn_t targetLsn ) {
-  const int stride = 200;
+int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyPages, lsn_t targetLsn) {
+  DEBUG("stasis_dirty_page_table_flush_with_target called");
+  const long stride = stasis_dirty_page_table_flush_quantum;
   int all_flushed;
   pthread_mutex_lock(&dirtyPages->mutex);
   if (targetLsn == LSN_T_MAX) {
@@ -150,15 +156,28 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
     dirtyPages->flushing = 1;
   }
 
+  // Normally, we will be called by a background thread that wants to maximize
+  // write back throughput, and sets targetLsn to LSN_T_MAX.
+
+  // Sometimes, we are called by log truncation, which wants to prioritize writeback
+  // of pages that are blocking log truncation.
+
+  // If we are writing back for the buffer manager, sort writebacks by page number.
+  // Otherwise, sort them by the LSN that first dirtied the page.
+  // TODO: Re-sort LSN ordered pages before passing them to the OS?
+  struct rbtree * tree = targetLsn == LSN_T_MAX ? dirtyPages->tableByPage
+                                                : dirtyPages->tableByLsnAndPage;
+
+  long buffered = 0;
   do {
     dpt_entry dummy = { 0, 0 };
     pageid_t vals[stride];
     int off = 0;
     int strides = 0;
     all_flushed = 1;
-    for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByLsnAndPage) ;
+    for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, tree);
         e && e->lsn < targetLsn;
-        e = rblookup(RB_LUGREAT, &dummy, dirtyPages->tableByLsnAndPage)) {
+        e = rblookup(RB_LUGREAT, &dummy, tree)) {
       dummy = *e;
       vals[off] = dummy.p;
       off++;
@@ -166,7 +185,14 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
         pthread_mutex_unlock(&dirtyPages->mutex);
         for(pageid_t i = 0; i < off; i++) {
           if (dirtyPages->bufferManager->tryToWriteBackPage(dirtyPages->bufferManager, vals[i]) == EBUSY) {
-              all_flushed = 0;
+            all_flushed = 0;
+          } else {
+            buffered++;
+          }
+          if(buffered == stride) {
+            DEBUG("Forcing %lld pages A\n", buffered);
+            buffered = 0;
+            dirtyPages->bufferManager->asyncForcePages(dirtyPages->bufferManager, 0);
           }
         }
         off = 0;
@@ -175,14 +201,18 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
       }
     }
     pthread_mutex_unlock(&dirtyPages->mutex);
-    for(int i = 0; i < off; i++) {
+    for(pageid_t i = 0; i < off; i++) {
       if (dirtyPages->bufferManager->tryToWriteBackPage(dirtyPages->bufferManager, vals[i]) == EBUSY) {
         all_flushed = 0;
-      };
+      } else {
+        buffered++;
+      }
+      DEBUG("Forcing %lld pages B\n", buffered);
+      buffered = 0;
+      dirtyPages->bufferManager->asyncForcePages(dirtyPages->bufferManager, 0);
     }
     pthread_mutex_lock(&dirtyPages->mutex);
-
-    dpt_entry * e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
+    dpt_entry * e = ((dpt_entry*)rbmin(tree));
 
     if (!all_flushed &&
         targetLsn < LSN_T_MAX &&
@@ -210,7 +240,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
       ts.tv_sec = tv.tv_sec;
       ts.tv_nsec = 1000*tv.tv_usec;
 
-      dpt_entry * e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
+      dpt_entry * e = ((dpt_entry*)rbmin(tree));
 
       if(targetLsn != LSN_T_MAX) { stasis_util_multiset_insert(dirtyPages->outstanding_flush_lsns, targetLsn); }
 
@@ -219,7 +249,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
           all_flushed = 0;
           break;
         }
-        e = ((dpt_entry*)rbmin(dirtyPages->tableByLsnAndPage));
+        e = ((dpt_entry*)rbmin(tree));
       }
 
       if(targetLsn != LSN_T_MAX) {
@@ -241,6 +271,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
 }
 
 int stasis_dirty_page_table_flush(stasis_dirty_page_table_t * dirtyPages) {
+    DEBUG("stasis_dirty_page_table_flush called");
     return stasis_dirty_page_table_flush_with_target(dirtyPages, LSN_T_MAX);
 }
 

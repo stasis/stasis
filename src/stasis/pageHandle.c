@@ -62,6 +62,10 @@ static void phForce(stasis_page_handle_t * ph) {
   int err = ((stasis_handle_t*)ph->impl)->force(ph->impl);
   assert(!err);
 }
+static void phAsyncForce(stasis_page_handle_t * ph) {
+  int err = ((stasis_handle_t*)ph->impl)->async_force(ph->impl);
+  assert(!err);
+}
 static void phForceRange(stasis_page_handle_t * ph, lsn_t start, lsn_t stop) {
   int err = ((stasis_handle_t*)ph->impl)->force_range(ph->impl,start*PAGE_SIZE,stop*PAGE_SIZE);
   assert(!err);
@@ -99,6 +103,7 @@ stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
   ret->prefetch_range = phPrefetchRange;
   ret->preallocate_range = phPreallocateRange;
   ret->force_file = phForce;
+  ret->async_force_file = phAsyncForce;
   ret->force_range = phForceRange;
   ret->close = phClose;
   ret->dup = phDup;
