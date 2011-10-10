@@ -58,26 +58,26 @@ pageid_t stasis_dirty_page_count_soft_limit=
 #ifdef STASIS_DIRTY_PAGE_count_SOFT_LIMIT
   STASIS_DIRTY_PAGE_COUNT_SOFT_LIMIT;
 #else
-  16 * 1024 * 1024 / PAGE_SIZE;
+  (32 * 1024 * 1024) / PAGE_SIZE;
 #endif
 pageid_t stasis_dirty_page_low_water_mark =
 #ifdef STASIS_DIRTY_PAGE_LOW_WATER_MARK
   STASIS_DIRTY_PAGE_LOW_WATER_MARK;
 #else
-  (8 * 1024 * 1024) / PAGE_SIZE;
+  (16 * 1024 * 1024) / PAGE_SIZE;
 #endif
 pageid_t stasis_dirty_page_count_hard_limit =
 #ifdef STASIS_DIRTY_PAGE_COUNT_HARD_LIMIT
   STASIS_DIRTY_PAGE_COUNT_HARD_LIMIT;
 #else
-  (48 * 1024 * 1024) / PAGE_SIZE;
+  (40 * 1024 * 1024) / PAGE_SIZE;
 #endif
 
 pageid_t stasis_dirty_page_table_flush_quantum =
 #ifdef STASIS_DIRTY_PAGE_TABLE_FLUSH_QUANTUM
   STASIS_DIRTY_PAGE_TABLE_FLUSH_QUANTUM;
 #else
-  (16 * 1024 * 1024) / PAGE_SIZE;
+  (4 * 1024 * 1024) / PAGE_SIZE;
 #endif
 
 stasis_page_handle_t* (*stasis_page_handle_factory)(stasis_log_t*, stasis_dirty_page_table_t*) =
