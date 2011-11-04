@@ -209,10 +209,12 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
       }
       DEBUG("Forcing %lld pages B\n", buffered);
       buffered = 0;
-      dirtyPages->bufferManager->asyncForcePages(dirtyPages->bufferManager, 0);
     }
+    dirtyPages->bufferManager->asyncForcePages(dirtyPages->bufferManager, 0);
     pthread_mutex_lock(&dirtyPages->mutex);
     dpt_entry * e = ((dpt_entry*)rbmin(tree));
+
+    DEBUG("Finished elevator sweep.\n");
 
     if (!all_flushed &&
         targetLsn < LSN_T_MAX &&
@@ -225,6 +227,8 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
 
       int res = gettimeofday(&tv, 0);
       assert(res == 0);
+
+      printf("Warning; going into slow fallback path in dirtyPageTable\n");
 
       // We expect previously pinned pages to be unpinned and flushed within
       // 100 milliseconds. If there aren't then  we had race condition and the
