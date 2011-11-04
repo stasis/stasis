@@ -676,7 +676,7 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
   fp->live_count = 0;
   fp->dead_count = 0;
 
-  fp->target_chunk_size = 64 * 1024 * 1024;
+  fp->target_chunk_size = 512 * 1024 * 1024;
 
   fp->filemode = filemode | O_DSYNC;  /// XXX should not hard-code O_SYNC.
   fp->fileperm = fileperm;
