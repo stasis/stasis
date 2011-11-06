@@ -157,7 +157,7 @@ lsn_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, lsn_t* sz, lsn
     *sz = (ring->flush > ring->rf) ? RING_NEXT : orig_sz;
     if(ring->shutdown) {
         if(ring->rt == ring->wf) {
-          fprintf(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");
+          DEBUG(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");
           pthread_cond_signal(&ring->read_done);
           pthread_mutex_unlock(&ring->mut);
           return RING_CLOSED;
