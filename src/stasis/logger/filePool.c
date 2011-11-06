@@ -131,7 +131,7 @@ char * stasis_log_file_pool_build_filename(stasis_log_file_pool_state * fp,
   char * first = malloc(name_len + stasis_log_file_pool_lsn_chars + 1);
   strcpy(first, stasis_log_chunk_name);
   sprintf(first+name_len, "%020lld", start_lsn);
-  printf("Name is %s\n", first);
+  DEBUG("Name is %s\n", first);
   return first;
 }
 
@@ -694,7 +694,7 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
     } break;
     case LIVE: {
 
-      printf("Live file %s\n", namelist[i]->d_name);
+      DEBUG("Live file %s\n", namelist[i]->d_name);
 
       fp->live_filenames = realloc(fp->live_filenames,
                                    (fp->live_count+1) * sizeof(*fp->live_filenames));
@@ -738,13 +738,13 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
     stasis_log_file_pool_append_chunk(ret, 1);
   } else {
 
-    printf("Current log segment appears to be %s.  Scanning for next available LSN\n", fp->live_filenames[fp->live_count-1]);
+    DEBUG("Current log segment appears to be %s.  Scanning for next available LSN\n", fp->live_filenames[fp->live_count-1]);
 
     fp->ring = 0; // scrub calls read, which tries to flush the ringbuffer.  passing null disables the flush.
 
     next_lsn = stasis_log_file_pool_chunk_scrub_to_eof(ret, fp->ro_fd[fp->live_count-1], fp->live_offsets[fp->live_count-1]);
 
-    printf("Scan returned %lld\n", (long long)next_lsn);
+    DEBUG("Scan returned %lld\n", (long long)next_lsn);
   }
   // The previous segment must have been forced to disk before we created the current one, so we're good to go.
 
