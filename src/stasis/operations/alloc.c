@@ -305,11 +305,13 @@ recordid Talloc(int xid, unsigned long size) {
   Page * p = loadPage(xid, alloc->lastFreepage);
 
   writelock(p->rwlatch, 0);
-  while(stasis_record_freespace(xid, p) < stasis_record_type_to_size(type)) {
+  int rec_size = stasis_record_type_to_size(type);
+  if(rec_size < 4) { rec_size = 4; }
+  while(stasis_record_freespace(xid, p) < rec_size) {
     stasis_record_compact(p);
     int newFreespace = stasis_record_freespace(xid, p);
 
-    if(newFreespace >= stasis_record_type_to_size(type)) {
+    if(newFreespace >= rec_size) {
       break;
     }
 
@@ -318,12 +320,12 @@ recordid Talloc(int xid, unsigned long size) {
     releasePage(p);
 
     pageid = stasis_allocation_policy_pick_suitable_page(alloc->allocPolicy, xid,
-                                    stasis_record_type_to_size(type));
+                                    rec_size);
 
     if(pageid == INVALID_PAGE) {
       stasis_alloc_reserve_new_region(alloc, xid);
       pageid = stasis_allocation_policy_pick_suitable_page(alloc->allocPolicy, xid,
-                                                       stasis_record_type_to_size(type));
+                                                       rec_size);
     }
 
     alloc->lastFreepage = pageid;

@@ -479,6 +479,26 @@ START_TEST(operation_alloc_test) {
 
 } END_TEST
 
+START_TEST(operation_alloc_small) {
+  Tinit();
+  int xid = Tbegin();
+  recordid lastrid = NULLRID;
+  for(int j = 0; j < 10; j++) {
+    for(int i = 0; i * (j+4) < PAGE_SIZE * 3; i++) {
+      recordid rid = Talloc(xid, j);
+
+      assert(rid.page != lastrid.page || rid.slot != lastrid.slot);
+
+      DEBUG("%d ", rid.page);
+
+      lastrid = rid;
+    }
+    DEBUG("\n");
+  }
+  Tcommit(xid);
+  Tdeinit();
+} END_TEST;
+
 #define ARRAY_LIST_CHECK_ITER 10000
 START_TEST(operation_array_list) {
 
@@ -835,6 +855,7 @@ Suite * check_suite(void) {
     tcase_add_test(tc, operation_prepare);
   }
   tcase_add_test(tc, operation_alloc_test);
+  tcase_add_test(tc, operation_alloc_small);
   tcase_add_test(tc, operation_array_list);
   tcase_add_test(tc, operation_lsn_free);
   tcase_add_test(tc, operation_reorderable);

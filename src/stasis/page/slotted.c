@@ -229,8 +229,8 @@ static void slottedCompactSlotIDs(int xid, Page * p) {
    makes it possible for callers to guarantee the safety
    of a subsequent call to really_do_ralloc().
 */
-static size_t slottedFreespaceForSlot(Page * page, int slot) {
-  size_t slotOverhead;
+static ssize_t slottedFreespaceForSlot(Page * page, int slot) {
+  ssize_t slotOverhead;
 
   if(slot == INVALID_SLOT) {
     slotOverhead = (*stasis_page_slotted_freelist_ptr(page) == INVALID_SLOT) ? SLOTTED_PAGE_OVERHEAD_PER_RECORD : 0;
@@ -254,7 +254,7 @@ static size_t slottedFreespaceForSlot(Page * page, int slot) {
     return 0;
   } else {
     // The regions would not overlap.  There might be free space.
-    return (size_t) (end_of_free_space - start_of_free_space - slotOverhead);
+    return (ssize_t) (end_of_free_space - start_of_free_space - slotOverhead);
   }
 }
 
