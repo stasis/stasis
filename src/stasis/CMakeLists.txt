@@ -36,7 +36,6 @@ ADD_LIBRARY(stasis util/crc32.c
                    page/uninitialized.c
                    page/slotted.c
                    page/fixed.c 
-                   page/raw.c
                    page/lsnFree.c
                    page/segment.c
                    experimental/latchFree/lfSlotted.c
