@@ -1,2 +1,3 @@
 SUBDIRS(perl)
 SUBDIRS(ruby)
+SUBDIRS(java)

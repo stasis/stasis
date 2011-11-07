@@ -68,6 +68,10 @@ CHECK_FUNCTION_EXISTS(posix_fallocate HAVE_POSIX_FALLOCATE)
 CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
 CHECK_FUNCTION_EXISTS(tdestroy HAVE_TDESTROY)
 
+FIND_PACKAGE(JNI)
+FIND_PACKAGE(PERL)
+FIND_PACKAGE(RUBY)
+
 FIND_LIBRARY(DBUG_TEST dbug-stubs  /home/sears/local/dbug/lib/)
 if(NOT DBUG_TEST)
   message(STATUS "dbug not found. proceeding with normal build")

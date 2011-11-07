@@ -1,0 +1,17 @@
+IF(JNI_FOUND)
+  ADD_CUSTOM_COMMAND(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/org/stasis/Stasis.class
+    COMMAND javac -d ${CMAKE_CURRENT_BINARY_DIR}
+            -sourcepath ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/org/stasis/Stasis.java
+  )
+  ADD_CUSTOM_COMMAND(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/org_stasis_Stasis.h
+    COMMAND javah -classpath ${CMAKE_CURRENT_BINARY_DIR} -jni
+                  -d ${CMAKE_CURRENT_BINARY_DIR} org.stasis.Stasis
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/org/stasis/Stasis.class
+  )
+#INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR} /usr/lib/jvm/java-6-openjdk/include/ ${INCLUDE_DIRECTORIES})
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR} ${JAVA_INCLUDE_PATH} ${INCLUDE_DIRECTORIES})
+  ADD_LIBRARY(stasisjni ${CMAKE_CURRENT_SOURCE_DIR}/org_stasis_Stasis.c)
+ENDIF(JNI_FOUND)
