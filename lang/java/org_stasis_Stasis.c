@@ -63,7 +63,7 @@ JNIEXPORT jlong JNICALL Java_stasis_jni_Stasis_begin
 }
 JNIEXPORT void JNICALL Java_stasis_jni_Stasis_commit
   (JNIEnv *e, jclass c, jlong xid) {
-  printf("commiting %d\n", xid);
+  DEBUG("commiting %lld\n", (long long)xid);
   Tcommit((int)xid);
 }
 JNIEXPORT void JNICALL Java_stasis_jni_Stasis_abort
