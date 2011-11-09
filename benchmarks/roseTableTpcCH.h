@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "stasis/experimental/lsmTable.h"
-
 #include "stasis/transactional.h"
+
+#include "stasis/experimental/lsmTable.h"
 
 #include "stasis/experimental/compression/nop.h"
 #include "stasis/experimental/compression/multicolumn-impl.h"

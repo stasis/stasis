@@ -1,155 +1,148 @@
 #include <stasis/common.h>
 #include <stasis/page.h>
 #include <stasis/page/fixed.h>
-/** @todo should page implementations provide readLSN / writeLSN??? */
 #include <stasis/truncation.h>
 
 #include <assert.h>
 
-
-
-int stasis_fixed_records_per_page(size_t size) {
-  return (USABLE_SIZE_OF_PAGE - 2*sizeof(short)) / size;
-}
-/** @todo CORRECTNESS  Locking for stasis_fixed_initialize_page? (should hold writelock)*/
-void stasis_fixed_initialize_page(Page * page, size_t size, int count) {
-  stasis_page_cleanup(page);
-  // Zero out the page contents, since callers often do so anyway.
-  // blows away LSN, but the copy that's in p->LSN will be put back on page at flush.
-  memset(page->memAddr, 0, PAGE_SIZE);
-  page->pageType = FIXED_PAGE;
-  *recordsize_ptr(page) = size;
-  assert(count <= stasis_fixed_records_per_page(size));
-  *recordcount_ptr(page)= count;
-}
-
-static void checkRid(Page * page, recordid rid) {
-  assert(page->pageType); // any more specific breaks pages based on this one
-  assert(page->id == rid.page);
-  assert(*recordsize_ptr(page) == rid.size);
-  assert(stasis_fixed_records_per_page(rid.size) > rid.slot);
-}
-
 //-------------- New API below this line
 
-static const byte* fixedRead(int xid, Page *p, recordid rid) {
-  checkRid(p, rid);
-  assert(rid.slot < *recordcount_ptr(p));
-  return fixed_record_ptr(p, rid.slot);
+static inline void stasis_page_fixed_checkRid(Page * page, recordid rid) {
+  assert(page->pageType); // any more specific breaks pages based on this one
+  assert(page->id == rid.page);
+  assert(*stasis_page_fixed_recordsize_cptr(page) == rid.size);
+  assert(stasis_page_fixed_records_per_page(rid.size) > rid.slot);
+}
+void stasis_page_fixed_initialize_page(Page * page, size_t size, int count) {
+  stasis_page_cleanup(page);
+  page->pageType = FIXED_PAGE;
+  stasis_page_fixed_initialize_page_raw(page, size, count);
 }
 
-static byte* fixedWrite(int xid, Page *p, recordid rid) {
-  checkRid(p, rid);
-  assert(rid.slot < *recordcount_ptr(p));
-  return fixed_record_ptr(p, rid.slot);
+static int stasis_page_fixed_get_record_type(int xid, Page *p, recordid rid) {
+  return stasis_page_fixed_get_type(p, rid.slot);
+}
+static void stasis_page_fixed_set_record_type(int xid, Page *p, recordid rid, int type) {
+  stasis_page_fixed_set_type(p, rid.slot, type);
 }
 
-static int fixedGetType(int xid, Page *p, recordid rid) {
-  //  checkRid(p, rid);
-  if(rid.slot < *recordcount_ptr(p)) {
-    int type = *recordsize_ptr(p);
-    if(type > 0) {
-      type = NORMAL_SLOT;
-    }
-    return type;
-  } else {
-    return INVALID_SLOT;
-  }
+static int stasis_page_fixed_not_supported(int xid, Page * p) { return 0; }
+
+static const byte* stasis_page_fixed_read(int xid, Page *p, recordid rid) {
+  stasis_page_fixed_checkRid(p, rid);
+  assert(rid.slot < *stasis_page_fixed_recordcount_cptr(p));
+  return stasis_page_fixed_record_cptr(p, rid.slot);
 }
-static void fixedSetType(int xid, Page *p, recordid rid, int type) {
-  checkRid(p,rid);
-  assert(rid.slot < *recordcount_ptr(p));
-  assert(stasis_record_type_to_size(type) == stasis_record_type_to_size(*recordsize_ptr(p)));
-  *recordsize_ptr(p) = rid.size;
+
+static inline byte* stasis_page_fixed_write(int xid, Page *p, recordid rid) {
+  stasis_page_fixed_checkRid(p, rid);
+  assert(rid.slot < *stasis_page_fixed_recordcount_cptr(p));
+  return stasis_page_fixed_record_ptr(p, rid.slot);
 }
-static int fixedGetLength(int xid, Page *p, recordid rid) {
+
+
+static int stasis_page_fixed_get_length_record(int xid, Page *p, recordid rid) {
   assert(p->pageType);
-  return rid.slot > *recordcount_ptr(p) ?
-      INVALID_SLOT : stasis_record_type_to_size(*recordsize_ptr(p));
+  return stasis_page_fixed_get_length(p, rid.slot);
 }
 
-static int notSupported(int xid, Page * p) { return 0; }
-
-static int fixedFreespace(int xid, Page * p) {
-  if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
-    // Return the size of a slot; that's the biggest record we can take.
-    return stasis_record_type_to_size(*recordsize_ptr(p));
+static recordid stasis_page_fixed_last_record(int xid, Page *p) {
+  recordid rid = { p->id, -1, 0 };
+  rid.size = *stasis_page_fixed_recordsize_cptr(p);
+  rid.slot = -stasis_page_fixed_last_slot(p);
+  return rid;
+}
+recordid stasis_page_fixed_next_record(int xid, Page *p, recordid rid) {
+  slotid_t slot = stasis_page_fixed_next_slot(p, rid.slot);
+  if(slot == INVALID_SLOT) {
+    return NULLRID;
   } else {
-    // Page full; return zero.
-    return 0;
+    assert(rid.page == p->id);
+    rid.size = *stasis_page_fixed_recordsize_cptr(p);
+    rid.slot = slot;
+    return rid;
   }
 }
-static void fixedCompact(Page * p) {
+static recordid stasis_page_fixed_first_record(int xid, Page *p) {
+  recordid rid = {
+    p->id,
+    INVALID_SLOT,
+    *stasis_page_fixed_recordsize_cptr(p)
+  };
+  return stasis_page_fixed_next_record(xid, p, rid);
+}
+
+static int stasis_page_fixed_freespace(int xid, Page * p) {
+  return stasis_page_fixed_freespace_raw(p);
+}
+
+static inline void stasis_page_fixed_compact(Page * p) {
   // no-op
 }
-static void fixedCompactSlotIds(int xid, Page * p) {
+static inline void stasis_page_fixed_compact_slot_ids(int xid, Page * p) {
   abort();
 }
-static recordid fixedPreAlloc(int xid, Page *p, int size) {
-  if(stasis_fixed_records_per_page(*recordsize_ptr(p)) > *recordcount_ptr(p)) {
-    recordid rid;
-    rid.page = p->id;
-    rid.slot = *recordcount_ptr(p);
-    rid.size = *recordsize_ptr(p);
-    return rid;
-  } else {
+
+static recordid stasis_page_fixed_pre_alloc_record(int xid, Page *p, int size) {
+  int slot = stasis_page_fixed_pre_alloc(p, size);
+  if(slot ==-1) {
     return NULLRID;
   }
+  recordid rid = { p->id, slot, *stasis_page_fixed_recordsize_cptr(p) };
+  return rid;
 }
-static void fixedPostAlloc(int xid, Page *p, recordid rid) {
-  assert(*recordcount_ptr(p) == rid.slot);
-  assert(*recordsize_ptr(p) == rid.size);
-  (*recordcount_ptr(p))++;
+static void stasis_page_fixed_post_alloc_record(int xid, Page *p, recordid rid) {
+  assert(*stasis_page_fixed_recordsize_cptr(p) == rid.size);
+  stasis_page_fixed_post_alloc(p, rid.slot);
 }
-static void fixedSplice(int xid, Page *p, slotid_t first, slotid_t second) {
+
+static inline void stasis_page_fixed_splice(int xid, Page *p, slotid_t first, slotid_t second) {
   abort();
 }
-static void fixedFree(int xid, Page *p, recordid rid) {
-  if(*recordsize_ptr(p) == rid.slot+1) {
-    (*recordsize_ptr(p))--;
-  } else {
-    // leak space; there's no way to track it with this page format.
-  }
+
+static void stasis_page_fixed_free_record(int xid, Page *p, recordid rid) {
+  stasis_page_fixed_free(p, rid.slot);
 }
 
 // XXX dereferenceRID
 
-void fixedLoaded(Page *p) {
+static void stasis_page_fixed_loaded(Page *p) {
   p->LSN = *stasis_page_lsn_ptr(p);
 }
-void fixedFlushed(Page *p) {
+static void stasis_page_fixed_flushed(Page *p) {
   *stasis_page_lsn_ptr(p) = p->LSN;
 }
-void fixedCleanup(Page *p) { }
-page_impl fixedImpl() {
+static void stasis_page_fixed_cleanup(Page *p) { }
+
+page_impl stasis_page_fixed_impl() {
   static page_impl pi = {
     FIXED_PAGE,
     1,
-    fixedRead,
-    fixedWrite,
+    stasis_page_fixed_read,
+    stasis_page_fixed_write,
     0,// readDone
     0,// writeDone
-    fixedGetType,
-    fixedSetType,
-    fixedGetLength,
-    fixedFirst,
-    fixedNext,
-    fixedLast,
-    notSupported, // notSupported,
+    stasis_page_fixed_get_record_type,
+    stasis_page_fixed_set_record_type,
+    stasis_page_fixed_get_length_record,
+    stasis_page_fixed_first_record,
+    stasis_page_fixed_next_record,
+    stasis_page_fixed_last_record,
+    stasis_page_fixed_not_supported,
     stasis_block_first_default_impl,
     stasis_block_next_default_impl,
     stasis_block_done_default_impl,
-    fixedFreespace,
-    fixedCompact,
-    fixedCompactSlotIds,
-    fixedPreAlloc,
-    fixedPostAlloc,
-    fixedSplice,
-    fixedFree,
+    stasis_page_fixed_freespace,
+    stasis_page_fixed_compact,
+    stasis_page_fixed_compact_slot_ids,
+    stasis_page_fixed_pre_alloc_record,
+    stasis_page_fixed_post_alloc_record,
+    stasis_page_fixed_splice,
+    stasis_page_fixed_free_record,
     0, // XXX dereference
-    fixedLoaded, // loaded
-    fixedFlushed, // flushed
-    fixedCleanup
+    stasis_page_fixed_loaded,
+    stasis_page_fixed_flushed,
+    stasis_page_fixed_cleanup
   };
   return pi;
 }
@@ -157,11 +150,11 @@ page_impl fixedImpl() {
 /**
  @todo arrayListImpl belongs in arrayList.c
 */
-page_impl arrayListImpl() {
-  page_impl pi = fixedImpl();
+page_impl stasis_page_array_list_impl() {
+  page_impl pi = stasis_page_fixed_impl();
   pi.page_type = ARRAY_LIST_PAGE;
   return pi;
 }
 
-void fixedPageInit() { }
-void fixedPageDeinit() { }
+void stasis_page_fixed_init() { }
+void stasis_page_fixed_deinit() { }

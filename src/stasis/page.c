@@ -109,13 +109,13 @@ lsn_t stasis_page_lsn_read(const Page * page) {
 void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   dirtyPages = dpt;
   stasis_page_slotted_init();
-  fixedPageInit();
+  stasis_page_fixed_init();
 
   stasis_page_impl_register(stasis_page_uninitialized_impl());
   stasis_page_impl_register(stasis_page_slotted_impl());
-  stasis_page_impl_register(fixedImpl());
+  stasis_page_impl_register(stasis_page_fixed_impl());
   stasis_page_impl_register(stasis_page_boundary_tag_impl());
-  stasis_page_impl_register(arrayListImpl());
+  stasis_page_impl_register(stasis_page_array_list_impl());
   stasis_page_impl_register(stasis_page_blob_impl());
   stasis_page_impl_register(slottedLsnFreeImpl());
   stasis_page_impl_register(segmentImpl());
@@ -129,7 +129,7 @@ void stasis_page_deinit() {
     page_impls[i] = p;
   }
 
-  fixedPageDeinit();
+  stasis_page_fixed_deinit();
   stasis_page_slotted_deinit();
 }
 

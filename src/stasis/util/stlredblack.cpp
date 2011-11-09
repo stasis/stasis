@@ -10,10 +10,6 @@
 #include <stasis/util/stlredblack.h>
 #include <stasis/util/redblack.h>
 #include <stdio.h>
-#undef end
-#undef try
-#undef catch
-#include <stasis/util/stlslab.h>
 
 extern "C" {
   typedef int (*c_cmp_t)(const void*, const void*, const void*);

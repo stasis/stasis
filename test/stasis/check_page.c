@@ -48,6 +48,7 @@ terms specified in this license.
 
 #include <stasis/page.h>
 #include <stasis/page/slotted.h>
+#include <stasis/page/fixed.h>
 #include <stasis/experimental/latchFree/lfSlotted.h>
 #include <stasis/operations/blobs.h>
 #include <stasis/bufferManager.h>
@@ -429,7 +430,7 @@ START_TEST(pageRecordSizeTypeIteratorTest) {
   p = loadPage(xid,pid);
 
   memset(p->memAddr, 0, PAGE_SIZE);
-  stasis_fixed_initialize_page(p,sizeof(int64_t),0);
+  stasis_page_fixed_initialize_page(p,sizeof(int64_t),0);
 
   checkPageIterators(xid,p,10);
 
@@ -542,7 +543,7 @@ START_TEST(fixedPageThreadTest) {
   Tinit();
   Page * p = loadPage(-1, 2);
   memset(p->memAddr, 0, PAGE_SIZE);
-  stasis_fixed_initialize_page(p, sizeof(int), 0);
+  stasis_page_fixed_initialize_page(p, sizeof(int), 0);
   p->LSN = 0;
   *stasis_page_lsn_ptr(p) = p->LSN;
 

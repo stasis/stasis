@@ -2,7 +2,7 @@
 #include <stasis/page/slotted.h>
 #include <stasis/logger/logger2.h>
 
-void stasis_slotted_lsn_free_initialize_page(Page * p) {
+void stasis_page_slotted_lsn_free_initialize_page(Page * p) {
   stasis_page_slotted_initialize_page(p);
   p->pageType = SLOTTED_LSN_FREE_PAGE;
 }

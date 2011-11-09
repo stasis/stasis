@@ -1,4 +1,5 @@
 #include <stasis/page.h>
+#include <stasis/page/fixed.h>
 #include <stasis/bufferManager.h>
 #include <stasis/logger/logEntry.h>
 #include <stasis/operations/pageOperations.h>
@@ -195,8 +196,8 @@ static int op_initialize_page(const LogEntry* e, Page* p) {
     stasis_page_slotted_initialize_page(p);
     break;
   case FIXED_PAGE:
-    stasis_fixed_initialize_page(p, arg->type,
-                                 stasis_fixed_records_per_page
+    stasis_page_fixed_initialize_page(p, arg->type,
+                                 stasis_page_fixed_records_per_page
                                  (stasis_record_type_to_size(arg->type)));
     break;
   default:
@@ -223,8 +224,8 @@ static int op_init_multipage_impl(const LogEntry *e, Page *ignored) {
       } else if(arg->recordSize == BLOB_SLOT) {
         stasis_page_blob_initialize_page(p);
       } else {
-        stasis_fixed_initialize_page(p, arg->recordSize,
-                                     stasis_fixed_records_per_page
+        stasis_page_fixed_initialize_page(p, arg->recordSize,
+                                     stasis_page_fixed_records_per_page
                                      (stasis_record_type_to_size(arg->recordSize)));
       }
       stasis_page_lsn_write(e->xid, p, e->LSN);

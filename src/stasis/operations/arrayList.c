@@ -1,6 +1,7 @@
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
+#include <stasis/page/fixed.h>
 #include <assert.h>
 #include <math.h>
 
@@ -33,7 +34,7 @@ static array_list_parameter_t array_list_read_parameter(int xid, Page * p) {
 }
 
 static int array_list_get_block_containing_offset(array_list_parameter_t alp, int offset, pageid_t * firstSlotInBlock) {
-  int rec_per_page = stasis_fixed_records_per_page((size_t)alp.size);
+  int rec_per_page = stasis_page_fixed_records_per_page((size_t)alp.size);
   long thisHigh = rec_per_page * alp.initialSize;
   int lastHigh = 0;
   int pageRidSlot = 0;
@@ -58,8 +59,8 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
   const array_list_parameter_t * alp
     = stasis_log_entry_update_args_cptr(e);
 
-  stasis_fixed_initialize_page(p, sizeof(pageid_t),
-                               stasis_fixed_records_per_page(sizeof(pageid_t)));
+  stasis_page_fixed_initialize_page(p, sizeof(pageid_t),
+                               stasis_page_fixed_records_per_page(sizeof(pageid_t)));
 
   recordid initialSizeRid, multiplierRid, slotSizeRid, maxOffsetRid, firstDataPageRid;
 
@@ -113,7 +114,7 @@ recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset) {
   readlock(p->rwlatch,0);
   array_list_parameter_t tlp = array_list_read_parameter(xid, p);
 
-  int rec_per_page = stasis_fixed_records_per_page((size_t)tlp.size);
+  int rec_per_page = stasis_page_fixed_records_per_page((size_t)tlp.size);
   pageid_t lastHigh = 0;
   int pageRidSlot = 0; /* The slot on the root arrayList page that contains the first page of the block of interest */
 

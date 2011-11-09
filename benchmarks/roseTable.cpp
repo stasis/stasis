@@ -1,5 +1,6 @@
 //#define LEAK_TEST
 
+#include <stasis/transactional.h>
 #include "roseTable.h"
 #include "stasis/experimental/compression/compression.h"
 

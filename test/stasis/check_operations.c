@@ -41,6 +41,7 @@ terms specified in this license.
 #include "../check_includes.h"
 
 #include <stasis/transactional.h>
+#include <stasis/page/fixed.h>
 #include <stasis/logger/logger2.h>
 #include <stasis/bufferManager.h>
 #include <stasis/truncation.h>
@@ -497,7 +498,7 @@ START_TEST(operation_alloc_small) {
   }
   Tcommit(xid);
   Tdeinit();
-} END_TEST;
+} END_TEST
 
 #define ARRAY_LIST_CHECK_ITER 10000
 START_TEST(operation_array_list) {
@@ -571,7 +572,7 @@ START_TEST(operation_lsn_free) {
     int xid = Tbegin();
     pageid_t pid = TpageAlloc(xid);
     Page * p = loadPage(xid,pid);
-    stasis_slotted_lsn_free_initialize_page(p);
+    stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
     byte * old = malloc(PAGE_SIZE);
     memcpy(old, p->memAddr, PAGE_SIZE);
@@ -635,7 +636,7 @@ START_TEST(operation_reorderable) {
     int xid = Tbegin();
     pageid_t pid = TpageAlloc(xid);
     Page * p = loadPage(xid,pid);
-    stasis_slotted_lsn_free_initialize_page(p);
+    stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
     byte * old = malloc(PAGE_SIZE);
     memcpy(old, p->memAddr, PAGE_SIZE);
@@ -772,7 +773,7 @@ static int op_test_redo_impl(const LogEntry * e, Page * p) {
     Page * p = loadPage(e->xid, a->start + i);
     if(stasis_operation_multi_should_apply(e, p)) {
       writelock(p->rwlatch, 0);
-      stasis_fixed_initialize_page(p, sizeof(i), 1);
+      stasis_page_fixed_initialize_page(p, sizeof(i), 1);
       recordid rid = { p->id, 0, sizeof(i) };
       stasis_record_write(e->xid, p, rid, (byte*)&i);
       stasis_page_lsn_write(e->xid, p, e->LSN);

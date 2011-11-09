@@ -8,6 +8,8 @@
 #include <stasis/io/handle.h>
 #include <stasis/transactional.h>
 #include <stasis/util/histogram.h>
+#include <stasis/page/fixed.h>
+
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
@@ -29,7 +31,7 @@ struct thread_arg {
 int do_load(pageid_t page_count) {
     for(int i = 1; i < page_count; i++) {
       Page * p = loadUninitializedPage(-1, i);
-      stasis_fixed_initialize_page(p, sizeof(i), 1);
+      stasis_page_fixed_initialize_page(p, sizeof(i), 1);
       recordid rid = {i, 0, sizeof(i)};
       stasis_record_write(-1, p, rid,(byte*) &i);
       stasis_page_lsn_write(-1, p, p->LSN + 1);

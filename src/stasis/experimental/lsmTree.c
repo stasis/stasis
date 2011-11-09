@@ -162,7 +162,7 @@ typedef struct lsmTreeState {
  * header in the first two lsmTreeNodeRecords on the page.
  */
 static void initializeNodePage(int xid, Page *p, size_t keylen) {
-  stasis_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord)+keylen, 0);
+  stasis_page_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord)+keylen, 0);
   recordid reserved1 = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
   stasis_record_alloc_done(xid, p, reserved1);
   recordid reserved2 = stasis_record_alloc_begin(xid, p, sizeof(lsmTreeNodeRecord)+keylen);
@@ -194,7 +194,7 @@ static void initializeNodePage(int xid, Page *p, size_t keylen) {
 */
 
 static inline size_t getKeySizeFixed(int xid, Page const *p) {
-  return (*recordsize_cptr(p)) - sizeof(lsmTreeNodeRecord);
+  return (*stasis_page_fixed_recordsize_cptr(p)) - sizeof(lsmTreeNodeRecord);
 }
 
 static inline size_t getKeySizeVirtualMethods(int xid, Page *p) {
@@ -207,7 +207,7 @@ static inline size_t getKeySizeVirtualMethods(int xid, Page *p) {
 static inline
 const lsmTreeNodeRecord* readNodeRecordFixed(int xid, Page *const p, int slot,
                                               int keylen) {
-  return (const lsmTreeNodeRecord*)fixed_record_ptr(p, slot);
+  return (const lsmTreeNodeRecord*)stasis_page_fixed_record_ptr(p, slot);
 }
 /**
  * Read a record from the page node, using stasis' general-purpose
@@ -237,7 +237,7 @@ lsmTreeNodeRecord* readNodeRecordVirtualMethods(int xid, Page * p,
 static inline
 void writeNodeRecordFixed(int xid, Page *p, int slot,
                           const byte *key, size_t keylen, pageid_t ptr) {
-  lsmTreeNodeRecord *nr = (lsmTreeNodeRecord*)fixed_record_ptr(p,slot);
+  lsmTreeNodeRecord *nr = (lsmTreeNodeRecord*)stasis_page_fixed_record_ptr(p,slot);
   nr->ptr = ptr;
   memcpy(nr+1, key, keylen);
   stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
@@ -274,7 +274,7 @@ recordid TlsmCreate(int xid, int comparator,
 
   Page *p = loadPage(xid, ret.page);
   writelock(p->rwlatch,0);
-  stasis_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord) + keySize, 0);
+  stasis_page_fixed_initialize_page(p, sizeof(lsmTreeNodeRecord) + keySize, 0);
   p->pageType = LSM_ROOT_PAGE;
 
   lsmTreeState *state = malloc(sizeof(lsmTreeState));
@@ -411,7 +411,7 @@ static recordid appendInternalNode(int xid, Page *p,
     return ret;
   } else {
     // recurse
-    int slot = *recordcount_ptr(p)-1;
+    int slot = *stasis_page_fixed_recordcount_ptr(p)-1;
     assert(slot >= FIRST_SLOT); // there should be no empty nodes
     const lsmTreeNodeRecord *nr = readNodeRecord(xid, p, slot, key_len);
     pageid_t child_id = nr->ptr;
@@ -457,7 +457,7 @@ static pageid_t findLastLeaf(int xid, Page *root, int depth) {
   } else {
     // passing zero as length is OK, as long as we don't try to access the key.
     const lsmTreeNodeRecord *nr = readNodeRecord(xid, root,
-                                                  (*recordcount_ptr(root))-1,0);
+                                                  (*stasis_page_fixed_recordcount_ptr(root))-1,0);
     pageid_t ret;
 
     Page *p = loadPage(xid, nr->ptr);
@@ -545,7 +545,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
 
       initializeNodePage(xid, lc,keySize);
 
-      for(int i = FIRST_SLOT; i < *recordcount_ptr(p); i++) {
+      for(int i = FIRST_SLOT; i < *stasis_page_fixed_recordcount_ptr(p); i++) {
 
         recordid cnext = stasis_record_alloc_begin(xid, lc,
                                         sizeof(lsmTreeNodeRecord)+keySize);
@@ -565,7 +565,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
                               sizeof(lsmTreeNodeRecord)+keySize };
 
       // @todo should fixed.h support bulk deallocation directly?
-      *recordcount_ptr(p) = FIRST_SLOT+1;
+      *stasis_page_fixed_recordcount_ptr(p) = FIRST_SLOT+1;
 
       lsmTreeNodeRecord *nr
           = (lsmTreeNodeRecord*)stasis_record_write_begin(xid, p, pFirstSlot);
@@ -639,14 +639,14 @@ void TlsmFree(int xid, recordid tree, lsm_page_deallocator_t dealloc,
 
 static recordid lsmLookup(int xid, Page *node, int depth, const byte *key,
                                 size_t keySize, lsm_comparator_t cmp) {
-  if(*recordcount_ptr(node) == FIRST_SLOT) {
+  if(*stasis_page_fixed_recordcount_ptr(node) == FIRST_SLOT) {
     return NULLRID;
   }
-  assert(*recordcount_ptr(node) > FIRST_SLOT);
+  assert(*stasis_page_fixed_recordcount_ptr(node) > FIRST_SLOT);
   int match = FIRST_SLOT;
   // don't need to compare w/ first item in tree.
   const lsmTreeNodeRecord *rec = readNodeRecord(xid,node,FIRST_SLOT,keySize);
-  for(int i = FIRST_SLOT+1; i < *recordcount_ptr(node); i++) {
+  for(int i = FIRST_SLOT+1; i < *stasis_page_fixed_recordcount_ptr(node); i++) {
     rec = readNodeRecord(xid,node,i,keySize);
     int cmpval = cmp(rec+1,key);
     if(cmpval > 0) {
@@ -690,7 +690,7 @@ pageid_t TlsmFindPage(int xid, recordid tree, const byte *key) {
   readlock(p->rwlatch,0);
 
   tree.slot = 0;
-  tree.size = *recordsize_ptr(p);
+  tree.size = *stasis_page_fixed_recordsize_ptr(p);
 
   size_t keySize = getKeySize(xid,p);
 
@@ -733,10 +733,10 @@ pageid_t TlsmLastPage(int xid, recordid tree) {
 
   Page * p = loadPage(xid, ret);
   readlock(p->rwlatch,0);
-  if(*recordcount_ptr(p) == 2) {
+  if(*stasis_page_fixed_recordcount_ptr(p) == 2) {
     ret = -1;
   } else {
-    const lsmTreeNodeRecord *nr = readNodeRecord(xid,p,(*recordcount_ptr(p))-1,keySize);
+    const lsmTreeNodeRecord *nr = readNodeRecord(xid,p,(*stasis_page_fixed_recordcount_ptr(p))-1,keySize);
     ret = nr->ptr;
   }
   unlock(p->rwlatch);
@@ -769,7 +769,7 @@ static void lsmPageCleanup(Page *p) {
    A page_impl for the root of an lsmTree.
 */
 page_impl lsmRootImpl() {
-  page_impl pi = fixedImpl();
+  page_impl pi = stasis_page_fixed_impl();
   pi.pageLoaded = lsmPageLoaded;
   pi.pageFlushed = lsmPageFlushed;
   pi.pageCleanup = lsmPageCleanup;
@@ -888,7 +888,7 @@ void lsmTreeIterator_close(int xid, lladdIterator_t *it) {
 int lsmTreeIterator_next(int xid, lladdIterator_t *it) {
   lsmIteratorImpl *impl = it->impl;
   size_t keySize = impl->current.size;
-  impl->current = fixedNext(xid, impl->p, impl->current);
+  impl->current = stasis_page_fixed_next_record(xid, impl->p, impl->current);
   if(impl->current.size == INVALID_SLOT) {
     const lsmTreeNodeRecord next_rec = *readNodeRecord(xid,impl->p,NEXT_LEAF,
                                                        keySize);

@@ -17,7 +17,7 @@ void alloc_rids(long long num_rids, recordid ** slow, recordid ** fast) {
     Page * p = loadPage(xid, pid);
     writelock(p->rwlatch,0);
     memcpy(old, p->memAddr, PAGE_SIZE);
-    stasis_slotted_lsn_free_initialize_page(p);
+    stasis_page_slotted_lsn_free_initialize_page(p);
     while(i < num_rids &&
           (
            ((*slow)[i] = stasis_record_alloc_begin(xid, p, sizeof(int))).size
