@@ -1,5 +1,5 @@
 /*
- * RCS $Id$
+ * RCS $Id: redblack.h 1525 2011-06-13 10:19:44Z sears.russell@gmail.com $
  */
 
 /*

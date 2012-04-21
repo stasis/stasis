@@ -47,7 +47,7 @@ terms specified in this license.
  * @file
  *
  * Functions to manage the in-memory pool of free page buffers.
- * $Id$
+ * $Id: bufferPool.h 1542 2011-08-23 18:25:26Z sears.russell@gmail.com $
  */
 
 #include <stasis/common.h>

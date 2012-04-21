@@ -50,7 +50,7 @@ terms specified in this license.
  *
  * @ingroup LLADD_CORE
  *
- * $Id$
+ * $Id: constants.h 1543 2011-08-25 21:29:51Z sears.russell@gmail.com $
  */
 
 #ifndef __CONSTANTS_H__

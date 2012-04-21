@@ -47,7 +47,7 @@ terms specified in this license.
  *
  * @ingroup OPERATIONS
  * @todo The functions in operations.h don't belong in the API, but it defines some constants and typedefs that should be there.
- * $Id$
+ * $Id: operations.h 1526 2011-06-13 11:26:25Z sears.russell@gmail.com $
  */
 /**
    @defgroup COLLECTIONS Collections

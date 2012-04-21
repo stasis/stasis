@@ -1,4 +1,5 @@
 ADD_LIBRARY(stasis util/crc32.c
+                   util/bloomFilter.c
                    util/redblack.c
                    util/lhtable.c
                    util/concurrentHash.c
@@ -53,8 +54,15 @@ ADD_LIBRARY(stasis util/crc32.c
                    operations/regions.c
                    operations/bTree.c
                    operations/blobs.c
-                   io/rangeTracker.c io/memory.c io/file.c io/pfile.c io/raid1.c
-                   io/non_blocking.c io/debug.c io/handle.c
+                   io/rangeTracker.c
+                   io/memory.c
+                   io/file.c
+                   io/pfile.c
+                   io/raid1.c
+                   io/raid0.c
+                   io/non_blocking.c
+                   io/debug.c
+                   io/handle.c
                    bufferManager/pageArray.c
                    bufferManager/bufferHash.c
                    replacementPolicy/lru.c
@@ -63,6 +71,7 @@ ADD_LIBRARY(stasis util/crc32.c
                    replacementPolicy/concurrentWrapper.c
                    replacementPolicy/clock.c
 		   )
+IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ADD_LIBRARY(stasis_experimental
   experimental/consumer.c
   experimental/fifo.c
@@ -75,5 +84,6 @@ ADD_LIBRARY(stasis_experimental
   experimental/group.c
   experimental/lsmTree.c
   )
+ENDIF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 INSTALL(TARGETS stasis LIBRARY DESTINATION lib)

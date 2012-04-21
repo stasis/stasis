@@ -52,7 +52,7 @@ terms specified in this license.
 
    @ingroup LLADD_CORE
 
-   $Id$
+   $Id: logEntry.h 1332 2010-01-19 02:14:09Z sears.russell $
 */
 
 #include <stasis/common.h>

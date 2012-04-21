@@ -86,8 +86,10 @@ static stasis_handle_t * pfile_dup(stasis_handle_t *h) {
 static void pfile_enable_sequential_optimizations(stasis_handle_t *h) {
   pfile_impl *impl = h->impl;
   impl->sequential = 1;
+#ifdef HAVE_POSIX_FADVISE
   int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_SEQUENTIAL);
   if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL to kernel failed");
+#endif
 }
 static lsn_t pfile_end_position(stasis_handle_t *h) {
   pfile_impl *impl = (pfile_impl*)h->impl;
@@ -300,8 +302,10 @@ static int pfile_force(stasis_handle_t *h) {
     DEBUG("File was opened with O_SYNC.  pfile_force() is a no-op\n");
   }
   if(impl->sequential) {
+#ifdef HAVE_POSIX_FADVISE
     int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_DONTNEED);
     if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL to kernel failed");
+#endif
   }
   TOCK(force_hist);
   return 0;
@@ -334,10 +338,12 @@ static int pfile_async_force(stasis_handle_t *h) {
 #endif
   int ret = 0;
 #endif
+#ifdef HAVE_POSIX_FADVISE
   if(impl->sequential) {
     int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_DONTNEED);
     if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL (for a range of a file) to kernel failed");
   }
+#endif
   TOCK(force_range_hist);
   return ret;
 }
@@ -370,10 +376,12 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
 #endif
   int ret = 0;
 #endif
+#ifdef HAVE_POSIX_FADVISE
   if(impl->sequential) {
     int err = posix_fadvise(impl->fd, start, stop-start, POSIX_FADV_DONTNEED);
     if(err) perror("Attempt to pass POSIX_FADV_SEQUENTIAL (for a range of a file) to kernel failed");
   }
+#endif
   TOCK(force_range_hist);
   return ret;
 }

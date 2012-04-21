@@ -1,9 +1,5 @@
 Stasis is a transactional storage library.
 
-An increasing range of applications requires robust support for atomic, durable and concurrent transactions. Databases provide the default solution, but force applications to interact via SQL and to forfeit control over data layout and access mechanisms. In principle, a specialized database stack could be built for each application, but such approaches have proven to be impractical. We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
-
-Stasis is a storage framework that incorporates ideas from traditional write-ahead logging algorithms and file systems. It provides applications with flexible control over data structures, data layout, robustness and performance. Stasis enables the development of unforeseen variants on transactional storage by generalizing write-ahead logging algorithms. Instead of implementing support for each new storage system from scratch, I have extended Stasis to provide specialized storage mechanisms to a wide variety of applications. It now provides cleaner semantics than similar application-specific approaches would, with significantly less source code than would be required by multiple separate storage implementations. In addition to the conventional write-ahead logging algorithms that Stasis was designed for, it now provides support for large objects, and for log-structured indexes. A number of other extensions, such as distributed recovery algorithms and snapshot-based recovery are under development.
-
 Please see the COPYING file for licensing information, and INSTALL for
 compilation instructions.
 
@@ -11,22 +7,3 @@ More information, including papers, a tutorial and API documentation
 are available at:
 
 http://www.cs.berkeley.edu/~sears/stasis/
-http://www.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-2.html
-http://www.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-2.pdf
-
-@phdthesis{Sears:EECS-2010-2,
-    Author = {Sears, Russell C},
-    Title = {Stasis: Flexible Transactional Storage},
-    School = {EECS Department, University of California, Berkeley},
-    Year = {2010},
-    Month = {Jan},
-    URL = {http://www.eecs.berkeley.edu/Pubs/TechRpts/2010/EECS-2010-2.html},
-    Number = {UCB/EECS-2010-2},
-    Abstract = {An increasing range of applications requires robust support for atomic, durable and concurrent transactions.  Databases provide the default solution, but force applications to interact via SQL and to forfeit control over data layout and access mechanisms.  In principle, a specialized database stack could be built for each application, but such approaches have proven to be impractical.  We argue there is a gap between DBMSs and file systems that limits designers of data-oriented applications.
-
-Stasis is a storage framework that incorporates ideas from traditional write-ahead logging algorithms and file systems.  It provides applications with flexible control over data structures, data layout, robustness and performance.  Stasis enables the development of unforeseen variants on transactional storage by generalizing write-ahead logging algorithms.  Instead of implementing support for each new storage system from scratch, I have extended Stasis to provide specialized storage mechanisms to a wide variety of applications.  It now provides cleaner semantics than similar application-specific approaches would, with significantly less source code than would be required by multiple separate storage implementations.  In addition to the conventional write-ahead logging algorithms that Stasis was designed for, it now provides support for large objects, and for log-structured indexes.  A number of other extensions, such as distributed recovery algorithms and snapshot-based recovery are under development.
-
-This dissertation describes the range of data models and program architectures that have been commonly used in the past, and argues that Stasis is sufficiently general to support most storage applications.  It then turns to a description of Stasis' high-level application interfaces and APIs that are designed to allow applications to add their own transactional data structures to Stasis. The performance of a number of such extensions is evaluated, showing that Stasis performs favorably relative to existing systems.
-
-The dissertation then turns to a careful definition of Stasis' recovery algorithms, and provides a novel generalization of ARIES, the de facto standard approach to transactional storage.  The generalization is particularly promising in the context of distributed systems.  Finally, it presents Stasis' lower-level interfaces, providing systems developers and application designers with the ability to tailor high-level transactional primitives to new types of storage hardware and operating system primitives.  To the greatest extent possible, the ideas presented within are composable, allowing Stasis' simple implementation to support an unusually wide range of storage architectures.}
-}

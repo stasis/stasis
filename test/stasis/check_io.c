@@ -368,6 +368,53 @@ START_TEST(io_raid1pfileTest) {
   remove(B);
 
 } END_TEST
+START_TEST(io_raid0pfileTest) {
+  printf("io_raid0pfileTest\n"); fflush(stdout);
+  uint32_t stripe_size = PAGE_SIZE;
+  const char * A = "vol1.txt";
+  const char * B = "vol2.txt";
+
+  remove(A);
+  remove(B);
+
+
+  stasis_handle_t *h;
+  stasis_handle_t *hp[2];
+
+  hp[0] = stasis_handle(open_pfile)(A, O_CREAT | O_RDWR, FILE_PERM);
+  hp[1] = stasis_handle(open_pfile)(B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid0(2, hp, stripe_size);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_smoketest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
+  hp[0] = stasis_handle(open_pfile)(A, O_CREAT | O_RDWR, FILE_PERM);
+  hp[1] = stasis_handle(open_pfile)(B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid0(2, hp, stripe_size);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_sequentialtest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
+  hp[0] = stasis_handle(open_pfile)(A, O_CREAT | O_RDWR, FILE_PERM);
+  hp[1] = stasis_handle(open_pfile)(B, O_CREAT | O_RDWR, FILE_PERM);
+  h = stasis_handle_open_raid0(2, hp, stripe_size);
+
+  //  h = stasis_handle(open_debug)(h);
+  handle_concurrencytest(h);
+  h->close(h);
+
+  remove(A);
+  remove(B);
+
+} END_TEST
   /*
 static stasis_handle_t * fast_factory(lsn_t off, lsn_t len, void * ignored) {
   stasis_handle_t * h = stasis_handle(open_memory)(off);
@@ -493,6 +540,7 @@ Suite * check_suite(void) {
   tcase_add_test(tc, io_fileTest);
   tcase_add_test(tc, io_pfileTest);
   tcase_add_test(tc, io_raid1pfileTest);
+  tcase_add_test(tc, io_raid0pfileTest);
   //tcase_add_test(tc, io_nonBlockingTest_file);
   //tcase_add_test(tc, io_nonBlockingTest_pfile);
   /* --------------------------------------------- */

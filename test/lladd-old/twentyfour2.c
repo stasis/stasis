@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*********************************
- * $Id$
+ * $Id: twentyfour2.c 2 2004-06-24 21:10:31Z sears $
  *
  * if you run this test 23 times, its fine, but on the 24 time, shit happens
  * *******************************/

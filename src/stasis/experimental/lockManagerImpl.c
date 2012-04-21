@@ -1,3 +1,4 @@
+#include <config.h>
 #include <pbl/pbl.h>
 #include <stasis/lockManager.h>
 #include <stasis/util/latches.h>

@@ -52,7 +52,7 @@ Slotted page layout:
 
  START
 
- $Id$
+ $Id: slotted.h 1571 2011-11-09 21:37:38Z sears.russell@gmail.com $
 
 @todo slotted.c Should know that specific record types (like blobs) exist,
 		(but should not hardcode information about these types) This

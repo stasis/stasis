@@ -2,6 +2,8 @@
 #define IO_HANDLE_H
 #include <stasis/common.h>
 
+BEGIN_C_DECLS
+
 /**
    stasis_handle() is a macro that prepends a unique prefix to the its
    argument's function name.  It's used to cope with namespace
@@ -333,11 +335,23 @@ stasis_handle_t * stasis_handle(open_verifying)(stasis_handle_t * h);
 */
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h);
 stasis_handle_t * stasis_handle(open_raid1)(stasis_handle_t *a, stasis_handle_t *b);
+/**
+ * Open a raid0 handle
+ *
+ * @param handle_count The number of underlying file handles.
+ * @param h An array of pointers to the handles.  The caller manages the memory that backs the array.
+ * @param stripe_size The raid 0 stripe size.  Must be a multiple of PAGE_SIZE.
+ */
+stasis_handle_t * stasis_handle(open_raid0)(int handle_count, stasis_handle_t **h, uint32_t stripe_size);
 stasis_handle_t * stasis_handle_raid1_factory();
+stasis_handle_t * stasis_handle_raid0_factory();
 
 /**
  * Open a Stasis file handle using default arguments.
  */
 stasis_handle_t * stasis_handle_default_factory();
+
+
+END_C_DECLS
 
 #endif

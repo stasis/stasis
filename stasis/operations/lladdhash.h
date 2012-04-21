@@ -4,7 +4,7 @@
  * (actually based on jbhash.c, which was based on pblhash)
  *
  *
- * $Id$
+ * $Id: lladdhash.h 147 2005-01-20 21:19:47Z sears $
  */
 
 /**
@@ -27,7 +27,7 @@
 
    @ingroup OPERATIONS
 
-   $Id$
+   $Id: lladdhash.h 147 2005-01-20 21:19:47Z sears $
 
 */
 

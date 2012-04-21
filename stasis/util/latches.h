@@ -115,7 +115,7 @@ void __profile_deletelock (rwl *lock);
 #define FETCH_AND_ADD(_o,_i) __sync_fetch_and_add(_o,_i)
 #if ULONG_MAX <= 4294967295 // are we on a 32 bit machine?
 #define ATOMIC_READ_64(mutex,_o)     FETCH_AND_ADD(_o,0)
-#define ATOMIC_WRITE_64(mutex,_o,_n) _sync_lock_test_and_set(_o,_n)
+#define ATOMIC_WRITE_64(mutex,_o,_n) __sync_lock_test_and_set(_o,_n)
 #else // this is a 33 or greater bit machine.  Assume it's 64 bit, and that 64 bit writes are atomic.
 #define ATOMIC_READ_64(mutex,_a)    *_a
 #define ATOMIC_WRITE_64(mutex,_a,_n) do {*_a=_n; } while (0)

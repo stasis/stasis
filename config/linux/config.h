@@ -1,0 +1,19 @@
+#define __USE_GNU
+#define _GNU_SOURCE
+#define ON_LINUX
+#define HAVE_POSIX_FALLOCATE
+#define HAVE_POSIX_MEMALIGN
+#define HAVE_POSIX_FADVISE
+#define HAVE_FDATASYNC
+#define HAVE_SYNC_FILE_RANGE
+#define HAVE_O_NOATIME
+#define HAVE_O_DIRECT
+#define HAVE_O_DSYNC
+#define HAVE_GCC_ATOMICS
+#define HAVE_PTHREAD_STACK_MIN
+#define HAVE_ALLOCA_H
+#define HAVE_TDESTROY
+#define HAVE_POWL
+#define PBL_COMPAT 1
+#define STLSEARCH 1
+//#define DBUG

@@ -39,8 +39,12 @@ int main(int argc, char * argv[]) {
     printf("Usage: %s filename steps iterations start_off length random_mode\n", argv[0]);
     abort();
   }
+  #ifdef HAVE_POSIX_MEMALIGN
   posix_memalign(&buf, 512, 512);
-
+  #else
+  buf = malloc(2 * 512);
+  buf = (void*)(((intptr_t)buf) & ~(512-1));
+  #endif
   const char * filename = argv[1];
   int fd = open(filename, O_RDONLY);//|O_DIRECT);
   if(fd == -1) {

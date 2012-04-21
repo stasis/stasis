@@ -41,7 +41,7 @@ terms specified in this license.
 ---*/
 
 /**********************************************
- * $Id$
+ * $Id: prepare.c 1215 2009-07-26 18:51:45Z sears.russell $
  *
  * sets the given reference to dat
  **********************************************/

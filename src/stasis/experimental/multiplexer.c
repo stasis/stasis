@@ -1,3 +1,4 @@
+#include <config.h>
 #include <stasis/experimental/multiplexer.h>
 #include <stasis/util/crc32.h>
 #include <stasis/operations/linearHashNTA.h>

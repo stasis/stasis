@@ -60,7 +60,12 @@ int main(int argc, char ** argv) {
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--direct")) {
       direct = 1;
+#ifdef HAVE_O_DIRECT
       stasis_buffer_manager_io_handle_flags |= O_DIRECT;
+#else
+      printf("O_DIRECT not supported by this build.");
+      return -1;
+#endif
     } else if(!strcmp(argv[i], "--log_safe_writes")) {
       stasis_log_type = LOG_TO_FILE;
       log_mode = 1;

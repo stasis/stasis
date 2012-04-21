@@ -1,0 +1,78 @@
+ifeq ($(shell uname), Linux)
+INC += -I . -I config/linux
+LIB += -lrt
+else
+INC += -I . -I config/macos
+CC = gcc-4.2
+CXX = g++-4.2
+endif
+
+#LIB += -lm -lpthread
+
+CPPFLAGS += $(INC)
+CXXFLAGS += -O3 -g -Wall -pedantic -Wno-long-long -Wno-variadic-macros -fPIC $(CPPFLAGS)
+CFLAGS += -std=gnu99 $(CXXFLAGS) $(CPPFLAGS)
+
+
+ifeq ($(shell uname), Linux)
+ SO=bin/lib$(LIBNAME).so
+endif
+all: ${SO}								\
+     bin/lib$(LIBNAME).a						\
+     $(addprefix bin/, $(addsuffix .static, $(basename $(MAINSRC))))	\
+     print_cxx_params print_cc_params
+
+bin/%.o : %.c
+	@echo CC   $<
+	@mkdir -p $(dir $@)
+	@         $(CC) -c $(CFLAGS) -o $@ $<
+print_cc_params:
+	@echo CC: $(CC) -c $(CFLAGS) -o %.o %.c
+
+bin/%.o : %.cpp 
+	@echo C++  $<
+	@mkdir -p $(dir $@)
+	@          $(CXX) -c $(CXXFLAGS) -o $@ $<
+print_cxx_params:
+	@echo C++: $(CXX) -c $(CXXFLAGS) -o %.o %.cpp
+
+bin/%.d: %.c
+	@mkdir -p $(dir $@)
+	@$(CC) -M $(CFLAGS) $< | perl -ne 's~^.+:~$@ $(basename $@).o :~;print;' > $@
+
+bin/%.d: %.cpp
+	@mkdir -p $(dir $@)
+	@$(CC) -M $(CXXFLAGS) $< | perl -ne 's~^.+:~$@ $(basename $@).o :~;print;' > $@
+
+bin/%.d: %.cc
+	@mkdir -p $(dir $@)
+	@$(CC) -M $(CXXFLAGS) $< | perl -ne 's~^.+:~$@ $(basename $@).o :~;print;' > $@
+
+bin/lib$(LIBNAME).so: $(patsubst %.cpp,bin/%.o,$(patsubst %.c,bin/%.o,$(LIBSRC)))
+	@echo LINK $@
+	@g++ -shared -Wl,-soname,$@ $(LIB) $(CXXFLAGS) -o $@ $^
+
+bin/lib$(LIBNAME).dylib: $(patsubst %.cpp,bin/%.o,$(patsubst %.c,bin/%.o,$(LIBSRC)))
+	@echo LINK $@
+	@g++ -dynamiclib $(LIB) $(CXXFLAGS) -o $@ $^
+
+bin/lib$(LIBNAME).a: $(patsubst %.cpp,bin/%.o,$(patsubst %.c,bin/%.o,$(LIBSRC)))
+	@echo AR   $@
+	@ar rcs $@ $^
+
+bin/%.static: %.cpp bin/lib$(LIBNAME).a
+	@echo STATIC_EXE $@
+	@mkdir -p $(dir $@)
+	@g++ $(LIB) $(CXXFLAGS) -o $@ $^ -static -pthread $(STATIC_LIBS)
+
+bin/%.static: %.cc bin/lib$(LIBNAME).a
+	@echo STATIC_EXE $@
+	@mkdir -p $(dir $@)
+	@g++ $(LIB) $(CXXFLAGS) -o $@ $^ -static -pthread $(STATIC_LIBS)
+
+.PHONY: all clean print_cc_params print_cxx_params
+
+clean:
+	rm -rf bin/
+
+-include $(patsubst %.cc,bin/%.d,$(patsubst %.cpp,bin/%.d,$(patsubst %.c,bin/%.d,$(LIBSRC))))

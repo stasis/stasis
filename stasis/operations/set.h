@@ -47,7 +47,7 @@ terms specified in this license.
  *
  * @ingroup OPERATIONS
  *
- * $Id$
+ * $Id: set.h 1519 2011-06-12 09:20:58Z sears.russell@gmail.com $
  * 
  **********************************************/
 

@@ -153,6 +153,8 @@ int main(int argc, char * argv[]) {
       target_ops = atoi(argv[i]);
     } else if(!strcmp(argv[i], "--raid1")) {
       stasis_handle_factory = stasis_handle_raid1_factory;
+    } else if(!strcmp(argv[i], "--raid0")) {
+      stasis_handle_factory = stasis_handle_raid0_factory;
     } else {
       fprintf(stderr, "unknown argument: %s\n", argv[i]);
       abort();

@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*********************************
- * $Id$
+ * $Id: twentyfour.c 2 2004-06-24 21:10:31Z sears $
  *
  * if you run this test 23 times, it seems to work fine.  On the 24th time, you
  * need to allocate a new page, and it crashes;

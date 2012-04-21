@@ -1,6 +1,7 @@
 #include <config.h>
 #include <stasis/common.h>
 #include <dirent.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -14,7 +15,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -60,6 +60,7 @@ typedef struct {
 
   pthread_t write_thread;
   pthread_t write_thread2;
+  pthread_t prealloc_thread;
   stasis_ringbuffer_t * ring;
   /** Need this because the min aggregate in the ringbuffer doesn't
    * want to malloc keys, but needs to maintain some sort of state
@@ -68,6 +69,19 @@ typedef struct {
   pthread_key_t handle_key;
 
   pthread_mutex_t mut;
+
+  /**
+   * If there are fewer than this many dead files in the pool, a background
+   * thread allocates some more.
+   */
+  int dead_threshold;
+  /**
+   * Signal this mutex to wake up the prealloc thread.
+   */
+  pthread_cond_t prealloc_log_cond;
+
+  int shutdown;
+
 } stasis_log_file_pool_state;
 
 enum file_type {
@@ -111,7 +125,15 @@ enum file_type stasis_log_file_pool_file_type(const struct dirent* file, lsn_t *
 /**
  * No latching required.  Does not touch shared state.
  */
+#ifdef ON_LINUX
 int stasis_log_file_pool_file_filter(const struct dirent* file) {
+#else
+#ifdef ON_MACOS
+int stasis_log_file_pool_file_filter(struct dirent* file) {
+#else
+#error Not on linux or macos?
+#endif
+#endif
   lsn_t junk;
   if(UNKNOWN != stasis_log_file_pool_file_type(file, &junk)) {
     return 1;
@@ -184,17 +206,20 @@ char * build_path(const char * dir, const char * file) {
  * not concurrently change.
  */
 void stasis_log_file_pool_chunk_open(stasis_log_file_pool_state * fp, int chunk) {
-  char* full_name = malloc(strlen(fp->dirname) + 1 + strlen(fp->live_filenames[chunk]) + 1);
-  full_name[0] = 0;
-  strcat(full_name, fp->dirname);
-  strcat(full_name, "/");
-  strcat(full_name, fp->live_filenames[chunk]);
+  char* full_name = build_path(fp->dirname, fp->live_filenames[chunk]);
+//  char* full_name = malloc(strlen(fp->dirname) + 1 + strlen(fp->live_filenames[chunk]) + 1);
+//  full_name[0] = 0;
+//  strcat(full_name, fp->dirname);
+//  strcat(full_name, "/");
+//  strcat(full_name, fp->live_filenames[chunk]);
 
   fp->ro_fd[chunk] = open(full_name, fp->filemode, fp->fileperm);
   free(full_name);
 }
 /**
  * Does no latching.  Relies on stability of fp->live_offsets and fp->live_count.
+ *
+ * @return chunk id or -1 if the offset is past the end of the live chunks.
  */
 static int get_chunk_from_offset(stasis_log_t * log, lsn_t lsn) {
   stasis_log_file_pool_state * fp = log->impl;
@@ -207,6 +232,82 @@ static int get_chunk_from_offset(stasis_log_t * log, lsn_t lsn) {
   }
   return chunk;
 }
+static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) {
+  if(fp->dead_count < fp->dead_threshold) {
+    char * tmpfile = "preallocating~";
+    char * tmpfilepath = build_path(fp->dirname, tmpfile);
+    size_t bufsz = PAGE_SIZE;
+    pthread_mutex_unlock(&fp->mut);
+#ifdef HAVE_O_DSYNC
+    int sync = O_DSYNC;  // XXX cut and pasted from above...
+#else
+    int sync = O_SYNC;
+#endif
+
+
+    int fd = open(tmpfilepath, fp->filemode & (~sync), fp->fileperm);
+
+#ifdef HAVE_POSIX_FALLOCATE
+    printf("posix_fallocate()'ing empty log file...\n");
+    posix_fallocate(fd, 0, fp->target_chunk_size + bufsz);
+#endif
+    printf("Writing zeros to empty log file...\n");
+    byte * buffer = calloc(bufsz, sizeof(byte));
+    for(off_t i = 0; i <= fp->target_chunk_size; i += bufsz) {
+      int ret = pwrite(fd, buffer, bufsz, i);
+      if(ret != bufsz) {
+        perror("Couldn't write to empty log");
+        abort();
+      }
+    }
+    free(buffer);
+    fsync(fd);
+    close(fd);
+    printf("Log preallocation done.\n");
+
+    pthread_mutex_lock(&fp->mut);
+    char * filenametmp = stasis_log_file_pool_build_filename(fp, fp->dead_count);
+    char * filename = malloc(strlen(filenametmp) + 2);
+    strcpy(filename, filenametmp);
+    strcat(filename, "~");
+    char * newfilepath = build_path(fp->dirname, filename);
+    fp->dead_filenames = realloc(fp->dead_filenames, sizeof(char**) * fp->dead_count + 1);
+    fp->dead_filenames[fp->dead_count] = filename;
+    fp->dead_count ++;
+    int err = rename(tmpfilepath, newfilepath);
+    printf("Created new chunk: %s.", newfilepath);
+    // TODO Another rename holding mutex sneaks in...
+    if(err) {
+      perror("could not rename file");
+      assert(err == -1);
+      abort();
+    }
+    free(tmpfilepath);
+    free(filenametmp);
+    // don't free filename; we installed it into the dead_filenames array!
+    free(newfilepath);
+  }
+}
+static void * stasis_log_file_pool_prealloc_worker(void * fpp) {
+  stasis_log_file_pool_state * fp = fpp;
+
+  pthread_mutex_lock(&fp->mut);
+
+  while(1) {
+    while(fp->dead_count >= fp->dead_threshold) {
+//      printf("Dead count = %d, threshold = %d, log preallocation sleeps.\n", fp->dead_count, fp->dead_threshold);
+      if(fp->shutdown) { break; }
+      pthread_cond_wait(&fp->prealloc_log_cond, &fp->mut);
+    }
+    if(fp->shutdown) { break; }
+    printf("Available log chunk count = %d (want %d), preallocating new chunk.\n", fp->dead_count, fp->dead_threshold);
+    stasis_log_file_pool_prealloc_file(fp);
+  }
+
+  pthread_mutex_unlock(&fp->mut);
+  return 0;
+}
+
 /**
  * Does no latching.  Modifies all mutable fields of fp.
  */
@@ -223,6 +324,11 @@ int stasis_log_file_pool_append_chunk(stasis_log_t * log, off_t new_offset) {
   if(fp->dead_count) {
     old_file = fp->dead_filenames[fp->dead_count-1];
     fp->dead_count--;
+
+    if(fp->dead_count < fp->dead_threshold) {
+      pthread_cond_signal(&fp->prealloc_log_cond);
+    }
+
     char * old_path = build_path(fp->dirname, old_file);
     int err = rename(old_path, new_path);
     if(err) {
@@ -464,8 +570,8 @@ int stasis_log_file_pool_truncate(struct stasis_log_t* log, lsn_t lsn) {
     // Rename should be fast, but we're placing a lot of faith in the filesystem.
     int err = rename(old, new);
     if(err) {
-      assert(err == -1);
       perror("could not rename file");
+      assert(err == -1);
       abort();
     }
     close(fp->ro_fd[i]);
@@ -513,11 +619,14 @@ int stasis_log_file_pool_close(stasis_log_t * log) {
   stasis_log_file_pool_state * fp = log->impl;
 
   log->force_tail(log, 0); /// xxx use real constant for wal mode..
-
   stasis_ringbuffer_shutdown(fp->ring);
+
+  fp->shutdown = 1;
+  pthread_cond_signal(&fp->prealloc_log_cond);
 
   pthread_join(fp->write_thread, 0);
 //  pthread_join(fp->write_thread2, 0);
+  pthread_join(fp->prealloc_thread, 0);
 
   stasis_ringbuffer_free(fp->ring);
 
@@ -600,7 +709,18 @@ void key_destr(void * key) { free(key); }
 /**
  * Does no latching.  No shared state.
  */
+#ifdef ON_LINUX
 int filesort(const struct dirent ** a, const struct dirent ** b) {
+#else
+#ifdef ON_MACOS
+int filesort(const void * ap, const void * bp) {
+  const struct dirent  *const *const a = ap;
+  const struct dirent *const *const b = bp;
+#else
+#error Not on linux or macos?
+#endif
+#endif
+
   int ret = strcmp((*a)->d_name, (*b)->d_name);
   DEBUG("%d = %s <=> %s\n", ret, (*a)->d_name, (*b)->d_name);
   return ret;
@@ -676,11 +796,16 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
   fp->live_count = 0;
   fp->dead_count = 0;
 
-  fp->target_chunk_size = 512 * 1024 * 1024;
+  fp->target_chunk_size = 128* 1024 * 1024;
 
-  fp->filemode = filemode | O_DSYNC;  /// XXX should not hard-code O_SYNC.
+#ifdef HAVE_O_DSYNC
+  int SYNC = O_DSYNC;
+#else
+  int SYNC = O_SYNC;
+#endif
+  fp->filemode = filemode | SYNC;  /// XXX should not hard-code O_SYNC.
   fp->fileperm = fileperm;
-  fp->softcommit = !(filemode & O_DSYNC);
+  fp->softcommit = !(filemode & SYNC);
 
   off_t current_target = 0;
   for(int i = 0; i < n; i++) {
@@ -751,6 +876,10 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
   fp->ring = stasis_ringbuffer_init(26, next_lsn); // 64mb buffer
   pthread_key_create(&fp->handle_key, key_destr);
 
+  fp->dead_threshold = 1;
+  pthread_cond_init(&fp->prealloc_log_cond, 0);
+  fp->shutdown = 0;
+  pthread_create(&fp->prealloc_thread, 0, stasis_log_file_pool_prealloc_worker, fp);
   pthread_create(&fp->write_thread, 0, stasis_log_file_pool_writeback_worker, ret);
 //  pthread_create(&fp->write_thread2, 0, stasis_log_file_pool_writeback_worker, ret);
 

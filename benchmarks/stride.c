@@ -20,11 +20,19 @@ int main(int argc, char * argv[]) {
   int write_size = atoi(argv[4]);
   uint64_t stride = atoll(argv[5]);
   int fd = -1;
+#ifdef HAVE_O_DSYNC
   fd = open(argv[1], O_WRONLY|O_DSYNC); //|O_DIRECT);
-
+#else
+  fd = open(argv[1], O_WRONLY|O_SYNC); //|O_DIRECT);
+#endif
   struct timeval start, stop;
   void * buf;
+#ifdef HAVE_POSIX_MEMALIGN
   posix_memalign(&buf, 512, write_size);
+#else
+  buf = malloc(2 * write_size);
+  buf = (void*)(((intptr_t)buf) & ~(write_size-1));
+#endif
   memset(buf, 0, write_size);
 
   gettimeofday(&start, 0);

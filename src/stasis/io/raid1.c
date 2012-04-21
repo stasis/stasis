@@ -11,7 +11,7 @@
 
 #include <assert.h>
 
-#ifdef RAID_LATENCY_PROF
+#ifdef RAID1_LATENCY_PROF
 DECLARE_HISTOGRAM(read_hist)
 DECLARE_HISTOGRAM(write_hist)
 DECLARE_HISTOGRAM(force_hist)
@@ -21,6 +21,7 @@ DECLARE_HISTOGRAM(force_range_hist)
 #else
 #define TICK(hist)
 #define TOCK(hist)
+#endif
 
 typedef struct raid1_impl {
   stasis_handle_t * a;
@@ -109,10 +110,22 @@ static int raid1_force(stasis_handle_t *h) {
   int retB = i->b->force(i->b);
   return retA ? retA : retB;
 }
+static int raid1_async_force(stasis_handle_t *h) {
+  raid1_impl *i = h->impl;
+  int retA = i->a->async_force(i->a);
+  int retB = i->b->async_force(i->b);
+  return retA ? retA : retB;
+}
 static int raid1_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   raid1_impl *i = h->impl;
   int retA = i->a->force_range(i->a, start, stop);
   int retB = i->b->force_range(i->b, start, stop);
+  return retA ? retA : retB;
+}
+static int raid1_fallocate(stasis_handle_t *h, lsn_t off, lsn_t len) {
+  raid1_impl *i = h->impl;
+  int retA = i->a->fallocate(i->a, off, len);
+  int retB = i->b->fallocate(i->b, off, len);
   return retA ? retA : retB;
 }
 struct stasis_handle_t raid1_func = {
@@ -129,7 +142,9 @@ struct stasis_handle_t raid1_func = {
   .read_buffer = raid1_read_buffer,
   .release_read_buffer = raid1_release_read_buffer,
   .force = raid1_force,
+  .async_force = raid1_async_force,
   .force_range = raid1_force_range,
+  .fallocate = raid1_fallocate,
   .error = 0
 };
 
@@ -147,4 +162,3 @@ stasis_handle_t * stasis_handle_raid1_factory() {
   stasis_handle_t * b = stasis_handle_file_factory(stasis_store_file_2_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
   return stasis_handle_open_raid1(a, b);
 }
-#endif

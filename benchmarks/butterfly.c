@@ -20,11 +20,19 @@ int main(int argc, char * argv[]) {
   int sector_size = atoi(argv[3]);
 
   int fd = -1;
+#ifdef HAVE_O_DSYNC
   fd = open(filename, O_WRONLY|O_DSYNC); //|O_DIRECT);
-
+#else
+  fd = open(filename, O_WRONLY|O_SYNC);
+#endif
   struct timeval start, stop;
   void * buf;
+#ifdef HAVE_POSIX_MEMALIGN
   posix_memalign(&buf, sector_size, sector_size);
+#else
+  buf = malloc(2 * sector_size);
+  ((intptr_t)buf) &= ~(sector_size-1);
+#endif
   memset(buf, 0, sector_size);
 
 

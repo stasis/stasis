@@ -31,13 +31,22 @@ typedef struct worker {
 void * func(void * argp) {
   worker * arg = argp;
   void * buf;
+#ifdef HAVE_POSIX_MEMALIGN
   posix_memalign(&buf, 512, arg->write_size);
+#else
+  buf = malloc(2*arg->write_size);
+  buf = (void*)(((intptr_t)buf) & ~((intptr_t)arg->write_size-1));
+#endif
   memset(buf, 0, arg->write_size);
 //  void * buf = calloc(arg->write_size, 1);
   pthread_mutex_lock(&arg->mutex);
   uint64_t offset = 0;
   if(many_handles) {
-    arg->fd = open(arg->filename, O_WRONLY|O_DSYNC); //|O_DIRECT);
+#ifdef HAVE_O_DSYNC
+    arg->fd = open(arg->filename, O_WRONLY|O_DSYNC);
+#else
+    arg->fd = open(arg->filename, O_WRONLY|O_SYNC);
+#endif
     if(arg->fd == -1) {
       perror("Couldn't open file");
       abort();
@@ -81,7 +90,11 @@ int main(int argc, char * argv[]) {
   uint64_t stride = atoll(argv[5]);
   int fd = -1;
   if(!many_handles) {
+#ifdef HAVE_O_DSYNC
     fd = open(argv[1], O_WRONLY|O_DSYNC); //|O_DIRECT);
+#else
+    fd = open(argv[1], O_WRONLY|O_SYNC); //|O_DIRECT);
+#endif
   }
 
   for(int i = 0; i < NUM_WORKERS; i++) {

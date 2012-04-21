@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**********************************************
- * $Id$
+ * $Id: decrement.c 1310 2009-12-31 20:20:47Z sears.russell $
  *
  * Decrements the given reference by one
  *********************************************/

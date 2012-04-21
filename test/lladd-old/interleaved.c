@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*********************************
- * $Id$
+ * $Id: interleaved.c 2 2004-06-24 21:10:31Z sears $
  *
  * interleaved transactions
  * *******************************/

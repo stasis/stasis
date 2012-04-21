@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /*******************************
- * $Id$
+ * $Id: bufferManager.c 1543 2011-08-25 21:29:51Z sears.russell@gmail.com $
  *
  * implementation of the page buffer
  * *************************************************/

@@ -49,7 +49,7 @@ terms specified in this license.
  *
  * @see increment.h
  *
- * $Id$
+ * $Id: decrement.h 1240 2009-08-22 00:01:02Z sears.russell $
  */
 
 #ifndef __DECREMENT_H__

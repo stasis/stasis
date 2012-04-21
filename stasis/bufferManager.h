@@ -74,7 +74,7 @@ terms specified in this license.
        error is passed up to the application.
 
        @ingroup BUFFER_MANAGER
- * $Id$
+ * $Id: bufferManager.h 1560 2011-10-08 22:01:04Z sears.russell@gmail.com $
  */
 #ifndef __BUFFERMANAGER_H__
 #define __BUFFERMANAGER_H__

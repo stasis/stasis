@@ -49,7 +49,7 @@ terms specified in this license.
  * (instead of by absolute logfile size)
  * @todo avoid copying the non-truncated tail of the log each time truncation occurs.
  *
- * $Id$
+ * $Id: truncation.h 1263 2009-10-14 21:22:50Z sears.russell $
  *
  */
 #ifndef STASIS_TRUNCATION_H

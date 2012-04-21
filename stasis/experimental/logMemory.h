@@ -14,7 +14,7 @@
 
    @todo Move this all to some reasonably named interface. :)
 
-   $Id$
+   $Id: logMemory.h 1523 2011-06-13 06:58:34Z sears.russell@gmail.com $
 */
 
 lladdFifo_t * logMemoryFifo(size_t size, lsn_t initialOffset);

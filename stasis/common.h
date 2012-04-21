@@ -53,13 +53,16 @@ terms specified in this license.
  * the right thing' and build, even if they do not \#include the
  * config.h file that all of the Stasis stuff uses.
  *
- * $Id$
+ * $Id: common.h 1576 2012-01-09 23:00:08Z sears.russell $
  */
 
 //#define NDEBUG 1
 
 #ifndef __stasis_common_h
 #define __stasis_common_h
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE // For dirent on mac os
+#endif
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
 #endif
@@ -67,9 +70,11 @@ terms specified in this license.
 #define _BSD_SOURCE
 #endif
 
+#include <alloca.h>
 #include <stdint.h> // uint32, et. al.  (has to be before sys/types.h for mcpp atop some broken gcc headers)
-#include <fcntl.h>
 #include <sys/types.h> // for size_t
+#include <dirent.h>
+#include <fcntl.h>
 
 #ifdef __cplusplus
 #  define BEGIN_C_DECLS extern "C" {

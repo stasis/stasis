@@ -96,6 +96,13 @@ extern stasis_handle_t* (*stasis_handle_factory)();
  */
 extern stasis_handle_t* (*stasis_handle_file_factory)(const char* filename, int open_mode, int creat_perms);
 /**
+ * The default stripe size for Stasis' user space raid0 implementation.
+ *
+ * This must be a multiple of PAGE_SIZE.
+ */
+extern uint32_t stasis_handle_raid0_stripe_size;
+extern char ** stasis_handle_raid0_filenames;
+/**
    The factory that non_blocking handles will use for slow handles.  (Only
    used if stasis_buffer_manager_io_handle_default_factory is set to
    stasis_non_blocking_factory.)

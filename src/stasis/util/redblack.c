@@ -1,4 +1,4 @@
-static char rcsid[]="$Id$";
+static char rcsid[]="$Id: redblack.c 1525 2011-06-13 10:19:44Z sears.russell@gmail.com $";
 
 /*
    Redblack balanced tree algorithm

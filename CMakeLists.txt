@@ -65,6 +65,8 @@ INCLUDE(CheckFunctionExists)
 INCLUDE(CheckCSourceCompiles)
 CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
 CHECK_FUNCTION_EXISTS(posix_fallocate HAVE_POSIX_FALLOCATE)
+CHECK_FUNCTION_EXISTS(posix_memalign HAVE_POSIX_MEMALIGN)
+CHECK_FUNCTION_EXISTS(posix_fadvise HAVE_POSIX_FADVISE)
 CHECK_FUNCTION_EXISTS(fdatasync HAVE_FDATASYNC)
 CHECK_FUNCTION_EXISTS(tdestroy HAVE_TDESTROY)
 
@@ -83,15 +85,33 @@ endif(NOT DBUG_TEST)
 
 SET(CMAKE_REQUIRED_FLAGS "-lm")
 CHECK_FUNCTION_EXISTS(powl HAVE_POWL)
+
+MACRO(CHECK_CONSTANT_EXISTS FLAG)
 CHECK_C_SOURCE_COMPILES("#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <limits.h>
 
 int main(int argc, char * argv[]) {
- argc = O_DIRECT;
+ argc = ${FLAG};
 }
-" HAVE_O_DIRECT) 
+" HAVE_${FLAG}) 
+ENDMACRO(CHECK_CONSTANT_EXISTS)
+
+CHECK_CONSTANT_EXISTS(O_DIRECT)
+CHECK_CONSTANT_EXISTS(O_DSYNC)
+CHECK_CONSTANT_EXISTS(O_NOATIME)
+CHECK_CONSTANT_EXISTS(PTHREAD_STACK_MIN)
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+SET(ON_LINUX "LINUX")
+ENDIF(CMAKE_SYSTEM_NAME)
+IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+SET(ON_DARWIN "DARWIN")
+ENDIF(CMAKE_SYSTEM_NAME)
+#other options are "Windows" and "Solaris"
 
 CHECK_C_SOURCE_COMPILES("#include <alloca.h>
 int main(int argc, char * argv[]) { alloca(1); }" HAVE_ALLOCA_H)
@@ -110,16 +130,6 @@ int main(int argc, char* argv[]) {
   __sync_bool_compare_and_swap(&i, 0, 1);
 }
 " HAVE_GCC_ATOMICS)
-
-CHECK_C_SOURCE_COMPILES("
-#include <pthread.h>
-#include <limits.h>
-int main(int argc, char* argv[]) {
-  pthread_attr_t a;
-  pthread_attr_setstacksize(&a, PTHREAD_STACK_MIN);
-  return 0;
-}
-" HAVE_PTHREAD_STACK_MIN)
 
 MACRO(CREATE_CHECK NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.c)

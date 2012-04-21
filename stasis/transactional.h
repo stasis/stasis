@@ -566,7 +566,7 @@ terms specified in this license.
  * @todo error handling
  *
  * @ingroup LLADD_CORE
- * $Id$
+ * $Id: transactional.h 1517 2011-06-12 08:13:34Z sears.russell@gmail.com $
  */
 
 #ifndef __TRANSACTIONAL_H__

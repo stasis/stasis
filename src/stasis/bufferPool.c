@@ -45,7 +45,7 @@ terms specified in this license.
  *
  * Implementation of in memory buffer pool
  *
- * $Id$
+ * $Id: bufferPool.c 1542 2011-08-23 18:25:26Z sears.russell@gmail.com $
  *
  */
 #include <stasis/common.h>

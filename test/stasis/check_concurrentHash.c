@@ -59,7 +59,7 @@ terms specified in this license.
 #include <stdlib.h>
 #include <string.h>
 
-#define LOG_NAME   "check_lhtable.log"
+#define LOG_NAME   "check_concurrentHash.log"
 
 
 #ifdef DBUG_TEST

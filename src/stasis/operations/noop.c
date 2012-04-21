@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**********************************************
- * $Id$
+ * $Id: noop.c 1210 2009-07-16 03:05:32Z sears.russell $
  * 
  * sets the given reference to dat
  **********************************************/

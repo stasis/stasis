@@ -30,7 +30,11 @@ int stasis_buffer_manager_io_handle_flags =
 #ifdef STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS
   STASIS_BUFFER_MANAGER_IO_HANDLE_FLAGS;
 #else
+#ifdef HAVE_O_NOATIME
   O_NOATIME;
+#else
+  0;
+#endif 
 #endif
 
 int stasis_buffer_manager_preallocate_mode =
@@ -94,17 +98,26 @@ stasis_handle_t* (*stasis_handle_factory)() =
 #endif
 stasis_handle_t* (*stasis_handle_file_factory)(const char* filename, int open_mode, int creat_perms) =
 #ifdef STASIS_FILE_HANDLE_FACTORY
-  STASIS_FILE_HANDLE_FACTORY
+  STASIS_FILE_HANDLE_FACTORY;
 #else
   stasis_handle_open_pfile;
 #endif
 
 stasis_handle_t* (*stasis_non_blocking_handle_file_factory)(const char* filename, int open_mode, int creat_perms) =
 #ifdef STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
-  STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY
+  STASIS_NON_BLOCKING_HANDLE_FILE_FACTORY;
 #else
   stasis_handle_open_pfile;
 #endif
+
+uint32_t stasis_handle_raid0_stripe_size =
+#ifdef STASIS_HANDLE_RAID0_STRIPE_SIZE
+  STASIS_HANDLE_RAID0_STRIPE_SIZE;
+#else
+  (256 * 1024);
+#endif
+
+char ** stasis_handle_raid0_filenames = 0;
 
 #ifdef STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL
 int stasis_buffer_manager_hint_writes_are_sequential = STASIS_BUFFER_MANAGER_HINT_WRITES_ARE_SEQUENTIAL;

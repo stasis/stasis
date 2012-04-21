@@ -47,7 +47,7 @@ terms specified in this license.
  *
  * @ingroup OPERATIONS
  *
- * $Id$
+ * $Id: noop.h 1157 2009-03-31 05:02:54Z sears.russell $
  * 
  **********************************************/
 

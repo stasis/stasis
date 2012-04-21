@@ -40,7 +40,7 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 /**********************************************
- * $Id$
+ * $Id: set.c 1526 2011-06-13 11:26:25Z sears.russell@gmail.com $
  *
  * sets the given reference to dat
  **********************************************/

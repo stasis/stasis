@@ -67,7 +67,7 @@ terms specified in this license.
 
    @ingroup COLLECTIONS
 
-   $Id$
+   $Id: arrayList.h 1517 2011-06-12 08:13:34Z sears.russell@gmail.com $
 */
 
 
