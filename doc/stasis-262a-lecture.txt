@@ -1,0 +1,257 @@
+Stasis Lecture Notes
+
+Outline:
+
+(0) What is Stasis?
+
+  Storage manager; one level below the RSS, MySQL storage engine, BDB, etc...
+     - Transactions that are agnostic to data layout.
+
+  Provides mechanisms without policy
+     - WAL recovery mechanisms:
+        - ARIES style
+        - Shadow Page style (for blobs, log-structured indices)
+
+           LFS is a log structured file system.  Stasis can support
+           log structured things (have implemented a log structured
+           index)
+
+        - LSN-free (to store data in native formats)
+
+     - Concurrency
+        - Multiple app threads
+        - CPU / IO concurrency
+        - I/O amortization (eg: group commit, write-back cache)
+     - Data layout tools (page formats)
+     - Allocation
+
+  Rest of this lecture: Applying ARIES primitives to your own systems
+
+     - Plug: If you want to do anything in this space for your
+             project, let me know; Stasis encodes these ideas!
+
+(1) Programming models for concurrency + error handling
+
+ A: Record broken invariants, unwind stack.
+
+  NTA: Needed for concurrency!  What is "concurrency" here?
+
+   (without lock manager)
+
+       Consistency, Isolation
+
+            - Isolation: App/system specific!  -> Policy; punt
+
+            - Consistency: Some is app/system specific (eg: referential
+                           integrity, objects have valid state)
+
+                           Some is inherant to the storage manager
+
+       Seems to be only a few ways to deal with error conditions.
+
+       One common approach: each action that breaks an invariant
+       should be pushed onto a stack.  On error, pop things of the
+       stack, repairing each invariant in order.
+
+         Aside: This is why C++ does not have a "finally" block.
+         Design pattern there is RAII (Resource Acquisition Is
+         Initiailization).  C++ programs stack allocate things like locks:
+
+          { Lock("foo") l;
+             // now I hold the lock
+          }
+          // lock released when stack frame exits
+
+      Nested Top Actions let transactional data structures protect
+      themselves against concurrent aborting transactions.
+      (Prerequisite for recovery)
+
+      Concurrent code (that [tries to] handle out of memory)
+
+      work through w/o error handling first.
+
+      move(item,treeA,treeB) {
+        try {
+           lock(item)
+
+           try {
+             lock(treeA)
+             //mess with tree pointers, allocation, etc...
+           } catch (e) {
+             //fix up tree structure somehow.
+             throw(e)
+           } finally {
+             unlock(treeA)
+           }
+           try {
+             lock(treeB)
+             //...
+           } catch (e) {
+             //fix up treeB structure
+             unlock(treeB)
+             try {
+               lock(treeA)
+               // put item back into treeA
+             } catch(e) {
+               // make sure this can't happen
+             } finally {
+               unlock(treeA)
+             }
+             throw(e)
+           }
+           unlock(treeB)
+        } finally {
+          unlock(item)
+        }
+      }
+
+   (1.5) Quick ARIES review
+
+     Undo traverses linked list.
+
+     CLR: Recovery generates long regions of the log that are
+          no-op's.  Need to prevent these from being executed more
+          than once, even if recovery crashes.
+
+       < write example on board >
+
+     Nested Top Action: Same mechanisim, different idea (gives concurrency)
+
+      [  Tree example  ]
+
+      Pseudo code:
+
+          xid = begin_transaction();
+
+          lock(tree_mutex);
+          nta = BeginNestedTopAction(xid, "tree insert", tree, item);
+
+          // update tree entries as normal
+
+          // crash inside here does physical undo
+
+          EndNestedTopAction(nta);
+          unlock(tree_mutex);
+
+          // more stuff happens
+
+          // crash / abort here does logical undo
+
+          end_transaction(xid);
+
+  B: Make copy + atomic swap
+
+     safe writes:  rename() is atomic for a reason.
+         write_new_copy()
+         sync()
+         rename new version on top of old version()
+
+     Shadow pages:  Same trick.
+
+     Functional programming: input to f() is immutable, output of f() is
+                             immutable
+
+  Tradeoffs?
+
+     Complexity
+        Update in place: data structure must support update in place;
+                         non-trivial for many apps
+        Copy + swap:  data must fit in RAM, or algorithm must be space efficient
+
+     Performance:
+        What % of object being updated?  (copy+swap writes whole object every
+        time)
+
+        Synchronization overhead (difficult to parallelize update in place)
+        Update in place suffers from fragmentation / seeks
+
+  This is where Stasis comes in.
+
+     System developer has control over on-disk represenatation of data
+        -> app-specific storage algorithms
+
+     Can switch between update in place, copy + swap, and more exotic
+        recovery mechanisms
+
+     Also, buffer manager, log manager, etc can be replaced / modified
+        to suit specific apps.
+
+  Example:
+
+     ROSE: Motivation: database replication environment, avoid all
+           disk seeks, use compression for performance
+
+     Draw LSM-Tree on board, mention compression, recovery techniques.
+
+(2) One way to think about ARIES:
+
+    Given atomic updates to the page file, provide durable transactions.
+
+  But disk writes aren't atomic!  Torn page handling:
+
+    At least three approaches to ensure atomic writes:
+
+     (1) canary bits.  Each disk page (512 bytes) contains a bit that
+         will be flipped each time a page is written back.  If the
+         bits don't match, the page is torn
+
+     (2) crcs: Checksum the page on writeback, store checksum in page.
+         (This finds silent data corruption, which is commonplace in
+         modern hard drives)
+
+     (3) double write buffer: Keep a log of all I/O operations sent to
+         disk.  Replay it at recovery.  (Q: what's the overhead of this?)
+
+    Common "silent" drive failure modes:
+
+     (0) Arbitrary subset of the page's sectors reach disk.
+     (1) Wrong bits are sent to drive, checksummed, written correctly
+     (2) Correct bits sent to drive, checksummed, written correctly,
+         *but to the wrong track*
+
+    Q: do any of these work?
+     A: no.
+
+    Q: Can we fix them up so we know when data is corrupted?
+     A: add page number to crc, double write buffer
+
+(3) Extending ARIES recovery
+
+  Plenty of sources of atomic redo are available.
+    - FS metadata
+    - SQL databases, BDB, etc.
+
+  If we have an LSN for each atomic object, then redo need only be
+  deterministic:
+
+   f(x) = f(x)
+
+  If not, we need a special property (a bit more than idempotency)
+
+    idempotency:  f(x) = f(f(x)
+
+  LSN-free updates:
+
+    blind writes: f(x) = f(x')
+
+  We get this with hard drives (modulo silent data corruption, need for media
+  recovery...)!
+
+    Can think of each bit (or byte) on a page as a seperate, versioned entity.
+
+    During REDO, need to make sure that each byte is the newest version in the
+    log.
+
+     - if byte is not updated in REDO log, then it must contain the correct
+       value before recovery starts -> OK
+
+     - if it is, then it will eventually be overwritten with newest log entry
+
+   Q: What about torn pages?
+      - works, but doesn't handle silent data corruption
+
+   Q: What about slotted pages?  (Where slot contents can be reshuffled at any
+      time?)
+      - need full physical redo for reshuffling
+
+
