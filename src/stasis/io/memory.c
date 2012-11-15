@@ -45,7 +45,7 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
 						lsn_t off, lsn_t len) {
   mem_impl* impl = (mem_impl*)(h->impl);
 
-  stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t * ret = stasis_malloc(1, stasis_write_buffer_t);
   if(!ret) { return NULL; }
 
   pthread_mutex_lock(&(impl->mut));
@@ -62,7 +62,7 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
       newbuf = realloc(impl->buf, off+len);
     } else {
       free(impl->buf);
-      newbuf = malloc(0);
+      newbuf = stasis_malloc(0, byte);
     }
     if(newbuf) {
       impl->buf = newbuf;
@@ -102,7 +102,7 @@ static stasis_read_buffer_t * mem_read_buffer(stasis_handle_t * h,
   mem_impl * impl = (mem_impl*)(h->impl);
   pthread_mutex_lock(&(impl->mut));
 
-  stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t * ret = stasis_malloc(1, stasis_read_buffer_t);
   if(!ret) { return NULL; }
 
   if(off < 0 || off + len > impl->end_pos) {
@@ -183,11 +183,11 @@ struct stasis_handle_t mem_func = {
 };
 
 stasis_handle_t * stasis_handle(open_memory)() {
-  stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
+  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
   if(!ret) { return NULL; }
   *ret = mem_func;
 
-  mem_impl * impl = malloc(sizeof(mem_impl));
+  mem_impl * impl = stasis_malloc(1, mem_impl);
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
   impl->end_pos = 0;

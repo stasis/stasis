@@ -144,8 +144,8 @@ static void  cwInsert  (struct replacementPolicy* impl, Page* page) {
 }
 
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count) {
-  replacementPolicy *ret = malloc(sizeof(*ret));
-  stasis_replacement_policy_concurrent_wrapper_t * rpw = malloc(sizeof(*rpw));
+  replacementPolicy *ret = stasis_malloc(1, replacementPolicy);
+  stasis_replacement_policy_concurrent_wrapper_t * rpw = stasis_malloc(1, stasis_replacement_policy_concurrent_wrapper_t);
 
   if(stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets) {
     // ensure that count is a power of two.
@@ -154,8 +154,8 @@ replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp
     count = 1; bits --;
     while(bits > 0) { count *= 2; bits--; }
   }
-  rpw->mut = malloc(sizeof(rpw->mut[0]) * count);
-  rpw->impl = malloc(sizeof(rpw->impl[0]) * count);
+  rpw->mut = stasis_malloc(count, pthread_mutex_t);
+  rpw->impl = stasis_malloc(count, replacementPolicy*);
   for(int i = 0; i < count; i++) {
     pthread_mutex_init(&rpw->mut[i],0);
     rpw->impl[i] = rp[i];

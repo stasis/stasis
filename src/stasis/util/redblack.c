@@ -144,9 +144,8 @@ RB_STATIC struct RB_ENTRY(tree) *RB_ENTRY(init)(void)
 		warned = 1;
 	}
 	struct RB_ENTRY(tree) *retval;
-	char c;
 
-	c=rcsid[0]; /* This does nothing but shutup the -Wall */
+	(void)rcsid; /* This does nothing but shutup the -Wall */
 
 	if ((retval=(struct RB_ENTRY(tree) *) malloc(sizeof(struct RB_ENTRY(tree))))==NULL)
 		return(NULL);
@@ -452,6 +451,8 @@ RB_ENTRY(_lookup)(int mode, const RB_ENTRY(data_t) *key, struct RB_ENTRY(tree) *
 	int cmp=0;
 	int found=0;
 	int first = 1;
+	(void)first; /* Silence compiler warning */
+
 	y=RBNULL; /* points to the parent of x */
 	x=rbinfo->rb_root;
 

@@ -95,12 +95,12 @@ ssize_t Tpread(int xid, byte* buf, size_t count, off_t offset) {
   return read_write_helper(1, xid, -1, buf, count, offset);
 }
 ssize_t Tpwrite(int xid, const byte * buf, size_t count, off_t offset) {
-  byte * buf2 = malloc(count);
+  byte * buf2 = stasis_malloc(count, byte);
 
   read_write_helper(1, xid, -1, buf2, count, offset);
 
   size_t entrylen = sizeof(segment_file_arg_t) + 2*count;
-  segment_file_arg_t * entry = malloc(entrylen);
+  segment_file_arg_t * entry = (segment_file_arg_t*)malloc(entrylen);
   entry->offset = offset;
   memcpy((entry+1), buf, count);
   memcpy(((byte*)(entry+1))+count, buf2, count);

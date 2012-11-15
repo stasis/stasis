@@ -27,7 +27,7 @@ struct stasis_truncation_t {
 #endif
 stasis_truncation_t * stasis_truncation_init(stasis_dirty_page_table_t * dpt, stasis_transaction_table_t * tbl,
                                              stasis_buffer_manager_t *buffer_manager, stasis_log_t *log) {
-  stasis_truncation_t * ret = malloc(sizeof(*ret));
+  stasis_truncation_t * ret = stasis_malloc(1, stasis_truncation_t);
   ret->initialized = 1;
   ret->automaticallyTruncating = 0;
   pthread_mutex_init(&ret->shutdown_mutex, 0);

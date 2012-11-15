@@ -128,7 +128,7 @@ lladd_hash_iterator * ThashIterator(int xid, recordid hash, int keySize, int val
   @param it The iterator that will be traversed.  @see ThashIterator().
   @param key a pointer to an uninitialized pointer value.  If another entry is 
          encountered, then the uninitialized pointer value will be set to point 
-         to a malloc()'ed region of memory that contains the value's key.  This 
+         to a malloc'ed region of memory that contains the value's key.  This
          region of memory should be manually free()'ed by the application.  LLADD
          normally leaves memory management to the application.  However, once 
          hashes with variable size entries are supported, it would be extremely 

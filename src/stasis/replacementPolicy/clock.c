@@ -115,8 +115,8 @@ static void  clockInsert  (struct replacementPolicy* impl, Page* page) {
 }
 
 replacementPolicy* replacementPolicyClockInit(Page * pageArray, int page_count) {
-  replacementPolicy *ret = malloc(sizeof(*ret));
-  stasis_replacement_policy_clock_t * clock = malloc(sizeof(*clock));
+  replacementPolicy *ret = stasis_malloc(1, replacementPolicy);
+  stasis_replacement_policy_clock_t * clock = stasis_malloc(1, stasis_replacement_policy_clock_t);
   clock->pages = pageArray;
   clock->page_count = page_count;
   clock->ptr = 0;

@@ -24,7 +24,7 @@ static int cmp_transition(const void * a, const void * b, const void * arg) {
 }
 
 rangeTracker * rangeTrackerInit(int quantization) {
-  rangeTracker * ret = malloc(sizeof(rangeTracker));
+  rangeTracker * ret = stasis_malloc(1, rangeTracker);
   ret->ranges = RB_ENTRY(init)(cmp_transition, 0);
   ret->quantization = quantization;
   return ret;
@@ -64,7 +64,7 @@ static void rangeTrackerDelta(rangeTracker * rt, const range * r, int delta) {
     assert(t->pins + t->delta >= 0);
     if(t->pos != r->start) {
       int newpins = t->pins + t->delta;
-      t = malloc(sizeof(transition));
+      t = stasis_malloc(1, transition);
       t->pos = r->start;
       t->delta = delta;
       t->pins = newpins;
@@ -84,7 +84,7 @@ static void rangeTrackerDelta(rangeTracker * rt, const range * r, int delta) {
       }
     }
   } else {
-    t = malloc(sizeof(transition));
+    t = stasis_malloc(1, transition);
     t->pos = r->start;
     t->delta = delta;
     t->pins = 0;
@@ -111,7 +111,7 @@ static void rangeTrackerDelta(rangeTracker * rt, const range * r, int delta) {
   }
   if(!t || t->pos != r->stop) {
     // Need to allocate new transition
-    t = malloc(sizeof(transition));
+    t = stasis_malloc(1, transition);
     t->pos = r->stop;
     t->delta = 0-delta;
     t->pins = curpin;
@@ -167,7 +167,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
     assert(!t->pins);
     assert(t->delta);
     assert(! ret[next_range] );
-    ret[next_range] = malloc(sizeof(range));
+    ret[next_range] = stasis_malloc(1, range);
     ret[next_range]->start = t->pos;
     in_range = 1;
   }
@@ -175,7 +175,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
     if(t->pins + t->delta) {
       if(!in_range) {
 	assert(! ret[next_range]);
-	ret[next_range] = malloc(sizeof(range));
+	ret[next_range] = stasis_malloc(1, range);
 	ret[next_range]->start = t->pos;
 	in_range = 1;
       }
@@ -350,7 +350,7 @@ const transition ** rangeTrackerEnumerate(rangeTracker * rt) {
   }
   RB_ENTRY(closelist)(list);
 
-  const transition ** ret = malloc(sizeof(transition **) * (transitionCount + 1));
+  const transition ** ret = stasis_malloc(transitionCount + 1, const transition*);
 
   list =  RB_ENTRY(openlist) (rt->ranges);
   int i = 0;

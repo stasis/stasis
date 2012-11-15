@@ -28,7 +28,7 @@ namespace rose {
 
       plugin_id_t pluginid = plugin_id<FORMAT, COMPRESSOR, typename COMPRESSOR::TYP>();
 
-      plugin_id_t * plugins = (plugin_id_t*)malloc(column_count * sizeof(plugin_id_t));
+      plugin_id_t * plugins = stasis_malloc(column_count, plugin_id_t);
       for(column_number_t c = 0; c < column_count; c++) {
 	plugins[c] = pluginid;
       }

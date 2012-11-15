@@ -78,7 +78,7 @@ stasis_bloom_filter_t * stasis_bloom_filter_create(uint64_t(*func_a)(const char*
 					    uint64_t(*func_b)(const char*,int),
 					    uint64_t num_expected_items,
 					    double false_positive_rate) {
-  stasis_bloom_filter_t * ret = malloc(sizeof(*ret));
+  stasis_bloom_filter_t * ret = stasis_malloc(1, stasis_bloom_filter_t);
   ret->func_a = func_a;
   ret->func_b = func_b;
   ret->num_expected_items = num_expected_items;
@@ -86,7 +86,7 @@ stasis_bloom_filter_t * stasis_bloom_filter_create(uint64_t(*func_a)(const char*
   ret->num_buckets = stasis_bloom_filter_calc_num_buckets(ret->num_expected_items, ret->desired_false_positive_rate);
   ret->buckets = calloc((ret->num_buckets / 8) + ((ret->num_buckets % 8 == 0) ? 0 : 1), 1);
   ret->num_functions = stasis_bloom_filter_calc_num_functions(ret->num_expected_items, ret->num_buckets);
-  ret->result_scratch_space = malloc(sizeof(*ret->result_scratch_space) * ret->num_functions);
+  ret->result_scratch_space = stasis_malloc(ret->num_functions, uint64_t);
   ret->actual_number_of_items = 0;
   return ret;
 }
@@ -136,7 +136,7 @@ void stasis_bloom_filter_insert(stasis_bloom_filter_t * bf, const char *key, int
 }
 int stasis_bloom_filter_lookup(stasis_bloom_filter_t * bf, const char * key, int len) {
   int ret = 1;
-  uint64_t * scratch = malloc(sizeof(*scratch) * bf->num_functions);
+  uint64_t * scratch = stasis_malloc(bf->num_functions, uint64_t);
   stasis_bloom_filter_calc_functions(bf, scratch, key, len);
   for(int i = 0; i < bf->num_functions; i++) {
     ret  = ret && stasis_bloom_filter_get_bit(bf, scratch[i]);

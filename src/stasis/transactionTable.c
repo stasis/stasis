@@ -172,7 +172,7 @@ int stasis_transaction_table_set_argument(stasis_transaction_table_t *tbl, int x
 }
 
 int* stasis_transaction_table_list_active(stasis_transaction_table_t *tbl, int *count) {
-  int * ret = malloc(sizeof(*ret));
+  int * ret = stasis_malloc(1, int);
   ret[0] = INVALID_XID;
   *count = 0;
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
@@ -188,7 +188,7 @@ int* stasis_transaction_table_list_active(stasis_transaction_table_t *tbl, int *
 }
 
 stasis_transaction_table_t *  stasis_transaction_table_init() {
-  stasis_transaction_table_t * tbl = malloc(sizeof(*tbl));
+  stasis_transaction_table_t * tbl = stasis_malloc(1, stasis_transaction_table_t);
   tbl->active_count = 0;
 
 #ifndef HAVE_GCC_ATOMICS
@@ -307,7 +307,7 @@ stasis_transaction_table_entry_t * stasis_transaction_table_begin(stasis_transac
   struct stasis_transaction_table_thread_local_state_t * tls = pthread_getspecific(tbl->key);
 
   if(tls == NULL) {
-    tls = malloc(sizeof(*tls));
+    tls = stasis_malloc(1, struct stasis_transaction_table_thread_local_state_t);
     tls->last_entry = 0;
     tls->num_entries = 0;
     tls->entries = NULL;

@@ -127,7 +127,7 @@ static void hazard_deinit_thread(void * p) {
  */
 static inline hazard_t* hazard_init(int hp_slots, int stack_start, int r_slots,
     int (*finalizer)(void*, void*), void * conf) {
-  hazard_t * ret = malloc(sizeof(hazard_t));
+  hazard_t * ret = stasis_malloc(1, hazard_t);
   pthread_key_create(&ret->hp, hazard_deinit_thread);
   ret->num_slots = hp_slots;
   ret->stack_start = stack_start;
@@ -142,7 +142,7 @@ static inline hazard_t* hazard_init(int hp_slots, int stack_start, int r_slots,
 static inline hazard_ptr_rec_t * hazard_ensure_tls(hazard_t * h) {
   hazard_ptr_rec_t * rec = pthread_getspecific(h->hp);
   if(rec == NULL) {
-    rec = malloc(sizeof(hazard_ptr_rec_t));
+    rec = stasis_malloc(1, hazard_ptr_rec_t);
     rec->hp = calloc(h->num_slots, sizeof(hazard_ptr));
     rec->rlist = calloc(h->num_r_slots, sizeof(hazard_ptr));
     rec->rlist_len = 0;

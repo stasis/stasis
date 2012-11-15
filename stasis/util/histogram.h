@@ -66,7 +66,7 @@ static inline void stasis_histogram_insert_log_timeval(stasis_histogram_64_t* hi
 
 static inline void stasis_histogram_tick(stasis_histogram_64_t* hist) {
   struct timeval * val = pthread_getspecific(hist->tls);
-  if(!val) { val = malloc(sizeof(*val)); pthread_setspecific(hist->tls, val); }
+  if(!val) { val = stasis_malloc(1, struct timeval); pthread_setspecific(hist->tls, val); }
   gettimeofday(val,0);
 }
 static inline void stasis_histogram_tock(stasis_histogram_64_t* hist) {

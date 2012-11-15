@@ -54,7 +54,7 @@ static int bufManCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_
 
 stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handle_t * ph) {
   page_handle = ph;
-  stasis_buffer_manager_t * bm = malloc(sizeof(*bm));
+  stasis_buffer_manager_t * bm = stasis_malloc(1, stasis_buffer_manager_t);
   bm->releasePageImpl = bufManReleasePage;
   bm->openHandleImpl = bufManOpenHandle;
   bm->closeHandleImpl = bufManCloseHandle;

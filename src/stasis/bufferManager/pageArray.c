@@ -23,7 +23,7 @@ static Page * paLoadPage(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
   }
 
   if(!pa->pageMap[pageid]) {
-    pa->pageMap[pageid] = malloc(sizeof(Page));
+    pa->pageMap[pageid] = stasis_malloc(1, Page);
     pa->pageMap[pageid]->id = pageid;
     pa->pageMap[pageid]->pageType = type == UNKNOWN_TYPE_PAGE ? 0 : type;
     pa->pageMap[pageid]->LSN = 0;
@@ -82,8 +82,8 @@ static int paCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
 
 stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
 
-  stasis_buffer_manager_t * bm = malloc(sizeof(*bm));
-  stasis_buffer_manager_page_array_t * pa = malloc(sizeof(*pa));
+  stasis_buffer_manager_t * bm = stasis_malloc(1, stasis_buffer_manager_t);
+  stasis_buffer_manager_page_array_t * pa = stasis_malloc(1, stasis_buffer_manager_page_array_t);
 
   bm->releasePageImpl = paReleasePage;
   bm->openHandleImpl = paOpenHandle;

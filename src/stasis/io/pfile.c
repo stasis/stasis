@@ -64,7 +64,7 @@ typedef struct pfile_impl {
 */
 static int pfile_num_copies(stasis_handle_t *h) { return 0; }
 /**
-   We have to call malloc(), but not memcpy().  Maybe this should return 1.
+   We have to call malloc, but not memcpy.  Maybe this should return 1.
 */
 static int pfile_num_copies_buffer(stasis_handle_t *h) { return 0; }
 
@@ -198,7 +198,7 @@ static int pfile_write(stasis_handle_t *h, lsn_t off, const byte *dat,
 
 static stasis_write_buffer_t * pfile_write_buffer(stasis_handle_t *h,
                                                  lsn_t off, lsn_t len) {
-  stasis_write_buffer_t *ret = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t *ret = stasis_malloc(1, stasis_write_buffer_t);
 
   if (!ret) {
     h->error = ENOMEM;
@@ -213,7 +213,7 @@ static stasis_write_buffer_t * pfile_write_buffer(stasis_handle_t *h,
 
   byte *buf;
   if (!error) {
-    buf = malloc(len);
+    buf = stasis_malloc(len, byte);
     if (!buf) { error = ENOMEM; }
   }
   if (error) {
@@ -249,10 +249,10 @@ static int pfile_release_write_buffer(stasis_write_buffer_t *w) {
 
 static stasis_read_buffer_t *pfile_read_buffer(stasis_handle_t *h,
 					      lsn_t off, lsn_t len) {
-  stasis_read_buffer_t *ret = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t *ret = stasis_malloc(1, stasis_read_buffer_t);
   if (!ret) { return NULL; }
 
-  byte *buf = malloc(len);
+  byte *buf = stasis_malloc(len,byte);
   int error = 0;
 
   if (!buf) { error = ENOMEM; }
@@ -417,11 +417,11 @@ static struct stasis_handle_t pfile_func = {
 
 stasis_handle_t *stasis_handle(open_pfile)(const char *filename,
                                            int flags, int mode) {
-  stasis_handle_t *ret = malloc(sizeof(stasis_handle_t));
+  stasis_handle_t *ret = stasis_malloc(1, stasis_handle_t);
   if (!ret) { return NULL; }
   *ret = pfile_func;
 
-  pfile_impl *impl = malloc(sizeof(pfile_impl));
+  pfile_impl *impl = stasis_malloc(1, pfile_impl);
   if (!impl) { free(ret); return NULL; }
 
   ret->impl = impl;

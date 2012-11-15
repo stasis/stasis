@@ -60,7 +60,7 @@ int TpagedListInsert(int xid, recordid list, const byte * key, int keySize, cons
     DEBUG("Alloced rid: {%d %d %d}", rid.page, rid.slot, rid.size);
   }
 
-  pagedListEntry * dat = malloc(entrySize);
+  pagedListEntry * dat = (pagedListEntry*)malloc(entrySize);
 
   dat->keySize   = keySize;
   dat->nextEntry = header.thisPage;
@@ -90,12 +90,12 @@ int TpagedListFind(int xid, recordid list, const byte * key, int keySize, byte *
     if(rid.slot) {
       rid.size = TrecordSize(xid, rid);
       pagedListEntry * dat;
-      dat = malloc(rid.size);
+      dat = (pagedListEntry*)malloc(rid.size);
       Tread(xid, rid, dat);
 
       if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
         int valueSize = rid.size - keySize - sizeof(pagedListEntry);
-        *value = malloc(valueSize);
+        *value = stasis_malloc(valueSize, byte);
         memcpy(*value, ((byte*)(dat+1))+keySize, valueSize);
         free(dat);
         return valueSize;
@@ -125,7 +125,7 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
   while(rid.slot || header.nextPage.size != -1) {
     if(rid.slot) {
       rid.size = TrecordSize(xid, rid);
-      pagedListEntry * dat = malloc(rid.size);
+      pagedListEntry * dat = (pagedListEntry*)malloc(rid.size);
       Tread(xid, rid, dat);
 
       if(dat->keySize == keySize && !memcmp(dat+1, key, keySize)) {
@@ -134,7 +134,7 @@ int TpagedListRemove(int xid, recordid list, const byte * key, int keySize) {
           recordid lastRid = rid;
           lastRid.slot = lastSlot;
           lastRid.size = TrecordSize(xid, lastRid);
-          pagedListEntry * lastRidBuf = malloc(lastRid.size);
+          pagedListEntry * lastRidBuf = (pagedListEntry*)malloc(lastRid.size);
           Tread(xid, lastRid, lastRidBuf);
           lastRidBuf->nextEntry = dat->nextEntry;
           Tset(xid, lastRid, lastRidBuf);
@@ -183,7 +183,7 @@ lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) {
   assert(list.size == sizeof(pagedListHeader));
     Tread(xid, list, &header);
 
-  lladd_pagedList_iterator * it = malloc(sizeof(lladd_pagedList_iterator));
+  lladd_pagedList_iterator * it = stasis_malloc(1, lladd_pagedList_iterator);
 
   it->headerRid = header.nextPage;
   it->entryRid  = list;
@@ -203,14 +203,14 @@ int TpagedListNext(int xid, lladd_pagedList_iterator * it,
       it->entryRid.size = TrecordSize(xid, it->entryRid);
       assert(it->entryRid.size != -1);
 
-      pagedListEntry * entry = malloc(it->entryRid.size);
+      pagedListEntry * entry = (pagedListEntry*)malloc(it->entryRid.size);
       Tread(xid, it->entryRid, entry);
 
       *keySize = entry->keySize;
       *valueSize = it->entryRid.size - *keySize - sizeof(pagedListEntry);
 
-      *key = malloc(*keySize);
-      *value = malloc(*valueSize);
+      *key = stasis_malloc(*keySize, byte);
+      *value = stasis_malloc(*valueSize, byte);
 
       memcpy(*key, entry+1, *keySize);
       memcpy(*value, ((byte*)(entry+1))+*keySize, *valueSize);

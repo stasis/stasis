@@ -189,7 +189,7 @@ static void stasis_log_impl_in_memory_set_truncation(stasis_log_t *log, stasis_t
 }
 
 stasis_log_t* stasis_log_impl_in_memory_open() {
-  stasis_log_impl_in_memory * impl = malloc(sizeof(*impl));
+  stasis_log_impl_in_memory * impl = stasis_malloc(1, stasis_log_impl_in_memory);
   impl->flushedLSN_lock   = initlock();
   impl->globalOffset_lock = initlock();
   impl->globalOffset = 0;
@@ -201,7 +201,7 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
     impl->bufferLen = stasis_log_in_memory_max_entries;
     impl->maxLen = impl->bufferLen;
   }
-  impl->buffer = malloc(impl->bufferLen * sizeof (LogEntry *));
+  impl->buffer = stasis_malloc(impl->bufferLen, LogEntry *);
   impl->trunc = 0;
   static stasis_log_t proto = {
     stasis_log_impl_in_memory_set_truncation,
@@ -221,7 +221,7 @@ stasis_log_t* stasis_log_impl_in_memory_open() {
     stasis_log_impl_in_memory_close,
     stasis_log_impl_in_memory_is_durable
   };
-  stasis_log_t* log = malloc(sizeof(*log));
+  stasis_log_t* log = stasis_malloc(1, stasis_log_t);
   memcpy(log,&proto, sizeof(proto));
   log->impl = impl;
   return log;

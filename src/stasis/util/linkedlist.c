@@ -56,15 +56,15 @@ void printList(LinkedList **l) {
 	printf (".\n");
 }
 void addVal(LinkedList **list, long val) {
-  LinkedList * new = (LinkedList *)malloc(sizeof(LinkedList));
-  new->val = val;
-  new->next = NULL;
+  LinkedList * node = stasis_malloc(1, LinkedList);
+  node->val = val;
+  node->next = NULL;
   if (*list==NULL) {
-    *list = new;
+    *list = node;
   }
   else {
-    new->next = *list;
-    *list = new;
+    node->next = *list;
+    *list = node;
   }
 }
 void removeVal(LinkedList **list, long val) {
@@ -105,12 +105,12 @@ long popMaxVal(LinkedList **list) {
 void addSortedVal(LinkedList **list, long val) {
   LinkedList * tmp;
   LinkedList * tmpprev;
-  LinkedList * new = malloc(sizeof(LinkedList));
-  new->val = val;
+  LinkedList * node = stasis_malloc(1, LinkedList);
+  node->val = val;
   /*see if new entry should come in the beginning*/
   if ((*list==NULL) || ((*list)->val<val)) {
-	new->next = *list;
-	*list = new;
+	node->next = *list;
+	*list = node;
 	return;
   }
   /*else determine where to put new entry*/
@@ -118,16 +118,16 @@ void addSortedVal(LinkedList **list, long val) {
   tmpprev = *list;
   while (tmp!=NULL) {
 	  if (tmp->val<val) {
-		  tmpprev->next = new;
-		  new->next = tmp;
+		  tmpprev->next = node;
+		  node->next = tmp;
 		  return;
 	  }
 	  tmpprev = tmp;
 	  tmp = tmp->next;
   }
   /*if gotten here, tmp is null so put item at the end of the list*/
-  new->next = NULL;
-  tmpprev->next = new;
+  node->next = NULL;
+  tmpprev->next = node;
 }
 /*
   return 1 if val is in the list, 0 otherwise

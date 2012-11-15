@@ -381,10 +381,10 @@ block_t genericBlock = {
 };
 
 block_t* stasis_block_first_default_impl(int xid, Page * p) {
-  block_t* ret = malloc(sizeof(block_t));
+  block_t* ret = stasis_malloc(1, block_t);
   *ret = genericBlock;
   genericBlockImpl impl = { p, NULLRID };
-  ret->impl = malloc(sizeof(genericBlockImpl));
+  ret->impl = stasis_malloc(1, genericBlockImpl);
   *(genericBlockImpl*)(ret->impl) = impl;
   return ret;
 }

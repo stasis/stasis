@@ -47,7 +47,7 @@ int TpageSetRange(int xid, pageid_t page, int offset, const void * memAddr, int 
   // XXX need to pack offset into front of log entry
 
   Page * p = loadPage(xid, page);
-  byte * logArg = malloc(sizeof(int) + 2 * len);
+  byte * logArg = stasis_malloc(sizeof(int) + 2 * len, byte);
 
   *(int*)logArg = offset;
   memcpy(logArg+sizeof(int),     ((const byte*)memAddr), len);

@@ -66,7 +66,7 @@
 static inline stasis_read_buffer_t* alloc_read_buffer_error(stasis_handle_t *h,
                                                              int error) {
   assert(error);
-  stasis_read_buffer_t * r = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t * r = stasis_malloc(1, stasis_read_buffer_t);
   r->h = h;
   r->buf = 0;
   r->len = 0;
@@ -78,7 +78,7 @@ static inline stasis_read_buffer_t* alloc_read_buffer_error(stasis_handle_t *h,
 static inline stasis_write_buffer_t* alloc_write_buffer_error
     (stasis_handle_t *h, int error) {
   assert(error);
-  stasis_write_buffer_t * w = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t * w = stasis_malloc(1, stasis_write_buffer_t);
   w->h = h;
   w->off = 0;
   w->buf = 0;
@@ -214,7 +214,7 @@ static void releaseSlowHandle(nbw_impl * impl, stasis_handle_t * slow) {
 }
 
 static tree_node * allocTreeNode(lsn_t off, lsn_t len) {
-  tree_node * ret = malloc(sizeof(tree_node));
+  tree_node * ret = stasis_malloc(1, tree_node);
   ret->start_pos = off;
   ret->end_pos = off + len;
   ret->dirty = CLEAN;
@@ -408,11 +408,11 @@ static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
   const tree_node * n = allocFastHandle(impl, off, len);
   stasis_write_buffer_t * w = n->h->write_buffer(n->h, off, len);
 
-  write_buffer_impl * w_impl = malloc(sizeof(write_buffer_impl));
+  write_buffer_impl * w_impl = stasis_malloc(1, write_buffer_impl);
   w_impl->n = n;
   w_impl->w = w;
 
-  stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t * ret = stasis_malloc(1, stasis_write_buffer_t);
   ret->h     = h;
   ret->off   = w->off;
   ret->len   = w->len;
@@ -454,11 +454,11 @@ static stasis_read_buffer_t * nbw_read_buffer(stasis_handle_t * h,
   stasis_handle_t * r_h = n ? n->h : getSlowHandle(impl);
   r = r_h->read_buffer(r_h, off, len);
 
-  read_buffer_impl * r_impl = malloc(sizeof(read_buffer_impl));
+  read_buffer_impl * r_impl = stasis_malloc(1, read_buffer_impl);
   r_impl->n = n;
   r_impl->r = r;
 
-  stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t * ret = stasis_malloc(1, stasis_read_buffer_t);
   ret->h = h;
   ret->off = r->off;
   ret->len = r->len;
@@ -661,11 +661,11 @@ static void * nbw_worker(void * handle) {
           len += np_len;
 
           if(first) {
-            buf = malloc(r->len + len);
+            buf = stasis_malloc(r->len + len, byte);
             memcpy(buf, r->buf, r->len);
             buf_off += r->len;
 
-            dummies = malloc(sizeof(tree_node));
+            dummies = stasis_malloc(1, tree_node);
             dummies[0] = dummy;
             dummy_count = 1;
             first = 0;
@@ -774,7 +774,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
      stasis_handle_t * (*fast_factory)(lsn_t, lsn_t, void *),
      void * fast_factory_arg, int worker_thread_count, lsn_t buffer_size,
      int max_fast_handles) {
-  nbw_impl * impl = malloc(sizeof(nbw_impl));
+  nbw_impl * impl = stasis_malloc(1, nbw_impl);
   pthread_mutex_init(&impl->mut, 0);
 
   impl->end_pos = 0;
@@ -787,7 +787,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
 
   impl->available_slow_handles = 0;
   impl->available_slow_handle_count = 0;
-  impl->all_slow_handles = malloc(sizeof(stasis_handle_t*));
+  impl->all_slow_handles = stasis_malloc(1, stasis_handle_t*);
   impl->all_slow_handle_count = 0;
 
   impl->requested_bytes_written = 0;
@@ -803,7 +803,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   impl->max_buffer_size = buffer_size;
   impl->used_buffer_size = 0;
 
-  impl->workers = malloc(worker_thread_count * sizeof(pthread_t));
+  impl->workers = stasis_malloc(worker_thread_count, pthread_t);
   impl->worker_count = worker_thread_count;
 
   pthread_cond_init(&impl->pending_writes_cond, 0);
@@ -812,7 +812,7 @@ stasis_handle_t * stasis_handle(open_non_blocking)
   impl->still_open = 1;
   impl->refcount = 1;
 
-  stasis_handle_t *h = malloc(sizeof(stasis_handle_t));
+  stasis_handle_t *h = stasis_malloc(1, stasis_handle_t);
   *h = nbw_func;
   h->impl = impl;
 
@@ -855,7 +855,7 @@ static stasis_handle_t * slow_pfile_factory(void * argsP) {
   return h;
 }
 static int nop_close(stasis_handle_t*h) { return 0; }
-    struct sf_args * slow_arg = malloc(sizeof(sf_args));
+    struct sf_args * slow_arg = stasis_malloc(1, struct sf_args);
         slow_arg->filename = path;
 
         slow_arg->openMode = openMode;

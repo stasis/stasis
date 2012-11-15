@@ -46,7 +46,7 @@ static void phPrefetchRange(stasis_page_handle_t *ph, pageid_t pageid, pageid_t 
   lsn_t off = pageid * PAGE_SIZE;
   lsn_t len = count * PAGE_SIZE;
 
-  byte * buf = malloc(len);
+  byte * buf = stasis_malloc(len, byte);
 
   ((stasis_handle_t*)ph->impl)->read(ph->impl, off, buf, len);
 
@@ -81,7 +81,7 @@ static void phClose(stasis_page_handle_t * ph) {
   free(ph);
 }
 static stasis_page_handle_t * phDup(stasis_page_handle_t * ph, int is_sequential) {
-  stasis_page_handle_t * ret = malloc(sizeof(*ret));
+  stasis_page_handle_t * ret = stasis_malloc(1, stasis_page_handle_t);
   memcpy(ret, ph, sizeof(*ret));
   ret->impl = ((stasis_handle_t*)ret->impl)->dup(ret->impl);
   if(((stasis_handle_t*)ret->impl)->error != 0) {
@@ -97,7 +97,7 @@ static stasis_page_handle_t * phDup(stasis_page_handle_t * ph, int is_sequential
 stasis_page_handle_t * stasis_page_handle_open(stasis_handle_t * handle,
                                                stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
   DEBUG("Using pageHandle implementation\n");
-  stasis_page_handle_t * ret = malloc(sizeof(*ret));
+  stasis_page_handle_t * ret = stasis_malloc(1, stasis_page_handle_t);
   ret->write = phWrite;
   ret->read  = phRead;
   ret->prefetch_range = phPrefetchRange;

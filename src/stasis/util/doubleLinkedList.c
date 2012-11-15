@@ -15,15 +15,15 @@ static inline struct LL_ENTRY(node_t)* LL_ENTRY(shiftNode) (struct LL_ENTRY(list
 static inline void LL_ENTRY(removeNode)(list * l, node_t * n);
 
 list * LL_ENTRY(create)(node_t*(*getNode)(value_t*v,void*conf), void(*setNode)(value_t*v,node_t*n,void*conf),void*conf) {
-  list* ret = malloc(sizeof(list));
+  list* ret = stasis_malloc(1, list);
 
   // bypass const annotation on head, tail...
   list tmp = {
     getNode,
     setNode,
     conf,
-    malloc(sizeof(node_t)),
-    malloc(sizeof(node_t))
+    stasis_malloc(1,node_t),
+    stasis_malloc(1,node_t)
   };
   memcpy(ret, &tmp, sizeof(list));
 
@@ -44,7 +44,7 @@ void LL_ENTRY(destroy)(list* l) {
   free(l);
 }
 int LL_ENTRY(push)(list* l, value_t * v) {
-  node_t * n = malloc(sizeof(node_t));
+  node_t * n = stasis_malloc(1, node_t);
   if(!n) { return ENOMEM; }
   n->v = v;
   assert(l->getNode(v, l->conf) == 0);
@@ -65,7 +65,7 @@ value_t* LL_ENTRY(pop) (list* l) {
   }
 }
 int LL_ENTRY(unshift)(list* l, value_t * v) {
-  node_t * n = malloc(sizeof(node_t));
+  node_t * n = stasis_malloc(1, node_t);
   if(!n) { return ENOMEM; }
   n->v = v;
   assert(l->getNode(v, l->conf) == 0);

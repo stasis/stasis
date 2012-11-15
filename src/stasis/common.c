@@ -58,7 +58,7 @@ int __lladd_pthread_mutex_lock(lladd_pthread_mutex_t *mutex, char * file, int li
   mutex->last_acquired_at = location;
 
   if(!tup) {
-    tup = malloc(sizeof(profile_tuple));
+    tup = stasis_malloc(1, profile_tuple);
 
     init_tuple(tup);
 
@@ -133,7 +133,7 @@ int __lladd_pthread_cond_wait(pthread_cond_t *cond, lladd_pthread_mutex_t *mutex
   mutex->last_acquired_at = location;
 
   if(!tup) {
-    tup = malloc(sizeof(profile_tuple));
+    tup = stasis_malloc(1, profile_tuple);
 
     init_tuple(tup);
 
@@ -167,7 +167,7 @@ int __lladd_pthread_cond_timedwait(pthread_cond_t *cond, lladd_pthread_mutex_t *
 #undef downgradelock
 
 __profile_rwl *__profile_rw_initlock (char * file, int line) {
-  __profile_rwl * ret = malloc(sizeof(__profile_rwl));
+  __profile_rwl * ret = stasis_malloc(1, __profile_rwl);
 
   ret->file = file;
   ret->line = line;
@@ -219,7 +219,7 @@ void __profile_readlock (__profile_rwl *lock, int d, char * file, int line) {
   lock->last_acquired_at = location;
 
   if(!tup) {
-    tup = malloc(sizeof(profile_tuple));
+    tup = stasis_malloc(1, profile_tuple);
 
     init_tuple(tup);
 
@@ -258,7 +258,7 @@ void __profile_writelock (__profile_rwl *lock, int d, char * file, int line) {
   lock->last_acquired_at = location;
 
   if(!tup) {
-    tup = malloc(sizeof(profile_tuple));
+    tup = stasis_malloc(1, profile_tuple);
 
     init_tuple(tup);
 

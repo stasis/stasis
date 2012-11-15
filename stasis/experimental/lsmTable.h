@@ -631,8 +631,7 @@ namespace rose {
       gettimeofday(&stop_tv,0);
       stop = tv_to_double(stop_tv);
 
-      typeof(h->scratch_tree)* tmp_ptr
-	= (typeof(h->scratch_tree)*) malloc(sizeof(void*));
+      typeof(h->scratch_tree)* tmp_ptr = (typeof(h->scratch_tree)*) malloc(sizeof(void*));
       *tmp_ptr = h->scratch_tree;
       *(h->input_handle) = tmp_ptr;
 
@@ -857,7 +856,7 @@ namespace rose {
     LSM_ITER* c1p = new LSM_ITER(*h->args1->in_tree ? **h->args1->in_tree : 0 , val);
     LSM_ITER* c2 = new LSM_ITER( h->args1->my_tree                            , val);
 
-    void ** ret = (void**)malloc(10 * sizeof(void*));
+    void ** ret = stasis_malloc(10, void*);
 
     ret[0] = c0;
     ret[1] = c0p;

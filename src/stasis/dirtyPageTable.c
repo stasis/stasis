@@ -55,13 +55,13 @@ void stasis_dirty_page_table_set_dirty(stasis_dirty_page_table_t * dirtyPages, P
     pthread_mutex_lock(&dirtyPages->mutex);
     if(!p->dirty) {
       p->dirty = 1;
-      dpt_entry * e = malloc(sizeof(*e));
+      dpt_entry * e = stasis_malloc(1, dpt_entry);
       e->p = p->id;
       e->lsn = p->LSN;
       const void * ret = rbsearch(e, dirtyPages->tableByPage);
       assert(ret == e); // otherwise, the entry was already in the table.
 
-      e = malloc(sizeof(*e));
+      e = stasis_malloc(1, dpt_entry);
       e->p = p->id;
       e->lsn = p->LSN;
       ret = rbsearch(e, dirtyPages->tableByLsnAndPage);
@@ -344,7 +344,7 @@ void stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table_t * dpt,
 }
 
 stasis_dirty_page_table_t * stasis_dirty_page_table_init() {
-  stasis_dirty_page_table_t * ret = malloc(sizeof(*ret));
+  stasis_dirty_page_table_t * ret = stasis_malloc(1, stasis_dirty_page_table_t);
   ret->outstanding_flush_lsns = stasis_util_multiset_create();
 
   ret->tableByPage = rbinit(dpt_cmp_page, 0);

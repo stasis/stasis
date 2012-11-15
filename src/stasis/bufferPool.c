@@ -64,7 +64,7 @@ struct stasis_buffer_pool_t {
 
 stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
-  stasis_buffer_pool_t * ret = malloc(sizeof(*ret));
+  stasis_buffer_pool_t * ret = stasis_malloc(1, stasis_buffer_pool_t);
 
   ret->nextPage = 0;
 
@@ -72,7 +72,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
 #ifndef VALGRIND_MODE
 
-  byte * bufferSpace = malloc((stasis_buffer_manager_size + 2) * PAGE_SIZE);
+  byte * bufferSpace = stasis_malloc((stasis_buffer_manager_size + 2) * PAGE_SIZE, byte);
   assert(bufferSpace);
   ret->addr_to_free = bufferSpace;
 
@@ -85,7 +85,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
   // We need one dummy page for locking purposes,
   //  so this array has one extra page in it.
-  ret->pool = malloc(sizeof(ret->pool[0])*(stasis_buffer_manager_size+1));
+  ret->pool = stasis_malloc(stasis_buffer_manager_size+1, Page);
 
   for(pageid_t i = 0; i < stasis_buffer_manager_size+1; i++) {
     ret->pool[i].rwlatch = initlock();
@@ -93,7 +93,7 @@ stasis_buffer_pool_t* stasis_buffer_pool_init() {
 #ifndef VALGRIND_MODE
     ret->pool[i].memAddr = &(bufferSpace[i*PAGE_SIZE]);
 #else
-    ret->pool[i].memAddr = malloc(PAGE_SIZE);
+    ret->pool[i].memAddr = stasis_malloc(PAGE_SIZE, byte);
 #endif
     ret->pool[i].dirty = 0;
     ret->pool[i].needsFlush = 0;

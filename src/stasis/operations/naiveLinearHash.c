@@ -371,7 +371,7 @@ recordid TnaiveHashCreate(int xid, int keySize, int valSize) {
   assert(headerRidB);
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
-  recordid * check = malloc(stasis_record_type_to_size(stasis_record_dereference(xid, p, rid).size));
+  recordid * check = (recordid*)malloc(stasis_record_type_to_size(stasis_record_dereference(xid, p, rid).size));
   unlock(p->rwlatch);
   releasePage(p);
   rid.slot = 0;
@@ -432,7 +432,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
   recordid  deleteMe;
   hashRid.slot = bucket_number;
 
-  hashEntry * bucket_contents = malloc(sizeof(hashEntry) + keySize + valSize);
+  hashEntry * bucket_contents = (hashEntry*)malloc(sizeof(hashEntry) + keySize + valSize);
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   Tread(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
@@ -448,7 +448,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
 }
 
 int TnaiveHashOpen(int xid, recordid hashRid, int keySize, int valSize) {
-  recordid * headerRidB = malloc(sizeof(recordid) + keySize + valSize);
+  recordid * headerRidB = (recordid*)malloc(sizeof(recordid) + keySize + valSize);
   hashRid.slot = 1;
   Tread(xid, hashRid, headerRidB);
 

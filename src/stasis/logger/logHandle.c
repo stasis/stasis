@@ -68,7 +68,7 @@ LogHandle* getLogHandle(stasis_log_t* log) {
 }
 
 LogHandle* getLSNHandle(stasis_log_t * log, lsn_t lsn) {
-  LogHandle* ret = malloc(sizeof(*ret));
+  LogHandle* ret = stasis_malloc(1, LogHandle);
   ret->next_offset = lsn;
   ret->prev_offset = lsn;
   ret->last = 0;

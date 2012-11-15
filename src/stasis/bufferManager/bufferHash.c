@@ -506,8 +506,8 @@ static int bhCloseHandleImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
-  stasis_buffer_manager_t *bm = malloc(sizeof(*bm));
-  stasis_buffer_hash_t *bh = malloc(sizeof(*bh));
+  stasis_buffer_manager_t *bm = stasis_malloc(1, stasis_buffer_manager_t);
+  stasis_buffer_hash_t *bh = stasis_malloc(1, stasis_buffer_hash_t);
 
   bm->openHandleImpl = bhOpenHandleImpl;
   bm->closeHandleImpl = bhCloseHandleImpl;
@@ -568,7 +568,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * 
   bh->prefetch_next_count = 0;
   bh->prefetch_next_pageid = 0;
 
-  bh->prefetch_workers = malloc(sizeof(pthread_t) * bh->prefetch_thread_count);
+  bh->prefetch_workers = stasis_malloc(bh->prefetch_thread_count, pthread_t);
   for(int i = 0; i < bh->prefetch_thread_count; i++) {
     pthread_create(&bh->prefetch_workers[i], 0, prefetch_worker, bh);
   }

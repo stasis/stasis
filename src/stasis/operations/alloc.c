@@ -212,7 +212,7 @@ int stasis_alloc_callback(int xid, void * arg) {
 }
 
 stasis_alloc_t* stasis_alloc_init(stasis_transaction_table_t * tbl, stasis_allocation_policy_t * allocPolicy) {
-  stasis_alloc_t * alloc = malloc(sizeof(*alloc));
+  stasis_alloc_t * alloc = stasis_malloc(1, stasis_alloc_t);
   alloc->lastFreepage = PAGEID_T_MAX;
   alloc->allocPolicy = allocPolicy;
   pthread_mutex_init(&alloc->mut, 0);

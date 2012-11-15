@@ -92,7 +92,7 @@ void * random_op_thread(void * argp) {
 int do_operations(pageid_t page_count, int num_threads, unsigned long long num_ops, double write_frac, int target_ops) {
   unsigned long long ops_per_thread = ceil(((double)num_ops) / (double)num_threads);
   unsigned long long ops_remaining = num_ops;
-  pthread_t * threads = malloc(sizeof(threads[0]) * num_threads);
+  pthread_t * threads = stasis_malloc(num_threads, pthread_t);
 
   struct timeval tv;
   gettimeofday(&tv,0);
@@ -100,7 +100,7 @@ int do_operations(pageid_t page_count, int num_threads, unsigned long long num_o
 
   for(int i = 0; i < num_threads ; i++) {
     if(ops_remaining <= 0) { num_threads = i; break; }
-    struct thread_arg *a = malloc(sizeof(*a));
+    struct thread_arg *a = stasis_malloc(1, struct thread_arg);
     a->seed = base_seed + i;
     a->num_ops = ops_remaining < ops_per_thread ? ops_remaining : ops_per_thread;
     a->write_frac = write_frac;

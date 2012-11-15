@@ -179,4 +179,6 @@ extern long long *stasis_dbug_timestamp;
 
 #include <pthread.h>
 
+#include <stasis/util/malloc.h>
+
 #endif /* __stasis_common_h */

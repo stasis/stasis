@@ -57,7 +57,7 @@ static int raid0_close(stasis_handle_t *h) {
 }
 static stasis_handle_t* raid0_dup(stasis_handle_t *h) {
   raid0_impl * r = h->impl;
-  stasis_handle_t ** h_dup = malloc(sizeof(h_dup[0]) * r->handle_count);
+  stasis_handle_t ** h_dup = stasis_malloc(r->handle_count, stasis_handle_t*);
   for(int i = 0; i < r->handle_count; i++) {
     h_dup[i] = r->h[i]->dup(r->h[i]);
   }
@@ -191,12 +191,12 @@ struct stasis_handle_t raid0_func = {
 };
 
 stasis_handle_t * stasis_handle_open_raid0(int handle_count, stasis_handle_t** h, uint32_t stripe_size) {
-  stasis_handle_t * ret = malloc(sizeof(*ret));
+  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
   *ret = raid0_func;
-  raid0_impl * r = malloc(sizeof(*r));
+  raid0_impl * r = stasis_malloc(1, raid0_impl);
   r->stripe_size = stripe_size;
   r->handle_count = handle_count;
-  r->h = malloc(sizeof(r->h[0]) * handle_count);
+  r->h = stasis_malloc(handle_count, stasis_handle_t*);
   for(int i = 0; i < handle_count; i++) {
     r->h[i] = h[i];
   }

@@ -112,7 +112,7 @@ Page * TsetWithPage(int xid, recordid rid, Page *p, const void * dat) {
     unlock(p->rwlatch);
 
     size_t sz = sizeof(slotid_t) + sizeof(int64_t) + 2 * rid.size;
-    byte * const buf = malloc(sz);
+    byte * const buf = stasis_malloc(sz, byte);
 
     byte * b = buf;
     *(slotid_t*) b = rid.slot;    b += sizeof(slotid_t);
@@ -136,7 +136,7 @@ int Tset(int xid, recordid rid, const void * dat) {
 int TsetRaw(int xid, recordid rid, const void * dat) {
   rid.size = stasis_record_type_to_size(rid.size);
   size_t sz = sizeof(slotid_t) + sizeof(int64_t) + 2 * rid.size;
-  byte * const buf = malloc(sz);
+  byte * const buf = stasis_malloc(sz, byte);
 
   byte * b = buf;
   *(slotid_t*) b = rid.slot;    b += sizeof(slotid_t);
@@ -160,7 +160,7 @@ static int op_set_range(const LogEntry* e, Page* p) {
   rid.size = stasis_record_length_read(e->xid,p,rid);
 
   byte * data = (byte*)(range + 1);
-  byte * tmp = malloc(rid.size);
+  byte * tmp = stasis_malloc(rid.size, byte);
 
   stasis_record_read(e->xid, p, rid, tmp);
 
@@ -182,7 +182,7 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
   rid.size = stasis_record_length_read(e->xid,p,rid);
 
   byte * data = (byte*)(range + 1) + diffLength;
-  byte * tmp = malloc(rid.size);
+  byte * tmp = stasis_malloc(rid.size, byte);
 
   stasis_record_read(e->xid, p, rid, tmp);
   memcpy(tmp+range->offset, data, diffLength);
@@ -195,7 +195,7 @@ void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) 
   Page * p = loadPage(xid, rid.page);
 
   ///  XXX rewrite without malloc (use read_begin, read_done)
-  set_range_t * range = malloc(sizeof(set_range_t) + 2 * length);
+  set_range_t * range = stasis_malloc(2 * length, set_range_t);
 
   range->offset = offset;
   range->slot = rid.slot;

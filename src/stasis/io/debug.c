@@ -61,7 +61,7 @@ static stasis_write_buffer_t * debug_write_buffer(stasis_handle_t * h,
   printf("tid=%9ld call write_buffer(%lx, %lld, %lld)\n",
          (long)(intptr_t)pthread_self(), (unsigned long)hh, off, len); fflush(stdout);
   stasis_write_buffer_t * ret = hh->write_buffer(hh,off,len);
-  stasis_write_buffer_t * retWrap = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t * retWrap = stasis_malloc(1, stasis_write_buffer_t);
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
@@ -85,7 +85,7 @@ static stasis_read_buffer_t * debug_read_buffer(stasis_handle_t * h,
   printf("tid=%9ld call read_buffer(%lx, %lld, %lld)\n",
          (long)(intptr_t)pthread_self(), (unsigned long)hh, off, len); fflush(stdout);
   stasis_read_buffer_t * ret = hh->read_buffer(hh,off,len);
-  stasis_read_buffer_t * retWrap = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t * retWrap = stasis_malloc(1, stasis_read_buffer_t);
   *retWrap = *ret;
   retWrap->h = h;
   retWrap->impl = ret;
@@ -156,9 +156,9 @@ struct stasis_handle_t debug_func = {
 
 
 stasis_handle_t * stasis_handle(open_debug)(stasis_handle_t * h) {
-  stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
+  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
   *ret = debug_func;
-  ret->impl = malloc(sizeof(debug_impl));
+  ret->impl = stasis_malloc(1, debug_impl);
   ((debug_impl*)(ret->impl))->h = h;
   return ret;
 }

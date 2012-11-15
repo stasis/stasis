@@ -130,7 +130,7 @@ static void pfPageWrite(stasis_page_handle_t * h, Page * ret) {
 
 /** @todo O_DIRECT is broken in older linuxes (eg 2.4).  The build script should disable it on such platforms. */
 stasis_page_handle_t*  openPageFile(stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
-  stasis_page_handle_t * ret = malloc(sizeof(*ret));
+  stasis_page_handle_t * ret = stasis_malloc(1, stasis_page_handle_t);
   ret->read = pfPageRead;
   ret->write = pfPageWrite;
   ret->force_file = pfForcePageFile;

@@ -245,7 +245,7 @@ static int file_write(stasis_handle_t *h, lsn_t off, const byte * dat, lsn_t len
 static stasis_write_buffer_t * file_write_buffer(stasis_handle_t * h,
 						lsn_t off, lsn_t len) {
   // Allocate the handle
-  stasis_write_buffer_t * ret = malloc(sizeof(stasis_write_buffer_t));
+  stasis_write_buffer_t * ret = stasis_malloc(1, stasis_write_buffer_t);
   if(!ret) { return NULL; }
 
   file_impl * impl = (file_impl*)h->impl;
@@ -264,7 +264,7 @@ static stasis_write_buffer_t * file_write_buffer(stasis_handle_t * h,
   byte * buf;
   if(!error) {
     // Allocate the buffer
-    buf = malloc(len);
+    buf = stasis_malloc(len, byte);
     if(!buf) {
       error = ENOMEM;
     }
@@ -312,10 +312,10 @@ static int file_release_write_buffer(stasis_write_buffer_t * w) {
 
 static stasis_read_buffer_t * file_read_buffer(stasis_handle_t * h,
 					      lsn_t off, lsn_t len) {
-  stasis_read_buffer_t * ret = malloc(sizeof(stasis_read_buffer_t));
+  stasis_read_buffer_t * ret = stasis_malloc(1, stasis_read_buffer_t);
   if(!ret) { return NULL; }
 
-  byte * buf = malloc(len);
+  byte * buf = stasis_malloc(len, byte);
   int error = 0;
 
   if(!buf) { error = ENOMEM; }
@@ -484,11 +484,11 @@ struct stasis_handle_t file_func = {
 };
 
 stasis_handle_t * stasis_handle(open_file)(const char * filename, int flags, int mode) {
-  stasis_handle_t * ret = malloc(sizeof(stasis_handle_t));
+  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
   if(!ret) { return NULL; }
   *ret = file_func;
 
-  file_impl * impl = malloc(sizeof(file_impl));
+  file_impl * impl = stasis_malloc(1, file_impl);
   ret->impl = impl;
   pthread_mutex_init(&(impl->mut), 0);
   assert(sizeof(off_t) >= (64/8));

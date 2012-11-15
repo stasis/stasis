@@ -100,7 +100,7 @@ compensated_function Page * __profile_loadPage(int xid, pageid_t pageid, char * 
   int * pins = LH_ENTRY(find)(profile_load_pins_hash, &ret, sizeof(void*));
 
   if(!pins) {
-    pins = malloc(sizeof(int));
+    pins = stasis_malloc(1, int);
     *pins = 0;
     LH_ENTRY(insert)(profile_load_pins_hash, &ret, sizeof(void*), pins);
   }
