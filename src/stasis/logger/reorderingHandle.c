@@ -86,7 +86,7 @@ stasis_log_reordering_handle_open(stasis_transaction_table_entry_t * l,
                                   size_t chunk_len,
                                   size_t max_len,
                                   size_t max_size) {
-  stasis_log_reordering_handle_t * ret = stasis_malloc(1, stasis_log_reordering_handle_t);
+  stasis_log_reordering_handle_t * ret = stasis_alloc(stasis_log_reordering_handle_t);
 
   ret->l = l;
   ret->log = log;
@@ -94,7 +94,7 @@ stasis_log_reordering_handle_open(stasis_transaction_table_entry_t * l,
   pthread_cond_init(&ret->done,0);
   pthread_cond_init(&ret->ready,0);
   ret->closed = 0;
-  ret->queue = malloc(sizeof(stasis_log_reordering_op_t)*max_len);
+  ret->queue = stasis_malloc(max_len, stasis_log_reordering_op_t);
   ret->chunk_len = chunk_len;
   ret->max_len = max_len;
   ret->cur_off = 0;

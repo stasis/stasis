@@ -104,7 +104,7 @@ int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, con
     ret = TlinkedListRemove(xid, list, key, keySize);
     } end_ret(compensation_error()); */
 
-  stasis_linked_list_insert_log * undoLog = malloc(sizeof(stasis_linked_list_insert_log) + keySize);
+  stasis_linked_list_insert_log * undoLog = stasis_malloc_trailing_array(stasis_linked_list_insert_log, keySize);
 
   undoLog->list = list;
   undoLog->keySize = keySize;
@@ -144,7 +144,7 @@ stasis_operation_impl stasis_op_impl_linked_list_remove() {
   return o;
 }
 static void stasis_linked_list_insert_helper(int xid, recordid list, const byte * key, int keySize, const byte * value, int valueSize) {
-  stasis_linkedList_entry * entry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
+  stasis_linkedList_entry * entry = stasis_malloc_trailing_array(stasis_linkedList_entry, keySize + valueSize);
 
   Tread(xid, list, entry);
   if(!entry->next.size) {
@@ -155,7 +155,7 @@ static void stasis_linked_list_insert_helper(int xid, recordid list, const byte 
     entry->next.size = -1;
     Tset(xid, list, entry);
   } else {
-    stasis_linkedList_entry * newEntry = malloc(sizeof(stasis_linkedList_entry) + keySize + valueSize);
+    stasis_linkedList_entry * newEntry = stasis_malloc_trailing_array(stasis_linkedList_entry, keySize + valueSize);
     memcpy(newEntry + 1, key, keySize);
     memcpy(((byte*)(newEntry+1))+keySize, value, valueSize);
     newEntry->next = entry->next;
@@ -189,7 +189,7 @@ int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte 
     if(!memcmp(entry + 1, key, keySize)) {
       // Bucket contains the entry of interest.
       int valueSize = list.size - (sizeof(stasis_linkedList_entry) + keySize);
-      *value  = malloc(valueSize);
+      *value  = stasis_malloc(valueSize, byte);
       memcpy(*value, ((byte*)(entry+1))+keySize, valueSize);
       done = 1;
       ret = valueSize;
@@ -356,7 +356,7 @@ void TlinkedListDelete(int xid, recordid list) {
 }
 
 stasis_linkedList_iterator * TlinkedListIterator(int xid, recordid list, int keySize, int valueSize) {
-  stasis_linkedList_iterator * it = malloc(sizeof(stasis_linkedList_iterator));
+  stasis_linkedList_iterator * it = stasis_alloc(stasis_linkedList_iterator);
   it->keySize = keySize;
   it->valueSize = valueSize;
   it->next = list;
@@ -411,8 +411,8 @@ int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int *
   if(entry->next.size) {
     *keySize = it->keySize;
     *valueSize = it->valueSize;
-    *key = malloc(*keySize);
-    *value = malloc(*valueSize);
+    *key = stasis_malloc(*keySize, byte);
+    *value = stasis_malloc(*valueSize, byte);
 
     it->next = entry->next;
 

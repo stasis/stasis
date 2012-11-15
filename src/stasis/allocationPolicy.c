@@ -134,7 +134,7 @@ static void void_double_add(void * val, struct rbtree * a, struct rbtree * b) {
 static int availablePages_remove(stasis_allocation_policy_t *ap, pageid_t pageid);
 static int availablePages_add(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
   int ret = availablePages_remove(ap, pageid);
-  availablePages_pageid_freespace* tup= stasis_malloc(1, availablePages_pageid_freespace);
+  availablePages_pageid_freespace* tup= stasis_alloc(availablePages_pageid_freespace);
   tup->pageid = pageid;
   tup->freespace = freespace;
   void_double_add(tup, ap->availablePages_key_pageid, ap->availablePages_key_freespace_pageid);
@@ -151,7 +151,7 @@ static int pageOwners_add(stasis_allocation_policy_t *ap, int xid, size_t freesp
 
   int ret = pageOwners_remove(ap, pageid);
 
-  pageOwners_xid_freespace_pageid * tup = stasis_malloc(1, pageOwners_xid_freespace_pageid);
+  pageOwners_xid_freespace_pageid * tup = stasis_alloc(pageOwners_xid_freespace_pageid);
   tup->xid = xid;
   tup->freespace = freespace;
   tup->pageid = pageid;
@@ -202,7 +202,7 @@ static int allPages_lookup_by_pageid(stasis_allocation_policy_t *ap, pageid_t pa
   }
 }
 static int allPages_add(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
-  allPages_pageid_freespace * tup = stasis_malloc(1, allPages_pageid_freespace);
+  allPages_pageid_freespace * tup = stasis_alloc(allPages_pageid_freespace);
   tup->pageid = pageid;
   tup->freespace = freespace;
   int ret = void_single_add(tup, ap->allPages_key_pageid);
@@ -230,7 +230,7 @@ static void allPages_removeAll(stasis_allocation_policy_t *ap) {
 }
 
 static void allPages_set_freespace(stasis_allocation_policy_t *ap, pageid_t pageid, size_t freespace) {
-  allPages_pageid_freespace * tup = stasis_malloc(1, allPages_pageid_freespace);
+  allPages_pageid_freespace * tup = stasis_alloc(allPages_pageid_freespace);
   tup->pageid = pageid;
   tup->freespace = freespace;
   int existed = void_single_add(tup, ap->allPages_key_pageid);
@@ -323,7 +323,7 @@ static int xidAllocedDealloced_helper_remove(stasis_allocation_policy_t *ap, str
 static int xidAllocedDealloced_helper_add(stasis_allocation_policy_t *ap, struct rbtree *first, struct rbtree* second, int xid, pageid_t pageid) {
   int existed = xidAllocedDealloced_helper_remove(ap, first, second, xid, pageid);
 
-  xidAllocedDealloced_xid_pageid * tup = stasis_malloc(1, xidAllocedDealloced_xid_pageid);
+  xidAllocedDealloced_xid_pageid * tup = stasis_alloc(xidAllocedDealloced_xid_pageid);
   tup->xid = xid;
   tup->pageid = pageid;
   void_double_add(tup, first, second);
@@ -454,7 +454,7 @@ static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, co
 }
 
 stasis_allocation_policy_t * stasis_allocation_policy_init() {
-  stasis_allocation_policy_t * ap = stasis_malloc(1, stasis_allocation_policy_t);
+  stasis_allocation_policy_t * ap = stasis_alloc(stasis_allocation_policy_t);
   ap->availablePages_key_pageid = rbinit(availablePages_cmp_pageid, 0);
   ap->availablePages_key_freespace_pageid = rbinit(availablePages_cmp_freespace_pageid, 0);
   ap->pageOwners_key_pageid = rbinit(pageOwners_cmp_pageid, 0);

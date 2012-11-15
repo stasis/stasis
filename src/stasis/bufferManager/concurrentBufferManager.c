@@ -177,7 +177,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
   stasis_buffer_concurrent_hash_t *ch = bm->impl;
   stasis_buffer_concurrent_hash_tls_t *tls = pthread_getspecific(ch->key);
   if(tls == NULL) {
-    tls = stasis_malloc(1, stasis_buffer_concurrent_hash_tls_t);
+    tls = stasis_alloc(stasis_buffer_concurrent_hash_tls_t);
     tls->p = NULL;
     tls->bm = bm;
     pthread_setspecific(ch->key, tls);
@@ -409,8 +409,8 @@ static int chCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_concurrent_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
-  stasis_buffer_manager_t *bm = stasis_malloc(1, stasis_buffer_manager_t);
-  stasis_buffer_concurrent_hash_t *ch = stasis_malloc(1, stasis_buffer_concurrent_hash_t);
+  stasis_buffer_manager_t *bm = stasis_alloc(stasis_buffer_manager_t);
+  stasis_buffer_concurrent_hash_t *ch = stasis_alloc(stasis_buffer_concurrent_hash_t);
   bm->openHandleImpl = chOpenHandle;
   bm->closeHandleImpl = chCloseHandle;
   bm->loadPageImpl = chLoadPageImpl;

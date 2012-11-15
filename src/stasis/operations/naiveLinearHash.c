@@ -44,7 +44,7 @@ static int findInBucket(int xid, recordid hashRid, int bucket_number, const void
 static int findInBucket(int xid, recordid hashRid, int bucket_number, const void * key, int keySize, void * val, int valSize) {
   int found;
 
-  hashEntry * e = malloc(sizeof(hashEntry) + keySize + valSize);
+  hashEntry * e = stasis_malloc_trailing_array(hashEntry, keySize + valSize);
 
   recordid nextEntry;
 
@@ -306,8 +306,8 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
 
   if(bucket_contents->next.size == -1) { return 0; }
 
-  hashEntry * A = malloc(sizeof(hashEntry) + keySize + valSize);
-  hashEntry * B = malloc(sizeof(hashEntry) + keySize + valSize);
+  hashEntry * A = stasis_malloc_trailing_array(hashEntry, keySize + valSize);
+  hashEntry * B = stasis_malloc_trailing_array(hashEntry, keySize + valSize);
 
   recordid Aaddr, Baddr;
 
@@ -432,7 +432,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
   recordid  deleteMe;
   hashRid.slot = bucket_number;
 
-  hashEntry * bucket_contents = (hashEntry*)malloc(sizeof(hashEntry) + keySize + valSize);
+  hashEntry * bucket_contents = stasis_malloc_trailing_array(hashEntry, keySize + valSize);
   assert(hashRid.size == sizeof(hashEntry) + keySize + valSize);
   Tread(xid, hashRid, bucket_contents);
   hashRid.slot = 0;
@@ -448,7 +448,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
 }
 
 int TnaiveHashOpen(int xid, recordid hashRid, int keySize, int valSize) {
-  recordid * headerRidB = (recordid*)malloc(sizeof(recordid) + keySize + valSize);
+  recordid * headerRidB = stasis_malloc_trailing_array(recordid, keySize + valSize);
   hashRid.slot = 1;
   Tread(xid, hashRid, headerRidB);
 

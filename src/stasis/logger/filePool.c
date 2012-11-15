@@ -352,7 +352,7 @@ LogEntry * stasis_log_file_pool_reserve_entry(stasis_log_t * log, size_t szs) {
   uint32_t sz = szs;
   stasis_log_file_pool_state * fp = log->impl;
   lsn_t * handle = pthread_getspecific(fp->handle_key);
-  if(!handle) { handle = stasis_malloc(1, lsn_t); pthread_setspecific(fp->handle_key, handle); }
+  if(!handle) { handle = stasis_alloc(lsn_t); pthread_setspecific(fp->handle_key, handle); }
 
   uint64_t framed_size = sz+sizeof(uint32_t)+sizeof(uint32_t);
   lsn_t off  = stasis_ringbuffer_reserve_space(fp->ring, framed_size, handle);
@@ -731,8 +731,8 @@ int filesort(const void * ap, const void * bp) {
  */
 stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int fileperm) {
   struct dirent **namelist;
-  stasis_log_file_pool_state* fp = stasis_malloc(1, stasis_log_file_pool_state);
-  stasis_log_t * ret = stasis_malloc(1, stasis_log_t);
+  stasis_log_file_pool_state* fp = stasis_alloc(stasis_log_file_pool_state);
+  stasis_log_t * ret = stasis_alloc(stasis_log_t);
 
   static const stasis_log_t proto = {
     stasis_log_file_pool_set_truncation,

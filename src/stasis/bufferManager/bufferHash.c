@@ -506,8 +506,8 @@ static int bhCloseHandleImpl(stasis_buffer_manager_t *bm, stasis_buffer_manager_
 }
 
 stasis_buffer_manager_t* stasis_buffer_manager_hash_open(stasis_page_handle_t * h, stasis_log_t * log, stasis_dirty_page_table_t * dpt) {
-  stasis_buffer_manager_t *bm = stasis_malloc(1, stasis_buffer_manager_t);
-  stasis_buffer_hash_t *bh = stasis_malloc(1, stasis_buffer_hash_t);
+  stasis_buffer_manager_t *bm = stasis_alloc(stasis_buffer_manager_t);
+  stasis_buffer_hash_t *bh = stasis_alloc(stasis_buffer_hash_t);
 
   bm->openHandleImpl = bhOpenHandleImpl;
   bm->closeHandleImpl = bhCloseHandleImpl;

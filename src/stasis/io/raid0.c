@@ -191,9 +191,9 @@ struct stasis_handle_t raid0_func = {
 };
 
 stasis_handle_t * stasis_handle_open_raid0(int handle_count, stasis_handle_t** h, uint32_t stripe_size) {
-  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
+  stasis_handle_t * ret = stasis_alloc(stasis_handle_t);
   *ret = raid0_func;
-  raid0_impl * r = stasis_malloc(1, raid0_impl);
+  raid0_impl * r = stasis_alloc(raid0_impl);
   r->stripe_size = stripe_size;
   r->handle_count = handle_count;
   r->h = stasis_malloc(handle_count, stasis_handle_t*);

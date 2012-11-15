@@ -77,7 +77,7 @@ static Page* stasis_replacement_policy_lru_get_stale_and_remove(replacementPolic
 
 static void stasis_replacement_policy_lru_insert(replacementPolicy* r, Page* p) {
   stasis_replacement_policy_lru_t * l = r->impl;
-  stasis_replacement_policy_lru_entry * e = stasis_malloc(1, stasis_replacement_policy_lru_entry);
+  stasis_replacement_policy_lru_entry * e = stasis_alloc(stasis_replacement_policy_lru_entry);
   e->value = p;
   e->clock = l->now;
   l->now++;
@@ -87,8 +87,8 @@ static void stasis_replacement_policy_lru_insert(replacementPolicy* r, Page* p) 
 }
 
 replacementPolicy * stasis_replacement_policy_lru_init() {
-  replacementPolicy * ret = stasis_malloc(1, replacementPolicy);
-  stasis_replacement_policy_lru_t * l = stasis_malloc(1, stasis_replacement_policy_lru_t);
+  replacementPolicy * ret = stasis_alloc(replacementPolicy);
+  stasis_replacement_policy_lru_t * l = stasis_alloc(stasis_replacement_policy_lru_t);
   l->now = 0;
   l->hash = LH_ENTRY(create)(10);
   l->lru = RB_ENTRY(init)(stasis_replacement_policy_lru_entry_cmp, 0);

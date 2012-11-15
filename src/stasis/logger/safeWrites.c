@@ -840,7 +840,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     isDurable_LogWriter, // is_durable
   };
 
-  stasis_log_safe_writes_state * sw = stasis_malloc(1, stasis_log_safe_writes_state);
+  stasis_log_safe_writes_state * sw = stasis_alloc(stasis_log_safe_writes_state);
   sw->filename = strdup(filename);
   {
     char * log_scratch_filename = malloc(strlen(sw->filename) + 2);
@@ -852,7 +852,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   sw->fileperm = fileperm;
   sw->softcommit = softcommit;
 
-  stasis_log_t* log = stasis_malloc(1, stasis_log_t);
+  stasis_log_t* log = stasis_alloc(stasis_log_t);
   memcpy(log,&proto, sizeof(proto));
   log->impl = sw;
 

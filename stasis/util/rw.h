@@ -33,7 +33,7 @@ BEGIN_C_DECLS
 typedef pthread_rwlock_t rwl;
 
 static inline rwl* initlock(void) {
-  rwl* ret = stasis_malloc(1, rwl);
+  rwl* ret = stasis_alloc(rwl);
   int err = pthread_rwlock_init(ret, 0);
   if(err) { perror("couldn't init rwlock"); abort(); }
   DEBUG("initlock(%llx)\n", (long long)ret);
@@ -119,7 +119,7 @@ typedef struct rwlc {
 } rwlc;
 
 static inline rwlc* rwlc_initlock(void) {
-  rwlc* ret = stasis_malloc(1, rwlc);
+  rwlc* ret = stasis_alloc(rwlc);
   ret->rw = initlock();
   int err = pthread_mutex_init(&ret->mut, 0);
   ret->is_writelocked = 0;

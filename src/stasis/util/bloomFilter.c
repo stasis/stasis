@@ -78,7 +78,7 @@ stasis_bloom_filter_t * stasis_bloom_filter_create(uint64_t(*func_a)(const char*
 					    uint64_t(*func_b)(const char*,int),
 					    uint64_t num_expected_items,
 					    double false_positive_rate) {
-  stasis_bloom_filter_t * ret = stasis_malloc(1, stasis_bloom_filter_t);
+  stasis_bloom_filter_t * ret = stasis_alloc(stasis_bloom_filter_t);
   ret->func_a = func_a;
   ret->func_b = func_b;
   ret->num_expected_items = num_expected_items;

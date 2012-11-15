@@ -24,7 +24,7 @@ static void free_key(void * key) {
 }
 
 stasis_aggregate_min_t * stasis_aggregate_min_init(int large) {
-  stasis_aggregate_min_t * ret = stasis_malloc(1, stasis_aggregate_min_t);
+  stasis_aggregate_min_t * ret = stasis_alloc(stasis_aggregate_min_t);
   if(large) {
     ret->tree = rbinit(cmp_lsn_t,0);
   } else {
@@ -58,7 +58,7 @@ void stasis_aggregate_min_add(stasis_aggregate_min_t * min, lsn_t * a) {
     }
     lsn_t * p = pthread_getspecific(min->key);
     if(!p) {
-      p = stasis_malloc(1, lsn_t);
+      p = stasis_alloc(lsn_t);
       *p = -1;
       pthread_setspecific(min->key, p);
     }

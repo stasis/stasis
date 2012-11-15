@@ -52,8 +52,8 @@ static void  tsInsert  (struct replacementPolicy* impl, Page* page) {
 }
 
 replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp) {
-  replacementPolicy *ret = stasis_malloc(1, replacementPolicy);
-  stasis_replacement_policy_threadsafe_wrapper_t * rpw = stasis_malloc(1, stasis_replacement_policy_threadsafe_wrapper_t);
+  replacementPolicy *ret = stasis_alloc(replacementPolicy);
+  stasis_replacement_policy_threadsafe_wrapper_t * rpw = stasis_alloc(stasis_replacement_policy_threadsafe_wrapper_t);
   rpw->impl = rp;
   pthread_mutex_init(&rpw->mut,0);
   ret->init = NULL;

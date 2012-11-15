@@ -183,7 +183,7 @@ lladd_pagedList_iterator * TpagedListIterator(int xid, recordid list) {
   assert(list.size == sizeof(pagedListHeader));
     Tread(xid, list, &header);
 
-  lladd_pagedList_iterator * it = stasis_malloc(1, lladd_pagedList_iterator);
+  lladd_pagedList_iterator * it = stasis_alloc(lladd_pagedList_iterator);
 
   it->headerRid = header.nextPage;
   it->entryRid  = list;

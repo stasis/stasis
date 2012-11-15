@@ -66,7 +66,7 @@ static int cmp_slot(int xid, Page *p, slotid_t slot, byte * key, size_t keySize,
   recordid rid = {p->id, slot, 0};
   rid.size = stasis_record_length_read(xid, p, rid);
   if(rid.size == INVALID_SLOT) { return 1; } // treat invalid slots as infinity.
-  byte * cur = malloc(rid.size);
+  byte * cur = stasis_malloc(rid.size, byte);
   stasis_record_read(xid, p, rid, cur);
   byte * cur_ptr;
   size_t cur_len;
@@ -149,7 +149,7 @@ int TbtreeLookup(int xid, recordid rid, void * cmp_arg, byte * key, size_t keySi
     btree_leaf_pair * buf = malloc(slotrid.size);
     stasis_record_read(xid, p, slotrid, (byte*)buf);
     *valueSize = slotrid.size - (buf->keylen + sizeof(btree_leaf_pair));
-    *value = malloc(*valueSize);
+    *value = stasis_malloc(*valueSize, byte);
     memcpy(*value, ((byte*)(buf+1))+buf->keylen, *valueSize);
     unlock(p->rwlatch);
     releasePage(p);

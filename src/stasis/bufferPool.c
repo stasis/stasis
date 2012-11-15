@@ -64,7 +64,7 @@ struct stasis_buffer_pool_t {
 
 stasis_buffer_pool_t* stasis_buffer_pool_init() {
 
-  stasis_buffer_pool_t * ret = stasis_malloc(1, stasis_buffer_pool_t);
+  stasis_buffer_pool_t * ret = stasis_alloc(stasis_buffer_pool_t);
 
   ret->nextPage = 0;
 

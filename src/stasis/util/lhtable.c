@@ -135,7 +135,7 @@ static struct  LH_ENTRY(pair_t)* insertIntoLinkedList(struct LH_ENTRY(table) * t
     thePair->value = value;
   } else {
     // the bucket isn't empty.
-    thePair = stasis_malloc(1, struct LH_ENTRY(pair_t));
+    thePair = stasis_alloc(struct LH_ENTRY(pair_t));
     thePair->key = (const LH_ENTRY(key_t) *)malloc(len);
     memcpy((void*)thePair->key, key, len);
     thePair->keyLength = len;
@@ -220,7 +220,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 
 
 struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
-  struct LH_ENTRY(table) * ret = stasis_malloc(1, struct LH_ENTRY(table));
+  struct LH_ENTRY(table) * ret = stasis_alloc(struct LH_ENTRY(table));
   ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
   HASH_ENTRY(_get_size_params)(initialSize,
 		       &(ret->bucketListBits),
@@ -466,7 +466,7 @@ void * pblHtFirst   ( pblHashTable_t * h ) {
   if(pblLists == 0) {
     pblLists = LH_ENTRY(create)(10);
   }
-  struct LH_ENTRY(list) *list = stasis_malloc(1, struct LH_ENTRY(list));
+  struct LH_ENTRY(list) *list = stasis_alloc(struct LH_ENTRY(list));
   struct LH_ENTRY(list) * oldList;
 
   if((oldList = LH_ENTRY(insert)(pblLists,

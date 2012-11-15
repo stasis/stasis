@@ -110,14 +110,14 @@ static void stasis_lru_fast_deinit(struct replacementPolicy * r) {
   free(r);
 }
 replacementPolicy * lruFastInit() {
-  struct replacementPolicy * ret = stasis_malloc(1, struct replacementPolicy);
+  struct replacementPolicy * ret = stasis_alloc(struct replacementPolicy);
   ret->deinit = stasis_lru_fast_deinit;
   ret->hit = stasis_lru_fast_hit;
   ret->getStale = stasis_lru_fast_getStale;
   ret->remove = stasis_lru_fast_remove;
   ret->getStaleAndRemove = stasis_lru_fast_getStaleAndRemove;
   ret->insert = stasis_lru_fast_insert;
-  lruFast * l = stasis_malloc(1, lruFast);
+  lruFast * l = stasis_alloc(lruFast);
   llInit(&l->list);
   ret->impl = l;
   return ret;

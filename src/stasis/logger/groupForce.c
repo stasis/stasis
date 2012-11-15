@@ -27,7 +27,7 @@ stasis_log_group_force_t * stasis_log_group_force_init(stasis_log_t * log, uint6
                     "times > 1 second.  (%llu second wait time requested)\n",
                     (long long unsigned int) (wait_nsec / (1000 * 1000 * 1000)));
   }
-  stasis_log_group_force_t * ret = stasis_malloc(1, stasis_log_group_force_t);
+  stasis_log_group_force_t * ret = stasis_alloc(stasis_log_group_force_t);
   ret->log = log;
   pthread_mutex_init(&ret->check_commit,0);
   pthread_cond_init(&ret->tooFewXacts,0);

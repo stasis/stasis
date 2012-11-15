@@ -272,7 +272,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, lsn_t initial_offset
     return 0;
   }
 
-  stasis_ringbuffer_t * ring = stasis_malloc(1, stasis_ringbuffer_t);
+  stasis_ringbuffer_t * ring = stasis_alloc(stasis_ringbuffer_t);
 
   // Allocate the memory region using mmap black magic.
 

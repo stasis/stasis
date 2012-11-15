@@ -8,8 +8,8 @@ struct stasis_util_multiset_t {
 };
 
 stasis_util_multiset_t * stasis_util_multiset_create() {
-  stasis_util_multiset_t * set = stasis_malloc(1, stasis_util_multiset_t);
-  set->items = stasis_malloc(1, lsn_t);
+  stasis_util_multiset_t * set = stasis_alloc(stasis_util_multiset_t);
+  set->items = stasis_alloc(lsn_t);
   set->item_count = 0;
   return set;
 }

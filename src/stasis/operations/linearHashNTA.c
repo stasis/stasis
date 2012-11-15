@@ -456,9 +456,9 @@ typedef struct {
 } lladd_linearHashNTA_generic_it;
 
 lladdIterator_t * ThashGenericIterator(int xid, recordid hash) {
-  lladdIterator_t * ret = stasis_malloc(1, lladdIterator_t);
+  lladdIterator_t * ret = stasis_alloc(lladdIterator_t);
   ret->type = LINEAR_HASH_NTA_ITERATOR;
-  ret->impl = stasis_malloc(1, lladd_linearHashNTA_generic_it);
+  ret->impl = stasis_alloc(lladd_linearHashNTA_generic_it);
 
   ((lladd_linearHashNTA_generic_it*)(ret->impl))->hit = ThashIterator(xid, hash, -1, -1);
   ((lladd_linearHashNTA_generic_it*)(ret->impl))->lastKey = NULL;

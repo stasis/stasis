@@ -67,7 +67,7 @@ static void stasis_recovery_analysis(stasis_log_t* log, stasis_transaction_table
     */
 
     if(xactLSN == NULL) {
-      xactLSN = stasis_malloc(1, lsn_t);
+      xactLSN = stasis_alloc(lsn_t);
       lhinsert(transactionLSN, &(e->xid), sizeof(int), xactLSN);
     } else {
       /* We've seen this xact before, and must have put a value in

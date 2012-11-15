@@ -422,7 +422,7 @@ hashtable_t * hashtable_init(pageid_t size) {
     size /= 2;
     newsize *= 2;
   }
-  hashtable_t *ht = stasis_malloc(1, hashtable_t);
+  hashtable_t *ht = stasis_alloc(hashtable_t);
 
   ht->maxbucketid = (newsize) - 1;
   ht->buckets = calloc(ht->maxbucketid+1, sizeof(bucket_t));

@@ -80,7 +80,7 @@ int stasis_util_skiplist_default_key_finalize(void * p, void * ignored) {
 static inline int stasis_util_skiplist_random_level(pthread_key_t k) {
   kiss_table_t * kiss = pthread_getspecific(k);
   if(kiss == 0) {
-    kiss = stasis_malloc(1, kiss_table_t);
+    kiss = stasis_alloc(kiss_table_t);
     stasis_util_random_kiss_settable(kiss,
         random(), random(), random(), random(), random(), random());
     pthread_setspecific(k, kiss);
@@ -134,7 +134,7 @@ static inline int stasis_util_skiplist_cmp_helper2(
 static inline stasis_skiplist_t * stasis_util_skiplist_init(
     int (*cmp)(const void*, const void*),
     int (*finalize)(void *, void * nul)) {
-  stasis_skiplist_t * list = stasis_malloc(1, stasis_skiplist_t);
+  stasis_skiplist_t * list = stasis_alloc(stasis_skiplist_t);
   list->levelCap = 32;
   list->h = hazard_init(STASIS_SKIPLIST_HP_COUNT+list->levelCap,
       STASIS_SKIPLIST_HP_COUNT, 250, stasis_util_skiplist_node_finalize, list);

@@ -100,7 +100,7 @@ int do_operations(pageid_t page_count, int num_threads, unsigned long long num_o
 
   for(int i = 0; i < num_threads ; i++) {
     if(ops_remaining <= 0) { num_threads = i; break; }
-    struct thread_arg *a = stasis_malloc(1, struct thread_arg);
+    struct thread_arg *a = stasis_alloc(struct thread_arg);
     a->seed = base_seed + i;
     a->num_ops = ops_remaining < ops_per_thread ? ops_remaining : ops_per_thread;
     a->write_frac = write_frac;

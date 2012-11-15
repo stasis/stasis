@@ -56,7 +56,7 @@ void printList(LinkedList **l) {
 	printf (".\n");
 }
 void addVal(LinkedList **list, long val) {
-  LinkedList * node = stasis_malloc(1, LinkedList);
+  LinkedList * node = stasis_alloc(LinkedList);
   node->val = val;
   node->next = NULL;
   if (*list==NULL) {
@@ -105,7 +105,7 @@ long popMaxVal(LinkedList **list) {
 void addSortedVal(LinkedList **list, long val) {
   LinkedList * tmp;
   LinkedList * tmpprev;
-  LinkedList * node = stasis_malloc(1, LinkedList);
+  LinkedList * node = stasis_alloc(LinkedList);
   node->val = val;
   /*see if new entry should come in the beginning*/
   if ((*list==NULL) || ((*list)->val<val)) {

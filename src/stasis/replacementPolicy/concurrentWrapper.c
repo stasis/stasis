@@ -144,8 +144,8 @@ static void  cwInsert  (struct replacementPolicy* impl, Page* page) {
 }
 
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count) {
-  replacementPolicy *ret = stasis_malloc(1, replacementPolicy);
-  stasis_replacement_policy_concurrent_wrapper_t * rpw = stasis_malloc(1, stasis_replacement_policy_concurrent_wrapper_t);
+  replacementPolicy *ret = stasis_alloc(replacementPolicy);
+  stasis_replacement_policy_concurrent_wrapper_t * rpw = stasis_alloc(stasis_replacement_policy_concurrent_wrapper_t);
 
   if(stasis_replacement_policy_concurrent_wrapper_power_of_two_buckets) {
     // ensure that count is a power of two.

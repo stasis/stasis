@@ -25,11 +25,11 @@ struct stasis_util_slab_t {
  * @return a slab allocator.  Calling stasis_util_slab_destroy() will deallocate it all-at-once.
  */
 stasis_util_slab_t * stasis_util_slab_create(uint32_t obj_sz, uint32_t block_sz) {
-  stasis_util_slab_t* ret = stasis_malloc(1, stasis_util_slab_t);
+  stasis_util_slab_t* ret = stasis_alloc(stasis_util_slab_t);
 
   //  printf("slab init: obj siz = %lld, block_sz = %lld\n", (long long)obj_sz, (long long)block_sz);
 
-  ret->blocks = stasis_malloc(1, byte*);
+  ret->blocks = stasis_alloc(byte*);
   ret->blocks[0] = stasis_malloc(block_sz, byte);
   ret->freelist_ptr = 0;
 

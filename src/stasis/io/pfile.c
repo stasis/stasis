@@ -198,7 +198,7 @@ static int pfile_write(stasis_handle_t *h, lsn_t off, const byte *dat,
 
 static stasis_write_buffer_t * pfile_write_buffer(stasis_handle_t *h,
                                                  lsn_t off, lsn_t len) {
-  stasis_write_buffer_t *ret = stasis_malloc(1, stasis_write_buffer_t);
+  stasis_write_buffer_t *ret = stasis_alloc(stasis_write_buffer_t);
 
   if (!ret) {
     h->error = ENOMEM;
@@ -249,7 +249,7 @@ static int pfile_release_write_buffer(stasis_write_buffer_t *w) {
 
 static stasis_read_buffer_t *pfile_read_buffer(stasis_handle_t *h,
 					      lsn_t off, lsn_t len) {
-  stasis_read_buffer_t *ret = stasis_malloc(1, stasis_read_buffer_t);
+  stasis_read_buffer_t *ret = stasis_alloc(stasis_read_buffer_t);
   if (!ret) { return NULL; }
 
   byte *buf = stasis_malloc(len,byte);
@@ -417,11 +417,11 @@ static struct stasis_handle_t pfile_func = {
 
 stasis_handle_t *stasis_handle(open_pfile)(const char *filename,
                                            int flags, int mode) {
-  stasis_handle_t *ret = stasis_malloc(1, stasis_handle_t);
+  stasis_handle_t *ret = stasis_alloc(stasis_handle_t);
   if (!ret) { return NULL; }
   *ret = pfile_func;
 
-  pfile_impl *impl = stasis_malloc(1, pfile_impl);
+  pfile_impl *impl = stasis_alloc(pfile_impl);
   if (!impl) { free(ret); return NULL; }
 
   ret->impl = impl;

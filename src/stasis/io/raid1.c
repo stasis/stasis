@@ -149,9 +149,9 @@ struct stasis_handle_t raid1_func = {
 };
 
 stasis_handle_t * stasis_handle_open_raid1(stasis_handle_t* a, stasis_handle_t* b) {
-  stasis_handle_t * ret = stasis_malloc(1, stasis_handle_t);
+  stasis_handle_t * ret = stasis_alloc(stasis_handle_t);
   *ret = raid1_func;
-  raid1_impl * i = stasis_malloc(1, raid1_impl);
+  raid1_impl * i = stasis_alloc(raid1_impl);
   i->a = a; i->b = b;
   ret->impl = i;
   return ret;
