@@ -194,7 +194,7 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
 void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) {
   Page * p = loadPage(xid, rid.page);
 
-  ///  XXX rewrite without malloc (use read_begin, read_done)
+  ///  XXX rewrite without stasis_malloc (use read_begin, read_done)
   set_range_t * range = stasis_malloc(2 * length, set_range_t);
 
   range->offset = offset;

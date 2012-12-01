@@ -79,7 +79,7 @@ pageid_t roseFastAlloc(int xid, void * conf) {
 static pthread_once_t alloc_key_once;
 static void alloc_setup(void) {
   pthread_once(&alloc_key_once,alloc_key_create);
-  pthread_setspecific(alloc_key,malloc(sizeof(alloc_struct)));
+  pthread_setspecific(alloc_key,stasis_alloc(alloc_struct));
   } */
 
 #define INT_CMP 1
@@ -732,8 +732,7 @@ int main(int argc, char **argv) {
 
       for(int col = 0; col < column_count; col++) {
         current = 0;
-        dataset[col]
-            = reinterpret_cast<val_t*>(malloc(sizeof(val_t) * inserts));
+        dataset[col] = stasis_malloc(inserts, val_t);
 	for (unsigned int i = 0; i < inserts; i++) {
 	  if (bump_prob == 1) {
 	    current++;
@@ -757,11 +756,10 @@ int main(int argc, char **argv) {
       max_col_number = max_col_number < column[col]
 	? column[col] : max_col_number;
 
-      dataset[col] = reinterpret_cast<val_t*>(malloc(sizeof(val_t)));
+      dataset[col] = stasis_alloc(val_t);
     }
     max_col_number++;
-    char **toks = reinterpret_cast<char**>
-      (malloc(sizeof(char *) * max_col_number));
+    char **toks = stasis_malloc(max_col_number, char*);
 
     printf("Reading from file %s ", file);
 
@@ -769,7 +767,7 @@ int main(int argc, char **argv) {
 
     size_t line_len = 100;
     // getline wants malloced memory (it probably calls realloc...)
-    char * line = reinterpret_cast<char*>(malloc(sizeof(char) * line_len));
+    char * line = stasis_malloc(line_len, char);
 
     FILE * input = fopen(file, "r");
     if (!input) {

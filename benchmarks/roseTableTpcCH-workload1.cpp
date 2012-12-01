@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
   int ret;
   // multicolumn is deprecated; want static dispatch!
   /*  
-  rose::plugin_id_t * plugins = (rose::plugin_id_t*)malloc(COLS * sizeof(rose::plugin_id_t));
+  rose::plugin_id_t * plugins = stasis_malloc(COLS, rose::plugin_id_t);
 
   // todo try Rle / For
   plugins[0] = rose::plugin_id<rose::Multicolumn<tup>, Rle<typ0>, typ0>();

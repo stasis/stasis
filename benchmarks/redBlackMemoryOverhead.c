@@ -46,10 +46,10 @@ int main(int argc, char * argv[]) {
     if(tree_count < tuple_count) {
 //      printf("a1000");
 //      for(int i = 0; i < 1000; i++) {
-        entry * e = malloc(sizeof(*e));
+        entry * e = stasis_alloc(entry);
         e->key = ((uint64_t)random()) * (uint64_t)random();
         int sz = random() % (2 * tuple_size - sizeof(e));
-        e->value = malloc(sz);
+        e->value = stasis_malloc(sz, unsigned char);
         for(int j = 0; j < (sz); j++) {
           e->value[j] = (unsigned char) (j & 255);
         }

@@ -109,7 +109,7 @@ void * workerThreadWriting(void * q) {
 
   int offset = *(int*)q;
   recordid * rids;
-  rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  rids = stasis_malloc(RECORDS_PER_THREAD, recordid);
 
   int xid = Tbegin();
   int num_ops = 0;
@@ -257,7 +257,7 @@ START_TEST(pageThreadedWritersTest) {
   Tinit();
   pthread_mutex_init(&ralloc_mutex, NULL);
   for(i = 0; i < THREAD_COUNT; i++) {
-    int * j = malloc(sizeof(int));
+    int * j = stasis_alloc(int);
     *j = i;
     pthread_create(&workers[i], NULL, workerThreadWriting, j);
   }
@@ -279,7 +279,7 @@ START_TEST(pageThreadedWritersTest) {
 void * blindRandomWorker(void * v) {
   //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
-  pageid_t * pageids = malloc(PINNED_PAGE_COUNT * sizeof(pageid_t));
+  pageid_t * pageids = stasis_malloc(PINNED_PAGE_COUNT, pageid_t);
   Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
 
   for(int i = 0; i < PINNED_PAGE_COUNT; i++) {

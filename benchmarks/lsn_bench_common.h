@@ -4,13 +4,13 @@
 #include <stdio.h>
 
 void alloc_rids(long long num_rids, recordid ** slow, recordid ** fast) {
-  *slow = malloc(num_rids * sizeof(**slow));
-  *fast = malloc((num_rids / 10) * sizeof(**fast));
+  *slow = stasis_malloc(num_rids, recordid);
+  *fast = stasis_malloc(num_rids / 10, recordid);
 
   int xid = Tbegin();
 
-  byte * old = malloc(PAGE_SIZE);
-  byte * new = malloc(PAGE_SIZE);
+  byte * old = stasis_malloc(PAGE_SIZE, byte);
+  byte * new = stasis_malloc(PAGE_SIZE, byte);
 
   for(long long i = 0; i < num_rids; ) {
     pageid_t pid = TpageAlloc(xid);
@@ -55,7 +55,7 @@ typedef struct {
 } cached_addr;
 
 void build_cache(recordid * rids, cached_addr** cache, long long count) {
-  *cache = malloc (sizeof(**cache) * count);
+  *cache = stasis_malloc(count, cached_addr);
   lsn_t log_trunc = ((stasis_log_t*)stasis_log())->truncation_point(stasis_log());
   for(long long i = 0; i < count; i++) {
     (*cache)[i].pid = rids[i].page;

@@ -74,7 +74,7 @@ static void iterator_test(int xid,
 
     keySize = Titerator_key(xid, reference_impl,   &key);
     valSize = Titerator_value(xid, reference_impl, &valScratch);
-    val = malloc(valSize);
+    val = stasis_malloc(valSize, byte);
     memcpy(val, valScratch, valSize);  // pblHtInsert stores values a pointers to application managed memory.
 
     pblHtInsert(hash, key, keySize, val);

@@ -85,8 +85,8 @@ int main(int argc, char * argv[]) {
   int NUM_WORKERS = atoi(argv[2]);
   uint64_t ops = atoll(argv[3]);
   int write_size = atoi(argv[4]);
-  worker * workers = malloc(sizeof(worker) * NUM_WORKERS);
-  pthread_t*  threads = malloc(sizeof(pthread_t) * NUM_WORKERS);
+  worker * workers = stasis_malloc(NUM_WORKERS, worker);
+  pthread_t*  threads = stasis_malloc(NUM_WORKERS, pthread_t);
   uint64_t stride = atoll(argv[5]);
   int fd = -1;
   if(!many_handles) {

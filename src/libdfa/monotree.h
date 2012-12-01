@@ -73,8 +73,8 @@ typedef struct monoTree {
 /**
    Usage:
 
-    rb = malloc (sizeof(MonoTree));
-    rb->buffer = malloc(sizeof(StateMachine) * rb_size);
+    rb = stasis_alloc (MonoTree);
+    rb->buffer = stasis_malloc(rb_size, StateMachine);
 
     init_MonoTree(rb, rb_size);
 

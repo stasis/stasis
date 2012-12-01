@@ -115,8 +115,8 @@ START_TEST(minRandomTest) {
   stasis_aggregate_min_t * b = stasis_aggregate_min_init(0);
   const int COUNT = 10000;
 
-  lsn_t * vals = malloc(sizeof(lsn_t) * COUNT);
-  lsn_t * bits = malloc(sizeof(lsn_t) * COUNT);
+  lsn_t * vals = stasis_malloc(COUNT, lsn_t);
+  lsn_t * bits = stasis_malloc(COUNT, lsn_t);
   for(int i = 0; i < COUNT; i++) {
     vals[i] = i;
     bits[i] = 0;

@@ -358,7 +358,7 @@ START_TEST(operation_nestedTopAction) {
   int xid= Tbegin();
   int *dat;
 
-  dat = malloc(sizeof(int));
+  dat = stasis_alloc(int);
   recordid rid1 = Talloc(xid, sizeof(int));
   recordid rid2 = Talloc(xid, sizeof(int));
   recordid rid3 = Talloc(xid, sizeof(int));
@@ -574,7 +574,7 @@ START_TEST(operation_lsn_free) {
     Page * p = loadPage(xid,pid);
     stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
-    byte * old = malloc(PAGE_SIZE);
+    byte * old = stasis_malloc(PAGE_SIZE, byte);
     memcpy(old, p->memAddr, PAGE_SIZE);
     int fortyTwo = 42;
     for(int i = 0; i < 100; i++) {
@@ -583,7 +583,7 @@ START_TEST(operation_lsn_free) {
       stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
       stasis_page_lsn_write(xid, p, -1);
     }
-    byte * new = malloc(PAGE_SIZE);
+    byte * new = stasis_malloc(PAGE_SIZE, byte);
     memcpy(new, p->memAddr, PAGE_SIZE);
     memcpy(p->memAddr, old, PAGE_SIZE);
     releasePage(p);
@@ -638,7 +638,7 @@ START_TEST(operation_reorderable) {
     Page * p = loadPage(xid,pid);
     stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
-    byte * old = malloc(PAGE_SIZE);
+    byte * old = stasis_malloc(PAGE_SIZE, byte);
     memcpy(old, p->memAddr, PAGE_SIZE);
     int fortyTwo = 42;
     for(int i = 0; i < 100; i++) {
@@ -647,7 +647,7 @@ START_TEST(operation_reorderable) {
       stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
       stasis_page_lsn_write(xid, p, -1);
     }
-    byte * new = malloc(PAGE_SIZE);
+    byte * new = stasis_malloc(PAGE_SIZE, byte);
     memcpy(new, p->memAddr, PAGE_SIZE);
     memcpy(p->memAddr, old, PAGE_SIZE);
     releasePage(p);

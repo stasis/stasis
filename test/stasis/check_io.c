@@ -94,7 +94,7 @@ typedef struct {
 lsn_t trunc_val;
 pthread_mutex_t trunc_mut = PTHREAD_MUTEX_INITIALIZER;
 void load_handle(thread_arg* t) {
-  lsn_t * offsets = malloc(t->count * sizeof(lsn_t));
+  lsn_t * offsets = stasis_malloc(t->count, lsn_t);
 
   stasis_handle_t * h = t->h;
 
@@ -201,7 +201,7 @@ void handle_sequentialtest(stasis_handle_t * h) {
   printf("Seed = %ld\n", seed);
   srandom(seed);
 
-  int * values = malloc(VALUE_COUNT * sizeof(int));
+  int * values = stasis_malloc(VALUE_COUNT, int);
 
   for(int i = 0; i < VALUE_COUNT; i++) {
     values[i] = i;
@@ -218,15 +218,15 @@ void handle_concurrencytest(stasis_handle_t * h) {
 
   printf("Running concurrency test with %d values\n", vc); fflush(stdout);
 
-  int * values = malloc(vc * sizeof(int));
+  int * values = stasis_malloc(vc, int);
 
   for(int i = 0; i < vc; i++) {
     values[i] = i;
   }
 
-  thread_arg * args = malloc(THREAD_COUNT * sizeof(thread_arg));
-  pthread_t * threads = malloc(THREAD_COUNT * sizeof(pthread_t));
-  stasis_handle_t ** handles = malloc(THREAD_COUNT / 2 * sizeof(*handles));
+  thread_arg * args = stasis_malloc(THREAD_COUNT, thread_arg);
+  pthread_t * threads = stasis_malloc(THREAD_COUNT, pthread_t);
+  stasis_handle_t ** handles = stasis_malloc(THREAD_COUNT / 2, stasis_handle_t*);
 
   int val_per_thread = vc / THREAD_COUNT;
   trunc_val = 0;

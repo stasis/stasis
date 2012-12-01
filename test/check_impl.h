@@ -68,7 +68,7 @@ typedef struct {
 } SRunner;
 
 static TCase* tcase_create(const char * ignored) {
-	TCase* tc = malloc(sizeof(*tc));
+	TCase* tc = stasis_alloc(TCase);
 	tc->count = 0;
 	tc->names = 0;
 	tc->tests = 0;
@@ -101,7 +101,7 @@ static void tcase_free(TCase * tc) {
 }
 
 static Suite * suite_create(const char * name) {
-	Suite* ret = malloc(sizeof(*ret));
+	Suite* ret = stasis_alloc(Suite);
 	ret->name = strdup(name);
 	ret->tc = 0;
 	return ret;
@@ -116,7 +116,7 @@ static void suite_free(Suite* s) {
 	free(s);
 }
 static SRunner * srunner_create(Suite* s) {
-	SRunner * ret = malloc(sizeof(SRunner));
+	SRunner * ret = stasis_alloc(SRunner);
 	ret->s = s;
 	return ret;
 }

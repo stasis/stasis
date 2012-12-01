@@ -10,16 +10,14 @@ rwl *initlock (void)
 {
 	rwl *lock;
 
-	lock = (rwl *)malloc (sizeof (rwl));
+	lock = stasis_alloc (rwl);
 	if (lock == NULL) return (NULL);
-	lock->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
+	lock->mut = stasis_alloc (pthread_mutex_t);
 	if (lock->mut == NULL) { free (lock); return (NULL); }
-	lock->writeOK =
-		(pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+	lock->writeOK = stasis_alloc (pthread_cond_t);
 	if (lock->writeOK == NULL) { free (lock->mut); free (lock);
 		return (NULL); }
-	lock->readOK =
-		(pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+	lock->readOK = stasis_alloc (pthread_cond_t);
 	if (lock->writeOK == NULL) { free (lock->mut); free (lock->writeOK);
 		free (lock); return (NULL); }
 

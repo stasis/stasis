@@ -317,7 +317,7 @@ START_TEST(linearHashNTAThreadedTest) {
   Tcommit(xid);
   pthread_t threads[NUM_THREADS];
   for(i = 0; i < NUM_THREADS; i++) {
-    linear_hash_worker_args * args = malloc(sizeof(linear_hash_worker_args));
+    linear_hash_worker_args * args = stasis_alloc(linear_hash_worker_args);
     args->thread = i;
     args->rid= rid;
     pthread_create(&threads[i], NULL, &worker, args);
@@ -346,7 +346,7 @@ START_TEST(linearHashNTAThreadedTestRandomized) {
   Tcommit(xid);
   pthread_t threads[NUM_THREADS];
   for(i = 0; i < NUM_THREADS; i++) {
-    linear_hash_worker_args * args = malloc(sizeof(linear_hash_worker_args));
+    linear_hash_worker_args * args = stasis_alloc(linear_hash_worker_args);
     args->thread = i;
     args->rid= rid;
     pthread_create(&threads[i], NULL, &worker, args);

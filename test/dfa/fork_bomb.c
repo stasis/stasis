@@ -78,9 +78,9 @@ int main (int argc, char** argv) {
   DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
   
-  Transition * transitions = malloc (sizeof(Transition) * 3);
+  Transition * transitions = stasis_malloc(3, Transition);
 
-  State * states = malloc(sizeof(State) * MAX_STATE_COUNT);
+  State * states = stasis_malloc(MAX_STATE_COUNT, State);
   /*  StateMachine initial_sm1_stack; */
   StateMachine * initial_sm1;
   int transition_count;

@@ -92,7 +92,7 @@ START_TEST(rbRandTest) {
   rbtree *stl_1 = stl_rbinit(cmp_1, NULL);
   rbtree *stl_2 = stl_rbinit(cmp_2, NULL);
 
-  tup * entries = malloc(sizeof(tup) * NUM_ENTRIES);
+  tup * entries = stasis_malloc(NUM_ENTRIES, tup);
 #ifdef DBUG_TEST
   for(uint64_t i = 0; i < NUM_ENTRIES; i++) {
     entries[i].a = i;

@@ -80,7 +80,7 @@ typedef struct{
 } PrepareGuardState;
 
 void * getPrepareGuardState() {
-  PrepareGuardState * s = malloc (sizeof(PrepareGuardState));
+  PrepareGuardState * s = stasis_alloc(PrepareGuardState);
   s->continueIterating = 1;
   s->prevLSN = -1;
   s->xid = -1;

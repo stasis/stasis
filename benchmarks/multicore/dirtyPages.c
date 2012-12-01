@@ -37,7 +37,7 @@ int main(int argc, char * argv[]) {
 
   pthread_t workers[numthreads];
 
-  p = malloc(sizeof(Page *) * numthreads);
+  p = stasis_malloc(numthreads, Page*);
 
   Tinit();
 

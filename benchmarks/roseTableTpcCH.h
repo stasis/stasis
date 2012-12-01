@@ -108,13 +108,13 @@ namespace rose {
 	max_col_number = max_col_number < column[col]
 	  ? column[col] : max_col_number;
       }
-      char ** toks = (char**)malloc(sizeof(char*)*(max_col_number+1));
+      char ** toks = stasis_malloc(max_col_number+1, char*);
       char * mode;
       printf("Reading from file %s\n", file);
       int inserts = 0;
       size_t line_len = 100;
       // getline wants malloced memmory (it probably calls realloc...)
-      char * line = (char*) malloc(sizeof(char) * line_len);
+      char * line = stasis_malloc(line_len, char);
 
       FILE * input = fopen(file, "r");
       if(!input) {

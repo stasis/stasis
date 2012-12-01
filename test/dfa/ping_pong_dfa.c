@@ -71,9 +71,9 @@ START_TEST (pingpong_check) {
   DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
 
-  Transition * transitions = malloc (sizeof(Transition) * 4);
+  Transition * transitions = stasis_malloc(4, Transition);
 
-  State * states = malloc(sizeof(State) * MAX_STATE_COUNT);
+  State * states = stasis_malloc(MAX_STATE_COUNT, State);
   StateMachine * initial_sm1;
   StateMachine * initial_sm2;
   int i;

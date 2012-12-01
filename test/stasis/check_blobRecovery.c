@@ -82,7 +82,7 @@ static byte * gen_blob(int i) {
 START_TEST(recoverBlob__randomized) {
   static uint16_t buf[4096*4/sizeof(uint16_t)];
 
-  recordid * blobs = malloc(sizeof(recordid) * NUM_BLOBS);
+  recordid * blobs = stasis_malloc(NUM_BLOBS, recordid);
 
   for(int i = 0; i < NUM_BLOBS; i++) {
     blobs[i].size = -1;

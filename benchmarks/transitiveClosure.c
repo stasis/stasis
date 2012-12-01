@@ -191,7 +191,7 @@ int main(int argc, char ** argv) {
   
   TarrayListExtend(xid, rid, NUM_NODES);
 
-  int * node = malloc(sizeof(int) * (OUTDEGREE+1));  // the last long in the node holds flags.
+  int * node = stasis_malloc(OUTDEGREE+1, int);  // the last long in the node holds flags.
   int i, j;
   for(i = 0; i < NUM_NODES; i++) {
     node[OUTDEGREE] = 0;
@@ -264,10 +264,10 @@ int main(int argc, char ** argv) {
       Tconsumer_push(xid, globalFifo->consumer, NULL, 0, (byte*)&rid, sizeof(recordid));
       numOut = 1;
       
-      pthread_t * workers = malloc(sizeof(pthread_t) * NUM_THREADS); 
+      pthread_t * workers = stasis_malloc(NUM_THREADS, pthread_t);
       int j;
       
-      worker_arg * arg = malloc(sizeof(worker_arg));
+      worker_arg * arg = stasis_alloc(worker_arg);
       //      arg->dirty = dirtyFifo;
       arg->global = globalFifo;
       arg->pool   = pool;

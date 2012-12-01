@@ -72,7 +72,7 @@ START_TEST(lhtableTest)
   srand(tv.tv_sec + tv.tv_usec);
   */
 
-  char** keys = malloc(NUM_ENTRIES * sizeof(char*));
+  char** keys = stasis_malloc(NUM_ENTRIES, char*);
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(100);
   for(long i = 0; i < NUM_ENTRIES; i++) {
     int keyLen = asprintf(&(keys[i]), "--> %ld <--\n", i);
@@ -135,8 +135,8 @@ START_TEST(lhtableRandomized) {
 
   struct LH_ENTRY(table) * t = LH_ENTRY(create)(stasis_util_random64(10000));
   int numSets = stasis_util_random64(MAXSETS);
-  int* setLength = malloc(numSets * sizeof(int));
-  long** sets = malloc(numSets * sizeof(long*));
+  int* setLength = stasis_malloc(numSets, int);
+  long** sets = stasis_malloc(numSets, long*);
   int64_t nextVal = 1;
   int64_t eventCount = 0;
 
@@ -146,7 +146,7 @@ START_TEST(lhtableRandomized) {
 
   for(int i =0; i < numSets; i++) {
     setLength[i] = stasis_util_random64(MAXSETLEN);
-    sets[i] = malloc(setLength[i] * sizeof(long));
+    sets[i] = stasis_malloc(setLength[i], long);
     eventCount += setLength[i];
     for(int j =0; j < setLength[i]; j++) {
       sets[i][j] = nextVal;

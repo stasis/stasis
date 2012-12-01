@@ -116,8 +116,8 @@ int main(int argc, char * argv[]) {
   }
   struct timeval start, stop;
   pthread_t status;
-  pthread_t * threads = malloc(sizeof(threads[0]) * num_threads);
-  thread_arg * arg = malloc(sizeof(arg[0]) * num_threads);
+  pthread_t * threads = stasis_malloc(num_threads, pthread_t);
+  thread_arg * arg = stasis_malloc(num_threads, thread_arg);
 
   gettimeofday(&start,0);
   pthread_create(&status, 0, status_worker, 0);

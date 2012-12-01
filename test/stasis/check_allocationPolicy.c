@@ -204,10 +204,10 @@ START_TEST(allocationPolicy_randomTest) {
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
 
-  pageid_t * pages1 = malloc(AVAILABLE_PAGE_COUNT_A * sizeof(pageid_t));
-  pageid_t * pages2 = malloc(AVAILABLE_PAGE_COUNT_B * sizeof(pageid_t));
+  pageid_t * pages1 = stasis_malloc(AVAILABLE_PAGE_COUNT_A, pageid_t);
+  pageid_t * pages2 = stasis_malloc(AVAILABLE_PAGE_COUNT_B, pageid_t);
 
-  int * xids = malloc(sizeof(int) * XACT_COUNT);
+  int * xids = stasis_malloc(XACT_COUNT, int);
 
   for(int i = 0; i < XACT_COUNT; i++) {
     xids[i] = -1;

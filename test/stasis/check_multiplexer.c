@@ -228,7 +228,7 @@ START_TEST(multiplexTest) {
 
   //  printf("->(%d)", fifoPool->fifoCount); fflush(stdout);
 
-  pthread_t * workers = malloc(sizeof(pthread_t) * fifoPool->fifoCount);
+  pthread_t * workers = stasis_malloc(fifoPool->fifoCount, pthread_t);
 
   for(i = 0 ; i < fifoPool->fifoCount; i+=2) {
     //   lladdConsumer_t * consumer = fifoPool->pool[i]->consumer;

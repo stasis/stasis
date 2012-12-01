@@ -52,7 +52,7 @@ static char * malloc_random_string(int group) {
   char * str = 0;
   int strlen = 0;
   while(!strlen) strlen = 128 + (rand() & 127);
-  str = (char*)malloc(strlen + 1);
+  str = stasis_malloc(strlen + 1, char);
   str[0] = group;
 
   for(int i = 1; i < strlen; i++) {
@@ -67,7 +67,7 @@ int main(int argc, char * argv[]) {
   (void)hash_a_fnv; (void)hash_b_fnv;
 
   const int num_inserts = 1000000;
-  char ** strings = (char**)malloc(num_inserts * sizeof(char*));
+  char ** strings = stasis_malloc(num_inserts, char*);
   uint64_t sum_strlen = 0;
   struct timeval start, stop;
   gettimeofday(&start, 0);

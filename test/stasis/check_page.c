@@ -198,7 +198,7 @@ static void* latchFree_worker_thread(void * arg_ptr) {
 START_TEST(latchFreeThreadTest) {
   Tinit();
   int NUM_THREADS = 200;
-  Page ** pages = malloc(sizeof(Page*)*NUM_THREADS);
+  Page ** pages = stasis_malloc(NUM_THREADS, Page*);
   int xid = Tbegin();
 
   pageid_t region = TregionAlloc(xid, NUM_THREADS, -1);
@@ -208,10 +208,10 @@ START_TEST(latchFreeThreadTest) {
     stasis_page_slotted_latch_free_initialize_page(pages[i]);
   }
 
-  pthread_t * threads = malloc(sizeof(pthread_t) * NUM_THREADS);
+  pthread_t * threads = stasis_malloc(NUM_THREADS, pthread_t);
 
   for(int i = 0; i < NUM_THREADS; i++) {
-    latchFree_worker_thread_args * arg = malloc(sizeof(*arg));
+    latchFree_worker_thread_args * arg = stasis_alloc(latchFree_worker_thread_args);
     arg->pages = pages;
     arg->my_page = i;
     arg->num_pages = NUM_THREADS;

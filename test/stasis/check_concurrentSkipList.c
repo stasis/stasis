@@ -10,7 +10,7 @@
 
 int num_keys    = 1000000;
 void * key_dup(intptr_t p) {
-  intptr_t * ret = malloc(sizeof(intptr_t));
+  intptr_t * ret = stasis_alloc(intptr_t);
   *ret = p;
   return ret;
 }
@@ -71,7 +71,7 @@ void * worker(void* p) {
 */
 START_TEST(concurrentSkipList_smokeTest) {
   list = stasis_util_skiplist_init(stasis_util_skiplist_cmp, 0);
-  char ** const keys = malloc(sizeof(char*) * num_keys);
+  char ** const keys = stasis_malloc(num_keys, char*);
   for(int i = 0; i < num_keys; i++) {
 #ifdef STRINGS
     int err = asprintf(&keys[i], "%d", (int)stasis_util_random64(2*num_keys));
@@ -104,9 +104,9 @@ START_TEST(concurrentSkipList_smokeTest) {
 START_TEST(concurrentSkipList_concurrentTest) {
   list = stasis_util_skiplist_init(stasis_util_skiplist_cmp, 0);
   concurrent = 1;
-  char *** const keys = malloc(sizeof(char**) * num_threads);
+  char *** const keys = stasis_malloc(num_threads, char**);
   for(int j = 0; j < num_threads; j++) {
-    keys[j] = malloc(sizeof(char*) * num_keys);
+    keys[j] = stasis_malloc(num_keys, char*);
     for(int i = 0; i < num_keys; i++) {
   #ifdef STRINGS
       int err = asprintf(&keys[i], "%d", (int)stasis_util_random64(2*num_keys));
@@ -118,7 +118,7 @@ START_TEST(concurrentSkipList_concurrentTest) {
   }
   printf("Initted\n");
   fflush(stdout);
-  pthread_t * threads = malloc(sizeof(pthread_t) * num_threads);
+  pthread_t * threads = stasis_malloc(num_threads, pthread_t);
   struct timeval tv;
   gettimeofday(&tv,0);
   double start = stasis_timeval_to_double(tv);

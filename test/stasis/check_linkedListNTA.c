@@ -169,7 +169,7 @@ START_TEST ( linkedListMultiThreadedNTA ) {
   pthread_t threads[NUM_THREADS];
 
   for(i = 0; i < NUM_THREADS; i++) {
-    workerarg * arg = malloc(sizeof(workerarg));
+    workerarg * arg = stasis_alloc(workerarg);
     arg->thread = i;
     arg->listRoot = listRoot;
     pthread_create(&threads[i],NULL, &worker, arg);

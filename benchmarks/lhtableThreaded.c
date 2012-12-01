@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stasis/util/lhtable.h>
+#include <stasis/util/malloc.h>
 #include <assert.h>
 
 int entries;
@@ -70,8 +71,8 @@ int main(int argc, char ** argv) {
     
   printf("thread_count = %d, #entries = %d\n", thread_count, entries);
 
-  pthread_t * threads = malloc(thread_count * sizeof(pthread_t));
-  int* thread_args = malloc(thread_count * sizeof(int));
+  pthread_t * threads = stasis_malloc(thread_count, pthread_t);
+  int* thread_args = stasis_malloc(thread_count, int);
   for(int i = 0; i < thread_count; i++) { 
     thread_args[i] = i + 1;
     pthread_create(&(threads[i]), 0, worker, &(thread_args[i]));

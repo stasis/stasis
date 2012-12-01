@@ -61,8 +61,8 @@ int main () {
     unsigned int new_seed = (int) ((1.0* INT_MAX*rand())/(RAND_MAX+1.0));
     state_machine_id remaining_xact = 0;
     state_machine_id last_xact = 0;
-    rb = malloc (sizeof(MonoTree));
-    rb->buffer = malloc(sizeof(StateMachine) * rb_size);
+    rb = stasis_alloc(MonoTree);
+    rb->buffer = stasis_malloc(rb_size, StateMachine);
 
     init_MonoTree(rb, rb_size);
     

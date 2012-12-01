@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
     buckets[l] = 0;
   }
 
-  pthread_t * workers = malloc(sizeof(pthread_t) * thread_count);
+  pthread_t * workers = stasis_malloc(thread_count, pthread_t);
 
   Tinit();
   int xid = Tbegin();
@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
 
 
   for(k = 0; k < thread_count; k++) {
-    int * k_copy = malloc(sizeof(int));
+    int * k_copy = stasis_alloc(int);
     *k_copy = k ;
     pthread_create(&workers[k], &attr, go, k_copy);
 

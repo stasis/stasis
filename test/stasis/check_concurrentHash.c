@@ -125,7 +125,7 @@ START_TEST(singleThreadHashTest) {
 #else
   ht = hashtable_init((pageid_t)((double)THREAD_ENTRIES * 1.1));
 #endif
-  pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+  pageid_t *data = stasis_malloc(THREAD_ENTRIES, pageid_t);
 
   for(int i = 1; i <= THREAD_ENTRIES; i++) {
     data[i-1] = -1 * (i * NUM_THREADS);
@@ -145,7 +145,7 @@ START_TEST(wraparoundHashTest) {
 #else
   ht = hashtable_init(numEntries);
 #endif
-  pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+  pageid_t *data = stasis_malloc(THREAD_ENTRIES, pageid_t);
 
   for(int i = 1; i <= THREAD_ENTRIES; i++) {
     data[i-1] = -1 * (((i << power) - 6 + stasis_util_random64(13)) / 13);
@@ -162,7 +162,7 @@ START_TEST(concurrentHashTest) {
 #endif
   pthread_t workers[NUM_THREADS];
   for(int i = 0 ; i < NUM_THREADS; i++) {
-    pageid_t *data = malloc(sizeof(pageid_t) * THREAD_ENTRIES);
+    pageid_t *data = stasis_malloc(THREAD_ENTRIES, pageid_t);
 
     for(int j = 1; j <= THREAD_ENTRIES; j++) {
       data[j-1] = -1 * (i + (j * NUM_THREADS));

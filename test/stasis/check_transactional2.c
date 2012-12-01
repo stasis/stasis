@@ -75,7 +75,7 @@ int arrayCmp(int * array, int * array2) {
 /** Allocate a bunch of blobs, set them, read them, commit them, and read it again, chang them, abort, and read again. */
 void * writingAbortingBlobWorkerThread ( void * v ) {
   int offset = * (int *) v;
-  recordid * rids = malloc(BLOBS_PER_THREAD * sizeof(recordid));
+  recordid * rids = stasis_malloc(BLOBS_PER_THREAD, recordid);
   int xid = Tbegin();
   for(int i = 0; i < BLOBS_PER_THREAD; i++) {
     rids[i] = Talloc(xid, 1024 * sizeof(int));
@@ -137,7 +137,7 @@ void * writingAbortingBlobWorkerThread ( void * v ) {
 /** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
 void * writingAbortingWorkerThread ( void * v ) {
   int offset = * (int *) v;
-  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  recordid * rids = stasis_malloc(RECORDS_PER_THREAD, recordid);
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     rids[i] = Talloc(xid, sizeof(int));
@@ -195,7 +195,7 @@ void * writingAbortingWorkerThread ( void * v ) {
 /** Allocate a bunch of stuff, set it, read it, commit it, and read it again. */
 void * writingWorkerThread ( void * v ) {
   int offset = * (int *) v;
-  recordid * rids = malloc(RECORDS_PER_THREAD * sizeof(recordid));
+  recordid * rids = stasis_malloc(RECORDS_PER_THREAD, recordid);
   int xid = Tbegin();
   for(int i = 0; i < RECORDS_PER_THREAD; i++) {
     rids[i] = Talloc(xid, sizeof(int));
@@ -471,7 +471,7 @@ START_TEST(transactional_blobs_threads_abort) {
 
 START_TEST(transactional_noop_xacts) {
   Tinit();
-  int * xids = malloc(sizeof(xids[0]) * MAX_TRANSACTIONS);
+  int * xids = stasis_malloc(MAX_TRANSACTIONS, int);
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
     xids[i] = Tbegin();
   }

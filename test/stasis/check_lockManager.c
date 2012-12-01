@@ -108,7 +108,7 @@ START_TEST(recordidLockManagerTest) {
   int i;
   printf("The following numbers are deadlock counts for each thread.\n");
   for(i = 0; i < THREAD_COUNT; i++) {
-    int *j = malloc(sizeof(int));
+    int *j = stasis_alloc(int);
     *j = i;
     pthread_create(&workers[i], NULL, ridWorkerThread, j);
   }
@@ -127,7 +127,7 @@ START_TEST(pageLockManagerTest) {
   int i;
   printf("The following numbers are deadlock counts for each thread.\n");
   for(i = 0; i < THREAD_COUNT; i++) {
-    int *j = malloc(sizeof(int));
+    int *j = stasis_alloc(int);
     *j = i;
     pthread_create(&workers[i], NULL, pageWorkerThread, j);
   }

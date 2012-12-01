@@ -24,7 +24,7 @@ static byte * bytes_jbyteArray(JNIEnv *e, jbyteArray jba, size_t * sz) {
   *sz = (*e)->GetArrayLength(e, jba) * sizeof(byte);
   if((*e)->ExceptionOccurred(e)) return 0;
   assert(sizeof(jbyte) == 1);
-  jbyte * ret = malloc(*sz);
+  jbyte * ret = stasis_malloc(*sz, jbyte);
   (*e)->GetByteArrayRegion(e, jba, 0, *sz, (jbyte*)ret);
   if((*e)->ExceptionOccurred(e)) return 0;
   return (byte*)ret;

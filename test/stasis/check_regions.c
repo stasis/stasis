@@ -249,7 +249,7 @@ START_TEST(regions_lockRandomizedTest) {
   for(int i = 0; i < NUM_XACTS; i++) {
     xids[i] = Tbegin();
     assert(xids[i] < NUM_XACTS + FUDGE);
-    xidRegions[xids[i]] = malloc(sizeof(pageid_t) * NUM_OPS);
+    xidRegions[xids[i]] = stasis_malloc(NUM_OPS, pageid_t);
     xidRegionCounts[xids[i]] = 0;
   }
   int activeXacts = NUM_XACTS;

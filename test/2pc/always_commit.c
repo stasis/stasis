@@ -86,7 +86,7 @@ int main (int argc, char ** argv) {
   broadcast_lists[0] = star_nodes;
   broadcast_lists[1] = point_nodes;
 
-  app_state = malloc(sizeof(TwoPCAppState));
+  app_state = stasis_alloc(TwoPCAppState);
   
   if (!strcmp(argv[1], "c")) {
     assert(argc == 2);
@@ -107,8 +107,8 @@ int main (int argc, char ** argv) {
 		      broadcast_lists_count, broadcast_list_host_count);
     localhost = broadcast_lists[1][replica];
   }else {
-    Message * m = malloc (sizeof (Message));
-    NetworkSetup * ns = malloc(sizeof(NetworkSetup));
+    Message * m = stasis_alloc(Message);
+    NetworkSetup * ns = stasis_alloc(NetworkSetup);
     init_network_broadcast(ns, 12345, "127.0.0.1:12345", broadcast_lists, broadcast_lists_count, broadcast_list_host_count);
 
     m->to_machine_id = atoi(argv[2]);

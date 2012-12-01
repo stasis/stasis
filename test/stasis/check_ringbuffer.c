@@ -60,11 +60,11 @@ terms specified in this license.
 static int rb_test(double readBlock, double writeBlock) {
 
   int i;
-  byte ** array = malloc(sizeof(byte*) * NUM_ENTRIES);
-  int * length = malloc(sizeof(int) * NUM_ENTRIES);
+  byte ** array = stasis_malloc(NUM_ENTRIES, byte*);
+  int * length = stasis_malloc(NUM_ENTRIES, int);
   for(i = 0; i < NUM_ENTRIES; i++) {
     length[i] =1.0+ 1000.0 * (double)rand() / (double)RAND_MAX;
-    array[i] = malloc(length[i]);
+    array[i] = stasis_malloc(length[i], byte);
     int j;
     for(j = 0; j < length[i]; j++) {
       array[i][j] = i + j;
@@ -108,7 +108,7 @@ static int rb_test(double readBlock, double writeBlock) {
     int numToRead = 1.0 + readBlock * ((double)rand() / (double)RAND_MAX);
     //    printf("%d\n", numToRead);
     for(i = 0; i < numToRead; i++) {
-      byte * buf = malloc(length[readPos]);
+      byte * buf = stasis_malloc(length[readPos], byte);
       if(!ringBufferTruncateRead(buf, log, length[readPos])) {
 	int j;
 	for(j = 0; j < length[readPos]; j++) {

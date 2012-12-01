@@ -294,7 +294,7 @@ START_TEST (rangeTracker_randomTest) {
   srandom(seed);
 
   range ** r_arry;
-  range * ranges = malloc(sizeof(range) * RANGE_COUNT);
+  range * ranges = stasis_malloc(RANGE_COUNT, range);
   int * pins = calloc(RANGE_COUNT, sizeof(int));
   rangeTracker * rt = rangeTrackerInit(QUANTIZATION);
   for(long i = 0; i < RANGE_COUNT; i++) {

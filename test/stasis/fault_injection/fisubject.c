@@ -109,7 +109,7 @@ runSubject() {
   commitLog = open("commits.txt", O_CREAT | O_RDWR | O_APPEND, 0777);
 
   /* Allocate the worker threads. */
-  threads = (pthread_t*) malloc(numThreads * sizeof(pthread_t));
+  threads = stasis_malloc(numThreads, pthread_t);
   
   pthread_attr_init(&attr);
   pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
@@ -145,7 +145,7 @@ threadFunc(void* arg_ptr) {
   /* Allocate the buffer that stores all outstanding hash table insertions. */
   bufferTotalSize = BUFFER_INITIAL_LENGTH;
   bufferCurrentLength = 0;
-  insertBuffer = (char*) malloc(bufferTotalSize * sizeof(char));
+  insertBuffer = stasis_malloc(bufferTotalSize, char);
 
   xid = Tbegin();
   

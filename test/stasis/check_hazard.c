@@ -68,8 +68,8 @@ int hazard_finalize(void*p, void* ignored) {
 */
 START_TEST(hazard_smokeTest) {
   hazard_t * h = hazard_init(2, 2, 10, hazard_finalize, 0);
-  char * a = malloc(1);
-  char * b = malloc(1);
+  char * a = stasis_malloc(1, char);
+  char * b = stasis_malloc(1, char);
   *a = 0;
   *b = 1;
   char * ap = hazard_ref(h, 0, (hazard_ptr*)&a);
@@ -113,14 +113,14 @@ void * hazard_worker(void * hp) {
 }
 START_TEST(hazard_loadTest) {
   hazard_t * h = hazard_init(1, 1, 2, hazard_finalize, 0);
-  slots = malloc(sizeof(hazard_ptr) * NUM_SLOTS);
-  muts = malloc(sizeof(pthread_mutex_t) * NUM_SLOTS);
+  slots = stasis_malloc(NUM_SLOTS, hazard_ptr);
+  muts = stasis_malloc(NUM_SLOTS, pthread_mutex_t);
   for(int i = 0; i < NUM_SLOTS; i++) {
-    slots[i] = (hazard_ptr) malloc(sizeof(int));
+    slots[i] = (hazard_ptr) stasis_malloc(1, int);
     *(int*)slots[i] = i;
     pthread_mutex_init(&muts[i],0);
   }
-  pthread_t * threads = malloc(sizeof(pthread_t) * NUM_THREADS);
+  pthread_t * threads = stasis_malloc(NUM_THREADS, pthread_t);
   for(int i = 0; i < NUM_THREADS; i++) {
     pthread_create(&threads[i], 0, hazard_worker, h);
   }
