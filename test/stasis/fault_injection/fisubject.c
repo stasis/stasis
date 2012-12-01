@@ -200,7 +200,7 @@ writeKeyToBuffer(char** insertBuffer, int* bufferCurrentLength,
    */
   if ((curLength + 15) > totalSize) {
     totalSize *= 2;
-    *insertBuffer = (char*) realloc(*insertBuffer, totalSize);
+    *insertBuffer = stasis_realloc(*insertBuffer, totalSize, char);
     *bufferTotalSize = totalSize;
   }
 

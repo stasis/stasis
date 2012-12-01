@@ -113,16 +113,16 @@ tuple_t tupleAlloc() {
 
 tuple_t tupleCatInt64(tuple_t t, int64_t i) {
   t.count++;
-  t.type = realloc(t.type,t.count * sizeof(t.type[0]));
-  t.col = realloc(t.col,t.count * sizeof(t.col[0]));
+  t.type = stasis_realloc(t.type,t.count, datatype_t);
+  t.col = stasis_realloc(t.col, t.count, tuplecol_t);
   t.type[t.count-1] = int64_typ;
   t.col[t.count-1].int64 = i;
   return t;
 }
 tuple_t tupleCatString(tuple_t t, const char * str) {
   t.count++;
-  t.type = realloc(t.type,t.count * sizeof(t.type[0]));
-  t.col = realloc(t.col,t.count * sizeof(t.col[0]));
+  t.type = stasis_realloc(t.type,t.count,datatype_t);
+  t.col = stasis_realloc(t.col,t.count,tuplecol_t);
   t.type[t.count-1] = string_typ;
   t.col[t.count-1].string = strdup(str);
   return t;

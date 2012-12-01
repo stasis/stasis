@@ -59,7 +59,7 @@ static stasis_write_buffer_t * mem_write_buffer(stasis_handle_t * h,
   } else {
     byte * newbuf;
     if(off+len) {
-      newbuf = realloc(impl->buf, off+len);
+      newbuf = stasis_realloc(impl->buf, off+len, byte);
     } else {
       free(impl->buf);
       newbuf = stasis_malloc(0, byte);

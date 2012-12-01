@@ -40,8 +40,8 @@ static int stasis_log_structured_group_put(struct stasis_group_t* impl,
     stasis_log_structured_group_entry_t * entry;
     if((entry = LH_ENTRY(find)(g->table, k,keylen))) {
       entry->count++;
-      entry->val = realloc(entry->val, sizeof(entry->val[0])*entry->count);
-      entry->vallen = realloc(entry->vallen, sizeof(entry->vallen[0])*entry->count);
+      entry->val = stasis_realloc(entry->val, entry->count, byte*);
+      entry->vallen = stasis_realloc(entry->vallen, entry->count, size_t);
     } else {
       entry = malloc(sizeof(*entry));
       entry->val = malloc(sizeof(entry->val[0]));

@@ -70,7 +70,7 @@ void* stasis_util_slab_malloc(stasis_util_slab_t * slab) {
   } else if(slab->this_block_count == slab->objs_per_block) {
     (slab->this_block_count) = 0;
     (slab->this_block) ++;
-    slab->blocks = realloc(slab->blocks, (slab->this_block+1) * sizeof(slab->blocks[0]));
+    slab->blocks = stasis_realloc(slab->blocks, slab->this_block+1, byte*);
     assert(slab->blocks);
     slab->blocks[slab->this_block] = stasis_malloc(slab->block_sz, byte);
     assert(slab->blocks[slab->this_block]);

@@ -100,7 +100,7 @@ int logMemory_Iterator_next (int xid, void * impl) {
 
   byte * tmp;
 
-  tmp = realloc(fifo->cached_value, size);
+  tmp = stasis_realloc(fifo->cached_value, size, byte);
   if(tmp == NULL) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
@@ -167,7 +167,7 @@ int logMemory_Iterator_tryNext (int xid, void * impl) {
 
   byte * tmp;
 
-  tmp = realloc(fifo->cached_value, size);
+  tmp = stasis_realloc(fifo->cached_value, size, byte);
   if(tmp == NULL) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));
@@ -254,7 +254,7 @@ int logMemory_Iterator_nextOrEmpty (int xid, void * impl) {
 
   byte * tmp;
 
-  tmp = realloc(fifo->cached_value, size);
+  tmp = stasis_realloc(fifo->cached_value, size, byte);
   if(tmp == NULL) {
     pthread_mutex_unlock(&(fifo->mutex));
     pthread_mutex_unlock(&(fifo->readerMutex));

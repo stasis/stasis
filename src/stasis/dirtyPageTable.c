@@ -323,7 +323,7 @@ void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages,
          e && (stop == 0 || e->p < stop);
          e = rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
     n++;
-    staleDirtyPages = realloc(staleDirtyPages, sizeof(pageid_t) * n);
+    staleDirtyPages = stasis_realloc(staleDirtyPages, n, pageid_t);
     staleDirtyPages[n-1] = e->p;
   }
   pthread_mutex_unlock(&dirtyPages->mutex);

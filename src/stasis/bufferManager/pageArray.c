@@ -15,7 +15,7 @@ static Page * paLoadPage(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
   stasis_buffer_manager_page_array_t *pa = bm->impl;
   pthread_mutex_lock(&pa->mut);
   if(pageid >= pa->pageCount) {
-    pa->pageMap = realloc(pa->pageMap, (1+pageid) * sizeof(Page*));
+    pa->pageMap = stasis_realloc(pa->pageMap, 1+pageid, Page*);
     for(pageid_t i = pa->pageCount; i <= pageid; i++) {
       pa->pageMap[i] = 0;
     }

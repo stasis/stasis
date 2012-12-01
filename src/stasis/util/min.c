@@ -73,7 +73,7 @@ void stasis_aggregate_min_add(stasis_aggregate_min_t * min, lsn_t * a) {
       }
     }
     min->num_entries++;
-    min->vals = realloc(min->vals, min->num_entries * sizeof(lsn_t**));
+    min->vals = stasis_realloc(min->vals, min->num_entries, lsn_t*);
     *p = min->num_entries-1;
     min->vals[*p] = a;
     return;

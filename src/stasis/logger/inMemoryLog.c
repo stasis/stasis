@@ -72,7 +72,7 @@ LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size
         writelock(impl->globalOffset_lock, 0);
       } else {
         impl->bufferLen *= 2;
-        impl->buffer = realloc(impl->buffer, impl->bufferLen * sizeof(LogEntry *));
+        impl->buffer = stasis_realloc(impl->buffer, impl->bufferLen, LogEntry *);
       }
     } else {
       done = 1;

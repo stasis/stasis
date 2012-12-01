@@ -85,8 +85,8 @@ static inline void tcase_add_checked_fixture(TCase * tc, void(*setup)(void), voi
 #define tcase_add_test(tc, fcn) tcase_add_test_(tc, fcn, #fcn)
 static void tcase_add_test_(TCase * tc, void(*fcn)(void), const char* name) {
 	(tc->count)++;
-	tc->tests = realloc(tc->tests, sizeof(tc->tests[0])*tc->count);
-	tc->names = realloc(tc->names, sizeof(tc->names[0])*tc->count);
+	tc->tests = (void(**)(void)) stasis_realloc(tc->tests, tc->count, void*);
+	tc->names = stasis_realloc(tc->names, tc->count, char*);
 	tc->tests[tc->count-1] = fcn;
 	tc->names[tc->count-1] = strdup(name);
 }

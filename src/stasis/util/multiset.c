@@ -19,7 +19,7 @@ void stasis_util_multiset_destroy(stasis_util_multiset_t * set) {
 }
 
 void stasis_util_multiset_insert(stasis_util_multiset_t * set, lsn_t item) {
-  set->items = realloc(set->items, (set->item_count+1)*sizeof(lsn_t));
+  set->items = stasis_realloc(set->items, set->item_count+1, lsn_t);
   assert(set->items);
   set->items[set->item_count] = item;
   (set->item_count)++;

@@ -22,11 +22,11 @@ char ** split(char * in, char ** freeme, int* count, char * delim) {
   char ** ret = 0;
   while(tok) {
     (*count)++;
-    ret = realloc(ret, sizeof(char*) * *count);
+    ret = stasis_realloc(ret, *count, char*);
     ret[(*count)-1] = tok;
     tok = strtok_r(NULL,delim,&strtoks);
   }
-  ret = realloc(ret, sizeof(char*) * ((*count)+1));
+  ret = stasis_realloc(ret, (*count)+1, char*);
   ret[*count]=0;
   return ret;
 }
@@ -685,7 +685,7 @@ lladdIterator_t* ReferentialAlgebra_Join(int xid,
   while(Titerator_next(xid, inner_it)) {
     byte * in_val;
     Titerator_value(xid, inner_it, (byte**)&in_val);
-    j->inner_tpls = realloc(j->inner_tpls, sizeof(tuple_t)*(i+1));
+    j->inner_tpls = stasis_realloc(j->inner_tpls, i+1, tuple_t);
     j->inner_tpls[i] = tupleDup(*(tuple_t*)in_val);
     Titerator_tupleDone(xid, inner_it);
     i++;

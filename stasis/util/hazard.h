@@ -48,7 +48,7 @@ static inline void hazard_scan(hazard_t * h, hazard_ptr_rec_t * rec) {
   pthread_mutex_lock(&h->tls_list_mut);
   hazard_ptr_rec_t * list = h->tls_list;
   while(list != NULL) {
-    ptrs = realloc(ptrs, sizeof(hazard_ptr) * (ptrs_len+h->num_slots));
+    ptrs = stasis_realloc(ptrs, ptrs_len+h->num_slots, hazard_ptr);
 //    int would_stop = 0;
     for(int i = 0; i < h->num_slots; i++) {
       ptrs[ptrs_len] = list->hp[i];

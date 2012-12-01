@@ -647,8 +647,7 @@ int main(int argc, char **argv) {
       assert(i < argc);
       column[column_count] = atoi(argv[i]);
       column_count++;
-      column = reinterpret_cast<int*>(realloc(column,
-                                              (column_count+1) * sizeof(int)));
+      column = stasis_realloc(column, column_count+1, int);
     } else if (!strcmp(argv[i], "-m")) {
       multicolumn = 1;
     } else if (!strcmp(argv[i], "-t")) {
@@ -703,7 +702,7 @@ int main(int argc, char **argv) {
 
   val_t current = 0;
 
-  // dataset is managed by malloc so that it can be realloc()'ed
+  // dataset is managed by malloc so that it can be realloc'ed
   val_t **dataset;
 
   if(requested_column_count && file_mode) {
@@ -802,8 +801,7 @@ int main(int argc, char **argv) {
       } else {
         inserts++;
         for(int col = 0; col < column_count; col++) {
-          dataset[col] = reinterpret_cast<val_t*>(
-              realloc(dataset[col], sizeof(val_t) * (inserts + 1)));
+          dataset[col] = stasis_realloc(dataset[col], (inserts + 1), val_t);
           errno = 0;
           char * endptr;
           dataset[col][inserts]

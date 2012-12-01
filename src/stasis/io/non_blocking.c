@@ -195,9 +195,8 @@ static stasis_handle_t * getSlowHandle(nbw_impl * impl) {
     slow = impl->slow_factory(impl->slow_factory_arg);
     pthread_mutex_lock(&impl->mut);
     impl->all_slow_handle_count++;
-    impl->all_slow_handles
-      = realloc(impl->all_slow_handles,
-                (impl->all_slow_handle_count) * sizeof(stasis_handle_t*));
+    impl->all_slow_handles = stasis_realloc(impl->all_slow_handles,
+                impl->all_slow_handle_count, stasis_handle_t*);
     impl->all_slow_handles[(impl->all_slow_handle_count)-1] = slow;
     pthread_mutex_unlock(&impl->mut);
   } else {
@@ -670,9 +669,9 @@ static void * nbw_worker(void * handle) {
             dummy_count = 1;
             first = 0;
           } else {
-            buf = realloc(buf, len);
+            buf = stasis_realloc(buf, len, byte);
 
-            dummies = realloc(dummies, sizeof(tree_node) * (dummy_count+1));
+            dummies = stasis_realloc(dummies, dummy_count+1, tree_node);
             dummies[dummy_count] = dummy;
             dummy_count++;
           }

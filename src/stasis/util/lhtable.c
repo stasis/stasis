@@ -164,8 +164,8 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 
   // Assumes realloc is reasonably fast... This seems to be a good
   // assumption under linux.
-  table->bucketList = realloc(table->bucketList,
-			      (1+newBucket) * sizeof(struct LH_ENTRY(pair_t)));
+  table->bucketList = stasis_realloc(table->bucketList, 1+newBucket,
+		  struct LH_ENTRY(pair_t));
   table->bucketListLength = 1+newBucket;
   table->bucketList[newBucket].key = 0;
   table->bucketList[newBucket].keyLength = 0;

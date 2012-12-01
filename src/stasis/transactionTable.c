@@ -133,12 +133,12 @@ int stasis_transaction_table_register_callback(stasis_transaction_table_t *tbl,
   stasis_transaction_table_callback_t **list = &tbl->commitCallbacks[type];
   int *count = &tbl->commitCallbackCount[type];
 
-  *list = realloc(*list, (1+*count) * sizeof(*list[0]));
+  *list = stasis_realloc(*list, 1+*count, stasis_transaction_table_callback_t);
   (*list)[*count] = cb;
   for(int i = 0; i < MAX_TRANSACTIONS; i++) {
     void *** args;
     args = &tbl->table[i].commitArgs[type];
-    *args = realloc(*args, (1+*count) * sizeof(*args[0]));
+    *args = stasis_realloc(*args, 1+*count, void*);
     (*args)[*count] = 0;
   }
   return (*count)++;
@@ -180,7 +180,7 @@ int* stasis_transaction_table_list_active(stasis_transaction_table_t *tbl, int *
     if(e_xid >= 0) {
       ret[*count] = e_xid;
       (*count)++;
-      ret = realloc(ret, ((*count)+1) * sizeof(*ret));
+      ret = stasis_realloc(ret, (*count)+1, int);
       ret[*count] = INVALID_XID;
     }
   }
@@ -343,9 +343,9 @@ stasis_transaction_table_entry_t * stasis_transaction_table_begin(stasis_transac
       if(test_and_set_entry(&tbl->table[i], INVALID_XTABLE_XID, PENDING_XTABLE_XID)) {
         index = i;
         tls->num_entries++;
-        tls->entries = realloc(tls->entries, sizeof(sizeof(ret)) * tls->num_entries);
+        tls->entries = stasis_realloc(tls->entries, tls->num_entries, stasis_transaction_table_entry_t*);
         tls->entries[tls->num_entries-1] = &tbl->table[index];
-        tls->indexes = realloc(tls->indexes, sizeof(int) * tls->num_entries);
+        tls->indexes = stasis_realloc(tls->indexes, tls->num_entries, int);
         tls->indexes[tls->num_entries-1] = index;
         tbl->table[index].xidWhenFree = RESERVED_XTABLE_XID;
         tbl->table[index].tid = tls->tid;

@@ -257,7 +257,7 @@ static int xidAllocedDealloced_helper_lookup_by_xid(struct rbtree *t, int xid, p
     ret = 1;
     // add pageid to ret value
     (*count)++;
-    *pages = realloc(*pages, *count * sizeof(*pages[0]));
+    *pages = stasis_realloc(*pages, *count, pageid_t);
 //    printf("pages %x count %x *pages %x len %lld \n", pages, count, *pages, *count * sizeof(*pages[0]));
     fflush(stdout);
     (*pages)[(*count) - 1] = tup->pageid;
@@ -275,7 +275,7 @@ static int xidAllocedDealloced_helper_lookup_by_pageid(struct rbtree *t, pageid_
     ret = 1;
     // add xid to ret value.
     (*count)++;
-    *xids = realloc(*xids, *count * sizeof(*xids[0]));
+    *xids = stasis_realloc(*xids, *count, int);
     (*xids)[(*count) - 1] = tup->xid;
     tup = rblookup(RB_LUGREAT, tup, t);
   }

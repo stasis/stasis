@@ -23,8 +23,8 @@ static inline void stasis_histogram_thread_destroy(void * p) { free (p); }
   void stasis_histogram_ctor_##x(void) { stasis_histogram_64_clear(&x);        \
                                          pthread_key_create(&(x.tls), stasis_histogram_thread_destroy); \
                                          stasis_auto_histogram_count++;        \
-                                         stasis_auto_histograms = realloc(stasis_auto_histograms, sizeof(void*)*stasis_auto_histogram_count); \
-                                         stasis_auto_histogram_names = realloc(stasis_auto_histogram_names, sizeof(void*)*stasis_auto_histogram_count); \
+                                         stasis_auto_histograms = stasis_realloc(stasis_auto_histograms, stasis_auto_histogram_count, stasis_histogram_64_t*); \
+                                         stasis_auto_histogram_names = stasis_realloc(stasis_auto_histogram_names, stasis_auto_histogram_count, char*); \
                                          stasis_auto_histograms[stasis_auto_histogram_count - 1] = &x; \
                                          stasis_auto_histogram_names[stasis_auto_histogram_count - 1] = __FILE__":"#x; \
                                        }
