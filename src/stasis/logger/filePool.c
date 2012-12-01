@@ -271,7 +271,7 @@ static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) 
     strcpy(filename, filenametmp);
     strcat(filename, "~");
     char * newfilepath = build_path(fp->dirname, filename);
-    fp->dead_filenames = realloc(fp->dead_filenames, sizeof(char**) * fp->dead_count + 1);
+    fp->dead_filenames = stasis_realloc(fp->dead_filenames, fp->dead_count + 1, char*);
     fp->dead_filenames[fp->dead_count] = filename;
     fp->dead_count ++;
     int err = rename(tmpfilepath, newfilepath);
@@ -316,9 +316,9 @@ int stasis_log_file_pool_append_chunk(stasis_log_t * log, off_t new_offset) {
   char * old_file = 0;
   char * new_file = stasis_log_file_pool_build_filename(fp, new_offset);
   char * new_path = build_path(fp->dirname, new_file);
-  fp->live_filenames = realloc(fp->live_filenames, sizeof(char*) * (fp->live_count+1));
-  fp->live_offsets   = realloc(fp->live_offsets,   sizeof(lsn_t) * (fp->live_count+1));
-  fp->ro_fd          = realloc(fp->ro_fd,          sizeof(int)   * (fp->live_count+1));
+  fp->live_filenames = stasis_realloc(fp->live_filenames, fp->live_count+1, char*);
+  fp->live_offsets   = stasis_realloc(fp->live_offsets,   fp->live_count+1, lsn_t);
+  fp->ro_fd          = stasis_realloc(fp->ro_fd,          fp->live_count+1, int);
   fp->live_filenames[fp->live_count] = new_file;
   fp->live_offsets[fp->live_count] = new_offset;
   if(fp->dead_count) {
@@ -558,7 +558,7 @@ int stasis_log_file_pool_truncate(struct stasis_log_t* log, lsn_t lsn) {
   pthread_mutex_lock(&fp->mut);
   int chunk = get_chunk_from_offset(log, lsn);
   int dead_offset = fp->dead_count;
-  fp->dead_filenames = realloc(fp->dead_filenames, sizeof(char**) * (dead_offset + chunk));
+  fp->dead_filenames = stasis_realloc(fp->dead_filenames, dead_offset + chunk, char*);
   for(int i = 0; i < chunk; i++) {
     fp->dead_filenames[dead_offset + i] = malloc(strlen(fp->live_filenames[i]) + 2);
     fp->dead_filenames[dead_offset + i][0] = 0;
@@ -821,12 +821,12 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
 
       DEBUG("Live file %s\n", namelist[i]->d_name);
 
-      fp->live_filenames = realloc(fp->live_filenames,
-                                   (fp->live_count+1) * sizeof(*fp->live_filenames));
-      fp->live_offsets   = realloc(fp->live_offsets,
-                                   (fp->live_count+1) * sizeof(*fp->live_offsets));
-      fp->ro_fd          = realloc(fp->ro_fd,
-                                   (fp->live_count+1) * sizeof(*fp->ro_fd));
+      fp->live_filenames = stasis_realloc(fp->live_filenames,
+                                   fp->live_count+1, char*);
+      fp->live_offsets   = stasis_realloc(fp->live_offsets,
+                                   fp->live_count+1, lsn_t);
+      fp->ro_fd          = stasis_realloc(fp->ro_fd,
+                                   fp->live_count+1, int);
 
       fp->live_filenames[fp->live_count] = strdup(namelist[i]->d_name);
       fp->live_offsets[fp->live_count]   = lsn;
@@ -846,7 +846,7 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
     } break;
     case DEAD: {
 
-      fp->dead_filenames = realloc(fp->dead_filenames, sizeof(char**)*fp->dead_count+1);
+      fp->dead_filenames = stasis_realloc(fp->dead_filenames, fp->dead_count+1, char*);
       fp->dead_filenames[fp->dead_count] = strdup(namelist[i]->d_name);
       (fp->dead_count)++;
 
