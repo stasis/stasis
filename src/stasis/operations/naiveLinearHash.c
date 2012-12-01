@@ -116,9 +116,9 @@ static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, u
   recordid ba = hashRid; ba.slot = next_split;
   recordid bb = hashRid; bb.slot = next_split + stasis_util_two_to_the(i-1);
 
-  hashEntry * D_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-  hashEntry * A_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
-  hashEntry * B_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * D_contents = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
+  hashEntry * A_contents = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
+  hashEntry * B_contents = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
 
   Tread(xid, ba, A_contents);
   Tread(xid, bb, D_contents);
@@ -346,8 +346,8 @@ recordid TnaiveHashCreate(int xid, int keySize, int valSize) {
   assert(rid.size == sizeof(hashEntry) + keySize + valSize);
   TarrayListExtend(xid, rid, 4096+2);
 
-  recordid  * headerRidA = calloc (1, sizeof(recordid) + keySize + valSize);
-  recordid  * headerRidB = calloc (1, sizeof(recordid) + keySize + valSize);
+  recordid  * headerRidA = stasis_calloc_trailing_array(recordid, keySize + valSize);
+  recordid  * headerRidB = stasis_calloc_trailing_array(recordid, keySize + valSize);
 
   assert(headerRidB);
 
@@ -407,11 +407,11 @@ void TnaiveHashInsert(int xid, recordid hashRid,
   int bucket =
     2 + stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2);
 
-  hashEntry * e = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * e = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
   memcpy(e+1, key, keySize);
   memcpy(((byte*)(e+1)) + keySize, val, valSize);
 
-  hashEntry * bucket_contents = calloc(1,sizeof(hashEntry) + keySize + valSize);
+  hashEntry * bucket_contents = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
   hashRid.slot = bucket;
   Tread(xid, hashRid, bucket_contents);
 

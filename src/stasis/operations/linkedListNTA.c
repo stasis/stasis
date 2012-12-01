@@ -329,7 +329,7 @@ recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
   recordid ret;
 
   ret = Talloc(xid, sizeof(stasis_linkedList_entry) + keySize + valueSize);
-  byte * cleared = calloc(sizeof(stasis_linkedList_entry) + keySize + valueSize, sizeof(byte));
+  byte * cleared = stasis_calloc(sizeof(stasis_linkedList_entry) + keySize + valueSize, byte);
   Tset(xid, ret, cleared);
   free(cleared);
 

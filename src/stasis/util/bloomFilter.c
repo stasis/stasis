@@ -84,7 +84,7 @@ stasis_bloom_filter_t * stasis_bloom_filter_create(uint64_t(*func_a)(const char*
   ret->num_expected_items = num_expected_items;
   ret->desired_false_positive_rate = false_positive_rate;
   ret->num_buckets = stasis_bloom_filter_calc_num_buckets(ret->num_expected_items, ret->desired_false_positive_rate);
-  ret->buckets = calloc((ret->num_buckets / 8) + ((ret->num_buckets % 8 == 0) ? 0 : 1), 1);
+  ret->buckets = stasis_calloc((ret->num_buckets / 8) + ((ret->num_buckets % 8 == 0) ? 0 : 1), uint8_t);
   ret->num_functions = stasis_bloom_filter_calc_num_functions(ret->num_expected_items, ret->num_buckets);
   ret->result_scratch_space = stasis_malloc(ret->num_functions, uint64_t);
   ret->actual_number_of_items = 0;

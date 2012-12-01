@@ -64,7 +64,7 @@ void stasis_blob_write(int xid, Page * p, recordid rid, const byte* dat) {
       TpageSetRange(xid,rec.offset+chunk,0,((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE),USABLE_SIZE_OF_PAGE);
     }
     // Painful; allocate buffer for zero padding. TODO: Remove zero padding?
-    byte * buf = calloc(1,USABLE_SIZE_OF_PAGE);
+    byte * buf = stasis_calloc(USABLE_SIZE_OF_PAGE, byte);
     memcpy(buf, ((const byte*)dat)+(chunk*USABLE_SIZE_OF_PAGE), rid.size % USABLE_SIZE_OF_PAGE);
     TpageSetRange(xid,rec.offset+chunk,0,buf,USABLE_SIZE_OF_PAGE);
     free(buf);

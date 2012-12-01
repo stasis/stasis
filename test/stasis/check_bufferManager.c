@@ -280,7 +280,7 @@ void * blindRandomWorker(void * v) {
   //  int idx = *(int*)v;  /// Don't need index; want pinned pages to overlap!
 
   pageid_t * pageids = stasis_malloc(PINNED_PAGE_COUNT, pageid_t);
-  Page ** pages = calloc(PINNED_PAGE_COUNT, sizeof(Page*));
+  Page ** pages = stasis_calloc(PINNED_PAGE_COUNT, Page*);
 
   for(int i = 0; i < PINNED_PAGE_COUNT; i++) {
     pageids[i] = -1;

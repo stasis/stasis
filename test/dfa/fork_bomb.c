@@ -75,7 +75,7 @@ callback_fcn recv_new, recv_ack;
   */
 
 int main (int argc, char** argv) {
-  DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
+  DfaSet * dfaSet = stasis_calloc(1, DfaSet);
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
   
   Transition * transitions = stasis_malloc(3, Transition);
@@ -85,9 +85,9 @@ int main (int argc, char** argv) {
   StateMachine * initial_sm1;
   int transition_count;
 
-  /*  dfaSet->monoTree.buffer = calloc(DFA_MACHINE_COUNT, sizeof(StateMachine));
+  /*  dfaSet->monoTree.buffer = stasis_calloc(DFA_MACHINE_COUNT, StateMachine);
       dfa_initialize_new (dfaSet, 10001, DFA_MACHINE_COUNT); */
-  /*   dfaSet->monoTree.buffer = calloc(100, sizeof(StateMachine)); */
+  /*   dfaSet->monoTree.buffer = stasis_calloc(100, StateMachine); */
   dfa_initialize_new (dfaSet, 10001, 100);
   
   /*  initial_sm1 = allocMachine(&(dfaSet->monoTree)); */

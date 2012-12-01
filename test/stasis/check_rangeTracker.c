@@ -286,7 +286,7 @@ START_TEST (rangeTracker_randomTest) {
 
   gettimeofday(&time,0);
 
-  int * explicit_pins = calloc(RANGE_SIZE, sizeof(int));
+  int * explicit_pins = stasis_calloc(RANGE_SIZE, int);
 
   long seed =  time.tv_usec + time.tv_sec * 1000000; //1170807889195512; //time.tv_usec + time.tv_sec * 1000000; //1170729550013502; //time.tv_usec + time.tv_sec * 1000000;// 1170727703805787; // 1170810757441165; 1170811024737237; 1171329519584370;
 
@@ -295,7 +295,7 @@ START_TEST (rangeTracker_randomTest) {
 
   range ** r_arry;
   range * ranges = stasis_malloc(RANGE_COUNT, range);
-  int * pins = calloc(RANGE_COUNT, sizeof(int));
+  int * pins = stasis_calloc(RANGE_COUNT, int);
   rangeTracker * rt = rangeTrackerInit(QUANTIZATION);
   for(long i = 0; i < RANGE_COUNT; i++) {
     randomRange(&(ranges[i]));

@@ -182,7 +182,7 @@ START_TEST(multiplexTest) {
 
   lsn_t i;
 
-  array = (lsn_t*)calloc(NUM_INSERTS, sizeof(lsn_t));
+  array = stasis_calloc(NUM_INSERTS, lsn_t);
 
   for(i = 0; i < NUM_INSERTS; i++) {
 

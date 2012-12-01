@@ -68,8 +68,8 @@ runChecker() {
    * possibly committed (insert table) and definitely committed (commit table).
    */
   tableLength = baseKey + (numThreads * opsPerThread);
-  insertTable = (int*) calloc(tableLength, sizeof(int));
-  commitTable = (int*) calloc(tableLength, sizeof(int));
+  insertTable = stasis_calloc(tableLength, int);
+  commitTable = stasis_calloc(tableLength, int);
 
   /* Read all the entries from the insert log (commit log) and insert into the 
    * insert table (commit table).

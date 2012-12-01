@@ -14,6 +14,7 @@
 #define stasis_malloc(cnt, typ) ((typ*)malloc((cnt)*sizeof(typ)))
 #define stasis_malloc_trailing_array(typ, array_sz) ((typ*)malloc(sizeof(typ)+(array_sz)))
 #define stasis_calloc(cnt, typ) ((typ*)calloc((cnt),sizeof(typ)))
+#define stasis_calloc_trailing_array(typ, array_sz) ((typ*)calloc(sizeof(typ)+(array_sz),1))
 #define stasis_realloc(ptr, cnt, typ) ((typ*)realloc(ptr, (cnt)*sizeof(typ)))
 #define stasis_free(ptr) free(ptr)
 

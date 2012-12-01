@@ -34,7 +34,7 @@ static Page * paLoadPage(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
     pa->pageMap[pageid]->inCache = 1;
     pa->pageMap[pageid]->rwlatch = initlock();
     pa->pageMap[pageid]->loadlatch = initlock();
-    pa->pageMap[pageid]->memAddr= calloc(PAGE_SIZE, sizeof(byte));
+    pa->pageMap[pageid]->memAddr= stasis_calloc(PAGE_SIZE, byte);
   } else{
     if(type != UNKNOWN_TYPE_PAGE) { assert(type == pa->pageMap[pageid]->pageType); }
   }

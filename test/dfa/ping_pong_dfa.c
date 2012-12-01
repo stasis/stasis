@@ -68,7 +68,7 @@ START_TEST (pingpong_check) {
 
 
 //int main (int argc, char** argv) {
-  DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
+  DfaSet * dfaSet = stasis_calloc(1, DfaSet);
   /*  callback_fcn* callbacks[MAX_MESSAGE_COUNT]; */
 
   Transition * transitions = stasis_malloc(4, Transition);
@@ -78,7 +78,7 @@ START_TEST (pingpong_check) {
   StateMachine * initial_sm2;
   int i;
 
-  /*dfaSet->monoTree.buffer = calloc(DFA_MACHINE_COUNT, sizeof(StateMachine)); */
+  /*dfaSet->monoTree.buffer = stasis_calloc(DFA_MACHINE_COUNT, StateMachine); */
   dfa_initialize_new (dfaSet, 10000, DFA_MACHINE_COUNT);
   for(i = 0; i < DFA_MACHINE_COUNT/4; i++) {
     /*    StateMachine initial_sm1_stack;

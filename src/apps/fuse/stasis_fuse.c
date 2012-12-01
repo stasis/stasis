@@ -159,7 +159,7 @@ static int stasis_getattr(const char *path, struct stat *stbuf)
 
 static stasis_dir_entry* malloc_nod(int*sz) {
   *sz = sizeof(stasis_dir_entry);
-  return calloc(1, sizeof(stasis_dir_entry));
+  return stasis_calloc(1, stasis_dir_entry);
 }
 
 
@@ -265,7 +265,7 @@ static int stasis_write(const char *path, const char *buf, const size_t sz, cons
         *blob_rid = Talloc(xid, sz+off);
         char* realbuf;
         if(off) {
-          realbuf = calloc(sz+off,sizeof(char));
+          realbuf = stasis_calloc(sz+off,char);
           memcpy(realbuf+off,buf,sz);
         } else {
           realbuf = (char*)buf;
@@ -284,7 +284,7 @@ static int stasis_write(const char *path, const char *buf, const size_t sz, cons
           Tset(xid, *blob_rid, tmp);
           free(tmp);
         } else {
-          byte * tmp = calloc(sz+off,sizeof(char));
+          byte * tmp = stasis_calloc(sz+off,char);
           Tread(xid, *blob_rid, tmp);
           memcpy(tmp+off,buf,sz);
           Tdealloc(xid, *blob_rid);

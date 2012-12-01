@@ -425,7 +425,7 @@ hashtable_t * hashtable_init(pageid_t size) {
   hashtable_t *ht = stasis_alloc(hashtable_t);
 
   ht->maxbucketid = (newsize) - 1;
-  ht->buckets = calloc(ht->maxbucketid+1, sizeof(bucket_t));
+  ht->buckets = stasis_calloc(ht->maxbucketid+1, bucket_t);
   for(int i = 0; i <= ht->maxbucketid; i++) {
     ht->buckets[i].key = -1;
   }

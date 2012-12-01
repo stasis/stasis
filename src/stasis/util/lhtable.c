@@ -221,7 +221,7 @@ static void extendHashTable(struct LH_ENTRY(table) * table) {
 
 struct LH_ENTRY(table) * LH_ENTRY(create)(int initialSize) {
   struct LH_ENTRY(table) * ret = stasis_alloc(struct LH_ENTRY(table));
-  ret->bucketList = calloc(initialSize, sizeof(struct LH_ENTRY(pair_t)));
+  ret->bucketList = stasis_calloc(initialSize, struct LH_ENTRY(pair_t));
   HASH_ENTRY(_get_size_params)(initialSize,
 		       &(ret->bucketListBits),
 		       &(ret->bucketListNextExtension));

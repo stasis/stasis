@@ -680,7 +680,7 @@ lladdIterator_t* ReferentialAlgebra_Join(int xid,
   j->have_outer = 0;
   j->pred = pred;
 
-  j->inner_tpls = calloc(1, sizeof(tuple_t*));
+  j->inner_tpls = stasis_calloc(1, tuple_t*);
   int i = 0;
   while(Titerator_next(xid, inner_it)) {
     byte * in_val;

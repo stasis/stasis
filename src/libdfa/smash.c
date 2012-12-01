@@ -46,7 +46,7 @@ terms specified in this license.
 smash_t *  init_Smash(int size) {
   int xid = Tbegin();
   recordid store = Talloc(xid, sizeof(smash_t));
-  smash_t * ret = calloc(1, sizeof(smash_t));
+  smash_t * ret = stasis_calloc(1, smash_t);
   
   ret->size = size;
   ret->contents = 0;

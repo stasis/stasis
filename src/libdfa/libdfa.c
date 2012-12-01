@@ -605,7 +605,7 @@ DfaSet * dfa_malloc_old(int count, short port,
 		    char *** broadcast_lists, 
 		    int broadcast_lists_count, 
 		    int * broadcast_list_host_count) {
-  DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
+  DfaSet * dfaSet = stasis_calloc(1, DfaSet);
   dfa_initialize_new(dfaSet, port, count);
   
   dfaSet->networkSetup.broadcast_lists = broadcast_lists;
@@ -616,7 +616,7 @@ DfaSet * dfa_malloc_old(int count, short port,
 }
 
 DfaSet * dfa_malloc(int count, NetworkSetup * ns) {
-  DfaSet * dfaSet = calloc(1, sizeof(DfaSet));
+  DfaSet * dfaSet = stasis_calloc(1, DfaSet);
   dfa_initialize_new(dfaSet, ns->localport, count);
   
   memcpy(&dfaSet->networkSetup, ns, sizeof(NetworkSetup));

@@ -57,14 +57,14 @@ int main(int argc, char * argv[]) {
   long start_off = atoll(argv[5]);
   long random_mode = atoi(argv[6]);
 
-  double**  sum_x  = calloc(steps, sizeof(double*));
-  double**  sum_x2 = calloc(steps, sizeof(double*));
-  long** sample_count = calloc(steps, sizeof(long*));
+  double**  sum_x  = stasis_calloc(steps, double*);
+  double**  sum_x2 = stasis_calloc(steps, double*);
+  long** sample_count = stasis_calloc(steps, long*);
 
   for(int s = 0; s < steps; s++) {
-    sum_x[s] = calloc(steps, sizeof(double));
-    sum_x2[s] = calloc(steps, sizeof(double));
-    sample_count[s] = calloc(steps, sizeof(long));
+    sum_x[s] = stasis_calloc(steps, double);
+    sum_x2[s] = stasis_calloc(steps, double);
+    sample_count[s] = stasis_calloc(steps, long);
   }
 
   long stride = length / steps;

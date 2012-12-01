@@ -77,7 +77,7 @@ NetworkSetup * readNetworkConfig(char * name, int hostnumber) {
   } else {
     DEBUG("I am subordinate # %d\n", hostnumber);
   }
-  NetworkSetup * ret = calloc(1, sizeof(NetworkSetup));
+  NetworkSetup * ret = stasis_calloc(1, NetworkSetup);
   
   ret->localport = hostnumber == COORDINATOR 
 		      ? parse_port(cfg_getstr(cfg, "coordinator"))

@@ -57,7 +57,7 @@ int main () {
     int i = 0;
     int rb_size = 1 + (int) (5000.0*rand()/(RAND_MAX+1.0));
     int tx_count = 1 + (int)(30000.0*rand()/(RAND_MAX+1.0));
-    unsigned char * bitmap = calloc(tx_count, sizeof(unsigned char));
+    unsigned char * bitmap = stasis_calloc(tx_count, unsigned char);
     unsigned int new_seed = (int) ((1.0* INT_MAX*rand())/(RAND_MAX+1.0));
     state_machine_id remaining_xact = 0;
     state_machine_id last_xact = 0;

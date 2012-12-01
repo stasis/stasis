@@ -153,7 +153,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
     range_count++;
   }
 
-  range ** ret = calloc(range_count + 1, sizeof(range *));
+  range ** ret = stasis_calloc(range_count + 1, range *);
 
   int next_range = 0;
   in_range = 0;

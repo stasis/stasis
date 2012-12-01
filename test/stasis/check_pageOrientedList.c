@@ -170,7 +170,7 @@ START_TEST(pagedListCheck) {
     assert(!memcmp(bb, &b, sizeof(recordid)));
   }
 
-  byte * seen = calloc(NUM_ENTRIES, sizeof(byte));
+  byte * seen = stasis_calloc(NUM_ENTRIES, byte);
 
   lladd_pagedList_iterator * it = TpagedListIterator(xid, list);
 

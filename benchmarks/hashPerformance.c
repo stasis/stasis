@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 int main(int argc, char * argv[]) {
-  char * foo = calloc(1024*1024*1024,1);
+  char * foo = stasis_calloc(1024*1024*1024,char);
   struct timeval start, stop;
   gettimeofday(&start, 0);
   for(long i = 0; i < (1024*1024*1024/sizeof(long)); i++) {

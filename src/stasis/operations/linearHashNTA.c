@@ -89,7 +89,7 @@ recordid ThashCreate(int xid, int keySize, int valueSize) {
 
   } else {
 #ifdef ARRAY_LIST_OLD_ALLOC
-    byte * entry = calloc(1, lhh.buckets.size);
+    byte * entry = stasis_calloc(lhh.buckets.size, byte);
     for(i = 0; i < HASH_INIT_ARRAY_LIST_COUNT; i++) {
       bucket.slot = i;
       begin_action_ret(free, entry, NULLRID) {
@@ -327,7 +327,7 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
     Tset(xid, new_bucket_rid, &new_bucket_list);
   } else {
 #ifdef ARRAY_LIST_OLD_ALLOC
-    byte * entry = calloc(1, lhh->buckets.size);
+    byte * entry = stasis_calloc(lhh->buckets.size, byte);
     Tset(xid, new_bucket_rid, entry);
     free(entry);
 #endif
@@ -378,7 +378,7 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
 }
 lladd_hash_iterator * ThashIterator(int xid, recordid hashHeader, int keySize, int valueSize) {
   hashHeader.size = sizeof(lladd_hash_header);
-  lladd_hash_iterator * it = calloc(1,sizeof(lladd_hash_iterator));
+  lladd_hash_iterator * it = stasis_calloc(1,lladd_hash_iterator);
   it->hashHeader = hashHeader;
   lladd_hash_header lhh;
   Tread(xid, hashHeader, &lhh);

@@ -34,8 +34,8 @@ void randomSetup() {
 
   cachedCount = 0;
 
-  t = calloc(OBJECT_COUNT, sizeof(tracker));
-  pages = calloc(OBJECT_COUNT, sizeof(Page));
+  t = stasis_calloc(OBJECT_COUNT, tracker);
+  pages = stasis_calloc(OBJECT_COUNT, Page);
   for(int i = 0; i < OBJECT_COUNT; i++) {
     pages[i].id = i;
     pages[i].pinCount = 1;

@@ -132,8 +132,8 @@ DfaSet * cHtInit(int cht_type,
 
   dfaSet = dfa_malloc(DFA_MACHINE_COUNT, ns);
 
-  twoPC_state  = calloc(1, sizeof(TwoPCAppState));
-  chtApp_state = calloc(1, sizeof(CHTAppState));
+  twoPC_state  = stasis_calloc(1, TwoPCAppState);
+  chtApp_state = stasis_calloc(1, CHTAppState);
 
   if(cht_type == CHT_CLIENT) {
     error = dfa_reinitialize(dfaSet, ns->localhost, client_transitions_2pc, client_transition_count_2pc, states_2pc, state_count_2pc);

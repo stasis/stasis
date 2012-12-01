@@ -856,7 +856,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   memcpy(log,&proto, sizeof(proto));
   log->impl = sw;
 
-  sw->buffer = calloc(stasis_log_file_write_buffer_size, sizeof(char));
+  sw->buffer = stasis_calloc(stasis_log_file_write_buffer_size, char);
 
   if(!sw->buffer) { return 0; /*LLADD_NO_MEM;*/ }
 

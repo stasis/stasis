@@ -252,7 +252,7 @@ static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) 
     posix_fallocate(fd, 0, fp->target_chunk_size + bufsz);
 #endif
     printf("Writing zeros to empty log file...\n");
-    byte * buffer = calloc(bufsz, sizeof(byte));
+    byte * buffer = stasis_calloc(bufsz, byte);
     for(off_t i = 0; i <= fp->target_chunk_size; i += bufsz) {
       int ret = pwrite(fd, buffer, bufsz, i);
       if(ret != bufsz) {

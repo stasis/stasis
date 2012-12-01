@@ -43,7 +43,7 @@ int TsetReorderable(int xid, stasis_log_reordering_handle_t * h,
   } else {
     rid.size = stasis_record_type_to_size(rid.size);
     intptr_t sz = 2 * (sizeof(pageoff_t) + rid.size);
-    byte * buf = calloc(sz, 1);
+    byte * buf = stasis_calloc(sz, byte);
     pageoff_t * a = (pageoff_t*)buf;
     // XXX hack!
     byte * writeBuf = stasis_record_write_begin(xid, p, rid);
@@ -74,7 +74,7 @@ int TsetReorderableWriteBack(int xid, stasis_log_reordering_handle_t * h,
                              pageid_t page, pageoff_t off, pageoff_t len,
                              const void * dat, const void * olddat) {
   intptr_t sz = 2 * (sizeof(pageoff_t) + len);
-  byte * buf = calloc(sz,1);
+  byte * buf = stasis_calloc(sz,byte);
   pageoff_t * a = (pageoff_t*)buf;
   a[0] = off;
   a[1] = len;

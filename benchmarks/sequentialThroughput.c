@@ -138,7 +138,7 @@ int main(int argc, char ** argv) {
   } else {
     if(log_mode) {
       lsn_t prevLSN = -1;
-      byte * arg = calloc(PAGE_SIZE, 1);
+      byte * arg = stasis_calloc(PAGE_SIZE, byte);
       stasis_log_t * l = stasis_log();
 
       for(long i = 0; i < page_count; i++) {

@@ -143,8 +143,8 @@ static inline hazard_ptr_rec_t * hazard_ensure_tls(hazard_t * h) {
   hazard_ptr_rec_t * rec = pthread_getspecific(h->hp);
   if(rec == NULL) {
     rec = stasis_alloc(hazard_ptr_rec_t);
-    rec->hp = calloc(h->num_slots, sizeof(hazard_ptr));
-    rec->rlist = calloc(h->num_r_slots, sizeof(hazard_ptr));
+    rec->hp = stasis_calloc(h->num_slots, hazard_ptr);
+    rec->rlist = stasis_calloc(h->num_r_slots, void*);
     rec->rlist_len = 0;
     rec->h = h;
     pthread_setspecific(h->hp, rec);

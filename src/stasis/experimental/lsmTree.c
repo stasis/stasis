@@ -297,7 +297,7 @@ recordid TlsmCreate(int xid, int comparator,
          && tmp.slot == COMPARATOR
          && tmp.size == sizeof(lsmTreeNodeRecord) + keySize);
 
-  byte *dummy = calloc(1,keySize);
+  byte *dummy = stasis_calloc(keySize, byte);
 
   writeNodeRecord(xid, p, DEPTH, dummy, keySize, 0);
   writeNodeRecord(xid, p, COMPARATOR, dummy, keySize, comparator);
@@ -343,7 +343,7 @@ static recordid buildPathToLeaf(int xid, recordid root, Page *root_p,
   } else {
     // set leaf
 
-    byte *dummy = calloc(1, key_len);
+    byte *dummy = stasis_calloc(key_len, byte);
 
     // backward link.
     writeNodeRecord(xid,child_p,PREV_LEAF,dummy,key_len,lastLeaf);
@@ -575,7 +575,7 @@ recordid TlsmAppendPage(int xid, recordid tree,
       stasis_record_write_done(xid,p,pFirstSlot,(byte*)nr);
       stasis_page_lsn_write(xid, p, 0); // XXX need real LSN?
 
-      byte *dummy = calloc(1,keySize);
+      byte *dummy = stasis_calloc(keySize, byte);
       if(!depth) {
         s->lastLeaf = lc->id;
         writeNodeRecord(xid,lc,PREV_LEAF,dummy,keySize,-1);

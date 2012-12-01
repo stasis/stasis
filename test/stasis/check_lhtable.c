@@ -140,9 +140,9 @@ START_TEST(lhtableRandomized) {
   int64_t nextVal = 1;
   int64_t eventCount = 0;
 
-  int* setNextAlloc = calloc(numSets, sizeof(int));
-  int* setNextDel   = calloc(numSets, sizeof(int));
-  int* setNextRead  = calloc(numSets, sizeof(int));
+  int* setNextAlloc = stasis_calloc(numSets, int);
+  int* setNextDel   = stasis_calloc(numSets, int);
+  int* setNextRead  = stasis_calloc(numSets, int);
 
   for(int i =0; i < numSets; i++) {
     setLength[i] = stasis_util_random64(MAXSETLEN);

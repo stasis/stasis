@@ -29,7 +29,7 @@ void BtreeInit() {
   // todo: register iterator
 
   // register comparators
-  btree_comparators = calloc(MAX_COMPARATOR, sizeof(stasis_comparator_t));
+  btree_comparators = stasis_calloc(MAX_COMPARATOR, stasis_comparator_t);
   btree_comparators[BYTE_ARRAY_COMPARATOR] = stasis_btree_byte_array_comparator;
 
 }
@@ -113,7 +113,7 @@ static slotid_t find_in_page(int xid, Page * p, byte * key, size_t keySize, int 
 static slotid_t stasis_btree_helper(int xid, stasis_op_btree_page_header h, byte* key, size_t keySize,
     int * found, pageid_t ** path, stasis_comparator_t cmp, void * cmp_arg) {
   pageid_t next = h.root;
-  *path = calloc(h.height, sizeof(pageid_t));
+  *path = stasis_calloc(h.height, pageid_t);
   for(int i = 0; i < h.height-1; i++) {
     Page *p = loadPage(xid, next);
     (*path)[i] = next;

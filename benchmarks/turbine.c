@@ -38,7 +38,7 @@ void * func(void * argp) {
   buf = (void*)(((intptr_t)buf) & ~((intptr_t)arg->write_size-1));
 #endif
   memset(buf, 0, arg->write_size);
-//  void * buf = calloc(arg->write_size, 1);
+//  void * buf = stasis_calloc(arg->write_size, byte);
   pthread_mutex_lock(&arg->mutex);
   uint64_t offset = 0;
   if(many_handles) {
