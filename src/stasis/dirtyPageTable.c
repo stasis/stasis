@@ -343,7 +343,7 @@ void stasis_dirty_page_table_set_buffer_manager(stasis_dirty_page_table_t * dpt,
   dpt->bufferManager = bufferManager;
 }
 
-stasis_dirty_page_table_t * stasis_dirty_page_table_init() {
+stasis_dirty_page_table_t * stasis_dirty_page_table_init(void) {
   stasis_dirty_page_table_t * ret = stasis_alloc(stasis_dirty_page_table_t);
   ret->outstanding_flush_lsns = stasis_util_multiset_create();
 

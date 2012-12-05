@@ -73,7 +73,7 @@ typedef struct {
   int active;
 } lock;
 
-void lockManagerInitHashed() {
+void lockManagerInitHashed(void) {
   int i = 0;
   for(i = 0; i < MUTEX_COUNT; i++) {
     pthread_mutex_init(&mutexes[i], NULL);
@@ -356,7 +356,7 @@ int lockManagerCommitPages(int xid) {
   return lockManagerCommitHashed(xid, sizeof(pageid_t));
 }
 
-void setupLockManagerCallbacksPage() {
+void setupLockManagerCallbacksPage(void) {
   globalLockManager.init = &lockManagerInitHashed;
   globalLockManager.readLockPage    = &lockManagerReadLockPage;
   globalLockManager.writeLockPage   = &lockManagerWriteLockPage;
@@ -371,7 +371,7 @@ void setupLockManagerCallbacksPage() {
   globalLockManager.init();
 }
 
-void setupLockManagerCallbacksRecord () {
+void setupLockManagerCallbacksRecord (void) {
   globalLockManager.init = &lockManagerInitHashed;
   globalLockManager.readLockPage    = NULL;
   globalLockManager.writeLockPage   = NULL;

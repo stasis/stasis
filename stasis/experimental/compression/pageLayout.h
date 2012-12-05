@@ -9,7 +9,7 @@ namespace rose {
     class SingleColumnTypePageLayout {
   public:
     typedef FORMAT FMT;
-    static inline void initPageLayout() {
+    static inline void initPageLayout(void) {
       stasis_page_impl_register(FMT::impl());
 
       // XXX these should register template instantiations of worker
@@ -41,10 +41,10 @@ namespace rose {
       free(plugins);
       return f;
     }
-    static inline int cmp_id() {
+    static inline int cmp_id(void) {
       return my_cmp_num;
     }
-    static inline int init_id() {
+    static inline int init_id(void) {
       return my_init_num;
     }
   private:
@@ -65,7 +65,7 @@ namespace rose {
     class StaticMultiColumnTypePageLayout {
   public:
     typedef FORMAT FMT;
-    static inline void initPageLayout() {
+    static inline void initPageLayout(void) {
       stasis_page_impl_register(FMT::impl());
 
       // XXX these should register template instantiations of worker
@@ -106,10 +106,10 @@ namespace rose {
 
       return f;
     }
-    static inline int cmp_id() {
+    static inline int cmp_id(void) {
       return my_cmp_num;
     }
-    static inline int init_id() {
+    static inline int init_id(void) {
       return my_init_num;
     }
   private:
@@ -150,10 +150,10 @@ namespace rose {
       }
       return f;
     }
-    static inline int cmp_id() {
+    static inline int cmp_id(void) {
       return my_cmp_num;
     }
-    static inline int init_id() {
+    static inline int init_id(void) {
       return my_init_num;
     }
   private:

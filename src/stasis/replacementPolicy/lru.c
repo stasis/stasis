@@ -86,7 +86,7 @@ static void stasis_replacement_policy_lru_insert(replacementPolicy* r, Page* p) 
   assert(e == old);
 }
 
-replacementPolicy * stasis_replacement_policy_lru_init() {
+replacementPolicy * stasis_replacement_policy_lru_init(void) {
   replacementPolicy * ret = stasis_alloc(replacementPolicy);
   stasis_replacement_policy_lru_t * l = stasis_alloc(stasis_replacement_policy_lru_t);
   l->now = 0;

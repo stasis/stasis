@@ -33,7 +33,7 @@
 
 static pthread_mutex_t stasis_linked_list_mutex;
 
-void TlinkedListNTAInit() {
+void TlinkedListNTAInit(void) {
   // only need this function since PTHREAD_RECURSIVE_MUTEX_INITIALIZER is really broken...
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
@@ -41,7 +41,7 @@ void TlinkedListNTAInit() {
   pthread_mutex_init(&stasis_linked_list_mutex, &attr);
   pthread_mutexattr_destroy(&attr);
 }
-void TlinkedListNTADeinit() {
+void TlinkedListNTADeinit(void) {
   pthread_mutex_destroy(&stasis_linked_list_mutex);
 }
 
@@ -123,7 +123,7 @@ int TlinkedListInsert(int xid, recordid list, const byte * key, int keySize, con
   return ret;
 }
 
-stasis_operation_impl stasis_op_impl_linked_list_insert() {
+stasis_operation_impl stasis_op_impl_linked_list_insert(void) {
   stasis_operation_impl o = {
     OPERATION_LINKED_LIST_INSERT,
     UNKNOWN_TYPE_PAGE,
@@ -133,7 +133,7 @@ stasis_operation_impl stasis_op_impl_linked_list_insert() {
   };
   return o;
 }
-stasis_operation_impl stasis_op_impl_linked_list_remove() {
+stasis_operation_impl stasis_op_impl_linked_list_remove(void) {
   stasis_operation_impl o = {
     OPERATION_LINKED_LIST_REMOVE,
     UNKNOWN_TYPE_PAGE,

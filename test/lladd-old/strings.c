@@ -50,7 +50,7 @@ terms specified in this license.
 #define VERBOSE 0
 #define SEED 5095
 
-int test() {
+int test(void) {
 	int xid;
 	int NUM_TRIALS=100;
 	recordid rec;

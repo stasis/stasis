@@ -48,7 +48,7 @@ terms specified in this license.
 #include "../../src/lladd/recovery.h"
 #include "test.h"
 
-int test() {
+int test(void) {
   InitiateRecovery();
   return 0;
 }

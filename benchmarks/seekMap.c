@@ -16,7 +16,7 @@ static void my_pread_help(int fd, long long off) {
   }
 }
 
-static void drop_buffers() {
+static void drop_buffers(void) {
   int fd = open("/proc/sys/vm/drop_caches", O_TRUNC|O_WRONLY);
   if(fd == -1) { perror("Couldn't drop page cache"); abort(); }
   char * str = "1\n";

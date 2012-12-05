@@ -44,7 +44,7 @@ namespace rose {
     return s.flag_ == TOMBSTONE;
   }
 
-  explicit inline StaticTuple() {
+  explicit inline StaticTuple(void) {
     s.flag_ = NORMAL; s.epoch_ = 0 ;
     initializePointers();
   }
@@ -74,9 +74,9 @@ namespace rose {
     initializePointers();
   }
 
-  inline ~StaticTuple() { }
+  inline ~StaticTuple(void) { }
 
-  static inline byte_off_t sizeofBytes() {
+  static inline byte_off_t sizeofBytes(void) {
     // Computing by starting from zero, and adding up column costs wouldn't
     // take struct padding into account.  This might over-estimate the
     // size, but that's fine, since any in-memory copy will either be malloced
@@ -491,7 +491,7 @@ namespace rose {
       scratch_() {}
     inline explicit iterator(const iterator &i) : c_(i.c_), dat_(i.dat_),
       off_(i.off_), scratch_() {}
-    inline StaticTuple& operator*() {
+    inline StaticTuple& operator*(void) {
       if(0 < N) scratch_.set0((TYPE0*)dat_[0][off_]);
       if(1 < N) scratch_.set1((TYPE1*)dat_[1][off_]);
       if(2 < N) scratch_.set2((TYPE2*)dat_[2][off_]);
@@ -521,8 +521,8 @@ namespace rose {
     inline bool operator!=(const iterator &a) const {
       return(off_!=a.off);
     }
-    inline void operator++() { off_++; }
-    inline void operator--() { off_--; }
+    inline void operator++(void) { off_++; }
+    inline void operator--(void) { off_--; }
     inline void operator+=(int i) { abort(); }
     inline int operator-(iterator &i) {
       return off_ - i.off_;
@@ -572,7 +572,7 @@ namespace rose {
 
   st s;
 
-  inline void initializePointers() {
+  inline void initializePointers(void) {
     if(first_) {
       st str;
       if(0 < N) cols_[0] = (byte*)&str.cols0_ - (byte*)&str;

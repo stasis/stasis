@@ -122,7 +122,7 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
   stasis_page_impl_register(stasis_page_slotted_latch_free_impl());
 }
 
-void stasis_page_deinit() {
+void stasis_page_deinit(void) {
 
   for(int i = 0; i < MAX_PAGE_TYPE; i++) {
     page_impl p = { 0 };

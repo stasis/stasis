@@ -182,7 +182,7 @@ struct stasis_handle_t mem_func = {
   .error = 0
 };
 
-stasis_handle_t * stasis_handle(open_memory)() {
+stasis_handle_t * stasis_handle(open_memory)(void) {
   stasis_handle_t * ret = stasis_alloc(stasis_handle_t);
   if(!ret) { return NULL; }
   *ret = mem_func;

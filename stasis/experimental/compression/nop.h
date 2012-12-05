@@ -28,7 +28,7 @@ namespace rose {
 
     static const int PLUGIN_ID = 2;
     inline void offset(TYPE o) {}
-    inline size_t max_overrun() { return sizeof(TYPE); }
+    inline size_t max_overrun(void) { return sizeof(TYPE); }
     inline slot_index_t append(int xid, const TYPE dat, byte_off_t * except,
 			       byte * exceptions, int *free_bytes) {
       slot_index_t ret = *numentries_ptr();
@@ -80,18 +80,18 @@ namespace rose {
     Nop(void * mem): mem_(mem) { }
     Nop() : mem_(0) {}
 
-    inline slot_index_t recordCount() {
+    inline slot_index_t recordCount(void) {
       return *numentries_ptr();
     }
 
-    inline byte_off_t bytes_used() {return sizeof(slot_index_t) + ( *numentries_ptr() * sizeof(TYPE) ); }
+    inline byte_off_t bytes_used(void) {return sizeof(slot_index_t) + ( *numentries_ptr() * sizeof(TYPE) ); }
     inline void mem(byte * mem) { mem_=mem; }
     inline void init_mem(byte* mem) {
       mem_=mem;
       *numentries_ptr() = 0;
     }
   private:
-    inline slot_index_t* numentries_ptr() {
+    inline slot_index_t* numentries_ptr(void) {
       return reinterpret_cast<slot_index_t*>(mem_);
     }
     void * mem_;

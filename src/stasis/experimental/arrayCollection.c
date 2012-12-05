@@ -63,7 +63,7 @@ typedef struct {
 
 static void noopTupDone(int xid, void * foo) { }
 
-void stasis_arrayCollection_init() {
+void stasis_arrayCollection_init(void) {
   lladdIterator_def_t array_def = {
     arrayIterator_close,
     arrayIterator_next,

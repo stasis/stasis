@@ -188,7 +188,7 @@ class PluginDispatcher{
     dispatchSwitch(c,caseSetPlugin,mem);
   }
 
-  ~PluginDispatcher() {
+  ~PluginDispatcher(void) {
     for(column_number_t i = 0; i < column_count_; i++) {
       dispatchSwitch(i,caseDelPlugin,0);
     }

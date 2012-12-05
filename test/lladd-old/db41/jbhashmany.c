@@ -62,7 +62,7 @@ void  env_open(DB_ENV **);
 
 
 
-int main() {
+int main(void) {
 	DB *dbp;
 	DB_ENV *dbenv;
 	DB_TXN *xid;
@@ -120,8 +120,7 @@ err:    if ((t_ret = dbp->close(dbp, 0)) != 0 && ret == 0)
 }
 
 void
-env_dir_create()
-{
+env_dir_create(void) {
         struct stat sb;
 
 

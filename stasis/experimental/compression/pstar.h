@@ -28,7 +28,7 @@ template <class COMPRESSOR, class TYPE> class Pstar {
     free_bytes_ = *freespace_ptr() - plug_.bytes_used() - plug_.max_overrun();
     p->impl = this;
   }
-  inline void pack() { };
+  inline void pack(void) { };
   /**
      Append a new value to a page managed by pstar.
 
@@ -82,7 +82,7 @@ template <class COMPRESSOR, class TYPE> class Pstar {
           } */
     return ret;
   }
-  inline COMPRESSOR * compressor() { return &plug_; }
+  inline COMPRESSOR * compressor(void) { return &plug_; }
 
   static page_impl impl();
 
@@ -95,10 +95,10 @@ template <class COMPRESSOR, class TYPE> class Pstar {
     free_bytes_ = *freespace_ptr() - plug_.bytes_used() - plug_.max_overrun();
   }
 
-  inline byte_off_t * freespace_ptr() {
+  inline byte_off_t * freespace_ptr(void) {
     return reinterpret_cast<byte_off_t*>(p_->memAddr+USABLE_SIZE_OF_PAGE)-1;
   }
-  inline record_size_t * recordsize_ptr() {
+  inline record_size_t * recordsize_ptr(void) {
     return reinterpret_cast<record_size_t*>(freespace_ptr())-1;
   }
 

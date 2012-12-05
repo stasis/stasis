@@ -815,7 +815,7 @@ lladdIterator_t* ReferentialAlgebra_ExecuteQuery(int xid,
 /**
    Initialize module (Must be called before anything else in this file).
  */
-void ReferentialAlgebra_init() {
+void ReferentialAlgebra_init(void) {
   lladdIterator_def_t select_def = {
     s_close, s_next, s_tryNext, s_key, s_value, s_tupleDone
     };

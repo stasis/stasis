@@ -97,7 +97,7 @@ static const page_impl pstar_impl = {
 */
 template<class COMPRESSOR, class TYPE>
 page_impl
-Pstar<COMPRESSOR, TYPE>::impl() {
+Pstar<COMPRESSOR, TYPE>::impl(void) {
   page_impl ret   = pstar_impl;
   ret.page_type   = plugin_id<Pstar<COMPRESSOR,TYPE>,COMPRESSOR,TYPE>();
   ret.pageLoaded  = pStarLoaded<COMPRESSOR, TYPE>;

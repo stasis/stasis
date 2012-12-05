@@ -72,7 +72,7 @@ static void RB_ENTRY(_free)(struct RB_ENTRY(node) *);
 
 #else
 
-static struct RB_ENTRY(node) *RB_ENTRY(_alloc)() {return (struct RB_ENTRY(node) *) malloc(sizeof(struct RB_ENTRY(node)));}
+static struct RB_ENTRY(node) *RB_ENTRY(_alloc)(void) {return (struct RB_ENTRY(node) *) malloc(sizeof(struct RB_ENTRY(node)));}
 static void RB_ENTRY(_free)(struct RB_ENTRY(node) *x) {free(x);}
 
 #endif
@@ -926,8 +926,7 @@ static struct RB_ENTRY(node) *rbfreep=NULL;
 
 #define RB_ENTRY(NODE)ALLOC_CHUNK_SIZE 1000
 static struct RB_ENTRY(node) *
-RB_ENTRY(_alloc)()
-{
+RB_ENTRY(_alloc)(void) {
 	struct RB_ENTRY(node) *x;
 	int i;
 

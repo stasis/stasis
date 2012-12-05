@@ -109,7 +109,7 @@ static void stasis_lru_fast_deinit(struct replacementPolicy * r) {
   free(l);
   free(r);
 }
-replacementPolicy * lruFastInit() {
+replacementPolicy * lruFastInit(void) {
   struct replacementPolicy * ret = stasis_alloc(struct replacementPolicy);
   ret->deinit = stasis_lru_fast_deinit;
   ret->hit = stasis_lru_fast_hit;

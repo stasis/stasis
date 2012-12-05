@@ -112,7 +112,7 @@ static int stasis_log_structured_group_it_value(int xid, void* impl, byte** val)
 }
 static void stasis_log_structured_group_it_tupleDone(int xid, void* impl) {}
 
-void stasis_log_structured_group_init() {
+void stasis_log_structured_group_init(void) {
   static lladdIterator_def_t def = {
     stasis_log_structured_group_it_close,
     stasis_log_structured_group_it_next,

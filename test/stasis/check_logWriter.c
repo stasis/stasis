@@ -68,7 +68,7 @@ LogEntry * dupLogEntry(stasis_log_t * log, const LogEntry *e) {
   return ret;
 }
 
-static stasis_log_t * setup_log() {
+static stasis_log_t * setup_log(void) {
   int i;
   lsn_t prevLSN = -1;
   int xid = 42;
@@ -594,7 +594,7 @@ START_TEST(loggerTruncateReopenTest) {
   reopenLogWorkload(1);
 } END_TEST
 
-static void loggerEmptyForce_helper() {
+static void loggerEmptyForce_helper(void) {
   Tinit();
   int xid = Tbegin();
   TsoftCommit(xid);

@@ -768,7 +768,7 @@ static void lsmPageCleanup(Page *p) {
 /**
    A page_impl for the root of an lsmTree.
 */
-page_impl lsmRootImpl() {
+page_impl lsmRootImpl(void) {
   page_impl pi = stasis_page_fixed_impl();
   pi.pageLoaded = lsmPageLoaded;
   pi.pageFlushed = lsmPageFlushed;

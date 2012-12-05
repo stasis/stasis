@@ -9,7 +9,7 @@
 
 static int notSupported(int xid, Page * p) { return 0; }
 
-page_impl segmentImpl() {
+page_impl segmentImpl(void) {
 static page_impl pi =  {
     SEGMENT_PAGE,
     0,  // has header

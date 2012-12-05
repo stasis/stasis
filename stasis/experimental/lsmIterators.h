@@ -96,18 +96,18 @@ class gcIterator {
     beginning_of_time_(t.beginning_of_time_),
     ts_col_(t.ts_col_) { }
 
-  ~gcIterator() {
+  ~gcIterator(void) {
     if (freeIt) {
       delete i_;
     }
   }
-  ROW & operator*() {
+  ROW & operator*(void) {
     // Both should pass, comment out for perf
     //assert(!went_back_);
     //assert(have_current_);
     return current_;
   }
-  bool get_next() {
+  bool get_next(void) {
     //    assert(!went_back_);
     //    assert(!at_end_);
     while(!have_newest_) {
@@ -147,7 +147,7 @@ class gcIterator {
     //    return (*i_) != (*a.i_);
     return !(*this == a);
   }
-  inline void operator++() {
+  inline void operator++(void) {
     if(went_back_) {
       went_back_ = false;
     } else {
@@ -165,11 +165,11 @@ class gcIterator {
       }
     }
   }
-  inline void operator--() {
+  inline void operator--(void) {
     //    assert(!went_back_);
     went_back_ = true;
   }
-  /*  inline gcIterator* end() {
+  /*  inline gcIterator* end(void) {
     return new gcIterator(i_->end());
     } */
  private:
@@ -202,7 +202,7 @@ class gcIterator {
     return 1;
   }
 
-  //explicit gcIterator() { abort(); }
+  //explicit gcIterator(void) { abort(); }
   void operator=(gcIterator & t) { abort(); }
   int operator-(gcIterator & t) { abort(); }
   ITER * i_;
@@ -230,7 +230,7 @@ class gcIterator {
 template <class ROW, class PAGELAYOUT>
 class treeIterator {
  private:
-  inline void init_helper() {
+  inline void init_helper(void) {
     if(!lsmIterator_) {
       currentPage_ = 0;
       pageid_ = -1;
@@ -323,7 +323,7 @@ class treeIterator {
     currentPage_((PAGELAYOUT*)((p_)?p_->impl:0)) {
       if(p_) { readlock(p_->rwlatch,0); }
   }
-  ~treeIterator() {
+  ~treeIterator(void) {
     if(lsmIterator_) {
       lsmTreeIterator_close(-1, lsmIterator_);
     }
@@ -333,7 +333,7 @@ class treeIterator {
       p_ = 0;
     }
   }
-  ROW & operator*() {
+  ROW & operator*(void) {
     assert(this->lsmIterator_);
     ROW* readTuple = currentPage_->recordRead(-1,slot_, &scratch_);
 
@@ -371,16 +371,16 @@ class treeIterator {
   inline bool operator!=(const treeIterator &a) const {
     return !(*this==a);
   }
-  inline void operator++() {
+  inline void operator++(void) {
     slot_++;
   }
-  inline void operator--() {
+  inline void operator--(void) {
     // This iterator consumes its input, and only partially supports
     // "==". "--" is just for book keeping, so we don't need to worry
     // about setting the other state.
     slot_--;
   }
-  inline treeIterator* end() {
+  inline treeIterator* end(void) {
     treeIterator* t = new treeIterator(tree_,scratch_,keylen_);
     if(!lsmIterator_) {
       t->slot_ = 0;
@@ -410,7 +410,7 @@ class treeIterator {
     return t;
   }
  private:
-  explicit treeIterator() { abort(); }
+  explicit treeIterator(void) { abort(); }
   void operator=(treeIterator & t) { abort(); }
   int operator-(treeIterator & t) { abort(); }
   recordid tree_;
@@ -481,7 +481,7 @@ class mergeIterator {
     before_eof_(i.before_eof_)
   { }
 
-  const ROW& operator* () {
+  const ROW& operator* (void) {
     if(curr_ == A) { return *a_; }
     if(curr_ == B || curr_ == BOTH) { return *b_; }
     abort();
@@ -490,7 +490,7 @@ class mergeIterator {
     if(curr_ == B || curr_ == BOTH) { return *b_; }
     abort();
   }
-  void seekEnd() {
+  void seekEnd(void) {
     curr_ = NONE;
   }
   // XXX Only works if exactly one of the comparators is derived from end.
@@ -505,7 +505,7 @@ class mergeIterator {
   inline bool operator!=(const mergeIterator &o) const {
     return !(*this == o);
   }
-  inline void operator++() {
+  inline void operator++(void) {
     off_++;
     if(curr_ == BOTH) {
       ++a_;
@@ -516,7 +516,7 @@ class mergeIterator {
     }
     curr_ = calcCurr(curr_);
   }
-  inline void operator--() {
+  inline void operator--(void) {
     off_--;
     if(curr_ == BOTH) {
       --a_;
@@ -543,7 +543,7 @@ class mergeIterator {
     curr_ = i.curr_;
     before_eof_ = i.before_eof_;
   }
-  inline unsigned int offset() { return off_; }
+  inline unsigned int offset(void) { return off_; }
  private:
   unsigned int off_;
   ITERA a_;
@@ -580,10 +580,10 @@ class versioningIterator {
     off_(i.off_)
   {}
 
-  const ROW& operator* () {
+  const ROW& operator* (void) {
     return *a_;
   }
-  void seekEnd() {
+  void seekEnd(void) {
     a_.seekEnd();// = aend_; // XXX good idea?
   }
   inline bool operator==(const versioningIterator &o) const {
@@ -592,7 +592,7 @@ class versioningIterator {
   inline bool operator!=(const versioningIterator &o) const {
     return !(*this == o);
   }
-  inline void operator++() {
+  inline void operator++(void) {
     if(check_tombstone_) {
       do {
 	++a_;
@@ -608,7 +608,7 @@ class versioningIterator {
     }
     off_++;
   }
-  inline void operator--() {
+  inline void operator--(void) {
     --a_;
     // need to remember that we backed up so that ++ can work...
     // the cursor is always positioned on a live value, and -- can
@@ -627,7 +627,7 @@ class versioningIterator {
     //    scratch_ = *a_;
     off_ = i.off_;
   }
-  inline unsigned int offset() { return off_; }
+  inline unsigned int offset(void) { return off_; }
  private:
   ITER a_;
   ITER aend_;
@@ -652,22 +652,22 @@ class versioningIterator {
    stlSetIterator( SET * s ) : it_(s->begin()), itend_(s->end()) {}
    stlSetIterator( STLITER& it, STLITER& itend ) : it_(it), itend_(itend) {}
    explicit stlSetIterator(stlSetIterator &i) : it_(i.it_), itend_(i.itend_){}
-   const ROW& operator* () { return *it_; }
+   const ROW& operator* (void) { return *it_; }
 
-  void seekEnd() {
+  void seekEnd(void) {
     it_ = itend_; // XXX good idea?
   }
-  stlSetIterator * end() { return new stlSetIterator(itend_,itend_); }
+  stlSetIterator * end(void) { return new stlSetIterator(itend_,itend_); }
   inline bool operator==(const stlSetIterator &o) const {
     return it_ == o.it_;
   }
   inline bool operator!=(const stlSetIterator &o) const {
     return !(*this == o);
   }
-  inline void operator++() {
+  inline void operator++(void) {
     ++it_;
   }
-  inline void operator--() {
+  inline void operator--(void) {
     --it_;
   }
   inline int  operator-(stlSetIterator&i) {

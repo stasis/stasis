@@ -12,7 +12,7 @@ void lladdIterator_register(int type, lladdIterator_def_t info) {
   iterators[type] = info;
 }
 
-void iterator_init() {
+void iterator_init(void) {
   /* no-op */
 }
 

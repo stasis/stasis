@@ -187,7 +187,7 @@ int* stasis_transaction_table_list_active(stasis_transaction_table_t *tbl, int *
   return ret;
 }
 
-stasis_transaction_table_t *  stasis_transaction_table_init() {
+stasis_transaction_table_t *  stasis_transaction_table_init(void) {
   stasis_transaction_table_t * tbl = stasis_alloc(stasis_transaction_table_t);
   tbl->active_count = 0;
 

@@ -38,7 +38,7 @@ void pageCacheInit(Page * first) {
 
 }
 
-void pageCacheDeinit() {
+void pageCacheDeinit(void) {
 
 }
 
@@ -163,6 +163,6 @@ void cacheHitOnPage(Page * ret) {
   }
 }
 
-Page * cacheStalePage() {
+Page * cacheStalePage(void) {
   return repTail;
 }

@@ -59,7 +59,7 @@ static char * logEntryToString(const LogEntry * le) {
   return ret;
 }
 
-int main() {
+int main(void) {
   LogHandle* lh;
   const LogEntry * le;
 

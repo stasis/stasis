@@ -9,7 +9,7 @@ static void lladdConsumer_register(int type, lladdConsumer_def_t info) {
   consumers[type] = info;
 }
 
-void consumer_init() {
+void consumer_init(void) {
   lladdConsumer_def_t logMemory_def = {
     logMemory_consumer_push,
     logMemory_consumer_close

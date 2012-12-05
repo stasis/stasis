@@ -154,7 +154,7 @@ class StaticMulticolumn {
   p->impl = this;
 }
 
- ~StaticMulticolumn() {
+ ~StaticMulticolumn(void) {
 
 #define STATIC_MC_DEINIT(i,plug)		            \
     if(i < N) {						    \
@@ -440,7 +440,7 @@ class StaticMulticolumn {
    }
  }
 
-  inline void pack() {
+  inline void pack(void) {
     assertlocked(p_->rwlatch);
 #ifdef PACK_STATS
     if(pack_first) {
@@ -573,13 +573,13 @@ class StaticMulticolumn {
      explanation of where these pointers are stored
    */
 
-  inline column_number_t * column_count_ptr() {
+  inline column_number_t * column_count_ptr(void) {
     return reinterpret_cast<column_number_t*>(p_->memAddr+USABLE_SIZE_OF_PAGE)-1;
   }
-  inline byte_off_t * exceptions_offset_ptr() {
+  inline byte_off_t * exceptions_offset_ptr(void) {
     return reinterpret_cast<byte_off_t*>(column_count_ptr())-1;
   }
-  inline byte_off_t * exceptions_len_ptr() {
+  inline byte_off_t * exceptions_len_ptr(void) {
     return exceptions_offset_ptr()-1;;
   }
   inline column_header * column_header_ptr(column_number_t column_number) {
@@ -606,11 +606,11 @@ class StaticMulticolumn {
   inline byte * column_base_ptr(column_number_t column_number) {
     return *column_offset_ptr(column_number) + p_->memAddr;
   }
-  inline byte * first_header_byte_ptr() {
+  inline byte * first_header_byte_ptr(void) {
     return reinterpret_cast<byte*>(column_header_ptr((*column_count_ptr())-1));
   }
 
-  static inline plugin_id_t plugin_id() {
+  static inline plugin_id_t plugin_id(void) {
     // XXX collides with multicolumn.h
     return USER_DEFINED_PAGE(0) + 32 + TUPLE::TUPLE_ID;
   }
@@ -696,7 +696,7 @@ template <int N, class TUPLE,
   class COMP5, class COMP6, class COMP7, class COMP8, class COMP9,
   class COMP10, class COMP11, class COMP12, class COMP13, class COMP14,
   class COMP15, class COMP16, class COMP17, class COMP18, class COMP19>
-page_impl StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>::impl() {
+page_impl StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>::impl(void) {
   page_impl ret = static_multicolumn_impl;
   ret.page_type = StaticMulticolumn<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>::plugin_id();
   ret.pageLoaded = staticMulticolumnLoaded<N,TUPLE,COMP0,COMP1,COMP2,COMP3,COMP4,COMP5,COMP6,COMP7,COMP8,COMP9,COMP10,COMP11,COMP12,COMP13,COMP14,COMP15,COMP16,COMP17,COMP18,COMP19>;

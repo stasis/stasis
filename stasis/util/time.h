@@ -13,7 +13,7 @@
 
 #include "log2.h"
 
-static inline unsigned long long stasis_get_tsc() {
+static inline unsigned long long stasis_get_tsc(void) {
   unsigned long long tsc;
   asm volatile ("rdtsc" : "=A" (tsc));
   return tsc;

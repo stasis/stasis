@@ -62,7 +62,7 @@ static void  writeKeyToBuffer(char** insertBuffer, int* bufferCurrentLength,
 static void  writeBufferToLog(int log, char* insertBuffer, int bufferCurrentLength);
 
 int
-runSubject() {
+runSubject(void) {
   pthread_t* threads;
   pthread_attr_t attr;
   intptr_t k;

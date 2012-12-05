@@ -367,7 +367,7 @@ void process(String *str) {
   }    
 }
 
-void usage() {
+void usage(void) {
   printf("Simple calendar program. Reads in commands from stdin.\n\n");
   printf("Commands:\n");
   printf("A <entry> -- adds the specified entry into the calendar\n");

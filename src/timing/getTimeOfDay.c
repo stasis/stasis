@@ -42,7 +42,7 @@ terms specified in this license.
 #include <sys/time.h>
 #include <stdio.h>
  
-int main() {
+int main(void) {
    unsigned long l;
    struct timeval t;
  

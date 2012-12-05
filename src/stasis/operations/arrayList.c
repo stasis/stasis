@@ -98,7 +98,7 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
 
 /*----------------------------------------------------------------------------*/
 
-stasis_operation_impl stasis_op_impl_array_list_header_init() {
+stasis_operation_impl stasis_op_impl_array_list_header_init(void) {
   stasis_operation_impl o = {
     OPERATION_ARRAY_LIST_HEADER_INIT,
     UNINITIALIZED_PAGE,

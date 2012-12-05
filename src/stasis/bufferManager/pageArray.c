@@ -80,7 +80,7 @@ static int paCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_hand
   return 0; // no error.
 }
 
-stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open () {
+stasis_buffer_manager_t * stasis_buffer_manager_mem_array_open (void) {
 
   stasis_buffer_manager_t * bm = stasis_alloc(stasis_buffer_manager_t);
   stasis_buffer_manager_page_array_t * pa = stasis_alloc(stasis_buffer_manager_page_array_t);

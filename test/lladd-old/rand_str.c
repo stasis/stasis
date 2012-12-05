@@ -48,7 +48,7 @@ terms specified in this license.
 char *LONG_STRING;
 int LONG_STRING_LENGTH;
 
-void rand_str_init() {
+void rand_str_init(void) {
 	char c;
 
 	char first_printable_ascii = ' ';
@@ -63,7 +63,7 @@ void rand_str_init() {
 	srand(SEED);
 }
 
-char *rand_str() {
+char *rand_str(void) {
 	char *string;
 	double r;
 

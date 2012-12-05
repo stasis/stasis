@@ -114,7 +114,7 @@ static void stasis_page_fixed_flushed(Page *p) {
 }
 static void stasis_page_fixed_cleanup(Page *p) { }
 
-page_impl stasis_page_fixed_impl() {
+page_impl stasis_page_fixed_impl(void) {
   static page_impl pi = {
     FIXED_PAGE,
     1,
@@ -150,11 +150,11 @@ page_impl stasis_page_fixed_impl() {
 /**
  @todo arrayListImpl belongs in arrayList.c
 */
-page_impl stasis_page_array_list_impl() {
+page_impl stasis_page_array_list_impl(void) {
   page_impl pi = stasis_page_fixed_impl();
   pi.page_type = ARRAY_LIST_PAGE;
   return pi;
 }
 
-void stasis_page_fixed_init() { }
-void stasis_page_fixed_deinit() { }
+void stasis_page_fixed_init(void) { }
+void stasis_page_fixed_deinit(void) { }

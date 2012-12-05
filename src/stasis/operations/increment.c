@@ -61,7 +61,7 @@ static int op_increment(const LogEntry* e, Page* p) {
   return 0;
 }
 
-stasis_operation_impl stasis_op_impl_increment() {
+stasis_operation_impl stasis_op_impl_increment(void) {
   stasis_operation_impl o = {
     OPERATION_INCREMENT,
     UNKNOWN_TYPE_PAGE,

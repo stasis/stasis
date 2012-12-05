@@ -202,7 +202,7 @@ runMaster(const char* execname, int interactive) {
 }
 
 void
-writeGlobalsToSharedBuffer() {
+writeGlobalsToSharedBuffer(void) {
   FILE* iterFile;
   
   iterFile = fopen("iterinfo.txt", "w");
@@ -214,7 +214,7 @@ writeGlobalsToSharedBuffer() {
 }
 
 void
-readGlobalsFromSharedBuffer() {
+readGlobalsFromSharedBuffer(void) {
   FILE* iterFile;
 
   iterFile = fopen("iterinfo.txt", "r");

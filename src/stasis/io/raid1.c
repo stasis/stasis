@@ -157,7 +157,7 @@ stasis_handle_t * stasis_handle_open_raid1(stasis_handle_t* a, stasis_handle_t* 
   return ret;
 }
 
-stasis_handle_t * stasis_handle_raid1_factory() {
+stasis_handle_t * stasis_handle_raid1_factory(void) {
   stasis_handle_t * a = stasis_handle_file_factory(stasis_store_file_1_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
   stasis_handle_t * b = stasis_handle_file_factory(stasis_store_file_2_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
   return stasis_handle_open_raid1(a, b);

@@ -27,7 +27,7 @@ static int cachedCount = 0;
 
 tracker * t;
 Page* pages;
-void randomSetup() {
+void randomSetup(void) {
   time_t seed = time(0);
   printf("\nSeed = %ld\n", seed);
   srandom(seed);
@@ -43,7 +43,7 @@ void randomSetup() {
   }
 
 }
-void randomTeardown() {
+void randomTeardown(void) {
   free(t);
   free(pages);
 }

@@ -193,7 +193,7 @@ void env_open(DB_ENV **dbenvp) {
 }
 
 
-void env_dir_create() {
+void env_dir_create(void) {
         struct stat sb;
 
 

@@ -42,7 +42,7 @@ void process(char *line) {
   pobj_static_set_ref(&list, tmp);
 }
 
-void print() {
+void print(void) {
   int i = 1;
   Node *tmp = list;
   printf("Entries: \n");

@@ -38,20 +38,20 @@ static stasis_alloc_t * stasis_alloc = 0;
 static stasis_allocation_policy_t * stasis_allocation_policy = 0;
 static stasis_buffer_manager_t * stasis_buffer_manager = 0;
 
-void * stasis_runtime_buffer_manager() {
+void * stasis_runtime_buffer_manager(void) {
   return stasis_buffer_manager;
 }
-void * stasis_runtime_dirty_page_table() {
+void * stasis_runtime_dirty_page_table(void) {
   return stasis_dirty_page_table;
 }
-void * stasis_runtime_transaction_table() {
+void * stasis_runtime_transaction_table(void) {
   return stasis_transaction_table;
 }
-void * stasis_runtime_alloc_state() {
+void * stasis_runtime_alloc_state(void) {
   return stasis_alloc;
 }
 
-stasis_log_t* stasis_log_default_factory() {
+stasis_log_t* stasis_log_default_factory(void) {
   stasis_log_t *log_file = 0;
   if(LOG_TO_DIR  == stasis_log_type) {
     log_file = stasis_log_file_pool_open(stasis_log_dir_name,
@@ -71,7 +71,7 @@ stasis_log_t* stasis_log_default_factory() {
   return log_file;
 }
 
-int Tinit() {
+int Tinit(void) {
   stasis_initted = 1;
 
   stasis_operation_table_init();
@@ -109,7 +109,7 @@ int Tinit() {
   return 0;
 }
 
-int Tbegin() {
+int Tbegin(void) {
 
   assert(stasis_initted);
 
@@ -327,7 +327,7 @@ int Tcommit(int xid) {
 int TsoftCommit(int xid) {
   return TcommitHelper(xid, 0); // 0 -> don't force write log.
 }
-void TforceCommits() {
+void TforceCommits(void) {
   stasis_log_force(stasis_log_file, INVALID_LSN, LOG_FORCE_COMMIT);
 }
 
@@ -372,7 +372,7 @@ int Tforget(int xid) {
   stasis_transaction_table_forget(stasis_transaction_table, t->xid);
   return 0;
 }
-int Tdeinit() {
+int Tdeinit(void) {
   int count;
   int * active = stasis_transaction_table_list_active(stasis_transaction_table, &count);
 
@@ -412,7 +412,7 @@ int Tdeinit() {
   return 0;
 }
 
-int TuncleanShutdown() {
+int TuncleanShutdown(void) {
   // We're simulating a crash; don't complain when writes get lost,
   // and active transactions get rolled back.
   stasis_suppress_unclean_shutdown_warnings = 1;
@@ -436,7 +436,7 @@ int TuncleanShutdown() {
   return 0;
 }
 
-int TdurabilityLevel() {
+int TdurabilityLevel(void) {
   if(stasis_buffer_manager_factory == stasis_buffer_manager_mem_array_factory) {
     return VOLATILE;
   } else if(stasis_log_type == LOG_TO_MEMORY) {
@@ -446,7 +446,7 @@ int TdurabilityLevel() {
   }
 }
 
-void TtruncateLog() {
+void TtruncateLog(void) {
   stasis_truncation_truncate(stasis_truncation, 1);
 }
 typedef struct {
@@ -518,6 +518,6 @@ int TisActiveTransaction(stasis_transaction_fingerprint_t * fp) {
          && stasis_transaction_table_get(stasis_transaction_table, fp->xid)->recLSN == fp->rec_lsn;
 }
 
-void * stasis_log() {
+void * stasis_log(void) {
   return stasis_log_file;
 }

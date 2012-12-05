@@ -120,13 +120,13 @@ template <class TUPLE> class Multicolumn {
      explanation of where these pointers are stored
    */
 
-  inline column_number_t * column_count_ptr() {
+  inline column_number_t * column_count_ptr(void) {
     return reinterpret_cast<column_number_t*>(p_->memAddr+USABLE_SIZE_OF_PAGE)-1;
   }
-  inline byte_off_t * exceptions_offset_ptr() {
+  inline byte_off_t * exceptions_offset_ptr(void) {
     return reinterpret_cast<byte_off_t*>(column_count_ptr())-1;
   }
-  inline byte_off_t * exceptions_len_ptr() {
+  inline byte_off_t * exceptions_len_ptr(void) {
     return exceptions_offset_ptr()-1;;
   }
   inline column_header * column_header_ptr(column_number_t column_number) {
@@ -153,7 +153,7 @@ template <class TUPLE> class Multicolumn {
   inline byte * column_base_ptr(column_number_t column_number) {
     return *column_offset_ptr(column_number) + p_->memAddr;
   }
-  inline byte * first_header_byte_ptr() {
+  inline byte * first_header_byte_ptr(void) {
     return reinterpret_cast<byte*>(column_header_ptr((*column_count_ptr())-1));
   }
 

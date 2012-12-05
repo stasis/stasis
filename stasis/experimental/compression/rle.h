@@ -32,7 +32,7 @@ class Rle {
   static const int PLUGIN_ID = 1;
 
   inline void offset(TYPE off) { nth_block_ptr(0)->data = off; };
-  inline size_t max_overrun() { return sizeof(triple_t); }
+  inline size_t max_overrun(void) { return sizeof(triple_t); }
 
   /** @see For::append */
   inline slot_index_t append(int xid, const TYPE dat,
@@ -46,7 +46,7 @@ class Rle {
     recordFind(int xid, slot_index_t start, slot_index_t stop,
 	       byte *exceptions, TYPE value,
 	       std::pair<slot_index_t,slot_index_t>& scratch);
- void init_getspecific() {
+ void init_getspecific(void) {
    //   int ret =pthread_key_create(&last_key_, 0);
    //   assert(!ret);
  }
@@ -67,7 +67,7 @@ class Rle {
     init_getspecific();
     //    pthread_mutex_init(&last_mut_,0);
   }
-  inline slot_index_t recordCount() {
+  inline slot_index_t recordCount(void) {
     triple_t *n = last_block_ptr();
     return (n->index) + (n->copies);
   }
@@ -83,13 +83,13 @@ class Rle {
     init_getspecific();
   }
 
-  ~Rle() {
+  ~Rle(void) {
     //    pthread_key_delete(last_key_);
   }
   /**
       @see For::bytes_used();
   */
-  inline byte_off_t bytes_used() {
+  inline byte_off_t bytes_used(void) {
     return ((intptr_t)(last_block_ptr()+1))-(intptr_t)mem_;
   }
 
@@ -112,8 +112,8 @@ class Rle {
     //    assert(!ret);
   }
  private:
-  inline TYPE offset() { return nth_block_ptr(0)->dat; }
-  inline block_index_t* block_count_ptr() {
+  inline TYPE offset(void) { return nth_block_ptr(0)->dat; }
+  inline block_index_t* block_count_ptr(void) {
     return reinterpret_cast<block_index_t*>(mem_);
   }
   inline triple_t* nth_block_ptr(block_index_t n) {
@@ -136,10 +136,10 @@ class Rle {
     //    return &((reinterpret_cast<triple_t*>(block_count_ptr()+1) + n)->data);
     return &(nth_block_ptr(n)->data);
   }
-  inline triple_t* last_block_ptr() {
+  inline triple_t* last_block_ptr(void) {
     return nth_block_ptr(*block_count_ptr()-1);
   }
-  inline triple_t* new_block_ptr() {
+  inline triple_t* new_block_ptr(void) {
     return nth_block_ptr(*block_count_ptr());
   }
   void * mem_;

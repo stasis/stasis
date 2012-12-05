@@ -798,7 +798,7 @@ static int op_test_undo_impl(const LogEntry * e, Page * p) {
   return 0;
 }
 
-static stasis_operation_impl op_test_logical_redo_impl() {
+static stasis_operation_impl op_test_logical_redo_impl(void) {
   stasis_operation_impl o = {
     OPERATION_TEST_LOGICAL_REDO,
     MULTI_PAGE,
@@ -808,7 +808,7 @@ static stasis_operation_impl op_test_logical_redo_impl() {
   };
   return o;
 }
-static stasis_operation_impl op_test_logical_undo_impl() {
+static stasis_operation_impl op_test_logical_undo_impl(void) {
   stasis_operation_impl o = {
     OPERATION_TEST_LOGICAL_UNDO,
     MULTI_PAGE,

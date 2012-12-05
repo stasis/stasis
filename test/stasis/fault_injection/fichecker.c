@@ -43,7 +43,7 @@ terms specified in this license.
 #include "fitest.h"
 
 int
-runChecker() {
+runChecker(void) {
   int hashVal, fd, i, xid, k;
   int *commitTable = NULL, *insertTable = NULL, tableLength;
   int *key, **bkey, *value, **bvalue;

@@ -67,7 +67,7 @@ Multicolumn<TUPLE>::Multicolumn(Page * p) :
 }
 
 template <class TUPLE>
-void Multicolumn<TUPLE>::pack() {
+void Multicolumn<TUPLE>::pack(void) {
   byte_off_t first_free = 0;
   byte_off_t last_free  = (intptr_t)(first_header_byte_ptr() - p_->memAddr);
   if(unpacked_) {
@@ -95,7 +95,7 @@ void Multicolumn<TUPLE>::pack() {
 }
 
 template <class TUPLE>
-Multicolumn<TUPLE>::~Multicolumn() {
+Multicolumn<TUPLE>::~Multicolumn(void) {
   for(int i = 0; i < *column_count_ptr(); i++) {
     if(unpacked_) delete [] columns_[i];
   }
@@ -237,7 +237,7 @@ static const page_impl multicolumn_impl = {
 // manipulate more than one type of tuple..
 template <class TUPLE>
 inline plugin_id_t
-Multicolumn<TUPLE>::plugin_id() {
+Multicolumn<TUPLE>::plugin_id(void) {
   return USER_DEFINED_PAGE(0) + 32 + TUPLE::TUPLE_ID;
 }
 
@@ -260,7 +260,7 @@ static void multicolumnCleanup(Page *p) {
 }
 
 template <class TUPLE>
-page_impl Multicolumn<TUPLE>::impl() {
+page_impl Multicolumn<TUPLE>::impl(void) {
   page_impl ret = multicolumn_impl;
   ret.page_type = Multicolumn<TUPLE>::plugin_id();
   ret.pageLoaded = multicolumnLoaded<TUPLE>;

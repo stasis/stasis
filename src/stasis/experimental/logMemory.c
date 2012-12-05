@@ -17,7 +17,7 @@ typedef struct {
   lsn_t eof;
 } logMemory_fifo_t;
 
-void stasis_logMemory_init() {
+void stasis_logMemory_init(void) {
   lladdIterator_def_t logMemory_def = {
     logMemory_Iterator_close,
     logMemory_Iterator_next,

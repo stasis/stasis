@@ -453,7 +453,7 @@ static int xidAllocedDealloced_cmp_xid_pageid(const void *ap, const void *bp, co
         ((a->pageid > b->pageid) ? 1 : 0)));
 }
 
-stasis_allocation_policy_t * stasis_allocation_policy_init() {
+stasis_allocation_policy_t * stasis_allocation_policy_init(void) {
   stasis_allocation_policy_t * ap = stasis_alloc(stasis_allocation_policy_t);
   ap->availablePages_key_pageid = rbinit(availablePages_cmp_pageid, 0);
   ap->availablePages_key_freespace_pageid = rbinit(availablePages_cmp_freespace_pageid, 0);

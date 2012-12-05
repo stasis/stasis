@@ -96,7 +96,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handl
   return bm;
 }
 
-static void bufManBufDeinit() {
+static void bufManBufDeinit(void) {
 
   DEBUG("pageCacheDeinit()");
 
@@ -130,7 +130,7 @@ static void bufManBufDeinit() {
   Just close file descriptors, don't do any other clean up. (For
   testing.)
 */
-static void bufManSimulateBufferManagerCrash() {
+static void bufManSimulateBufferManagerCrash(void) {
   page_handle->close(page_handle);
 #ifdef PIN_COUNT
   pinCount = 0;

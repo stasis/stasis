@@ -55,7 +55,7 @@ typedef struct {
  * Test of persistant hash with many entries
  */
 
-int test() {
+int test(void) {
 
 	struct timeval start, end, total;
 	unsigned int i, xid;

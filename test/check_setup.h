@@ -42,7 +42,7 @@ terms specified in this license.
 /**  A simple test utility to make sure that check is installed and working.
  */
 
-int main() {
+int main(void) {
 	int nf; 
 	Suite *s = check_suite();
 	SRunner *sr = srunner_create(s);

@@ -51,7 +51,7 @@ static const slot_index_t  INVALID_COL   =  UCHAR_MAX;
 
 */
 template <class PAGEFORMAT, class COMPRESSOR, class TYPE>
-inline plugin_id_t plugin_id() {
+inline plugin_id_t plugin_id(void) {
   /* type_idx maps from sizeof(TYPE) to a portion of a page type:
 
      (u)int8_t  -> 0

@@ -402,7 +402,7 @@ void LH_ENTRY(destroy) (struct LH_ENTRY(table) * t) {
   free(t);
 }
 
-void LH_ENTRY(stats)(){
+void LH_ENTRY(stats)(void) {
 
 #ifdef MEASURE_GLOBAL_BUCKET_LENGTH
   pthread_mutex_lock(&stat_mutex);

@@ -42,7 +42,7 @@ terms specified in this license.
 #include "../../src/libdfa/monotree.h"
 #include <stdlib.h>
 #include <assert.h>
-int main () {
+int main (void) {
   MonoTree * rb;
   int size =  100;
   state_machine_id i;

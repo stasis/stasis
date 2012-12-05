@@ -62,7 +62,7 @@ class For {
      The size of the scratch space reserved at the end of the page for
      speculative execution.
   */
-  inline size_t max_overrun() { return sizeof(delta_t) + sizeof(TYPE); }
+  inline size_t max_overrun(void) { return sizeof(delta_t) + sizeof(TYPE); }
 
   /**
    Append a new value to a compressed portion of a page.  This
@@ -128,7 +128,7 @@ class For {
   };
  For(void * mem): mem_(mem) {}
 
-  inline slot_index_t recordCount() {
+  inline slot_index_t recordCount(void) {
     return *numdeltas_ptr();
   }
 
@@ -136,7 +136,7 @@ class For {
   /**
       @return the length of the FOR region, in bytes
   */
-  inline byte_off_t bytes_used() {
+  inline byte_off_t bytes_used(void) {
     return ((intptr_t)(last_delta_ptr()+1)) - (intptr_t)mem_;
   }
 
@@ -154,20 +154,20 @@ class For {
   static const delta_t DELTA_MAX = (sizeof(delta_t) == 1) ? CHAR_MAX : (sizeof(delta_t) == 2) ? SHRT_MAX : INT_MAX;
   static const delta_t DELTA_MIN = (sizeof(delta_t) == 1) ? CHAR_MIN : (sizeof(delta_t) == 2) ? SHRT_MIN : INT_MIN;
 
-  inline TYPE offset() { return *base_ptr(); }
+  inline TYPE offset(void) { return *base_ptr(); }
 
-  inline TYPE* base_ptr() { return reinterpret_cast<TYPE*>(mem_); }
+  inline TYPE* base_ptr(void) { return reinterpret_cast<TYPE*>(mem_); }
 
-  inline slot_index_t* numdeltas_ptr() {
+  inline slot_index_t* numdeltas_ptr(void) {
     return reinterpret_cast<slot_index_t*>(base_ptr()+1);
   }
   inline delta_t * nth_delta_ptr(slot_index_t n) {
     return reinterpret_cast<delta_t*>(numdeltas_ptr()+1) + n;
   }
-  inline delta_t * last_delta_ptr() {
+  inline delta_t * last_delta_ptr(void) {
     return nth_delta_ptr(*numdeltas_ptr()-1);
   }
-  inline delta_t * next_delta_ptr() {
+  inline delta_t * next_delta_ptr(void) {
     return nth_delta_ptr(*numdeltas_ptr());
   }
   void * mem_;

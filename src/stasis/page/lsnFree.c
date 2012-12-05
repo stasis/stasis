@@ -7,7 +7,7 @@ void stasis_page_slotted_lsn_free_initialize_page(Page * p) {
   p->pageType = SLOTTED_LSN_FREE_PAGE;
 }
 
-page_impl slottedLsnFreeImpl() {
+page_impl slottedLsnFreeImpl(void) {
   page_impl pi = stasis_page_slotted_impl();
   pi.has_header = 0;
   pi.page_type = SLOTTED_LSN_FREE_PAGE;

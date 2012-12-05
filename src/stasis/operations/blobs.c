@@ -81,7 +81,7 @@ static void stasis_page_blob_flushed(Page *p) {
 }
 static void stasis_page_blob_cleanup(Page *p) { }
 
-page_impl stasis_page_blob_impl() {
+page_impl stasis_page_blob_impl(void) {
   page_impl pi = {
       BLOB_PAGE,
       1,

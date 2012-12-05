@@ -15,7 +15,7 @@
 
 #define CK_NORMAL 0
 
-#define START_TEST(x) static void x() {
+#define START_TEST(x) static void x(void) {
 #define END_TEST }
 
 static int reaper_enabled = 0;

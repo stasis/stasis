@@ -390,11 +390,11 @@ recordid TnaiveHashCreate(int xid, int keySize, int valSize) {
   return rid;
 }
 
-void TnaiveHashInit() {
+void TnaiveHashInit(void) {
   openHashes = pblHtCreate();
 }
 
-void TnaiveHashDeinit() {
+void TnaiveHashDeinit(void) {
   pblHtDelete(openHashes);
 }
 

@@ -59,7 +59,7 @@ static int op_prepare(const LogEntry * e, Page * p) {
   return 0;
 }
 
-stasis_operation_impl stasis_op_impl_prepare() {
+stasis_operation_impl stasis_op_impl_prepare(void) {
   stasis_operation_impl o = {
     OPERATION_PREPARE, /* id */
     UNKNOWN_TYPE_PAGE,
@@ -79,7 +79,7 @@ typedef struct{
   int aborted;
 } PrepareGuardState;
 
-void * getPrepareGuardState() {
+void * getPrepareGuardState(void) {
   PrepareGuardState * s = stasis_alloc(PrepareGuardState);
   s->continueIterating = 1;
   s->prevLSN = -1;

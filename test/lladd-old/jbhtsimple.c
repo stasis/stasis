@@ -53,7 +53,7 @@ typedef struct {
  * Simple test of persistant hash table
  */
 
-int test() {
+int test(void) {
 
 	test_pair_t one = { 1, "one" };
 	test_pair_t two = { 2, "two" };

@@ -47,7 +47,7 @@ terms specified in this license.
 
 #include "test.h"
 
-int test() {
+int test(void) {
   int i;
   int      writeVal, readVal;
   

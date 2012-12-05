@@ -512,7 +512,7 @@ void TregionPrefetch(int xid, pageid_t firstPage) {
   pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
   bm->prefetchPages(bm, firstPage, endOfRange);
 }
-stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
+stasis_operation_impl stasis_op_impl_boundary_tag_alloc(void) {
   stasis_operation_impl o = {
     OPERATION_ALLOC_BOUNDARY_TAG,
     UNINITIALIZED_PAGE,
@@ -523,7 +523,7 @@ stasis_operation_impl stasis_op_impl_boundary_tag_alloc() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_region_alloc() {
+stasis_operation_impl stasis_op_impl_region_alloc(void) {
   stasis_operation_impl o = {
     OPERATION_ALLOC_REGION,
     UNKNOWN_TYPE_PAGE,
@@ -533,7 +533,7 @@ stasis_operation_impl stasis_op_impl_region_alloc() {
   };
   return o;
 }
-stasis_operation_impl stasis_op_impl_region_alloc_inverse() {
+stasis_operation_impl stasis_op_impl_region_alloc_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_ALLOC_REGION_INVERSE,
     UNKNOWN_TYPE_PAGE,
@@ -543,7 +543,7 @@ stasis_operation_impl stasis_op_impl_region_alloc_inverse() {
   };
   return o;
 }
-stasis_operation_impl stasis_op_impl_region_dealloc() {
+stasis_operation_impl stasis_op_impl_region_dealloc(void) {
   stasis_operation_impl o = {
     OPERATION_DEALLOC_REGION,
     UNKNOWN_TYPE_PAGE,
@@ -554,7 +554,7 @@ stasis_operation_impl stasis_op_impl_region_dealloc() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_region_dealloc_inverse() {
+stasis_operation_impl stasis_op_impl_region_dealloc_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_DEALLOC_REGION_INVERSE,
     UNKNOWN_TYPE_PAGE,

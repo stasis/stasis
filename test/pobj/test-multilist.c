@@ -24,7 +24,7 @@ pthread_mutex_t *lock;
 Node *head = NULL;
 Node *tail = NULL;
 
-void print() {
+void print(void) {
   Node *tmp = head;
   while (tmp != NULL) {
     printf("%s\n", tmp->data);

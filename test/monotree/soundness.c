@@ -46,7 +46,7 @@ terms specified in this license.
 #include <limits.h>
 #include <assert.h>
 
-int main () {
+int main (void) {
 
   MonoTree * rb;
 

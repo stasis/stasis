@@ -53,7 +53,7 @@ typedef struct {
  * Test of jb persistant hash with many entries
  */
 
-int test() {
+int test(void) {
 
 	unsigned int i, xid;
 	const unsigned int INSERT_NUM = 10000; /* should be > JB_HASHTABLE_SIZE */

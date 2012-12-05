@@ -25,7 +25,7 @@ static int stasis_btree_byte_array_comparator(const void * a, size_t alen, const
   return ret;
 }
 
-void BtreeInit() {
+void BtreeInit(void) {
   // todo: register iterator
 
   // register comparators
@@ -33,7 +33,7 @@ void BtreeInit() {
   btree_comparators[BYTE_ARRAY_COMPARATOR] = stasis_btree_byte_array_comparator;
 
 }
-void BtreeDeinit() {
+void BtreeDeinit(void) {
   free(btree_comparators);
 }
 typedef struct {

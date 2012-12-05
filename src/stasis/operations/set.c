@@ -221,7 +221,7 @@ void TsetRange(int xid, recordid rid, int offset, int length, const void * dat) 
   releasePage(p);
 }
 
-stasis_operation_impl stasis_op_impl_set() {
+stasis_operation_impl stasis_op_impl_set(void) {
   stasis_operation_impl o = {
     OPERATION_SET,
     UNKNOWN_TYPE_PAGE,
@@ -232,7 +232,7 @@ stasis_operation_impl stasis_op_impl_set() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_set_inverse() {
+stasis_operation_impl stasis_op_impl_set_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_SET_INVERSE,
     UNKNOWN_TYPE_PAGE,
@@ -243,7 +243,7 @@ stasis_operation_impl stasis_op_impl_set_inverse() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_set_range() {
+stasis_operation_impl stasis_op_impl_set_range(void) {
   stasis_operation_impl o = {
     OPERATION_SET_RANGE,
     UNKNOWN_TYPE_PAGE,
@@ -254,7 +254,7 @@ stasis_operation_impl stasis_op_impl_set_range() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_set_range_inverse() {
+stasis_operation_impl stasis_op_impl_set_range_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_SET_RANGE_INVERSE,
     UNKNOWN_TYPE_PAGE,

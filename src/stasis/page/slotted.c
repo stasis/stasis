@@ -141,7 +141,7 @@ void stasis_page_slotted_initialize_page(Page * page) {
   stasis_page_slotted_initialize_page_raw(page);
 }
 
-void stasis_page_slotted_init() {
+void stasis_page_slotted_init(void) {
 #ifdef SLOTTED_PAGE_CHECK_FOR_OVERLAP
 #ifdef SLOTTED_PAGE_OLD_CHECKS
   printf("slotted.c: Using expensive page sanity checking.\n");
@@ -149,10 +149,10 @@ void stasis_page_slotted_init() {
 #endif
 }
 
-void stasis_page_slotted_deinit() {
+void stasis_page_slotted_deinit(void) {
 }
 
-page_impl stasis_page_slotted_impl() {
+page_impl stasis_page_slotted_impl(void) {
 static page_impl pi =  {
     SLOTTED_PAGE,
     1,
@@ -185,7 +185,7 @@ static page_impl pi =  {
   return pi;
 }
 
-page_impl stasis_page_boundary_tag_impl() {
+page_impl stasis_page_boundary_tag_impl(void) {
   page_impl p =  stasis_page_slotted_impl();
   p.page_type = BOUNDARY_TAG_PAGE;
   return p;

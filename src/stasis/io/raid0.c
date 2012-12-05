@@ -204,7 +204,7 @@ stasis_handle_t * stasis_handle_open_raid0(int handle_count, stasis_handle_t** h
   return ret;
 }
 
-stasis_handle_t * stasis_handle_raid0_factory() {
+stasis_handle_t * stasis_handle_raid0_factory(void) {
   if(stasis_handle_raid0_filenames == NULL) {
     stasis_handle_t * h[2];
     h[0] = stasis_handle_file_factory(stasis_store_file_1_name, O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);

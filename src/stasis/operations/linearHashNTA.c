@@ -35,7 +35,7 @@ typedef struct {
 
 static void noopTupDone(int xid, void * foo) { }
 
-void LinearHashNTAInit() {
+void LinearHashNTAInit(void) {
   // only need this function since PTHREAD_RECURSIVE_MUTEX_INITIALIZER is really broken...
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
@@ -53,7 +53,7 @@ void LinearHashNTAInit() {
   };
   lladdIterator_register(LINEAR_HASH_NTA_ITERATOR, linearHashNTA_def);
 }
-void LinearHashNTADeinit() {
+void LinearHashNTADeinit(void) {
   pthread_mutex_destroy(&linear_hash_mutex);
 }
 
@@ -143,7 +143,7 @@ static int op_linear_hash_remove(const LogEntry* e, Page* p) {
 
   return 0;
 }
-stasis_operation_impl stasis_op_impl_linear_hash_insert() {
+stasis_operation_impl stasis_op_impl_linear_hash_insert(void) {
   stasis_operation_impl o = {
     OPERATION_LINEAR_HASH_INSERT,
     UNKNOWN_TYPE_PAGE,
@@ -153,7 +153,7 @@ stasis_operation_impl stasis_op_impl_linear_hash_insert() {
   };
   return o;
 }
-stasis_operation_impl stasis_op_impl_linear_hash_remove() {
+stasis_operation_impl stasis_op_impl_linear_hash_remove(void) {
   stasis_operation_impl o = {
     OPERATION_LINEAR_HASH_REMOVE,
     UNKNOWN_TYPE_PAGE,

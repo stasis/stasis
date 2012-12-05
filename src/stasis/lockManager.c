@@ -9,7 +9,7 @@
 
 LockManagerSetup globalLockManager;
 
-void setupLockManagerCallbacksNil () {
+void setupLockManagerCallbacksNil (void) {
   globalLockManager.init            = NULL;
   globalLockManager.readLockPage    = NULL;
   globalLockManager.writeLockPage   = NULL;

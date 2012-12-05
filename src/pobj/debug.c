@@ -67,7 +67,7 @@ debug_f_start (const char *func_str)
 }
 
 int
-debug_f_end ()
+debug_f_end (void)
 {
     if (g_ncontexts == 0)
 	return -1;

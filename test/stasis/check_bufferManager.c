@@ -45,7 +45,7 @@
 #endif // LONG_TEST
 #define MAX_TRANS_LENGTH 100 // Number of writes per transaction.  Keeping this low allows truncation.
 
-void initializePages() {
+void initializePages(void) {
 
   int i;
 

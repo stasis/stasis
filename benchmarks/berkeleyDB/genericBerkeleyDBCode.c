@@ -5,7 +5,7 @@ DB *db_cats;
 int commitCount = 0;
 int putCount = 0;
 void
-env_dir_create()
+env_dir_create(void)
 {
 	struct stat sb;
 
@@ -317,7 +317,7 @@ retry:	/* Begin the transaction. */
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: txnapp\n");
 	exit(1);

@@ -21,7 +21,7 @@ static void uninitializedCleanup(Page *p) {
 
 }
 
-page_impl stasis_page_uninitialized_impl() {
+page_impl stasis_page_uninitialized_impl(void) {
   static page_impl pi = {
     UNINITIALIZED_PAGE,
     1, //has header

@@ -188,7 +188,7 @@ static void stasis_log_impl_in_memory_set_truncation(stasis_log_t *log, stasis_t
   impl->trunc = trunc;
 }
 
-stasis_log_t* stasis_log_impl_in_memory_open() {
+stasis_log_t* stasis_log_impl_in_memory_open(void) {
   stasis_log_impl_in_memory * impl = stasis_alloc(stasis_log_impl_in_memory);
   impl->flushedLSN_lock   = initlock();
   impl->globalOffset_lock = initlock();

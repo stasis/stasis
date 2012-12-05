@@ -103,7 +103,7 @@ void tupleFree(tuple_t tup) {
   if(tup.type) { free(tup.type); }
 }
 
-tuple_t tupleAlloc() {
+tuple_t tupleAlloc(void) {
   tuple_t ret;
   ret.count = 0;
   ret.type = 0;

@@ -56,7 +56,7 @@ void stasis_operation_impl_register(stasis_operation_impl o) {
   stasis_operation_table[o.id] = o;
 }
 static int stasis_operations_initted = 0;
-void stasis_operation_table_init() {
+void stasis_operation_table_init(void) {
   if(!stasis_operations_initted) {
     stasis_operations_initted = 1;
     for(int i = 0; i < MAX_OPERATIONS; i++) {

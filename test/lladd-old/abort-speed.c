@@ -52,8 +52,7 @@ terms specified in this license.
 
 #define TESTS 500
 
-int test()
-{
+int test(void) {
 	struct timeval start, end, total;
 	recordid rids[TESTS];
 	long commited[TESTS];

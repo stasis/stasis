@@ -49,8 +49,8 @@ class Tuple {
        cols_[c] = t->cols_[c];
      }
      } */
-  inline ~Tuple() { delete[] cols_; delete[] byteArray_; }
-  inline bool tombstone() {
+  inline ~Tuple(void) { delete[] cols_; delete[] byteArray_; }
+  inline bool tombstone(void) {
     return false;
   }
   inline TYPE * set(column_number_t col,void* val) {
@@ -79,19 +79,19 @@ class Tuple {
       cols_[i] = newCols[i];
     }
     } */
-  inline byte* toByteArray() {
+  inline byte* toByteArray(void) {
     byte* ret = byteArray_;
     memcpy(ret, &count_, sizeof(count_));
     memcpy(ret+sizeof(count_), cols_, count_ * sizeof(TYPE));
     return ret;
   }
-  /*  inline operator const byte * () {
+  /*  inline operator const byte * (void) {
     return toByteArray();
     } */
-  inline operator TYPE () { 
+  inline operator TYPE (void) { 
     return cols_[0]; //*get(0);
   }
-  /*  inline operator TYPE () {
+  /*  inline operator TYPE (void) {
     assert(count_ == 0);
     return cols_[0];
     } */
@@ -132,7 +132,7 @@ class Tuple {
     inline explicit iterator(const iterator &i) : c_(i.c_), dat_(i.dat_), off_(i.off_),
 	scratch_(c_) {}
 
-    inline Tuple<TYPE>& operator*() {
+    inline Tuple<TYPE>& operator*(void) {
       for(column_number_t i = 0; i < c_; i++) {
         scratch_.set(i,(void*)&dat_[i][off_]);
       }
@@ -146,8 +146,8 @@ class Tuple {
       //assert(dat_==a.dat_ && c_==a.c_);
       return (off_!=a.off_);
     }
-    inline void operator++() { off_++; }
-    inline void operator--() { off_--; }
+    inline void operator++(void) { off_++; }
+    inline void operator--(void) { off_--; }
     inline void operator+=(int i) { abort(); }
     inline int  operator-(iterator&i) {
       return off_ - i.off_;
@@ -168,7 +168,7 @@ class Tuple {
   };
   static const uint32_t TIMESTAMP = 0;
  private:
-  Tuple() { abort(); }
+  Tuple(void) { abort(); }
   explicit Tuple(const Tuple& t) { abort(); }
   column_number_t count_;
   TYPE * const cols_;

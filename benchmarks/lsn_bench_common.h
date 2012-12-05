@@ -91,11 +91,11 @@ int my_write_entry(struct stasis_log_t* log, LogEntry *e) {
   return original_write_entry(log,e);
 }
 
-void emulate_remote_log() {
+void emulate_remote_log(void) {
     original_write_entry = ((stasis_log_t*)stasis_log())->write_entry;
     ((stasis_log_t*)stasis_log())->write_entry = my_write_entry;
 }
-void emulate_remote_pages() {
+void emulate_remote_pages(void) {
     origWrite = stasis_page_impl_get(SLOTTED_LSN_FREE_PAGE)->recordWrite;
     origRead = stasis_page_impl_get(SLOTTED_LSN_FREE_PAGE)->recordRead;
     // xxx a bit of cheating; don't pay latency for lsn write

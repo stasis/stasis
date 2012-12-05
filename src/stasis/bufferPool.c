@@ -62,7 +62,7 @@ struct stasis_buffer_pool_t {
 	void * addr_to_free;
 };
 
-stasis_buffer_pool_t* stasis_buffer_pool_init() {
+stasis_buffer_pool_t* stasis_buffer_pool_init(void) {
 
   stasis_buffer_pool_t * ret = stasis_alloc(stasis_buffer_pool_t);
 

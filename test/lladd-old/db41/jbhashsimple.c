@@ -52,7 +52,7 @@ terms specified in this license.
 
 
 
-int main() {
+int main(void) {
 	DB *dbp;
 	DBT key1, dat1, key2, dat2, key3, dat3, key4, dat4;
 	int ret, i, t_ret;

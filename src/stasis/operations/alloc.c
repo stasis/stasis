@@ -168,7 +168,7 @@ static int op_realloc(const LogEntry* e, Page* p) {
   return ret;
 }
 
-stasis_operation_impl stasis_op_impl_alloc() {
+stasis_operation_impl stasis_op_impl_alloc(void) {
   stasis_operation_impl o = {
     OPERATION_ALLOC,
     UNKNOWN_TYPE_PAGE,
@@ -180,7 +180,7 @@ stasis_operation_impl stasis_op_impl_alloc() {
 }
 
 
-stasis_operation_impl stasis_op_impl_dealloc() {
+stasis_operation_impl stasis_op_impl_dealloc(void) {
   stasis_operation_impl o = {
     OPERATION_DEALLOC,
     UNKNOWN_TYPE_PAGE,
@@ -192,7 +192,7 @@ stasis_operation_impl stasis_op_impl_dealloc() {
 }
 
 /*This is only used to undo deallocs... */
-stasis_operation_impl stasis_op_impl_realloc() {
+stasis_operation_impl stasis_op_impl_realloc(void) {
   stasis_operation_impl o = {
     OPERATION_REALLOC,
     UNKNOWN_TYPE_PAGE,

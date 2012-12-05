@@ -94,7 +94,7 @@ int TsetWriteBack(int xid, pageid_t page, pageoff_t off, pageoff_t len, const vo
   return TsetReorderableWriteBack(xid,0,page,off,len,dat,olddat);
 }
 
-stasis_operation_impl stasis_op_impl_lsn_free_set() {
+stasis_operation_impl stasis_op_impl_lsn_free_set(void) {
   stasis_operation_impl o = {
     OPERATION_SET_LSN_FREE,
     SLOTTED_LSN_FREE_PAGE,
@@ -105,7 +105,7 @@ stasis_operation_impl stasis_op_impl_lsn_free_set() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_lsn_free_set_inverse() {
+stasis_operation_impl stasis_op_impl_lsn_free_set_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_SET_LSN_FREE_INVERSE,
     SLOTTED_LSN_FREE_PAGE,

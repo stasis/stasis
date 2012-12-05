@@ -7,7 +7,7 @@ struct stasis_util_multiset_t {
   intptr_t item_count;
 };
 
-stasis_util_multiset_t * stasis_util_multiset_create() {
+stasis_util_multiset_t * stasis_util_multiset_create(void) {
   stasis_util_multiset_t * set = stasis_alloc(stasis_util_multiset_t);
   set->items = stasis_alloc(lsn_t);
   set->item_count = 0;

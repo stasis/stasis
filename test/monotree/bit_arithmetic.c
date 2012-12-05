@@ -44,7 +44,7 @@ terms specified in this license.
 #include "../../libdfa/libdfa.h"
 int round_size_up(int orig_size);
 
-int main () {
+int main (void) {
   printf("Testing round_size_up");
 
 

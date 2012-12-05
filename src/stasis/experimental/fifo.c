@@ -241,7 +241,7 @@ lladdFifoPool_t * lladdFifoPool_pointerPoolInit (int consumerCount, int pointerC
   return pool;
 }
 
-void stasis_fifo_init() {
+void stasis_fifo_init(void) {
   lladdIterator_def_t pointer_def = {
     lladdFifoPool_iterator_close,
     lladdFifoPool_iterator_next,

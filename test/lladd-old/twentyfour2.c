@@ -47,7 +47,7 @@ terms specified in this license.
 
 #include "test.h"
 
-int test() {
+int test(void) {
   int xid;
   char *handle_in = "jkit";
   char *name_in = "Jimmy Kittiyachavalit";

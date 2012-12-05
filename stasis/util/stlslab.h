@@ -24,7 +24,7 @@ public:
   typedef std::size_t    size_type;
   typedef std::ptrdiff_t difference_type;
 
-  stlslab ( ) throw() {
+  stlslab ( void ) throw() {
     alloc = stasis_util_slab_create(sizeof(T), 65536);
   }
   stlslab ( const stlslab& s) throw() {
@@ -42,7 +42,7 @@ public:
     //assert(alloc);
     stasis_util_slab_ref(alloc);
   }
-  ~stlslab () {
+  ~stlslab (void) {
     stasis_util_slab_destroy(alloc);
   }
   pointer address ( reference x ) const { return &x; }
@@ -60,7 +60,7 @@ public:
     assert(n == 1);
     stasis_util_slab_free(alloc, p);
   }
-  size_type max_size() const throw() { return 1; }
+  size_type max_size(void) const throw() { return 1; }
   void construct ( pointer p, const_reference val ) { new ((void*)p) T (val); }
   void destroy (pointer p) {((T*)p)->~T(); }
   stasis_util_slab_t * alloc;

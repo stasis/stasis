@@ -150,7 +150,7 @@ int TpageGetType(int xid, pageid_t page) {
 
 */
 
-stasis_operation_impl stasis_op_impl_page_set_range() {
+stasis_operation_impl stasis_op_impl_page_set_range(void) {
   stasis_operation_impl o = {
     OPERATION_PAGE_SET_RANGE,
     UNKNOWN_TYPE_PAGE,
@@ -161,7 +161,7 @@ stasis_operation_impl stasis_op_impl_page_set_range() {
   return o;
 }
 
-stasis_operation_impl stasis_op_impl_page_set_range_inverse() {
+stasis_operation_impl stasis_op_impl_page_set_range_inverse(void) {
   stasis_operation_impl o = {
     OPERATION_PAGE_SET_RANGE_INVERSE,
     UNKNOWN_TYPE_PAGE,
@@ -262,7 +262,7 @@ int TinitializeBlobPageRange(int xid, pageid_t start, pageid_t count) {
   Tupdate(xid, MULTI_PAGEID, &arg, sizeof(arg), OPERATION_INITIALIZE_MULTIPAGE);
   return 0;
 }
-stasis_operation_impl stasis_op_impl_page_initialize() {
+stasis_operation_impl stasis_op_impl_page_initialize(void) {
   stasis_operation_impl o = {
     OPERATION_INITIALIZE_PAGE,
     UNINITIALIZED_PAGE,
@@ -272,7 +272,7 @@ stasis_operation_impl stasis_op_impl_page_initialize() {
   };
   return o;
 }
-stasis_operation_impl stasis_op_impl_multipage_initialize() {
+stasis_operation_impl stasis_op_impl_multipage_initialize(void) {
   stasis_operation_impl o = {
       OPERATION_INITIALIZE_MULTIPAGE,
       MULTI_PAGE,
