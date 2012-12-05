@@ -75,29 +75,29 @@ void * _getSmash (smash_t * smash, state_machine_id id) {
 }
 
 StateMachine *  _insertSmash(smash_t * smash, state_machine_id id) {
-  StateMachine * new;
+  StateMachine * new_sm;
 
   if(smash->contents+1 == smash->size) {
     return NULL;
   }
 
   smash->contents++;
-  new = malloc(sizeof (StateMachine));
-  new->machine_id = id;
-  new->mutex = malloc(sizeof(pthread_mutex_t));
-  new->sleepCond = malloc(sizeof(pthread_cond_t));
-  new->pending = 0;
-  pthread_mutex_init(new->mutex, NULL);
-  pthread_cond_init(new->sleepCond, NULL);
+  new_sm = malloc(sizeof (StateMachine));
+  new_sm->machine_id = id;
+  new_sm->mutex = malloc(sizeof(pthread_mutex_t));
+  new_sm->sleepCond = malloc(sizeof(pthread_cond_t));
+  new_sm->pending = 0;
+  pthread_mutex_init(new_sm->mutex, NULL);
+  pthread_cond_init(new_sm->sleepCond, NULL);
   
-  new->current_state = START_STATE;
+  new_sm->current_state = START_STATE;
   /*  printf("Insert %ld\n", id);  */
-  ThashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new, sizeof(StateMachine));
-  pblHtInsert(smash->memHash, &id, sizeof(state_machine_id), new);
+  ThashInsert(smash->xid, smash->hash, (byte*)&id, sizeof(state_machine_id), (byte*)new_sm, sizeof(StateMachine));
+  pblHtInsert(smash->memHash, &id, sizeof(state_machine_id), new_sm);
   /*  Tcommit(smash->xid);
       smash->xid = Tbegin(); */
   
-  return new;
+  return new_sm;
 }
 
 

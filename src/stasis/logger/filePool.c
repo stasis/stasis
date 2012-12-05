@@ -564,19 +564,19 @@ int stasis_log_file_pool_truncate(struct stasis_log_t* log, lsn_t lsn) {
     fp->dead_filenames[dead_offset + i][0] = 0;
     strcat(fp->dead_filenames[dead_offset + i], fp->live_filenames[i]);
     strcat(fp->dead_filenames[dead_offset + i], "~");
-    char * old = build_path(fp->dirname, fp->live_filenames[i]);
-    char * new = build_path(fp->dirname, fp->dead_filenames[dead_offset + i]);
+    char * old_path = build_path(fp->dirname, fp->live_filenames[i]);
+    char * new_path = build_path(fp->dirname, fp->dead_filenames[dead_offset + i]);
     // TODO This is the only place where we hold the latch while going to disk.
     // Rename should be fast, but we're placing a lot of faith in the filesystem.
-    int err = rename(old, new);
+    int err = rename(old_path, new_path);
     if(err) {
       perror("could not rename file");
       assert(err == -1);
       abort();
     }
     close(fp->ro_fd[i]);
-    free(old);
-    free(new);
+    free(old_path);
+    free(new_path);
   }
   fp->dead_count += chunk;
   for(int i = 0; i < (fp->live_count - chunk); i++) {

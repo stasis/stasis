@@ -9,14 +9,14 @@ void alloc_rids(long long num_rids, recordid ** slow, recordid ** fast) {
 
   int xid = Tbegin();
 
-  byte * old = stasis_malloc(PAGE_SIZE, byte);
-  byte * new = stasis_malloc(PAGE_SIZE, byte);
+  byte * old_page = stasis_malloc(PAGE_SIZE, byte);
+  byte * new_page = stasis_malloc(PAGE_SIZE, byte);
 
   for(long long i = 0; i < num_rids; ) {
     pageid_t pid = TpageAlloc(xid);
     Page * p = loadPage(xid, pid);
     writelock(p->rwlatch,0);
-    memcpy(old, p->memAddr, PAGE_SIZE);
+    memcpy(old_page, p->memAddr, PAGE_SIZE);
     stasis_page_slotted_lsn_free_initialize_page(p);
     while(i < num_rids &&
           (
@@ -35,14 +35,14 @@ void alloc_rids(long long num_rids, recordid ** slow, recordid ** fast) {
       assert((*slow)[i].size != -1);
       i++;
     }
-    memcpy(new, p->memAddr, PAGE_SIZE);
-    memcpy(p->memAddr, old, PAGE_SIZE);
+    memcpy(new_page, p->memAddr, PAGE_SIZE);
+    memcpy(p->memAddr, old_page, PAGE_SIZE);
     unlock(p->rwlatch);
     releasePage(p);
-    TpageSet(xid, pid, new);
+    TpageSet(xid, pid, new_page);
   }
-  free(old);
-  free(new);
+  free(old_page);
+  free(new_page);
 
   Tcommit(xid);
 }

@@ -86,7 +86,7 @@ void init_MonoTree(MonoTree * rb, int size) {
 
 StateMachine * allocMachine(MonoTree * rb/*, state_machine_id id*/) {
 
-  StateMachine * new;
+  StateMachine * new_sm;
 
   if(rb->high_water_mark >= rb->size) {
     compactBuffer(rb);
@@ -94,24 +94,24 @@ StateMachine * allocMachine(MonoTree * rb/*, state_machine_id id*/) {
   if(rb->high_water_mark >= rb->size) {
     return (StateMachine *)0;
   }
-  new = &(rb->buffer[rb->high_water_mark]);
+  new_sm = &(rb->buffer[rb->high_water_mark]);
   rb->high_water_mark++;
-  new->machine_id = rb->next_id;
-  new->mutex = malloc(sizeof(pthread_mutex_t));
-  new->sleepCond = malloc(sizeof(pthread_cond_t));
+  new_sm->machine_id = rb->next_id;
+  new_sm->mutex = malloc(sizeof(pthread_mutex_t));
+  new_sm->sleepCond = malloc(sizeof(pthread_cond_t));
 
-  pthread_mutex_init(new->mutex, NULL);
-  pthread_cond_init(new->sleepCond, NULL);
+  pthread_mutex_init(new_sm->mutex, NULL);
+  pthread_cond_init(new_sm->sleepCond, NULL);
 
   rb->next_id++;
-  new->current_state = START_STATE;
+  new_sm->current_state = START_STATE;
   
-  return new;
+  return new_sm;
 }
 
 StateMachine * insertMachine(MonoTree * rb, state_machine_id id) {
   int new_index;
-  StateMachine * new;
+  StateMachine * new_sm;
   int insertion_point;
   /* allocMachine is much less expensive than insertMachine, so this
      check is probably worth the trouble 
@@ -148,15 +148,15 @@ StateMachine * insertMachine(MonoTree * rb, state_machine_id id) {
     }
   }
   
-  new = &(rb->buffer[insertion_point]);
-  new->machine_id = id;
-  new->current_state = START_STATE;
-  new->mutex = malloc(sizeof(pthread_mutex_t));
-  new->sleepCond = malloc(sizeof(pthread_cond_t));
-  pthread_mutex_init(new->mutex, NULL);
-  pthread_cond_init(new->sleepCond, NULL);
+  new_sm = &(rb->buffer[insertion_point]);
+  new_sm->machine_id = id;
+  new_sm->current_state = START_STATE;
+  new_sm->mutex = malloc(sizeof(pthread_mutex_t));
+  new_sm->sleepCond = malloc(sizeof(pthread_cond_t));
+  pthread_mutex_init(new_sm->mutex, NULL);
+  pthread_cond_init(new_sm->sleepCond, NULL);
 
-  return new;  
+  return new_sm;  
 
 }
 

@@ -58,11 +58,11 @@ static state_name do_work(void * dfaSet, StateMachine * stateMachine, Message * 
     {  
     case CREATE: 
       {
-	recordid new = ThashCreate(ht_xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
+	recordid new_rid = ThashCreate(ht_xid, VARIABLE_LENGTH, VARIABLE_LENGTH);
 
 	ThashInsert(ht_xid, app_state_cht->ht_ht, 
 		    (byte*)&(__header_ptr(m)->hashTable), sizeof(clusterHashTable_t), 
-		    (byte*)&new, sizeof(recordid));
+		    (byte*)&new_rid, sizeof(recordid));
 
 	DEBUG("Created local slice of global hash table %d\n", (__header_ptr(m)->hashTable));
 	//Tcommit(app_state_cht->ht_xid);

@@ -90,12 +90,12 @@ hash_insert (struct hash *h, unsigned long key, unsigned long val)
 {
     unsigned long bucket_mask = h->bucket_mask;
     int bucket_index = (int) (key & bucket_mask);
-    struct hash_item *new;
+    struct hash_item *new_item;
 
     debug_start ();
 
-    new = (struct hash_item *) XMALLOC (sizeof (struct hash_item));
-    if (! new) {
+    new_item = (struct hash_item *) XMALLOC (sizeof (struct hash_item));
+    if (! new_item) {
 	debug ("allocation failed");
 	debug_end ();
 	return -1;
@@ -104,10 +104,10 @@ hash_insert (struct hash *h, unsigned long key, unsigned long val)
     debug ("inserting %lu->%lu (%p->%p) to bucket %d",
 	   key, val, (void *) key, (void *) val, bucket_index);
 
-    new->key = key;
-    new->val = val;
-    new->next = h->table[bucket_index];
-    h->table[bucket_index] = new;
+    new_item->key = key;
+    new_item->val = val;
+    new_item->next = h->table[bucket_index];
+    h->table[bucket_index] = new_item;
 
     debug_end ();
     return 0;

@@ -574,8 +574,8 @@ START_TEST(operation_lsn_free) {
     Page * p = loadPage(xid,pid);
     stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
-    byte * old = stasis_malloc(PAGE_SIZE, byte);
-    memcpy(old, p->memAddr, PAGE_SIZE);
+    byte * old_page = stasis_malloc(PAGE_SIZE, byte);
+    memcpy(old_page, p->memAddr, PAGE_SIZE);
     int fortyTwo = 42;
     for(int i = 0; i < 100; i++) {
       rid[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
@@ -583,13 +583,13 @@ START_TEST(operation_lsn_free) {
       stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
       stasis_page_lsn_write(xid, p, -1);
     }
-    byte * new = stasis_malloc(PAGE_SIZE, byte);
-    memcpy(new, p->memAddr, PAGE_SIZE);
-    memcpy(p->memAddr, old, PAGE_SIZE);
+    byte * new_page = stasis_malloc(PAGE_SIZE, byte);
+    memcpy(new_page, p->memAddr, PAGE_SIZE);
+    memcpy(p->memAddr, old_page, PAGE_SIZE);
     releasePage(p);
-    TpageSet(xid, pid, new);
-    free(old);
-    free(new);
+    TpageSet(xid, pid, new_page);
+    free(old_page);
+    free(new_page);
     Tcommit(xid);
   }
   {
@@ -638,8 +638,8 @@ START_TEST(operation_reorderable) {
     Page * p = loadPage(xid,pid);
     stasis_page_slotted_lsn_free_initialize_page(p);
     // XXX hack!
-    byte * old = stasis_malloc(PAGE_SIZE, byte);
-    memcpy(old, p->memAddr, PAGE_SIZE);
+    byte * old_page = stasis_malloc(PAGE_SIZE, byte);
+    memcpy(old_page, p->memAddr, PAGE_SIZE);
     int fortyTwo = 42;
     for(int i = 0; i < 100; i++) {
       rid[i] = stasis_record_alloc_begin(xid, p, sizeof(int));
@@ -647,13 +647,13 @@ START_TEST(operation_reorderable) {
       stasis_record_write(xid, p, rid[i], (const byte*)&fortyTwo);
       stasis_page_lsn_write(xid, p, -1);
     }
-    byte * new = stasis_malloc(PAGE_SIZE, byte);
-    memcpy(new, p->memAddr, PAGE_SIZE);
-    memcpy(p->memAddr, old, PAGE_SIZE);
+    byte * new_page = stasis_malloc(PAGE_SIZE, byte);
+    memcpy(new_page, p->memAddr, PAGE_SIZE);
+    memcpy(p->memAddr, old_page, PAGE_SIZE);
     releasePage(p);
-    TpageSet(xid, pid, new);
-    free(old);
-    free(new);
+    TpageSet(xid, pid, new_page);
+    free(old_page);
+    free(new_page);
     Tcommit(xid);
   }
   {
