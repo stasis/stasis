@@ -1,4 +1,4 @@
-ADD_LIBRARY(stasis util/crc32.c
+SET(SOURCES util/crc32.c
                    util/bloomFilter.c
                    util/redblack.c
                    util/lhtable.c
@@ -71,6 +71,11 @@ ADD_LIBRARY(stasis util/crc32.c
                    replacementPolicy/concurrentWrapper.c
                    replacementPolicy/clock.c
 		   )
+
+ADD_LIBRARY(stasis ${SOURCES})
+#SET_SOURCE_FILES_PROPERTIES( ${SOURCES} PROPERTIES LANGUAGE "CXX" )
+#SET_TARGET_PROPERTIES(stasis PROPERTIES LINKER_LANGUAGE "CXX")
+
 IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ADD_LIBRARY(stasis_experimental
   experimental/consumer.c
