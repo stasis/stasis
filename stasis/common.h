@@ -71,6 +71,7 @@ terms specified in this license.
 #endif
 
 #include <alloca.h>
+#define __STDC_LIMIT_MACROS // to get stdint.h to define the *_MAX and *_MIN macros under C++.
 #include <stdint.h> // uint32, et. al.  (has to be before sys/types.h for mcpp atop some broken gcc headers)
 #include <sys/types.h> // for size_t
 #include <dirent.h>
