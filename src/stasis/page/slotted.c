@@ -17,7 +17,7 @@
    are defined at compile time then this method will be more thorough
    and more expensive.
  */
-static inline void slottedFsck(const Page const * page) {
+static inline void slottedFsck(const Page * page) {
   const short page_type = page->pageType;
   assert(page_type == SLOTTED_PAGE ||
          page_type == BOUNDARY_TAG_PAGE ||
