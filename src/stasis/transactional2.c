@@ -145,7 +145,7 @@ void TupdateWithPage(int xid, pageid_t page, Page *p, const void * dat, size_t d
   // TODO: Add support for finer-grained write latches?
   if(p) writelock(p->rwlatch,0);
 
-  LogEntry * e = stasis_log_write_update(stasis_log_file, xact, page, p, op, dat, datlen);
+  LogEntry * e = stasis_log_write_update(stasis_log_file, xact, page, p, op, (const byte*)dat, datlen);
 
   assert(xact->prevLSN == e->LSN);
   DEBUG("Tupdate() e->LSN: %ld\n", e->LSN);
@@ -220,7 +220,7 @@ void TreorderableUpdate(int xid, void * hp, pageid_t page,
 
   memcpy(stasis_log_entry_update_args_ptr(e), dat, datlen);
 
-  stasis_log_reordering_handle_append(h, p, op, dat, datlen, sizeofLogEntry(0, e));
+  stasis_log_reordering_handle_append(h, p, op, (const byte*)dat, datlen, sizeofLogEntry(0, e));
 
   e->LSN = 0;
   writelock(p->rwlatch,0);
@@ -251,12 +251,12 @@ lsn_t TwritebackUpdate(int xid, pageid_t page,
 void TreorderableWritebackUpdate(int xid, void* hp,
                                  pageid_t page, const void * dat,
                                  size_t datlen, int op) {
-  stasis_log_reordering_handle_t* h = hp;
+  stasis_log_reordering_handle_t* h = (stasis_log_reordering_handle_t*)hp;
   assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   pthread_mutex_lock(&h->mut);
   LogEntry * e = mallocScratchUpdateLogEntry(INVALID_LSN, INVALID_LSN, xid, op, page, datlen);
   memcpy(stasis_log_entry_update_args_ptr(e), dat, datlen);
-  stasis_log_reordering_handle_append(h, 0, op, dat, datlen, sizeofLogEntry(0, e));
+  stasis_log_reordering_handle_append(h, 0, op, (const byte*)dat, datlen, sizeofLogEntry(0, e));
   pthread_mutex_unlock(&h->mut);
   free(e);
 }
@@ -282,10 +282,10 @@ Page * TreadWithPage(int xid, recordid rid, Page *p, void * dat) {
   short type = stasis_record_type_read(xid,p,rid);
   if(type == BLOB_SLOT) {
     DEBUG("call readBlob %lld %lld %lld\n", (long long)rid.page, (long long)rid.slot, (long long)rid.size);
-    stasis_blob_read(xid,p,rid,dat);
+    stasis_blob_read(xid,p,rid,(byte*)dat);
     assert(rid.page == p->id);
   } else {
-    stasis_record_read(xid, p, rid, dat);
+    stasis_record_read(xid, p, rid, (byte*)dat);
   }
   unlock(p->rwlatch);
   return p;
@@ -301,18 +301,18 @@ void Tread(int xid, recordid rid, void * dat) {
 void TreadRaw(int xid, recordid rid, void * dat) {
   Page * p = loadPage(xid, rid.page);
   readlock(p->rwlatch,0);
-  stasis_record_read(xid, p, rid, dat);
+  stasis_record_read(xid, p, rid, (byte*)dat);
   unlock(p->rwlatch);
   releasePage(p);
 }
 
 static inline int TcommitHelper(int xid, int force) {
-  lsn_t lsn;
+
   assert(xid >= 0);
 
   stasis_transaction_table_entry_t * xact = stasis_transaction_table_get(stasis_transaction_table, xid);
   if(xact->prevLSN != INVALID_LSN) {
-    lsn = stasis_log_commit_transaction(stasis_log_file, stasis_transaction_table, xact, force);
+    stasis_log_commit_transaction(stasis_log_file, stasis_transaction_table, xact, force);
     if(globalLockManager.commit) { globalLockManager.commit(xid); }
   }
 
@@ -340,14 +340,13 @@ int Tprepare(int xid) {
 }
 
 int Tabort(int xid) {
-  lsn_t lsn;
   assert(xid >= 0);
 
   stasis_transaction_table_entry_t * t = stasis_transaction_table_get(stasis_transaction_table, xid);
   assert(t->xid == xid);
 
   if( t->prevLSN != INVALID_LSN ) {
-    lsn = stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
+    stasis_log_abort_transaction(stasis_log_file, stasis_transaction_table, t);
 
     /** @todo is the order of the next two calls important? */
     undoTrans(stasis_log_file, stasis_transaction_table, *t); // XXX don't really need to pass the whole table in...
@@ -459,9 +458,9 @@ int TnestedTopAction(int xid, int op, const byte * dat, size_t datSize) {
   assert(xid >= 0);
   void * e = stasis_log_begin_nta(stasis_log_file, xact, op, dat, datSize);
   // XXX HACK: breaks encapsulation.
-  stasis_operation_do(e, NULL);
+  stasis_operation_do((const LogEntry*)e, (Page*)NULL);
 
-  stasis_log_end_nta(stasis_log_file, xact, e);
+  stasis_log_end_nta(stasis_log_file, xact, (LogEntry*)e);
 
   return 0;
 }
@@ -480,7 +479,7 @@ void * TbeginNestedTopAction(int xid, int op, const byte * dat, int datSize) {
 */
 lsn_t TendNestedTopAction(int xid, void * handle) {
 
-  lsn_t ret = stasis_log_end_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), handle);
+  lsn_t ret = stasis_log_end_nta(stasis_log_file, stasis_transaction_table_get(stasis_transaction_table, xid), (LogEntry*)handle);
 
   DEBUG("NestedTopAction CLR %d, LSN: %ld type: %ld (undoing: %ld, next to undo: %ld)\n", e->xid,
         clrLSN, undoneLSN, *prevLSN);

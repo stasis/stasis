@@ -57,7 +57,7 @@ void stasis_truncation_deinit(stasis_truncation_t * trunc) {
 }
 
 static void* stasis_truncation_thread_worker(void* truncp) {
-  stasis_truncation_t * trunc = truncp;
+  stasis_truncation_t * trunc = (stasis_truncation_t*)truncp;
   pthread_mutex_lock(&trunc->shutdown_mutex);
   while(trunc->initialized) {
     if(trunc->log->first_unstable_lsn(trunc->log, LOG_FORCE_WAL) - trunc->log->truncation_point(trunc->log)
