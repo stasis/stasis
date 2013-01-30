@@ -56,7 +56,7 @@ void stasis_aggregate_min_add(stasis_aggregate_min_t * min, lsn_t * a) {
         min->memo = a;
       }
     }
-    lsn_t * p = pthread_getspecific(min->key);
+    lsn_t * p = (lsn_t*)pthread_getspecific(min->key);
     if(!p) {
       p = stasis_alloc(lsn_t);
       *p = -1;
@@ -81,12 +81,12 @@ void stasis_aggregate_min_add(stasis_aggregate_min_t * min, lsn_t * a) {
 }
 const lsn_t * stasis_aggregate_min_remove(stasis_aggregate_min_t * min, lsn_t * a) {
   if(min->tree) {
-    const lsn_t * ret = rbdelete(a, min->tree);
+    const lsn_t * ret = (const lsn_t*)rbdelete(a, min->tree);
     assert(ret == a);
     return ret;
   } else {
     if(min->memo && *min->memo == *a) { min->memo = NULL; }
-    lsn_t * p = pthread_getspecific(min->key);
+    lsn_t * p = (lsn_t*)pthread_getspecific(min->key);
     if(p /*key defined*/) {
       if(*p != -1 /*key points to slot in array*/) {
         if(min->vals[*p]/*slot in array points to something*/ ) {

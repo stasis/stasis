@@ -295,7 +295,7 @@ stasis_ringbuffer_t * stasis_ringbuffer_init(intptr_t base, lsn_t initial_offset
   if(err == -1) { perror("Couldn't ftruncate file"); }
 
   // Note: MAP_ANON is deprecated, but MAP_ANONYMOUS is not supported on MacOS.
-  ring->mem = mmap(0, size*2, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0);
+  ring->mem = (byte*)mmap(0, size*2, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0);
 
   if(ring->mem == MAP_FAILED) { perror("Couldn't mmap anonymous region"); abort(); }
 
