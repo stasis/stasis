@@ -469,7 +469,7 @@ void * pblHtFirst   ( pblHashTable_t * h ) {
   struct LH_ENTRY(list) *list = stasis_alloc(struct LH_ENTRY(list));
   struct LH_ENTRY(list) * oldList;
 
-  if((oldList = (LH_ENTRY(list*))LH_ENTRY(insert)(pblLists,
+  if((oldList = (struct LH_ENTRY(list*))LH_ENTRY(insert)(pblLists,
 				 &h, sizeof(pblHashTable_t*),
 				 list))) {
     LH_ENTRY(closelist)(oldList);
@@ -481,27 +481,27 @@ void * pblHtFirst   ( pblHashTable_t * h ) {
   if(p) {
     return p->value;
   } else {
-    oldList = (LH_ENTRY(list*))LH_ENTRY(remove)(pblLists, &h, sizeof(pblHashTable_t*));
+    oldList = (struct LH_ENTRY(list*))LH_ENTRY(remove)(pblLists, &h, sizeof(pblHashTable_t*));
     free(oldList);
     return 0;
   }
 }
 void * pblHtNext    ( pblHashTable_t * h ) {
-  struct LH_ENTRY(list) *list = (LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
+  struct LH_ENTRY(list) *list = (struct LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
 					       &h, sizeof(pblHashTable_t*));
   assert(list);
   const struct LH_ENTRY(pair_t) * p = LH_ENTRY(readlist)(list);
   if(p) {
     return p->value;
   } else {
-    struct LH_ENTRY(list)* oldList = (LH_ENTRY(list*))
+    struct LH_ENTRY(list)* oldList = (struct LH_ENTRY(list*))
       LH_ENTRY(remove)(pblLists, &h, sizeof(pblHashTable_t*));
     free(oldList);
     return 0;
   }
 }
 void * pblHtCurrent ( pblHashTable_t * h ) {
-  struct LH_ENTRY(list) *list = (LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
+  struct LH_ENTRY(list) *list = (struct LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
 					       &h, sizeof(pblHashTable_t*));
   if(list && list->currentPair)
     return list->currentPair->value;
@@ -509,7 +509,7 @@ void * pblHtCurrent ( pblHashTable_t * h ) {
     return 0;
 }
 void * pblHtCurrentKey ( pblHashTable_t * h ) {
-  struct LH_ENTRY(list) *list = (LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
+  struct LH_ENTRY(list) *list = (struct LH_ENTRY(list*))LH_ENTRY(find)(pblLists,
 					       &h, sizeof(pblHashTable_t*));
   if(list && list->currentPair)
     return (void*)list->currentPair->key;
