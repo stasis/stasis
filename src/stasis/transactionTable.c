@@ -30,13 +30,13 @@ struct stasis_transaction_table_t {
   int commitCallbackCount[3];
 };
 
-static inline int test_and_set_entry(stasis_transaction_table_entry_t* e, int old, int new) {
+static inline int test_and_set_entry(stasis_transaction_table_entry_t* e, int old, int newval) {
 #ifdef HAVE_GCC_ATOMICS
-  return __sync_bool_compare_and_swap(&(e->xid), old, new);
+  return __sync_bool_compare_and_swap(&(e->xid), old, newval);
 #else
   pthread_mutex_lock(&(e->mut));
   if(e->xid == old) {
-    e->xid = new;
+    e->xid = newval;
     pthread_mutex_unlock(&(e->mut));
     return 1;
   } else {
@@ -46,15 +46,15 @@ static inline int test_and_set_entry(stasis_transaction_table_entry_t* e, int ol
 #endif
 }
 //  May not be called in race; protects readers from incomplete reads.
-static inline void set_entry(stasis_transaction_table_entry_t* e, int new) {
+static inline void set_entry(stasis_transaction_table_entry_t* e, int newval) {
 #ifdef HAVE_GCC_ATOMICS
   int i = __sync_fetch_and_add(&(e->xid),0);
-  int succ = test_and_set_entry(e, i, new);
+  int succ = test_and_set_entry(e, i, newval);
   assert(succ);
 #else
   pthread_mutex_lock(&(e->mut));
 
-  e->xid = new;
+  e->xid = newval;
 
   pthread_mutex_unlock(&(e->mut));
 #endif
@@ -105,7 +105,8 @@ int stasis_transaction_table_num_active_threads(stasis_transaction_table_t *tbl)
 static void stasis_transaction_table_thread_destructor(void * p) {
   assert(p);
 
-  struct stasis_transaction_table_thread_local_state_t * tls = p;
+  struct stasis_transaction_table_thread_local_state_t * tls
+    = (struct stasis_transaction_table_thread_local_state_t *)p;
   stasis_transaction_table_entry_t * e;
   for(int i = 0; i < tls->num_entries; i++) {
     e = tls->entries[i];
@@ -304,7 +305,8 @@ stasis_transaction_table_entry_t * stasis_transaction_table_begin(stasis_transac
 
   // Initialize tls
 
-  struct stasis_transaction_table_thread_local_state_t * tls = pthread_getspecific(tbl->key);
+  struct stasis_transaction_table_thread_local_state_t * tls =
+    (struct stasis_transaction_table_thread_local_state_t *)pthread_getspecific(tbl->key);
 
   if(tls == NULL) {
     tls = stasis_alloc(struct stasis_transaction_table_thread_local_state_t);
