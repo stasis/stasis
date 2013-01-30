@@ -278,9 +278,9 @@ void stasis_uninitialized_page_loaded(int xid, Page * p) {
   if(xid == INVALID_XID) {
     xid_lsn = INVALID_LSN;
   } else {
-    xid_lsn = stasis_transaction_table_get(stasis_runtime_transaction_table(), xid)->prevLSN;
+    xid_lsn = stasis_transaction_table_get((stasis_transaction_table_t*)stasis_runtime_transaction_table(), xid)->prevLSN;
   }
-  lsn_t log_lsn = ((stasis_log_t*)stasis_log())->next_available_lsn(stasis_log());
+  lsn_t log_lsn = ((stasis_log_t*)stasis_log())->next_available_lsn((stasis_log_t*)stasis_log());
   // If this transaction has a prevLSN, prefer it.  Otherwise, set the LSN to nextAvailableLSN - 1
   p->LSN = *stasis_page_lsn_ptr(p) = (xid_lsn == INVALID_LSN) ? (log_lsn - 1) : xid_lsn;
   p->pageType = *stasis_page_type_ptr(p) = UNINITIALIZED_PAGE;
@@ -337,7 +337,7 @@ typedef struct genericBlockImpl {
    @todo The block API should pass around xids.
  */
 static const byte * blkFirst(block_t * b) {
-  genericBlockImpl * impl = b->impl;
+  genericBlockImpl * impl = (genericBlockImpl*)b->impl;
   impl->pos = stasis_record_first(-1, impl->p);
   if(! memcmp(&(impl->pos), &(NULLRID), sizeof(recordid))) {
     return 0;
@@ -346,7 +346,7 @@ static const byte * blkFirst(block_t * b) {
   }
 }
 static const byte * blkNext(block_t * b) {
-  genericBlockImpl * impl = b->impl;
+  genericBlockImpl * impl = (genericBlockImpl*)b->impl;
   impl->pos = stasis_record_next(-1, impl->p, impl->pos);
   if(! memcmp(&(impl->pos), &NULLRID, sizeof(recordid))) {
     return 0;
@@ -355,7 +355,7 @@ static const byte * blkNext(block_t * b) {
   }
 }
 static int blkSize(block_t * b) {
-  genericBlockImpl * impl = b->impl;
+  genericBlockImpl * impl = (genericBlockImpl*)b->impl;
   return stasis_record_type_to_size(impl->pos.size);
 }
 static void blkRelease(block_t * b) {

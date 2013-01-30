@@ -103,7 +103,7 @@ struct stasis_alloc_t {
 static int op_alloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
 
-  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
+  const alloc_arg* arg = (const alloc_arg*)stasis_log_entry_update_args_cptr(e);
   recordid rid = {
     p->id,
     arg->slot,
@@ -128,7 +128,7 @@ static int op_alloc(const LogEntry* e, Page* p) {
 
 static int op_dealloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
-  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
+  const alloc_arg* arg = (const alloc_arg*)stasis_log_entry_update_args_cptr(e);
   recordid rid = {
     p->id,
     arg->slot,
@@ -146,7 +146,7 @@ static int op_dealloc(const LogEntry* e, Page* p) {
 
 static int op_realloc(const LogEntry* e, Page* p) {
   assert(e->update.arg_size >= sizeof(alloc_arg));
-  const alloc_arg* arg = stasis_log_entry_update_args_cptr(e);
+  const alloc_arg* arg = (const alloc_arg*)stasis_log_entry_update_args_cptr(e);
 
   recordid rid = {
     p->id,
@@ -204,7 +204,7 @@ stasis_operation_impl stasis_op_impl_realloc(void) {
 }
 
 int stasis_alloc_callback(int xid, void * arg) {
-  stasis_alloc_t * alloc = arg;
+  stasis_alloc_t * alloc = (stasis_alloc_t*)arg;
   pthread_mutex_lock(&alloc->mut);
   stasis_allocation_policy_transaction_completed(alloc->allocPolicy, xid);
   pthread_mutex_unlock(&alloc->mut);
@@ -221,7 +221,7 @@ stasis_alloc_t* stasis_alloc_init(stasis_transaction_table_t * tbl, stasis_alloc
   return alloc;
 }
 
-static void stasis_alloc_register_old_regions();
+static void stasis_alloc_register_old_regions(stasis_alloc_t* alloc);
 void stasis_alloc_post_init(stasis_alloc_t * alloc) {
   stasis_alloc_register_old_regions(alloc);
 }
@@ -278,7 +278,7 @@ static void stasis_alloc_reserve_new_region(stasis_alloc_t* alloc, int xid) {
 }
 
 recordid Talloc(int xid, unsigned long size) {
-  stasis_alloc_t* alloc = stasis_runtime_alloc_state();
+  stasis_alloc_t* alloc = (stasis_alloc_t*)stasis_runtime_alloc_state();
   short type;
   if(size >= BLOB_THRESHOLD_SIZE) {
     type = BLOB_SLOT;
@@ -363,7 +363,7 @@ recordid Talloc(int xid, unsigned long size) {
 }
 
 recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
-  stasis_alloc_t* alloc = stasis_runtime_alloc_state();
+  stasis_alloc_t* alloc = (stasis_alloc_t*)stasis_runtime_alloc_state();
   short type;
   if(size >= BLOB_THRESHOLD_SIZE) {
     type = BLOB_SLOT;
@@ -408,7 +408,7 @@ recordid TallocFromPage(int xid, pageid_t page, unsigned long size) {
 }
 
 void Tdealloc(int xid, recordid rid) {
-  stasis_alloc_t* alloc = stasis_runtime_alloc_state();
+  stasis_alloc_t* alloc = (stasis_alloc_t*)stasis_runtime_alloc_state();
 
   // @todo this needs to garbage collect empty storage regions.
 
