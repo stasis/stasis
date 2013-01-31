@@ -36,15 +36,15 @@ typedef struct {
 } stasis_replacement_policy_clock_t;
 
 static void  clockDeinit  (struct replacementPolicy* impl) {
-  stasis_replacement_policy_clock_t * clock = impl->impl;
+  stasis_replacement_policy_clock_t * clock = (stasis_replacement_policy_clock_t *)impl->impl;
   free(clock);
   free(impl);
 }
 static void  clockHit     (struct replacementPolicy* impl, Page* page) {
-  page->next = (void*)1;
+  page->next = (Page*)1;
 }
 static Page* clockGetStale(struct replacementPolicy* impl) {
-  stasis_replacement_policy_clock_t * clock = impl->impl;
+  stasis_replacement_policy_clock_t * clock = (stasis_replacement_policy_clock_t *)impl->impl;
 
   // NOTE: This just exists for legacy purposes, and is fundamantally not
   // threadsafe.  So, this doesn't mess with the __sync* stuff, or worry
@@ -64,8 +64,8 @@ static Page* clockGetStale(struct replacementPolicy* impl) {
       //clock->pages[ptr].next = (void*)-1;
 
       return &clock->pages[ptr];
-    } else if(clock->pages[ptr].next == (void*)1){
-      clock->pages[ptr].next = (void*)0;
+    } else if(clock->pages[ptr].next == (Page*)1){
+      clock->pages[ptr].next = (Page*)0;
     }
   }
   return NULL;
@@ -79,7 +79,7 @@ static Page* clockRemove  (struct replacementPolicy* impl, Page* page) {
   }
 }
 static Page* clockGetStaleAndRemove  (struct replacementPolicy* impl) {
-  stasis_replacement_policy_clock_t * clock = impl->impl;
+  stasis_replacement_policy_clock_t * clock = (stasis_replacement_policy_clock_t *)impl->impl;
 
   for(uint64_t spin = 0; spin < 2*clock->page_count; spin++) {
     uint64_t ptr = __sync_fetch_and_add(&clock->ptr,1) % clock->page_count;
@@ -110,7 +110,7 @@ static Page* clockGetStaleAndRemove  (struct replacementPolicy* impl) {
 }
 static void  clockInsert  (struct replacementPolicy* impl, Page* page) {
   __sync_fetch_and_sub(&page->pinCount,1);  // don't care about ordering of this line and next.  pinCount is just a "message to ourselves"
-  page->next = (void*)1;
+  page->next = (Page*)1;
   __sync_synchronize();
 }
 

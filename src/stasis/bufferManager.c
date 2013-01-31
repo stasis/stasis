@@ -156,12 +156,12 @@ void stasis_buffer_manager_set_redo_mode(int in_redo) {
 Page * loadPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   return bm->loadPageImpl(bm, 0, xid, pageid, UNKNOWN_TYPE_PAGE);
 }
 Page * loadPageOfType(int xid, pageid_t pageid, pagetype_t type) {
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   Page *p = bm->loadPageImpl(bm, 0, xid, pageid, type);
   return p;
 }
@@ -169,7 +169,7 @@ Page * loadUninitializedPage(int xid, pageid_t pageid) {
   // This lock is released at Tcommit()
   if(globalLockManager.readLockPage) { globalLockManager.readLockPage(xid, pageid); }
 
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   if(bm->in_redo) {
     return bm->loadPageImpl(bm, 0, xid, pageid, UNKNOWN_TYPE_PAGE);
   } else {
@@ -197,19 +197,19 @@ Page * loadPageForOperation(int xid, pageid_t pageid, int op) { //, int is_recov
 }
 
 void   prefetchPages(pageid_t pageid, pageid_t count) {
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   // This is just a performance hint; and is an optional method.
   if(bm->prefetchPages != NULL) { bm->prefetchPages(bm, pageid, count); }
 }
 
 int    preallocatePages(pageid_t pageid, pageid_t count) {
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   // This is just a performance hint; and is an optional method.
   if(stasis_buffer_manager_preallocate_mode == STASIS_BUFFER_MANAGER_PREALLOCATE_LEGACY) {
     // Legacy option (ext3): pre-fill the stasis buffer manager with dirty zeros.
     for(pageid_t i = 0; i < count; i++) {
       Page * p = loadUninitializedPage(-1, pageid+i);
-      stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+      stasis_dirty_page_table_set_dirty((stasis_dirty_page_table_t *)stasis_runtime_dirty_page_table(), p);
       releasePage(p);
     }
   } else if(stasis_buffer_manager_preallocate_mode == STASIS_BUFFER_MANAGER_PREALLOCATE_DEFAULT) {
@@ -224,10 +224,10 @@ int    preallocatePages(pageid_t pageid, pageid_t count) {
 }
 
 Page * getCachedPage(int xid, pageid_t pageid) {
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   return bm->getCachedPageImpl(bm, xid, pageid);
 }
 void releasePage(Page * p) {
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t *)stasis_runtime_buffer_manager();
   bm->releasePageImpl(bm, p);
 }

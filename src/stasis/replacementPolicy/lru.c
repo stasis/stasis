@@ -23,8 +23,8 @@ typedef struct stasis_replacement_policy_lru_t {
 } stasis_replacement_policy_lru_t;
 
 static int stasis_replacement_policy_lru_entry_cmp(const void * ap, const void * bp, const void * ignored) {
-  const stasis_replacement_policy_lru_entry * a = ap;
-  const stasis_replacement_policy_lru_entry * b = bp;
+  const stasis_replacement_policy_lru_entry * a = (const stasis_replacement_policy_lru_entry *)ap;
+  const stasis_replacement_policy_lru_entry * b = (const stasis_replacement_policy_lru_entry *)bp;
 
   return a->clock < b->clock ? -1
     : a->clock == b->clock ? 0
@@ -33,7 +33,7 @@ static int stasis_replacement_policy_lru_entry_cmp(const void * ap, const void *
 
 static void stasis_replacement_policy_lru_deinit(replacementPolicy *r) {
   //XXX free other stuff
-  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_t * l = (stasis_replacement_policy_lru_t*)r->impl;
   LH_ENTRY(destroy)(l->hash);
   RB_ENTRY(destroy)(l->lru);
 
@@ -44,8 +44,8 @@ static void stasis_replacement_policy_lru_deinit(replacementPolicy *r) {
 /** @todo handle clock wraps properly! */
 
 static void stasis_replacement_policy_lru_hit(replacementPolicy *r, Page *p) {
-  stasis_replacement_policy_lru_t * l = r->impl;
-  stasis_replacement_policy_lru_entry * e = l->getNode(p, l->conf);
+  stasis_replacement_policy_lru_t * l = (stasis_replacement_policy_lru_t *)r->impl;
+  stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry *)l->getNode(p, l->conf);
   assert(e);
   stasis_replacement_policy_lru_entry * old = (stasis_replacement_policy_lru_entry * ) RB_ENTRY(delete)(e, l->lru);
   assert(e == old);
@@ -55,28 +55,28 @@ static void stasis_replacement_policy_lru_hit(replacementPolicy *r, Page *p) {
   assert(e == old);
 }
 static Page* stasis_replacement_policy_lru_get_stale(replacementPolicy* r) {
-  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_t * l = (stasis_replacement_policy_lru_t *)r->impl;
   stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry * ) rbmin(l->lru);
-  return  e ? e->value : 0;
+  return (Page*)(e ? e->value : 0);
 }
 static Page* stasis_replacement_policy_lru_remove(replacementPolicy* r, Page *p) {
-  stasis_replacement_policy_lru_t * l = r->impl;
-  stasis_replacement_policy_lru_entry * e = l->getNode(p, l->conf);
+  stasis_replacement_policy_lru_t * l = (stasis_replacement_policy_lru_t *)r->impl;
+  stasis_replacement_policy_lru_entry * e = (stasis_replacement_policy_lru_entry *)l->getNode(p, l->conf);
   assert(e);
   stasis_replacement_policy_lru_entry * old = (stasis_replacement_policy_lru_entry *) RB_ENTRY(delete)(e, l->lru);
   assert(old == e);
-  void * ret = e->value;
+  Page* ret = (Page*)e->value;
   free(e);
   return ret;
 }
 static Page* stasis_replacement_policy_lru_get_stale_and_remove(replacementPolicy* r) {
-  void* ret = stasis_replacement_policy_lru_get_stale(r);
+  Page* ret = (Page*)stasis_replacement_policy_lru_get_stale(r);
   stasis_replacement_policy_lru_remove(r, ret);
   return ret;
 }
 
 static void stasis_replacement_policy_lru_insert(replacementPolicy* r, Page* p) {
-  stasis_replacement_policy_lru_t * l = r->impl;
+  stasis_replacement_policy_lru_t * l = (stasis_replacement_policy_lru_t *)r->impl;
   stasis_replacement_policy_lru_entry * e = stasis_alloc(stasis_replacement_policy_lru_entry);
   e->value = p;
   e->clock = l->now;

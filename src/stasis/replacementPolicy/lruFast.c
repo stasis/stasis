@@ -44,7 +44,7 @@ static inline Page* llShift( List *list ) {
   return ret;
 }
 static void  stasis_lru_fast_hit(struct replacementPolicy * r, Page *p) {
-  lruFast *l = r->impl;
+  lruFast *l = (lruFast*)r->impl;
   if( p->prev == NULL ) {
     // ignore attempts to hit pages not in lru
     return;
@@ -53,7 +53,7 @@ static void  stasis_lru_fast_hit(struct replacementPolicy * r, Page *p) {
   llPush(&l->list, p);
 }
 static Page* stasis_lru_fast_getStale(struct replacementPolicy *r) {
-  lruFast *l = r->impl;
+  lruFast *l = (lruFast*)r->impl;
   return llHead(&l->list);
 }
 static Page* stasis_lru_fast_remove(struct replacementPolicy* r, Page *p) {
@@ -72,7 +72,7 @@ static Page* stasis_lru_fast_remove(struct replacementPolicy* r, Page *p) {
   return ret;
 }
 static Page* stasis_lru_fast_getStaleAndRemove(struct replacementPolicy *r) {
-  lruFast * l = r->impl;
+  lruFast * l = (lruFast*)r->impl;
   Page *ret = llShift(&l->list);
   if(ret) {
     assert(!ret->pinCount);
@@ -81,7 +81,7 @@ static Page* stasis_lru_fast_getStaleAndRemove(struct replacementPolicy *r) {
   return ret;
 }
 static void  stasis_lru_fast_insert(struct replacementPolicy *r, Page *p) {
-  lruFast * l = r->impl;
+  lruFast * l = (lruFast*)r->impl;
   p->pinCount--;
   assert(p->pinCount >= 0);
   if(stasis_buffer_manager_hint_writes_are_sequential &&
@@ -105,7 +105,7 @@ static void  stasis_lru_fast_insert(struct replacementPolicy *r, Page *p) {
   }
 }
 static void stasis_lru_fast_deinit(struct replacementPolicy * r) {
-  lruFast * l = r->impl;
+  lruFast * l = (lruFast*)r->impl;
   free(l);
   free(r);
 }
