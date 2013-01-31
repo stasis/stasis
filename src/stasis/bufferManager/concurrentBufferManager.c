@@ -33,7 +33,7 @@ typedef struct {
 } stasis_buffer_concurrent_hash_t;
 
 static inline int needFlush(stasis_buffer_manager_t * bm) {
-  stasis_buffer_concurrent_hash_t *bh = bm->impl;
+  stasis_buffer_concurrent_hash_t *bh = (stasis_buffer_concurrent_hash_t *)bm->impl;
   pageid_t count = stasis_dirty_page_table_dirty_count(bh->dpt);
   pageid_t needed = stasis_dirty_page_count_soft_limit;
   if(count > needed) {
@@ -47,8 +47,8 @@ static inline int needFlush(stasis_buffer_manager_t * bm) {
 }
 
 static int chWriteBackPage_helper(stasis_buffer_manager_t* bm, pageid_t pageid, int is_hint) {
-  stasis_buffer_concurrent_hash_t *ch = bm->impl;
-  Page * p = hashtable_lookup(ch->ht, pageid/*, &h*/);
+  stasis_buffer_concurrent_hash_t *ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
+  Page * p = (Page*)hashtable_lookup(ch->ht, pageid/*, &h*/);
   int ret = 0;
   if(!p) {
     ret = ENOENT;
@@ -121,8 +121,8 @@ static int chTryToWriteBackPage(stasis_buffer_manager_t* bm, pageid_t pageid) {
   return chWriteBackPage_helper(bm,pageid,1); // just a hint.  Return EBUSY on contention.
 }
 static void * writeBackWorker(void * bmp) {
-  stasis_buffer_manager_t* bm = bmp;
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_manager_t* bm = (stasis_buffer_manager_t *)bmp;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   pthread_mutex_t mut;
   pthread_mutex_init(&mut,0);
   while(1) {
@@ -145,9 +145,9 @@ static void * writeBackWorker(void * bmp) {
 
 }
 static Page * chGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid_t pageid) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   hashtable_bucket_handle_t h;
-  Page * p = hashtable_lookup_lock(ch->ht, pageid, &h);
+  Page * p = (Page*)hashtable_lookup_lock(ch->ht, pageid, &h);
   if(p) {
     int succ = tryreadlock(p->loadlatch, 0);
     if(!succ) {
@@ -162,8 +162,8 @@ static Page * chGetCachedPage(stasis_buffer_manager_t* bm, int xid, const pageid
   return p;
 }
 static void deinitTLS(void *tlsp) {
-  stasis_buffer_concurrent_hash_tls_t * tls = tlsp;
-  stasis_buffer_concurrent_hash_t *ch = tls->bm->impl;
+  stasis_buffer_concurrent_hash_tls_t * tls = (stasis_buffer_concurrent_hash_tls_t *)tlsp;
+  stasis_buffer_concurrent_hash_t *ch = (stasis_buffer_concurrent_hash_t *)tls->bm->impl;
 
   Page * p = tls->p;
   p->id = -2;
@@ -174,8 +174,8 @@ static void deinitTLS(void *tlsp) {
   free(tls);
 }
 static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_manager_t* bm) {
-  stasis_buffer_concurrent_hash_t *ch = bm->impl;
-  stasis_buffer_concurrent_hash_tls_t *tls = pthread_getspecific(ch->key);
+  stasis_buffer_concurrent_hash_t *ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
+  stasis_buffer_concurrent_hash_tls_t *tls = (stasis_buffer_concurrent_hash_tls_t *)pthread_getspecific(ch->key);
   if(tls == NULL) {
     tls = stasis_alloc(stasis_buffer_concurrent_hash_tls_t);
     tls->p = NULL;
@@ -209,7 +209,7 @@ static inline stasis_buffer_concurrent_hash_tls_t * populateTLS(stasis_buffer_ma
       }
     }
     hashtable_bucket_handle_t h;
-    tls->p = hashtable_remove_begin(ch->ht, tmp->id, &h);
+    tls->p = (Page*)hashtable_remove_begin(ch->ht, tmp->id, &h);
     if(tls->p) {
       // It used to be the case that we could get in trouble because page->id could change concurrently with us.  However, this is no longer a problem,
       // since getStaleAndRemove is atomic, and the only code that changes page->id does so with pages that are in TLS (and therefore went through getStaleAndRemove)
@@ -283,7 +283,7 @@ static void chReleasePage(stasis_buffer_manager_t * bm, Page * p);
 static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, stasis_page_handle_t *ph, const pageid_t pageid, int uninitialized, pagetype_t type) {
   if(uninitialized) assert(!bm->in_redo);
 
-  stasis_buffer_concurrent_hash_t *ch = bm->impl;
+  stasis_buffer_concurrent_hash_t *ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   stasis_buffer_concurrent_hash_tls_t *tls = populateTLS(bm);
   hashtable_bucket_handle_t h;
   Page * p = 0;
@@ -296,7 +296,7 @@ static Page * chLoadPageImpl_helper(stasis_buffer_manager_t* bm, int xid, stasis
       // ch->lru->insert(ch->lru, p);
       // unlock(p->loadlatch);
     }
-    while(NULL == (p = hashtable_test_and_set_lock(ch->ht, pageid, tls->p, &h))) {
+    while(NULL == (p = (Page*)hashtable_test_and_set_lock(ch->ht, pageid, tls->p, &h))) {
 
       // The page was not in the hash.  Now it is up to us.
       p = tls->p;
@@ -349,7 +349,7 @@ static Page * chLoadUninitPageImpl(stasis_buffer_manager_t *bm, int xid, const p
   return chLoadPageImpl_helper(bm, xid, 0, pageid,1,UNKNOWN_TYPE_PAGE); // 1 means dont care about preimage of page.
 }
 static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   ch->lru->insert(ch->lru, p);
   int doFlush = p->needsFlush;
   pageid_t pid = p->id;
@@ -360,23 +360,23 @@ static void chReleasePage(stasis_buffer_manager_t * bm, Page * p) {
   }
 }
 static void chForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   ch->page_handle->force_file(ch->page_handle);
 }
 static void chAsyncForcePages(stasis_buffer_manager_t* bm, stasis_buffer_manager_handle_t *h) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   ch->page_handle->async_force_file(ch->page_handle);
 }
 static void chForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   ch->page_handle->force_range(ch->page_handle, start, stop);
 }
 static int chPreallocatePages(stasis_buffer_manager_t * bm, pageid_t start, pageid_t count) {
-  stasis_buffer_concurrent_hash_t * ch = bm->impl;
+  stasis_buffer_concurrent_hash_t * ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   return ch->page_handle->preallocate_range(ch->page_handle, start, count);
 }
 static void chBufDeinitHelper(stasis_buffer_manager_t * bm, int crash) {
-  stasis_buffer_concurrent_hash_t *ch = bm->impl;
+  stasis_buffer_concurrent_hash_t *ch = (stasis_buffer_concurrent_hash_t *)bm->impl;
   ch->running = 0;
   pthread_key_delete(ch->key);
   pthread_cond_signal(&ch->needFree);
@@ -400,7 +400,7 @@ static void chBufDeinit(stasis_buffer_manager_t * bm) {
   chBufDeinitHelper(bm, 0);
 }
 static stasis_buffer_manager_handle_t * chOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
-  stasis_buffer_concurrent_hash_t * bh = bm->impl;
+  stasis_buffer_concurrent_hash_t * bh = (stasis_buffer_concurrent_hash_t *)bm->impl;
   return (stasis_buffer_manager_handle_t*)bh->page_handle->dup(bh->page_handle, is_sequential);
 }
 static int chCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {

@@ -19,12 +19,12 @@ static pthread_key_t lastPage;
 #define RO 0
 #define RW 1
 
-static void bufManBufDeinit();
+static void bufManBufDeinit(stasis_buffer_manager_t*);
 static Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t* h, int xid, pageid_t pageid, pagetype_t type);
 static Page *bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
 static Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid);
 static void bufManReleasePage (stasis_buffer_manager_t *ignored, Page * p);
-static void bufManSimulateBufferManagerCrash();
+static void bufManSimulateBufferManagerCrash(stasis_buffer_manager_t*);
 
 static stasis_page_handle_t * page_handle;
 
@@ -46,7 +46,7 @@ static void forceRangePageFile_legacyWrapper(stasis_buffer_manager_t *ignored, s
 
 static stasis_buffer_manager_handle_t * bufManOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
   // no-op
-  return (void*)1;
+  return (stasis_buffer_manager_handle_t*)1;
 }
 static int bufManCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
   return 0; // no error.
@@ -96,7 +96,7 @@ stasis_buffer_manager_t* stasis_buffer_manager_deprecated_open(stasis_page_handl
   return bm;
 }
 
-static void bufManBufDeinit(void) {
+static void bufManBufDeinit(stasis_buffer_manager_t* ignored) {
 
   DEBUG("pageCacheDeinit()");
 
@@ -130,7 +130,7 @@ static void bufManBufDeinit(void) {
   Just close file descriptors, don't do any other clean up. (For
   testing.)
 */
-static void bufManSimulateBufferManagerCrash(void) {
+static void bufManSimulateBufferManagerCrash(stasis_buffer_manager_t * ignored) {
   page_handle->close(page_handle);
 #ifdef PIN_COUNT
   pinCount = 0;
@@ -152,7 +152,7 @@ static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitial
   int spin  = 0;
 
   pthread_mutex_lock(&loadPagePtr_mutex);
-  ret = LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
+  ret = (Page*)LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
 
   if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -186,7 +186,7 @@ static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitial
     pthread_mutex_unlock(&loadPagePtr_mutex);
     sched_yield();
     pthread_mutex_lock(&loadPagePtr_mutex);
-    ret = LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
+    ret = (Page*)LH_ENTRY(find)(activePages, &pageid, sizeof(pageid));
 
     if(ret) {
 #ifdef PROFILE_LATCHES_WRITE_ONLY
@@ -350,7 +350,7 @@ static Page* bufManGetPage(int xid, pageid_t pageid, int locktype, int uninitial
 
 static Page *bufManLoadPage(stasis_buffer_manager_t *ignored, stasis_buffer_manager_handle_t * hignored, int xid, const pageid_t pageid, pagetype_t type) {
 
-  Page * ret = pthread_getspecific(lastPage);
+  Page * ret = (Page*)pthread_getspecific(lastPage);
 
   if(ret && ret->id == pageid) {
     pthread_mutex_lock(&loadPagePtr_mutex);
@@ -386,7 +386,7 @@ static Page* bufManGetCachedPage(stasis_buffer_manager_t *ignored, int xid, cons
 
 static Page *bufManLoadUninitPage(stasis_buffer_manager_t *ignored, int xid, pageid_t pageid) {
 
-  Page * ret = pthread_getspecific(lastPage);
+  Page * ret = (Page*)pthread_getspecific(lastPage);
 
   if(ret && ret->id == pageid) {
     pthread_mutex_lock(&loadPagePtr_mutex);

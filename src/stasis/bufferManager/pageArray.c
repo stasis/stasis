@@ -12,7 +12,7 @@ typedef struct {
 } stasis_buffer_manager_page_array_t;
 
 static Page * paLoadPage(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t * h, int xid, pageid_t pageid, pagetype_t type) {
-  stasis_buffer_manager_page_array_t *pa = bm->impl;
+  stasis_buffer_manager_page_array_t *pa = (stasis_buffer_manager_page_array_t *)bm->impl;
   pthread_mutex_lock(&pa->mut);
   if(pageid >= pa->pageCount) {
     pa->pageMap = stasis_realloc(pa->pageMap, 1+pageid, Page*);
@@ -49,7 +49,7 @@ static Page* paGetCachedPage(stasis_buffer_manager_t *bm, int xid, pageid_t page
 }
 static void paReleasePage(stasis_buffer_manager_t *bm, Page * p) {
   writelock(p->rwlatch,0);
-  stasis_dirty_page_table_set_clean(stasis_runtime_dirty_page_table(), p);
+  stasis_dirty_page_table_set_clean((stasis_dirty_page_table_t*)stasis_runtime_dirty_page_table(), p);
   unlock(p->rwlatch);
 }
 
@@ -59,7 +59,7 @@ static void paAsyncForcePages(stasis_buffer_manager_t * bm, stasis_buffer_manage
 static void paForcePageRange(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t *h, pageid_t start, pageid_t stop) { /* no-op */ }
 
 static void paBufDeinit(stasis_buffer_manager_t * bm) {
-  stasis_buffer_manager_page_array_t *pa = bm->impl;
+  stasis_buffer_manager_page_array_t *pa = (stasis_buffer_manager_page_array_t *)bm->impl;
 
   for(pageid_t i =0; i < pa->pageCount; i++) {
     if(pa->pageMap[i]) {
@@ -74,7 +74,7 @@ static void paBufDeinit(stasis_buffer_manager_t * bm) {
 
 static stasis_buffer_manager_handle_t * paOpenHandle(stasis_buffer_manager_t *bm, int is_sequential) {
   // no-op
-  return (void*)1;
+  return (stasis_buffer_manager_handle_t*)1;
 }
 static int paCloseHandle(stasis_buffer_manager_t *bm, stasis_buffer_manager_handle_t* h) {
   return 0; // no error.
