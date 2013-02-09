@@ -83,7 +83,7 @@ static inline lsn_t freespace(stasis_ringbuffer_t * ring) {
 }
 
 // Does not need any synchronization (all fields are read only)
-static inline void* ptr_off(stasis_ringbuffer_t * ring, lsn_t off) {
+static inline byte* ptr_off(stasis_ringbuffer_t * ring, lsn_t off) {
   return ring->mem + (off & ring->mask);
 }
 
@@ -174,16 +174,16 @@ lsn_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, lsn_t* sz, lsn
   return ret;
 }
 // Not threadsafe.
-const void * stasis_ringbuffer_nb_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
+const byte * stasis_ringbuffer_nb_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
   lsn_t off2 = stasis_ringbuffer_nb_consume_bytes(ring, off, &sz);
-  if(off2 != off) { if(off != RING_NEXT || (off2 < 0 && off2 > RING_MINERR)) { return (const void*) (intptr_t)off2; } }
+  if(off2 != off) { if(off != RING_NEXT || (off2 < 0 && off2 > RING_MINERR)) { return (const byte*) (intptr_t)off2; } }
   assert(! (off2 < 0 && off2 >= RING_MINERR));
   return ptr_off(ring, off2);
 }
 // Explicit synchronization (blocks).
-const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
+const byte * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
   pthread_mutex_lock(&ring->mut);
-  const void * ret;
+  const byte * ret;
   assert(sz != RING_NEXT);
   while(((const void*)RING_VOLATILE) == (ret = stasis_ringbuffer_nb_get_rd_buf(ring, off, sz))) {
     pthread_cond_wait(&ring->write_done, &ring->mut);
@@ -192,7 +192,7 @@ const void * stasis_ringbuffer_get_rd_buf(stasis_ringbuffer_t * ring, lsn_t off,
   return ret;
 }
 // No need for synchronization (only touches read-only-fields)
-void * stasis_ringbuffer_get_wr_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
+byte * stasis_ringbuffer_get_wr_buf(stasis_ringbuffer_t * ring, lsn_t off, lsn_t sz) {
   return ptr_off(ring, off);
 }
 void   stasis_ringbuffer_nb_advance_write_tail(stasis_ringbuffer_t * ring, lsn_t off) {

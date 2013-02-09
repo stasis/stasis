@@ -18,7 +18,7 @@ typedef struct file_impl {
 } file_impl;
 
 static int updateEOF(stasis_handle_t * h) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
   off_t pos = lseek(impl->fd, 0, SEEK_END);
   if(pos == (off_t)-1) {
     return errno;
@@ -46,7 +46,7 @@ static int file_close(stasis_handle_t * h) {
   else     return errno;
 }
 static stasis_handle_t* file_dup(stasis_handle_t * h) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
   return stasis_handle_open_file(impl->filename, impl->file_flags, impl->file_mode);
 }
 static void file_enable_sequential_optimizations(stasis_handle_t * h) {
@@ -348,7 +348,7 @@ static int file_release_read_buffer(stasis_read_buffer_t * r) {
   return 0;
 }
 static int file_force(stasis_handle_t * h) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
 
   if(!(impl->file_flags & O_SYNC)) {
     int fd = impl->fd;
@@ -365,7 +365,7 @@ static int file_force(stasis_handle_t * h) {
   return 0;
 }
 static int file_async_force(stasis_handle_t *h) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
   int ret = 0;
   if(!(impl->file_flags & O_SYNC)) {
     // not opened synchronously; we need to explicitly sync.
@@ -407,7 +407,7 @@ static int file_async_force(stasis_handle_t *h) {
   return ret;
 }
 static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
   int ret = 0;
   if(!(impl->file_flags & O_SYNC)) {
     // not opened synchronously; we need to explicitly sync.
@@ -453,7 +453,7 @@ static int file_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   return ret;
 }
 static int file_fallocate(struct stasis_handle_t* h, lsn_t off, lsn_t len) {
-  file_impl * impl = h->impl;
+  file_impl * impl = (file_impl *)h->impl;
 #ifdef HAVE_POSIX_FALLOCATE
   return posix_fallocate(impl->fd, off, len);
 #else
@@ -464,23 +464,23 @@ static int file_fallocate(struct stasis_handle_t* h, lsn_t off, lsn_t len) {
 }
 
 struct stasis_handle_t file_func = {
-  .num_copies = file_num_copies,
-  .num_copies_buffer = file_num_copies_buffer,
-  .close = file_close,
-  .dup = file_dup,
-  .enable_sequential_optimizations = file_enable_sequential_optimizations,
-  .end_position = file_end_position,
-  .write = file_write,
-  .write_buffer = file_write_buffer,
-  .release_write_buffer = file_release_write_buffer,
-  .read = file_read,
-  .read_buffer = file_read_buffer,
-  .release_read_buffer = file_release_read_buffer,
-  .force = file_force,
-  .async_force = file_async_force,
-  .force_range = file_force_range,
-  .fallocate = file_fallocate,
-  .error = 0
+  /*.num_copies =*/ file_num_copies,
+  /*.num_copies_buffer =*/ file_num_copies_buffer,
+  /*.close =*/ file_close,
+  /*.dup =*/ file_dup,
+  /*.enable_sequential_optimizations =*/ file_enable_sequential_optimizations,
+  /*.end_position =*/ file_end_position,
+  /*.write_buffer =*/ file_write_buffer,
+  /*.release_write_buffer =*/ file_release_write_buffer,
+  /*.read_buffer =*/ file_read_buffer,
+  /*.release_read_buffer =*/ file_release_read_buffer,
+  /*.write =*/ file_write,
+  /*.read =*/ file_read,
+  /*.force =*/ file_force,
+  /*.async_force =*/ file_async_force,
+  /*.force_range =*/ file_force_range,
+  /*.fallocate =*/ file_fallocate,
+  /*.error =*/ 0
 };
 
 stasis_handle_t * stasis_handle(open_file)(const char * filename, int flags, int mode) {

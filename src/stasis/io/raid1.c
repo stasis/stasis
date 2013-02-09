@@ -29,15 +29,15 @@ typedef struct raid1_impl {
 } raid1_impl;
 
 static int raid1_num_copies(stasis_handle_t *h) {
-  raid1_impl * i = h->impl;
+  raid1_impl * i = (raid1_impl *)h->impl;
   return i->a->num_copies(i->a);
 }
 static int raid1_num_copies_buffer(stasis_handle_t *h) {
-  raid1_impl * i = h->impl;
+  raid1_impl * i = (raid1_impl *)h->impl;
   return i->a->num_copies_buffer(i->a);
 }
 static int raid1_close(stasis_handle_t *h) {
-  raid1_impl * i = h->impl;
+  raid1_impl * i = (raid1_impl *)h->impl;
   int reta = i->a->close(i->a);
   int retb = i->b->close(i->b);
   free(i);
@@ -45,20 +45,20 @@ static int raid1_close(stasis_handle_t *h) {
   return reta ? reta : retb;
 }
 static stasis_handle_t* raid1_dup(stasis_handle_t *h) {
-  raid1_impl * i = h->impl;
+  raid1_impl * i = (raid1_impl *)h->impl;
   return stasis_handle_open_raid1(i->a->dup(i->a), i->b->dup(i->b));
 }
 static void raid1_enable_sequential_optimizations(stasis_handle_t *h) {
-  raid1_impl * i = h->impl;
+  raid1_impl * i = (raid1_impl *)h->impl;
   i->a->enable_sequential_optimizations(i->a);
   i->b->enable_sequential_optimizations(i->b);
 }
 static lsn_t raid1_end_position(stasis_handle_t *h) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   return i->a->end_position(i->a);
 }
 static int raid1_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   struct timeval tv;
   gettimeofday(&tv, 0);
   // use some low bit that's likely "real" as a source of randomness
@@ -69,19 +69,19 @@ static int raid1_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
   }
 }
 static int raid1_write(stasis_handle_t *h, lsn_t off, const byte *dat, lsn_t len) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   int retA = i->a->write(i->a, off, dat, len);
   int retB = i->b->write(i->b, off, dat, len);
   return retA ? retA : retB;
 }
 static stasis_write_buffer_t * raid1_write_buffer(stasis_handle_t *h, lsn_t off, lsn_t len) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   stasis_write_buffer_t * ret = i->a->write_buffer(i->a, off, len);
   ret->h = h;
   return ret;
 }
 static int raid1_release_write_buffer(stasis_write_buffer_t *w) {
-  raid1_impl *i = w->h->impl;
+  raid1_impl *i = (raid1_impl *)w->h->impl;
   w->h = i->a;
   assert(w->h == i->a);
   int retA = i->b->write(i->b, w->off, w->buf, w->len);
@@ -90,7 +90,7 @@ static int raid1_release_write_buffer(stasis_write_buffer_t *w) {
 }
 static stasis_read_buffer_t *raid1_read_buffer(stasis_handle_t *h,
 					       lsn_t off, lsn_t len) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   struct timeval tv;
   gettimeofday(&tv, 0);
   // use some low bit that's likely "real" as a source of randomness
@@ -105,47 +105,47 @@ static int raid1_release_read_buffer(stasis_read_buffer_t *r) {
   abort();
 }
 static int raid1_force(stasis_handle_t *h) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   int retA = i->a->force(i->a);
   int retB = i->b->force(i->b);
   return retA ? retA : retB;
 }
 static int raid1_async_force(stasis_handle_t *h) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   int retA = i->a->async_force(i->a);
   int retB = i->b->async_force(i->b);
   return retA ? retA : retB;
 }
 static int raid1_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   int retA = i->a->force_range(i->a, start, stop);
   int retB = i->b->force_range(i->b, start, stop);
   return retA ? retA : retB;
 }
 static int raid1_fallocate(stasis_handle_t *h, lsn_t off, lsn_t len) {
-  raid1_impl *i = h->impl;
+  raid1_impl *i = (raid1_impl *)h->impl;
   int retA = i->a->fallocate(i->a, off, len);
   int retB = i->b->fallocate(i->b, off, len);
   return retA ? retA : retB;
 }
 struct stasis_handle_t raid1_func = {
-  .num_copies = raid1_num_copies,
-  .num_copies_buffer = raid1_num_copies_buffer,
-  .close = raid1_close,
-  .dup = raid1_dup,
-  .enable_sequential_optimizations = raid1_enable_sequential_optimizations,
-  .end_position = raid1_end_position,
-  .write = raid1_write,
-  .write_buffer = raid1_write_buffer,
-  .release_write_buffer = raid1_release_write_buffer,
-  .read = raid1_read,
-  .read_buffer = raid1_read_buffer,
-  .release_read_buffer = raid1_release_read_buffer,
-  .force = raid1_force,
-  .async_force = raid1_async_force,
-  .force_range = raid1_force_range,
-  .fallocate = raid1_fallocate,
-  .error = 0
+  /*.num_copies =*/ raid1_num_copies,
+  /*.num_copies_buffer =*/ raid1_num_copies_buffer,
+  /*.close =*/ raid1_close,
+  /*.dup =*/ raid1_dup,
+  /*.enable_sequential_optimizations =*/ raid1_enable_sequential_optimizations,
+  /*.end_position =*/ raid1_end_position,
+  /*.write_buffer =*/ raid1_write_buffer,
+  /*.release_write_buffer =*/ raid1_release_write_buffer,
+  /*.read_buffer =*/ raid1_read_buffer,
+  /*.release_read_buffer =*/ raid1_release_read_buffer,
+  /*.write =*/ raid1_write,
+  /*.read =*/ raid1_read,
+  /*.force =*/ raid1_force,
+  /*.async_force =*/ raid1_async_force,
+  /*.force_range =*/ raid1_force_range,
+  /*.fallocate =*/ raid1_fallocate,
+  /*.error =*/ 0
 };
 
 stasis_handle_t * stasis_handle_open_raid1(stasis_handle_t* a, stasis_handle_t* b) {

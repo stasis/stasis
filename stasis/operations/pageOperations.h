@@ -59,6 +59,8 @@ terms specified in this license.
 #define __PAGE_OPERATIONS_H__
 #include <stasis/operations.h>
 
+BEGIN_C_DECLS
+
 pageid_t TpageAlloc(int xid);
 pageid_t TfixedPageAlloc(int xid, int size);
 pageid_t TpageAllocMany(int xid, int count);
@@ -106,5 +108,7 @@ stasis_operation_impl stasis_op_impl_multipage_initialize();
 stasis_operation_impl stasis_op_impl_fixed_page_alloc();
 
 void pageOperationsInit(stasis_log_t *log);
+
+END_C_DECLS
 
 #endif

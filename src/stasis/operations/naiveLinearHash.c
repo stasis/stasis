@@ -77,7 +77,7 @@ static void expand(int xid, recordid hash, int next_split, int i, int keySize, i
 #define AMORTIZE 1000
 #define FF_AM    750
   if(count <= 0 && !(count * -1) % FF_AM) {
-    recordid * headerRidB = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
+    recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
     int j;
     TarrayListExtend(xid, hash, AMORTIZE);
     for(j = 0; j < AMORTIZE; j++) {
@@ -95,7 +95,7 @@ static void expand(int xid, recordid hash, int next_split, int i, int keySize, i
 }
 
 static void update_hash_header(int xid, recordid hash, pageid_t i, pageid_t next_split) {
-  hashEntry * he = pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
+  hashEntry * he = (hashEntry *)pblHtLookup(openHashes, &(hash.page), sizeof(hash.page));
   assert(he);
   recordid  * headerRidB = &he->next;
 
@@ -284,8 +284,7 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
                             void * key, int keySize, int valSize, recordid * deletedEntry) {
   if(bucket_contents->next.size == 0) { return 0; }
 
-  recordid this = hash;
-  this.slot = bucket_number;
+  hash.slot = bucket_number;
 
   int found = 0;
   if(!memcmp(bucket_contents+1, key, keySize)) {
@@ -293,12 +292,12 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
       deletedEntry->size = 0;  /* size = 0 -> don't delete (this is a bucket!) */
     if(bucket_contents->next.size == -1) {
       memset(bucket_contents, 0, sizeof(hashEntry) + keySize + valSize);
-      Tset(xid, this, bucket_contents);
+      Tset(xid, hash, bucket_contents);
     } else {
       assert(bucket_contents->next.size ==  sizeof(hashEntry) + keySize + valSize);
       recordid oldNext = bucket_contents->next;
       Tread(xid, bucket_contents->next, bucket_contents);
-      Tset(xid, this, bucket_contents);
+      Tset(xid, hash, bucket_contents);
       *deletedEntry = oldNext; /* @todo delete from bucket really should do its own deallocation.. */
     }
     return 1;
@@ -312,7 +311,7 @@ static int deleteFromBucket(int xid, recordid hash, int bucket_number, hashEntry
   recordid Aaddr, Baddr;
 
   memcpy(B, bucket_contents, sizeof(hashEntry) + keySize + valSize);
-  Baddr = this;
+  Baddr = hash;
   while(B->next.size != -1) {
     hashEntry * tmp = A;
     A = B;
@@ -402,7 +401,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
                       void * key, int keySize,
                       void * val, int valSize) {
 
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
+  recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket =
     2 + stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2);
@@ -426,7 +425,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
     so that expand can be selectively called. */
 int TnaiveHashDelete(int xid, recordid hashRid,
                      void * key, int keySize, int valSize) {
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
+  recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid  deleteMe;
@@ -464,14 +463,14 @@ void TnaiveHashUpdate(int xid, recordid hashRid, void * key, int keySize, void *
 
 
 int TnaiveHashClose(int xid, recordid hashRid) {
-  recordid * freeMe = pblHtLookup(openHashes,  &(hashRid.page), sizeof(hashRid.page));
+  recordid * freeMe = (recordid *)pblHtLookup(openHashes,  &(hashRid.page), sizeof(hashRid.page));
   pblHtRemove(openHashes, &(hashRid.page), sizeof(hashRid.page));
   free(freeMe);
   return 0;
 }
 
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
-  recordid  * headerRidB = pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
+  recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
   int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
   return ret;

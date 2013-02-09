@@ -5,6 +5,9 @@
 #include <stasis/dirtyPageTable.h>
 #include <stasis/io/handle.h>
 #include <stasis/pageHandle.h>
+
+BEGIN_C_DECLS
+
 /**
     This is the type of log that is being used.
 
@@ -232,4 +235,7 @@ extern lsn_t stasis_log_file_write_buffer_size;
    @todo Stasis' segment implementation is a work in progress; therefore this is set to zero by default.
  */
 extern int stasis_segments_enabled;
+
+END_C_DECLS
+
 #endif

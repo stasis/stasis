@@ -189,7 +189,7 @@ void TinitializeFixedPage(int xid, pageid_t page, int slotLength) {
 
 static int op_initialize_page(const LogEntry* e, Page* p) {
   assert(e->update.arg_size == sizeof(page_init_arg));
-  const page_init_arg* arg = stasis_log_entry_update_args_cptr(e);
+  const page_init_arg* arg = (const page_init_arg*)stasis_log_entry_update_args_cptr(e);
 
   switch(arg->slot) {
   case SLOTTED_PAGE:
@@ -213,7 +213,7 @@ typedef struct {
 } init_multipage_arg;
 
 static int op_init_multipage_impl(const LogEntry *e, Page *ignored) {
-  const init_multipage_arg* arg = stasis_log_entry_update_args_cptr(e);
+  const init_multipage_arg* arg = (const init_multipage_arg*)stasis_log_entry_update_args_cptr(e);
 
   for(pageid_t i = 0; i < arg->numPages; i++) {
     Page * p = loadPage(e->xid, arg->firstPage + i);

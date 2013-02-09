@@ -1,9 +1,12 @@
+#include <stasis/common.h>
 #include <stasis/operations/arrayList.h>
 #include <stasis/bufferManager.h>
 #include <stasis/transactional.h>
 #include <stasis/page/fixed.h>
 #include <assert.h>
 #include <math.h>
+
+BEGIN_C_DECLS
 
 #define MAX_OFFSET_POSITION    3
 #define FIRST_DATA_PAGE_OFFSET 4
@@ -57,7 +60,7 @@ static int array_list_op_init_header(const LogEntry* e, Page* p) {
   assert(e->update.arg_size == sizeof(array_list_parameter_t));
 
   const array_list_parameter_t * alp
-    = stasis_log_entry_update_args_cptr(e);
+    = (const array_list_parameter_t *)stasis_log_entry_update_args_cptr(e);
 
   stasis_page_fixed_initialize_page(p, sizeof(pageid_t),
                                stasis_page_fixed_records_per_page(sizeof(pageid_t)));
@@ -266,3 +269,4 @@ int TarrayListLength(int xid, recordid rid) {
  releasePage(p);
  return alp.maxOffset+1;
 }
+END_C_DECLS

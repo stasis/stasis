@@ -4,6 +4,7 @@
 #include <stasis/bufferPool.h>
 #include <stasis/bufferManager/legacy/pageFile.h>
 #include <stasis/bufferManager/legacy/pageCache.h>
+#include <stasis/bufferManager/legacy/legacyBufferManager.h>
 
 #include <stasis/page.h>
 

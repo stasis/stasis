@@ -36,15 +36,15 @@ typedef struct raid0_impl {
 } raid0_impl;
 
 static int raid0_num_copies(stasis_handle_t *h) {
-  raid0_impl * i = h->impl;
+  raid0_impl * i = (raid0_impl *)h->impl;
   return i->h[0]->num_copies(i->h[0]);
 }
 static int raid0_num_copies_buffer(stasis_handle_t *h) {
-  raid0_impl * i = h->impl;
+  raid0_impl * i = (raid0_impl *)h->impl;
   return i->h[0]->num_copies_buffer(i->h[0]);
 }
 static int raid0_close(stasis_handle_t *h) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   int ret = 0;
   for(int i = 0; i < r->handle_count; i++) {
     int this_ret = r->h[i]->close(r->h[i]);
@@ -56,7 +56,7 @@ static int raid0_close(stasis_handle_t *h) {
   return ret;
 }
 static stasis_handle_t* raid0_dup(stasis_handle_t *h) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   stasis_handle_t ** h_dup = stasis_malloc(r->handle_count, stasis_handle_t*);
   for(int i = 0; i < r->handle_count; i++) {
     h_dup[i] = r->h[i]->dup(r->h[i]);
@@ -66,13 +66,13 @@ static stasis_handle_t* raid0_dup(stasis_handle_t *h) {
   return ret;
 }
 static void raid0_enable_sequential_optimizations(stasis_handle_t *h) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   for(int i = 0; i < r->handle_count; i++) {
     r->h[i]->enable_sequential_optimizations(r->h[i]);
   }
 }
 static lsn_t raid0_end_position(stasis_handle_t *h) {
-  raid0_impl *r = h->impl;
+  raid0_impl *r = (raid0_impl *)h->impl;
   lsn_t max_end = 0;
   for(int i = 0; i < r->handle_count; i++) {
     lsn_t this_end = r->h[i]->end_position(r->h[i]) + (i * r->stripe_size);
@@ -102,19 +102,19 @@ static lsn_t raid0_calc_off(raid0_impl * r, lsn_t off, lsn_t len) {
   return block * r->stripe_size + (off % r->stripe_size);
 }
 static int raid0_read(stasis_handle_t *h, lsn_t off, byte *buf, lsn_t len) {
-  raid0_impl *r = h->impl;
+  raid0_impl *r = (raid0_impl *)h->impl;
   int stripe = raid0_calc_stripe(r, off, len);
   lsn_t stripe_off = raid0_calc_off(r, off, len);
   return r->h[stripe]->read(r->h[stripe], stripe_off, buf, len);
 }
 static int raid0_write(stasis_handle_t *h, lsn_t off, const byte *dat, lsn_t len) {
-  raid0_impl *r = h->impl;
+  raid0_impl *r = (raid0_impl *)h->impl;
   int stripe = raid0_calc_stripe(r, off, len);
   lsn_t stripe_off = raid0_calc_off(r, off, len);
   return r->h[stripe]->write(r->h[stripe], stripe_off, dat, len);
 }
 static stasis_write_buffer_t * raid0_write_buffer(stasis_handle_t *h, lsn_t off, lsn_t len) {
-  raid0_impl *r = h->impl;
+  raid0_impl *r = (raid0_impl *)h->impl;
   int stripe = raid0_calc_stripe(r, off, len);
   lsn_t stripe_off = raid0_calc_off(r, off, len);
   return r->h[stripe]->write_buffer(r->h[stripe], stripe_off, len);
@@ -124,7 +124,7 @@ static int raid0_release_write_buffer(stasis_write_buffer_t *w) {
 }
 static stasis_read_buffer_t *raid0_read_buffer(stasis_handle_t *h,
                            lsn_t off, lsn_t len) {
-  raid0_impl *r = h->impl;
+  raid0_impl *r = (raid0_impl *)h->impl;
   int stripe = raid0_calc_stripe(r, off, len);
   lsn_t stripe_off = raid0_calc_off(r, off, len);
   return r->h[stripe]->read_buffer(r->h[stripe], stripe_off, len);
@@ -133,7 +133,7 @@ static int raid0_release_read_buffer(stasis_read_buffer_t *r) {
   return r->h->release_read_buffer(r);
 }
 static int raid0_force(stasis_handle_t *h) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   int ret = 0;
   for(int i = 0; i < r->handle_count; i++) {
     int this_ret = r->h[i]->force(r->h[i]);
@@ -148,7 +148,7 @@ static int raid0_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   return raid0_force(h);
 }
 static int raid0_async_force(stasis_handle_t *h) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   int ret = 0;
   for(int i = 0; i < r->handle_count; i++) {
     int this_ret = r->h[i]->async_force(r->h[i]);
@@ -157,7 +157,7 @@ static int raid0_async_force(stasis_handle_t *h) {
   return ret;
 }
 static int raid0_fallocate(stasis_handle_t *h, lsn_t off, lsn_t len) {
-  raid0_impl * r = h->impl;
+  raid0_impl * r = (raid0_impl *)h->impl;
   int ret = 0;
   lsn_t start_block = raid0_calc_block(r, off, 0);
   lsn_t start_off = (start_block) * r->stripe_size;
@@ -171,23 +171,23 @@ static int raid0_fallocate(stasis_handle_t *h, lsn_t off, lsn_t len) {
   return ret;
 }
 struct stasis_handle_t raid0_func = {
-  .num_copies = raid0_num_copies,
-  .num_copies_buffer = raid0_num_copies_buffer,
-  .close = raid0_close,
-  .dup = raid0_dup,
-  .enable_sequential_optimizations = raid0_enable_sequential_optimizations,
-  .end_position = raid0_end_position,
-  .write = raid0_write,
-  .write_buffer = raid0_write_buffer,
-  .release_write_buffer = raid0_release_write_buffer,
-  .read = raid0_read,
-  .read_buffer = raid0_read_buffer,
-  .release_read_buffer = raid0_release_read_buffer,
-  .force = raid0_force,
-  .async_force = raid0_async_force,
-  .force_range = raid0_force_range,
-  .fallocate = raid0_fallocate,
-  .error = 0
+  /*.num_copies =*/ raid0_num_copies,
+  /*.num_copies_buffer =*/ raid0_num_copies_buffer,
+  /*.close =*/ raid0_close,
+  /*.dup =*/ raid0_dup,
+  /*.enable_sequential_optimizations =*/ raid0_enable_sequential_optimizations,
+  /*.end_position =*/ raid0_end_position,
+  /*.write_buffer =*/ raid0_write_buffer,
+  /*.release_write_buffer =*/ raid0_release_write_buffer,
+  /*.read_buffer =*/ raid0_read_buffer,
+  /*.release_read_buffer =*/ raid0_release_read_buffer,
+  /*.write =*/ raid0_write,
+  /*.read =*/ raid0_read,
+  /*.force =*/ raid0_force,
+  /*.async_force =*/ raid0_async_force,
+  /*.force_range =*/ raid0_force_range,
+  /*.fallocate =*/ raid0_fallocate,
+  /*.error =*/ 0
 };
 
 stasis_handle_t * stasis_handle_open_raid0(int handle_count, stasis_handle_t** h, uint32_t stripe_size) {

@@ -1,3 +1,5 @@
+#include <stasis/common.h>
+BEGIN_C_DECLS
 
 /** @file */
 typedef struct range { 
@@ -48,3 +50,4 @@ static inline long rangeTrackerRoundDown(long x, long quant) {
 static inline long rangeTrackerRoundUp(long x, long quant) { 
   return (((x-1) / quant) + 1) * quant;
 }
+END_C_DECLS

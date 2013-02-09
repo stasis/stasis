@@ -12,6 +12,9 @@
     extension.
 */
 
+#include <stasis/common.h>
+BEGIN_C_DECLS
+
 typedef struct replacementPolicy {
   /** Factory method */
   struct replacementPolicy* (*init)();
@@ -47,3 +50,5 @@ replacementPolicy * lruFastInit();
 replacementPolicy* replacementPolicyThreadsafeWrapperInit(replacementPolicy* rp);
 replacementPolicy* replacementPolicyConcurrentWrapperInit(replacementPolicy** rp, int count);
 replacementPolicy* replacementPolicyClockInit(Page * pageArray, int page_count);
+
+END_C_DECLS

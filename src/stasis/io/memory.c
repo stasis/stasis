@@ -12,7 +12,7 @@ static int mem_num_copies(stasis_handle_t * h) { return 1; }
 static int mem_num_copies_buffer(stasis_handle_t * h) { return 0; }
 
 static int mem_close(stasis_handle_t * h) {
-  mem_impl *impl = h->impl;
+  mem_impl *impl = (mem_impl *)h->impl;
   (impl->refcount)--;
   if(impl->refcount) { return 0; }
 
@@ -23,7 +23,7 @@ static int mem_close(stasis_handle_t * h) {
   return 0;
 }
 static stasis_handle_t * mem_dup(stasis_handle_t *h) {
-  mem_impl *impl = h->impl;
+  mem_impl *impl = (mem_impl *)h->impl;
   (impl->refcount)++;
   return h;
 }
@@ -165,21 +165,23 @@ static int mem_force_range(stasis_handle_t *h,lsn_t start, lsn_t stop) {
 }
 
 struct stasis_handle_t mem_func = {
-  .num_copies = mem_num_copies,
-  .num_copies_buffer = mem_num_copies_buffer,
-  .close = mem_close,
-  .dup = mem_dup,
-  .enable_sequential_optimizations = mem_enable_sequential_optimizations,
-  .end_position = mem_end_position,
-  .write = mem_write,
-  .write_buffer = mem_write_buffer,
-  .release_write_buffer = mem_release_write_buffer,
-  .read = mem_read,
-  .read_buffer = mem_read_buffer,
-  .release_read_buffer = mem_release_read_buffer,
-  .force = mem_force,
-  .force_range = mem_force_range,
-  .error = 0
+  /*.num_copies =*/ mem_num_copies,
+  /*.num_copies_buffer =*/ mem_num_copies_buffer,
+  /*.close =*/ mem_close,
+  /*.dup =*/ mem_dup,
+  /*.enable_sequential_optimizations =*/ mem_enable_sequential_optimizations,
+  /*.end_position =*/ mem_end_position,
+  /*.write_buffer =*/ mem_write_buffer,
+  /*.release_write_buffer =*/ mem_release_write_buffer,
+  /*.read_buffer =*/ mem_read_buffer,
+  /*.release_read_buffer =*/ mem_release_read_buffer,
+  /*.write =*/ mem_write,
+  /*.read =*/ mem_read,
+  /*.force =*/ mem_force,
+  /*.async_force =*/ mem_force,
+  /*.force_range =*/ mem_force_range,
+  /*.fallocate =*/ NULL,
+  /*.error =*/ 0
 };
 
 stasis_handle_t * stasis_handle(open_memory)(void) {

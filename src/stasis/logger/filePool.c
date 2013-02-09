@@ -150,7 +150,7 @@ int stasis_log_file_pool_file_filter(struct dirent* file) {
 char * stasis_log_file_pool_build_filename(stasis_log_file_pool_state * fp,
 					lsn_t start_lsn) {
   int name_len = strlen(stasis_log_chunk_name);
-  char * first = malloc(name_len + stasis_log_file_pool_lsn_chars + 1);
+  char * first = stasis_malloc(name_len + stasis_log_file_pool_lsn_chars + 1, char);
   strcpy(first, stasis_log_chunk_name);
   sprintf(first+name_len, "%020lld", start_lsn);
   DEBUG("Name is %s\n", first);
@@ -166,7 +166,7 @@ static ssize_t mypread(int fd, byte * buf, size_t sz, off_t off) {
   size_t rem = sz;
   while(rem) {
     DEBUG("pread(%d, %lld, %lld, %lld)\n", fd, (long long)(intptr_t)buf, (long long)rem, (long long)off);
-    size_t ret = pread(fd, buf, rem, off);
+    ssize_t ret = pread(fd, buf, rem, off);
     if(ret == -1) {
       perror("Error reading from log.");
       abort();
@@ -193,7 +193,7 @@ lsn_t stasis_log_file_pool_sizeof_internal_entry(stasis_log_t * log, const LogEn
 }
 // No latching requried.
 char * build_path(const char * dir, const char * file) {
-  char * full_name = malloc(strlen(file) + 1 + strlen(dir) + 1);
+  char * full_name = stasis_malloc(strlen(file) + 1 + strlen(dir) + 1, char);
   full_name[0] = 0;
   strcat(full_name, dir);
   strcat(full_name, "/");
@@ -222,7 +222,7 @@ void stasis_log_file_pool_chunk_open(stasis_log_file_pool_state * fp, int chunk)
  * @return chunk id or -1 if the offset is past the end of the live chunks.
  */
 static int get_chunk_from_offset(stasis_log_t * log, lsn_t lsn) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   int chunk = -1;
   if(fp->live_offsets[fp->live_count-1] <= lsn && (fp->live_offsets[fp->live_count-1] + fp->target_chunk_size) > lsn) {
     return fp->live_count - 1;
@@ -234,9 +234,9 @@ static int get_chunk_from_offset(stasis_log_t * log, lsn_t lsn) {
 }
 static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) {
   if(fp->dead_count < fp->dead_threshold) {
-    char * tmpfile = "preallocating~";
+    const char * tmpfile = "preallocating~";
     char * tmpfilepath = build_path(fp->dirname, tmpfile);
-    size_t bufsz = PAGE_SIZE;
+    ssize_t bufsz = PAGE_SIZE;
     pthread_mutex_unlock(&fp->mut);
 #ifdef HAVE_O_DSYNC
     int sync = O_DSYNC;  // XXX cut and pasted from above...
@@ -254,7 +254,7 @@ static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) 
     printf("Writing zeros to empty log file...\n");
     byte * buffer = stasis_calloc(bufsz, byte);
     for(off_t i = 0; i <= fp->target_chunk_size; i += bufsz) {
-      int ret = pwrite(fd, buffer, bufsz, i);
+      ssize_t ret = pwrite(fd, buffer, bufsz, i);
       if(ret != bufsz) {
         perror("Couldn't write to empty log");
         abort();
@@ -267,7 +267,7 @@ static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) 
 
     pthread_mutex_lock(&fp->mut);
     char * filenametmp = stasis_log_file_pool_build_filename(fp, fp->dead_count);
-    char * filename = malloc(strlen(filenametmp) + 2);
+    char * filename = stasis_malloc(strlen(filenametmp) + 2, char);
     strcpy(filename, filenametmp);
     strcat(filename, "~");
     char * newfilepath = build_path(fp->dirname, filename);
@@ -289,7 +289,7 @@ static void stasis_log_file_pool_prealloc_file(stasis_log_file_pool_state * fp) 
   }
 }
 static void * stasis_log_file_pool_prealloc_worker(void * fpp) {
-  stasis_log_file_pool_state * fp = fpp;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)fpp;
 
   pthread_mutex_lock(&fp->mut);
 
@@ -312,7 +312,7 @@ static void * stasis_log_file_pool_prealloc_worker(void * fpp) {
  * Does no latching.  Modifies all mutable fields of fp.
  */
 int stasis_log_file_pool_append_chunk(stasis_log_t * log, off_t new_offset) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   char * old_file = 0;
   char * new_file = stasis_log_file_pool_build_filename(fp, new_offset);
   char * new_path = build_path(fp->dirname, new_file);
@@ -350,8 +350,8 @@ int stasis_log_file_pool_append_chunk(stasis_log_t * log, off_t new_offset) {
  */
 LogEntry * stasis_log_file_pool_reserve_entry(stasis_log_t * log, size_t szs) {
   uint32_t sz = szs;
-  stasis_log_file_pool_state * fp = log->impl;
-  lsn_t * handle = pthread_getspecific(fp->handle_key);
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
+  lsn_t * handle = (lsn_t *)pthread_getspecific(fp->handle_key);
   if(!handle) { handle = stasis_alloc(lsn_t); pthread_setspecific(fp->handle_key, handle); }
 
   uint64_t framed_size = sz+sizeof(uint32_t)+sizeof(uint32_t);
@@ -384,8 +384,8 @@ LogEntry * stasis_log_file_pool_reserve_entry(stasis_log_t * log, size_t szs) {
  * Does no latching.  Everything is thread local, except the call to ringbuffer.
  */
 int stasis_log_file_pool_write_entry_done(stasis_log_t * log, LogEntry * e) {
-  stasis_log_file_pool_state * fp = log->impl;
-  lsn_t * handle = pthread_getspecific(fp->handle_key);
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
+  lsn_t * handle = (lsn_t *)pthread_getspecific(fp->handle_key);
   assert(handle);
 
   stasis_ringbuffer_reading_writer_done(fp->ring, handle);
@@ -396,8 +396,8 @@ int stasis_log_file_pool_write_entry_done(stasis_log_t * log, LogEntry * e) {
  * ringbuffer), and the call to ringbuffer, everything is thread local.
  */
 int stasis_log_file_pool_write_entry(stasis_log_t * log, LogEntry * e) {
-  stasis_log_file_pool_state * fp = log->impl;
-  lsn_t * handle = pthread_getspecific(fp->handle_key);
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
+  lsn_t * handle = (lsn_t *)pthread_getspecific(fp->handle_key);
   assert(handle);
 
   byte * buf = (byte*)e;
@@ -418,7 +418,7 @@ int stasis_log_file_pool_write_entry(stasis_log_t * log, LogEntry * e) {
  * protected from being closed by truncation.
  */
 const LogEntry* stasis_log_file_pool_chunk_read_entry(stasis_log_file_pool_state * fp, int fd, lsn_t file_offset, lsn_t lsn, uint32_t * len) {
-  int err;
+  ssize_t err;
   if(sizeof(*len) != (err = mypread(fd, (byte*)len, sizeof(*len), lsn-file_offset))) {
     if(err == 0) { DEBUG(stderr, "EOF reading len from log\n"); return 0; }
     abort();
@@ -437,7 +437,7 @@ const LogEntry* stasis_log_file_pool_chunk_read_entry(stasis_log_file_pool_state
     }
   }
 
-  byte * buf = malloc(*len + sizeof(uint32_t));
+  byte * buf = stasis_malloc(*len + sizeof(uint32_t), byte);
   if(!buf) {
     fprintf(stderr, "Couldn't alloc memory for log entry of size %lld.  "
            "This could be due to corruption at the end of the log.  Conservatively bailing out.",
@@ -477,7 +477,7 @@ int stasis_log_file_pool_chunk_write_buffer(int fd, const byte * buf, size_t sz,
   return 1;
 }
 const LogEntry* stasis_log_file_pool_read_entry(struct stasis_log_t* log, lsn_t lsn) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   if(fp->ring) {
     // Force bytes containing length of log entry to disk.
     if(stasis_ringbuffer_get_write_frontier(fp->ring) > lsn) {
@@ -526,41 +526,41 @@ lsn_t stasis_log_file_pool_next_entry(struct stasis_log_t* log, const LogEntry *
  */
 lsn_t stasis_log_file_pool_first_unstable_lsn(struct stasis_log_t* log, stasis_log_force_mode_t mode) {
   // TODO this ignores mode...
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   return stasis_ringbuffer_get_read_tail(fp->ring);
 }
 /**
  * Does no latching.  Relies on ringbuffer for synchronization.
  */
 lsn_t stasis_log_file_pool_first_pending_lsn(struct stasis_log_t* log) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   return stasis_ringbuffer_get_write_tail(fp->ring);
 }
 /**
  * Does no latching.  Relies on ringbuffer for synchronization.
  */
 void stasis_log_file_pool_force_tail(struct stasis_log_t* log, stasis_log_force_mode_t mode) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   stasis_ringbuffer_flush(fp->ring, stasis_ringbuffer_get_write_frontier(fp->ring));
 }
 /**
  * Does no latching.  Relies on ringbuffer for synchronization.
  */
 lsn_t stasis_log_file_pool_next_available_lsn(stasis_log_t *log) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   return stasis_ringbuffer_get_write_frontier(fp->ring);//nextAvailableLSN;
 }
 /**
  * Modifies all fields of fp.  Holds latches.
  */
 int stasis_log_file_pool_truncate(struct stasis_log_t* log, lsn_t lsn) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   pthread_mutex_lock(&fp->mut);
   int chunk = get_chunk_from_offset(log, lsn);
   int dead_offset = fp->dead_count;
   fp->dead_filenames = stasis_realloc(fp->dead_filenames, dead_offset + chunk, char*);
   for(int i = 0; i < chunk; i++) {
-    fp->dead_filenames[dead_offset + i] = malloc(strlen(fp->live_filenames[i]) + 2);
+    fp->dead_filenames[dead_offset + i] = (char*)malloc(strlen(fp->live_filenames[i]) + 2);
     fp->dead_filenames[dead_offset + i][0] = 0;
     strcat(fp->dead_filenames[dead_offset + i], fp->live_filenames[i]);
     strcat(fp->dead_filenames[dead_offset + i], "~");
@@ -592,7 +592,7 @@ int stasis_log_file_pool_truncate(struct stasis_log_t* log, lsn_t lsn) {
  * Grabs mut so that it can safely read fp->live_offsets[0].
  */
 lsn_t stasis_log_file_pool_truncation_point(struct stasis_log_t* log) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
   pthread_mutex_lock(&fp->mut);
   lsn_t ret = fp->live_offsets[0];
   pthread_mutex_unlock(&fp->mut);
@@ -605,7 +605,7 @@ lsn_t stasis_log_file_pool_chunk_scrub_to_eof(stasis_log_t * log, int fd, lsn_t 
   lsn_t cur_off = file_off;
   const LogEntry * e;
   uint32_t len;
-  while((e = stasis_log_file_pool_chunk_read_entry(log->impl, fd, file_off, cur_off, &len))) {
+  while((e = stasis_log_file_pool_chunk_read_entry((stasis_log_file_pool_state *)log->impl, fd, file_off, cur_off, &len))) {
     cur_off = log->next_entry(log, e);
     log->read_entry_done(log, e);
   }
@@ -616,9 +616,9 @@ lsn_t stasis_log_file_pool_chunk_scrub_to_eof(stasis_log_t * log, int fd, lsn_t 
  * first thing it does is shut down the writeback thread.
  */
 int stasis_log_file_pool_close(stasis_log_t * log) {
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
 
-  log->force_tail(log, 0); /// xxx use real constant for wal mode..
+  log->force_tail(log, LOG_FORCE_COMMIT);
   stasis_ringbuffer_shutdown(fp->ring);
 
   fp->shutdown = 1;
@@ -648,8 +648,8 @@ int stasis_log_file_pool_close(stasis_log_t * log) {
 }
 
 void * stasis_log_file_pool_writeback_worker(void * arg) {
-  stasis_log_t * log = arg;
-  stasis_log_file_pool_state * fp = log->impl;
+  stasis_log_t * log = (stasis_log_t *)arg;
+  stasis_log_file_pool_state * fp = (stasis_log_file_pool_state *)log->impl;
 
   lsn_t handle;
   lsn_t off;

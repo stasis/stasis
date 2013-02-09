@@ -8,6 +8,8 @@
 #define HISTOGRAM_H_
 
 #include <stasis/common.h>
+BEGIN_C_DECLS
+
 #include <assert.h>
 #include <stdio.h>
 
@@ -182,5 +184,5 @@ void stasis_histogram_pretty_print_32(stasis_histogram_32_t* a) {
     printf("     us        ms        s         ks        Ms\n");
   }
 }
-
+END_C_DECLS
 #endif /* HISTOGRAM_H_ */

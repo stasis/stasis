@@ -52,7 +52,7 @@ terms specified in this license.
 #include <assert.h>
 static int op_set(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
-  const byte * b = stasis_log_entry_update_args_cptr(e);
+  const byte * b = (const byte *)stasis_log_entry_update_args_cptr(e);
   recordid rid;
 
   rid.page = p->id;
@@ -69,7 +69,7 @@ static int op_set(const LogEntry *e, Page *p) {
 }
 static int op_set_inverse(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= sizeof(slotid_t) + sizeof(int64_t));
-  const byte * b = stasis_log_entry_update_args_cptr(e);
+  const byte * b = (const byte *)stasis_log_entry_update_args_cptr(e);
   recordid rid;
 
   rid.page = p->id;
@@ -101,7 +101,7 @@ Page * TsetWithPage(int xid, recordid rid, Page *p, const void * dat) {
   short type = stasis_record_type_read(xid,p,rid);
 
   if(type == BLOB_SLOT) {
-    stasis_blob_write(xid,p,rid,dat);
+    stasis_blob_write(xid,p,rid,(const byte*)dat);
     unlock(p->rwlatch);
   } else {
     rid.size = stasis_record_type_to_size(rid.size);
@@ -153,7 +153,7 @@ static int op_set_range(const LogEntry* e, Page* p) {
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
-  const set_range_t * range = stasis_log_entry_update_args_cptr(e);
+  const set_range_t * range = (const set_range_t *)stasis_log_entry_update_args_cptr(e);
   recordid rid;
   rid.page = p->id;
   rid.slot = range->slot;
@@ -175,7 +175,7 @@ static int op_set_range_inverse(const LogEntry* e, Page* p) {
   int diffLength = e->update.arg_size - sizeof(set_range_t);
   assert(! (diffLength % 2));
   diffLength >>= 1;
-  const set_range_t * range = stasis_log_entry_update_args_cptr(e);
+  const set_range_t * range = (const set_range_t *)stasis_log_entry_update_args_cptr(e);
   recordid rid;
   rid.page = p->id;
   rid.slot = range->slot;

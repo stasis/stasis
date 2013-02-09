@@ -3,6 +3,8 @@
 
 #include <stasis/common.h>
 
+BEGIN_C_DECLS
+
 struct stasis_allocation_policy_t;
 typedef struct stasis_allocation_policy_t stasis_allocation_policy_t;
 
@@ -29,4 +31,6 @@ void stasis_allocation_policy_alloced_from_page(stasis_allocation_policy_t * ap,
    @return true if the allocation would be safe.  false if not sure.
  */
 int stasis_allocation_policy_can_xid_alloc_from_page(stasis_allocation_policy_t * ap, int xid, pageid_t page);
+
+END_C_DECLS
 #endif // ALLOCATION_POLICY_H

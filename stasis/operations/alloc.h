@@ -14,6 +14,7 @@
 
 #include <stasis/operations.h>
 #include <stasis/allocationPolicy.h>
+BEGIN_C_DECLS
 stasis_operation_impl stasis_op_impl_alloc();
 stasis_operation_impl stasis_op_impl_dealloc();
 stasis_operation_impl stasis_op_impl_realloc();
@@ -70,5 +71,5 @@ int TrecordSize(int xid, recordid rid);
 
 /** Return the number of records stored in page pageid */
 int TrecordsInPage(int xid, pageid_t page);
-
+END_C_DECLS
 #endif

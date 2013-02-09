@@ -14,6 +14,8 @@
 #include <stasis/common.h>
 #include <stdio.h>
 
+BEGIN_C_DECLS
+
 struct  pblHashTable_t;
 typedef struct pblHashTable_t pblHashTable_t;
 
@@ -28,6 +30,8 @@ void * pblHtFirst   ( pblHashTable_t * h );
 void * pblHtNext    ( pblHashTable_t * h );
 void * pblHtCurrent ( pblHashTable_t * h );
 void * pblHtCurrentKey ( pblHashTable_t * h );
+
+END_C_DECLS
 
 #else
 #error pbl.h was included, but PBL_COMPAT is not defined!

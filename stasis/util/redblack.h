@@ -24,14 +24,16 @@
 /* Header file for redblack.c, should be included by any code that 
 ** uses redblack.c since it defines the functions 
 */ 
+#include <stasis/common.h>
  
 /* Stop multiple includes */
 #ifdef STLSEARCH
 #include "stlredblack.h"
 #else
 #ifndef _REDBLACK_H
-
 #ifndef RB_CUSTOMIZE
+
+BEGIN_C_DECLS
 /*
  * Without customization, the data member in the tree nodes is a void
  * pointer, and you need to pass in a comparison function to be
@@ -129,6 +131,9 @@ RB_STATIC void RB_ENTRY(walk)(const struct RB_ENTRY(tree) *,
 RB_STATIC RBLIST *RB_ENTRY(openlist)(const struct RB_ENTRY(tree) *); 
 RB_STATIC const RB_ENTRY(data_t) *RB_ENTRY(readlist)(RBLIST *); 
 RB_STATIC void RB_ENTRY(closelist)(RBLIST *); 
+
+END_C_DECLS
+
 #endif
 
 /* Some useful macros */
@@ -136,6 +141,7 @@ RB_STATIC void RB_ENTRY(closelist)(RBLIST *);
 #define rbmax(rbinfo) RB_ENTRY(lookup)(RB_LULAST, NULL, (rbinfo))
 
 #define _REDBLACK_H
+
 #endif /* _REDBLACK_H */
 
 /*

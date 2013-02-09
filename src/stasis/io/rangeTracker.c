@@ -16,8 +16,8 @@ struct rangeTracker {
 };
 
 static int cmp_transition(const void * a, const void * b, const void * arg) {
-  const transition * ta = a;
-  const transition * tb = b;
+  const transition * ta = (const transition *)a;
+  const transition * tb = (const transition *)b;
 
   return ta->pos - tb->pos;
 
@@ -33,7 +33,7 @@ rangeTracker * rangeTrackerInit(int quantization) {
 void rangeTrackerDeinit(rangeTracker * rt) {
   RBLIST * l = RB_ENTRY(openlist)(rt->ranges);
   const transition * t;
-  while((t = RB_ENTRY(readlist)(l))) {
+  while((t = (const transition *)RB_ENTRY(readlist)(l))) {
     RB_ENTRY(delete)(t, rt->ranges);
     fprintf(stderr, "WARNING: Detected leaked range in rangeTracker!\n");
     // Discard const to free t
@@ -139,7 +139,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
   int in_range = 0;
 
   RBLIST * list = RB_ENTRY(openlist) (rt->ranges);
-  while((t = RB_ENTRY(readlist)(list))) {
+  while((t = (const transition*)RB_ENTRY(readlist)(list))) {
     if(!(t->pins + t->delta)) {
       // end of a range.
       in_range = 0;
@@ -158,7 +158,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
   int next_range = 0;
   in_range = 0;
   list = RB_ENTRY(openlist) (rt->ranges);
-  t = RB_ENTRY(readlist)(list);
+  t = (const transition*)RB_ENTRY(readlist)(list);
   if(!t) {
     assert(range_count == 0);
     RB_ENTRY(closelist)(list);
@@ -171,7 +171,7 @@ static range ** rangeTrackerToArray(rangeTracker * rt) {
     ret[next_range]->start = t->pos;
     in_range = 1;
   }
-  while((t = RB_ENTRY(readlist)(list))) {
+  while((t = (const transition*)RB_ENTRY(readlist)(list))) {
     if(t->pins + t->delta) {
       if(!in_range) {
 	assert(! ret[next_range]);
@@ -209,7 +209,7 @@ static void pinnedRanges(const rangeTracker * rt, const range * request, rangeTr
   expanded_range.start = rangeTrackerRoundDown(request->start, rt->quantization);
   expanded_range.stop  = rangeTrackerRoundUp(request->stop, rt->quantization);
 
-  while((t = rblookup(RB_LUGREAT, t, rt->ranges))) {
+  while((t = (const transition*)rblookup(RB_LUGREAT, t, rt->ranges))) {
     assert(t->delta);
     if(t->pos >= expanded_range.stop) {
       if(in_range) {
@@ -345,7 +345,7 @@ const transition ** rangeTrackerEnumerate(rangeTracker * rt) {
   int transitionCount = 0;
   const transition * t;
   RBLIST * list =  RB_ENTRY(openlist) (rt->ranges);
-  while((t = RB_ENTRY(readlist)(list))) {
+  while((t = (const transition*)RB_ENTRY(readlist)(list))) {
     transitionCount++;
   }
   RB_ENTRY(closelist)(list);
@@ -355,7 +355,7 @@ const transition ** rangeTrackerEnumerate(rangeTracker * rt) {
   list =  RB_ENTRY(openlist) (rt->ranges);
   int i = 0;
 
-  while((t = RB_ENTRY(readlist)(list))) {
+  while((t = (const transition*)RB_ENTRY(readlist)(list))) {
     ret[i] = t;
     i++;
   }

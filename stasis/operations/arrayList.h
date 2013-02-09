@@ -75,7 +75,9 @@ terms specified in this license.
 /** @{ */
 #ifndef __ARRAY_LIST_H
 #define __ARRAY_LIST_H
+#include <stasis/common.h>
 #include <stasis/operations.h>
+BEGIN_C_DECLS
 /** Allocate a new array list.
 
     @param xid The transaction allocating the new arrayList.
@@ -117,4 +119,5 @@ recordid stasis_array_list_dereference_recordid(int xid, Page * p, int offset);
 
 stasis_operation_impl stasis_op_impl_array_list_header_init();
 /** @} */
+END_C_DECLS
 #endif

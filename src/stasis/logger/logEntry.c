@@ -47,7 +47,7 @@ terms specified in this license.
 #include <assert.h>
 
 LogEntry * mallocScratchCommonLogEntry(lsn_t LSN, lsn_t prevLSN, int xid, unsigned int type) {
-  LogEntry * ret = calloc(1, sizeof(struct __raw_log_entry));
+  LogEntry * ret = (LogEntry*)calloc(1, sizeof(struct __raw_log_entry));
   ret->LSN = LSN;
   ret->prevLSN = prevLSN;
   ret->xid = xid;
@@ -99,7 +99,7 @@ LogEntry * mallocScratchUpdateLogEntry(lsn_t LSN, lsn_t prevLSN, int xid,
   size_t logentrysize =
     sizeof(struct __raw_log_entry) + sizeof(UpdateLogEntry) + arg_size;
 
-  LogEntry * ret = calloc(1, logentrysize);
+  LogEntry * ret = (LogEntry*)calloc(1, logentrysize);
   ret->LSN = LSN;
   ret->prevLSN = prevLSN;
   ret->xid = xid;

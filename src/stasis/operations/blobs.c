@@ -34,7 +34,7 @@ void stasis_blob_read(int xid, Page * p, recordid rid, byte * buf) {
   pageid_t chunk;
   recordid rawRid = rid;
   rawRid.size = BLOB_SLOT;
-  byte * pbuf = alloca(PAGE_SIZE);
+  byte * pbuf = (byte*)alloca(PAGE_SIZE);
   blob_record_t rec;
   stasis_record_read(xid, p, rawRid, (byte*)&rec);
 

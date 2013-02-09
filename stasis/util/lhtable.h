@@ -1,6 +1,10 @@
 #ifndef STASIS_LHTABLE_H
 #define STASIS_LHTABLE_H
 
+#include <stasis/common.h>
+
+BEGIN_C_DECLS
+
 #ifndef LH_ENTRY
 #define LH_ENTRY(foo) lh##foo
 #endif // LH_ENTRY
@@ -70,5 +74,7 @@ void LH_ENTRY(openlist)(const struct LH_ENTRY(table) * table,
 */
 const struct LH_ENTRY(pair_t)* LH_ENTRY(readlist)(struct LH_ENTRY(list)* list);
 void LH_ENTRY(closelist)(struct LH_ENTRY(list) * list);
+
+END_C_DECLS
 
 #endif // STASIS_LHTABLE_H

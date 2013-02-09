@@ -10,7 +10,7 @@ static int op_lsn_free_set(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= (sizeof(pageoff_t) * 2));
   int size = e->update.arg_size;
   size -= (2*sizeof(pageoff_t));
-  const pageoff_t * a = stasis_log_entry_update_args_cptr(e);
+  const pageoff_t * a = (const pageoff_t *)stasis_log_entry_update_args_cptr(e);
   const byte* b = (const byte*)&(a[2]);
   assertlocked(p->rwlatch);
   memcpy(p->memAddr + a[0], b, a[1]);
@@ -21,7 +21,7 @@ static int op_lsn_free_unset(const LogEntry *e, Page *p) {
   assert(e->update.arg_size >= (sizeof(pageoff_t) * 2));
   int size = e->update.arg_size;
   size -= (2*sizeof(pageoff_t));
-  const pageoff_t * a = stasis_log_entry_update_args_cptr(e);
+  const pageoff_t * a = (const pageoff_t *)stasis_log_entry_update_args_cptr(e);
   const byte* b = (const byte*)&(a[2]);
   assertlocked(p->rwlatch);
   memcpy(p->memAddr + a[0], b+a[1], a[1]);

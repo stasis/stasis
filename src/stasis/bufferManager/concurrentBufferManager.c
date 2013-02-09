@@ -9,6 +9,7 @@
 #include <stasis/bufferPool.h>
 #include <stasis/pageHandle.h>
 #include <stasis/flags.h>
+#include <stasis/bufferManager/concurrentBufferManager.h>
 
 //#define STRESS_TEST_WRITEBACK 1 // if defined, writeback as much as possible, as fast as possible.
 

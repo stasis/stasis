@@ -60,7 +60,7 @@ typedef struct {
 
 static int op_linked_list_nta_insert(const LogEntry* e, Page* p) {
   assert(!p);
-  const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);;
+  const stasis_linked_list_remove_log * log = (const stasis_linked_list_remove_log *)stasis_log_entry_update_args_cptr(e);;
 
   byte * key;
   byte * value;
@@ -82,7 +82,7 @@ static int op_linked_list_nta_insert(const LogEntry* e, Page* p) {
 }
 static int op_linked_list_nta_remove(const LogEntry *e, Page* p) {
   assert(!p);
-  const stasis_linked_list_remove_log * log = stasis_log_entry_update_args_cptr(e);
+  const stasis_linked_list_remove_log * log = (const stasis_linked_list_remove_log *)stasis_log_entry_update_args_cptr(e);
 
   byte * key;
   int keySize;
@@ -170,7 +170,7 @@ static void stasis_linked_list_insert_helper(int xid, recordid list, const byte 
 
 int TlinkedListFind(int xid, recordid list, const byte * key, int keySize, byte ** value) {
 
-  stasis_linkedList_entry * entry = malloc(list.size);
+  stasis_linkedList_entry * entry = (stasis_linkedList_entry *)malloc(list.size);
 
   pthread_mutex_lock(&stasis_linked_list_mutex);
   Tread(xid, list, entry);
@@ -224,7 +224,7 @@ int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
   }
 
   int entrySize = sizeof(stasis_linked_list_remove_log) + keySize + valueSize;
-  stasis_linked_list_remove_log * undoLog = malloc(entrySize);
+  stasis_linked_list_remove_log * undoLog = (stasis_linked_list_remove_log *)malloc(entrySize);
 
   undoLog->list = list;
   undoLog->keySize = keySize;
@@ -247,7 +247,7 @@ int TlinkedListRemove(int xid, recordid list, const byte * key, int keySize) {
 }
 
 static int stasis_linked_list_remove_helper(int xid, recordid list, const byte * key, int keySize) {
-  stasis_linkedList_entry * entry = malloc(list.size);
+  stasis_linkedList_entry * entry = (stasis_linkedList_entry *)malloc(list.size);
   pthread_mutex_lock(&stasis_linked_list_mutex);
 
   Tread(xid, list, entry);
@@ -273,14 +273,14 @@ static int stasis_linked_list_remove_helper(int xid, recordid list, const byte *
           Tset(xid, lastRead, entry);
         } else {
           assert(entry->next.size == list.size);  // Otherwise, something strange is happening, or the list contains entries with variable sizes.
-          stasis_linkedList_entry * entry2 = malloc(list.size);
+          stasis_linkedList_entry * entry2 = (stasis_linkedList_entry *)malloc(list.size);
           Tread(xid, entry->next, entry2);
           Tdealloc(xid, entry->next); // could break iterator, since it writes one entry ahead.
           Tset(xid, lastRead, entry2);
           free(entry2);
         }
       } else {
-        stasis_linkedList_entry * entry2 = malloc(list.size);
+        stasis_linkedList_entry * entry2 = (stasis_linkedList_entry *)malloc(list.size);
         assert(oldLastRead.size != -2);
         Tread(xid, oldLastRead, entry2);
         memcpy(&(entry2->next), &(entry->next), sizeof(recordid));
@@ -336,7 +336,7 @@ recordid TlinkedListCreate(int xid, int keySize, int valueSize) {
   return ret;
 }
 void TlinkedListDelete(int xid, recordid list) {
-  stasis_linkedList_entry * entry = malloc(list.size);
+  stasis_linkedList_entry * entry = (stasis_linkedList_entry *)malloc(list.size);
 
   Tread(xid, list, entry);
   Tdealloc(xid, list);
@@ -382,7 +382,7 @@ int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int *
   if(it->first == -1) {
     it->first = 1;
   } else if(it->first) {
-    entry = malloc(it->next.size);
+    entry = (stasis_linkedList_entry *)malloc(it->next.size);
     Tread(xid, it->listRoot, entry);
     int listTouched;
     listTouched = memcmp(&(entry->next), &(it->next), sizeof(recordid));
@@ -405,7 +405,7 @@ int TlinkedListNext(int xid, stasis_linkedList_iterator * it, byte ** key, int *
   }
 
   assert(it->keySize + it->valueSize + sizeof(stasis_linkedList_entry) == it->next.size);
-  entry = malloc(it->next.size);
+  entry = (stasis_linkedList_entry *)malloc(it->next.size);
   Tread(xid, it->next, entry);
 
   if(entry->next.size) {

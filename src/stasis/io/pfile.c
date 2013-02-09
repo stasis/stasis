@@ -80,11 +80,11 @@ static int pfile_close(stasis_handle_t *h) {
 }
 
 static stasis_handle_t * pfile_dup(stasis_handle_t *h) {
-  pfile_impl *impl = h->impl;
+  pfile_impl *impl = (pfile_impl *)h->impl;
   return stasis_handle_open_pfile(impl->filename, impl->file_flags, impl->file_mode);
 }
 static void pfile_enable_sequential_optimizations(stasis_handle_t *h) {
-  pfile_impl *impl = h->impl;
+  pfile_impl *impl = (pfile_impl *)h->impl;
   impl->sequential = 1;
 #ifdef HAVE_POSIX_FADVISE
   int err = posix_fadvise(impl->fd, 0, 0, POSIX_FADV_SEQUENTIAL);
@@ -289,7 +289,7 @@ static int pfile_release_read_buffer(stasis_read_buffer_t *r) {
 }
 static int pfile_force(stasis_handle_t *h) {
   TICK(force_hist);
-  pfile_impl *impl = h->impl;
+  pfile_impl *impl = (pfile_impl *)h->impl;
   if(!(impl->file_flags & O_SYNC)) {
 #ifdef HAVE_FDATASYNC
     DEBUG("pfile_force() is calling fdatasync()\n");
@@ -312,7 +312,7 @@ static int pfile_force(stasis_handle_t *h) {
 }
 static int pfile_async_force(stasis_handle_t *h) {
   TICK(force_range_hist);
-  pfile_impl * impl = h->impl;
+  pfile_impl * impl = (pfile_impl *)h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
   // stop of zero syncs to eof.
   DEBUG("pfile_force_range calling sync_file_range %lld %lld\n",
@@ -349,7 +349,7 @@ static int pfile_async_force(stasis_handle_t *h) {
 }
 static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   TICK(force_range_hist);
-  pfile_impl * impl = h->impl;
+  pfile_impl * impl = (pfile_impl *)h->impl;
 #ifdef HAVE_SYNC_FILE_RANGE
   // stop of zero syncs to eof.
   DEBUG("pfile_force_range calling sync_file_range %lld %lld\n",
@@ -386,7 +386,7 @@ static int pfile_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   return ret;
 }
 static int pfile_fallocate(struct stasis_handle_t* h, lsn_t off, lsn_t len) {
-  pfile_impl * impl = h->impl;
+  pfile_impl * impl = (pfile_impl *)h->impl;
 #ifdef HAVE_POSIX_FALLOCATE
   return posix_fallocate(impl->fd, off, len);
 #else
@@ -396,23 +396,23 @@ static int pfile_fallocate(struct stasis_handle_t* h, lsn_t off, lsn_t len) {
 #endif  
 }
 static struct stasis_handle_t pfile_func = {
-  .num_copies = pfile_num_copies,
-  .num_copies_buffer = pfile_num_copies_buffer,
-  .close = pfile_close,
-  .dup = pfile_dup,
-  .enable_sequential_optimizations = pfile_enable_sequential_optimizations,
-  .end_position = pfile_end_position,
-  .write = pfile_write,
-  .write_buffer = pfile_write_buffer,
-  .release_write_buffer = pfile_release_write_buffer,
-  .read = pfile_read,
-  .read_buffer = pfile_read_buffer,
-  .release_read_buffer = pfile_release_read_buffer,
-  .force = pfile_force,
-  .async_force = pfile_async_force,
-  .force_range = pfile_force_range,
-  .fallocate = pfile_fallocate,
-  .error = 0
+  /*.num_copies =*/ pfile_num_copies,
+  /*.num_copies_buffer =*/ pfile_num_copies_buffer,
+  /*.close =*/ pfile_close,
+  /*.dup =*/ pfile_dup,
+  /*.enable_sequential_optimizations =*/ pfile_enable_sequential_optimizations,
+  /*.end_position =*/ pfile_end_position,
+  /*.write_buffer =*/ pfile_write_buffer,
+  /*.release_write_buffer =*/ pfile_release_write_buffer,
+  /*.read_buffer =*/ pfile_read_buffer,
+  /*.release_read_buffer =*/ pfile_release_read_buffer,
+  /*.write =*/ pfile_write,
+  /*.read =*/ pfile_read,
+  /*.force =*/ pfile_force,
+  /*.async_force =*/ pfile_async_force,
+  /*.force_range =*/ pfile_force_range,
+  /*.fallocate =*/ pfile_fallocate,
+  /*.error =*/ 0
 };
 
 stasis_handle_t *stasis_handle(open_pfile)(const char *filename,

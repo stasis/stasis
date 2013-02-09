@@ -116,7 +116,7 @@ static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keyS
 static int __ThashRemove(int xid, recordid hashHeader, const byte * key, int keySize);
 
 static int op_linear_hash_insert(const LogEntry* e, Page* p) {
-  const linearHash_remove_arg * args = stasis_log_entry_update_args_cptr(e);
+  const linearHash_remove_arg * args = (const linearHash_remove_arg *)stasis_log_entry_update_args_cptr(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;
   int valueSize = args->valueSize;
@@ -131,7 +131,7 @@ static int op_linear_hash_insert(const LogEntry* e, Page* p) {
   return 0;
 }
 static int op_linear_hash_remove(const LogEntry* e, Page* p) {
-  const linearHash_insert_arg * args = stasis_log_entry_update_args_cptr(e);
+  const linearHash_insert_arg * args = (const linearHash_insert_arg *)stasis_log_entry_update_args_cptr(e);
   recordid hashHeader = args->hashHeader;
   int keySize = args->keySize;
 
@@ -170,7 +170,7 @@ int ThashInsert(int xid, recordid hashHeader, const byte* key, int keySize, cons
   hashHeader.size = sizeof(lladd_hash_header);
   pthread_mutex_lock(&linear_hash_mutex);
   int argSize = sizeof(linearHash_insert_arg)+keySize;
-  linearHash_insert_arg * arg = calloc(1,argSize);
+  linearHash_insert_arg * arg = (linearHash_insert_arg *)calloc(1,argSize);
   arg->hashHeader = hashHeader;
   arg->keySize = keySize;
   memcpy(arg+1, key, keySize);
@@ -243,7 +243,7 @@ int ThashRemove(int xid, recordid hashHeader, const byte * key, int keySize) {
   }
 
   int argSize = sizeof(linearHash_remove_arg) + keySize + valueSize;
-  linearHash_remove_arg * arg = calloc(1,argSize);
+  linearHash_remove_arg * arg = (linearHash_remove_arg *)calloc(1,argSize);
   arg->hashHeader = hashHeader;
   arg->keySize = keySize;
   arg->valueSize = valueSize;
@@ -469,7 +469,7 @@ lladdIterator_t * ThashGenericIterator(int xid, recordid hash) {
 }
 
 static void linearHashNTAIterator_close(int xid, void * impl) {
-  lladd_linearHashNTA_generic_it * it = impl;
+  lladd_linearHashNTA_generic_it * it = (lladd_linearHashNTA_generic_it *)impl;
 
   ThashDone(xid, it->hit);
 
@@ -483,7 +483,7 @@ static void linearHashNTAIterator_close(int xid, void * impl) {
 }
 
 static int linearHashNTAIterator_next (int xid, void * impl) {
-  lladd_linearHashNTA_generic_it * it = impl;
+  lladd_linearHashNTA_generic_it * it = (lladd_linearHashNTA_generic_it *)impl;
 
   if(it->lastKey) {
     free(it->lastKey);
@@ -497,7 +497,7 @@ static int linearHashNTAIterator_next (int xid, void * impl) {
 }
 
 static int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
-  lladd_linearHashNTA_generic_it * it = impl;
+  lladd_linearHashNTA_generic_it * it = (lladd_linearHashNTA_generic_it *)impl;
 
   *key = it->lastKey;
 
@@ -505,7 +505,7 @@ static int linearHashNTAIterator_key(int xid, void * impl, byte ** key) {
 }
 
 static int linearHashNTAIterator_value(int xid, void * impl, byte ** value) {
-  lladd_linearHashNTA_generic_it * it = impl;
+  lladd_linearHashNTA_generic_it * it = (lladd_linearHashNTA_generic_it *)impl;
 
   *value = it->lastValue;
 

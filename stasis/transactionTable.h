@@ -10,6 +10,8 @@
 
 #include <stasis/common.h>
 
+BEGIN_C_DECLS
+
 typedef int (*stasis_transaction_table_callback_t)(int, void*);
 
 typedef struct stasis_transaction_table_callback_list_t stasis_transaction_table_callback_list_t;
@@ -86,5 +88,7 @@ int stasis_transaction_table_invoke_callbacks(stasis_transaction_table_t *tbl,
                                               stasis_transaction_table_callback_type_t type);
 int stasis_transaction_table_set_argument(stasis_transaction_table_t *tbl, int xid, int callback_id,
                                           stasis_transaction_table_callback_type_t type, void *arg);
+
+END_C_DECLS
 
 #endif /* TRANSACTIONTABLE_H_ */

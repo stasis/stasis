@@ -136,22 +136,25 @@ static int debug_force_range(stasis_handle_t *h, lsn_t start, lsn_t stop) {
   printf("tid=%9ld retn force(%lx) = %d\n", (long)(intptr_t)pthread_self(), (unsigned long)hh, ret); fflush(stdout);
   return ret;
 }
+
 struct stasis_handle_t debug_func = {
-  .num_copies = debug_num_copies,
-  .num_copies_buffer = debug_num_copies_buffer,
-  .close = debug_close,
-  .dup = debug_dup,
-  .enable_sequential_optimizations = debug_enable_sequential_optimizations,
-  .end_position = debug_end_position,
-  .write = debug_write,
-  .write_buffer = debug_write_buffer,
-  .release_write_buffer = debug_release_write_buffer,
-  .read = debug_read,
-  .read_buffer = debug_read_buffer,
-  .release_read_buffer = debug_release_read_buffer,
-  .force = debug_force,
-  .force_range = debug_force_range,
-  .error = 0
+  /*.num_copies =*/ debug_num_copies,
+  /*.num_copies_buffer =*/ debug_num_copies_buffer,
+  /*.close =*/ debug_close,
+  /*.dup =*/ debug_dup,
+  /*.enable_sequential_optimizations =*/ debug_enable_sequential_optimizations,
+  /*.end_position =*/ debug_end_position,
+  /*.write_buffer =*/ debug_write_buffer,
+  /*.release_write_buffer =*/ debug_release_write_buffer,
+  /*.read_buffer =*/ debug_read_buffer,
+  /*.release_read_buffer =*/ debug_release_read_buffer,
+  /*.write =*/ debug_write,
+  /*.read =*/ debug_read,
+  /*.force =*/ debug_force,
+  /*.async_force =*/ NULL,
+  /*.force_range =*/ debug_force_range,
+  /*.fallocate =*/ NULL,
+  /*.error =*/ 0
 };
 
 

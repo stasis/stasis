@@ -5,7 +5,7 @@
 
 #include <assert.h>
 
-//-------------- New API below this line
+BEGIN_C_DECLS
 
 static inline void stasis_page_fixed_checkRid(Page * page, recordid rid) {
   assert(page->pageType); // any more specific breaks pages based on this one
@@ -158,3 +158,5 @@ page_impl stasis_page_array_list_impl(void) {
 
 void stasis_page_fixed_init(void) { }
 void stasis_page_fixed_deinit(void) { }
+
+END_C_DECLS

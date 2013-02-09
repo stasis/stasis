@@ -90,7 +90,7 @@ void * getPrepareGuardState(void) {
 
 
 int prepareGuard(const LogEntry * e, void * state) {
-  PrepareGuardState * pgs = state;
+  PrepareGuardState * pgs = (PrepareGuardState *)state;
   int ret = pgs->continueIterating;
   if(e->type == UPDATELOG && !pgs->aborted) {
     if(e->update.funcID == OPERATION_PREPARE) {
@@ -113,7 +113,7 @@ int prepareGuard(const LogEntry * e, void * state) {
 /** @todo When fleshing out the logHandle's prepareAction interface,
     figure out what the return value should mean... */
 int prepareAction(void * state) {
-  PrepareGuardState * pgs = state;
+  PrepareGuardState * pgs = (PrepareGuardState *)state;
   int ret;
   if(!(pgs->continueIterating || pgs->aborted)) {
     //assert(pgs->prevLSN != -1);

@@ -27,7 +27,7 @@ static lsn_t stasis_log_impl_in_memory_first_pending_lsn(stasis_log_t * log) {
   return INVALID_LSN; // we're running with recovery disabled, so don't bother
 }
 static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   writelock(impl->flushedLSN_lock,0);
   writelock(impl->globalOffset_lock,0);
   lsn_t ret = impl->nextAvailableLSN;
@@ -37,7 +37,7 @@ static lsn_t stasis_log_impl_in_memory_next_available_lsn(stasis_log_t * log) {
 }
 
 static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   // XXX release these earlier?
   unlock(impl->globalOffset_lock);
   unlock(impl->flushedLSN_lock);
@@ -45,11 +45,11 @@ static int stasis_log_impl_in_memory_write_entry(stasis_log_t * log, LogEntry *e
 }
 
 LogEntry* stasis_log_impl_in_memory_reserve_entry(struct stasis_log_t* log, size_t sz) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   /** Use calloc since the entry might not be packed in memory;
       otherwise, we'd leak uninitialized bytes to the log. */
 
-  LogEntry * e = calloc(1,sz);
+  LogEntry * e = (LogEntry*)calloc(1,sz);
 
   lsn_t bufferOffset;
   int done = 0;
@@ -96,7 +96,7 @@ int stasis_log_impl_in_memory_entry_done(struct stasis_log_t* log, LogEntry* e) 
 
 static lsn_t stasis_log_impl_in_memory_first_unstable_lsn(stasis_log_t* log,
                                     stasis_log_force_mode_t mode) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   return impl->nextAvailableLSN;
 }
 
@@ -109,7 +109,7 @@ static lsn_t stasis_log_impl_in_memory_next_entry(stasis_log_t * log, const LogE
 }
 
 static int stasis_log_impl_in_memory_truncate(stasis_log_t * log, lsn_t lsn) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   writelock(impl->flushedLSN_lock,1);
   writelock(impl->globalOffset_lock,1);
 
@@ -133,12 +133,12 @@ static int stasis_log_impl_in_memory_truncate(stasis_log_t * log, lsn_t lsn) {
 }
 
 static lsn_t stasis_log_impl_in_memory_truncation_point(stasis_log_t * log) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   return impl->globalOffset;
 }
 
 static int stasis_log_impl_in_memory_close(stasis_log_t * log) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   if(impl->buffer) {
     lsn_t firstEmptyOffset = impl->nextAvailableLSN-impl->globalOffset;
     for(lsn_t i = 0; i < firstEmptyOffset; i++) {
@@ -158,7 +158,7 @@ static int stasis_log_impl_in_memory_close(stasis_log_t * log) {
 
 static const LogEntry * stasis_log_impl_in_memory_read_entry(stasis_log_t* log,
                                                  lsn_t lsn) {
-  stasis_log_impl_in_memory * impl = log->impl;
+  stasis_log_impl_in_memory * impl = (stasis_log_impl_in_memory *)log->impl;
   DEBUG("lsn: %ld\n", lsn);
   readlock(impl->globalOffset_lock, 0);
   if(lsn >= impl->nextAvailableLSN) {
@@ -184,7 +184,7 @@ static lsn_t stasis_log_impl_in_memory_sizeof_internal_entry(stasis_log_t* log,
 }
 static int stasis_log_impl_in_memory_is_durable(stasis_log_t*log) { return 0; }
 static void stasis_log_impl_in_memory_set_truncation(stasis_log_t *log, stasis_truncation_t *trunc) {
-  stasis_log_impl_in_memory *impl = log->impl;
+  stasis_log_impl_in_memory *impl = (stasis_log_impl_in_memory *)log->impl;
   impl->trunc = trunc;
 }
 

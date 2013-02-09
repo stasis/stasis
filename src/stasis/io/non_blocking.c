@@ -231,7 +231,7 @@ hack:
 
   DEBUG("allocFastHandle(%lld)\n", off/PAGE_SIZE);
 
-  const tree_node * n = rblookup(RB_LULTEQ, np, impl->fast_handles);
+  const tree_node * n = (const tree_node *)rblookup(RB_LULTEQ, np, impl->fast_handles);
   // this code only works when writes / reads are aligned to immutable
   // boundaries, and never cross boundaries.
   if((!n) ||
@@ -287,7 +287,7 @@ static inline const tree_node * findFastHandle(nbw_impl * impl, lsn_t off,
   tree_node * np = allocTreeNode(off, len);
 
   pthread_mutex_lock(&impl->mut);
-  const tree_node * n = rbfind(np, impl->fast_handles);
+  const tree_node * n = (const tree_node *)rbfind(np, impl->fast_handles);
   if(n) ((tree_node*)n)->pin_count++;
   pthread_mutex_unlock(&impl->mut);
 
@@ -335,7 +335,7 @@ static int nbw_num_copies_buffer(stasis_handle_t * h) {
   return 0;
 }
 static int nbw_close(stasis_handle_t * h) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
 
   pthread_mutex_lock(&impl->mut);
 
@@ -387,7 +387,7 @@ static int nbw_close(stasis_handle_t * h) {
   return ret;
 }
 static stasis_handle_t * nbw_dup(stasis_handle_t *h) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   (impl->refcount)++;
   return h;
 }
@@ -395,7 +395,7 @@ static void nbw_enable_sequential_optimizations(stasis_handle_t *h) {
   // TODO non blocking should pass sequential optimizations down to underlying handles.
 }
 static lsn_t nbw_end_position(stasis_handle_t *h) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   pthread_mutex_lock(&impl->mut);
   lsn_t ret = impl->end_pos;
   pthread_mutex_unlock(&impl->mut);
@@ -403,7 +403,7 @@ static lsn_t nbw_end_position(stasis_handle_t *h) {
 }
 static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
                                                 lsn_t off, lsn_t len) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   const tree_node * n = allocFastHandle(impl, off, len);
   stasis_write_buffer_t * w = n->h->write_buffer(n->h, off, len);
 
@@ -436,8 +436,8 @@ static stasis_write_buffer_t * nbw_write_buffer(stasis_handle_t * h,
   return ret;
 }
 static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
-  nbw_impl * impl = w->h->impl;
-  write_buffer_impl * w_impl = w->impl;
+  nbw_impl * impl = (nbw_impl *)w->h->impl;
+  write_buffer_impl * w_impl = (write_buffer_impl *)w->impl;
   const tree_node * n = w_impl->n;
   w_impl->w->h->release_write_buffer(w_impl->w);
   releaseFastHandle(impl, n, DIRTY);
@@ -447,7 +447,7 @@ static int nbw_release_write_buffer(stasis_write_buffer_t * w) {
 }
 static stasis_read_buffer_t * nbw_read_buffer(stasis_handle_t * h,
                                               lsn_t off, lsn_t len) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   const tree_node * n = findFastHandle(impl, off, len);
   stasis_read_buffer_t * r;
   stasis_handle_t * r_h = n ? n->h : getSlowHandle(impl);
@@ -468,8 +468,8 @@ static stasis_read_buffer_t * nbw_read_buffer(stasis_handle_t * h,
   return ret;
 }
 static int nbw_release_read_buffer(stasis_read_buffer_t * r) {
-  nbw_impl * impl = r->h->impl;
-  read_buffer_impl * r_impl = r->impl;
+  nbw_impl * impl = (nbw_impl *)r->h->impl;
+  read_buffer_impl * r_impl = (read_buffer_impl *)r->impl;
   const tree_node * n = r_impl->n;
   stasis_handle_t * oldHandle = r_impl->r->h;
   r_impl->r->h->release_read_buffer(r_impl->r);
@@ -487,7 +487,7 @@ static int nbw_release_read_buffer(stasis_read_buffer_t * r) {
 }
 static int nbw_write(stasis_handle_t * h, lsn_t off,
                      const byte * dat, lsn_t len) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   const tree_node * n = allocFastHandle(impl, off, len);
   int ret = n->h->write(n->h, off, dat, len);
   releaseFastHandle(impl, n, DIRTY);
@@ -506,7 +506,7 @@ static int nbw_write(stasis_handle_t * h, lsn_t off,
 }
 static int nbw_read(stasis_handle_t * h,
                     lsn_t off, byte * buf, lsn_t len) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   const tree_node * n = findFastHandle(impl, off, len);
   int ret;
   // XXX should be handled by releaseFastHandle.
@@ -521,13 +521,13 @@ static int nbw_read(stasis_handle_t * h,
   return ret;
 }
 static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   //  pthread_mutex_lock(&impl->mut);
   tree_node scratch;
   scratch.start_pos = start;
   scratch.end_pos = start+1;
   if(!stop) stop =  impl->end_pos;
-  const tree_node * n = rblookup(RB_LUGTEQ,&scratch,impl->fast_handles);   // min)(impl->fast_handles);
+  const tree_node * n = (const tree_node *)rblookup(RB_LUGTEQ,&scratch,impl->fast_handles);   // min)(impl->fast_handles);
   int blocked = 0;
   while(n) {
     if(n->start_pos >= stop) { break; }
@@ -536,18 +536,18 @@ static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
       ((tree_node*)n)->dirty = NEEDS_FORCE;
       blocked = 1;
     }
-    n = rblookup(RB_LUNEXT,n,impl->fast_handles);
+    n = (const tree_node *)rblookup(RB_LUNEXT,n,impl->fast_handles);
   }
   pthread_cond_broadcast(&impl->pending_writes_cond);
   while(blocked) {
     pthread_cond_wait(&impl->force_completed_cond,&impl->mut);
     blocked = 0;
-    n = rbmin(impl->fast_handles);
+    n = (const tree_node *)rbmin(impl->fast_handles);
     while(n) {
       if(n->dirty == NEEDS_FORCE) {
         blocked = 1;
       }
-      n = rblookup(RB_LUNEXT,n,impl->fast_handles);
+      n = (const tree_node *)rblookup(RB_LUNEXT,n,impl->fast_handles);
     }
   }
   int ret = 0;
@@ -567,7 +567,7 @@ static int nbw_force_range_impl(stasis_handle_t * h, lsn_t start, lsn_t stop) {
   return ret;
 }
 static int nbw_force(stasis_handle_t * h) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   pthread_mutex_lock(&impl->mut);
   int ret = nbw_force_range_impl(h, 0, impl->end_pos);
   pthread_mutex_unlock(&impl->mut);
@@ -576,7 +576,7 @@ static int nbw_force(stasis_handle_t * h) {
 static int nbw_force_range(stasis_handle_t * h,
                            lsn_t start,
                            lsn_t stop) {
-  nbw_impl * impl = h->impl;
+  nbw_impl * impl = (nbw_impl *)h->impl;
   pthread_mutex_lock(&impl->mut);
   int ret = nbw_force_range_impl(h, start, stop);
   pthread_mutex_unlock(&impl->mut);
@@ -584,21 +584,23 @@ static int nbw_force_range(stasis_handle_t * h,
 }
 
 struct stasis_handle_t nbw_func = {
-  .num_copies = nbw_num_copies,
-  .num_copies_buffer = nbw_num_copies_buffer,
-  .close = nbw_close,
-  .dup = nbw_dup,
-  .enable_sequential_optimizations = nbw_enable_sequential_optimizations,
-  .end_position = nbw_end_position,
-  .write = nbw_write,
-  .write_buffer = nbw_write_buffer,
-  .release_write_buffer = nbw_release_write_buffer,
-  .read = nbw_read,
-  .read_buffer = nbw_read_buffer,
-  .release_read_buffer = nbw_release_read_buffer,
-  .force = nbw_force,
-  .force_range = nbw_force_range,
-  .error = 0
+  /*.num_copies =*/ nbw_num_copies,
+  /*.num_copies_buffer =*/ nbw_num_copies_buffer,
+  /*.close =*/ nbw_close,
+  /*.dup =*/ nbw_dup,
+  /*.enable_sequential_optimizations =*/ nbw_enable_sequential_optimizations,
+  /*.end_position =*/ nbw_end_position,
+  /*.write_buffer =*/ nbw_write_buffer,
+  /*.release_write_buffer =*/ nbw_release_write_buffer,
+  /*.read_buffer =*/ nbw_read_buffer,
+  /*.release_read_buffer =*/ nbw_release_read_buffer,
+  /*.write =*/ nbw_write,
+  /*.read =*/ nbw_read,
+  /*.force =*/ nbw_force,
+  /*.async_force =*/ NULL,
+  /*.force_range =*/ nbw_force_range,
+  /*.fallocate =*/ NULL,
+  /*.error =*/ 0
 };
 
 /**
@@ -615,8 +617,8 @@ struct stasis_handle_t nbw_func = {
 
 */
 static void * nbw_worker(void * handle) {
-  stasis_handle_t * h = handle;
-  nbw_impl * impl = h->impl;
+  stasis_handle_t * h = (stasis_handle_t *)handle;
+  nbw_impl * impl = (nbw_impl *)h->impl;
 
   stasis_handle_t * slow = getSlowHandle(impl);
 

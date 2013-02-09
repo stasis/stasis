@@ -146,7 +146,7 @@ int TbtreeLookup(int xid, recordid rid, void * cmp_arg, byte * key, size_t keySi
     Page * p = loadPage(xid, slotrid.page);
     readlock(p->rwlatch, 0);
     slotrid.size = stasis_record_length_read(xid, p, slotrid);
-    btree_leaf_pair * buf = malloc(slotrid.size);
+    btree_leaf_pair * buf = (btree_leaf_pair *)malloc(slotrid.size);
     stasis_record_read(xid, p, slotrid, (byte*)buf);
     *valueSize = slotrid.size - (buf->keylen + sizeof(btree_leaf_pair));
     *value = stasis_malloc(*valueSize, byte);
@@ -174,7 +174,7 @@ int TbtreeInsert(int xid, recordid rid, void *cmp_arg, byte *key, size_t keySize
     stasis_record_compact_slotids(xid, p); // could do better with different api
   }
   size_t sz = sizeof(btree_leaf_pair) + keySize + valueSize;
-  btree_leaf_pair *buf = malloc(sz);
+  btree_leaf_pair *buf = (btree_leaf_pair *)malloc(sz);
   buf->keylen = keySize;
   memcpy(buf+1, key, keySize);
   memcpy(((byte*)(buf+1))+keySize, value, valueSize);

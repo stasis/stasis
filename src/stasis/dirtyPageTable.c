@@ -22,13 +22,13 @@ typedef struct {
 
 
 static int dpt_cmp_page(const void *ap, const void * bp, const void * ignored) {
-  const dpt_entry * a = ap;
-  const dpt_entry * b = bp;
+  const dpt_entry * a = (const dpt_entry *)ap;
+  const dpt_entry * b = (const dpt_entry *)bp;
   return (a->p < b->p) ? -1 : ((a->p == b->p) ? 0 : 1);
 }
 static int dpt_cmp_lsn_and_page(const void *ap, const void * bp, const void * ignored) {
-  const dpt_entry * a = ap;
-  const dpt_entry * b = bp;
+  const dpt_entry * a = (const dpt_entry *)ap;
+  const dpt_entry * b = (const dpt_entry *)bp;
 
   return (a->lsn < b->lsn) ? -1 : ((a->lsn == b->lsn) ? dpt_cmp_page(ap, bp, 0) : 1);
 }
@@ -85,13 +85,13 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
     if(p->dirty) {
       dpt_entry dummy = {p->id, 0};
 
-      const dpt_entry * e = rbdelete(&dummy, dirtyPages->tableByPage);
+      const dpt_entry * e = (const dpt_entry *)rbdelete(&dummy, dirtyPages->tableByPage);
       assert(e);
       assert(e->p == p->id);
       dummy.lsn = e->lsn;
       free((void*)e);
 
-      e = rbdelete(&dummy, dirtyPages->tableByLsnAndPage);
+      e = (const dpt_entry *)rbdelete(&dummy, dirtyPages->tableByLsnAndPage);
       assert(e);
       assert(e->p == p->id);
       assert(e->lsn == dummy.lsn);
@@ -100,7 +100,7 @@ void stasis_dirty_page_table_set_clean(stasis_dirty_page_table_t * dirtyPages, P
       p->dirty = 0;
 
       lsn_t min_waiting = stasis_util_multiset_min(dirtyPages->outstanding_flush_lsns);
-      e = rbmin(dirtyPages->tableByLsnAndPage);
+      e = (const dpt_entry *)rbmin(dirtyPages->tableByLsnAndPage);
       if(dummy.lsn >= min_waiting &&
          (!e || e->lsn >= min_waiting)) {
         pthread_cond_broadcast( &dirtyPages->writebackCond );
@@ -129,7 +129,7 @@ int stasis_dirty_page_table_is_dirty(stasis_dirty_page_table_t * dirtyPages, Pag
 
 lsn_t stasis_dirty_page_table_minRecLSN(stasis_dirty_page_table_t * dirtyPages) {
   pthread_mutex_lock(&dirtyPages->mutex);
-  const dpt_entry * e = rbmin(dirtyPages->tableByLsnAndPage);
+  const dpt_entry * e = (const dpt_entry *)rbmin(dirtyPages->tableByLsnAndPage);
   lsn_t lsn =  e ? e->lsn : LSN_T_MAX;
   pthread_mutex_unlock(&dirtyPages->mutex);
   return lsn;
@@ -175,9 +175,9 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
     int off = 0;
     int strides = 0;
     all_flushed = 1;
-    for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, tree);
+    for(const dpt_entry * e = (const dpt_entry *)rblookup(RB_LUGTEQ, &dummy, tree);
         e && e->lsn < targetLsn;
-        e = rblookup(RB_LUGREAT, &dummy, tree)) {
+        e = (const dpt_entry *)rblookup(RB_LUGREAT, &dummy, tree)) {
       dummy = *e;
       vals[off] = dummy.p;
       off++;
@@ -287,9 +287,9 @@ int stasis_dirty_page_table_get_flush_candidates(stasis_dirty_page_table_t * dir
   dummy.lsn = -1;
   dummy.p = start;
 
-  for(const dpt_entry *e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
+  for(const dpt_entry *e = (const dpt_entry *)rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
       e && (stop == 0 || e->p < stop) && n < ATOMIC_READ_32(0, &count);
-      e = rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
+      e = (const dpt_entry *)rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
     if(n == 0 || range_ends[b] != e->p) {
       b++;
       range_starts[b] = e->p;
@@ -319,9 +319,9 @@ void stasis_dirty_page_table_flush_range(stasis_dirty_page_table_t * dirtyPages,
   pageid_t * staleDirtyPages = 0;
   pageid_t n = 0;
   dpt_entry dummy = { start, 0 };
-  for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
+  for(const dpt_entry * e = (const dpt_entry *)rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
          e && (stop == 0 || e->p < stop);
-         e = rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
+         e = (const dpt_entry *)rblookup(RB_LUGREAT, e, dirtyPages->tableByPage)) {
     n++;
     staleDirtyPages = stasis_realloc(staleDirtyPages, n, pageid_t);
     staleDirtyPages[n-1] = e->p;
@@ -360,9 +360,9 @@ stasis_dirty_page_table_t * stasis_dirty_page_table_init(void) {
 void stasis_dirty_page_table_deinit(stasis_dirty_page_table_t * dirtyPages) {
   int areDirty = 0;
   dpt_entry dummy = {0, 0};
-  for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
+  for(const dpt_entry * e = (const dpt_entry *)rblookup(RB_LUGTEQ, &dummy, dirtyPages->tableByPage);
          e;
-         e = rblookup(RB_LUGREAT, &dummy, dirtyPages->tableByPage)) {
+         e = (const dpt_entry *)rblookup(RB_LUGREAT, &dummy, dirtyPages->tableByPage)) {
 
     if((!areDirty) &&
        (!stasis_suppress_unclean_shutdown_warnings)) {
@@ -376,9 +376,9 @@ void stasis_dirty_page_table_deinit(stasis_dirty_page_table_t * dirtyPages) {
   }
 
   dpt_entry dummy2 = {0, 0};
-  for(const dpt_entry * e = rblookup(RB_LUGTEQ, &dummy2, dirtyPages->tableByLsnAndPage);
+  for(const dpt_entry * e = (const dpt_entry *)rblookup(RB_LUGTEQ, &dummy2, dirtyPages->tableByLsnAndPage);
          e;
-         e = rblookup(RB_LUGREAT, &dummy2, dirtyPages->tableByLsnAndPage)) {
+         e = (const dpt_entry *)rblookup(RB_LUGREAT, &dummy2, dirtyPages->tableByLsnAndPage)) {
     dummy2 = *e;
     rbdelete(e, dirtyPages->tableByLsnAndPage);
     free((void*)e);

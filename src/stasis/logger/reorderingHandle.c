@@ -128,7 +128,7 @@ size_t stasis_log_reordering_handle_append(stasis_log_reordering_handle_t * h,
   intptr_t idx = (h->cur_off+h->cur_len)%h->max_len;
   h->queue[idx].p = p;
   h->queue[idx].op = op;
-  h->queue[idx].arg = malloc(arg_size);
+  h->queue[idx].arg = stasis_malloc(arg_size, byte);
   memcpy(h->queue[idx].arg,arg,arg_size);
   h->queue[idx].arg_size = arg_size;
   h->cur_len++;

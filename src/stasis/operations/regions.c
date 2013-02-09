@@ -27,7 +27,7 @@ static int alloc_boundary_tag(int xid, Page *p, const boundary_tag *arg) {
  byte *buf = stasis_record_write_begin(xid, p, rid);
  memcpy(buf, arg, sizeof(boundary_tag));
  stasis_record_write_done(xid, p, rid, buf);
- stasis_dirty_page_table_set_dirty(stasis_runtime_dirty_page_table(), p);
+ stasis_dirty_page_table_set_dirty((stasis_dirty_page_table_t*)stasis_runtime_dirty_page_table(), p);
  return 0;
 }
 
@@ -36,14 +36,14 @@ static int alloc_boundary_tag(int xid, Page *p, const boundary_tag *arg) {
     top action's logical undo grabs the necessary latches.
 */
 static int op_alloc_boundary_tag(const LogEntry* e, Page* p) {
-  return alloc_boundary_tag(e->xid, p, stasis_log_entry_update_args_cptr(e));
+  return alloc_boundary_tag(e->xid, p, (const boundary_tag*)stasis_log_entry_update_args_cptr(e));
 }
 
 static int op_alloc_region(const LogEntry *e, Page* p) {
   pthread_mutex_lock(&region_mutex);
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
-  const regionAllocArg *dat = stasis_log_entry_update_args_cptr(e);
+  const regionAllocArg *dat = (const regionAllocArg *)stasis_log_entry_update_args_cptr(e);
   TregionAllocHelper(e->xid, dat->startPage, dat->pageCount, dat->allocationManager);
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
@@ -75,7 +75,7 @@ static int op_dealloc_region(const LogEntry* e, Page* p) {
   assert(0 == holding_mutex);
   holding_mutex = pthread_self();
 
-  ret = operate_dealloc_region_unlocked(e->xid, stasis_log_entry_update_args_cptr(e));
+  ret = operate_dealloc_region_unlocked(e->xid, (const regionAllocArg*)stasis_log_entry_update_args_cptr(e));
 
   holding_mutex = 0;
   pthread_mutex_unlock(&region_mutex);
@@ -502,13 +502,13 @@ pageid_t TregionSize(int xid, pageid_t firstPage) {
 void TregionForce(int xid, stasis_buffer_manager_t * bm, stasis_buffer_manager_handle_t * h, pageid_t firstPage) {
   pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
   stasis_dirty_page_table_flush_range(
-      stasis_runtime_dirty_page_table(),
+      (stasis_dirty_page_table_t*)stasis_runtime_dirty_page_table(),
       firstPage, endOfRange);
-  bm = bm ? bm : stasis_runtime_buffer_manager();
+  bm = bm ? bm : (stasis_buffer_manager_t*)stasis_runtime_buffer_manager();
   bm->forcePageRange(bm, h, firstPage, endOfRange);
 }
 void TregionPrefetch(int xid, pageid_t firstPage) {
-  stasis_buffer_manager_t * bm = stasis_runtime_buffer_manager();
+  stasis_buffer_manager_t * bm = (stasis_buffer_manager_t*)stasis_runtime_buffer_manager();
   pageid_t endOfRange = firstPage + TregionSize(xid, firstPage);
   bm->prefetchPages(bm, firstPage, endOfRange);
 }

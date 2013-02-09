@@ -27,6 +27,8 @@
 #define CONCURRENTHASH_H_
 #include <stasis/common.h>
 
+BEGIN_C_DECLS
+
 typedef struct hashtable_t hashtable_t;
 typedef struct bucket_t bucket_t;
 
@@ -62,5 +64,6 @@ void hashtable_unlock(hashtable_bucket_handle_t *h);
  */
 int hashtable_debug_number_of_key_copies(hashtable_t *ht, pageid_t pageied);
 
+END_C_DECLS
 
 #endif /* CONCURRENTHASH_H_ */

@@ -189,7 +189,7 @@ static LogEntry * readLogEntry(stasis_log_safe_writes_state * sw) {
   if(!size) {
     return NULL;
   }
-  ret = malloc(size);
+  ret = (LogEntry*)malloc(size);
 
   bytesRead = read(sw->ro_fd, ret, size);
 
@@ -234,7 +234,7 @@ static LogEntry * readLogEntry(stasis_log_safe_writes_state * sw) {
 }
 
 static inline int isDurable_LogWriter(stasis_log_t* log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   return !sw->softcommit;
 }
 
@@ -253,7 +253,7 @@ static LogEntry* log_crc_dummy_entry(lsn_t lsn) {
 static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc);
 
 static lsn_t log_crc_entry(stasis_log_t *log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   LogEntry* e= allocCommonLogEntry(log, -1, -1, INTERNALLOG);
   // TODO Clean this up; it repeats the implementation of entry_done.
   lsn_t ret = e->LSN;
@@ -275,7 +275,7 @@ static lsn_t log_crc_entry(stasis_log_t *log) {
    @param ret a known-valid LSN (which will be returned if the log is empty)
  */
 static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   // Using readLogEntry() bypasses checks to see if we're past the end
   // of the log.
   LogEntry * le;
@@ -322,7 +322,7 @@ static inline lsn_t log_crc_next_lsn(stasis_log_t* log, lsn_t ret) {
 */
 static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) {
 
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
 
   const lsn_t size = sizeofLogEntry(log, e);
 
@@ -383,17 +383,17 @@ static int writeLogEntryUnlocked(stasis_log_t* log, LogEntry * e, int clearcrc) 
 }
 
 static int writeLogEntry_LogWriter(stasis_log_t* log, LogEntry * e) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   int ret = writeLogEntryUnlocked(log, e, 0);
   pthread_mutex_unlock(&sw->write_mutex);
   return ret;
 }
 
 LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   pthread_mutex_lock(&sw->write_mutex);
 
-  LogEntry * e = calloc(1, sz);
+  LogEntry * e = (LogEntry*)calloc(1, sz);
 
   /* Set the log entry's LSN. */
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
@@ -405,7 +405,7 @@ LogEntry* reserveEntry_LogWriter(struct stasis_log_t* log, size_t sz) {
 }
 
 int entryDone_LogWriter(struct stasis_log_t* log, LogEntry* e) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   stasis_aggregate_min_remove(sw->minPending, &e->LSN);
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
@@ -437,7 +437,7 @@ static void syncLogInternal(stasis_log_safe_writes_state* sw) {
 
 static void syncLog_LogWriter(stasis_log_t * log,
                               stasis_log_force_mode_t mode) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   lsn_t newFlushedLSN;
 
   newFlushedLSN = log_crc_entry(log) + sizeof(lsn_t) + sizeofInternalLogEntry_LogWriter(log, 0);
@@ -474,7 +474,7 @@ static void syncLog_LogWriter(stasis_log_t * log,
 }
 
 static lsn_t nextAvailableLSN_LogWriter(stasis_log_t * log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   lsn_t ret = sw->nextAvailableLSN;
   pthread_mutex_unlock(&sw->nextAvailableLSN_mutex);
@@ -483,7 +483,7 @@ static lsn_t nextAvailableLSN_LogWriter(stasis_log_t * log) {
 
 static lsn_t flushedLSN_LogWriter(stasis_log_t* log,
                                   stasis_log_force_mode_t mode) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   readlock(sw->flushedLSN_latch, 0);
   lsn_t ret;
   if(mode == LOG_FORCE_COMMIT) {
@@ -497,7 +497,7 @@ static lsn_t flushedLSN_LogWriter(stasis_log_t* log,
   return ret;
 }
 static lsn_t firstPendingLSN_LogWriter(stasis_log_t* log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   pthread_mutex_lock(&sw->nextAvailableLSN_mutex);
   lsn_t * retp = (lsn_t*)stasis_aggregate_min_compute(sw->minPending);
   lsn_t ret = retp ? *retp : sw->nextAvailableLSN;
@@ -513,7 +513,7 @@ static lsn_t flushedLSNInternal(stasis_log_safe_writes_state* sw) {
 }
 
 static int close_LogWriter(stasis_log_t* log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
   /* Get the whole thing to the disk before closing it. */
   syncLog_LogWriter(log, LOG_FORCE_WAL);
 
@@ -536,7 +536,7 @@ static int close_LogWriter(stasis_log_t* log) {
 }
 
 static const LogEntry * readLSNEntry_LogWriter(stasis_log_t * log, const lsn_t LSN) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
 
   LogEntry * ret;
 
@@ -613,7 +613,7 @@ void readEntryDone_LogWriter(stasis_log_t *log, const LogEntry *e) {
 
 */
 static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
 
   FILE *tmpLog;
 
@@ -672,7 +672,7 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
     LogEntry *firstCRC = 0;
     // zero out crc of first entry during copy
     if(firstInternalEntry && le->type == INTERNALLOG) {
-      firstCRC = malloc(size);
+      firstCRC = (LogEntry*)malloc(size);
       memcpy(firstCRC, le, size);
       firstCRC->prevLSN = 0;
       le = firstCRC;
@@ -806,7 +806,7 @@ static int truncateLog_LogWriter(stasis_log_t* log, lsn_t LSN) {
 }
 
 static lsn_t firstLogEntry_LogWriter(stasis_log_t* log) {
-  stasis_log_safe_writes_state* sw = log->impl;
+  stasis_log_safe_writes_state* sw = (stasis_log_safe_writes_state*)log->impl;
 
   assert(sw->fp);
   pthread_mutex_lock(&sw->read_mutex); // for global offset...
@@ -843,7 +843,7 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
   stasis_log_safe_writes_state * sw = stasis_alloc(stasis_log_safe_writes_state);
   sw->filename = strdup(filename);
   {
-    char * log_scratch_filename = malloc(strlen(sw->filename) + 2);
+    char * log_scratch_filename = stasis_malloc(strlen(sw->filename) + 2, char);
     strcpy(log_scratch_filename, sw->filename);
     strcat(log_scratch_filename, "~");
     sw->scratch_filename = log_scratch_filename;
