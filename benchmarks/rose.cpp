@@ -561,12 +561,12 @@ void run_test2(int engine, int multicolumn, unsigned int inserts,
     column_count = 1;
     switch(engine) {
     case Rle<val_t>::PLUGIN_ID: {
-      run_test<Pstar<Rle<val_t>,val_t>,Rle<val_t>,typeof(begin),
+      run_test<Pstar<Rle<val_t>,val_t>,Rle<val_t>,ITER,
 	  val_t,val_t>
 	(inserts, column_count,buildTree,begin,end,INT_CMP,rowsize,scratch);
     } break;
     case For<val_t>::PLUGIN_ID: {
-      run_test<Pstar<For<val_t>,val_t>,For<val_t>,typeof(begin),
+      run_test<Pstar<For<val_t>,val_t>,For<val_t>,ITER,
 	  val_t,val_t>
 	(inserts, column_count,buildTree,begin,end,INT_CMP,rowsize,scratch);
     } break;

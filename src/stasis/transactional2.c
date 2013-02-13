@@ -204,7 +204,7 @@ void Tupdate(int xid, pageid_t page, const void * dat, size_t datlen, int op) {
 
 void TreorderableUpdate(int xid, void * hp, pageid_t page,
                         const void *dat, size_t datlen, int op) {
-  stasis_log_reordering_handle_t * h = (typeof(h))hp;
+  stasis_log_reordering_handle_t * h = (stasis_log_reordering_handle_t *)hp;
   assert(stasis_transaction_table_is_active(stasis_transaction_table, xid));
   Page * p = loadPage(xid, page);
   assert(p);

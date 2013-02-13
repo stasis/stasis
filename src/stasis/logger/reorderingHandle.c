@@ -7,7 +7,7 @@
 long stasis_log_reordering_usleep_after_flush = 0;
 
 static void* stasis_log_reordering_handle_worker(void * a) {
-  stasis_log_reordering_handle_t * h = (typeof(h))a;
+  stasis_log_reordering_handle_t * h = (stasis_log_reordering_handle_t*)a;
   pthread_mutex_lock(&h->mut);
   while(h->cur_len || !h->closed) {
     while(h->cur_len) {

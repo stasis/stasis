@@ -83,7 +83,7 @@ START_TEST(bTreeTest) {
     assert(!TbtreeLookup(xid, rid, NULL, (byte*)&i, sizeof(i), (byte**)&scratch, &scratchsize));
     TbtreeInsert(xid, rid, NULL, (byte*)&i, sizeof(i), (byte*)&i, sizeof(i));
     assert(TbtreeLookup(xid, rid, NULL, (byte*)&i, sizeof(i), (byte**)&scratch, &scratchsize));
-    assert(*(typeof(&i))scratch == i);
+    assert(*(int*)scratch == i);
     assert(scratchsize == sizeof(i));
     free(scratch);
   }

@@ -39,6 +39,8 @@ namespace rose {
 
   template<class PAGELAYOUT, class ITERA, class ITERB>
     struct merge_args {
+	  typedef typename ITERB::handle IN_HANDLE;
+	  typedef typename ITERA::handle OUT_HANDLE;
       int worker_id;
       pageid_t(*pageAlloc)(int,void*);
       void *pageAllocState;
@@ -55,11 +57,11 @@ namespace rose {
       pageid_t * out_tree_size;
       pageid_t max_size;
       pageid_t r_i;
-      typename ITERB::handle ** in_tree;
+      IN_HANDLE ** in_tree;
       void * in_tree_allocer;
-      typename ITERA::handle ** out_tree;
+      OUT_HANDLE ** out_tree;
       void * out_tree_allocer;
-      typename ITERA::handle my_tree;
+      OUT_HANDLE my_tree;
       epoch_t * last_complete_xact;
       column_number_t ts_col;
       recordid tree;
@@ -319,7 +321,8 @@ namespace rose {
             pthread_cond_wait(a->out_block_needed_cond, a->block_ready_mut);
           }
 
-          *a->out_tree = (typeof(*a->out_tree))malloc(sizeof(**a->out_tree));
+          *a->out_tree = (typename merge_args<PAGELAYOUT, ITERA, ITERB>::OUT_HANDLE*)malloc(sizeof(void*));
+//          *a->out_tree = (typeof(*a->out_tree))malloc(sizeof(**a->out_tree));
           **a->out_tree = new typename ITERA::treeIteratorHandle(scratch_tree->r_);
           *(recordid*)(a->out_tree_allocer) = *scratchAllocState;
 
@@ -419,6 +422,9 @@ namespace rose {
 
   template <class PAGELAYOUT>
   struct lsmTableHandle {
+	typedef typename std::set
+		      <typename PAGELAYOUT::FMT::TUP,
+		      typename PAGELAYOUT::FMT::TUP::stl_cmp> SCRATCH_SET;
     pthread_t merge1_thread;
     pthread_t merge2_thread;
     bool * still_open;
@@ -428,9 +434,10 @@ namespace rose {
          typename PAGELAYOUT::FMT::TUP::stl_cmp>,
        typename PAGELAYOUT::FMT::TUP>::handle ** input_handle;
     bool * input_needed;
-    typename std::set
+    SCRATCH_SET * scratch_tree;
+/*    typename std::set
       <typename PAGELAYOUT::FMT::TUP,
-      typename PAGELAYOUT::FMT::TUP::stl_cmp> * scratch_tree;
+      typename PAGELAYOUT::FMT::TUP::stl_cmp> * scratch_tree; */
     pthread_mutex_t * mut;
     pthread_cond_t * input_ready_cond;
     pthread_cond_t * input_needed_cond;
@@ -516,7 +523,7 @@ namespace rose {
 
     ret->input_handle = block0_scratch;
     ret->input_needed = block0_needed;
-    ret->scratch_tree = new typeof(*ret->scratch_tree);
+    ret->scratch_tree = new typename lsmTableHandle<PAGELAYOUT>::SCRATCH_SET; //new typeof(*ret->scratch_tree);
 
     ret->mut = block_ready_mut;
 
@@ -562,7 +569,7 @@ namespace rose {
         tree
       };
     *ret->args1 = tmpargs1;
-    void * (*merger1)(void*) = mergeThread<PAGELAYOUT, LSM_ITER, LSM_ITER>;
+    void * (*merger1)(void*) = &mergeThread<PAGELAYOUT, LSM_ITER, LSM_ITER>;
 
     ridp = (recordid*)malloc(sizeof(recordid));
     *ridp = h.mediumTreeAllocState;
@@ -631,12 +638,13 @@ namespace rose {
       gettimeofday(&stop_tv,0);
       stop = tv_to_double(stop_tv);
 
-      typeof(h->scratch_tree)* tmp_ptr = (typeof(h->scratch_tree)*) malloc(sizeof(void*));
+      typename lsmTableHandle<PAGELAYOUT>::SCRATCH_SET** tmp_ptr = (typename lsmTableHandle<PAGELAYOUT>::SCRATCH_SET**)malloc(sizeof(void*));
+//      typeof(h->scratch_tree)* tmp_ptr = (typeof(h->scratch_tree)*) malloc(sizeof(void*));
       *tmp_ptr = h->scratch_tree;
       *(h->input_handle) = tmp_ptr;
 
       pthread_cond_signal(h->input_ready_cond);
-      h->scratch_tree = new typeof(*h->scratch_tree);
+      h->scratch_tree = new typename lsmTableHandle<PAGELAYOUT>::SCRATCH_SET;//new typeof(*h->scratch_tree);
 
       pthread_mutex_unlock(h->mut);
 
