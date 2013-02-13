@@ -34,8 +34,8 @@ typedef struct {
 } tup;
 
 static int cmp_1(const void *ap, const void *bp, const void *ign) {
-  const tup * a = ap;
-  const tup * b = bp;
+  const tup * a = (const tup *) ap;
+  const tup * b = (const tup *) bp;
   return a->a < b->a ? -1
      : ( a->a > b->a ?  1
      : ( a->b < b->b ? -1
@@ -43,8 +43,8 @@ static int cmp_1(const void *ap, const void *bp, const void *ign) {
      : 0 )));
 }
 static int cmp_2(const void *ap, const void *bp, const void *ign) {
-  const tup * a = ap;
-  const tup * b = bp;
+  const tup * a = (const tup *) ap;
+  const tup * b = (const tup *) bp;
   return a->b < b->b ? -1
      : ( a->b > b->b ?  1
      : ( a->a < b->a ? -1

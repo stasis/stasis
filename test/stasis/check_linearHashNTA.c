@@ -267,7 +267,7 @@ recordid makekey(int thread, int i) {
   return ret;
 }
 void * worker(void* arg) {
-  linear_hash_worker_args * args = arg;
+  linear_hash_worker_args * args = (linear_hash_worker_args *)arg;
   int thread = args->thread;
   recordid hash = args->rid;
 
@@ -315,7 +315,7 @@ START_TEST(linearHashNTAThreadedTest) {
   recordid rid = ThashCreate(xid, sizeof(recordid), sizeof(int));
   int i;
   Tcommit(xid);
-  pthread_t threads[NUM_THREADS];
+  pthread_t *threads = stasis_alloca(NUM_THREADS, pthread_t);
   for(i = 0; i < NUM_THREADS; i++) {
     linear_hash_worker_args * args = stasis_alloc(linear_hash_worker_args);
     args->thread = i;

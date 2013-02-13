@@ -87,7 +87,7 @@ START_TEST(operation_physical_do_undo) {
 
 
   // XXX fails; set log format has changed
-  setToTwo = allocUpdateLogEntry(stasis_log(), -1, xid, OPERATION_SET, rid.page,
+  setToTwo = allocUpdateLogEntry((stasis_log_t*)stasis_log(), -1, xid, OPERATION_SET, rid.page,
                                  sizeof(slotid_t) + sizeof(int64_t) + 2 * sizeof(int));
   lsn_t setToTwo_lsn = setToTwo->LSN;
 
@@ -175,7 +175,7 @@ START_TEST(operation_physical_do_undo) {
   */
 
   // XXX This is a hack to put some stuff in the log.  Otherwise, Tdeinit() fails.
-  stasis_log_t * log = stasis_log();
+  stasis_log_t * log = (stasis_log_t *)stasis_log();
 
   setToTwo->LSN = setToTwo_lsn; // XXX hack...
 
@@ -664,8 +664,8 @@ START_TEST(operation_reorderable) {
 
     stasis_log_reordering_handle_t * rh
       = stasis_log_reordering_handle_open(
-                         stasis_transaction_table_get(stasis_runtime_transaction_table(), xid[0]),
-                         stasis_log(),
+                         stasis_transaction_table_get((stasis_transaction_table_t*)stasis_runtime_transaction_table(), xid[0]),
+                         (stasis_log_t*)stasis_log(),
                          100, // bytes (far too low!)
                          10,  // log entries
                          500 // max byte size
@@ -768,7 +768,7 @@ typedef struct op_test_arg {
 } op_test_arg;
 
 static int op_test_redo_impl(const LogEntry * e, Page * p) {
-  const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
+  const op_test_arg * a = (const op_test_arg*) stasis_log_entry_update_args_cptr(e);
   for(int i = 0; i < a->count; i++) {
     Page * p = loadPage(e->xid, a->start + i);
     if(stasis_operation_multi_should_apply(e, p)) {
@@ -784,7 +784,7 @@ static int op_test_redo_impl(const LogEntry * e, Page * p) {
   return 0;
 }
 static int op_test_undo_impl(const LogEntry * e, Page * p) {
-  const op_test_arg * a = stasis_log_entry_update_args_cptr(e);
+  const op_test_arg * a = (const op_test_arg*) stasis_log_entry_update_args_cptr(e);
   for(int i = 0; i < a->count; i++) {
     Page * p = loadPage(e->xid, a->start + i);
     if(stasis_operation_multi_should_apply(e, p)) {

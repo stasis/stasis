@@ -50,7 +50,7 @@ terms specified in this license.
 START_TEST(rawLogEntryAlloc)
 {
   Tinit();
-  stasis_log_t *l = stasis_log();
+  stasis_log_t *l = (stasis_log_t *)stasis_log();
   LogEntry * log = allocCommonLogEntry(l, 200, 1, XABORT);
   assert(log->prevLSN == 200);
   assert(log->xid == 1);
@@ -78,7 +78,7 @@ START_TEST(updateLogEntryAlloc)
   LogEntry * log;
 
   Tinit();  /* Needed because it sets up the operations table. */
-  stasis_log_t *l = stasis_log();
+  stasis_log_t *l = (stasis_log_t *)stasis_log();
 
   log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                             rid.page, 3*sizeof(char));
@@ -113,7 +113,7 @@ START_TEST(updateLogEntryAllocNoExtras)
 
   recordid rid = { 3 , 4, sizeof(int)*3 };
 
-  stasis_log_t *l = stasis_log();
+  stasis_log_t *l = (stasis_log_t *)stasis_log();
   LogEntry * log = allocUpdateLogEntry(l, 200, 1, OPERATION_SET,
                                        rid.page, 0);
   assert(log->prevLSN == 200);

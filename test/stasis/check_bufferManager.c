@@ -65,7 +65,7 @@ void initializePages(void) {
     stasis_record_alloc_done(-1, p, rid);
     int * buf = (int*)stasis_record_write_begin(-1, p, rid);
     *buf = i;
-    stasis_record_write_done(-1,p,rid,(void*)buf);
+    stasis_record_write_done(-1,p,rid,(byte*)buf);
     stasis_page_lsn_write(-1, p, 0);
     unlock(p->rwlatch);
     releasePage(p);
@@ -344,7 +344,7 @@ static void stalePinTestImpl(stasis_buffer_manager_t * (*fact)(stasis_log_t*, st
 
   Tinit();
 
-  Page * p[stasis_buffer_manager_size-1];
+  Page ** p = stasis_alloca(stasis_buffer_manager_size-1, Page*);
   for(int i = 0; i < stasis_buffer_manager_size-2; i++) {
     p[i] = loadUninitializedPage(-1, i);
   }

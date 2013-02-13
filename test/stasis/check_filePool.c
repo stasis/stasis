@@ -76,7 +76,7 @@ START_TEST(filePoolDirTest){
     last_lsn = e->LSN;
     log->write_entry(log, e);
     log->write_entry_done(log, e);
-    if(!(i & 15)) { log->force_tail(log, 0); } // xxx
+    if(!(i & 15)) { log->force_tail(log, LOG_FORCE_COMMIT); } // xxx
   }
 
   log->close(log);

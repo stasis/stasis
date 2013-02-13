@@ -4,7 +4,6 @@
  *  Created on: Dec 22, 2011
  *      Author: sears
  */
-#define _GNU_SOURCE
 #include "../check_includes.h"
 
 #include <stasis/util/concurrentHash.h>
@@ -26,7 +25,7 @@ START_TEST(metadataBitTest) {
   metadata_t m = 0;
   byte isLeaf = 0;
   byte balanced = 0;
-  byte color = 0;
+  color_t color = TEMP;
   byte level = 0;
   for(int i = 0; i < NUM_ITERS; i++) {
     switch(stasis_util_random64(3)) {
@@ -61,7 +60,7 @@ START_TEST(metadataBitTest) {
     case 2: {
       if(isLeaf) { // color
         assert(color == leaf_metadata_get_color(m));
-        color = stasis_util_random64(3);
+        color = (color_t)stasis_util_random64(3);
         m = leaf_metadata_set_color(m, color);
       } else { // level
         assert(level == index_metadata_get_level(m));

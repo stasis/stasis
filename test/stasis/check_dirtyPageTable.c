@@ -74,7 +74,7 @@ terms specified in this license.
 #define NUM_PAGES 100
 #endif
 void * worker(void*arg) {
-  stasis_dirty_page_table_t * dpt = stasis_runtime_dirty_page_table();
+  stasis_dirty_page_table_t * dpt = (stasis_dirty_page_table_t *)stasis_runtime_dirty_page_table();
   for(int i = 0; i < NUM_STEPS; i++) {
     pageid_t page = stasis_util_random64(NUM_PAGES);
     Page * p = loadPage(-1, page);

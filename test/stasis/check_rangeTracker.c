@@ -392,19 +392,19 @@ START_TEST (rangeTracker_randomTest) {
       //      printf("unpin %s\n", s);
       free(s);
       range ** r_arry =  rangeTrackerRemove(rt, &ranges[i]);
-      for(int i = 0; r_arry[i]; i++) {
-	check_overlap(r_arry[i], explicit_pins);
+      for(int j = 0; r_arry[j]; j++) {
+	check_overlap(r_arry[j], explicit_pins);
       }
       for(int j = ranges[i].start; j < ranges[i].stop; j++)  {
 	explicit_pins[j]--;
 	assert(explicit_pins[j] >= 0);
       }
-      for(int i = 0; r_arry[i]; i++) {
-	s = rangeToString(r_arry[i]);
+      for(int j = 0; r_arry[j]; j++) {
+	s = rangeToString(r_arry[j]);
 	//	printf(" del returned %s\n", s);
-	check_no_overlap(r_arry[i], explicit_pins);
+	check_no_overlap(r_arry[j], explicit_pins);
 	free(s);
-	free(r_arry[i]);
+	free(r_arry[j]);
       }
       free(r_arry);
       pins[i]--;

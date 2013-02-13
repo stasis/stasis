@@ -167,7 +167,7 @@ START_TEST(replacementPolicyThreadsafeRandomTest) {
 } END_TEST
 START_TEST(replacementPolicyConcurrentRandomTest) {
   int LRU_COUNT = OBJECT_COUNT / 51;
-  replacementPolicy * lru[LRU_COUNT];
+  replacementPolicy** lru = stasis_alloca(LRU_COUNT, replacementPolicy*);
   for(int i = 0; i < LRU_COUNT; i++) {
     lru[i] = lruFastInit();
   }
@@ -212,7 +212,7 @@ START_TEST(replacementPolicyThreadsafeThreadTest) {
 } END_TEST
 START_TEST(replacementPolicyConcurrentThreadTest) {
   int LRU_COUNT = OBJECT_COUNT / 51;
-  replacementPolicy * lru[LRU_COUNT];
+  replacementPolicy ** lru = stasis_alloca(LRU_COUNT,replacementPolicy*);
   for(int i = 0; i < LRU_COUNT; i++) {
     lru[i] = lruFastInit();
   }
@@ -220,7 +220,7 @@ START_TEST(replacementPolicyConcurrentThreadTest) {
   threaded = 1;
   worker_lru = cwLru;
   worker_count = LONG_COUNT / THREAD_COUNT;
-  pthread_t threads[THREAD_COUNT];
+  pthread_t *threads = stasis_alloca(THREAD_COUNT, pthread_t);
   randomSetup();
   for(int i = 0; i < THREAD_COUNT; i++) {
     pthread_create(&threads[i], 0, randomTestWorker, 0);

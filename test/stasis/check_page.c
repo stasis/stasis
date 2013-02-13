@@ -162,7 +162,7 @@ typedef struct {
 } latchFree_worker_thread_args;
 
 static void* latchFree_worker_thread(void * arg_ptr) {
-  latchFree_worker_thread_args * arg = arg_ptr;
+  latchFree_worker_thread_args * arg = (latchFree_worker_thread_args *)arg_ptr;
 
   int alloced_count = 0;
   while(1) {

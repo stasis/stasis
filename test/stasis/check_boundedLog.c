@@ -63,7 +63,7 @@ START_TEST(boundedLogTest) {
   pageid_t region_start = TregionAlloc(xid, NUM_XACTS, 0);
   Tcommit(xid);
 
-  for(uint64_t i = 0; i < NUM_XACTS; i++) {
+  for(int64_t i = 0; i < NUM_XACTS; i++) {
     xid = Tbegin();
     TinitializeFixedPage(xid, region_start + i, sizeof(uint64_t));
     recordid rid = {region_start + i, 0, sizeof(uint64_t)};
@@ -86,7 +86,7 @@ START_TEST(boundedLogConcurrentTest) {
   pageid_t region_start = TregionAlloc(xid, NUM_XACTS, 0);
   Tcommit(xid);
 
-  for(uint64_t i = 0; i < NUM_XACTS; i++) {
+  for(int64_t i = 0; i < NUM_XACTS; i++) {
     int xids[NUM_CONCURRENT_XACTS];
     for(int j = 0; j < NUM_CONCURRENT_XACTS; j++) {
       xids[j] = Tbegin();

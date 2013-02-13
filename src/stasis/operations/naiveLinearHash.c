@@ -137,7 +137,7 @@ static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, u
 
   uint64_t old_hash;
   uint64_t new_hash =
-    2 + stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX);
+    2 + HASH_ENTRY(fcn)(A_contents+1, keySize, i, UINT_MAX);
 
   while(new_hash != next_split) {
     // Need a record in A that belongs in the first bucket...
@@ -188,7 +188,7 @@ static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, u
     Tset(xid, A, A_contents);
     Tdealloc(xid, oldANext);
 
-    new_hash = stasis_linear_hash(A_contents+1, keySize, i, UINT_MAX) + 2;
+    new_hash = HASH_ENTRY(fcn)(A_contents+1, keySize, i, UINT_MAX) + 2;
   }
 
   B = A_contents->next;
@@ -198,8 +198,8 @@ static void rehash(int xid, recordid hashRid, pageid_t next_split, pageid_t i, u
     Tread(xid, B, B_contents);
     C = B_contents->next;
 
-    old_hash = stasis_linear_hash(B_contents+1, keySize, i-1, UINT_MAX) + 2;
-    new_hash = stasis_linear_hash(B_contents+1, keySize, i,   UINT_MAX) + 2;
+    old_hash = HASH_ENTRY(fcn)(B_contents+1, keySize, i-1, UINT_MAX) + 2;
+    new_hash = HASH_ENTRY(fcn)(B_contents+1, keySize, i,   UINT_MAX) + 2;
 
     assert(next_split == old_hash);
     assert(new_hash   == old_hash || new_hash == old_hash + stasis_util_two_to_the(i-1));
@@ -404,7 +404,7 @@ void TnaiveHashInsert(int xid, recordid hashRid,
   recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
   int bucket =
-    2 + stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2);
+    2 + HASH_ENTRY(fcn)(key, keySize, headerHashBits, headerNextSplit - 2);
 
   hashEntry * e = stasis_calloc_trailing_array(hashEntry, keySize + valSize);
   memcpy(e+1, key, keySize);
@@ -427,7 +427,7 @@ int TnaiveHashDelete(int xid, recordid hashRid,
                      void * key, int keySize, int valSize) {
   recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
 
-  int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  int bucket_number = HASH_ENTRY(fcn)(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   recordid  deleteMe;
   hashRid.slot = bucket_number;
 
@@ -471,7 +471,7 @@ int TnaiveHashClose(int xid, recordid hashRid) {
 
 int TnaiveHashLookup(int xid, recordid hashRid, void * key, int keySize, void * buf, int valSize) {
   recordid * headerRidB = (recordid *)pblHtLookup(openHashes, &(hashRid.page), sizeof(hashRid.page));
-  int bucket_number = stasis_linear_hash(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
+  int bucket_number = HASH_ENTRY(fcn)(key, keySize, headerHashBits, headerNextSplit - 2) + 2;
   int ret = findInBucket(xid, hashRid, bucket_number, key, keySize, buf, valSize);
   return ret;
 }

@@ -10,6 +10,7 @@
 
 #include <stasis/common.h>
 
+#define stasis_alloca(cnt, typ) ((typ*)alloca((cnt)*sizeof(typ)))
 #define stasis_alloc(typ) ((typ*)malloc(sizeof(typ)))
 #define stasis_malloc(cnt, typ) ((typ*)malloc((cnt)*sizeof(typ)))
 #define stasis_malloc_trailing_array(typ, array_sz) ((typ*)malloc(sizeof(typ)+(array_sz)))

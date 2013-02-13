@@ -44,21 +44,21 @@ int num_threads = 4;
 int concurrent = 0;
 stasis_skiplist_t * list;
 void * worker(void* p) {
-  intptr_t * keys = p;
+  intptr_t * keys = (intptr_t*)p;
   intptr_t collisions = 0;
   for(int i = 0; i < num_keys; i++) {
-    char * ret = stasis_util_skiplist_insert(list, key_dup(keys[i]));
+    char * ret = (char*)stasis_util_skiplist_insert(list, key_dup(keys[i]));
     if(ret != NULL) {
       assert(!stasis_util_skiplist_cmp(ret, &keys[i]));
       collisions++;
     }
   }
   for(int i = 0; i < num_keys; i++) {
-    char * ret = stasis_util_skiplist_search(list, &keys[i]);
+    char * ret = (char*)stasis_util_skiplist_search(list, &keys[i]);
     if(!concurrent) assert(!stasis_util_skiplist_cmp(ret, &keys[i]));
   }
   for(int i = 0; i < num_keys; i++) {
-    char * ret = stasis_util_skiplist_delete(list, &keys[i]);
+    char * ret = (char*)stasis_util_skiplist_delete(list, &keys[i]);
     if(ret == NULL) {
       collisions--;
     }
@@ -77,7 +77,7 @@ START_TEST(concurrentSkipList_smokeTest) {
     int err = asprintf(&keys[i], "%d", (int)stasis_util_random64(2*num_keys));
     (void) err;
 #else
-    keys[i] = (void*)(1+stasis_util_random64(2*num_keys));
+    keys[i] = (char*)(1+stasis_util_random64(2*num_keys));
 #endif
   }
   printf("Initted\n");
@@ -112,7 +112,7 @@ START_TEST(concurrentSkipList_concurrentTest) {
       int err = asprintf(&keys[i], "%d", (int)stasis_util_random64(2*num_keys));
       (void) err;
   #else
-      keys[j][i] = (void*)(1+stasis_util_random64(2*num_keys));
+      keys[j][i] = (char*)(1+stasis_util_random64(2*num_keys));
   #endif
     }
   }
@@ -128,7 +128,7 @@ START_TEST(concurrentSkipList_concurrentTest) {
   }
   for(int j = 0; j < num_threads; j++) {
     intptr_t ret;
-    pthread_join(threads[j], (void*)&ret);
+    pthread_join(threads[j], (void**)&ret);
     collisions += ret;
 #ifdef STRINGS
     for(int i = 0; i < num_keys; i++) {
@@ -168,7 +168,7 @@ void * worker2(void * p) {
 }
 START_TEST(concurrentSkipList_concurrentRandom) {
   list = stasis_util_skiplist_init(stasis_util_skiplist_cmp, 0);
-  pthread_t thread[num_threads];
+  pthread_t * thread = stasis_alloca(num_threads, pthread_t);
   for(int i = 0; i < num_threads; i++) {
     pthread_create(&thread[i], 0, worker2, 0);
   }

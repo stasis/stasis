@@ -17,7 +17,7 @@ typedef struct stasis_btree_data_page_header {
   PAGE rightSibling;
   PAGE leftSibling;
   pthread_rwlock_t latch;
-};
+} stasis_btree_data_page_header;
 
 static inline byte metadata_is_leaf(metadata_t m) {
   return m & 0x1;
@@ -46,7 +46,7 @@ typedef enum {
 } color_t;
 
 static inline color_t leaf_metadata_get_color(metadata_t m) {
-  return (m & (0x4 | 0x8)) >> 2;
+  return (color_t)((m & (0x4 | 0x8)) >> 2);
 }
 static inline metadata_t leaf_metadata_set_color(metadata_t m, color_t c) {
   return (m & ~(0x4 | 0x8)) | (c << 2);

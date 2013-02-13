@@ -28,7 +28,7 @@ static inline void HASH_ENTRY(_get_size_params)(uint64_t desiredSize,
 /**
    @todo despite it's interface, stasis_linear_hash can't return values > 2^32!
 */
-static inline uint64_t HASH_ENTRY()(const void * val, uint64_t val_length,
+static inline uint64_t HASH_ENTRY(fcn)(const void * val, uint64_t val_length,
 		  unsigned char tableBits, uint64_t nextExtension) {
   // Calculate the hash value as it was before this round of splitting.
   unsigned int oldTableLength = stasis_util_two_to_the(tableBits - 1);

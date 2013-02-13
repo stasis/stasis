@@ -39,7 +39,7 @@ static int intptr_cmp(const void * ap, const void *bp) {
 }
 static inline void hazard_scan(hazard_t * h, hazard_ptr_rec_t * rec) {
   if(rec == NULL) {
-    rec = pthread_getspecific(h->hp);
+    rec = (hazard_ptr_rec_t*)pthread_getspecific(h->hp);
   }
   if(rec == NULL) { return; }
   qsort(rec->rlist, rec->rlist_len, sizeof(void*), intptr_cmp);
@@ -85,7 +85,7 @@ static inline void hazard_scan(hazard_t * h, hazard_ptr_rec_t * rec) {
   free(ptrs);
 }
 static void hazard_deinit_thread(void * p) {
-  hazard_ptr_rec_t * rec = p;
+  hazard_ptr_rec_t * rec = (hazard_ptr_rec_t*)p;
   if(rec != NULL) {
     while(rec->rlist_len != 0) {
       hazard_scan(rec->h, rec);
@@ -140,7 +140,7 @@ static inline hazard_t* hazard_init(int hp_slots, int stack_start, int r_slots,
   return ret;
 }
 static inline hazard_ptr_rec_t * hazard_ensure_tls(hazard_t * h) {
-  hazard_ptr_rec_t * rec = pthread_getspecific(h->hp);
+  hazard_ptr_rec_t * rec = (hazard_ptr_rec_t*)pthread_getspecific(h->hp);
   if(rec == NULL) {
     rec = stasis_alloc(hazard_ptr_rec_t);
     rec->hp = stasis_calloc(h->num_slots, hazard_ptr);
@@ -156,7 +156,7 @@ static inline hazard_ptr_rec_t * hazard_ensure_tls(hazard_t * h) {
   return rec;
 }
 static inline void hazard_deinit(hazard_t * h) {
-  hazard_ptr_rec_t * rec = pthread_getspecific(h->hp);
+  hazard_ptr_rec_t * rec = (hazard_ptr_rec_t*)pthread_getspecific(h->hp);
   hazard_deinit_thread(rec);
   pthread_key_delete(h->hp);
   assert(h->tls_list == NULL);

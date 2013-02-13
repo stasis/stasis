@@ -205,7 +205,7 @@ static int __ThashInsert(int xid, recordid hashHeader, const byte* key, int keyS
   }
 
   recordid bucket = lhh.buckets;
-  bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
+  bucket.slot = HASH_ENTRY(fcn)(key, keySize, lhh.bits, lhh.nextSplit);
 
   int ret;
 
@@ -271,7 +271,7 @@ static int __ThashRemove(int xid, recordid hashHeader, const byte * key, int key
   Tset(xid, hashHeader, &lhh);
 
   recordid bucket = lhh.buckets;
-  bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
+  bucket.slot = HASH_ENTRY(fcn)(key, keySize, lhh.bits, lhh.nextSplit);
 
   if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
     recordid bucketList;
@@ -296,7 +296,7 @@ int ThashLookup(int xid, recordid hashHeader, const byte * key, int keySize, byt
   Tread(xid, hashHeader, &lhh);
 
   recordid bucket = lhh.buckets;
-  bucket.slot = stasis_linear_hash(key, keySize, lhh.bits, lhh.nextSplit);
+  bucket.slot = HASH_ENTRY(fcn)(key, keySize, lhh.bits, lhh.nextSplit);
 
   if(lhh.keySize == VARIABLE_LENGTH || lhh.valueSize == VARIABLE_LENGTH) {
     recordid bucketList;
@@ -349,7 +349,7 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
     byte *key, *value;
     int keySize, valueSize;
     while(TpagedListNext(xid, pit, &key, &keySize, &value, &valueSize)) {
-      if(stasis_linear_hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+      if(HASH_ENTRY(fcn)(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
         TpagedListRemove(xid, old_bucket_list, key, keySize);
         TpagedListInsert(xid, new_bucket_list, key, keySize, value, valueSize);
       }
@@ -364,7 +364,7 @@ static void ThashSplitBucket(int xid, recordid hashHeader, lladd_hash_header * l
     while(TlinkedListNext(xid, it, &key, &keySize, &value, &valueSize)) {
       assert(valueSize == lhh->valueSize);
       assert(keySize == lhh->keySize);
-      if(stasis_linear_hash(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
+      if(HASH_ENTRY(fcn)(key, keySize, lhh->bits, lhh->nextSplit) != old_bucket) {
         TlinkedListRemove(xid, old_bucket_rid, key, keySize);
         TlinkedListInsert(xid, new_bucket_rid, key, keySize, value, valueSize);
       }

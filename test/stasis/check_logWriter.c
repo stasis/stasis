@@ -63,7 +63,7 @@ terms specified in this license.
 #define LOG_NAME   "check_logWriter.log"
 
 LogEntry * dupLogEntry(stasis_log_t * log, const LogEntry *e) {
-  LogEntry * ret = malloc(sizeofLogEntry(log, e));
+  LogEntry * ret = (LogEntry *)malloc(sizeofLogEntry(log, e));
   memcpy(ret,e,sizeofLogEntry(log, e));
   return ret;
 }
@@ -77,7 +77,7 @@ static stasis_log_t * setup_log(void) {
   Tinit();
   lsn_t firstLSN = -1;
   int  first = 1;
-  stasis_log_t * stasis_log_file = stasis_log();
+  stasis_log_t * stasis_log_file = (stasis_log_t *)stasis_log();
   for(i = 0 ; i < 1000; i++) {
     lsn_t test = stasis_log_file->next_available_lsn(stasis_log_file);
 
@@ -239,13 +239,13 @@ static void loggerTruncate(int logType) {
     le = nextInLog(lh);
   }
 
-  LogEntry * copy = malloc(sizeofLogEntry(stasis_log_file, le));
+  LogEntry * copy = (LogEntry *)malloc(sizeofLogEntry(stasis_log_file, le));
   memcpy(copy, le, sizeofLogEntry(stasis_log_file, le));
   le = copy;
 
   le2 = nextInLog(lh);
 
-  copy = malloc(sizeofLogEntry(stasis_log_file, le2));
+  copy = (LogEntry *)malloc(sizeofLogEntry(stasis_log_file, le2));
   memcpy(copy, le2, sizeofLogEntry(stasis_log_file, le2));
   le2 = copy;
 
@@ -255,7 +255,7 @@ static void loggerTruncate(int logType) {
     le3 = nextInLog(lh);
   }
 
-  copy = malloc(sizeofLogEntry(stasis_log_file, le3));
+  copy = (LogEntry *)malloc(sizeofLogEntry(stasis_log_file, le3));
   memcpy(copy, le3, sizeofLogEntry(stasis_log_file, le3));
   le3 = copy;
 
@@ -324,7 +324,7 @@ static void* worker_thread(void * arg) {
     lsns[i] = 0;
   }
   i = 0;
-  stasis_log_t * stasis_log_file = stasis_log();
+  stasis_log_t * stasis_log_file = (stasis_log_t *)stasis_log();
 
   while(i < ENTRIES_PER_THREAD) {
     int threshold;

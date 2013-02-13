@@ -81,7 +81,7 @@ START_TEST(ringBufferSmokeTest) {
 
 #define PROD_CONS_SIZE (100L * 1024L * 1024L)
 static void * consumerWorker(void * arg) {
-  stasis_ringbuffer_t * ring = arg;
+  stasis_ringbuffer_t * ring = (stasis_ringbuffer_t *)arg;
   lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
     lsn_t rnd_size = stasis_util_random64(2048);
@@ -97,7 +97,7 @@ static void * consumerWorker(void * arg) {
   return 0;
 }
 static void * producerWorker(void * arg) {
-  stasis_ringbuffer_t * ring = arg;
+  stasis_ringbuffer_t * ring = (stasis_ringbuffer_t *)arg;
   lsn_t cursor = 0;
   while(cursor < PROD_CONS_SIZE) {
     int rnd_size = stasis_util_random64(2048);
@@ -134,7 +134,7 @@ typedef struct {
   stasis_ringbuffer_t * ring;
 } arg;
 static void * concurrentReader(void * argp) {
-  arg * a = argp;
+  arg * a = (arg*)argp;
   stasis_ringbuffer_t * ring = a->ring;
   lsn_t cursor = 0;
   lsn_t rd_handle;
@@ -155,7 +155,7 @@ static void * concurrentReader(void * argp) {
   return 0;
 }
 static void * concurrentWriter(void * argp) {
-  arg * a = argp;
+  arg * a = (arg*)argp;
   stasis_ringbuffer_t * ring = a->ring;
   lsn_t cursor = 0;
   lsn_t wr_handle;

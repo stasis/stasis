@@ -72,8 +72,8 @@ START_TEST(hazard_smokeTest) {
   char * b = stasis_malloc(1, char);
   *a = 0;
   *b = 1;
-  char * ap = hazard_ref(h, 0, (hazard_ptr*)&a);
-  char * bp = hazard_ref(h, 1, (hazard_ptr*)&b);
+  char * ap = (char*)hazard_ref(h, 0, (hazard_ptr*)&a);
+  char * bp = (char*)hazard_ref(h, 1, (hazard_ptr*)&b);
   hazard_free(h, ap);
   hazard_free(h, bp);
   hazard_scan(h,0);
@@ -93,7 +93,7 @@ START_TEST(hazard_smokeTest) {
 hazard_ptr* slots;
 pthread_mutex_t* muts;
 void * hazard_worker(void * hp) {
-  hazard_t * h = hp;
+  hazard_t * h = (hazard_t*)hp;
   for(int i = 0; i < NUM_OPS; i++) {
     int ptr_off = (int)stasis_util_random64(NUM_SLOTS);
     void * p = hazard_ref(h, 0, &slots[ptr_off]);

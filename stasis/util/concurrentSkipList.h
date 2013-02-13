@@ -51,8 +51,8 @@ static inline pthread_mutex_t * stasis_util_skiplist_get_forward_mutex(
   return (pthread_mutex_t*)(stasis_util_skiplist_get_forward(x,n)+1);
 }
 int stasis_util_skiplist_node_finalize(void * pp, void * conf) {
-  stasis_skiplist_node_t * p = pp;
-  stasis_skiplist_t * list = conf;
+  stasis_skiplist_node_t * p = (stasis_skiplist_node_t *)pp;
+  stasis_skiplist_t * list = (stasis_skiplist_t *)conf;
   if(p->refcount == 0) {
     void * oldKey = (void*)p->key;  // do this early to find races.
     for(int i = 1; i <= p->level; i++) {
@@ -78,7 +78,7 @@ int stasis_util_skiplist_default_key_finalize(void * p, void * ignored) {
 
 
 static inline int stasis_util_skiplist_random_level(pthread_key_t k) {
-  kiss_table_t * kiss = pthread_getspecific(k);
+  kiss_table_t * kiss = (kiss_table_t *)pthread_getspecific(k);
   if(kiss == 0) {
     kiss = stasis_alloc(kiss_table_t);
     stasis_util_random_kiss_settable(kiss,
@@ -153,7 +153,7 @@ static inline void stasis_util_skiplist_deinit(stasis_skiplist_t * list) {
   hazard_deinit(list->ret_hazard);
   pthread_mutex_destroy(&list->levelHint_mut);
   free((void*)list->header);
-  kiss_table_t * kiss = pthread_getspecific(list->k);
+  kiss_table_t * kiss = (kiss_table_t *)pthread_getspecific(list->k);
   if(kiss) {
     stasis_util_skiplist_cleanup_tls(kiss);
     pthread_setspecific(list->k, 0);
@@ -166,12 +166,12 @@ static inline void * stasis_util_skiplist_search(stasis_skiplist_t * list, void 
   // the = 0 here are to silence GCC -O3 warnings.
   stasis_skiplist_node_t *x, *y = 0;
   int cmp = 0;
-  x = hazard_set(list->h,0,(void*)list->header);
+  x = (stasis_skiplist_node_t *)hazard_set(list->h,0,(void*)list->header);
   for(int i = list->levelHint; i > 0; i--) {
-    y = hazard_ref(list->h,1,stasis_util_skiplist_get_forward(x, i));
+    y = (stasis_skiplist_node_t *)hazard_ref(list->h,1,stasis_util_skiplist_get_forward(x, i));
     while((cmp = stasis_util_skiplist_cmp_helper(list, y, searchKey)) < 0) {
-      x = hazard_set(list->h,0,(void*)y);
-      y = hazard_ref(list->h,1,stasis_util_skiplist_get_forward(x, i));
+      x = (stasis_skiplist_node_t *)hazard_set(list->h,0,(void*)y);
+      y = (stasis_skiplist_node_t *)hazard_ref(list->h,1,stasis_util_skiplist_get_forward(x, i));
     }
   }
   void * ret;
@@ -188,20 +188,20 @@ static inline void * stasis_util_skiplist_search(stasis_skiplist_t * list, void 
 static inline stasis_skiplist_node_t * stasis_util_skiplist_get_lock(
     stasis_skiplist_t * list, stasis_skiplist_node_t * x, void * searchKey, int i) {
   stasis_skiplist_node_t * z
-    = hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
+    = (stasis_skiplist_node_t *)hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
   while(stasis_util_skiplist_cmp_helper(list, z, searchKey) < 0) {
-    x = hazard_set(list->h, 0, (void*)z);
-    z = hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
+    x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)z);
+    z = (stasis_skiplist_node_t *)hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
   }
   pthread_mutex_lock(stasis_util_skiplist_get_forward_mutex(x, i));
-  z = hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
+  z = (stasis_skiplist_node_t *)hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
   while(stasis_util_skiplist_cmp_helper(list, z, searchKey) < 0) {
     // Should lock of z be here?
     pthread_mutex_unlock(stasis_util_skiplist_get_forward_mutex(x, i));
-    x = hazard_set(list->h, 0, (void*)z);
+    x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)z);
     // Note: lock of z was here (and it was called x)
     pthread_mutex_lock(stasis_util_skiplist_get_forward_mutex(x, i));
-    z = hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
+    z = (stasis_skiplist_node_t *)hazard_ref(list->h, 2, stasis_util_skiplist_get_forward(x, i));
   }
   stasis_util_skiplist_assert(stasis_util_skiplist_cmp_helper2(list, x, (stasis_skiplist_node_t*)*stasis_util_skiplist_get_forward(x, i)) < 0);
   hazard_release(list->h, 2);
@@ -212,32 +212,32 @@ static inline stasis_skiplist_node_t * stasis_util_skiplist_get_lock(
  * @return the old value or null if there was no such value.
  */
 static inline void * stasis_util_skiplist_insert(stasis_skiplist_t * list, void * searchKey) {
-  stasis_skiplist_node_t * update[list->levelCap+1];
+  stasis_skiplist_node_t ** update = stasis_alloca(list->levelCap+1, stasis_skiplist_node_t*);
   stasis_skiplist_node_t *x, *y;
 IN:
-  x = hazard_set(list->h, 0, (void*)list->header);
+  x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)list->header);
   int L = list->levelHint;
   // for i = L downto 1
   int i;
   for(i = L+1; i > 1;) {
     i--;
-    y = hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
+    y = (stasis_skiplist_node_t *)hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
     while(stasis_util_skiplist_cmp_helper(list, y, searchKey) < 0) {
-      x = hazard_set(list->h, 0, (void*)y);
-      y = hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
+      x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)y);
+      y = (stasis_skiplist_node_t *)hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
     }
-    update[i] = hazard_set(list->h, STASIS_SKIPLIST_HP_COUNT+(L-i), x);
+    update[i] = (stasis_skiplist_node_t *)hazard_set(list->h, STASIS_SKIPLIST_HP_COUNT+(L-i), x);
   }
   // update[L..1] is set.
   // h [HP_COUNT+[0..L-1] is set.
   // Note get_lock grabs the hazard pointer for x.
   x = stasis_util_skiplist_get_lock(list, x, searchKey, 1);
-  y = hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, 1));
+  y = (stasis_skiplist_node_t *)hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, 1));
   if(stasis_util_skiplist_cmp_helper(list, y, searchKey) == 0) {
     pthread_mutex_unlock(stasis_util_skiplist_get_forward_mutex(x, 1));
     pthread_mutex_lock(&y->level_mut);
 
-    x = hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, 1));
+    x = (stasis_skiplist_node_t *)hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, 1));
     int isGarbage = stasis_util_skiplist_cmp_helper(list, x, searchKey) < 0;
     if(!isGarbage) {
       void * oldKey;
@@ -262,10 +262,10 @@ IN:
     }
   }
   hazard_ptr newnode = stasis_util_skiplist_make_node(stasis_util_skiplist_random_level(list->k), searchKey);
-  y = hazard_set(list->h, 1, (void*)newnode);
+  y = (stasis_skiplist_node_t *)hazard_set(list->h, 1, (void*)newnode);
   pthread_mutex_lock(&y->level_mut);
   for(int i = L+1; i <= y->level; i++) {
-    update[i] = (void*)list->header;
+    update[i] = (stasis_skiplist_node_t *)list->header;
   }
   // update[L+1..y->level] is set
   for(int i = 1; i <= y->level; i++) {
@@ -279,10 +279,10 @@ IN:
   pthread_mutex_unlock(&y->level_mut);
 
   int L2 = list->levelHint;
-  if(L2 < list->levelCap && *stasis_util_skiplist_get_forward((void*)list->header, L2+1) != 0) {
+  if(L2 < list->levelCap && *stasis_util_skiplist_get_forward((stasis_skiplist_node_t *)list->header, L2+1) != 0) {
     if(pthread_mutex_trylock(&list->levelHint_mut) == 0) {
       while(list->levelHint < list->levelCap &&
-          *stasis_util_skiplist_get_forward((void*)list->header, list->levelHint+1) != 0) {
+          *stasis_util_skiplist_get_forward((stasis_skiplist_node_t *)list->header, list->levelHint+1) != 0) {
         list->levelHint = list->levelHint+1; // XXX atomics?
       }
       pthread_mutex_unlock(&list->levelHint_mut);
@@ -301,23 +301,23 @@ IN:
  * @return The old value, or null.
  */
 static inline void * stasis_util_skiplist_delete(stasis_skiplist_t * list, void * searchKey) {
-  stasis_skiplist_node_t * update[list->levelCap+1];
+  stasis_skiplist_node_t ** update = stasis_alloca(list->levelCap+1, stasis_skiplist_node_t*);
   stasis_skiplist_node_t *x, *y;
-  x = hazard_set(list->h, 0, (void*)list->header);
+  x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)list->header);
   int L = list->levelHint;
   // for i = L downto 1
   int i;
   for(i = L+1; i > 1;) {
     i--; // decrement after check, so that i is 1 at the end of the loop.
-    y = hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
+    y = (stasis_skiplist_node_t *)hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
     while(stasis_util_skiplist_cmp_helper(list, y, searchKey) < 0) {
-      x = hazard_set(list->h, 0, (void*)y);
-      y = hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
+      x = (stasis_skiplist_node_t *)hazard_set(list->h, 0, (void*)y);
+      y = (stasis_skiplist_node_t *)hazard_ref(list->h, 1, stasis_util_skiplist_get_forward(x, i));
     }
-    update[i] = hazard_set(list->h, STASIS_SKIPLIST_HP_COUNT+(L-i), x);
+    update[i] = (stasis_skiplist_node_t *)hazard_set(list->h, STASIS_SKIPLIST_HP_COUNT+(L-i), x);
   }
   // h[HP_COUNT+[0..L-1] is set
-  y = hazard_set(list->h, 1, (void*)x);
+  y = (stasis_skiplist_node_t *)hazard_set(list->h, 1, (void*)x);
   int isGarbage = 0;
   int first = 1;
   // do ... until equal and not garbage
@@ -325,14 +325,14 @@ static inline void * stasis_util_skiplist_delete(stasis_skiplist_t * list, void 
     // Note: it is unsafe to copy y->i directly into y, since doing so releases
     // the hazard pointer in race.  Fortunately, we don't need x for anything
     // until we overwrite it immediately below.
-    x = hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, i));
+    x = (stasis_skiplist_node_t *)hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, i));
     if(first) {
       first = 0;
     } else {
       // This unlock was not in the pseudocode, but seems to be necessary...
       pthread_mutex_unlock(&y->level_mut);
     }
-    y = hazard_set(list->h, 1, x);
+    y = (stasis_skiplist_node_t *)hazard_set(list->h, 1, x);
     if(stasis_util_skiplist_cmp_helper(list, y, searchKey) > 0) {
       hazard_release(list->ret_hazard, 0);
       hazard_release(list->h, 0);
@@ -345,12 +345,12 @@ static inline void * stasis_util_skiplist_delete(stasis_skiplist_t * list, void 
       return NULL;
     }
     pthread_mutex_lock(&y->level_mut);
-    x = hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, i));
+    x = (stasis_skiplist_node_t *)hazard_ref(list->h, 0, stasis_util_skiplist_get_forward(y, i));
     // Note: this is a > in pseudocode, which lets equal nodes link back into themselves.
     isGarbage = stasis_util_skiplist_cmp_helper2(list, y, x) > 0;
     // pseudocode would unlock if garbage here.  Moved unlock to top of loop.
   } while(!(!isGarbage && stasis_util_skiplist_cmp_helper(list, y, searchKey) == 0));
-  for(int i = L+1; i <= y->level; i++) { update[i] = (void*)list->header; }
+  for(int i = L+1; i <= y->level; i++) { update[i] = (stasis_skiplist_node_t *)list->header; }
   for(int i = y->level; i > 0; i--) {
     x = stasis_util_skiplist_get_lock(list, update[i], searchKey, i);
     pthread_mutex_lock(stasis_util_skiplist_get_forward_mutex(y, i));
@@ -366,9 +366,9 @@ static inline void * stasis_util_skiplist_delete(stasis_skiplist_t * list, void 
   void * oldKey = hazard_ref(list->ret_hazard, 0, &(y->key));
   pthread_mutex_unlock(&y->level_mut);
   int L2 = list->levelHint;
-  if(L2 > 1 && *stasis_util_skiplist_get_forward((void*)list->header, L2) == 0) {
+  if(L2 > 1 && *stasis_util_skiplist_get_forward((stasis_skiplist_node_t *)list->header, L2) == 0) {
     if(pthread_mutex_trylock(&list->levelHint_mut) == 0) {
-      while(list->levelHint > 1 && (stasis_skiplist_node_t*)*stasis_util_skiplist_get_forward((void*)list->header, list->levelHint) == 0) {
+      while(list->levelHint > 1 && (stasis_skiplist_node_t*)*stasis_util_skiplist_get_forward((stasis_skiplist_node_t *)list->header, list->levelHint) == 0) {
         list->levelHint = list->levelHint - 1;
       }
       pthread_mutex_unlock(&list->levelHint_mut);
