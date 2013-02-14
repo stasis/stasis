@@ -62,26 +62,30 @@ static void pStarCleanup(Page * p) {
 
 */
 static const page_impl pstar_impl = {
-  -1,
+  -1, // page type
+  0,  // has header
   0,  // pStarRead,
-  0,       // pStarWrite,
+  0,  // pStarWrite,
   0,  // pStarReadDone,
-  0,       // pStarWriteDone,
+  0,  // pStarWriteDone,
   0,  // pStarGetType,
   0,  // pStarSetType,
   0,  // pStarGetLength,
   0,  // pStarFirst,
   0,  // pStarNext,
+  0,  // pStarLast
   0,  // pStarIsBlockSupported,
   0,  // pStarBlockFirst,
   0,  // pStarBlockNext,
   0,  // pStarBlockDone,
   0,  // pStarFreespace,
-  0,       // pStarCompact,
-  0,       // pStarPreRalloc,
-  0,       // pStarPostRalloc,
-  0,       // pStarFree,
-  0,       // dereference_identity,
+  0,  // pStarCompact,
+  0,  // pStarCompactSlotIDs,
+  0,  // pStarPreRalloc,
+  0,  // pStarPostRalloc,
+  0,  // pStarSplice,
+  0,  // pStarFree,
+  0,  // dereference_identity,
   0,  // pStarLoaded,
   0,  // pStarFlushed
   0,  // pStarCleanup

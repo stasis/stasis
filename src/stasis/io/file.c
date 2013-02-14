@@ -136,7 +136,7 @@ inline static int file_write_unlocked(stasis_handle_t * h, lsn_t off,
   return error;
 }
 
-inline static void print_eof_error(char * file, int line) {
+inline static void print_eof_error(const char * file, int line) {
   fprintf(stderr, "%s:%d Internal error: attempt to access negative offset, or beyond EOF.\n", file, line);
   fflush(stderr);
 }

@@ -34,7 +34,7 @@ void print_profile_tuple(profile_tuple * tup) {
     double mean_hold = ((double)tup->sum_hold)/ ((double)tup->count);
     double std_hold = sqrt((((double)tup->sum_hold2) / ((double)tup->count)) - (mean_hold * mean_hold));
 
-    printf("{count=%ld spin[%1.4lf %1.4lf %0.0lf] held[%1.4lf %1.4lf %0.0lf]us}", tup->count,
+    printf("{count=%ld spin[%1.4f %1.4f %0.0f] held[%1.4f %1.4f %0.0f]us}", tup->count,
 	   mean_spin, std_spin, tup->max_spin,
 	   mean_hold, std_hold, tup->max_hold);
   } else {

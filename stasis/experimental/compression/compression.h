@@ -2,11 +2,7 @@
 #define _ROSE_COMPRESSION_COMPRESSION_H__
 
 #include <limits.h>
-#define  __STDC_LIMIT_MACROS 1
 #include <stdint.h>
-#ifndef UINT16_MAX // XXX should be defined in stdint.h.
-#define UINT16_MAX             (65535)
-#endif
 
 namespace rose {
 

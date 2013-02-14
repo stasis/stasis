@@ -1,5 +1,3 @@
-#define __USE_GNU
-#define _GNU_SOURCE
 
 #include <stasis/util/latches.h>
 #include <stasis/transactional.h>

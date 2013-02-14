@@ -283,7 +283,6 @@ recordid Talloc(int xid, unsigned long size) {
   if(size >= BLOB_THRESHOLD_SIZE) {
     type = BLOB_SLOT;
   } else {
-    assert(size >= 0);
     type = size;
   }
 

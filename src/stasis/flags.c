@@ -173,27 +173,27 @@ size_t stasis_log_in_memory_max_entries = 0;  // unlimited
 #endif
 
 #ifdef STASIS_LOG_FILE_NAME
-char * stasis_log_file_name = STASIS_LOG_FILE_NAME;
+const char * stasis_log_file_name = STASIS_LOG_FILE_NAME;
 #else
-char * stasis_log_file_name = "logfile.txt";
+const char * stasis_log_file_name = "logfile.txt";
 #endif
 
 #ifdef STASIS_STORE_FILE_NAME
-char * stasis_store_file_name = STASIS_STORE_FILE_NAME;
+const char * stasis_store_file_name = STASIS_STORE_FILE_NAME;
 #else
-char * stasis_store_file_name = "storefile.txt";
+const char * stasis_store_file_name = "storefile.txt";
 #endif
 
 #ifdef STASIS_STORE_FILE_1_NAME
-char * stasis_store_file_1_name = STASIS_STORE_FILE_1_NAME;
+const char * stasis_store_file_1_name = STASIS_STORE_FILE_1_NAME;
 #else
-char * stasis_store_file_1_name = "storefile1.txt";
+const char * stasis_store_file_1_name = "storefile1.txt";
 #endif
 
 #ifdef STASIS_STORE_FILE_2_NAME
 char * stasis_store_file_2_name = STASIS_STORE_FILE_2_NAME;
 #else
-char * stasis_store_file_2_name = "storefile2.txt";
+const char * stasis_store_file_2_name = "storefile2.txt";
 #endif
 
 #ifdef STASIS_BUFFER_MANAGER_HASH_PREFETCH_COUNT

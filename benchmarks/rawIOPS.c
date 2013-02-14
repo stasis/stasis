@@ -37,7 +37,7 @@ void * status_worker(void * ignored) {
   while(1) {
     struct timespec ts = stasis_double_to_timespec(1.0);
     nanosleep(&ts,0);
-    printf("current ops/sec %lld\n", completed_ops - last_ops);
+    printf("current ops/sec %lld\n", (long long) (completed_ops - last_ops));
     last_ops = completed_ops;
     iter ++;
     if((! (iter % 10)) && (op_count == 0)) {

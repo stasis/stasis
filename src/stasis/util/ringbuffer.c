@@ -154,7 +154,7 @@ lsn_t stasis_ringbuffer_consume_bytes(stasis_ringbuffer_t * ring, lsn_t* sz, lsn
 
   while(RING_VOLATILE == (ret = stasis_ringbuffer_nb_consume_bytes(ring, RING_NEXT, sz))) {
     pthread_cond_wait(&ring->write_done, &ring->mut);
-    *sz = (ring->flush > ring->rf) ? RING_NEXT : orig_sz;
+    *sz = (ring->flush > ring->rf) ? ((lsn_t)RING_NEXT) : orig_sz;
     if(ring->shutdown) {
         if(ring->rt == ring->wf) {
           DEBUG(stderr, "Shutting down, and there are no more bytes.  Signaling shutdown thread.\n");

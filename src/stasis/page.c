@@ -125,8 +125,7 @@ void stasis_page_init(stasis_dirty_page_table_t * dpt) {
 void stasis_page_deinit(void) {
 
   for(int i = 0; i < MAX_PAGE_TYPE; i++) {
-    page_impl p = { 0 };
-    page_impls[i] = p;
+    memset(&page_impls[i], 0, sizeof(page_impls[i]));
   }
 
   stasis_page_fixed_deinit();

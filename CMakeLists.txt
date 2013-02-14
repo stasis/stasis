@@ -168,8 +168,8 @@ LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/stasis)
 
 IF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
   SET(COMMON_LIBRARIES stasis m pthread stdc++ ${DBUG}) # profiler)
-  SET(CMAKE_C_FLAGS "-g -Wall -ansi -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "-g -Wall -ansi -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_C_FLAGS "-g -Wall -Wextra -ansi -Wno-unused-parameter -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-g -Wall -Wextra -ansi -Wno-unused-parameter -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 ELSEIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "SunPro" )
   SET(COMMON_LIBRARIES stasis m pthread Crun Cstd)
   SET(CMAKE_C_FLAGS "-g -xc99=all -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
@@ -178,8 +178,8 @@ ELSE( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
   # TODO: how to detect compilers correctly on old cmake???  This is a huge hack; it uses old gcc 
   # options, since cmake is old...
   SET(COMMON_LIBRARIES stasis m pthread stdc++ ${DBUG})
-  SET(CMAKE_C_FLAGS "-g -Wall -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "-g -Wall -Wno-long-long -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_C_FLAGS "-g -Wall  -Wlong-long -pedantic -std=gnu99 -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-g -Wall -pedantic -DPBL_COMPAT -D_FILE_OFFSET_BITS=64 ${CMAKE_CXX_FLAGS}")
 ENDIF ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
 
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/stasis

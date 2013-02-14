@@ -191,15 +191,15 @@ extern int stasis_log_type;
 
 extern size_t stasis_log_in_memory_max_entries;
 
-extern char * stasis_log_file_name;
+extern const char * stasis_log_file_name;
 extern int    stasis_log_file_mode;
 extern int    stasis_log_file_permissions;
 extern int    stasis_log_dir_permissions;
 extern int    stasis_log_softcommit;
 
-extern char * stasis_store_file_name;
-extern char * stasis_store_file_1_name;
-extern char * stasis_store_file_2_name;
+extern const char * stasis_store_file_name;
+extern const char * stasis_store_file_1_name;
+extern const char * stasis_store_file_2_name;
 
 
 /**

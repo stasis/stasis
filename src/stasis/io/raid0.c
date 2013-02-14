@@ -213,7 +213,7 @@ stasis_handle_t * stasis_handle_raid0_factory(void) {
   } else {
     int count = 0;
     while(stasis_handle_raid0_filenames[count]) count++;
-    stasis_handle_t * h[count];
+    stasis_handle_t ** h = stasis_alloca(count, stasis_handle_t*);
     for(int i = 0; i < count; i++) {
       h[i] = stasis_handle_file_factory(stasis_handle_raid0_filenames[i], O_CREAT | O_RDWR | stasis_buffer_manager_io_handle_flags, FILE_PERM);
     }

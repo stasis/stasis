@@ -171,7 +171,7 @@ int stasis_dirty_page_table_flush_with_target(stasis_dirty_page_table_t * dirtyP
   long buffered = 0;
   do {
     dpt_entry dummy = { 0, 0 };
-    pageid_t vals[stride];
+    pageid_t * vals = stasis_alloca(stride, pageid_t);
     int off = 0;
     int strides = 0;
     all_flushed = 1;
