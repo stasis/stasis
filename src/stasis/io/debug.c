@@ -154,7 +154,8 @@ struct stasis_handle_t debug_func = {
   /*.async_force =*/ NULL,
   /*.force_range =*/ debug_force_range,
   /*.fallocate =*/ NULL,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 

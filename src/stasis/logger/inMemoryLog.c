@@ -219,7 +219,9 @@ stasis_log_t* stasis_log_impl_in_memory_open(void) {
     stasis_log_impl_in_memory_truncate,
     stasis_log_impl_in_memory_truncation_point,
     stasis_log_impl_in_memory_close,
-    stasis_log_impl_in_memory_is_durable
+    stasis_log_impl_in_memory_is_durable,
+    0,// group_force
+    0 // void* impl
   };
   stasis_log_t* log = stasis_alloc(stasis_log_t);
   memcpy(log,&proto, sizeof(proto));

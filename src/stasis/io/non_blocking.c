@@ -600,7 +600,8 @@ struct stasis_handle_t nbw_func = {
   /*.async_force =*/ NULL,
   /*.force_range =*/ nbw_force_range,
   /*.fallocate =*/ NULL,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 /**

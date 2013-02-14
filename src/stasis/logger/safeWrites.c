@@ -838,6 +838,8 @@ stasis_log_t* stasis_log_safe_writes_open(const char * filename,
     firstLogEntry_LogWriter,// truncation_point
     close_LogWriter, // deinit
     isDurable_LogWriter, // is_durable
+    0,// group force
+    0 // impl
   };
 
   stasis_log_safe_writes_state * sw = stasis_alloc(stasis_log_safe_writes_state);

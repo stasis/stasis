@@ -99,7 +99,11 @@ static lsn_t stasis_log_write_prepare(stasis_log_t* log, stasis_transaction_tabl
 LogEntry * stasis_log_write_update(stasis_log_t* log, stasis_transaction_table_entry_t * l,
                                    pageid_t page, Page * p, unsigned int op,
                                    const byte * arg, size_t arg_size) {
-  stasis_transaction_table_entry_t dummy = { -1, -1, INVALID_LSN, INVALID_LSN, {0,0,0}, -1 };
+  stasis_transaction_table_entry_t dummy = { -1, -1, INVALID_LSN, INVALID_LSN, {0,0,0}, -1
+#ifndef HAVE_GCC_ATOMICS
+		  , PTHREAD_MUTEX_INITIALIZER
+#endif
+  };
   if(l == 0) { l = &dummy; }
 
   LogEntry * e = allocUpdateLogEntry(log, l->prevLSN, l->xid, op,

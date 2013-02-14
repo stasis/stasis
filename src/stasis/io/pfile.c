@@ -412,7 +412,8 @@ static struct stasis_handle_t pfile_func = {
   /*.async_force =*/ pfile_async_force,
   /*.force_range =*/ pfile_force_range,
   /*.fallocate =*/ pfile_fallocate,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 stasis_handle_t *stasis_handle(open_pfile)(const char *filename,

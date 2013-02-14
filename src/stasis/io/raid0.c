@@ -187,7 +187,8 @@ struct stasis_handle_t raid0_func = {
   /*.async_force =*/ raid0_async_force,
   /*.force_range =*/ raid0_force_range,
   /*.fallocate =*/ raid0_fallocate,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 stasis_handle_t * stasis_handle_open_raid0(int handle_count, stasis_handle_t** h, uint32_t stripe_size) {

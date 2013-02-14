@@ -751,6 +751,8 @@ stasis_log_t* stasis_log_file_pool_open(const char* dirname, int filemode, int f
     stasis_log_file_pool_truncation_point,
     stasis_log_file_pool_close,
     0,//stasis_log_file_pool_is_durable,
+    0,//group force
+    0 //impl
   };
   memcpy(ret, &proto, sizeof(proto));
   ret->impl = fp;

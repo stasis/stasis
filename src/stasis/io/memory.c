@@ -181,7 +181,8 @@ struct stasis_handle_t mem_func = {
   /*.async_force =*/ mem_force,
   /*.force_range =*/ mem_force_range,
   /*.fallocate =*/ NULL,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 stasis_handle_t * stasis_handle(open_memory)(void) {

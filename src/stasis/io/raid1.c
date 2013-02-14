@@ -145,7 +145,8 @@ struct stasis_handle_t raid1_func = {
   /*.async_force =*/ raid1_async_force,
   /*.force_range =*/ raid1_force_range,
   /*.fallocate =*/ raid1_fallocate,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 stasis_handle_t * stasis_handle_open_raid1(stasis_handle_t* a, stasis_handle_t* b) {

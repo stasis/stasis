@@ -480,7 +480,8 @@ struct stasis_handle_t file_func = {
   /*.async_force =*/ file_async_force,
   /*.force_range =*/ file_force_range,
   /*.fallocate =*/ file_fallocate,
-  /*.error =*/ 0
+  /*.error =*/ 0,
+  /*.impl =*/ 0
 };
 
 stasis_handle_t * stasis_handle(open_file)(const char * filename, int flags, int mode) {
