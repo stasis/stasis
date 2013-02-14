@@ -20,7 +20,6 @@
  */
 #ifndef __LIBDFA_RW_H
 #define __LIBDFA_RW_H
-
 #include <stasis/common.h>
 #include <pthread.h>
 #include <stdio.h>

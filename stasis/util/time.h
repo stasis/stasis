@@ -15,7 +15,7 @@
 
 static inline unsigned long long stasis_get_tsc(void) {
   unsigned long long tsc;
-  asm volatile ("rdtsc" : "=A" (tsc));
+  __asm volatile ("rdtsc" : "=A" (tsc));
   return tsc;
 }
 static inline struct timeval stasis_subtract_timeval(const struct timeval a, const struct timeval b) {

@@ -4,8 +4,8 @@
  *  Created on: Aug 31, 2011
  *      Author: sears
  */
-#include <assert.h>
 #include <config.h>
+#include <assert.h>
 #include <stasis/common.h>
 #include <stasis/util/latches.h>
 #include <stasis/util/time.h>

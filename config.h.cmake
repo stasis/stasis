@@ -1,7 +1,8 @@
 #ifndef STASIS_CONFIG_H
 #define STASIS_CONFIG_H
-#define __USE_GNU
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #cmakedefine HAVE_POSIX_FALLOCATE
 #cmakedefine HAVE_POSIX_MEMALIGN
 #cmakedefine HAVE_POSIX_FADVISE
