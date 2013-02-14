@@ -1,4 +1,7 @@
-#include <config.h> //for O_NOATIME
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <config.h>
 #include <stasis/common.h>
 #include <stasis/flags.h>
 #include <stasis/constants.h>

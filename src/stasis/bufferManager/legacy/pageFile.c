@@ -3,6 +3,9 @@
     This file handles all of the file I/O for pages.
 
 */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE  // for sync file range constants.
+#endif
 #include "config.h"
 
 #include <stasis/page.h>

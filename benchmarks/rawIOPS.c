@@ -4,6 +4,9 @@
  *  Created on: Aug 26, 2011
  *      Author: sears
  */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // for O_DIRECT
+#endif
 #include <config.h>
 #include <stasis/common.h>
 #include <stasis/util/random.h>

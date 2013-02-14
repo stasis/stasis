@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // for O_DIRECT
+#endif
 #include <config.h>
 #include <stasis/transactional.h>
 

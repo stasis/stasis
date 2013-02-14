@@ -6,14 +6,6 @@
 #include <unistd.h>
 #include <pthread.h>
 
-// if we're using linux's crazy version of the pthread header, 
-// it probably forgot to include PTHREAD_STACK_MIN 
-
-#ifndef PTHREAD_STACK_MIN
-#include <limits.h>
-#endif
-
-
 int i = 0;
 int max_active = 0;
 

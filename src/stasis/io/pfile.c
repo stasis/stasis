@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // for sync_file_range constants
+#endif
 #include <config.h>
 
 #include <stasis/io/handle.h>
