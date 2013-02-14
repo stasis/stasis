@@ -40,7 +40,6 @@ permission to use and distribute the software in accordance with the
 terms specified in this license.
 ---*/
 
-#define _GNU_SOURCE
 #include "../check_includes.h"
 
 #include <stasis/util/lhtable.h>

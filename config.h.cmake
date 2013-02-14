@@ -1,3 +1,5 @@
+#ifndef STASIS_CONFIG_H
+#define STASIS_CONFIG_H
 #define __USE_GNU
 #define _GNU_SOURCE
 #cmakedefine HAVE_POSIX_FALLOCATE
@@ -16,3 +18,4 @@
 #cmakedefine DBUG
 #cmakedefine ON_LINUX
 #cmakedefine ON_MACOS
+#endif

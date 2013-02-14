@@ -41,8 +41,7 @@ terms specified in this license.
 ---*/
 /*#include <sys/types.h> */
 
-#define _GNU_SOURCE
-
+#include <config.h>
 #include <stasis/common.h>
 #include <sys/socket.h>
 #include <sys/poll.h>

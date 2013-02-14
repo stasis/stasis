@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "../check_includes.h"
 
 #undef STLSEARCH

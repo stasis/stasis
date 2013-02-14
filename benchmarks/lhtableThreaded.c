@@ -1,11 +1,7 @@
-#define _GNU_SOURCE
+#include <config.h>
+#include <stasis/common.h>
 #include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
-#include <pthread.h>
 #include <stasis/util/lhtable.h>
-#include <stasis/util/malloc.h>
 #include <assert.h>
 
 int entries;

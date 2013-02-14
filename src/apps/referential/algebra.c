@@ -1,4 +1,4 @@
-#define _GNU_SOURCE
+#include <config.h>
 #include <stdio.h>
 #include <stasis/transactional.h>
 #include <string.h>

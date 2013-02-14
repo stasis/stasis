@@ -1,4 +1,5 @@
-#define _GNU_SOURCE
+#include <config.h>
+#include <stasis/common.h>
 
 #include <sys/types.h>
 #include <stdio.h>
